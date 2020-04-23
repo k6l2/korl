@@ -41,15 +41,14 @@ LRESULT CALLBACK mainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 	}
 	return result;
 }
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
-                    PWSTR pCmdLine, int nCmdShow)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
+                    PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
 	const WNDCLASS wndClass = {
-		.style         = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc   = mainWindowCallback,
 		.hInstance     = hInstance,
 		.lpszClassName = "K10WindowClass" };
-	const ATOM atomWindowClass = RegisterClass(&wndClass);
+	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)
 	{
 		///TODO: log error
@@ -76,11 +75,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		MSG windowMessage;
 		while(true)
 		{
-			const BOOL getMsgResult = GetMessage(&windowMessage, NULL, 0, 0 );
+			const BOOL getMsgResult = GetMessageA(&windowMessage, NULL, 0, 0 );
 			if(getMsgResult > 0)
 			{
 				TranslateMessage(&windowMessage);
-				DispatchMessage (&windowMessage);
+				DispatchMessageA(&windowMessage);
 			}
 			else
 			{
