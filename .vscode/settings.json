@@ -1,0 +1,11 @@
+{
+	"triggerTaskOnSave.restart": true,
+	"triggerTaskOnSave.tasks": {
+		"build": [
+			"code/*"
+		]
+	},
+	"files.associations": {
+		"*.rh": "cpp"
+	}
+}
