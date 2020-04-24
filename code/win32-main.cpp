@@ -1,20 +1,98 @@
 #include <windows.h>
-LRESULT CALLBACK mainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, 
-                                    LPARAM lParam)
+#define internal        static
+#define local_persist   static
+#define global_variable static
+global_variable bool running;
+global_variable void* bitmapMemory;
+global_variable HBITMAP bitmapHandle;
+global_variable BITMAPINFO bitmapInfo;
+global_variable HDC bitmapDeviceContext;
+internal void w32ResizeDibSection(int width, int height)
+{
+	if(bitmapHandle)
+	{
+		DeleteObject(bitmapHandle);
+	}
+	if(!bitmapDeviceContext)
+	{
+		bitmapDeviceContext = CreateCompatibleDC(NULL);
+		if(!bitmapDeviceContext)
+		{
+			///TODO: handle error
+		}
+	}
+	bitmapInfo = {
+		.bmiHeader = {
+			.biSize = sizeof(BITMAPINFOHEADER),
+			.biWidth = width,
+			.biHeight = width,
+			.biPlanes = 1,
+			.biBitCount = 32,
+			.biCompression = BI_RGB,
+			.biSizeImage = 0,
+			.biXPelsPerMeter = 0,
+			.biYPelsPerMeter = 0,
+			.biClrUsed = 0,
+			.biClrImportant = 0 } };
+	//TODO: bitmapMemory = ;
+	bitmapHandle = CreateDIBSection(
+		bitmapDeviceContext,
+		&bitmapInfo,
+		DIB_RGB_COLORS,
+		&bitmapMemory,
+		NULL, 0);
+	if(!bitmapHandle)// || bitmapHandle == ERROR_INVALID_PARAMETER)
+	{
+		///TODO: handle error
+	}
+}
+internal void w32UpdateWindow(HDC hdc, int x, int y, int width, int height)
+{
+	const int signedNumCopiedScanlines =
+		StretchDIBits(hdc,
+			x, y, width, height, 
+			x, y, width, height, 
+			bitmapMemory,
+			&bitmapInfo,
+			DIB_RGB_COLORS,
+			SRCCOPY);
+	if(signedNumCopiedScanlines == GDI_ERROR ||
+		signedNumCopiedScanlines == 0)
+	{
+		///TODO: handle error cases
+	}
+}
+LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, 
+                                       LPARAM lParam)
 {
 	LRESULT result = 0;
 	switch(uMsg)
 	{
 		case WM_SIZE:
 		{
+			RECT clientRect;
+			if(GetClientRect(hwnd, &clientRect))
+			{
+				const int w = clientRect.right  - clientRect.left;
+				const int h = clientRect.bottom - clientRect.top;
+				w32ResizeDibSection(w, h);
+			}
+			else
+			{
+				///TODO: handle GetLastError
+			}
 			OutputDebugStringA("WM_SIZE\n");
 		} break;
 		case WM_DESTROY:
 		{
+			///TODO: handle this error: recreate window?
+			running = false;
 			OutputDebugStringA("WM_DESTROY\n");
 		} break;
 		case WM_CLOSE:
 		{
+			///TODO: ask user first before destroying
+			running = false;
 			OutputDebugStringA("WM_CLOSE\n");
 		} break;
 		case WM_ACTIVATEAPP:
@@ -27,10 +105,13 @@ LRESULT CALLBACK mainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 			const HDC hdc = BeginPaint(hwnd, &paintStruct);
 			if(hdc)
 			{
-				PatBlt(hdc, paintStruct.rcPaint.left, paintStruct.rcPaint.top,
-				       paintStruct.rcPaint.right  - paintStruct.rcPaint.left,
-				       paintStruct.rcPaint.bottom - paintStruct.rcPaint.top,
-				       BLACKNESS);
+				const int w = 
+					paintStruct.rcPaint.right  - paintStruct.rcPaint.left;
+				const int h = 
+					paintStruct.rcPaint.bottom - paintStruct.rcPaint.top;
+				w32UpdateWindow(hdc, 
+				                paintStruct.rcPaint.left, 
+				                paintStruct.rcPaint.top, w, h);
 			}
 			EndPaint(hwnd, &paintStruct);
 		} break;
@@ -45,7 +126,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
                     PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
 	const WNDCLASS wndClass = {
-		.lpfnWndProc   = mainWindowCallback,
+		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
 		.lpszClassName = "K10WindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
@@ -73,7 +154,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	// main window loop //
 	{
 		MSG windowMessage;
-		while(true)
+		running = true;
+		while(running)
 		{
 			const BOOL getMsgResult = GetMessageA(&windowMessage, NULL, 0, 0 );
 			if(getMsgResult > 0)
