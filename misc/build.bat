@@ -2,7 +2,14 @@
 rem prerequisites: env.bat
 if not exist "%project_root%\build" mkdir %project_root%\build
 pushd %project_root%\build
+rem /Zi - Generates complete debugging information.
+rem /FC - Display full path of source code files passed to cl.exe in diagnostic 
+rem       text.
+rem /std:c++latest - used for C++20 designated initializers
+rem user32.lib - ??? various win32 stuff
+rem Gdi32.lib - used for windows software drawing operations.  ///TODO: remove
+rem             later when using OpenGL or Vulkan backend renderers probably?
 cl %project_root%\code\win32-main.cpp ^
-	/Zi /std:c++latest ^
+	/Zi /FC /std:c++latest ^
 	user32.lib Gdi32.lib
 popd

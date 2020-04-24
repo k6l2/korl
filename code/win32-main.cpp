@@ -2,56 +2,64 @@
 #define internal        static
 #define local_persist   static
 #define global_variable static
+using u8  = UINT8;
+using u16 = UINT16;
+using u32 = UINT32;
+using u64 = UINT64;
+using i8  = INT8;
+using i16 = INT16;
+using i32 = INT32;
+using i64 = INT64;
 global_variable bool running;
 global_variable void* bitmapMemory;
-global_variable HBITMAP bitmapHandle;
 global_variable BITMAPINFO bitmapInfo;
-global_variable HDC bitmapDeviceContext;
-internal void w32ResizeDibSection(int width, int height)
+internal void renderWeirdGradient(int offsetX, int offsetY)
 {
-	if(bitmapHandle)
+	const int width  = abs(bitmapInfo.bmiHeader.biWidth);
+	const int height = abs(bitmapInfo.bmiHeader.biHeight);
+	u8* row = reinterpret_cast<u8*>(bitmapMemory);
+	const int pitch = 4 * width;
+	for (int y = 0; y < height; y++)
 	{
-		DeleteObject(bitmapHandle);
-	}
-	if(!bitmapDeviceContext)
-	{
-		bitmapDeviceContext = CreateCompatibleDC(NULL);
-		if(!bitmapDeviceContext)
+		u32* pixel = reinterpret_cast<u32*>(row);
+		for (int x = 0; x < width; x++)
 		{
-			///TODO: handle error
+			// pixel format: 0xXxRrGgBb
+			*pixel++ = ((u8)(x + offsetX) << 16) | ((u8)(y + offsetY) << 8);
 		}
-	}
-	bitmapInfo = {
-		.bmiHeader = {
-			.biSize = sizeof(BITMAPINFOHEADER),
-			.biWidth = width,
-			.biHeight = width,
-			.biPlanes = 1,
-			.biBitCount = 32,
-			.biCompression = BI_RGB,
-			.biSizeImage = 0,
-			.biXPelsPerMeter = 0,
-			.biYPelsPerMeter = 0,
-			.biClrUsed = 0,
-			.biClrImportant = 0 } };
-	//TODO: bitmapMemory = ;
-	bitmapHandle = CreateDIBSection(
-		bitmapDeviceContext,
-		&bitmapInfo,
-		DIB_RGB_COLORS,
-		&bitmapMemory,
-		NULL, 0);
-	if(!bitmapHandle)// || bitmapHandle == ERROR_INVALID_PARAMETER)
-	{
-		///TODO: handle error
+		row += pitch;
 	}
 }
-internal void w32UpdateWindow(HDC hdc, int x, int y, int width, int height)
+internal void w32ResizeDibSection(int width, int height)
 {
+	bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bitmapInfo.bmiHeader.biWidth = width;
+	bitmapInfo.bmiHeader.biHeight = -height;
+	bitmapInfo.bmiHeader.biPlanes = 1;
+	bitmapInfo.bmiHeader.biBitCount = 32;
+	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	const int bitmapMemorySize = 4*width*height;
+	if(bitmapMemory)
+	{
+		VirtualFree(bitmapMemory, 0, MEM_RELEASE);
+	}
+	bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
+	                            MEM_COMMIT, PAGE_READWRITE);
+	if(!bitmapMemory)
+	{
+		///TODO: handle GetLastError
+	}
+}
+internal void w32UpdateWindow(HDC hdc, RECT* windowRect, int x, int y, 
+                              int width, int height)
+{
+	const int windowWidth  = windowRect->right  - windowRect->left;
+	const int windowHeight = windowRect->bottom - windowRect->top;
 	const int signedNumCopiedScanlines =
 		StretchDIBits(hdc,
-			x, y, width, height, 
-			x, y, width, height, 
+			0, 0, abs(bitmapInfo.bmiHeader.biWidth), 
+			      abs(bitmapInfo.bmiHeader.biHeight),
+			0, 0, windowWidth, windowHeight,
 			bitmapMemory,
 			&bitmapInfo,
 			DIB_RGB_COLORS,
@@ -109,9 +117,19 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 					paintStruct.rcPaint.right  - paintStruct.rcPaint.left;
 				const int h = 
 					paintStruct.rcPaint.bottom - paintStruct.rcPaint.top;
-				w32UpdateWindow(hdc, 
-				                paintStruct.rcPaint.left, 
-				                paintStruct.rcPaint.top, w, h);
+				RECT clientRect;
+				if(GetClientRect(hwnd, &clientRect))
+				{
+					const int w = clientRect.right  - clientRect.left;
+					const int h = clientRect.bottom - clientRect.top;
+					w32UpdateWindow(hdc, &clientRect,
+									paintStruct.rcPaint.left, 
+									paintStruct.rcPaint.top, w, h);
+				}
+				else
+				{
+					///TODO: handle GetLastError
+				}
 			}
 			EndPaint(hwnd, &paintStruct);
 		} break;
@@ -155,22 +173,47 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		MSG windowMessage;
 		running = true;
+		int bgOffsetX = 0;
+		int bgOffsetY = 0;
 		while(running)
 		{
-			const BOOL getMsgResult = GetMessageA(&windowMessage, NULL, 0, 0 );
-			if(getMsgResult > 0)
+			while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
 			{
+				if(windowMessage.message == WM_QUIT)
+				{
+					running = false;
+				}
 				TranslateMessage(&windowMessage);
 				DispatchMessageA(&windowMessage);
 			}
-			else
+			bgOffsetX += 1;
+			bgOffsetY += 1;
+			renderWeirdGradient(bgOffsetX, bgOffsetY);
+			// update window //
 			{
-				// 0 == quit, -1 == error.  We're done.
-				if(getMsgResult == -1)
+				const HDC hdc = GetDC(mainWindow);
+				if(hdc)
 				{
-					///TODO: log error
+					RECT clientRect;
+					if(GetClientRect(mainWindow, &clientRect))
+					{
+						const int w = clientRect.right  - clientRect.left;
+						const int h = clientRect.bottom - clientRect.top;
+						w32UpdateWindow(hdc, &clientRect, 0, 0, w, h);
+					}
+					else
+					{
+						///TODO: handle GetLastError
+					}
+					if(!ReleaseDC(mainWindow, hdc))
+					{
+						///TODO: handle error
+					}
 				}
-				break;
+				else
+				{
+					///TODO: handle error
+				}
 			}
 		}
 	}
