@@ -10,61 +10,93 @@ using i8  = INT8;
 using i16 = INT16;
 using i32 = INT32;
 using i64 = INT64;
-global_variable bool running;
-global_variable void* bitmapMemory;
-global_variable BITMAPINFO bitmapInfo;
-internal void renderWeirdGradient(int offsetX, int offsetY)
+struct W32OffscreenBuffer
 {
-	const int width  = abs(bitmapInfo.bmiHeader.biWidth);
-	const int height = abs(bitmapInfo.bmiHeader.biHeight);
-	u8* row = reinterpret_cast<u8*>(bitmapMemory);
-	const int pitch = 4 * width;
-	for (int y = 0; y < height; y++)
+	void* bitmapMemory;
+	BITMAPINFO bitmapInfo;
+	u32 width;
+	u32 height;
+	u32 pitch;
+	u8 bytesPerPixel;
+};
+global_variable bool g_running;
+global_variable W32OffscreenBuffer g_backBuffer;
+struct W32Dimension2d
+{
+	u32 width;
+	u32 height;
+};
+internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
+{
+	RECT clientRect;
+	if(GetClientRect(hwnd, &clientRect))
+	{
+		const u32 w = clientRect.right  - clientRect.left;
+		const u32 h = clientRect.bottom - clientRect.top;
+		return W32Dimension2d{.width=w, .height=h};
+	}
+	else
+	{
+		///TODO: log GetLastError
+		return W32Dimension2d{.width=0, .height=0};
+	}
+}
+internal void renderWeirdGradient(W32OffscreenBuffer buffer,
+                                  int offsetX, int offsetY)
+{
+	u8* row = reinterpret_cast<u8*>(buffer.bitmapMemory);
+	for (int y = 0; y < buffer.height; y++)
 	{
 		u32* pixel = reinterpret_cast<u32*>(row);
-		for (int x = 0; x < width; x++)
+		for (int x = 0; x < buffer.width; x++)
 		{
 			// pixel format: 0xXxRrGgBb
 			*pixel++ = ((u8)(x + offsetX) << 16) | ((u8)(y + offsetY) << 8);
 		}
-		row += pitch;
+		row += buffer.pitch;
 	}
 }
-internal void w32ResizeDibSection(int width, int height)
+internal void w32ResizeDibSection(W32OffscreenBuffer* buffer, 
+                                  int width, int height)
 {
-	bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	bitmapInfo.bmiHeader.biWidth = width;
-	bitmapInfo.bmiHeader.biHeight = -height;
-	bitmapInfo.bmiHeader.biPlanes = 1;
-	bitmapInfo.bmiHeader.biBitCount = 32;
-	bitmapInfo.bmiHeader.biCompression = BI_RGB;
-	const int bitmapMemorySize = 4*width*height;
-	if(bitmapMemory)
+	// negative biHeight makes this bitmap TOP->DOWN instead of BOTTOM->UP
+	buffer->bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+	buffer->bitmapInfo.bmiHeader.biWidth       = width;
+	buffer->bitmapInfo.bmiHeader.biHeight      = -height;
+	buffer->bitmapInfo.bmiHeader.biPlanes      = 1;
+	buffer->bitmapInfo.bmiHeader.biBitCount    = 32;
+	buffer->bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	buffer->width         = width;
+	buffer->height        = height;
+	buffer->bytesPerPixel = 4;
+	buffer->pitch         = buffer->bytesPerPixel * width;
+	if(buffer->bitmapMemory)
 	{
-		VirtualFree(bitmapMemory, 0, MEM_RELEASE);
+		VirtualFree(buffer->bitmapMemory, 0, MEM_RELEASE);
 	}
-	bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
-	                            MEM_COMMIT, PAGE_READWRITE);
-	if(!bitmapMemory)
+	// allocate buffer's bitmap memory //
+	{
+		const int bitmapMemorySize = buffer->bytesPerPixel*width*height;
+		buffer->bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
+		                                    MEM_COMMIT, PAGE_READWRITE);
+	}
+	if(!buffer->bitmapMemory)
 	{
 		///TODO: handle GetLastError
 	}
 }
-internal void w32UpdateWindow(HDC hdc, RECT* windowRect, int x, int y, 
-                              int width, int height)
+internal void w32UpdateWindow(W32OffscreenBuffer buffer, 
+                              HDC hdc, int windowWidth, int windowHeight)
 {
-	const int windowWidth  = windowRect->right  - windowRect->left;
-	const int windowHeight = windowRect->bottom - windowRect->top;
 	const int signedNumCopiedScanlines =
 		StretchDIBits(hdc,
-			0, 0, abs(bitmapInfo.bmiHeader.biWidth), 
-			      abs(bitmapInfo.bmiHeader.biHeight),
 			0, 0, windowWidth, windowHeight,
-			bitmapMemory,
-			&bitmapInfo,
+			0, 0, buffer.width, buffer.height,
+			buffer.bitmapMemory,
+			&buffer.bitmapInfo,
 			DIB_RGB_COLORS,
 			SRCCOPY);
-	if(signedNumCopiedScanlines == GDI_ERROR ||
+	if( signedNumCopiedScanlines == GDI_ERROR ||
 		signedNumCopiedScanlines == 0)
 	{
 		///TODO: handle error cases
@@ -78,29 +110,18 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 	{
 		case WM_SIZE:
 		{
-			RECT clientRect;
-			if(GetClientRect(hwnd, &clientRect))
-			{
-				const int w = clientRect.right  - clientRect.left;
-				const int h = clientRect.bottom - clientRect.top;
-				w32ResizeDibSection(w, h);
-			}
-			else
-			{
-				///TODO: handle GetLastError
-			}
 			OutputDebugStringA("WM_SIZE\n");
 		} break;
 		case WM_DESTROY:
 		{
 			///TODO: handle this error: recreate window?
-			running = false;
+			g_running = false;
 			OutputDebugStringA("WM_DESTROY\n");
 		} break;
 		case WM_CLOSE:
 		{
 			///TODO: ask user first before destroying
-			running = false;
+			g_running = false;
 			OutputDebugStringA("WM_CLOSE\n");
 		} break;
 		case WM_ACTIVATEAPP:
@@ -117,19 +138,9 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 					paintStruct.rcPaint.right  - paintStruct.rcPaint.left;
 				const int h = 
 					paintStruct.rcPaint.bottom - paintStruct.rcPaint.top;
-				RECT clientRect;
-				if(GetClientRect(hwnd, &clientRect))
-				{
-					const int w = clientRect.right  - clientRect.left;
-					const int h = clientRect.bottom - clientRect.top;
-					w32UpdateWindow(hdc, &clientRect,
-									paintStruct.rcPaint.left, 
-									paintStruct.rcPaint.top, w, h);
-				}
-				else
-				{
-					///TODO: handle GetLastError
-				}
+				const W32Dimension2d winDims = w32GetWindowDimensions(hwnd);
+				w32UpdateWindow(g_backBuffer, hdc, 
+				                winDims.width, winDims.height);
 			}
 			EndPaint(hwnd, &paintStruct);
 		} break;
@@ -143,7 +154,9 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                     PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
+	w32ResizeDibSection(&g_backBuffer, 1280, 720);
 	const WNDCLASS wndClass = {
+		.style         = CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
 		.lpszClassName = "K10WindowClass" };
@@ -169,51 +182,38 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
+	const HDC hdc = GetDC(mainWindow);
+	if(!hdc)
+	{
+		///TODO: log error
+		return -1;
+	}
 	// main window loop //
 	{
-		MSG windowMessage;
-		running = true;
+		g_running = true;
 		int bgOffsetX = 0;
 		int bgOffsetY = 0;
-		while(running)
+		while(g_running)
 		{
+			MSG windowMessage;
 			while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
 			{
 				if(windowMessage.message == WM_QUIT)
 				{
-					running = false;
+					g_running = false;
 				}
 				TranslateMessage(&windowMessage);
 				DispatchMessageA(&windowMessage);
 			}
-			bgOffsetX += 1;
+			bgOffsetX += 2;
 			bgOffsetY += 1;
-			renderWeirdGradient(bgOffsetX, bgOffsetY);
+			renderWeirdGradient(g_backBuffer, bgOffsetX, bgOffsetY);
 			// update window //
 			{
-				const HDC hdc = GetDC(mainWindow);
-				if(hdc)
-				{
-					RECT clientRect;
-					if(GetClientRect(mainWindow, &clientRect))
-					{
-						const int w = clientRect.right  - clientRect.left;
-						const int h = clientRect.bottom - clientRect.top;
-						w32UpdateWindow(hdc, &clientRect, 0, 0, w, h);
-					}
-					else
-					{
-						///TODO: handle GetLastError
-					}
-					if(!ReleaseDC(mainWindow, hdc))
-					{
-						///TODO: handle error
-					}
-				}
-				else
-				{
-					///TODO: handle error
-				}
+				const W32Dimension2d winDims = 
+					w32GetWindowDimensions(mainWindow);
+				w32UpdateWindow(g_backBuffer, hdc,
+				                winDims.width, winDims.height);
 			}
 		}
 	}
