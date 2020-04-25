@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <Xinput.h>
 #define internal        static
 #define local_persist   static
 #define global_variable static
@@ -26,6 +27,49 @@ struct W32Dimension2d
 	u32 width;
 	u32 height;
 };
+/* XINPUT SUPPORT *************************************************************/
+#define XINPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, \
+                                                 XINPUT_STATE* pState)
+#define XINPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, \
+                                                 XINPUT_VIBRATION *pVibration)
+typedef XINPUT_GET_STATE(fnSig_XInputGetState);
+typedef XINPUT_SET_STATE(fnSig_XInputSetState);
+XINPUT_GET_STATE(XInputGetStateStub)
+{
+	return 0;
+}
+XINPUT_SET_STATE(XInputSetStateStub)
+{
+	return 0;
+}
+global_variable fnSig_XInputGetState* XInputGetState_ = XInputGetStateStub;
+#define XInputGetState XInputGetState_
+global_variable fnSig_XInputSetState* XInputSetState_ = XInputSetStateStub;
+#define XInputSetState XInputSetState_
+internal void w32LoadXInput()
+{
+	const HMODULE LibXInput = LoadLibraryA("xinput1_3.dll");
+	if(LibXInput)
+	{
+		XInputGetState = 
+			(fnSig_XInputGetState*)GetProcAddress(LibXInput, "XInputGetState");
+		if(!XInputGetState)
+		{
+			///TODO: handle GetLastError
+		}
+		XInputSetState = 
+			(fnSig_XInputSetState*)GetProcAddress(LibXInput, "XInputSetState");
+		if(!XInputSetState)
+		{
+			///TODO: handle GetLastError
+		}
+	}
+	else
+	{
+		///TODO: handle GetLastError
+	}
+}
+/********************************************************* END XINPUT SUPPORT */
 internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 {
 	RECT clientRect;
@@ -41,7 +85,7 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 		return W32Dimension2d{.width=0, .height=0};
 	}
 }
-internal void renderWeirdGradient(W32OffscreenBuffer buffer,
+internal void renderWeirdGradient(W32OffscreenBuffer& buffer,
                                   int offsetX, int offsetY)
 {
 	u8* row = reinterpret_cast<u8*>(buffer.bitmapMemory);
@@ -56,36 +100,36 @@ internal void renderWeirdGradient(W32OffscreenBuffer buffer,
 		row += buffer.pitch;
 	}
 }
-internal void w32ResizeDibSection(W32OffscreenBuffer* buffer, 
+internal void w32ResizeDibSection(W32OffscreenBuffer& buffer, 
                                   int width, int height)
 {
 	// negative biHeight makes this bitmap TOP->DOWN instead of BOTTOM->UP
-	buffer->bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-	buffer->bitmapInfo.bmiHeader.biWidth       = width;
-	buffer->bitmapInfo.bmiHeader.biHeight      = -height;
-	buffer->bitmapInfo.bmiHeader.biPlanes      = 1;
-	buffer->bitmapInfo.bmiHeader.biBitCount    = 32;
-	buffer->bitmapInfo.bmiHeader.biCompression = BI_RGB;
-	buffer->width         = width;
-	buffer->height        = height;
-	buffer->bytesPerPixel = 4;
-	buffer->pitch         = buffer->bytesPerPixel * width;
-	if(buffer->bitmapMemory)
+	buffer.bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+	buffer.bitmapInfo.bmiHeader.biWidth       = width;
+	buffer.bitmapInfo.bmiHeader.biHeight      = -height;
+	buffer.bitmapInfo.bmiHeader.biPlanes      = 1;
+	buffer.bitmapInfo.bmiHeader.biBitCount    = 32;
+	buffer.bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	buffer.width         = width;
+	buffer.height        = height;
+	buffer.bytesPerPixel = 4;
+	buffer.pitch         = buffer.bytesPerPixel * width;
+	if(buffer.bitmapMemory)
 	{
-		VirtualFree(buffer->bitmapMemory, 0, MEM_RELEASE);
+		VirtualFree(buffer.bitmapMemory, 0, MEM_RELEASE);
 	}
 	// allocate buffer's bitmap memory //
 	{
-		const int bitmapMemorySize = buffer->bytesPerPixel*width*height;
-		buffer->bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
+		const int bitmapMemorySize = buffer.bytesPerPixel*width*height;
+		buffer.bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
 		                                    MEM_COMMIT, PAGE_READWRITE);
 	}
-	if(!buffer->bitmapMemory)
+	if(!buffer.bitmapMemory)
 	{
 		///TODO: handle GetLastError
 	}
 }
-internal void w32UpdateWindow(W32OffscreenBuffer buffer, 
+internal void w32UpdateWindow(const W32OffscreenBuffer& buffer, 
                               HDC hdc, int windowWidth, int windowHeight)
 {
 	const int signedNumCopiedScanlines =
@@ -108,6 +152,27 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 	LRESULT result = 0;
 	switch(uMsg)
 	{
+		case WM_KEYDOWN:
+		case WM_KEYUP:
+		case WM_SYSKEYDOWN:
+		case WM_SYSKEYUP:
+		{
+			const WPARAM vKeyCode = wParam;
+			const bool keyDown     = (lParam & (1<<31)) == 0;
+			const bool keyDownPrev = (lParam & (1<<30)) != 0;
+			if(!keyDown || keyDownPrev)
+			{
+				break;
+			}
+			switch(vKeyCode)
+			{
+				case VK_ESCAPE:
+				{
+					OutputDebugStringA("ESCAPE\n");
+					g_running = false;
+				} break;
+			}
+		} break;
 		case WM_SIZE:
 		{
 			OutputDebugStringA("WM_SIZE\n");
@@ -151,10 +216,11 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 	}
 	return result;
 }
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
-                    PWSTR /*pCmdLine*/, int /*nCmdShow*/)
+internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
+                             PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
-	w32ResizeDibSection(&g_backBuffer, 1280, 720);
+	w32LoadXInput();
+	w32ResizeDibSection(g_backBuffer, 1280, 720);
 	const WNDCLASS wndClass = {
 		.style         = CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc   = w32MainWindowCallback,
@@ -205,8 +271,43 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				TranslateMessage(&windowMessage);
 				DispatchMessageA(&windowMessage);
 			}
-			bgOffsetX += 2;
-			bgOffsetY += 1;
+			for(u32 ci = 0; ci < XUSER_MAX_COUNT; ci++)
+			{
+				XINPUT_STATE controllerState;
+				XINPUT_VIBRATION vibration;
+				if( XInputGetState(ci, &controllerState) == ERROR_SUCCESS )
+				{
+					///TODO: investigate controllerState.dwPacketNumber for 
+					///      input polling performance
+					const XINPUT_GAMEPAD& pad = controllerState.Gamepad;
+					if(pad.wButtons & XINPUT_GAMEPAD_DPAD_UP)
+					{
+						bgOffsetY -= 1;
+					}
+					if(pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN)
+					{
+						bgOffsetY += 1;
+					}
+					if(pad.wButtons & XINPUT_GAMEPAD_BACK)
+					{
+						g_running = false;
+					}
+					vibration.wLeftMotorSpeed = 
+						(WORD)((pad.bLeftTrigger/255.f)*0xFFFF);
+					vibration.wRightMotorSpeed = 
+						(WORD)((pad.bRightTrigger/255.f)*0xFFFF);
+					bgOffsetX += pad.sThumbLX>>11;
+					bgOffsetY -= pad.sThumbLY>>11;
+				}
+				else
+				{
+					///TODO: handle controller not available
+				}
+				if(XInputSetState(ci, &vibration) != ERROR_SUCCESS)
+				{
+					///TODO: error & controller not connected return values
+				}
+			}
 			renderWeirdGradient(g_backBuffer, bgOffsetX, bgOffsetY);
 			// update window //
 			{
