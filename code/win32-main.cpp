@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <Xinput.h>
+#include <dsound.h>
 #define internal        static
 #define local_persist   static
 #define global_variable static
@@ -36,11 +37,11 @@ typedef XINPUT_GET_STATE(fnSig_XInputGetState);
 typedef XINPUT_SET_STATE(fnSig_XInputSetState);
 XINPUT_GET_STATE(XInputGetStateStub)
 {
-	return 0;
+	return ERROR_NOT_SUPPORTED;
 }
 XINPUT_SET_STATE(XInputSetStateStub)
 {
-	return 0;
+	return ERROR_NOT_SUPPORTED;
 }
 global_variable fnSig_XInputGetState* XInputGetState_ = XInputGetStateStub;
 #define XInputGetState XInputGetState_
@@ -48,7 +49,13 @@ global_variable fnSig_XInputSetState* XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
 internal void w32LoadXInput()
 {
-	const HMODULE LibXInput = LoadLibraryA("xinput1_3.dll");
+	HMODULE LibXInput = LoadLibraryA("xinput1_4.dll");
+	if(!LibXInput)
+	{
+		///TODO: handle GetLastError (or not, and let the next load's error be
+		///      handled instead?)
+		LibXInput = LoadLibraryA("xinput1_3.dll");
+	}
 	if(LibXInput)
 	{
 		XInputGetState = 
@@ -70,6 +77,82 @@ internal void w32LoadXInput()
 	}
 }
 /********************************************************* END XINPUT SUPPORT */
+/* DIRECT SOUND SUPPORT *******************************************************/
+#define DSOUND_CREATE(name) HRESULT WINAPI name(LPGUID lpGuid, \
+                                                LPDIRECTSOUND* ppDS, \
+                                                LPUNKNOWN pUnkOuter)
+typedef DSOUND_CREATE(fnSig_DirectSoundCreate);
+internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes)
+{
+	const HMODULE LibDSound = LoadLibraryA("dsound.dll");
+	if(!LibDSound)
+	{
+		///TODO: handle GetLastError
+		return;
+	}
+	fnSig_DirectSoundCreate*const DirectSoundCreate = (fnSig_DirectSoundCreate*)	
+		GetProcAddress(LibDSound, "DirectSoundCreate");
+	if(!DirectSoundCreate)
+	{
+		///TODO: handle GetLastError
+		return;
+	}
+	LPDIRECTSOUND dSound;
+	if(DirectSoundCreate(0, &dSound, NULL) != DS_OK)
+	{
+		///TODO: handle returned error code
+		return;
+	}
+	if(dSound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY) != DS_OK)
+	{
+		///TODO: handle returned error code
+		return;
+	}
+	LPDIRECTSOUNDBUFFER dsBufferPrimary;
+	// create primary buffer //
+	{
+		DSBUFFERDESC bufferDescPrimary = {};
+		bufferDescPrimary.dwSize  = sizeof(DSBUFFERDESC);
+		bufferDescPrimary.dwFlags = DSBCAPS_PRIMARYBUFFER;
+		if(dSound->CreateSoundBuffer(&bufferDescPrimary, 
+		                             &dsBufferPrimary, NULL) != DS_OK)
+		{
+			///TODO: handle returned error code
+			return;
+		}
+	}
+	WAVEFORMATEX waveFormat = {};
+	waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+	waveFormat.nChannels  = 2;
+	waveFormat.nSamplesPerSec = samplesPerSecond;
+	waveFormat.wBitsPerSample = 16;
+	waveFormat.nBlockAlign = 
+		(waveFormat.wBitsPerSample/8) * waveFormat.nChannels;
+	waveFormat.nAvgBytesPerSec = 
+		waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
+	waveFormat.cbSize = 0;
+	if(dsBufferPrimary->SetFormat(&waveFormat) != DS_OK)
+	{
+		///TODO: handle returned error code
+		return;
+	}
+	LPDIRECTSOUNDBUFFER dsBufferSecondary;
+	// create secondary buffer //
+	{
+		///TODO: ensure bufferBytes is in the range of [DSBSIZE_MIN, DSBSIZE_MAX]
+		DSBUFFERDESC bufferDescSecondary = {};
+		bufferDescSecondary.dwSize        = sizeof(DSBUFFERDESC);
+		bufferDescSecondary.lpwfxFormat   = &waveFormat;
+		bufferDescSecondary.dwBufferBytes = bufferBytes;
+		if(dSound->CreateSoundBuffer(&bufferDescSecondary, 
+		                             &dsBufferSecondary, NULL) != DS_OK)
+		{
+			///TODO: handle returned error code
+			return;
+		}
+	}
+}
+/*************************************************** END DIRECT SOUND SUPPORT */
 internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 {
 	RECT clientRect;
@@ -122,7 +205,8 @@ internal void w32ResizeDibSection(W32OffscreenBuffer& buffer,
 	{
 		const int bitmapMemorySize = buffer.bytesPerPixel*width*height;
 		buffer.bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
-		                                    MEM_COMMIT, PAGE_READWRITE);
+		                                   MEM_RESERVE | MEM_COMMIT, 
+										   PAGE_READWRITE);
 	}
 	if(!buffer.bitmapMemory)
 	{
@@ -160,6 +244,7 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 			const WPARAM vKeyCode = wParam;
 			const bool keyDown     = (lParam & (1<<31)) == 0;
 			const bool keyDownPrev = (lParam & (1<<30)) != 0;
+			const bool altKeyDown  = (lParam & (1<<29)) != 0;
 			if(!keyDown || keyDownPrev)
 			{
 				break;
@@ -170,6 +255,13 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 				{
 					OutputDebugStringA("ESCAPE\n");
 					g_running = false;
+				} break;
+				case VK_F4:
+				{
+					if(altKeyDown)
+					{
+						g_running = false;
+					}
 				} break;
 			}
 		} break;
@@ -248,6 +340,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
+	w32InitDSound(mainWindow, 44100, 88200);
 	const HDC hdc = GetDC(mainWindow);
 	if(!hdc)
 	{
