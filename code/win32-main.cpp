@@ -23,6 +23,7 @@ struct W32OffscreenBuffer
 };
 global_variable bool g_running;
 global_variable W32OffscreenBuffer g_backBuffer;
+global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
 struct W32Dimension2d
 {
 	u32 width;
@@ -82,7 +83,8 @@ internal void w32LoadXInput()
                                                 LPDIRECTSOUND* ppDS, \
                                                 LPUNKNOWN pUnkOuter)
 typedef DSOUND_CREATE(fnSig_DirectSoundCreate);
-internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes)
+internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
+                            u8 numChannels)
 {
 	const HMODULE LibDSound = LoadLibraryA("dsound.dll");
 	if(!LibDSound)
@@ -123,7 +125,7 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes)
 	}
 	WAVEFORMATEX waveFormat = {};
 	waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-	waveFormat.nChannels  = 2;
+	waveFormat.nChannels  = numChannels;
 	waveFormat.nSamplesPerSec = samplesPerSecond;
 	waveFormat.wBitsPerSample = 16;
 	waveFormat.nBlockAlign = 
@@ -136,7 +138,6 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes)
 		///TODO: handle returned error code
 		return;
 	}
-	LPDIRECTSOUNDBUFFER dsBufferSecondary;
 	// create secondary buffer //
 	{
 		///TODO: ensure bufferBytes is in the range of [DSBSIZE_MIN, DSBSIZE_MAX]
@@ -145,11 +146,53 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes)
 		bufferDescSecondary.lpwfxFormat   = &waveFormat;
 		bufferDescSecondary.dwBufferBytes = bufferBytes;
 		if(dSound->CreateSoundBuffer(&bufferDescSecondary, 
-		                             &dsBufferSecondary, NULL) != DS_OK)
+		                             &g_dsBufferSecondary, NULL) != DS_OK)
 		{
 			///TODO: handle returned error code
 			return;
 		}
+	}
+	///TODO: initialize the buffer to ZERO probably?..
+#if 0
+	// initialize the buffer to a simple square wave //
+	{
+		// D3 == 146.8hz
+		//	48,000 / 146.8 = 327 samples per wave period
+		const u32 hzD4 = 294;
+		const u32 samplesPerWaveD4 = samplesPerSecond / hzD4;
+		VOID* section1;
+		DWORD section1Size;
+		VOID* section2;
+		DWORD section2Size;
+		if(g_dsBufferSecondary->Lock(0, bufferBytes, &section1, &section1Size, 
+		                             &section2, &section2Size, 0) != DS_OK)
+		{
+			///TODO: handle returned error code
+			return;
+		}
+		i16* sample = (i16*)section1;
+		const u32 sampleCount = bufferBytes/sizeof(i16)/numChannels;
+		for(u32 s = 0; s < sampleCount; s++)
+		{
+			const u32 waveMod = s % samplesPerWaveD4;
+			const i16 waveSign = waveMod < samplesPerWaveD4/2 ? 1 : -1;
+			for(u8 c = 0; c < numChannels; c++)
+			{
+				*sample++ = 5000*waveSign;
+			}
+		}
+		if(g_dsBufferSecondary->Unlock(section1, section1Size, section2, 0))
+		{
+			///TODO: handle returned error code
+			return;
+		}
+	}
+#endif
+	///TODO: initialize the buffer total # bytes written & prev write cursor
+	if(g_dsBufferSecondary->Play(0, 0, DSBPLAY_LOOPING) != DS_OK)
+	{
+		///TODO: handle returned error code
+		return;
 	}
 }
 /*************************************************** END DIRECT SOUND SUPPORT */
@@ -181,6 +224,175 @@ internal void renderWeirdGradient(W32OffscreenBuffer& buffer,
 			*pixel++ = ((u8)(x + offsetX) << 16) | ((u8)(y + offsetY) << 8);
 		}
 		row += buffer.pitch;
+	}
+}
+internal void renderDebugAudio(u32 soundBufferBytes, 
+                               u32 soundSampleHz,
+                               u8 numSoundChannels,
+                               i16 volume,
+                               u32& io_runningSoundSample)
+{
+	// Determine the region in the audio buffer which is "volatile" and 
+	//	shouldn't be touched since the sound card is probably reading from it.
+	DWORD cursorPlay;
+	DWORD cursorWrite;
+	if(g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, 
+	                                           &cursorWrite) != DS_OK)
+	{
+		///TODO: handle error code
+		return;
+	}
+	// Based on our current running sound sample index, we need to determine the
+	//	region of the buffer that needs to be locked and written to.
+	// There are two cases that need to be handled because the sound buffer is
+	//	circular.
+	// P == cursorPlay
+	// W == cursorWrite
+	// B == byteToLock
+	// If the byteToLock is inside the range [P, W), let's skip 
+	//	bytesToSamples(W-B) samples in our running sound sample count to avoid
+	//	that case entirely.  Two cases must be handled due to circular sound 
+	//	buffer shenanigans, as usual:
+	// x == the region whose size represents how far we want to fast-forward our
+	//	running sound sample variable to leave the volatile region
+	if(cursorPlay < cursorWrite)
+	{
+		const u32 runningSoundByte = 
+			io_runningSoundSample*sizeof(i16)*numSoundChannels;
+		const DWORD byteToLock = runningSoundByte % soundBufferBytes;
+		// |---------------------------P----BxxW-------------------------------|
+		if(byteToLock >= cursorPlay && byteToLock < cursorWrite)
+		{
+			const u32 samplesToSkip = 
+				(cursorWrite - byteToLock)/sizeof(i16)/numSoundChannels;
+			io_runningSoundSample += samplesToSkip;
+		}
+	}
+	else
+	{
+		const u32 runningSoundByte = 
+			io_runningSoundSample*sizeof(i16)*numSoundChannels;
+		const DWORD byteToLock = runningSoundByte % soundBufferBytes;
+		// |xxxxxxxxxW----------------------------------------------P----Bxxxxx|
+		// |---BxxxxxW----------------------------------------------P----------|
+		if(byteToLock >= cursorPlay)
+		{
+			const u32 samplesToSkip = 
+				((cursorWrite - byteToLock) + (soundBufferBytes - byteToLock))/
+				sizeof(i16)/numSoundChannels;
+			io_runningSoundSample += samplesToSkip;
+		}
+		if(byteToLock < cursorWrite)
+		{
+			const u32 samplesToSkip = 
+				(cursorWrite - byteToLock)/sizeof(i16)/numSoundChannels;
+			io_runningSoundSample += samplesToSkip;
+		}
+	}
+	const u32 runningSoundByte = 
+		io_runningSoundSample*sizeof(i16)*numSoundChannels;
+	const DWORD byteToLock = runningSoundByte % soundBufferBytes;
+	// x == the region we want to fill in with new sound samples
+	const DWORD lockedBytes = (byteToLock < cursorPlay)
+		// |------------BxxxxxxxxxxxxxxP-------W-------------------------------|
+		? (cursorPlay - byteToLock) - 1
+		// It should also be possible for B==W, but that should be okay I think!
+		// |xxxxxxxxxxxxxxxxxxxxxxxxxxxP-------WBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|
+		: (soundBufferBytes - byteToLock) + 
+			(cursorPlay > 0 ? cursorPlay - 1 : 0);
+#if 0
+	// advance our total bytes sent to the audio device //
+	//	Need to handle two cases because the write cursor diff from the previous
+	//	frame might overlap with the circular buffer start/end.
+	//	P == io_cursorWritePrev
+	//	W == cursorWrite
+	//	x == the region we want to add to the total # of buffer bytes sent
+	if(cursorWrite > io_cursorWritePrev)
+	{
+		// |--------------PxxxxxxW---------------------------------------------|
+		io_bufferTotalBytesSent += cursorWrite - io_cursorWritePrev;
+	}
+	else
+	{
+		// |xxW-----------------------------------------------------------Pxxxx|
+		io_bufferTotalBytesSent += 
+			(soundBufferBytes - io_cursorWritePrev) + cursorWrite;
+	}
+	io_cursorWritePrev = cursorWrite;
+#endif
+	// Because audio buffer is circular, we have to handle two cases.  In one 
+	//	case, the volatile region is contiguous inside the buffer.  In the other
+	//	case, the volatile region is occupying the beginning & and of the 
+	//	circular buffer.
+	// case 0: cursorPlay  < cursorWrite
+	//	we can lock (soundBufferBytes - cursorWrite) + cursorPlay
+	// case 1: cursorWrite < cursorPlay
+	//	volatile play region wraps around the circular buffer;
+	//	we can lock (cursorPlay - cursorWrite)
+#if 0
+	const DWORD lockedBytes = (cursorPlay < cursorWrite)
+		? ((soundBufferBytes - cursorWrite) + cursorPlay)
+		: (cursorPlay - cursorWrite);
+#endif
+	VOID* lockRegion1;
+	DWORD lockRegion1Size;
+	VOID* lockRegion2;
+	DWORD lockRegion2Size;
+	if(g_dsBufferSecondary->Lock(byteToLock, lockedBytes,
+	                             &lockRegion1, &lockRegion1Size,
+	                             &lockRegion2, &lockRegion2Size,
+	                             0) != DS_OK)
+	{
+		///TODO: handle error code
+		return;
+	}
+	const u32 lockedSampleCount = 
+		(lockRegion1Size + lockRegion2Size)/sizeof(i16)/numSoundChannels;
+	DWORD lockedRegion1BytesWritten = 0;
+	DWORD lockedRegion2BytesWritten = 0;
+	// actually write data to the buffer //
+	local_persist const u32 HZ_D4 = 294;
+	local_persist const u32 HZ_G4 = 392;
+	const u32 samplesPerWaveD4 = soundSampleHz / HZ_D4;
+	const u32 samplesPerWaveG4 = soundSampleHz / HZ_G4;
+#if 0
+	const u32 totalSamplesSent = 
+		io_bufferTotalBytesSent/sizeof(i16)/numSoundChannels;
+#endif
+	const u32 lockRegion1Samples = lockRegion1Size/sizeof(i16)/numSoundChannels;
+	const u32 lockRegion2Samples = lockRegion2Size/sizeof(i16)/numSoundChannels;
+	for(u32 s = 0; s < lockedSampleCount; s++)
+	{
+		i16* sample = (s < lockRegion1Samples)
+			? (i16*)lockRegion1 + (s*numSoundChannels)
+			: (i16*)lockRegion2 + ((s - lockRegion1Samples) * numSoundChannels);
+		DWORD& regionBytesWritten = (s < lockRegion1Samples)
+			? lockedRegion1BytesWritten
+			: lockedRegion2BytesWritten;
+		// Determine what the debug waveforms should look like at this point of
+		//	the running sound sample //
+		u32 waveformModD4 = 
+			(s + io_runningSoundSample) % samplesPerWaveD4;
+		const i16 waveformSignD4 = 
+			waveformModD4 < samplesPerWaveD4 / 2 ? 1 : -1;
+		u32 waveformModG4 = 
+			(s + io_runningSoundSample) % samplesPerWaveG4;
+		const i16 waveformSignG4 = 
+			waveformModG4 < samplesPerWaveG4 / 2 ? 1 : -1;
+		for(u8 c = 0; c < numSoundChannels; c++)
+		{
+			// combine the D4 + G4 waves to create a chord! //
+			*sample++ = (volume * waveformSignD4) + (volume * waveformSignG4);
+			regionBytesWritten += sizeof(i16);
+		}
+	}
+	io_runningSoundSample += lockedSampleCount;
+	if(g_dsBufferSecondary->Unlock(
+		lockRegion1, lockedRegion1BytesWritten,
+		lockRegion2, lockedRegion2BytesWritten) != DS_OK)
+	{
+		///TODO: handle error code
+		return;
 	}
 }
 internal void w32ResizeDibSection(W32OffscreenBuffer& buffer, 
@@ -340,7 +552,12 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
-	w32InitDSound(mainWindow, 44100, 88200);
+	local_persist const u8 SOUND_CHANNELS = 2;
+	local_persist const u32 SOUND_SAMPLE_HZ = 48000;
+	local_persist const u32 SOUND_BUFFER_BYTES = SOUND_SAMPLE_HZ*sizeof(i16)*2;
+	u32 runningSoundSample = 0;
+	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
+	              SOUND_CHANNELS);
 	const HDC hdc = GetDC(mainWindow);
 	if(!hdc)
 	{
@@ -402,6 +619,8 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				}
 			}
 			renderWeirdGradient(g_backBuffer, bgOffsetX, bgOffsetY);
+			renderDebugAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
+			                 SOUND_CHANNELS, 5000, runningSoundSample);
 			// update window //
 			{
 				const W32Dimension2d winDims = 
