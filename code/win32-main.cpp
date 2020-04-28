@@ -1,3 +1,4 @@
+#include "game.cpp"
 #include <windows.h>
 #include <Xinput.h>
 #include <dsound.h>
@@ -5,20 +6,6 @@
 #include <math.h>
 // crt io
 #include <stdio.h>
-#define internal        static
-#define local_persist   static
-#define global_variable static
-using u8  = UINT8;
-using u16 = UINT16;
-using u32 = UINT32;
-using u64 = UINT64;
-using i8  = INT8;
-using i16 = INT16;
-using i32 = INT32;
-using i64 = INT64;
-using f32 = float;
-using f64 = double;
-const f32 PI32 = 3.14159f;
 struct W32OffscreenBuffer
 {
 	void* bitmapMemory;
@@ -239,21 +226,6 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 	{
 		///TODO: log GetLastError
 		return W32Dimension2d{.width=0, .height=0};
-	}
-}
-internal void renderWeirdGradient(W32OffscreenBuffer& buffer,
-                                  int offsetX, int offsetY)
-{
-	u8* row = reinterpret_cast<u8*>(buffer.bitmapMemory);
-	for (int y = 0; y < buffer.height; y++)
-	{
-		u32* pixel = reinterpret_cast<u32*>(row);
-		for (int x = 0; x < buffer.width; x++)
-		{
-			// pixel format: 0xXxRrGgBb
-			*pixel++ = ((u8)(x + offsetX) << 16) | ((u8)(y + offsetY) << 8);
-		}
-		row += buffer.pitch;
 	}
 }
 internal void renderDebugAudio(u32 soundBufferBytes, 
@@ -727,7 +699,14 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					///TODO: error & controller not connected return values
 				}
 			}
-			renderWeirdGradient(g_backBuffer, bgOffsetX, bgOffsetY);
+			GameOffscreenBuffer gameOffscreenBuffer = {
+				.bitmapMemory  = g_backBuffer.bitmapMemory,
+				.width         = g_backBuffer.width,
+				.height        = g_backBuffer.height,
+				.pitch         = g_backBuffer.pitch,
+				.bytesPerPixel = g_backBuffer.bytesPerPixel
+			};
+			game_updateAndRender(gameOffscreenBuffer, bgOffsetX, bgOffsetY);
 			renderDebugAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
 			                 SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, 5000, 
 			                 runningSoundSample,
