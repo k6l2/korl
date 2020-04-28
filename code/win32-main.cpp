@@ -3,6 +3,8 @@
 #include <dsound.h>
 // crt math operations
 #include <math.h>
+// crt io
+#include <stdio.h>
 #define internal        static
 #define local_persist   static
 #define global_variable static
@@ -29,6 +31,7 @@ struct W32OffscreenBuffer
 global_variable bool g_running;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
+global_variable LARGE_INTEGER g_perfCounterHz;
 struct W32Dimension2d
 {
 	u32 width;
@@ -262,6 +265,8 @@ internal void renderDebugAudio(u32 soundBufferBytes,
                                f32& io_theraminSine,
                                f32 theraminHz)
 {
+	///TODO: fix `soundLatencySamples` not working correctly when the 
+	///      application lags due to large window message list etc...
 	const u32 bytesPerSample = sizeof(i16)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
 	//	shouldn't be touched since the sound card is probably reading from it.
@@ -610,6 +615,11 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
+	if(!QueryPerformanceFrequency(&g_perfCounterHz))
+	{
+		///TODO: log GetLastError
+		return -1;
+	}
 	w32LoadXInput();
 	w32ResizeDibSection(g_backBuffer, 1280, 720);
 	const WNDCLASS wndClass = {
@@ -660,6 +670,13 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		g_running = true;
 		int bgOffsetX = 0;
 		int bgOffsetY = 0;
+		LARGE_INTEGER perfCountPrev;
+		if(!QueryPerformanceCounter(&perfCountPrev))
+		{
+			///TODO: handle GetLastError
+			return -1;
+		}
+		u64 clockCyclesPrev = __rdtsc();
 		while(g_running)
 		{
 			MSG windowMessage;
@@ -722,6 +739,35 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					w32GetWindowDimensions(mainWindow);
 				w32UpdateWindow(g_backBuffer, hdc,
 				                winDims.width, winDims.height);
+			}
+			// measure main loop performance //
+			{
+				LARGE_INTEGER perfCount;
+				if(!QueryPerformanceCounter(&perfCount))
+				{
+					///TODO: handle GetLastError
+					return -1;
+				}
+				const LONGLONG perfCountDiff =
+					perfCount.QuadPart - perfCountPrev.QuadPart;
+				perfCountPrev = perfCount;
+				const u64 clockCycles = __rdtsc();
+				const u64 clockCycleDiff = clockCycles - clockCyclesPrev;
+				clockCyclesPrev = clockCycles;
+				const float elapsedSeconds = 
+					static_cast<float>(perfCountDiff) / 
+					g_perfCounterHz.QuadPart;
+				const LONGLONG elapsedMicroseconds = 
+					(perfCountDiff*1000000) / g_perfCounterHz.QuadPart;
+				// send performance measurement to debugger as a string //
+				{
+					char outputBuffer[256] = {};
+					snprintf(outputBuffer, sizeof(outputBuffer), 
+					         "%.2f ms/f | %lli us/f | %.2f Mc/f\n", 
+					         elapsedSeconds*1000, elapsedMicroseconds,
+					         clockCycleDiff/1000000.f);
+					OutputDebugStringA(outputBuffer);
+				}
 			}
 		}
 	}
