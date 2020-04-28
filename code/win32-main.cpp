@@ -265,8 +265,6 @@ internal void renderDebugAudio(u32 soundBufferBytes,
                                f32& io_theraminSine,
                                f32 theraminHz)
 {
-	///TODO: fix `soundLatencySamples` not working correctly when the 
-	///      application lags due to large window message list etc...
 	const u32 bytesPerSample = sizeof(i16)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
 	//	shouldn't be touched since the sound card is probably reading from it.
@@ -389,8 +387,9 @@ internal void renderDebugAudio(u32 soundBufferBytes,
 		? (soundBufferBytes - cursorWrite) + byteToLock
 		: byteToLock - cursorWrite;
 	const u32 maxBytesAheadOfWrite = soundLatencySamples*bytesPerSample;
-	const DWORD maxLockedBytes = 
-		min(lockedBytes, maxBytesAheadOfWrite - bytesAheadOfWrite);
+	const DWORD maxLockedBytes = maxBytesAheadOfWrite > bytesAheadOfWrite
+		? min(lockedBytes, maxBytesAheadOfWrite - bytesAheadOfWrite)
+		: 0;
 	// Because audio buffer is circular, we have to handle two cases.  In one 
 	//	case, the volatile region is contiguous inside the buffer.  In the other
 	//	case, the volatile region is occupying the beginning & and of the 
