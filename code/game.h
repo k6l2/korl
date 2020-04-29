@@ -1,6 +1,6 @@
 #pragma once
 #include "global-defines.h"
-struct GameOffscreenBuffer
+struct GameGraphicsBuffer
 {
 	void* bitmapMemory;
 	u32 width;
@@ -8,5 +8,13 @@ struct GameOffscreenBuffer
 	u32 pitch;
 	u8 bytesPerPixel;
 };
-internal void game_updateAndRender(GameOffscreenBuffer& buffer, 
-                                   int offsetX, int offsetY);
+struct GameAudioBuffer
+{
+	SoundSample* memory;
+	u32 lockedSampleCount;
+	u32 soundSampleHz;
+	u8 numSoundChannels;
+};
+internal void game_renderAudio(GameAudioBuffer& audioBuffer, f32 theraminHz);
+internal void game_updateAndDraw(GameGraphicsBuffer& graphicsBuffer, 
+                                 int offsetX, int offsetY);

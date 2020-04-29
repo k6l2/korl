@@ -1,9 +1,9 @@
+// crt math operations
+#include <math.h>
 #include "game.cpp"
 #include <windows.h>
 #include <Xinput.h>
 #include <dsound.h>
-// crt math operations
-#include <math.h>
 // crt io
 #include <stdio.h>
 struct W32OffscreenBuffer
@@ -228,16 +228,15 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 		return W32Dimension2d{.width=0, .height=0};
 	}
 }
-internal void renderDebugAudio(u32 soundBufferBytes, 
-                               u32 soundSampleHz,
-                               u8 numSoundChannels,
-                               u32 soundLatencySamples,
-                               i16 volume,
-                               u32& io_runningSoundSample,
-                               f32& io_theraminSine,
-                               f32 theraminHz)
+internal void w32WriteDSoundAudio(u32 soundBufferBytes, 
+                                  u32 soundSampleHz,
+                                  u8 numSoundChannels,
+                                  u32 soundLatencySamples,
+                                  u32& io_runningSoundSample,
+                                  VOID* gameSoundBufferMemory,
+                                  f32 theraminHz)
 {
-	const u32 bytesPerSample = sizeof(i16)*numSoundChannels;
+	const u32 bytesPerSample = sizeof(SoundSample)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
 	//	shouldn't be touched since the sound card is probably reading from it.
 	DWORD cursorPlay;
@@ -362,6 +361,19 @@ internal void renderDebugAudio(u32 soundBufferBytes,
 	const DWORD maxLockedBytes = maxBytesAheadOfWrite > bytesAheadOfWrite
 		? min(lockedBytes, maxBytesAheadOfWrite - bytesAheadOfWrite)
 		: 0;
+	// At this point, we know how many bytes need to be filled into the sound
+	//	buffer, so now we can request this data from the game code via a 
+	//	temporary buffer whose contents will be dumped into the DSound buffer.
+	{
+		GameAudioBuffer gameAudioBuffer = {
+			.memory            = reinterpret_cast<SoundSample*>(
+			                                             gameSoundBufferMemory),
+			.lockedSampleCount = maxLockedBytes / bytesPerSample,
+			.soundSampleHz     = soundSampleHz,
+			.numSoundChannels  = numSoundChannels
+		};
+		game_renderAudio(gameAudioBuffer, theraminHz);
+	}
 	// Because audio buffer is circular, we have to handle two cases.  In one 
 	//	case, the volatile region is contiguous inside the buffer.  In the other
 	//	case, the volatile region is occupying the beginning & and of the 
@@ -390,69 +402,27 @@ internal void renderDebugAudio(u32 soundBufferBytes,
 	}
 	const u32 lockedSampleCount = 
 		(lockRegion1Size + lockRegion2Size) / bytesPerSample;
-	DWORD lockedRegion1BytesWritten = 0;
-	DWORD lockedRegion2BytesWritten = 0;
-#ifdef STEADY_NOTES
-	// actually write data to the buffer //
-	// note frequencies derived from: 
-	//	https://www.seventhstring.com/resources/notefrequencies.html
-	local_persist const u32 HZ_D4 = 294;
-	local_persist const u32 HZ_G4 = 392;
-	const u32 samplesPerWaveD4 = soundSampleHz / HZ_D4;
-	const u32 samplesPerWaveG4 = soundSampleHz / HZ_G4;
-#else
-	const u32 samplesPerWaveTheramin = soundSampleHz / theraminHz;
-#endif
-#if 0
-	const u32 totalSamplesSent = 
-		io_bufferTotalBytesSent/bytesPerSample;
-#endif
 	const u32 lockRegion1Samples = lockRegion1Size/bytesPerSample;
 	const u32 lockRegion2Samples = lockRegion2Size/bytesPerSample;
+	// Fill the locked DSound buffer regions with the sound we should have 
+	//	rendered from the game code.
 	for(u32 s = 0; s < lockedSampleCount; s++)
 	{
-		i16* sample = (s < lockRegion1Samples)
-			? (i16*)lockRegion1 + (s*numSoundChannels)
-			: (i16*)lockRegion2 + ((s - lockRegion1Samples) * numSoundChannels);
-		DWORD& regionBytesWritten = (s < lockRegion1Samples)
-			? lockedRegion1BytesWritten
-			: lockedRegion2BytesWritten;
-		// Determine what the debug waveforms should look like at this point of
-		//	the running sound sample //
-#ifdef STEADY_NOTES
-		u32 waveformModD4 = 
-			(s + io_runningSoundSample) % samplesPerWaveD4;
-		const f32 waveformSignD4 = 
-			sinf(2*PI32*(waveformModD4/static_cast<f32>(samplesPerWaveD4)));
-		u32 waveformModG4 = 
-			(s + io_runningSoundSample) % samplesPerWaveG4;
-		const f32 waveformSignG4 = 
-			sinf(2*PI32*(waveformModG4/static_cast<f32>(samplesPerWaveG4)));
-#else
-		const f32 waveform = sinf(io_theraminSine);
-		io_theraminSine += 2*PI32*(1.f / samplesPerWaveTheramin);
-		while(io_theraminSine > 2*PI32) io_theraminSine -= 2*PI32;
-#endif
+		SoundSample* sample = (s < lockRegion1Samples)
+			? reinterpret_cast<SoundSample*>(lockRegion1) + (s*numSoundChannels)
+			: reinterpret_cast<SoundSample*>(lockRegion2) + 
+				((s - lockRegion1Samples) * numSoundChannels);
+		SoundSample* gameSample = 
+			reinterpret_cast<SoundSample*>(gameSoundBufferMemory) +
+			(s*numSoundChannels);
 		for(u8 c = 0; c < numSoundChannels; c++)
 		{
-#ifdef STEADY_NOTES
-#if 0
-			*sample++ = static_cast<i16>(volume * waveformSignD4);
-#else
-			// combine the D4 + G4 waves to create a chord! //
-			*sample++ = static_cast<i16>(volume * waveformSignD4) +
-			            static_cast<i16>(volume * waveformSignG4);
-#endif
-#else
-			*sample++ = static_cast<i16>(volume * waveform);
-#endif
-			regionBytesWritten += sizeof(i16);
+			*sample++ = *gameSample++;
 		}
 	}
 	io_runningSoundSample += lockedSampleCount;
-	if(g_dsBufferSecondary->Unlock(
-		lockRegion1, lockedRegion1BytesWritten,
-		lockRegion2, lockedRegion2BytesWritten) != DS_OK)
+	if(g_dsBufferSecondary->Unlock(lockRegion1, lockRegion1Size,
+	                               lockRegion2, lockRegion2Size) != DS_OK)
 	{
 		///TODO: handle error code
 		return;
@@ -481,7 +451,7 @@ internal void w32ResizeDibSection(W32OffscreenBuffer& buffer,
 		const int bitmapMemorySize = buffer.bytesPerPixel*width*height;
 		buffer.bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
 		                                   MEM_RESERVE | MEM_COMMIT, 
-										   PAGE_READWRITE);
+		                                   PAGE_READWRITE);
 	}
 	if(!buffer.bitmapMemory)
 	{
@@ -627,7 +597,9 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		SOUND_SAMPLE_HZ * SOUND_BYTES_PER_SAMPLE;
 	local_persist const u32 SOUND_LATENCY_SAMPLES = SOUND_SAMPLE_HZ / 15;
 	u32 runningSoundSample = 0;
-	f32 theraminSine = 0;
+	VOID*const gameSoundMemory = VirtualAlloc(NULL, SOUND_BUFFER_BYTES, 
+	                                          MEM_RESERVE | MEM_COMMIT, 
+	                                          PAGE_READWRITE);
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -699,18 +671,18 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					///TODO: error & controller not connected return values
 				}
 			}
-			GameOffscreenBuffer gameOffscreenBuffer = {
+			GameGraphicsBuffer gameGraphicsBuffer = {
 				.bitmapMemory  = g_backBuffer.bitmapMemory,
 				.width         = g_backBuffer.width,
 				.height        = g_backBuffer.height,
 				.pitch         = g_backBuffer.pitch,
 				.bytesPerPixel = g_backBuffer.bytesPerPixel
 			};
-			game_updateAndRender(gameOffscreenBuffer, bgOffsetX, bgOffsetY);
-			renderDebugAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
-			                 SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, 5000, 
-			                 runningSoundSample,
-			                 theraminSine, theraminHz);
+			game_updateAndDraw(gameGraphicsBuffer, bgOffsetX, bgOffsetY);
+			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
+			                    SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, 
+			                    runningSoundSample, gameSoundMemory, 
+			                    theraminHz);
 			// update window //
 			{
 				const W32Dimension2d winDims = 
