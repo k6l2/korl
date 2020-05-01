@@ -2,6 +2,8 @@
 rem prerequisites: env.bat
 if not exist "%project_root%\build" mkdir %project_root%\build
 pushd %project_root%\build
+rem --- DEFINES ---
+rem 	DEBUG_BUILD = {0: disable debug code, ~0: enable debug code}
 rem /Zi - Generates complete debugging information.
 rem /FC - Display full path of source code files passed to cl.exe in diagnostic 
 rem       text.
@@ -12,6 +14,7 @@ rem user32.lib - ??? various win32 stuff
 rem Gdi32.lib - used for windows software drawing operations.  ///TODO: remove
 rem             later when using OpenGL or Vulkan backend renderers probably?
 cl %project_root%\code\win32-main.cpp ^
-	/Zi /FC /nologo /std:c++latest ^
+	/DDEBUG_BUILD=1 /Zi /FC /nologo /std:c++latest ^
 	user32.lib Gdi32.lib
 popd
+echo Build script finished.

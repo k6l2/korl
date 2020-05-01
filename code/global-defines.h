@@ -2,6 +2,12 @@
 #define internal        static
 #define local_persist   static
 #define global_variable static
+#if DEBUG_BUILD
+	#define kassert(expression) if(!(expression)) { *(int*)0 = 0; }
+#else
+	#define kassert(expression) {}
+#endif
+#include <math.h>
 #include <stdint.h>
 using u8  = uint8_t;
 using u16 = uint16_t;
@@ -33,5 +39,25 @@ namespace kmath
 	{
 		local_persist const f32 EPSILON = 1e-5f;
 		return isNearlyEqual(f, 0.f);
+	}
+	/** @return # of bytes which represent `k` kilobytes */
+	internal inline u64 kilobytes(u64 k)
+	{
+		return k*1024;
+	}
+	/** @return # of bytes which represent `m` megabytes */
+	internal inline u64 megabytes(u64 m)
+	{
+		return kilobytes(m)*1024;
+	}
+	/** @return # of bytes which represent `g` gigabytes */
+	internal inline u64 gigabytes(u64 g)
+	{
+		return megabytes(g)*1024;
+	}
+	/** @return # of bytes which represent `t` terabytes */
+	internal inline u64 terabytes(u64 t)
+	{
+		return gigabytes(t)*1024;
 	}
 }

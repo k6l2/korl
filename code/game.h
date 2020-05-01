@@ -47,11 +47,29 @@ struct GamePad
 	float normalizedMotorSpeedLeft;
 	float normalizedMotorSpeedRight;
 };
+struct GameMemory
+{
+	bool initialized;
+	void* permanentMemory;
+	u64   permanentMemoryBytes;
+	void* transientMemory;
+	u64   transientMemoryBytes;
+};
+struct GameState
+{
+	int offsetX = 0;
+	int offsetY = 0;
+	f32 theraminHz = 294.f;
+	f32 theraminSine = 0;
+	f32 theraminVolume = 5000;
+};
 internal void platformPrintString(char* string);
-internal void game_renderAudio(GameAudioBuffer& audioBuffer, 
+internal void game_renderAudio(GameMemory& memory, 
+                               GameAudioBuffer& audioBuffer, 
                                GamePad* gamePadArray, u8 numGamePads);
 /** 
  * @return false if the platform should close the game application
  */
-internal bool game_updateAndDraw(GameGraphicsBuffer& graphicsBuffer, 
+internal bool game_updateAndDraw(GameMemory& memory, 
+                                 GameGraphicsBuffer& graphicsBuffer, 
                                  GamePad* gamePadArray, u8 numGamePads);

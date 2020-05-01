@@ -1,5 +1,5 @@
 // crt math operations
-#include <math.h>
+#include "global-defines.h"
 #include "game.cpp"
 // crt io
 #include <stdio.h>
@@ -354,7 +354,8 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
                                   u32 soundLatencySamples,
                                   u32& io_runningSoundSample,
                                   VOID* gameSoundBufferMemory,
-                                  GamePad* gamePadArray, u8 numGamePads)
+                                  GamePad* gamePadArray, u8 numGamePads,
+                                  GameMemory& gameMemory)
 {
 	const u32 bytesPerSample = sizeof(SoundSample)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
@@ -492,7 +493,8 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			.soundSampleHz     = soundSampleHz,
 			.numSoundChannels  = numSoundChannels
 		};
-		game_renderAudio(gameAudioBuffer, gamePadArray, numGamePads);
+		game_renderAudio(gameMemory, gameAudioBuffer, 
+		                 gamePadArray, numGamePads);
 	}
 	// Because audio buffer is circular, we have to handle two cases.  In one 
 	//	case, the volatile region is contiguous inside the buffer.  In the other
@@ -725,6 +727,33 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	VOID*const gameSoundMemory = VirtualAlloc(NULL, SOUND_BUFFER_BYTES, 
 	                                          MEM_RESERVE | MEM_COMMIT, 
 	                                          PAGE_READWRITE);
+	if(!gameSoundMemory)
+	{
+		///TODO: handle GetLastError
+		return -1;
+	}
+	GameMemory gameMemory = {};
+#if DEBUG_BUILD
+	const LPVOID baseAddress = reinterpret_cast<LPVOID>(kmath::terabytes(1));
+#else
+	const LPVOID baseAddress = 0;
+#endif
+	gameMemory.permanentMemoryBytes = kmath::megabytes(64);
+	gameMemory.transientMemoryBytes = kmath::gigabytes(4);
+	const u64 totalGameMemoryBytes = 
+		gameMemory.permanentMemoryBytes + gameMemory.transientMemoryBytes;
+	gameMemory.permanentMemory = VirtualAlloc(baseAddress, 
+	                                          totalGameMemoryBytes, 
+	                                          MEM_RESERVE | MEM_COMMIT, 
+	                                          PAGE_READWRITE);
+	if(!gameMemory.permanentMemory)
+	{
+		///TODO: handle GetLastError
+		return -1;
+	}
+	gameMemory.transientMemory = 
+		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
+		gameMemory.permanentMemoryBytes;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -775,7 +804,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				.pitch         = g_backBuffer.pitch,
 				.bytesPerPixel = g_backBuffer.bytesPerPixel
 			};
-			if(!game_updateAndDraw(gameGraphicsBuffer, 
+			if(!game_updateAndDraw(gameMemory, gameGraphicsBuffer, 
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{
 				g_running = false;
@@ -783,7 +812,8 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
 			                    SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, 
 			                    runningSoundSample, gameSoundMemory, 
-			                    gamePadArrayCurrentFrame, numGamePads);
+			                    gamePadArrayCurrentFrame, numGamePads,
+			                    gameMemory);
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
 			{

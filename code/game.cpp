@@ -1,67 +1,68 @@
 #include "game.h"
-internal void game_renderAudio(GameAudioBuffer& audioBuffer, 
+internal void game_renderAudio(GameMemory& memory, 
+                               GameAudioBuffer& audioBuffer, 
                                GamePad* gamePadArray, u8 numGamePads)
 {
+	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
 	// render theramin audio data to temporary sound buffer //
-	local_persist f32 theraminHz = 294.f;
-	local_persist f32 theraminSine = 0;
-	local_persist const f32 THERAMIN_VOLUME = 5000;
 	if(numGamePads > 0)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
 		{
-			theraminHz = 294 + gamePadArray[c].normalizedStickLeft.y*256;
+			gameState->theraminHz = 
+				294 + gamePadArray[c].normalizedStickLeft.y*256;
 		}
 	}
-	const u32 samplesPerWaveTheramin = audioBuffer.soundSampleHz / theraminHz;
+	const u32 samplesPerWaveTheramin = 
+		audioBuffer.soundSampleHz / gameState->theraminHz;
 	for(u32 s = 0; s < audioBuffer.lockedSampleCount; s++)
 	{
 		SoundSample* sample = 
 			audioBuffer.memory + (s*audioBuffer.numSoundChannels);
 		// Determine what the debug waveforms should look like at this point of
 		//	the running sound sample //
-		const f32 waveform = sinf(theraminSine);
-		theraminSine += 2*PI32*(1.f / samplesPerWaveTheramin);
-		while(theraminSine > 2*PI32) theraminSine -= 2*PI32;
+		const f32 waveform = sinf(gameState->theraminSine);
+		gameState->theraminSine += 2*PI32*(1.f / samplesPerWaveTheramin);
+		if(gameState->theraminSine > 2*PI32)
+		{
+			gameState->theraminSine -= 2*PI32;
+		}
 		for(u8 c = 0; c < audioBuffer.numSoundChannels; c++)
 		{
-			*sample++ = static_cast<SoundSample>(THERAMIN_VOLUME * waveform);
+			*sample++ = 
+				static_cast<SoundSample>(gameState->theraminVolume * waveform);
 		}
 	}
 }
-internal bool game_updateAndDraw(GameGraphicsBuffer& graphicsBuffer, 
+internal bool game_updateAndDraw(GameMemory& memory, 
+                                 GameGraphicsBuffer& graphicsBuffer, 
                                  GamePad* gamePadArray, u8 numGamePads)
 {
-	local_persist int offsetX = 0;
-	local_persist int offsetY = 0;
+	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
+	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+	if(!memory.initialized)
+	{
+		*gameState = {};
+		memory.initialized = true;
+	}
 	if(numGamePads > 0)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
 		{
 			if(gamePadArray[c].buttons.dPadUp == GamePad::ButtonState::HELD)
 			{
-				offsetY -= 1;
+				gameState->offsetY -= 1;
 			}
 			if(gamePadArray[c].buttons.dPadDown == GamePad::ButtonState::HELD)
 			{
-				offsetY += 1;
+				gameState->offsetY += 1;
 			}
-			offsetX += 4*gamePadArray[c].normalizedStickLeft.x;
-			offsetY -= 4*gamePadArray[c].normalizedStickLeft.y;
+			gameState->offsetX += 4*gamePadArray[c].normalizedStickLeft.x;
+			gameState->offsetY -= 4*gamePadArray[c].normalizedStickLeft.y;
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
 			gamePadArray[c].normalizedMotorSpeedRight = 
 				gamePadArray[c].normalizedTriggerRight;
-#if 0
-			if(gamePadArray[c].buttons.back  == GamePad::ButtonState::HELD)
-			{
-				platformPrintString("back HELD!\n");
-			}
-			if(gamePadArray[c].buttons.start  == GamePad::ButtonState::PRESSED)
-			{
-				platformPrintString("start PRESSED!\n");
-			}
-#endif
 			if (gamePadArray[c].buttons.back  == GamePad::ButtonState::HELD &&
 			    gamePadArray[c].buttons.start == GamePad::ButtonState::PRESSED)
 			{
@@ -77,7 +78,8 @@ internal bool game_updateAndDraw(GameGraphicsBuffer& graphicsBuffer,
 		for (int x = 0; x < graphicsBuffer.width; x++)
 		{
 			// pixel format: 0xXxRrGgBb
-			*pixel++ = ((u8)(x + offsetX) << 16) | ((u8)(y + offsetY) << 8);
+			*pixel++ = ((u8)(x + gameState->offsetX) << 16) | 
+			           ((u8)(y + gameState->offsetY) << 8);
 		}
 		row += graphicsBuffer.pitch;
 	}
