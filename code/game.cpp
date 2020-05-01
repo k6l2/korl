@@ -43,6 +43,14 @@ internal bool game_updateAndDraw(GameMemory& memory,
 	if(!memory.initialized)
 	{
 		*gameState = {};
+#ifdef INTERNAL_BUILD
+		PlatformDebugReadFileResult readFileResult = 
+			platformReadEntireFile(__FILE__);
+		platformPrintDebugString(reinterpret_cast<char*>(readFileResult.data));
+		platformWriteEntireFile("game_copy.cpp", 
+		                        readFileResult.data, readFileResult.dataBytes);
+		platformFreeFileMemory(readFileResult.data);
+#endif
 		memory.initialized = true;
 	}
 	if(numGamePads > 0)

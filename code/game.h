@@ -63,7 +63,21 @@ struct GameState
 	f32 theraminSine = 0;
 	f32 theraminVolume = 5000;
 };
-internal void platformPrintString(char* string);
+/* PLATFORM INTERFACE *********************************************************/
+internal void platformPrintDebugString(char* string);
+#if INTERNAL_BUILD
+struct PlatformDebugReadFileResult
+{
+	void* data;
+	u32 dataBytes;
+};
+/** @return a valid result (non-zero data & dataBytes) if successful */
+internal PlatformDebugReadFileResult platformReadEntireFile(char* fileName);
+internal void platformFreeFileMemory(void* fileMemory);
+internal bool platformWriteEntireFile(char* fileName, 
+                                      void* data, u32 dataBytes);
+#endif
+/***************************************************** END PLATFORM INTERFACE */
 internal void game_renderAudio(GameMemory& memory, 
                                GameAudioBuffer& audioBuffer, 
                                GamePad* gamePadArray, u8 numGamePads);

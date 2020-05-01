@@ -10,10 +10,142 @@ global_variable bool g_running;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
 global_variable LARGE_INTEGER g_perfCounterHz;
-internal void platformPrintString(char* string)
+internal void platformPrintDebugString(char* string)
 {
 	OutputDebugStringA(string);
 }
+#if INTERNAL_BUILD
+internal PlatformDebugReadFileResult platformReadEntireFile(char* fileName)
+{
+	PlatformDebugReadFileResult result = {};
+	const HANDLE fileHandle = 
+		CreateFileA(fileName, GENERIC_READ, FILE_SHARE_READ, nullptr, 
+		            OPEN_EXISTING, 
+		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	if(fileHandle == INVALID_HANDLE_VALUE)
+	{
+		///TODO: handle GetLastError
+		return result;
+	}
+	u32 fileSize32;
+	{
+		LARGE_INTEGER fileSize;
+		if(!GetFileSizeEx(fileHandle, &fileSize))
+		{
+			///TODO: handle GetLastError
+			if(!CloseHandle(fileHandle))
+			{
+				///TODO: handle GetLastError
+			}
+			return result;
+		}
+		fileSize32 = kmath::safeTruncateU64(fileSize.QuadPart);
+		if(fileSize32 != fileSize.QuadPart)
+		{
+			///TODO: log this error case
+			if(!CloseHandle(fileHandle))
+			{
+				///TODO: handle GetLastError
+			}
+			return result;
+		}
+	}
+	result.data = VirtualAlloc(nullptr, fileSize32, 
+	                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	if(!result.data)
+	{
+		///TODO: handle GetLastError
+		if(!CloseHandle(fileHandle))
+		{
+			///TODO: handle GetLastError
+		}
+		return result;
+	}
+	DWORD numBytesRead;
+	if(!ReadFile(fileHandle, result.data, fileSize32, &numBytesRead, nullptr))
+	{
+		///TODO: handle GetLastError
+		if(!VirtualFree(result.data, 0, MEM_RELEASE))
+		{
+			///TODO: handle GetLastError
+		}
+		if(!CloseHandle(fileHandle))
+		{
+			///TODO: handle GetLastError
+		}
+		result.data = nullptr;
+		return result;
+	}
+	if(numBytesRead != fileSize32)
+	{
+		///TODO: handle this case
+		if(!VirtualFree(result.data, 0, MEM_RELEASE))
+		{
+			///TODO: handle GetLastError
+		}
+		if(!CloseHandle(fileHandle))
+		{
+			///TODO: handle GetLastError
+		}
+		result.data = nullptr;
+		return result;
+	}
+	if(!CloseHandle(fileHandle))
+	{
+		///TODO: handle GetLastError
+		if(!VirtualFree(result.data, 0, MEM_RELEASE))
+		{
+			///TODO: handle GetLastError
+		}
+		if(!CloseHandle(fileHandle))
+		{
+			///TODO: handle GetLastError
+		}
+		result.data = nullptr;
+		return result;
+	}
+	result.dataBytes = fileSize32;
+	return result;
+}
+internal void platformFreeFileMemory(void* fileMemory)
+{
+	if(!VirtualFree(fileMemory, 0, MEM_RELEASE))
+	{
+		///TODO: handle GetLastError
+		OutputDebugStringA("ERROR: Failed to free file memory!!!!!\n");
+	}
+}
+internal bool platformWriteEntireFile(char* fileName, 
+                                      void* data, u32 dataBytes)
+{
+	const HANDLE fileHandle = 
+		CreateFileA(fileName, GENERIC_WRITE, 0, nullptr, 
+		            CREATE_ALWAYS, 
+		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
+	if(fileHandle == INVALID_HANDLE_VALUE)
+	{
+		///TODO: handle GetLastError
+		return false;
+	}
+	DWORD bytesWritten;
+	if(!WriteFile(fileHandle, data, dataBytes, &bytesWritten, nullptr))
+	{
+		///TODO: handle GetLastError
+		return false;
+	}
+	if(bytesWritten != dataBytes)
+	{
+		///TODO: handle this error case
+		return false;
+	}
+	if(!CloseHandle(fileHandle))
+	{
+		///TODO: handle GetLastError
+		return false;
+	}
+	return false;
+}
+#endif
 /* XINPUT SUPPORT *************************************************************/
 #define XINPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, \
                                                  XINPUT_STATE* pState)
@@ -95,13 +227,6 @@ internal void w32ProcessXInputStick(SHORT xiThumbX, SHORT xiThumbY,
 	                    (MAX_THUMB_MAG - circularDeadzoneMagnitude);
 	*o_normalizedStickX = thumbNormX * thumbMagNorm;
 	*o_normalizedStickY = thumbNormY * thumbMagNorm;
-#if 0
-	// DEBUG ///////////////////////////////////////////////////////////////////
-	char outputBuffer[256] = {};
-	snprintf(outputBuffer, sizeof(outputBuffer), 
-	         "thumbMagNorm=%.2f\n", thumbMagNorm);
-	OutputDebugStringA(outputBuffer);
-#endif
 }
 internal void w32ProcessXInputButton(bool xInputButtonPressed, 
                                      GamePad::ButtonState buttonStatePrevious,
@@ -620,7 +745,6 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 			{
 				case VK_ESCAPE:
 				{
-					OutputDebugStringA("ESCAPE\n");
 					g_running = false;
 				} break;
 				case VK_F4:
@@ -733,7 +857,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		return -1;
 	}
 	GameMemory gameMemory = {};
-#if DEBUG_BUILD
+#if INTERNAL_BUILD
 	const LPVOID baseAddress = reinterpret_cast<LPVOID>(kmath::terabytes(1));
 #else
 	const LPVOID baseAddress = 0;
@@ -853,6 +977,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					g_perfCounterHz.QuadPart;
 				const LONGLONG elapsedMicroseconds = 
 					(perfCountDiff*1000000) / g_perfCounterHz.QuadPart;
+#if INTERNAL_BUILD || SLOW_BUILD
 				// send performance measurement to debugger as a string //
 				{
 					char outputBuffer[256] = {};
@@ -862,6 +987,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					         clockCycleDiff/1000000.f);
 					OutputDebugStringA(outputBuffer);
 				}
+#endif
 			}
 		}
 	}

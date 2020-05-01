@@ -2,7 +2,7 @@
 #define internal        static
 #define local_persist   static
 #define global_variable static
-#if DEBUG_BUILD
+#if INTERNAL_BUILD || SLOW_BUILD
 	#define kassert(expression) if(!(expression)) { *(int*)0 = 0; }
 #else
 	#define kassert(expression) {}
@@ -59,5 +59,10 @@ namespace kmath
 	internal inline u64 terabytes(u64 t)
 	{
 		return gigabytes(t)*1024;
+	}
+	internal inline u32 safeTruncateU64(u64 value)
+	{
+		kassert(value < 0xFFFFFFFF);
+		return static_cast<u32>(value);
 	}
 }

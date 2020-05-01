@@ -3,7 +3,7 @@
 	"configurations": [
 		{
 			"name": "C++",
-			"defines": [],
+			"defines": ["INTERNAL_BUILD=1", "SLOW_BUILD=1"],
 			"cppStandard": "c++20",
 			"includePath": [ "${env:INCLUDE}" ]
 		}
