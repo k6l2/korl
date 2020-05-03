@@ -36,7 +36,7 @@
 				"panel": "shared",
 				"showReuseMessage": false,
 				"clear": true,
-				"revealProblems": "onProblem"
+				"revealProblems": "never"
 			}
 		}
 	]

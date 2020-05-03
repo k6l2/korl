@@ -1,20 +1,11 @@
 #include "game.h"
 internal void game_renderAudio(GameMemory& memory, 
-                               GameAudioBuffer& audioBuffer, 
-                               GamePad* gamePadArray, u8 numGamePads)
+                               GameAudioBuffer& audioBuffer)
 {
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
 	// render theramin audio data to temporary sound buffer //
-	if(numGamePads > 0)
-	{
-		for(u8 c = 0; c < numGamePads; c++)
-		{
-			gameState->theraminHz = 
-				294 + gamePadArray[c].normalizedStickLeft.y*256;
-		}
-	}
-	const u32 samplesPerWaveTheramin = 
-		audioBuffer.soundSampleHz / gameState->theraminHz;
+	const u32 samplesPerWaveTheramin = static_cast<u32>(
+		audioBuffer.soundSampleHz / gameState->theraminHz);
 	for(u32 s = 0; s < audioBuffer.lockedSampleCount; s++)
 	{
 		SoundSample* sample = 
@@ -36,6 +27,7 @@ internal void game_renderAudio(GameMemory& memory,
 }
 internal bool game_updateAndDraw(GameMemory& memory, 
                                  GameGraphicsBuffer& graphicsBuffer, 
+                                 GameKeyboard& gameKeyboard, 
                                  GamePad* gamePadArray, u8 numGamePads)
 {
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
@@ -53,26 +45,35 @@ internal bool game_updateAndDraw(GameMemory& memory,
 #endif
 		memory.initialized = true;
 	}
+	if (gameKeyboard.escape == ButtonState::PRESSED ||
+		(gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
+	{
+		return false;
+	}
 	if(numGamePads > 0)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
 		{
-			if(gamePadArray[c].buttons.dPadUp == GamePad::ButtonState::HELD)
+			gameState->theraminHz = 
+				294 + gamePadArray[c].normalizedStickLeft.y*256;
+			if(gamePadArray[c].buttons.dPadUp == ButtonState::HELD)
 			{
 				gameState->offsetY -= 1;
 			}
-			if(gamePadArray[c].buttons.dPadDown == GamePad::ButtonState::HELD)
+			if(gamePadArray[c].buttons.dPadDown == ButtonState::HELD)
 			{
 				gameState->offsetY += 1;
 			}
-			gameState->offsetX += 4*gamePadArray[c].normalizedStickLeft.x;
-			gameState->offsetY -= 4*gamePadArray[c].normalizedStickLeft.y;
+			gameState->offsetX += 
+				static_cast<i32>(4*gamePadArray[c].normalizedStickLeft.x);
+			gameState->offsetY -= 
+				static_cast<i32>(4*gamePadArray[c].normalizedStickLeft.y);
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
 			gamePadArray[c].normalizedMotorSpeedRight = 
 				gamePadArray[c].normalizedTriggerRight;
-			if (gamePadArray[c].buttons.back  == GamePad::ButtonState::HELD &&
-			    gamePadArray[c].buttons.start == GamePad::ButtonState::PRESSED)
+			if (gamePadArray[c].buttons.back  == ButtonState::HELD &&
+			    gamePadArray[c].buttons.start == ButtonState::PRESSED)
 			{
 				return false;
 			}
@@ -80,10 +81,10 @@ internal bool game_updateAndDraw(GameMemory& memory,
 	}
 	// render a weird gradient pattern to the offscreen buffer //
 	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);
-	for (int y = 0; y < graphicsBuffer.height; y++)
+	for (u32 y = 0; y < graphicsBuffer.height; y++)
 	{
 		u32* pixel = reinterpret_cast<u32*>(row);
-		for (int x = 0; x < graphicsBuffer.width; x++)
+		for (u32 x = 0; x < graphicsBuffer.width; x++)
 		{
 			// pixel format: 0xXxRrGgBb
 			*pixel++ = ((u8)(x + gameState->offsetX) << 16) | 

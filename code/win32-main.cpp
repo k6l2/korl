@@ -208,7 +208,8 @@ internal void w32ProcessXInputStick(SHORT xiThumbX, SHORT xiThumbY,
 	if(xiThumbX < -0x7FFF) xiThumbX = -0x7FFF;
 	if(xiThumbY < -0x7FFF) xiThumbY = -0x7FFF;
 	local_persist const f32 MAX_THUMB_MAG = static_cast<f32>(0x7FFF);
-	f32 thumbMag = sqrtf(xiThumbX*xiThumbX + xiThumbY*xiThumbY);
+	f32 thumbMag = 
+		sqrtf(static_cast<f32>(xiThumbX)*xiThumbX + xiThumbY*xiThumbY);
 	const f32 thumbNormX = 
 		!kmath::isNearlyZero(thumbMag) ? xiThumbX / thumbMag : 0.f;
 	const f32 thumbNormY = 
@@ -229,23 +230,23 @@ internal void w32ProcessXInputStick(SHORT xiThumbX, SHORT xiThumbY,
 	*o_normalizedStickY = thumbNormY * thumbMagNorm;
 }
 internal void w32ProcessXInputButton(bool xInputButtonPressed, 
-                                     GamePad::ButtonState buttonStatePrevious,
-                                     GamePad::ButtonState* o_buttonStateCurrent)
+                                     ButtonState buttonStatePrevious,
+                                     ButtonState* o_buttonStateCurrent)
 {
 	if(xInputButtonPressed)
 	{
-		if(buttonStatePrevious == GamePad::ButtonState::NOT_PRESSED)
+		if(buttonStatePrevious == ButtonState::NOT_PRESSED)
 		{
-			*o_buttonStateCurrent = GamePad::ButtonState::PRESSED;
+			*o_buttonStateCurrent = ButtonState::PRESSED;
 		}
 		else
 		{
-			*o_buttonStateCurrent = GamePad::ButtonState::HELD;
+			*o_buttonStateCurrent = ButtonState::HELD;
 		}
 	}
 	else
 	{
-		*o_buttonStateCurrent = GamePad::ButtonState::NOT_PRESSED;
+		*o_buttonStateCurrent = ButtonState::NOT_PRESSED;
 	}
 }
 internal void w32ProcessXInputTrigger(BYTE padTrigger,
@@ -563,7 +564,9 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 		// |P--------------------------------------------------------WBxxxxxxx-|
 		: ((soundBufferBytes - byteToLock) + cursorPlay > bytesPerSample
 			? (soundBufferBytes - byteToLock) + 
-				(cursorPlay > 0 ? cursorPlay - bytesPerSample : -bytesPerSample)
+				(cursorPlay > 0 
+					? cursorPlay - bytesPerSample 
+					: -static_cast<i32>(bytesPerSample))
 			: 0);
 #if 0
 	// advance our total bytes sent to the audio device //
@@ -618,8 +621,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			.soundSampleHz     = soundSampleHz,
 			.numSoundChannels  = numSoundChannels
 		};
-		game_renderAudio(gameMemory, gameAudioBuffer, 
-		                 gamePadArray, numGamePads);
+		game_renderAudio(gameMemory, gameAudioBuffer);
 	}
 	// Because audio buffer is circular, we have to handle two cases.  In one 
 	//	case, the volatile region is contiguous inside the buffer.  In the other
@@ -722,8 +724,128 @@ internal void w32UpdateWindow(const W32OffscreenBuffer& buffer,
 		///TODO: handle error cases
 	}
 }
-LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, 
-                                       LPARAM lParam)
+internal void w32ProcessKeyEvent(MSG& msg, GameKeyboard& gameKeyboard)
+{
+	// Virtual-Key Codes: 
+	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+	const WPARAM vKeyCode = msg.wParam;
+#if SLOW_BUILD
+	char outputBuffer[256] = {};
+	snprintf(outputBuffer, sizeof(outputBuffer), "vKeyCode=%i,0x%x\n", 
+	         static_cast<int>(vKeyCode), static_cast<int>(vKeyCode));
+	OutputDebugStringA(outputBuffer);
+#endif
+	const bool keyDown     = (msg.lParam & (1<<31)) == 0;
+	const bool keyDownPrev = (msg.lParam & (1<<30)) != 0;
+#if 0
+	const bool altKeyDown  = (msg.lParam & (1<<29)) != 0;
+#endif
+	ButtonState* buttonState = nullptr;
+	switch(vKeyCode)
+	{
+		case VK_OEM_COMMA:
+			buttonState = &gameKeyboard.comma; break;
+		case VK_OEM_PERIOD:
+			buttonState = &gameKeyboard.period; break;
+		case VK_OEM_2: 
+			buttonState = &gameKeyboard.slashForward; break;
+		case VK_OEM_5: 
+			buttonState = &gameKeyboard.slashBack; break;
+		case VK_OEM_4: 
+			buttonState = &gameKeyboard.curlyBraceLeft; break;
+		case VK_OEM_6: 
+			buttonState = &gameKeyboard.curlyBraceRight; break;
+		case VK_OEM_1: 
+			buttonState = &gameKeyboard.semicolon; break;
+		case VK_OEM_7: 
+			buttonState = &gameKeyboard.quote; break;
+		case VK_OEM_3: 
+			buttonState = &gameKeyboard.grave; break;
+		case VK_OEM_MINUS: 
+			buttonState = &gameKeyboard.tenkeyless_minus; break;
+		case VK_OEM_PLUS: 
+			buttonState = &gameKeyboard.equals; break;
+		case VK_BACK: 
+			buttonState = &gameKeyboard.backspace; break;
+		case VK_ESCAPE: 
+			buttonState = &gameKeyboard.escape; break;
+		case VK_RETURN: 
+			buttonState = &gameKeyboard.enter; break;
+		case VK_SPACE: 
+			buttonState = &gameKeyboard.space; break;
+		case VK_TAB: 
+			buttonState = &gameKeyboard.tab; break;
+		case VK_LSHIFT: 
+			buttonState = &gameKeyboard.shiftLeft; break;
+		case VK_RSHIFT: 
+			buttonState = &gameKeyboard.shiftRight; break;
+		case VK_LCONTROL: 
+			buttonState = &gameKeyboard.controlLeft; break;
+		case VK_RCONTROL: 
+			buttonState = &gameKeyboard.controlRight; break;
+		case VK_MENU: 
+			buttonState = &gameKeyboard.alt; break;
+		case VK_UP: 
+			buttonState = &gameKeyboard.arrowUp; break;
+		case VK_DOWN: 
+			buttonState = &gameKeyboard.arrowDown; break;
+		case VK_LEFT: 
+			buttonState = &gameKeyboard.arrowLeft; break;
+		case VK_RIGHT: 
+			buttonState = &gameKeyboard.arrowRight; break;
+		case VK_INSERT: 
+			buttonState = &gameKeyboard.insert; break;
+		case VK_DELETE: 
+			buttonState = &gameKeyboard.deleteKey; break;
+		case VK_HOME: 
+			buttonState = &gameKeyboard.home; break;
+		case VK_END: 
+			buttonState = &gameKeyboard.end; break;
+		case VK_PRIOR: 
+			buttonState = &gameKeyboard.pageUp; break;
+		case VK_NEXT: 
+			buttonState = &gameKeyboard.pageDown; break;
+		case VK_DECIMAL: 
+			buttonState = &gameKeyboard.numpad_period; break;
+		case VK_DIVIDE: 
+			buttonState = &gameKeyboard.numpad_divide; break;
+		case VK_MULTIPLY: 
+			buttonState = &gameKeyboard.numpad_multiply; break;
+		case VK_SEPARATOR: 
+			buttonState = &gameKeyboard.numpad_minus; break;
+		case VK_ADD: 
+			buttonState = &gameKeyboard.numpad_add; break;
+		default:
+		{
+			if(vKeyCode >= 0x41 && vKeyCode <= 0x5A)
+			{
+				buttonState = &gameKeyboard.a + (vKeyCode - 0x41);
+			}
+			else if(vKeyCode >= 0x30 && vKeyCode <= 0x39)
+			{
+				buttonState = &gameKeyboard.tenkeyless_0 + (vKeyCode - 0x30);
+			}
+			else if(vKeyCode >= 0x70 && vKeyCode <= 0x7B)
+			{
+				buttonState = &gameKeyboard.f1 + (vKeyCode - 0x70);
+			}
+			else if(vKeyCode >= 0x60 && vKeyCode <= 0x69)
+			{
+				buttonState = &gameKeyboard.numpad_0 + (vKeyCode - 0x60);
+			}
+		} break;
+	}
+	if(buttonState)
+	{
+		*buttonState = keyDown
+			? (keyDownPrev
+				? ButtonState::HELD
+				: ButtonState::PRESSED)
+			: ButtonState::NOT_PRESSED;
+	}
+}
+internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, 
+                                                WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = 0;
 	switch(uMsg)
@@ -733,28 +855,7 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 		case WM_SYSKEYDOWN:
 		case WM_SYSKEYUP:
 		{
-			const WPARAM vKeyCode = wParam;
-			const bool keyDown     = (lParam & (1<<31)) == 0;
-			const bool keyDownPrev = (lParam & (1<<30)) != 0;
-			const bool altKeyDown  = (lParam & (1<<29)) != 0;
-			if(!keyDown || keyDownPrev)
-			{
-				break;
-			}
-			switch(vKeyCode)
-			{
-				case VK_ESCAPE:
-				{
-					g_running = false;
-				} break;
-				case VK_F4:
-				{
-					if(altKeyDown)
-					{
-						g_running = false;
-					}
-				} break;
-			}
+			kassert(!"Unhandled keyboard event!");
 		} break;
 		case WM_SIZE:
 		{
@@ -799,7 +900,7 @@ LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam,
 	}
 	return result;
 }
-internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
+extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
@@ -836,6 +937,14 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
+	GameKeyboard gameKeyboard = {};
+#if INTERNAL_BUILD
+	// ensure that the size of the keyboard's vKeys array matches the size of
+	//	the anonymous struct which defines the names of all the game keys //
+	kassert(static_cast<size_t>(&gameKeyboard.DUMMY_LAST_BUTTON_STATE - 
+	                            &gameKeyboard.vKeys[0]) ==
+	        (sizeof(gameKeyboard.vKeys) / sizeof(gameKeyboard.vKeys[0])));
+#endif
 	GamePad gamePadArrayA[XUSER_MAX_COUNT] = {};
 	GamePad gamePadArrayB[XUSER_MAX_COUNT] = {};
 	GamePad* gamePadArrayCurrentFrame  = gamePadArrayA;
@@ -901,13 +1010,46 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			MSG windowMessage;
 			while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
 			{
-				if(windowMessage.message == WM_QUIT)
+				switch(windowMessage.message)
 				{
-					g_running = false;
+					case WM_QUIT:
+					{
+						g_running = false;
+					} break;
+#if 0
+					case WM_CHAR:
+					{
+#if SLOW_BUILD
+						char outputBuffer[256] = {};
+						snprintf(outputBuffer, sizeof(outputBuffer), 
+						         "character code=%i\n", 
+						         static_cast<int>(windowMessage.wParam));
+						OutputDebugStringA(outputBuffer);
+#endif
+					} break;
+#endif
+					case WM_KEYDOWN:
+					case WM_KEYUP:
+					case WM_SYSKEYDOWN:
+					case WM_SYSKEYUP:
+					{
+						w32ProcessKeyEvent(windowMessage, gameKeyboard);
+					} break;
+					default:
+					{
+						TranslateMessage(&windowMessage);
+						DispatchMessageA(&windowMessage);
+					} break;
 				}
-				TranslateMessage(&windowMessage);
-				DispatchMessageA(&windowMessage);
 			}
+			gameKeyboard.modifiers.shift =
+				(gameKeyboard.shiftLeft  > ButtonState::NOT_PRESSED ||
+				 gameKeyboard.shiftRight > ButtonState::NOT_PRESSED);
+			gameKeyboard.modifiers.control =
+				(gameKeyboard.controlLeft  > ButtonState::NOT_PRESSED ||
+				 gameKeyboard.controlRight > ButtonState::NOT_PRESSED);
+			gameKeyboard.modifiers.alt =
+				gameKeyboard.alt > ButtonState::NOT_PRESSED;
 			if(gamePadArrayCurrentFrame == gamePadArrayA)
 			{
 				gamePadArrayPreviousFrame = gamePadArrayA;
@@ -929,6 +1071,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				.bytesPerPixel = g_backBuffer.bytesPerPixel
 			};
 			if(!game_updateAndDraw(gameMemory, gameGraphicsBuffer, 
+			                       gameKeyboard,
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{
 				g_running = false;
@@ -977,7 +1120,7 @@ internal int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					g_perfCounterHz.QuadPart;
 				const LONGLONG elapsedMicroseconds = 
 					(perfCountDiff*1000000) / g_perfCounterHz.QuadPart;
-#if INTERNAL_BUILD || SLOW_BUILD
+#if SLOW_BUILD
 				// send performance measurement to debugger as a string //
 				{
 					char outputBuffer[256] = {};
