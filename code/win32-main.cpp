@@ -900,6 +900,25 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 	}
 	return result;
 }
+internal LARGE_INTEGER w32QueryPerformanceCounter()
+{
+	LARGE_INTEGER result;
+	if(!QueryPerformanceCounter(&result))
+	{
+		///TODO: handle GetLastError
+	}
+	return result;
+}
+internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount, 
+                               const LARGE_INTEGER& performanceCount)
+{
+	kassert(performanceCount.QuadPart > previousPerformanceCount.QuadPart);
+	const LONGLONG perfCountDiff = 
+		performanceCount.QuadPart - previousPerformanceCount.QuadPart;
+	const f32 elapsedSeconds = 
+		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
+	return elapsedSeconds;
+}
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
@@ -937,6 +956,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
+	///TODO: get window's monitor refresh rate
+	u32 monitorRefreshHz = 60;
+	u32 gameUpdateHz = monitorRefreshHz / 2;
+	f32 targetSecondsElapsedPerFrame = 1.f / gameUpdateHz;
 	GameKeyboard gameKeyboard = {};
 #if INTERNAL_BUILD
 	// ensure that the size of the keyboard's vKeys array matches the size of
@@ -995,15 +1018,46 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
-	// main window loop //
+	local_persist const UINT DESIRED_OS_TIMER_GRANULARITY_MS = 1;
+	// Determine if the system is capable of our desired timer granularity //
+	bool systemSupportsDesiredTimerGranularity = false;
 	{
-		g_running = true;
-		LARGE_INTEGER perfCountPrev;
-		if(!QueryPerformanceCounter(&perfCountPrev))
+		TIMECAPS timingCapabilities;
+		if(timeGetDevCaps(&timingCapabilities, sizeof(TIMECAPS)) == 
+			MMSYSERR_NOERROR)
+		{
+			systemSupportsDesiredTimerGranularity = 
+				(timingCapabilities.wPeriodMin <= 
+				 DESIRED_OS_TIMER_GRANULARITY_MS);
+		}
+		else
+		{
+			///TODO: log warning
+		}
+	}
+	// set scheduler granularity using timeBeginPeriod //
+	const bool sleepIsGranular = systemSupportsDesiredTimerGranularity &&
+		timeBeginPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) == TIMERR_NOERROR;
+	if(!sleepIsGranular)
+	{
+		kassert(!"Failed to set OS sleep granularity!");
+		///TODO: log warning
+	}
+#if 1
+	if(sleepIsGranular)
+	{
+		const HANDLE hProcess = GetCurrentProcess();
+		if(!SetPriorityClass(hProcess, HIGH_PRIORITY_CLASS))
 		{
 			///TODO: handle GetLastError
 			return -1;
 		}
+	}
+#endif
+	// main window loop //
+	{
+		g_running = true;
+		LARGE_INTEGER perfCountPrev = w32QueryPerformanceCounter();
 		u64 clockCyclesPrev = __rdtsc();
 		while(g_running)
 		{
@@ -1101,37 +1155,63 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				w32UpdateWindow(g_backBuffer, hdc,
 				                winDims.width, winDims.height);
 			}
+			// update window //
+			{
+				const W32Dimension2d winDims = 
+					w32GetWindowDimensions(mainWindow);
+				w32UpdateWindow(g_backBuffer, hdc,
+				                winDims.width, winDims.height);
+			}
+			// enforce targetSecondsElapsedPerFrame //
+			{
+				f32 awakeSeconds = 
+					w32ElapsedSeconds(perfCountPrev, 
+					                  w32QueryPerformanceCounter());
+				while(awakeSeconds < targetSecondsElapsedPerFrame)
+				{
+					if(sleepIsGranular)
+					{
+						const DWORD sleepMilliseconds = 
+							static_cast<DWORD>(1000 * 
+							(targetSecondsElapsedPerFrame - awakeSeconds));
+						Sleep(sleepMilliseconds);
+					}
+					awakeSeconds = 
+						w32ElapsedSeconds(perfCountPrev, 
+						                  w32QueryPerformanceCounter());
+				}
+			}
 			// measure main loop performance //
 			{
-				LARGE_INTEGER perfCount;
-				if(!QueryPerformanceCounter(&perfCount))
-				{
-					///TODO: handle GetLastError
-					return -1;
-				}
-				const LONGLONG perfCountDiff =
-					perfCount.QuadPart - perfCountPrev.QuadPart;
-				perfCountPrev = perfCount;
+				const LARGE_INTEGER perfCount = w32QueryPerformanceCounter();
+				const f32 elapsedSeconds = 
+					w32ElapsedSeconds(perfCountPrev, perfCount);
 				const u64 clockCycles = __rdtsc();
 				const u64 clockCycleDiff = clockCycles - clockCyclesPrev;
-				clockCyclesPrev = clockCycles;
-				const f32 elapsedSeconds = 
-					static_cast<f32>(perfCountDiff) / 
-					g_perfCounterHz.QuadPart;
+#if 0
 				const LONGLONG elapsedMicroseconds = 
 					(perfCountDiff*1000000) / g_perfCounterHz.QuadPart;
+#endif
 #if SLOW_BUILD
 				// send performance measurement to debugger as a string //
 				{
 					char outputBuffer[256] = {};
 					snprintf(outputBuffer, sizeof(outputBuffer), 
-					         "%.2f ms/f | %lli us/f | %.2f Mc/f\n", 
-					         elapsedSeconds*1000, elapsedMicroseconds,
-					         clockCycleDiff/1000000.f);
+					         "%.2f ms/f | %.2f Mc/f\n", 
+					         elapsedSeconds*1000, clockCycleDiff/1000000.f);
 					OutputDebugStringA(outputBuffer);
 				}
 #endif
+				perfCountPrev   = perfCount;
+				clockCyclesPrev = clockCycles;
 			}
+		}
+	}
+	if(sleepIsGranular)
+	{
+		if(timeEndPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
+		{
+			///TODO: log error
 		}
 	}
 	return 0;
