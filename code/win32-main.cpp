@@ -1054,6 +1054,15 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 	}
 #endif
+#if LIMIT_FRAMERATE_USING_TIMER
+	const HANDLE hTimerMainThread = 
+		CreateWaitableTimerA(nullptr, true, "hTimerMainThread");
+	if(!hTimerMainThread)
+	{
+		///TODO: handle GetLastError
+		return -1;
+	}
+#endif
 	// main window loop //
 	{
 		g_running = true;
@@ -1162,18 +1171,59 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				w32UpdateWindow(g_backBuffer, hdc,
 				                winDims.width, winDims.height);
 			}
+#if LIMIT_FRAMERATE_USING_TIMER
 			// enforce targetSecondsElapsedPerFrame //
 			{
+				const f32 awakeSeconds = 
+					w32ElapsedSeconds(perfCountPrev, 
+					                  w32QueryPerformanceCounter());
+				if(awakeSeconds < targetSecondsElapsedPerFrame)
+				{
+					const LONGLONG frameWaitHectoNanoseconds = 
+						static_cast<LONGLONG>(10000000 *
+						(targetSecondsElapsedPerFrame - awakeSeconds));
+					// negative waitDueTime indicates relative time apparently
+					LARGE_INTEGER waitDueTime;
+					waitDueTime.QuadPart = -frameWaitHectoNanoseconds;
+					if(!SetWaitableTimer(hTimerMainThread, &waitDueTime, 0, 
+					                     nullptr, nullptr, false))
+					{
+						kassert(!"SetWaitableTimer failure!");
+						///TODO: handle GetLastError
+					}
+					local_persist const DWORD MAX_SLEEP_MILLISECONDS = 34;
+					const DWORD waitResult = 
+						WaitForSingleObject(hTimerMainThread, 
+						                    MAX_SLEEP_MILLISECONDS);
+					kassert(waitResult == WAIT_OBJECT_0);
+					if(waitResult == WAIT_FAILED)
+					{
+						kassert(!"WaitForSingleObject failure!");
+						///TODO: handle GetLastError
+					}
+				}
+			}
+#else
+			// enforce targetSecondsElapsedPerFrame //
+			{
+				// It is possible for windows to sleep us for longer than we 
+				//	would want it to, so we will ask the OS to wake us up a 
+				//	little bit earlier than desired.  Then we will spin the CPU
+				//	until the actual target FPS is achieved.
+				// THREAD_WAKE_SLACK_SECONDS is how early we should wake up by.
+				local_persist const f32 THREAD_WAKE_SLACK_SECONDS = 0.001f;
 				f32 awakeSeconds = 
 					w32ElapsedSeconds(perfCountPrev, 
 					                  w32QueryPerformanceCounter());
+				const f32 targetAwakeSeconds = 
+					targetSecondsElapsedPerFrame - THREAD_WAKE_SLACK_SECONDS;
 				while(awakeSeconds < targetSecondsElapsedPerFrame)
 				{
-					if(sleepIsGranular)
+					if(sleepIsGranular && awakeSeconds < targetAwakeSeconds)
 					{
 						const DWORD sleepMilliseconds = 
 							static_cast<DWORD>(1000 * 
-							(targetSecondsElapsedPerFrame - awakeSeconds));
+							(targetAwakeSeconds - awakeSeconds));
 						Sleep(sleepMilliseconds);
 					}
 					awakeSeconds = 
@@ -1181,6 +1231,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 						                  w32QueryPerformanceCounter());
 				}
 			}
+#endif
 			// measure main loop performance //
 			{
 				const LARGE_INTEGER perfCount = w32QueryPerformanceCounter();
