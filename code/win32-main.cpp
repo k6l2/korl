@@ -468,18 +468,13 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 internal FILETIME w32GetLastWriteTime(const char* fileName)
 {
 	FILETIME result = {};
-	WIN32_FIND_DATAA findFileData;
-	const HANDLE hFindFile = FindFirstFileA(fileName, &findFileData);
-	if(hFindFile == INVALID_HANDLE_VALUE)
-	{
-		///TODO: handle GetLastError
-		return result;
-	}
-	result = findFileData.ftLastWriteTime;
-	if(!FindClose(hFindFile))
+	WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
+	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
+	                         &fileAttributeData))
 	{
 		///TODO: handle GetLastError
 	}
+	result = fileAttributeData.ftLastWriteTime;
 	return result;
 }
 internal GameCode w32LoadGameCode(const char* fileNameDll, 
@@ -910,6 +905,34 @@ internal void w32ProcessKeyEvent(MSG& msg, GameKeyboard& gameKeyboard)
 			: ButtonState::NOT_PRESSED;
 	}
 }
+internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
+{
+	local_persist const DWORD DEFAULT_RESULT = 60;
+	const HMONITOR nearestMonitor = 
+		MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFOEXA monitorInfo;
+	monitorInfo.cbSize = sizeof(MONITORINFOEXA);
+	if(!GetMonitorInfoA(nearestMonitor, &monitorInfo))
+	{
+		///TODO: log error
+		return DEFAULT_RESULT;
+	}
+	DEVMODEA monitorDevMode;
+	monitorDevMode.dmSize = sizeof(DEVMODEA);
+	monitorDevMode.dmDriverExtra = 0;
+	if(!EnumDisplaySettingsA(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, 
+	                         &monitorDevMode))
+	{
+		///TODO: log error
+		return DEFAULT_RESULT;
+	}
+	if(monitorDevMode.dmDisplayFrequency < 2)
+	{
+		///TODO: log warning: unknown hardware-defined refresh rate!!!
+		return DEFAULT_RESULT;
+	}
+	return monitorDevMode.dmDisplayFrequency;
+}
 internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, 
                                                 WPARAM wParam, LPARAM lParam)
 {
@@ -1076,8 +1099,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
-	///TODO: get window's monitor refresh rate (use MonitorFromWindow?..)
-	u32 monitorRefreshHz = 60;
+	///TODO: update the monitorRefreshHz and dependent variable realtime when 
+	///      the window gets moved around to another monitor.
+	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(mainWindow);
 	u32 gameUpdateHz = monitorRefreshHz / 2;
 	f32 targetSecondsElapsedPerFrame = 1.f / gameUpdateHz;
 	GameKeyboard gameKeyboard = {};
@@ -1190,6 +1214,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	// main window loop //
 	{
 		g_running = true;
+		LARGE_INTEGER perfCountFrameLimiterPrev = w32QueryPerformanceCounter();
 		LARGE_INTEGER perfCountPrev = w32QueryPerformanceCounter();
 		u64 clockCyclesPrev = __rdtsc();
 		while(g_running)
@@ -1300,13 +1325,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				w32UpdateWindow(g_backBuffer, hdc,
 				                winDims.width, winDims.height);
 			}
-			// update window //
-			{
-				const W32Dimension2d winDims = 
-					w32GetWindowDimensions(mainWindow);
-				w32UpdateWindow(g_backBuffer, hdc,
-				                winDims.width, winDims.height);
-			}
 #if LIMIT_FRAMERATE_USING_TIMER
 			// enforce targetSecondsElapsedPerFrame //
 			{
@@ -1349,7 +1367,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				// THREAD_WAKE_SLACK_SECONDS is how early we should wake up by.
 				local_persist const f32 THREAD_WAKE_SLACK_SECONDS = 0.001f;
 				f32 awakeSeconds = 
-					w32ElapsedSeconds(perfCountPrev, 
+					w32ElapsedSeconds(perfCountFrameLimiterPrev, 
 					                  w32QueryPerformanceCounter());
 				const f32 targetAwakeSeconds = 
 					targetSecondsElapsedPerFrame - THREAD_WAKE_SLACK_SECONDS;
@@ -1363,9 +1381,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 						Sleep(sleepMilliseconds);
 					}
 					awakeSeconds = 
-						w32ElapsedSeconds(perfCountPrev, 
+						w32ElapsedSeconds(perfCountFrameLimiterPrev, 
 						                  w32QueryPerformanceCounter());
 				}
+				perfCountFrameLimiterPrev = w32QueryPerformanceCounter();
 			}
 #endif
 			// measure main loop performance //
