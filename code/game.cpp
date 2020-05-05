@@ -1,6 +1,5 @@
 #include "game.h"
-internal void game_renderAudio(GameMemory& memory, 
-                               GameAudioBuffer& audioBuffer)
+GAME_RENDER_AUDIO(gameRenderAudio)
 {
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
 	// render theramin audio data to temporary sound buffer //
@@ -25,10 +24,7 @@ internal void game_renderAudio(GameMemory& memory,
 		}
 	}
 }
-internal bool game_updateAndDraw(GameMemory& memory, 
-                                 GameGraphicsBuffer& graphicsBuffer, 
-                                 GameKeyboard& gameKeyboard, 
-                                 GamePad* gamePadArray, u8 numGamePads)
+GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
@@ -37,11 +33,13 @@ internal bool game_updateAndDraw(GameMemory& memory,
 		*gameState = {};
 #ifdef INTERNAL_BUILD
 		PlatformDebugReadFileResult readFileResult = 
-			platformReadEntireFile(__FILE__);
-		platformPrintDebugString(reinterpret_cast<char*>(readFileResult.data));
-		platformWriteEntireFile("game_copy.cpp", 
-		                        readFileResult.data, readFileResult.dataBytes);
-		platformFreeFileMemory(readFileResult.data);
+			memory.platformReadEntireFile(__FILE__);
+		memory.platformPrintDebugString(
+			reinterpret_cast<char*>(readFileResult.data));
+		memory.platformWriteEntireFile("game_copy.cpp", 
+		                               readFileResult.data, 
+								       readFileResult.dataBytes);
+		memory.platformFreeFileMemory(readFileResult.data);
 #endif
 		memory.initialized = true;
 	}

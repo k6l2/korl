@@ -28,6 +28,8 @@ rem /MT - statically link to LIBCMT.  This is necessary to eliminate the need to
 rem       dynamically link to libcrt at runtime.
 rem /MTd - statically link to LIBCMTD.  This is necessary to eliminate the need 
 rem        to dynamically link to libcrt at runtime.
+rem /LD[d] - create a DLL (or debug, if using the `d` switch).  Implies /MT 
+rem          unless already using /MD
 rem /nologo - prevent the compiler from outputing the compiler version info,
 rem           architecture info, and other verbose output messages
 rem /std:c++latest - used for C++20 designated initializers
@@ -39,20 +41,25 @@ rem /opt:ref - removes unreferenced packaged functions and data, known as
 rem            COMDATs. This optimization is known as transitive COMDAT 
 rem            elimination. The /OPT:REF option also disables incremental 
 rem            linking.
+rem /EXPORT:<name> - exports a function for a DLL
+rem /incremental:no - turn off incremental builds! wasting time for no reason.
 rem user32.lib - ??? various win32 stuff
 rem Gdi32.lib - used for windows software drawing operations.  ///TODO: remove
 rem             later when using OpenGL or Vulkan backend renderers probably?
 rem winmm.lib - multimedia timer functions (granular sleep functionality)
-set CommonCompilerFlags=/Fmwin32-main.map ^
-	/DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
+set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
 	/MTd /W4 /WX /wd4100 /wd4201 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
-set CommonLinkerFlags=/opt:ref user32.lib Gdi32.lib winmm.lib
+set CommonLinkerFlags=/opt:ref /incremental:no user32.lib Gdi32.lib winmm.lib
 rem 32-bit build
-rem cl %project_root%\code\win32-main.cpp %CommonCompilerFlags% ^
+rem cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
+rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
-cl %project_root%\code\win32-main.cpp %CommonCompilerFlags% ^
-	/link %CommonLinkerFlags%
+cl %project_root%\code\game.cpp /Fmgame.map ^
+	%CommonCompilerFlagsDebug% /LDd /link ^
+	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
+cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
+	%CommonCompilerFlagsDebug% /link %CommonLinkerFlags%
 popd
 echo Build script finished.

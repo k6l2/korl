@@ -7,6 +7,7 @@
 #else
 	#define kassert(expression) {}
 #endif
+// crt math operations
 #include <math.h>
 #include <stdint.h>
 using u8  = uint8_t;
@@ -67,6 +68,26 @@ namespace kmath
 	}
 }
 // Data structures which must be the same for the Platform & Game layers ///////
+/* PLATFORM INTERFACE *********************************************************/
+#define PLATFORM_PRINT_DEBUG_STRING(name) void name(char* string)
+typedef PLATFORM_PRINT_DEBUG_STRING(fnSig_PlatformPrintDebugString);
+#if INTERNAL_BUILD
+struct PlatformDebugReadFileResult
+{
+	void* data;
+	u32 dataBytes;
+};
+#define PLATFORM_READ_ENTIRE_FILE(name) \
+	PlatformDebugReadFileResult name(char* fileName)
+typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
+/** @return a valid result (non-zero data & dataBytes) if successful */
+#define PLATFORM_FREE_FILE_MEMORY(name) void name(void* fileMemory)
+typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
+#define PLATFORM_WRITE_ENTIRE_FILE(name) bool name(char* fileName, \
+                                                   void* data, u32 dataBytes)
+typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
+#endif
+/***************************************************** END PLATFORM INTERFACE */
 struct GameGraphicsBuffer
 {
 	void* bitmapMemory;
@@ -238,27 +259,10 @@ struct GameMemory
 	u64   permanentMemoryBytes;
 	void* transientMemory;
 	u64   transientMemoryBytes;
-};
-struct GameState
-{
-	i32 offsetX = 0;
-	i32 offsetY = 0;
-	f32 theraminHz = 294.f;
-	f32 theraminSine = 0;
-	f32 theraminVolume = 5000;
-};
-/* PLATFORM INTERFACE *********************************************************/
-internal void platformPrintDebugString(char* string);
+	fnSig_PlatformPrintDebugString* platformPrintDebugString;
 #if INTERNAL_BUILD
-struct PlatformDebugReadFileResult
-{
-	void* data;
-	u32 dataBytes;
-};
-/** @return a valid result (non-zero data & dataBytes) if successful */
-internal PlatformDebugReadFileResult platformReadEntireFile(char* fileName);
-internal void platformFreeFileMemory(void* fileMemory);
-internal bool platformWriteEntireFile(char* fileName, 
-                                      void* data, u32 dataBytes);
+	fnSig_PlatformReadEntireFile* platformReadEntireFile;
+	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
+	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
 #endif
-/***************************************************** END PLATFORM INTERFACE */
+};

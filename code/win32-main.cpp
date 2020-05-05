@@ -1,21 +1,27 @@
-// crt math operations
+#include "game.h"
 #include "global-defines.h"
-#include "game.cpp"
 // crt io
 #include <stdio.h>
 #include "win32-main.h"
 #include <Xinput.h>
 #include <dsound.h>
+struct GameCode
+{
+	fnSig_GameRenderAudio* renderAudio;
+	fnSig_GameUpdateAndDraw* updateAndDraw;
+	HMODULE hLib;
+	bool isValid;
+};
 global_variable bool g_running;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
 global_variable LARGE_INTEGER g_perfCounterHz;
-internal void platformPrintDebugString(char* string)
+PLATFORM_PRINT_DEBUG_STRING(platformPrintDebugString)
 {
 	OutputDebugStringA(string);
 }
 #if INTERNAL_BUILD
-internal PlatformDebugReadFileResult platformReadEntireFile(char* fileName)
+PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 {
 	PlatformDebugReadFileResult result = {};
 	const HANDLE fileHandle = 
@@ -107,7 +113,7 @@ internal PlatformDebugReadFileResult platformReadEntireFile(char* fileName)
 	result.dataBytes = fileSize32;
 	return result;
 }
-internal void platformFreeFileMemory(void* fileMemory)
+PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory)
 {
 	if(!VirtualFree(fileMemory, 0, MEM_RELEASE))
 	{
@@ -115,8 +121,7 @@ internal void platformFreeFileMemory(void* fileMemory)
 		OutputDebugStringA("ERROR: Failed to free file memory!!!!!\n");
 	}
 }
-internal bool platformWriteEntireFile(char* fileName, 
-                                      void* data, u32 dataBytes)
+PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 {
 	const HANDLE fileHandle = 
 		CreateFileA(fileName, GENERIC_WRITE, 0, nullptr, 
@@ -459,6 +464,46 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 	}
 }
 /*************************************************** END DIRECT SOUND SUPPORT */
+internal GameCode w32LoadGameCode()
+{
+	GameCode result = {};
+#if INTERNAL_BUILD
+	CopyFileA("game.dll", "game_temp.dll", false);
+#endif
+	result.hLib = LoadLibraryA("game_temp.dll");
+	if(result.hLib)
+	{
+		result.renderAudio = reinterpret_cast<fnSig_GameRenderAudio*>(
+			GetProcAddress(result.hLib, "gameRenderAudio"));
+		result.updateAndDraw = reinterpret_cast<fnSig_GameUpdateAndDraw*>(
+			GetProcAddress(result.hLib, "gameUpdateAndDraw"));
+		result.isValid = (result.renderAudio && result.updateAndDraw);
+	}
+	else
+	{
+		///TODO: handle GetLastError
+	}
+	if(!result.isValid)
+	{
+		result.renderAudio   = gameRenderAudioStub;
+		result.updateAndDraw = gameUpdateAndDrawStub;
+	}
+	return result;
+}
+internal void w32UnloadGameCode(GameCode& gameCode)
+{
+	if(gameCode.hLib)
+	{
+		if(!FreeLibrary(gameCode.hLib))
+		{
+			///TODO: handle GetLastError
+		}
+		gameCode.hLib = NULL;
+	}
+	gameCode.isValid = false;
+	gameCode.renderAudio   = gameRenderAudioStub;
+	gameCode.updateAndDraw = gameUpdateAndDrawStub;
+}
 internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 {
 	RECT clientRect;
@@ -481,7 +526,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
                                   u32& io_runningSoundSample,
                                   VOID* gameSoundBufferMemory,
                                   GamePad* gamePadArray, u8 numGamePads,
-                                  GameMemory& gameMemory)
+                                  GameMemory& gameMemory, GameCode& game)
 {
 	const u32 bytesPerSample = sizeof(SoundSample)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
@@ -621,7 +666,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			.soundSampleHz     = soundSampleHz,
 			.numSoundChannels  = numSoundChannels
 		};
-		game_renderAudio(gameMemory, gameAudioBuffer);
+		game.renderAudio(gameMemory, gameAudioBuffer);
 	}
 	// Because audio buffer is circular, we have to handle two cases.  In one 
 	//	case, the volatile region is contiguous inside the buffer.  In the other
@@ -922,6 +967,7 @@ internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount,
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
+	GameCode game = w32LoadGameCode();
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
 		///TODO: log GetLastError
@@ -956,7 +1002,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
-	///TODO: get window's monitor refresh rate
+	///TODO: get window's monitor refresh rate (use MonitorFromWindow?..)
 	u32 monitorRefreshHz = 60;
 	u32 gameUpdateHz = monitorRefreshHz / 2;
 	f32 targetSecondsElapsedPerFrame = 1.f / gameUpdateHz;
@@ -1010,6 +1056,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
+	gameMemory.platformPrintDebugString = platformPrintDebugString;
+	gameMemory.platformReadEntireFile   = platformReadEntireFile;
+	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
+	gameMemory.platformWriteEntireFile  = platformWriteEntireFile;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -1065,11 +1115,23 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #endif
 	// main window loop //
 	{
+#if INTERNAL_BUILD
+		u32 loadCounter = 0;
+#endif
 		g_running = true;
 		LARGE_INTEGER perfCountPrev = w32QueryPerformanceCounter();
 		u64 clockCyclesPrev = __rdtsc();
 		while(g_running)
 		{
+#if INTERNAL_BUILD
+			loadCounter++;
+			if(loadCounter >= 60)
+			{
+				w32UnloadGameCode(game);
+				game = w32LoadGameCode();
+				loadCounter = 0;
+			}
+#endif
 			MSG windowMessage;
 			while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
 			{
@@ -1133,7 +1195,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				.pitch         = g_backBuffer.pitch,
 				.bytesPerPixel = g_backBuffer.bytesPerPixel
 			};
-			if(!game_updateAndDraw(gameMemory, gameGraphicsBuffer, 
+			if(!game.updateAndDraw(gameMemory, gameGraphicsBuffer, 
 			                       gameKeyboard,
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{
@@ -1143,7 +1205,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			                    SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, 
 			                    runningSoundSample, gameSoundMemory, 
 			                    gamePadArrayCurrentFrame, numGamePads,
-			                    gameMemory);
+			                    gameMemory, game);
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
 			{
