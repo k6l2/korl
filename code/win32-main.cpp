@@ -10,6 +10,7 @@ struct GameCode
 	fnSig_GameRenderAudio* renderAudio;
 	fnSig_GameUpdateAndDraw* updateAndDraw;
 	HMODULE hLib;
+	FILETIME dllLastWriteTime;
 	bool isValid;
 };
 global_variable bool g_running;
@@ -464,13 +465,33 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 	}
 }
 /*************************************************** END DIRECT SOUND SUPPORT */
-internal GameCode w32LoadGameCode()
+internal FILETIME w32GetLastWriteTime(const char* fileName)
+{
+	FILETIME result = {};
+	WIN32_FIND_DATAA findFileData;
+	const HANDLE hFindFile = FindFirstFileA(fileName, &findFileData);
+	if(hFindFile == INVALID_HANDLE_VALUE)
+	{
+		///TODO: handle GetLastError
+		return result;
+	}
+	result = findFileData.ftLastWriteTime;
+	if(!FindClose(hFindFile))
+	{
+		///TODO: handle GetLastError
+	}
+	return result;
+}
+internal GameCode w32LoadGameCode(const char* fileNameDll, 
+                                  const char* fileNameDllTemp)
 {
 	GameCode result = {};
-#if INTERNAL_BUILD
-	CopyFileA("game.dll", "game_temp.dll", false);
-#endif
-	result.hLib = LoadLibraryA("game_temp.dll");
+	result.dllLastWriteTime = w32GetLastWriteTime(fileNameDll);
+	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
+	{
+		///TODO: handle GetLastError
+	}
+	result.hLib = LoadLibraryA(fileNameDllTemp);
 	if(result.hLib)
 	{
 		result.renderAudio = reinterpret_cast<fnSig_GameRenderAudio*>(
@@ -967,7 +988,60 @@ internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount,
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
-	GameCode game = w32LoadGameCode();
+	local_persist const char FILE_NAME_GAME_DLL[]      = "game.dll";
+	local_persist const char FILE_NAME_GAME_DLL_TEMP[] = "game_temp.dll";
+	///TODO: handle file paths longer than MAX_PATH in the future...
+	size_t pathToExeSize = 0;
+	char pathToExe[MAX_PATH];
+	// locate where our exe file is on the OS so we can search for DLL files 
+	//	there instead of whatever the current working directory is //
+	{
+		if(!GetModuleFileNameA(NULL, pathToExe, MAX_PATH))
+		{
+			///TODO: handle GetLastError
+			return -1;
+		}
+		char* lastBackslash = pathToExe;
+		for(char* c = pathToExe; *c; c++)
+		{
+			if(*c == '\\')
+			{
+				lastBackslash = c;
+			}
+		}
+		*(lastBackslash + 1) = 0;
+		pathToExeSize = lastBackslash - pathToExe;
+	}
+	///TODO: handle file paths longer than MAX_PATH in the future...
+	char fullPathToGameDll[MAX_PATH] = {};
+	char fullPathToGameDllTemp[MAX_PATH] = {};
+	// use the `pathToExe` to determine the FULL path to the game DLL file //
+	{
+		if(strcat_s(fullPathToGameDll, MAX_PATH, pathToExe))
+		{
+			///TODO: log error
+			return -1;
+		}
+		if(strcat_s(fullPathToGameDll + pathToExeSize, 
+		            MAX_PATH - pathToExeSize, FILE_NAME_GAME_DLL))
+		{
+			///TODO: log error
+			return -1;
+		}
+		if(strcat_s(fullPathToGameDllTemp, MAX_PATH, pathToExe))
+		{
+			///TODO: log error
+			return -1;
+		}
+		if(strcat_s(fullPathToGameDllTemp + pathToExeSize, 
+		            MAX_PATH - pathToExeSize, FILE_NAME_GAME_DLL_TEMP))
+		{
+			///TODO: log error
+			return -1;
+		}
+	}
+	GameCode game = w32LoadGameCode(fullPathToGameDll, 
+	                                fullPathToGameDllTemp);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
 		///TODO: log GetLastError
@@ -1115,23 +1189,23 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #endif
 	// main window loop //
 	{
-#if INTERNAL_BUILD
-		u32 loadCounter = 0;
-#endif
 		g_running = true;
 		LARGE_INTEGER perfCountPrev = w32QueryPerformanceCounter();
 		u64 clockCyclesPrev = __rdtsc();
 		while(g_running)
 		{
-#if INTERNAL_BUILD
-			loadCounter++;
-			if(loadCounter >= 60)
+			// dynamically hot-reload game code!!! //
 			{
-				w32UnloadGameCode(game);
-				game = w32LoadGameCode();
-				loadCounter = 0;
+				const FILETIME gameCodeLastWriteTime = 
+					w32GetLastWriteTime(fullPathToGameDll);
+				if(CompareFileTime(&gameCodeLastWriteTime, 
+				                   &game.dllLastWriteTime))
+				{
+					w32UnloadGameCode(game);
+					game = w32LoadGameCode(fullPathToGameDll, 
+					                       fullPathToGameDllTemp);
+				}
 			}
-#endif
 			MSG windowMessage;
 			while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
 			{

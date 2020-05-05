@@ -2,6 +2,7 @@
 rem prerequisites: env.bat
 if not exist "%project_root%\build" mkdir %project_root%\build
 pushd %project_root%\build
+del *.pdb > NUL 2> NUL
 rem --- DEFINES ---
 rem     INTERNAL_BUILD = set to 0 to disable all code which should never be 
 rem                      shipped to the end-user, such as debug functions etc...
@@ -43,6 +44,7 @@ rem            elimination. The /OPT:REF option also disables incremental
 rem            linking.
 rem /EXPORT:<name> - exports a function for a DLL
 rem /incremental:no - turn off incremental builds! wasting time for no reason.
+rem /pdb:<name> - specify a specific name for the PDB file
 rem user32.lib - ??? various win32 stuff
 rem Gdi32.lib - used for windows software drawing operations.  ///TODO: remove
 rem             later when using OpenGL or Vulkan backend renderers probably?
@@ -50,16 +52,18 @@ rem winmm.lib - multimedia timer functions (granular sleep functionality)
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
 	/MTd /W4 /WX /wd4100 /wd4201 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
-set CommonLinkerFlags=/opt:ref /incremental:no user32.lib Gdi32.lib winmm.lib
+set CommonLinkerFlags=/opt:ref /incremental:no 
 rem 32-bit build
 rem cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
 rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
 cl %project_root%\code\game.cpp /Fmgame.map ^
-	%CommonCompilerFlagsDebug% /LDd /link ^
+	%CommonCompilerFlagsDebug% /LDd /link %CommonLinkerFlags% ^
+	/PDB:game%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%.pdb ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
 cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
-	%CommonCompilerFlagsDebug% /link %CommonLinkerFlags%
+	%CommonCompilerFlagsDebug% /link %CommonLinkerFlags% ^
+	user32.lib Gdi32.lib winmm.lib
 popd
 echo Build script finished.

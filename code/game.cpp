@@ -31,7 +31,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!memory.initialized)
 	{
 		*gameState = {};
-#ifdef INTERNAL_BUILD
+#if INTERNAL_BUILD && 0
 		PlatformDebugReadFileResult readFileResult = 
 			memory.platformReadEntireFile(__FILE__);
 		memory.platformPrintDebugString(
@@ -62,10 +62,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				gameState->offsetY += 1;
 			}
+			if(gamePadArray[c].buttons.dPadLeft == ButtonState::HELD)
+			{
+				gameState->offsetX -= 1;
+			}
+			if(gamePadArray[c].buttons.dPadRight == ButtonState::HELD)
+			{
+				gameState->offsetX += 1;
+			}
 			gameState->offsetX += 
-				static_cast<i32>(4*gamePadArray[c].normalizedStickLeft.x);
+				static_cast<i32>(100*gamePadArray[c].normalizedStickLeft.x);
 			gameState->offsetY -= 
-				static_cast<i32>(4*gamePadArray[c].normalizedStickLeft.y);
+				static_cast<i32>(100*gamePadArray[c].normalizedStickLeft.y);
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
 			gamePadArray[c].normalizedMotorSpeedRight = 
@@ -85,7 +93,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		for (u32 x = 0; x < graphicsBuffer.width; x++)
 		{
 			// pixel format: 0xXxRrGgBb
-			*pixel++ = ((u8)(x + gameState->offsetX) << 16) | 
+			*pixel++ = ((u8)(x + gameState->offsetX) << 8) | 
 			           ((u8)(y + gameState->offsetY) << 8);
 		}
 		row += graphicsBuffer.pitch;
