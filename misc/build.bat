@@ -1,5 +1,10 @@
 @echo off
 rem prerequisites: env.bat
+rem --- Save the timestamp before building for timing metric ---
+for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
+   set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
+)
+rem --- Clean up build directory ---
 if not exist "%project_root%\build" mkdir %project_root%\build
 pushd %project_root%\build
 del *.pdb > NUL 2> NUL
@@ -62,8 +67,25 @@ cl %project_root%\code\game.cpp /Fmgame.map ^
 	%CommonCompilerFlagsDebug% /LDd /link %CommonLinkerFlags% ^
 	/PDB:game%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%.pdb ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
-cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
-	%CommonCompilerFlagsDebug% /link %CommonLinkerFlags% ^
-	user32.lib Gdi32.lib winmm.lib
+rem Before building the win32 platform application, check to see if it's already
+rem running...  Source: https://www.dostips.com/forum/viewtopic.php?t=5542
+2>NUL (call;>>"win32-main.exe") && (
+	cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
+		%CommonCompilerFlagsDebug% /link %CommonLinkerFlags% ^
+		user32.lib Gdi32.lib winmm.lib
+) || (
+	echo win32-main.exe is locked! Skipping build...
+)
 popd
-echo Build script finished.
+rem --- Calculate how long it took the build script to run ---
+rem Source: https://stackoverflow.com/a/9935540
+for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
+   set /A "end=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
+)
+set /A elapsed=end-start
+set /A hh=elapsed/(60*60*100), rest=elapsed%%(60*60*100)
+set /A mm=rest/(60*100), rest%%=60*100, ss=rest/100, cc=rest%%100
+if %mm% lss 10 set mm=0%mm%
+if %ss% lss 10 set ss=0%ss%
+if %cc% lss 10 set cc=0%cc%
+echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
