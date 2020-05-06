@@ -1,3 +1,4 @@
+///TODO: fullscreen toggle support: https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 #include "game.h"
 #include "global-defines.h"
 // crt io
@@ -14,6 +15,8 @@ struct GameCode
 	bool isValid;
 };
 global_variable bool g_running;
+global_variable bool g_displayCursor;
+global_variable HCURSOR g_cursor;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
 global_variable LARGE_INTEGER g_perfCounterHz;
@@ -939,6 +942,17 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 	LRESULT result = 0;
 	switch(uMsg)
 	{
+		case WM_SETCURSOR:
+		{
+			if(g_displayCursor)
+			{
+				SetCursor(g_cursor);
+			}
+			else
+			{
+				SetCursor(NULL);
+			}
+		} break;
 		case WM_KEYDOWN:
 		case WM_KEYUP:
 		case WM_SYSKEYDOWN:
@@ -1072,10 +1086,15 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	w32LoadXInput();
 	w32ResizeDibSection(g_backBuffer, 1280, 720);
+#if INTERNAL_BUILD
+	g_displayCursor = true;
+#endif
+	g_cursor = LoadCursorA(NULL, IDC_ARROW);
 	const WNDCLASS wndClass = {
 		.style         = CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
+		.hCursor       = g_cursor,
 		.lpszClassName = "K10WindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)

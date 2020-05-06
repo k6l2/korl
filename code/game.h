@@ -6,7 +6,7 @@ struct GameState
 	i32 offsetY = 0;
 	f32 theraminHz = 294.f;
 	f32 theraminSine = 0;
-	f32 theraminVolume = 5000;
+	f32 theraminVolume = 1000;
 };
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
                                           GameAudioBuffer& audioBuffer)
