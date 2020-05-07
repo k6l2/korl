@@ -2,8 +2,8 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "win32 build",
 			"type": "shell",
-			"label": "build",
 			"group": {
 				"kind": "build",
 				"isDefault": true

@@ -1,0 +1,17 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "win32 build & debug",
+			"type": "cppvsdbg",
+			"request": "launch",
+			"program": "${workspaceRoot}/build/win32-main.exe",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceRoot}",
+			"environment": [],
+			"externalConsole": false,
+			"preLaunchTask": "win32 build"
+		}
+	]
+}
