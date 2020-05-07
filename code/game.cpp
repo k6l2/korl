@@ -93,8 +93,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		for (u32 x = 0; x < graphicsBuffer.width; x++)
 		{
 			// pixel format: 0xXxRrGgBb
-			*pixel++ = ((u8)(x + gameState->offsetX) << 8) | 
-			           ((u8)(y + gameState->offsetY) << 8);
+			*pixel++ = static_cast<u32>(((u8)(x + gameState->offsetX) << 8) | 
+			                            ((u8)(y + gameState->offsetY) << 8));
 		}
 		row += graphicsBuffer.pitch;
 	}

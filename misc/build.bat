@@ -21,10 +21,13 @@ rem                           development
 rem                      -incurs a non-zero runtime cost
 rem                  Example: debug printing timing info to standard output.
 rem /W4 - warning level 4
+rem /Wall - use ALL warnings
 rem /WX - treat all warnings as errors
 rem /wd4100 - disable warning C4100 `unreferenced formal parameter`
 rem /wd4201 - disable warning C4201 
 rem           `nonstandard extension used: nameless struct/union`
+rem /wd4514 - disable warning C4514 
+rem           `unreferenced inline function has been removed`
 rem /Zi - Generates complete debugging information.
 rem /Oi - Generate intrinsic opcodes
 rem /Od - Disable all optimization.
@@ -57,7 +60,7 @@ rem Gdi32.lib - used for windows software drawing operations.  ///TODO: remove
 rem             later when using OpenGL or Vulkan backend renderers probably?
 rem winmm.lib - multimedia timer functions (granular sleep functionality)
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
-	/MTd /W4 /WX /wd4100 /wd4201 /Oi /Od /GR- /EHa- /Zi /FC ^
+	/MTd /WX /wd4201 /wd4514 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
 set CommonLinkerFlags=/opt:ref /incremental:no 
 rem 32-bit build
@@ -66,7 +69,7 @@ rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
 cl %project_root%\code\game.cpp /Fmgame.map ^
-	%CommonCompilerFlagsDebug% /LDd /link %CommonLinkerFlags% ^
+	%CommonCompilerFlagsDebug% /Wall /LDd /link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
 IF %ERRORLEVEL% NEQ 0 (
@@ -83,7 +86,7 @@ if exist win32-main.exe (
 	)
 )
 cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
-	%CommonCompilerFlagsDebug% /link %CommonLinkerFlags% ^
+	%CommonCompilerFlagsDebug% /W4 /wd4100 /link %CommonLinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib 
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!

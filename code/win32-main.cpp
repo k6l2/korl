@@ -1,4 +1,5 @@
 ///TODO: fullscreen toggle support: https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+///TODO: pause audio output when window goes out of focus probably.
 #include "game.h"
 #include "global-defines.h"
 // crt io

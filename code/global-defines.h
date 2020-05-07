@@ -74,8 +74,11 @@ typedef PLATFORM_PRINT_DEBUG_STRING(fnSig_PlatformPrintDebugString);
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
 {
-	void* data;
 	u32 dataBytes;
+#if INTERNAL_BUILD
+	u32 dataBytes_PADDING;
+#endif
+	void* data;
 };
 #define PLATFORM_READ_ENTIRE_FILE(name) \
 	PlatformDebugReadFileResult name(char* fileName)
@@ -95,6 +98,9 @@ struct GameGraphicsBuffer
 	u32 height;
 	u32 pitch;
 	u8 bytesPerPixel;
+#if INTERNAL_BUILD
+	u8 bytesPerPixel_PADDING[3];
+#endif
 };
 struct GameAudioBuffer
 {
@@ -102,6 +108,9 @@ struct GameAudioBuffer
 	u32 lockedSampleCount;
 	u32 soundSampleHz;
 	u8 numSoundChannels;
+#if INTERNAL_BUILD
+	u8 numSoundChannels_PADDING[7];
+#endif
 };
 enum class ButtonState : u8
 {
@@ -247,6 +256,9 @@ struct GamePad
 		ButtonState stickClickLeft;
 		ButtonState stickClickRight;
 	} buttons;
+#if INTERNAL_BUILD
+	i16 buttons_PADDING;
+#endif
 	float normalizedTriggerLeft;
 	float normalizedTriggerRight;
 	float normalizedMotorSpeedLeft;
@@ -255,6 +267,9 @@ struct GamePad
 struct GameMemory
 {
 	bool initialized;
+#if INTERNAL_BUILD
+	u8 initialized_PADDING[7];
+#endif
 	void* permanentMemory;
 	u64   permanentMemoryBytes;
 	void* transientMemory;
