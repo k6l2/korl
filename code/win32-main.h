@@ -15,3 +15,11 @@ struct W32Dimension2d
 	u32 width;
 	u32 height;
 };
+struct GameCode
+{
+	fnSig_GameRenderAudio* renderAudio;
+	fnSig_GameUpdateAndDraw* updateAndDraw;
+	HMODULE hLib;
+	FILETIME dllLastWriteTime;
+	bool isValid;
+};
