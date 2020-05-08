@@ -1,5 +1,3 @@
-///TODO: fullscreen toggle support: https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
-///TODO: pause audio output when window goes out of focus probably.
 #include "game.h"
 #include "global-defines.h"
 // crt io
@@ -7,6 +5,7 @@
 #include "win32-main.h"
 #include "win32-dsound.h"
 #include "win32-xinput.h"
+#include "win32-krb-opengl.h"
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
@@ -225,53 +224,6 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 		return W32Dimension2d{.width=0, .height=0};
 	}
 }
-internal void w32ResizeDibSection(W32OffscreenBuffer& buffer, 
-                                  int width, int height)
-{
-	// negative biHeight makes this bitmap TOP->DOWN instead of BOTTOM->UP
-	buffer.bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-	buffer.bitmapInfo.bmiHeader.biWidth       = width;
-	buffer.bitmapInfo.bmiHeader.biHeight      = -height;
-	buffer.bitmapInfo.bmiHeader.biPlanes      = 1;
-	buffer.bitmapInfo.bmiHeader.biBitCount    = 32;
-	buffer.bitmapInfo.bmiHeader.biCompression = BI_RGB;
-	buffer.width         = width;
-	buffer.height        = height;
-	buffer.bytesPerPixel = 4;
-	buffer.pitch         = buffer.bytesPerPixel * width;
-	if(buffer.bitmapMemory)
-	{
-		VirtualFree(buffer.bitmapMemory, 0, MEM_RELEASE);
-	}
-	// allocate buffer's bitmap memory //
-	{
-		const int bitmapMemorySize = buffer.bytesPerPixel*width*height;
-		buffer.bitmapMemory = VirtualAlloc(NULL, bitmapMemorySize, 
-		                                   MEM_RESERVE | MEM_COMMIT, 
-		                                   PAGE_READWRITE);
-	}
-	if(!buffer.bitmapMemory)
-	{
-		///TODO: handle GetLastError
-	}
-}
-internal void w32UpdateWindow(const W32OffscreenBuffer& buffer, 
-                              HDC hdc, int windowWidth, int windowHeight)
-{
-	const int signedNumCopiedScanlines =
-		StretchDIBits(hdc,
-			0, 0, windowWidth, windowHeight,
-			0, 0, buffer.width, buffer.height,
-			buffer.bitmapMemory,
-			&buffer.bitmapInfo,
-			DIB_RGB_COLORS,
-			SRCCOPY);
-	if( signedNumCopiedScanlines == GDI_ERROR ||
-		signedNumCopiedScanlines == 0)
-	{
-		///TODO: handle error cases
-	}
-}
 internal void w32ProcessKeyEvent(MSG& msg, GameKeyboard& gameKeyboard)
 {
 	// Virtual-Key Codes: 
@@ -464,6 +416,7 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 		{
 			OutputDebugStringA("WM_ACTIVATEAPP\n");
 		} break;
+#if 0
 		case WM_PAINT:
 		{
 			PAINTSTRUCT paintStruct;
@@ -480,6 +433,7 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 			}
 			EndPaint(hwnd, &paintStruct);
 		} break;
+#endif
 		default:
 		{
 			result = DefWindowProcA(hwnd, uMsg, wParam, lParam);
@@ -569,13 +523,15 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		return -1;
 	}
 	w32LoadXInput();
+#if 0
 	w32ResizeDibSection(g_backBuffer, 1280, 720);
+#endif
 #if INTERNAL_BUILD
 	g_displayCursor = true;
 #endif
 	g_cursor = LoadCursorA(NULL, IDC_ARROW);
 	const WNDCLASS wndClass = {
-		.style         = CS_HREDRAW | CS_VREDRAW,
+		.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
 		.hCursor       = g_cursor,
@@ -602,6 +558,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		///TODO: log error
 		return -1;
 	}
+	w32KrbOglInitialize(mainWindow);
+	w32KrbOglSetVSyncPreference(true);
 	///TODO: update the monitorRefreshHz and dependent variable realtime when 
 	///      the window gets moved around to another monitor.
 	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(mainWindow);
@@ -661,6 +619,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformReadEntireFile   = platformReadEntireFile;
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
 	gameMemory.platformWriteEntireFile  = platformWriteEntireFile;
+	gameMemory.krbBeginFrame            = krbBeginFrame;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -824,43 +783,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			{
 				const W32Dimension2d winDims = 
 					w32GetWindowDimensions(mainWindow);
+#if 0
 				w32UpdateWindow(g_backBuffer, hdc,
 				                winDims.width, winDims.height);
-			}
-#if LIMIT_FRAMERATE_USING_TIMER
-			// enforce targetSecondsElapsedPerFrame //
-			{
-				const f32 awakeSeconds = 
-					w32ElapsedSeconds(perfCountPrev, 
-					                  w32QueryPerformanceCounter());
-				if(awakeSeconds < targetSecondsElapsedPerFrame)
+#endif
+				if(!SwapBuffers(hdc))
 				{
-					const LONGLONG frameWaitHectoNanoseconds = 
-						static_cast<LONGLONG>(10000000 *
-						(targetSecondsElapsedPerFrame - awakeSeconds));
-					// negative waitDueTime indicates relative time apparently
-					LARGE_INTEGER waitDueTime;
-					waitDueTime.QuadPart = -frameWaitHectoNanoseconds;
-					if(!SetWaitableTimer(hTimerMainThread, &waitDueTime, 0, 
-					                     nullptr, nullptr, false))
-					{
-						kassert(!"SetWaitableTimer failure!");
-						///TODO: handle GetLastError
-					}
-					local_persist const DWORD MAX_SLEEP_MILLISECONDS = 34;
-					const DWORD waitResult = 
-						WaitForSingleObject(hTimerMainThread, 
-						                    MAX_SLEEP_MILLISECONDS);
-					kassert(waitResult == WAIT_OBJECT_0);
-					if(waitResult == WAIT_FAILED)
-					{
-						kassert(!"WaitForSingleObject failure!");
-						///TODO: handle GetLastError
-					}
+					///TODO: handle GetLastError
 				}
 			}
-#else
 			// enforce targetSecondsElapsedPerFrame //
+			if(!w32KrbOglGetVSync())
 			{
 				// It is possible for windows to sleep us for longer than we 
 				//	would want it to, so we will ask the OS to wake us up a 
@@ -888,7 +821,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				}
 				perfCountFrameLimiterPrev = w32QueryPerformanceCounter();
 			}
-#endif
 			// measure main loop performance //
 			{
 				const LARGE_INTEGER perfCount = w32QueryPerformanceCounter();
@@ -926,3 +858,4 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 }
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
+#include "win32-krb-opengl.cpp"

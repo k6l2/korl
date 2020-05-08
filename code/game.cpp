@@ -48,6 +48,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		return false;
 	}
+	f32 bgClearGreen = 0;
 	if(numGamePads > 0)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
@@ -83,8 +84,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				return false;
 			}
+			bgClearGreen = fabsf(gamePadArray[c].normalizedStickLeft.y);
 		}
 	}
+	memory.krbBeginFrame(0.2f, bgClearGreen, 0.2f);
 	// render a weird gradient pattern to the offscreen buffer //
 	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);
 	for (u32 y = 0; y < graphicsBuffer.height; y++)

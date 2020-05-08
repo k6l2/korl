@@ -1,0 +1,22 @@
+[ ] Implement a simple OpenGL backend renderer API
+	[ ] draw primitives
+	[ ] load & draw textures
+[ ] Implement a simple general-purpose allocator
+[ ] separate game code out of kml, and setup a different repo for a test game
+[ ] Create a test game package which utilizes IMGUI
+	[ ] Hook IMGUI into the general-purpose allocator for transient storage.
+	[ ] Hook IMGUI rendering operations into the OpenGL backend renderer API
+[ ] display debug frame metrics
+[ ] multi-threaded job queue
+	https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
+	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
+	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange
+	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
+	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
+	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
+[ ] Asset streaming using multi-threaded job queue
+[ ] audio mixer
+[ ] collision engine
+[ ] fullscreen toggle support 
+	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+[ ] pause audio output when window goes out of focus probably.

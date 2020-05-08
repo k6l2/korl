@@ -68,8 +68,9 @@ namespace kmath
 	}
 }
 // Data structures which must be the same for the Platform & Game layers ///////
+#include "krb-interface.h"
 /* PLATFORM INTERFACE *********************************************************/
-#define PLATFORM_PRINT_DEBUG_STRING(name) void name(char* string)
+#define PLATFORM_PRINT_DEBUG_STRING(name) void name(const char* const string)
 typedef PLATFORM_PRINT_DEBUG_STRING(fnSig_PlatformPrintDebugString);
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
@@ -280,6 +281,7 @@ struct GameMemory
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
 	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
 #endif
+	fnSig_krbBeginFrame* krbBeginFrame;
 };
 /* GAME INTERFACE *************************************************************/
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
