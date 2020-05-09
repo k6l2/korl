@@ -1,10 +1,11 @@
 [ ] Implement a simple OpenGL backend renderer API
-	[ ] draw primitives
-		[X] draw lines so we can make an origin &| grid
-		[ ] draw triangles
-	[ ] manipulate the VIEW matrix
+	[x] draw primitives
+		[x] draw lines so we can make an origin &| grid
+		[x] draw triangles
+	[x] manipulate the VIEW matrix
 	[ ] load textures
 	[ ] draw textured triangles
+	[ ] allow some kind of `model` transform
 [ ] Implement a simple general-purpose allocator
 [ ] separate game code out of kml, and setup a different repo for a test game
 [ ] Create a test game package which utilizes IMGUI

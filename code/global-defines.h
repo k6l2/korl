@@ -283,6 +283,7 @@ struct GameMemory
 	fnSig_krbBeginFrame* krbBeginFrame;
 	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
 	fnSig_krbDrawLine* krbDrawLine;
+	fnSig_krbDrawTri* krbDrawTri;
 	fnSig_krbViewTranslate* krbViewTranslate;
 };
 /* GAME INTERFACE *************************************************************/

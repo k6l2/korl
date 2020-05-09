@@ -24,10 +24,19 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 }
 internal KRB_DRAW_LINE(krbDrawLine)
 {
-	glBegin(GL_LINES);
 	glColor4f(color.r, color.g, color.b, color.a);
+	glBegin(GL_LINES);
 	glVertex2f(p0.x, p0.y);
 	glVertex2f(p1.x, p1.y);
+	glEnd();
+}
+internal KRB_DRAW_TRI(krbDrawTri)
+{
+	glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
+	glBegin(GL_TRIANGLES);
+	glVertex2f(p0.x, p0.y);
+	glVertex2f(p1.x, p1.y);
+	glVertex2f(p2.x, p2.y);
 	glEnd();
 }
 internal KRB_VIEW_TRANSLATE(krbViewTranslate)

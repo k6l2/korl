@@ -93,6 +93,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbViewTranslate(-gameState->viewOffset2d);
 	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
 	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
+	memory.krbDrawTri({100,100}, {200,100}, {100,200});
 #if 0
 	// render a weird gradient pattern to the offscreen buffer //
 	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);
