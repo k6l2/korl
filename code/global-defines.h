@@ -26,6 +26,11 @@ struct v2f32
 {
 	f32 x;
 	f32 y;
+public:
+	inline v2f32 operator-()
+	{
+		return v2f32{-x,-y};
+	}
 };
 struct v2u32
 {
@@ -278,6 +283,7 @@ struct GameMemory
 	fnSig_krbBeginFrame* krbBeginFrame;
 	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
 	fnSig_krbDrawLine* krbDrawLine;
+	fnSig_krbViewTranslate* krbViewTranslate;
 };
 /* GAME INTERFACE *************************************************************/
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \

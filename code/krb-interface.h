@@ -21,9 +21,12 @@ namespace krb
                                                  f32 halfDepth)
 #define KRB_DRAW_LINE(name) void name(const v2f32& p0, const v2f32& p1, \
                                       const Color4f32& color)
+#define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_DRAW_LINE(fnSig_krbDrawLine);
+typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_DRAW_LINE(krbDrawLine);
+internal KRB_VIEW_TRANSLATE(krbViewTranslate);

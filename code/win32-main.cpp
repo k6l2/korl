@@ -622,6 +622,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.krbBeginFrame            = krbBeginFrame;
 	gameMemory.krbSetProjectionOrtho    = krbSetProjectionOrtho;
 	gameMemory.krbDrawLine              = krbDrawLine;
+	gameMemory.krbViewTranslate         = krbViewTranslate;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -768,10 +769,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			for(u8 ci = 0; ci < numGamePads; ci++)
 			{
 				XINPUT_VIBRATION vibration;
-				vibration.wLeftMotorSpeed = static_cast<WORD>(
-					gamePadArrayCurrentFrame[ci].normalizedMotorSpeedLeft * 0xFFFF);
-				vibration.wRightMotorSpeed = static_cast<WORD>(
-					gamePadArrayCurrentFrame[ci].normalizedMotorSpeedRight * 0xFFFF);
+				vibration.wLeftMotorSpeed = static_cast<WORD>(0xFFFF *
+					gamePadArrayCurrentFrame[ci].normalizedMotorSpeedLeft);
+				vibration.wRightMotorSpeed = static_cast<WORD>(0xFFFF *
+					gamePadArrayCurrentFrame[ci].normalizedMotorSpeedRight);
 				if(XInputSetState(ci, &vibration) != ERROR_SUCCESS)
 				{
 					///TODO: error & controller not connected return values
@@ -783,6 +784,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				///TODO: handle GetLastError
 			}
 			// enforce targetSecondsElapsedPerFrame //
+			///TODO: we still have to Sleep/wait when VSync is on if SwapBuffers
+			///      completes too early!!! (like when the double-buffer is not
+			///      yet filled up at beginning of execution)
 			if(!w32KrbOglGetVSync())
 			{
 				// It is possible for windows to sleep us for longer than we 
@@ -849,3 +853,4 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
 #include "win32-krb-opengl.cpp"
+#include "krb-opengl.cpp"

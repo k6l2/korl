@@ -57,24 +57,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				294 + gamePadArray[c].normalizedStickLeft.y*256;
 			if(gamePadArray[c].buttons.dPadUp == ButtonState::HELD)
 			{
-				gameState->offsetY -= 1;
+				gameState->viewOffset2d.y += 1.f;
 			}
 			if(gamePadArray[c].buttons.dPadDown == ButtonState::HELD)
 			{
-				gameState->offsetY += 1;
+				gameState->viewOffset2d.y -= 1.f;
 			}
 			if(gamePadArray[c].buttons.dPadLeft == ButtonState::HELD)
 			{
-				gameState->offsetX -= 1;
+				gameState->viewOffset2d.x -= 1.f;
 			}
 			if(gamePadArray[c].buttons.dPadRight == ButtonState::HELD)
 			{
-				gameState->offsetX += 1;
+				gameState->viewOffset2d.x += 1.f;
 			}
-			gameState->offsetX += 
-				static_cast<i32>(100*gamePadArray[c].normalizedStickLeft.x);
-			gameState->offsetY -= 
-				static_cast<i32>(100*gamePadArray[c].normalizedStickLeft.y);
+			gameState->viewOffset2d.x += 
+				10*gamePadArray[c].normalizedStickLeft.x;
+			gameState->viewOffset2d.y += 
+				10*gamePadArray[c].normalizedStickLeft.y;
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
 			gamePadArray[c].normalizedMotorSpeedRight = 
@@ -90,6 +90,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbBeginFrame(0.2f, bgClearGreen, 0.2f);
 	memory.krbSetProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                             static_cast<f32>(windowDimensions.y), 1.f);
+	memory.krbViewTranslate(-gameState->viewOffset2d);
 	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
 	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
 #if 0
