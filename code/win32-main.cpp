@@ -620,6 +620,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
 	gameMemory.platformWriteEntireFile  = platformWriteEntireFile;
 	gameMemory.krbBeginFrame            = krbBeginFrame;
+	gameMemory.krbSetProjectionOrtho    = krbSetProjectionOrtho;
+	gameMemory.krbDrawLine              = krbDrawLine;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -749,14 +751,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			w32XInputGetGamePadStates(&numGamePads,
 			                          gamePadArrayCurrentFrame,
 			                          gamePadArrayPreviousFrame);
-			GameGraphicsBuffer gameGraphicsBuffer = {
-				.bitmapMemory  = g_backBuffer.bitmapMemory,
-				.width         = g_backBuffer.width,
-				.height        = g_backBuffer.height,
-				.pitch         = g_backBuffer.pitch,
-				.bytesPerPixel = g_backBuffer.bytesPerPixel
-			};
-			if(!game.updateAndDraw(gameMemory, gameGraphicsBuffer, 
+			const W32Dimension2d windowDims = 
+				w32GetWindowDimensions(mainWindow);
+			if(!game.updateAndDraw(gameMemory, 
+			                       {windowDims.width, windowDims.height}, 
 			                       gameKeyboard,
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{
@@ -779,18 +777,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					///TODO: error & controller not connected return values
 				}
 			}
-			// update window //
+			// update window graphics //
+			if(!SwapBuffers(hdc))
 			{
-				const W32Dimension2d winDims = 
-					w32GetWindowDimensions(mainWindow);
-#if 0
-				w32UpdateWindow(g_backBuffer, hdc,
-				                winDims.width, winDims.height);
-#endif
-				if(!SwapBuffers(hdc))
-				{
-					///TODO: handle GetLastError
-				}
+				///TODO: handle GetLastError
 			}
 			// enforce targetSecondsElapsedPerFrame //
 			if(!w32KrbOglGetVSync())

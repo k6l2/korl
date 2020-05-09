@@ -27,6 +27,11 @@ struct v2f32
 	f32 x;
 	f32 y;
 };
+struct v2u32
+{
+	u32 x;
+	u32 y;
+};
 namespace kmath
 {
 	// Thanks, Micha Wiedenmann
@@ -92,17 +97,6 @@ typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 #endif
 /***************************************************** END PLATFORM INTERFACE */
-struct GameGraphicsBuffer
-{
-	void* bitmapMemory;
-	u32 width;
-	u32 height;
-	u32 pitch;
-	u8 bytesPerPixel;
-#if INTERNAL_BUILD
-	u8 bytesPerPixel_PADDING[3];
-#endif
-};
 struct GameAudioBuffer
 {
 	SoundSample* memory;
@@ -282,6 +276,8 @@ struct GameMemory
 	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
 #endif
 	fnSig_krbBeginFrame* krbBeginFrame;
+	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
+	fnSig_krbDrawLine* krbDrawLine;
 };
 /* GAME INTERFACE *************************************************************/
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
@@ -289,7 +285,7 @@ struct GameMemory
 typedef GAME_RENDER_AUDIO(fnSig_GameRenderAudio);
 extern "C" GAME_RENDER_AUDIO(gameRenderAudio);
 #define GAME_UPDATE_AND_DRAW(name) bool name(GameMemory& memory, \
-                                             GameGraphicsBuffer& graphicsBuffer, \
+                                             v2u32 windowDimensions, \
                                              GameKeyboard& gameKeyboard, \
                                              GamePad* gamePadArray, \
                                              u8 numGamePads)

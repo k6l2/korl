@@ -88,6 +88,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	memory.krbBeginFrame(0.2f, bgClearGreen, 0.2f);
+	memory.krbSetProjectionOrtho(static_cast<f32>(windowDimensions.x), 
+	                             static_cast<f32>(windowDimensions.y), 1.f);
+	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
+	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
+#if 0
 	// render a weird gradient pattern to the offscreen buffer //
 	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);
 	for (u32 y = 0; y < graphicsBuffer.height; y++)
@@ -101,5 +106,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		row += graphicsBuffer.pitch;
 	}
+#endif
 	return true;
 }

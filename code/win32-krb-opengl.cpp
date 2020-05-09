@@ -101,11 +101,6 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		///      the ability to use vertical-sync
 	}
 }
-internal KRB_BEGIN_FRAME(krbBeginFrame)
-{
-	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT);
-}
 internal void w32KrbOglSetVSyncPreference(bool value)
 {
 	if(!wglSwapIntervalEXT)
@@ -124,4 +119,26 @@ internal bool w32KrbOglGetVSync()
 		return false;
 	}
 	return wglGetSwapIntervalEXT() == 1;
+}
+internal KRB_BEGIN_FRAME(krbBeginFrame)
+{
+	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+}
+internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
+{
+	glOrtho(-windowSizeX/2, windowSizeX/2, -windowSizeY/2, windowSizeY/2, 
+	        halfDepth, -halfDepth);
+}
+internal KRB_DRAW_LINE(krbDrawLine)
+{
+	glBegin(GL_LINES);
+	glColor4f(color.r, color.g, color.b, color.a);
+	glVertex2f(p0.x, p0.y);
+	glVertex2f(p1.x, p1.y);
+	glEnd();
 }
