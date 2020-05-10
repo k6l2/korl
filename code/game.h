@@ -6,4 +6,5 @@ struct GameState
 	f32 theraminHz = 294.f;
 	f32 theraminSine = 0;
 	f32 theraminVolume = 1000;
+	KrbTextureHandle kthFighter;
 };

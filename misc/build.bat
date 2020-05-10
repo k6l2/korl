@@ -26,6 +26,8 @@ rem /WX - treat all warnings as errors
 rem /wd4100 - disable warning C4100 `unreferenced formal parameter`
 rem /wd4201 - disable warning C4201 
 rem           `nonstandard extension used: nameless struct/union`
+rem /wd4505 - disable warning C4505 
+rem           `unreferenced local function has been removed`
 rem /wd4514 - disable warning C4514 
 rem           `unreferenced inline function has been removed`
 rem /Zi - Generates complete debugging information.
@@ -85,7 +87,7 @@ if exist win32-main.exe (
 	)
 )
 cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
-	%CommonCompilerFlagsDebug% /W4 /wd4100 /link %CommonLinkerFlags% ^
+	%CommonCompilerFlagsDebug% /W4 /wd4100 /wd4505 /link %CommonLinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!

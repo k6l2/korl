@@ -623,7 +623,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.krbSetProjectionOrtho    = krbSetProjectionOrtho;
 	gameMemory.krbDrawLine              = krbDrawLine;
 	gameMemory.krbDrawTri               = krbDrawTri;
+	gameMemory.krbDrawTriTextured       = krbDrawTriTextured;
 	gameMemory.krbViewTranslate         = krbViewTranslate;
+	gameMemory.krbLoadImageZ85          = krbLoadImageZ85;
+	gameMemory.krbUseTexture            = krbUseTexture;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -855,3 +858,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "win32-xinput.cpp"
 #include "win32-krb-opengl.cpp"
 #include "krb-opengl.cpp"
+#include "z85.cpp"
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+///TODO: #define STBI_ASSERT(x) 
+///      #define STBI_MALLOC, STBI_REALLOC, and STBI_FREE 
+#include "stb/stb_image.h"

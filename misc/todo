@@ -3,8 +3,8 @@
 		[x] draw lines so we can make an origin &| grid
 		[x] draw triangles
 	[x] manipulate the VIEW matrix
-	[ ] load textures
-	[ ] draw textured triangles
+	[x] load textures (CPU => GPU)
+	[x] draw textured triangles
 	[ ] allow some kind of `model` transform
 [ ] Implement a simple general-purpose allocator
 [ ] separate game code out of kml, and setup a different repo for a test game

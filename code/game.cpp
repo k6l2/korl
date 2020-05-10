@@ -24,13 +24,38 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 		}
 	}
 }
+#if 0
+struct GameGraphicsState
+{
+	KrbTextureHandle textureHandles[1024];
+	bool textureHandleUsed[1024];
+	u16 nextUnusedTextureHandle;
+	u16 usedTextureHandleCount
+};
+#endif //0
+#include "z85_png_fighter.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
+	kassert(sizeof(GameState)         <= memory.permanentMemoryBytes);
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+#if 0
+	kassert(sizeof(GameGraphicsState) <= memory.transientMemoryBytes);
+	GameGraphicsState* gameGraphicsState = 
+		reinterpret_cast<GameGraphicsState*>(memory.transientMemory);
+#endif //0
 	if(!memory.initialized)
 	{
 		*gameState = {};
+#if 0
+		*gameGraphicsState = {};
+		memory.krbAllocTextureHandles(gameGraphicsState->textureHandles,
+		                             sizeof(gameGraphicsState->textureHandles));
+#endif //0
+		///TODO: VERY unsafe.  Need a memory allocator so we can pass memory of
+		///      a specific size that we know will be enough.
+		gameState->kthFighter = 
+			memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter),
+			                     reinterpret_cast<i8*>(memory.transientMemory));
 #if INTERNAL_BUILD && 0
 		PlatformDebugReadFileResult readFileResult = 
 			memory.platformReadEntireFile(__FILE__);
@@ -93,7 +118,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbViewTranslate(-gameState->viewOffset2d);
 	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
 	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
-	memory.krbDrawTri({100,100}, {200,100}, {100,200});
+	memory.krbUseTexture(gameState->kthFighter);
+	// memory.krbDrawTri({100,100}, {200,100}, {100,200});
+	// memory.krbDrawTri({200,100}, {100,200}, {200,200});
+	memory.krbDrawTriTextured({100,100}, {200,100}, {100,200},
+	                          {0,1}, {1,1}, {0,0});
+	memory.krbDrawTriTextured({200,100}, {100,200}, {200,200},
+	                          {1,1}, {0,0}, {1,0});
 #if 0
 	// render a weird gradient pattern to the offscreen buffer //
 	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);

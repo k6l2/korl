@@ -284,7 +284,10 @@ struct GameMemory
 	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
 	fnSig_krbDrawLine* krbDrawLine;
 	fnSig_krbDrawTri* krbDrawTri;
+	fnSig_krbDrawTriTextured* krbDrawTriTextured;
 	fnSig_krbViewTranslate* krbViewTranslate;
+	fnSig_krbLoadImageZ85* krbLoadImageZ85;
+	fnSig_krbUseTexture* krbUseTexture;
 };
 /* GAME INTERFACE *************************************************************/
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
