@@ -1,5 +1,6 @@
 #pragma once
 #include "global-defines.h"
+#include "krb-interface.h"
 struct GameState
 {
 	v2f32 viewOffset2d;

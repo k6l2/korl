@@ -1,5 +1,6 @@
 #pragma once
 #include "global-defines.h"
+#include "platform-game-interfaces.h"
 #include <windows.h>
 struct W32OffscreenBuffer
 {

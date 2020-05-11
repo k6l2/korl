@@ -1,4 +1,5 @@
 #include "game.h"
+#include "platform-game-interfaces.h"
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);

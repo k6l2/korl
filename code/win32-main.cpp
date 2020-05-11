@@ -40,7 +40,7 @@ PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 			}
 			return result;
 		}
-		fileSize32 = kmath::safeTruncateU64(fileSize.QuadPart);
+		fileSize32 = kmath::safeTruncateU32(fileSize.QuadPart);
 		if(fileSize32 != fileSize.QuadPart)
 		{
 			///TODO: log this error case

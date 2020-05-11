@@ -70,8 +70,8 @@ internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 }
 internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 {
-	const u64 imageFileDataSize = 
-		z85::decodedFileSizeBytes(z85ImageNumBytes - 1);
+	const i32 imageFileDataSize = kmath::safeTruncateI32(
+		z85::decodedFileSizeBytes(z85ImageNumBytes - 1));
 	if(!z85::decode(reinterpret_cast<const i8*>(z85ImageData), 
 	                tempImageDataBuffer))
 	{
@@ -79,11 +79,15 @@ internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 		///TODO: handle error
 	}
 	int imgW, imgH, imgNumByteChannels;
-	kassert(imageFileDataSize < 0x7FFFFFFF);
 	u8*const img = 
 		stbi_load_from_memory(reinterpret_cast<u8*>(tempImageDataBuffer), 
-		                      static_cast<int>(imageFileDataSize), 
+		                      imageFileDataSize, 
 		                      &imgW, &imgH, &imgNumByteChannels, 4);
+	kassert(img);
+	if(!img)
+	{
+		///TODO: handle error
+	}
 	GLuint texName;
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
