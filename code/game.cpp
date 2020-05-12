@@ -122,6 +122,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				return false;
 			}
+			if(gamePadArray[c].buttons.stickClickLeft == ButtonState::PRESSED)
+			{
+				gameState->shipWorldPosition = {};
+			}
+			if(gamePadArray[c].buttons.stickClickRight == ButtonState::PRESSED)
+			{
+				gameState->viewOffset2d = {};
+			}
 			bgClearGreen = fabsf(gamePadArray[c].normalizedStickLeft.y);
 		}
 	}

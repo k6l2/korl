@@ -151,8 +151,9 @@ GAME_RENDER_AUDIO(gameRenderAudioStub)
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDrawStub)
 {
-	///TODO: log error
-	return false;
+	///TODO: log error?
+	// continue running the application to keep attempting to reload game code!
+	return true;
 }
 internal FILETIME w32GetLastWriteTime(const char* fileName)
 {
@@ -161,7 +162,9 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
 	                         &fileAttributeData))
 	{
+		OutputDebugStringA("w32GetLastWriteTime failed!\n");
 		///TODO: handle GetLastError
+		return result;
 	}
 	result = fileAttributeData.ftLastWriteTime;
 	return result;
@@ -170,12 +173,49 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
                                   const char* fileNameDllTemp)
 {
 	GameCode result = {};
+	result.renderAudio      = gameRenderAudioStub;
+	result.updateAndDraw    = gameUpdateAndDrawStub;
 	result.dllLastWriteTime = w32GetLastWriteTime(fileNameDll);
+	if(result.dllLastWriteTime.dwHighDateTime == 0 &&
+		result.dllLastWriteTime.dwLowDateTime == 0)
+	{
+		return result;
+	}
 	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
 	{
-		///TODO: handle GetLastError
+		const DWORD copyError = GetLastError();
+		switch(copyError)
+		{
+			case ERROR_FILE_NOT_FOUND:
+			{
+				OutputDebugStringA("w32LoadGameCode ERROR_FILE_NOT_FOUND\n");
+			} break;
+			case ERROR_ACCESS_DENIED:
+			{
+				OutputDebugStringA("w32LoadGameCode ERROR_ACCESS_DENIED\n");
+			} break;
+			case ERROR_ENCRYPTION_FAILED:
+			{
+				OutputDebugStringA("w32LoadGameCode ERROR_ENCRYPTION_FAILED\n");
+			} break;
+			case ERROR_SHARING_VIOLATION:
+			{
+				OutputDebugStringA("w32LoadGameCode ERROR_SHARING_VIOLATION\n");
+			} break;
+			default:
+			{
+				char outputBuffer[256] = {};
+				snprintf(outputBuffer, sizeof(outputBuffer), "copyError=%i\n", 
+				         copyError);
+				OutputDebugStringA(outputBuffer);
+			} break;
+		}
+		///TODO: log GetLastError
 	}
-	result.hLib = LoadLibraryA(fileNameDllTemp);
+	else
+	{
+		result.hLib = LoadLibraryA(fileNameDllTemp);
+	}
 	if(result.hLib)
 	{
 		result.renderAudio = reinterpret_cast<fnSig_GameRenderAudio*>(
@@ -186,10 +226,14 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	else
 	{
+		OutputDebugStringA("load game dll failed!\n");
+		//kassert(!"load game dll failed!");
 		///TODO: handle GetLastError
 	}
 	if(!result.isValid)
 	{
+		OutputDebugStringA("game dll invalid!\n");
+		//kassert(!"game dll invalid!");
 		result.renderAudio   = gameRenderAudioStub;
 		result.updateAndDraw = gameUpdateAndDrawStub;
 	}
@@ -201,6 +245,7 @@ internal void w32UnloadGameCode(GameCode& gameCode)
 	{
 		if(!FreeLibrary(gameCode.hLib))
 		{
+			kassert(!"free game dll failed!");
 			///TODO: handle GetLastError
 		}
 		gameCode.hLib = NULL;
@@ -693,12 +738,19 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			{
 				const FILETIME gameCodeLastWriteTime = 
 					w32GetLastWriteTime(fullPathToGameDll);
-				if(CompareFileTime(&gameCodeLastWriteTime, 
-				                   &game.dllLastWriteTime))
+				if((CompareFileTime(&gameCodeLastWriteTime, 
+				                    &game.dllLastWriteTime) &&
+					!(gameCodeLastWriteTime.dwHighDateTime == 0 &&
+					gameCodeLastWriteTime.dwLowDateTime    == 0)) ||
+					!game.isValid)
 				{
 					w32UnloadGameCode(game);
 					game = w32LoadGameCode(fullPathToGameDll, 
 					                       fullPathToGameDllTemp);
+					if(game.isValid)
+					{
+						OutputDebugStringA("Game code hot-reload complete!\n");
+					}
 				}
 			}
 			MSG windowMessage;
