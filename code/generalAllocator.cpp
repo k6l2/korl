@@ -26,6 +26,7 @@ struct KGeneralAllocator
 	*/
 	size_t totalBytes;
 	KGeneralAllocatorChunk* firstChunk;
+	///TODO: keep track of the total # of chunks
 };
 internal KgaHandle kgaInit(void* allocatorMemoryLocation, 
                            size_t allocatorByteCount)
@@ -160,6 +161,10 @@ internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress,
 	void* newAllocation = kgaAlloc(kgaHandle, newAllocationSize);
 	if(!newAllocation)
 	{
+		if(allocatedAddress)
+		{
+			kgaFree(kgaHandle, allocatedAddress);
+		}
 		return nullptr;
 	}
 	if(allocatedAddress)
@@ -171,7 +176,9 @@ internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress,
 				reinterpret_cast<u8*>(allocatedAddress) - 
 				sizeof(KGeneralAllocatorChunk));
 		kassert(kgaVerifyChunk(kga, allocatedChunk));
-		memcpy(newAllocation, allocatedAddress, allocatedChunk->bytes);
+		const size_t bytesToCopy = allocatedChunk->bytes < newAllocationSize
+			? allocatedChunk->bytes : newAllocationSize;
+		memcpy(newAllocation, allocatedAddress, bytesToCopy);
 		kgaFree(kgaHandle, allocatedAddress);
 	}
 	return newAllocation;
@@ -191,6 +198,10 @@ internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress,
 }
 internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
 {
+	if(!allocatedAddress)
+	{
+		return;
+	}
 	KGeneralAllocator*const kga = 
 		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
 	KGeneralAllocatorChunk* allocatedChunk = 
@@ -211,7 +222,11 @@ internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
 		allocatedChunk->chunkPrev->bytes += 
 			allocatedChunk->bytes + sizeof(KGeneralAllocatorChunk);
 		kga->freeBytes += sizeof(KGeneralAllocatorChunk);
+		KGeneralAllocatorChunk*const chunkToClear = allocatedChunk;
 		allocatedChunk = allocatedChunk->chunkPrev;
+		// fill cleared memory space with some value for safety //
+		memset(reinterpret_cast<u8*>(chunkToClear), 0xFE, 
+		       sizeof(KGeneralAllocatorChunk) + chunkToClear->bytes);
 	}
 	// destroy the next chunk & merge with it if it is also free //
 	if (allocatedChunk->chunkNext != allocatedChunk &&
@@ -223,11 +238,14 @@ internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
 		allocatedChunk->bytes +=
 			allocatedChunk->chunkNext->bytes + sizeof(KGeneralAllocatorChunk);
 		kga->freeBytes += sizeof(KGeneralAllocatorChunk);
+		KGeneralAllocatorChunk*const chunkToClear = allocatedChunk->chunkNext;
 		allocatedChunk->chunkNext = allocatedChunk->chunkNext->chunkNext;
+		// fill cleared memory space with some value for safety //
+		//	Here, we only have to clear the chunk header because free'd chunk
+		//	contents are assumed to already be cleared.
+		memset(reinterpret_cast<u8*>(chunkToClear), 0xFE, 
+		       sizeof(KGeneralAllocatorChunk));
 	}
-	// fill cleared memory space with some value for safety //
-	memset(reinterpret_cast<u8*>(allocatedChunk) + 
-	       sizeof(KGeneralAllocatorChunk), 0xFE, allocatedChunk->bytes);
 	///TODO: verify the integrity of `kga`'s double-linked list of chunks
 }
 internal size_t kgaUsedBytes(KgaHandle kgaHandle)

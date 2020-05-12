@@ -33,6 +33,7 @@ rem /wd4505 - disable warning C4505
 rem           `unreferenced local function has been removed`
 rem /wd4514 - disable warning C4514 
 rem           `unreferenced inline function has been removed`
+rem /wd4710 - disable warning C4710 `function not inlined`
 rem /Zi - Generates complete debugging information.
 rem /Oi - Generate intrinsic opcodes
 rem /Od - Disable all optimization.
@@ -73,7 +74,7 @@ rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
 cl %project_root%\code\game.cpp /Fmgame.map ^
-	%CommonCompilerFlagsDebug% /Wall /LDd /link %CommonLinkerFlags% ^
+	%CommonCompilerFlagsDebug% /Wall /wd4710 /LDd /link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
 IF %ERRORLEVEL% NEQ 0 (

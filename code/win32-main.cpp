@@ -6,11 +6,13 @@
 #include "win32-dsound.h"
 #include "win32-xinput.h"
 #include "win32-krb-opengl.h"
+#include "generalAllocator.h"
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LARGE_INTEGER g_perfCounterHz;
+global_variable KgaHandle g_genAllocStbImage;
 PLATFORM_PRINT_DEBUG_STRING(platformPrintDebugString)
 {
 	OutputDebugStringA(string);
@@ -560,6 +562,19 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return -1;
 		}
 	}
+	// allocate a dynamic memory arena for STB_IMAGE
+	{
+		local_persist const SIZE_T STB_IMAGE_MEMORY_BYTES = kmath::megabytes(1);
+		VOID*const stbImageMemory = VirtualAlloc(NULL, STB_IMAGE_MEMORY_BYTES, 
+		                                         MEM_RESERVE | MEM_COMMIT, 
+		                                         PAGE_READWRITE);
+		if(!stbImageMemory)
+		{
+			///TODO: handle GetLastError
+			return -1;
+		}
+		g_genAllocStbImage = kgaInit(stbImageMemory, STB_IMAGE_MEMORY_BYTES);
+	}
 	GameCode game = w32LoadGameCode(fullPathToGameDll, 
 	                                fullPathToGameDllTemp);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
@@ -717,6 +732,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 	}
 #endif
+	///TODO: delete LIMIT_FRAMERATE_USING_TIMER stuff because it doesn't seem to 
+	///      work the way I want it to...
 #if LIMIT_FRAMERATE_USING_TIMER
 	const HANDLE hTimerMainThread = 
 		CreateWaitableTimerA(nullptr, true, "hTimerMainThread");
@@ -844,6 +861,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			///TODO: we still have to Sleep/wait when VSync is on if SwapBuffers
 			///      completes too early!!! (like when the double-buffer is not
 			///      yet filled up at beginning of execution)
+			///TODO: maybe just don't sleep/wait the first frame at all because
+			///      the windows message queue needs to be unclogged and game
+			///      state memory needs to be initialized.
 			if(!w32KrbOglGetVSync())
 			{
 				// It is possible for windows to sleep us for longer than we 
@@ -905,6 +925,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			///TODO: log error
 		}
 	}
+	kassert(kgaUsedBytes(g_genAllocStbImage) == 0);
 	return 0;
 }
 #include "win32-dsound.cpp"
@@ -914,6 +935,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "z85.cpp"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
-///TODO: #define STBI_ASSERT(x) 
-///      #define STBI_MALLOC, STBI_REALLOC, and STBI_FREE 
+#define STBI_ASSERT(x) kassert(x)
+#define STBI_MALLOC(sz)       kgaAlloc(g_genAllocStbImage,sz)
+#define STBI_REALLOC(p,newsz) kgaRealloc(g_genAllocStbImage,p,newsz)
+#define STBI_FREE(p)          kgaFree(g_genAllocStbImage,p)
 #include "stb/stb_image.h"
+#include "generalAllocator.cpp"

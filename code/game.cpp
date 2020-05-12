@@ -36,6 +36,7 @@ struct GameGraphicsState
 	u16 usedTextureHandleCount
 };
 #endif //0
+#include <cstdio>
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
@@ -63,6 +64,17 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		gameState->kthFighter = 
 			memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter) - 1,
 			                       tempImageDataBuffer);
+		// Test out realloc //
+		{
+			char* buffer = reinterpret_cast<char*>(
+				kgaAlloc(gameState->gAllocTransient, 25));
+			_snprintf_s(buffer, 25, _TRUNCATE, "Hello!");
+			buffer = reinterpret_cast<char*>(
+				kgaRealloc(gameState->gAllocTransient, buffer, 5));
+			buffer[4] = 0;
+			buffer = reinterpret_cast<char*>(
+				kgaRealloc(gameState->gAllocTransient, buffer, 0));
+		}
 		kgaFree(gameState->gAllocTransient, tempImageDataBuffer);
 		kassert(kgaUsedBytes(gameState->gAllocTransient) == 0);
 #if INTERNAL_BUILD && 0

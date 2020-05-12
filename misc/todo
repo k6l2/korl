@@ -9,14 +9,30 @@
 [x] Implement a simple general-purpose allocator
 [x] use general-purpose allocator for texture loading instead of raw 
 	transient storage pointer inside of game
+[x] figure out why the game shuts down sometimes when hot-reloading game code
+[x] actually test kgaRealloc
+[x] override assert & memory allocators for stb_image
+[ ] logging system 
+	[ ] circular buffer with maximum begin/end log lengths
+	[ ] selectable logging levels (info, error, warning)
+	[ ] automatically print file+line#
+	[ ] automatically print function name
+	[ ] write log to disk platform function
+		[ ] automatically write the log when the program exits gracefully
+	[ ] complete logging tech debt
+[ ] detect when the program crashes 
+	https://stackoverflow.com/q/19656946
+	https://stackoverflow.com/q/28629351
+	[ ] write log file
+	[ ] write minidump file
+[ ] detect & properly handle stack overflows
+	[ ] reserve extra stack space for this case
+		https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadstackguarantee?redirectedfrom=MSDN
 [ ] separate game code out of kml, and setup a different repo for a test game
-[ ] actually test kgaRealloc
 [ ] Create a test game package which utilizes IMGUI
 	[ ] Hook IMGUI into the general-purpose allocator for transient storage.
 	[ ] Hook IMGUI rendering operations into the OpenGL backend renderer API
-[x] figure out why the game shuts down sometimes when hot-reloading game code
 [ ] display debug frame metrics
-[ ] logging system (info, error, warning)
 [ ] multi-threaded job queue
 	https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
 	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
