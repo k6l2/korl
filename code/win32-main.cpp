@@ -625,6 +625,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.krbDrawTri               = krbDrawTri;
 	gameMemory.krbDrawTriTextured       = krbDrawTriTextured;
 	gameMemory.krbViewTranslate         = krbViewTranslate;
+	gameMemory.krbSetModelXform         = krbSetModelXform;
 	gameMemory.krbLoadImageZ85          = krbLoadImageZ85;
 	gameMemory.krbUseTexture            = krbUseTexture;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 

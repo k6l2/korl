@@ -105,10 +105,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				gameState->viewOffset2d.x += 1.f;
 			}
-			gameState->viewOffset2d.x += 
+			gameState->shipWorldPosition.x += 
 				10*gamePadArray[c].normalizedStickLeft.x;
-			gameState->viewOffset2d.y += 
+			gameState->shipWorldPosition.y += 
 				10*gamePadArray[c].normalizedStickLeft.y;
+			gameState->viewOffset2d.x += 
+				10*gamePadArray[c].normalizedStickRight.x;
+			gameState->viewOffset2d.y += 
+				10*gamePadArray[c].normalizedStickRight.y;
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
 			gamePadArray[c].normalizedMotorSpeedRight = 
@@ -124,16 +128,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbBeginFrame(0.2f, bgClearGreen, 0.2f);
 	memory.krbSetProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                             static_cast<f32>(windowDimensions.y), 1.f);
+	// gameState->viewOffset2d = gameState->shipWorldPosition;
 	memory.krbViewTranslate(-gameState->viewOffset2d);
-	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
-	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
 	memory.krbUseTexture(gameState->kthFighter);
 	// memory.krbDrawTri({100,100}, {200,100}, {100,200});
 	// memory.krbDrawTri({200,100}, {100,200}, {200,200});
-	memory.krbDrawTriTextured({100,100}, {200,100}, {100,200},
+	memory.krbSetModelXform(gameState->shipWorldPosition);
+	memory.krbDrawTriTextured({-50,-50}, {50,-50}, {-50,50},
 	                          {0,1}, {1,1}, {0,0});
-	memory.krbDrawTriTextured({200,100}, {100,200}, {200,200},
+	memory.krbDrawTriTextured({50,-50}, {-50,50}, {50,50},
 	                          {1,1}, {0,0}, {1,0});
+	memory.krbSetModelXform({0,0});
+	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
+	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
 #if 0
 	// render a weird gradient pattern to the offscreen buffer //
 	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);

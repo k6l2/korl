@@ -15,6 +15,15 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
+	// empty the modelview stack //
+	{
+		GLint modelViewStackDepth;
+		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+		for(; modelViewStackDepth; modelViewStackDepth--)
+		{
+			glPopMatrix();
+		}
+	}
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -66,6 +75,20 @@ internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 {
 	glMatrixMode(GL_MODELVIEW);
 	glTranslatef(offset.x, offset.y, 0.f);
+	glPushMatrix();
+	///TODO: check GL errors
+}
+internal KRB_SET_MODEL_XFORM(krbSetModelXform)
+{
+	glMatrixMode(GL_MODELVIEW);
+	GLint modelViewStackDepth;
+	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+	if(modelViewStackDepth > 0)
+	{
+		glPopMatrix();
+		glPushMatrix();
+	}
+	glTranslatef(translation.x, translation.y, 0.f);
 	///TODO: check GL errors
 }
 internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
