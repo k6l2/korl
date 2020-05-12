@@ -10,6 +10,9 @@ pushd %project_root%\build
 del *.pdb > NUL 2> NUL
 del *.dll > NUL 2> NUL
 set fileNameSafeTimestamp=%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%
+rem remove any spaces from the generated timestamp:
+rem source: https://stackoverflow.com/a/10116045
+set fileNameSafeTimestamp=%fileNameSafeTimestamp: =%
 rem --- DEFINES ---
 rem     INTERNAL_BUILD = set to 0 to disable all code which should never be 
 rem                      shipped to the end-user, such as debug functions etc...
