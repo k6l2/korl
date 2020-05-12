@@ -61,7 +61,7 @@ rem user32.lib - ??? various win32 stuff
 rem Gdi32.lib - required to create an OpenGL render context
 rem winmm.lib - multimedia timer functions (granular sleep functionality)
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
-	/MTd /WX /wd4201 /wd4514 /Oi /Od /GR- /EHa- /Zi /FC ^
+	/MTd /WX /wd4201 /wd4514 /wd4505 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
 set CommonLinkerFlags=/opt:ref /incremental:no 
 rem 32-bit build
@@ -87,7 +87,7 @@ if exist win32-main.exe (
 	)
 )
 cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
-	%CommonCompilerFlagsDebug% /W4 /wd4100 /wd4505 /link %CommonLinkerFlags% ^
+	%CommonCompilerFlagsDebug% /W4 /wd4100 /link %CommonLinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!

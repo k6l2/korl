@@ -6,10 +6,11 @@
 	[x] load textures (CPU => GPU)
 	[x] draw textured triangles
 	[ ] allow some kind of `model` transform
-[ ] Implement a simple general-purpose allocator
-	[ ] use general-purpose allocator for texture loading instead of raw 
-		transient storage pointer inside of game
+[x] Implement a simple general-purpose allocator
+[x] use general-purpose allocator for texture loading instead of raw 
+	transient storage pointer inside of game
 [ ] separate game code out of kml, and setup a different repo for a test game
+[ ] actually test kgaRealloc
 [ ] Create a test game package which utilizes IMGUI
 	[ ] Hook IMGUI into the general-purpose allocator for transient storage.
 	[ ] Hook IMGUI rendering operations into the OpenGL backend renderer API

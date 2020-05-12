@@ -62,7 +62,7 @@ namespace z85
 			// find the 5 base-85 remainders, and write them to the output
 			for (int c = 4; c >= 0; c--)
 			{
-				const int remainder = intInput % 85;
+				const u32 remainder = intInput % 85;
 				intInput /= 85;
 				output[c] = ENCODE_LOOKUP_TABLE[remainder];
 			}
@@ -92,7 +92,7 @@ namespace z85
 			// output each digit byte to output array //
 			for (int c = 3; c >= 0; c--)
 			{
-				output[c] = intOutput & 0xFF;
+				output[c] = static_cast<i8>(intOutput & 0xFF);
 				intOutput >>= 8;
 			}
 			// increment input & output //

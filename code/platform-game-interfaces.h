@@ -14,14 +14,14 @@ struct PlatformDebugReadFileResult
 #endif
 	void* data;
 };
+/** @return a valid result (non-zero data & dataBytes) if successful */
 #define PLATFORM_READ_ENTIRE_FILE(name) \
 	PlatformDebugReadFileResult name(char* fileName)
-typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
-/** @return a valid result (non-zero data & dataBytes) if successful */
 #define PLATFORM_FREE_FILE_MEMORY(name) void name(void* fileMemory)
-typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 #define PLATFORM_WRITE_ENTIRE_FILE(name) bool name(char* fileName, \
                                                    void* data, u32 dataBytes)
+typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
+typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 #endif
 /***************************************************** END PLATFORM INTERFACE */
@@ -215,16 +215,16 @@ struct GameMemory
 /* GAME INTERFACE *************************************************************/
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
                                           GameAudioBuffer& audioBuffer)
-typedef GAME_RENDER_AUDIO(fnSig_GameRenderAudio);
-extern "C" GAME_RENDER_AUDIO(gameRenderAudio);
+/** 
+ * @return false if the platform should close the game application
+ */
 #define GAME_UPDATE_AND_DRAW(name) bool name(GameMemory& memory, \
                                              v2u32 windowDimensions, \
                                              GameKeyboard& gameKeyboard, \
                                              GamePad* gamePadArray, \
                                              u8 numGamePads)
+typedef GAME_RENDER_AUDIO(fnSig_GameRenderAudio);
 typedef GAME_UPDATE_AND_DRAW(fnSig_GameUpdateAndDraw);
-/** 
- * @return false if the platform should close the game application
- */
+extern "C" GAME_RENDER_AUDIO(gameRenderAudio);
 extern "C" GAME_UPDATE_AND_DRAW(gameUpdateAndDraw);
 /********************************************************* END GAME INTERFACE */

@@ -1,5 +1,7 @@
 #include "game.h"
 #include "platform-game-interfaces.h"
+#include "z85.h"
+#include "z85_png_fighter.h"
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
@@ -34,10 +36,9 @@ struct GameGraphicsState
 	u16 usedTextureHandleCount
 };
 #endif //0
-#include "z85_png_fighter.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	kassert(sizeof(GameState)         <= memory.permanentMemoryBytes);
+	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
 	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
 #if 0
 	kassert(sizeof(GameGraphicsState) <= memory.transientMemoryBytes);
@@ -47,16 +48,23 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!memory.initialized)
 	{
 		*gameState = {};
+		gameState->gAllocTransient = kgaInit(memory.transientMemory, 
+		                                     memory.transientMemoryBytes);
 #if 0
 		*gameGraphicsState = {};
 		memory.krbAllocTextureHandles(gameGraphicsState->textureHandles,
 		                             sizeof(gameGraphicsState->textureHandles));
 #endif //0
-		///TODO: VERY unsafe.  Need a memory allocator so we can pass memory of
-		///      a specific size that we know will be enough.
+		const size_t tempImageDataBytes = 
+			z85::decodedFileSizeBytes(sizeof(z85_png_fighter) - 1);
+		i8*const tempImageDataBuffer = reinterpret_cast<i8*>(
+			kgaAlloc(gameState->gAllocTransient, 
+			         tempImageDataBytes));
 		gameState->kthFighter = 
-			memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter),
-			                     reinterpret_cast<i8*>(memory.transientMemory));
+			memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter) - 1,
+			                       tempImageDataBuffer);
+		kgaFree(gameState->gAllocTransient, tempImageDataBuffer);
+		kassert(kgaUsedBytes(gameState->gAllocTransient) == 0);
 #if INTERNAL_BUILD && 0
 		PlatformDebugReadFileResult readFileResult = 
 			memory.platformReadEntireFile(__FILE__);
@@ -143,3 +151,5 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 #endif
 	return true;
 }
+#include "generalAllocator.cpp"
+#include "z85.cpp"

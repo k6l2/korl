@@ -1,10 +1,8 @@
 #pragma once
 #include "global-defines.h"
 /*
-	Z85 converts binary data to ascii data,
-		in a format which can be saved as a 
+	Z85 converts binary data to ascii data, in a format which can be saved as a 
 		const char* const variable in source code.
-
 	Formal specification of Z85 encode/decode:
 		https://rfc.zeromq.org/spec:32/Z85/
 */

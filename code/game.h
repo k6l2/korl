@@ -1,6 +1,7 @@
 #pragma once
 #include "global-defines.h"
 #include "krb-interface.h"
+#include "generalAllocator.h"
 struct GameState
 {
 	v2f32 viewOffset2d;
@@ -8,4 +9,5 @@ struct GameState
 	f32 theraminSine = 0;
 	f32 theraminVolume = 1000;
 	KrbTextureHandle kthFighter;
+	KgaHandle gAllocTransient;
 };

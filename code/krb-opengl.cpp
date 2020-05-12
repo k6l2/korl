@@ -71,7 +71,7 @@ internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 {
 	const i32 imageFileDataSize = kmath::safeTruncateI32(
-		z85::decodedFileSizeBytes(z85ImageNumBytes - 1));
+		z85::decodedFileSizeBytes(z85ImageNumBytes));
 	if(!z85::decode(reinterpret_cast<const i8*>(z85ImageData), 
 	                tempImageDataBuffer))
 	{
