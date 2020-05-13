@@ -3,15 +3,25 @@
 #include "krb-interface.h"
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
+enum class PlatformLogCategory : u8
+{
+	K_INFO,
+	K_WARNING,
+	K_ERROR
+};
+#define PLATFORM_LOG(name) void name(const char* sourceFileName, \
+                                     u32 sourceFileLineNumber, \
+                                     PlatformLogCategory logCategory, \
+                                     const char* formattedString, ...)
+typedef PLATFORM_LOG(fnSig_platformLog);
+// INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
+#if INTERNAL_BUILD
 #define PLATFORM_PRINT_DEBUG_STRING(name) void name(const char* const string)
 typedef PLATFORM_PRINT_DEBUG_STRING(fnSig_PlatformPrintDebugString);
-#if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
 {
 	u32 dataBytes;
-#if INTERNAL_BUILD
 	u32 dataBytes_PADDING;
-#endif
 	void* data;
 };
 /** @return a valid result (non-zero data & dataBytes) if successful */
@@ -197,8 +207,9 @@ struct GameMemory
 	u64   permanentMemoryBytes;
 	void* transientMemory;
 	u64   transientMemoryBytes;
-	fnSig_PlatformPrintDebugString* platformPrintDebugString;
+	fnSig_platformLog* platformLog;
 #if INTERNAL_BUILD
+	fnSig_PlatformPrintDebugString* platformPrintDebugString;
 	fnSig_PlatformReadEntireFile* platformReadEntireFile;
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
 	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;

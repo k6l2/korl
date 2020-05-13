@@ -13,12 +13,14 @@
 [x] actually test kgaRealloc
 [x] override assert & memory allocators for stb_image
 [ ] logging system 
-	[ ] circular buffer with maximum begin/end log lengths
-	[ ] selectable logging levels (info, error, warning)
-	[ ] automatically print file+line#
-	[ ] automatically print function name
+	[x] circular buffer with maximum begin/end log lengths
+	[x] selectable logging levels (info, error, warning)
+	[x] automatically print file+line#
+	[x] automatically print function name
+	[x] automatically print a timestamp
 	[ ] write log to disk platform function
 		[ ] automatically write the log when the program exits gracefully
+			https://www.gingerbill.org/article/2015/08/19/defer-in-cpp/
 	[ ] complete logging tech debt
 [ ] detect when the program crashes 
 	https://stackoverflow.com/q/19656946

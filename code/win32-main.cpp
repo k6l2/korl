@@ -2,6 +2,7 @@
 #include "global-defines.h"
 // crt io
 #include <stdio.h>
+#include <ctime>
 #include "win32-main.h"
 #include "win32-dsound.h"
 #include "win32-xinput.h"
@@ -13,11 +14,174 @@ global_variable HCURSOR g_cursor;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
+global_variable const size_t MAX_LOG_BUFFER_SIZE = 128;
+global_variable char g_logBeginning[MAX_LOG_BUFFER_SIZE];
+global_variable char g_logCircularBuffer[MAX_LOG_BUFFER_SIZE] = {};
+global_variable size_t g_logCurrentBeginningChar;
+global_variable size_t g_logCurrentCircularBufferChar;
+// This represents the total # of character sent to the circular buffer, 
+//	including characters that are overwritten!
+global_variable size_t g_logCircularBufferRunningTotal;
+internal PLATFORM_LOG(platformLog)
+{
+	// Get a timestamp (Source: https://stackoverflow.com/a/35260146) //
+	time_t now = time(nullptr);
+	struct tm newTime;
+	localtime_s(&newTime, &now);
+	char timeBuffer[80];
+	strftime(timeBuffer, sizeof(timeBuffer), "%H:%M.%S", &newTime);
+	// First, we build the new text to add to the log using a local buffer. //
+	local_persist const size_t MAX_LOG_LINE_SIZE = 128;
+	char logLineBuffer[MAX_LOG_LINE_SIZE];
+	const char*const strCategory = 
+		   logCategory == PlatformLogCategory::K_INFO    ? "INFO"
+		: (logCategory == PlatformLogCategory::K_WARNING ? "WARNING"
+		: (logCategory == PlatformLogCategory::K_ERROR   ? "ERROR"
+		: "UNKNOWN-CATEGORY"));
+	// Print out the leading meta-data tag for this log entry //
+	const int logLineMetaCharsWritten = 
+		_snprintf_s(logLineBuffer, MAX_LOG_LINE_SIZE, _TRUNCATE, 
+		            "[%s | %s | %s:%i] ", strCategory, timeBuffer, 
+		            sourceFileName, sourceFileLineNumber);
+	kassert(logLineMetaCharsWritten > 0);
+	const size_t remainingLogLineSize = (logLineMetaCharsWritten < 0 ||
+		logLineMetaCharsWritten >= MAX_LOG_LINE_SIZE) ? 0
+		: MAX_LOG_LINE_SIZE - logLineMetaCharsWritten;
+	int logLineCharsWritten = 0;
+	if(remainingLogLineSize > 0)// should never fail, but I'm paranoid.
+	{
+		va_list args;
+		va_start(args, formattedString);
+		// Print out the actual log entry into our temp line buffer //
+		logLineCharsWritten = 
+			vsnprintf_s(logLineBuffer + logLineMetaCharsWritten, 
+			            remainingLogLineSize, _TRUNCATE, formattedString, args);
+		va_end(args);
+		if(logLineCharsWritten < 0)
+		{
+			///TODO: handle overflow case for max characters per log line limit!
+#if INTERNAL_BUILD
+			OutputDebugStringA("LOG LINE OVERFLOW!\n");
+#endif
+		}
+	}
+	// Now that we know what needs to be added to the log, we need to dump this
+	//	line buffer into the appropriate log memory location.  First, 
+	//	logBeginning gets filled up until it can no longer contain any more 
+	//	lines.  For all lines afterwards, we use the logCircularBuffer. //
+#if 0
+	OutputDebugStringA(logLineBuffer);
+#endif
+	const size_t totalLogLineSize = 
+		logLineMetaCharsWritten + logLineCharsWritten;
+	const size_t remainingLogBeginning = 
+		MAX_LOG_BUFFER_SIZE - g_logCurrentBeginningChar;
+	// check for one extra character here because of the implicit "\n\0"
+	if(remainingLogBeginning >= totalLogLineSize + 2)
+	// append line to the log beginning //
+	{
+		const int charsWritten = 
+			_snprintf_s(g_logBeginning + g_logCurrentBeginningChar,
+			            remainingLogBeginning, _TRUNCATE, 
+			            "%s\n", logLineBuffer);
+		// we should have written the total log line + "\n". \0 isn't counted!
+		kassert(charsWritten == totalLogLineSize + 1);
+		g_logCurrentBeginningChar += charsWritten;
+	}
+	else
+	// append line to the log circular buffer //
+	{
+		// Ensure no more lines can be added to the log beginning buffer:
+		g_logCurrentBeginningChar = MAX_LOG_BUFFER_SIZE;
+		const size_t remainingLogCircularBuffer = 
+			MAX_LOG_BUFFER_SIZE - g_logCurrentCircularBufferChar;
+		kassert(remainingLogCircularBuffer > 0);
+		// I use `min` here as the second parameter to prevent _snprintf_s from 
+		//	preemptively destroying earlier buffer data!
+		int charsWritten = 
+			_snprintf_s(g_logCircularBuffer + g_logCurrentCircularBufferChar,
+			            // +2 here to account for the \n\0 at the end !!!
+			            min(remainingLogCircularBuffer, totalLogLineSize + 2), 
+			            _TRUNCATE, "%s\n", logLineBuffer);
+		if(errno)
+		{
+			kassert(!"log circular buffer part 1 string print error!");
+			///TODO: handle error
+		}
+		else if(charsWritten < 0)
+		// If no errors have occurred, it means we have truncated the 
+		//	string (circular buffer has been wrapped) //
+		{
+			// subtract one here because of the \0 that must be written!
+			charsWritten = static_cast<int>(remainingLogCircularBuffer - 1);
+		}
+		g_logCurrentCircularBufferChar += charsWritten;
+		// Attempt to wrap around the circular buffer if we reach the end //
+		//@ASSUMPTION: the log circular buffer is >= the local log line buffer
+		if(charsWritten == remainingLogCircularBuffer - 1)
+		{
+			kassert(g_logCurrentCircularBufferChar == MAX_LOG_BUFFER_SIZE - 1);
+			g_logCurrentCircularBufferChar = 0;
+			// +2 here because we need to make sure to write the \n\0 at the end
+			const size_t remainingLogLineBytes = 
+				totalLogLineSize + 2 - charsWritten;
+			if(remainingLogLineBytes == 1)
+			{
+				// if we only need to write a null-terminator, we shouldn't make
+				//	another call to _snprintf_s requesting a `\n` write!
+				*g_logCircularBuffer = '\0';
+			}
+			const int charsWrittenClipped = remainingLogLineBytes < 2 
+				? static_cast<int>(remainingLogLineBytes)
+				: _snprintf_s(g_logCircularBuffer, remainingLogLineBytes, 
+				              _TRUNCATE, "%s\n", logLineBuffer + charsWritten);
+			if(errno)
+			{
+				kassert(!"log circular buffer part 2 string print error!");
+			}
+			kassert(charsWrittenClipped >= 0);
+			g_logCurrentCircularBufferChar += charsWrittenClipped;
+#if INTERNAL_BUILD && 0
+			// There should only ever be ONE \0 char in the circular buffer, 
+			//	excluding the \0 which should always be present in the last 
+			//	character position.  If this isn't true, then something has 
+			//	seriously fucked up.
+			u32 nullCharCount = 0;
+			for(size_t c = 0; c < MAX_LOG_BUFFER_SIZE - 1; c++)
+			{
+				if(g_logCircularBuffer[c] == '\0')
+					nullCharCount++;
+				kassert(nullCharCount < 2);
+			}
+#endif
+		}
+		// +1 here because of the '\n' at the end of our log line!
+		g_logCircularBufferRunningTotal += totalLogLineSize + 1;
+	}
+}
+#if INTERNAL_BUILD
+internal void w32DebugPrintLog()
+{
+	OutputDebugStringA("=========== PRINTING LOG =================\n");
+	OutputDebugStringA(g_logBeginning);
+	if(g_logCurrentBeginningChar == MAX_LOG_BUFFER_SIZE)
+	{
+		if(g_logCircularBufferRunningTotal >= MAX_LOG_BUFFER_SIZE - 1)
+		{
+			OutputDebugStringA("- - - - - - LOG CUT - - - - - - - -\n");
+			if(g_logCurrentCircularBufferChar < MAX_LOG_BUFFER_SIZE)
+			{
+				OutputDebugStringA(g_logCircularBuffer + 
+				                   g_logCurrentCircularBufferChar + 1);
+			}
+		}
+		OutputDebugStringA(g_logCircularBuffer);
+	}
+}
 PLATFORM_PRINT_DEBUG_STRING(platformPrintDebugString)
 {
 	OutputDebugStringA(string);
 }
-#if INTERNAL_BUILD
 PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 {
 	PlatformDebugReadFileResult result = {};
@@ -510,6 +674,41 @@ internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount,
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
+#if INTERNAL_BUILD && 0
+	// how the fuck does _snprintf_s even work???
+	{
+		local_persist const size_t BUFFER_SIZE = 10;
+		char buffer[BUFFER_SIZE];
+		int logLineMetaCharsWritten;
+		buffer[9] = 69;
+		// This will just put a \0 at the end of the buffer.  None of the 
+		//	provided formatted string will be written!
+		logLineMetaCharsWritten = _snprintf_s(buffer+9, 1, _TRUNCATE, "0123");
+		// This will cause "012\0" to be written to the end of buffer, and 
+		//	logLineMetaCharsWritten will be -1.  You can infer that param2 - 1
+		//	bytes of the provided formatted string have been written!
+		logLineMetaCharsWritten = _snprintf_s(buffer+6, 4, _TRUNCATE, "0123");
+		// This command will write a null-terminator, and destroy the following
+		//	4 characters in the specified range //
+		logLineMetaCharsWritten = _snprintf_s(buffer, 5, _TRUNCATE, "");
+		// _TRUNCATE doesn't seem to affect the rest of the buffer...
+		logLineMetaCharsWritten = _snprintf_s(buffer, 5, _TRUNCATE, "0123");
+		// maximum # of bytes we can write to buffer = BUFFER_SIZE - 1.
+		// ALWAYS set the second param to either the total byte size of the 
+		//	first param, or the size of the fourth param INCLUDING the null-
+		//	terminating char at the end. (whichever is smaller!)
+		logLineMetaCharsWritten = 
+			_snprintf_s(buffer, BUFFER_SIZE, _TRUNCATE, "012345678");
+		// logLineMetaCharsWritten == 9
+		// buffer == "012345678\0"
+		KLOG_INFO("logLineMetaCharsWritten=%i", logLineMetaCharsWritten);
+		logLineMetaCharsWritten = _snprintf_s(buffer, 6, _TRUNCATE, "hello");
+		// logLineMetaCharsWritten == 5
+		// buffer == "hello\0678\0"
+		KLOG_INFO("logLineMetaCharsWritten=%i", logLineMetaCharsWritten);
+	}
+#endif
+	KLOG_INFO("START!");
 	local_persist const char FILE_NAME_GAME_DLL[]      = "game.dll";
 	local_persist const char FILE_NAME_GAME_DLL_TEMP[] = "game_temp.dll";
 	///TODO: handle file paths longer than MAX_PATH in the future...
@@ -905,13 +1104,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #endif
 #if SLOW_BUILD
 				// send performance measurement to debugger as a string //
-				{
-					char outputBuffer[256] = {};
-					snprintf(outputBuffer, sizeof(outputBuffer), 
-					         "%.2f ms/f | %.2f Mc/f\n", 
-					         elapsedSeconds*1000, clockCycleDiff/1000000.f);
-					OutputDebugStringA(outputBuffer);
-				}
+				KLOG_INFO("%.2f ms/f | %.2f Mc/f", 
+				          elapsedSeconds*1000, clockCycleDiff/1000000.f);
+				w32DebugPrintLog();
 #endif
 				perfCountPrev   = perfCount;
 				clockCyclesPrev = clockCycles;

@@ -2,6 +2,13 @@
 #define internal        static
 #define local_persist   static
 #define global_variable static
+// Obtain the file name excluding the path //
+//	Source: https://stackoverflow.com/a/8488201
+#define __FILENAME__ ( strrchr(__FILE__, '\\') \
+	? (strrchr(__FILE__, '\\') + 1) \
+	: ( (strrchr(__FILE__, '/' ) \
+		? strrchr(__FILE__, '/' ) + 1 \
+		: __FILE__) ) )
 #if INTERNAL_BUILD || SLOW_BUILD
 	#define kassert(expression) if(!(expression)) { *(int*)0 = 0; }
 #else
