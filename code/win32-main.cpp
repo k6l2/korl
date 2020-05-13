@@ -14,7 +14,7 @@ global_variable HCURSOR g_cursor;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
-global_variable const size_t MAX_LOG_BUFFER_SIZE = 128;
+global_variable const size_t MAX_LOG_BUFFER_SIZE = 32768;
 global_variable char g_logBeginning[MAX_LOG_BUFFER_SIZE];
 global_variable char g_logCircularBuffer[MAX_LOG_BUFFER_SIZE] = {};
 global_variable size_t g_logCurrentBeginningChar;
@@ -29,9 +29,15 @@ internal PLATFORM_LOG(platformLog)
 	struct tm newTime;
 	localtime_s(&newTime, &now);
 	char timeBuffer[80];
-	strftime(timeBuffer, sizeof(timeBuffer), "%H:%M.%S", &newTime);
+	strftime(timeBuffer, sizeof(timeBuffer), 
+#if INTERNAL_BUILD
+	         "%M.%S", 
+#else
+	         "%H:%M.%S", 
+#endif
+	         &newTime);
 	// First, we build the new text to add to the log using a local buffer. //
-	local_persist const size_t MAX_LOG_LINE_SIZE = 128;
+	local_persist const size_t MAX_LOG_LINE_SIZE = 512;
 	char logLineBuffer[MAX_LOG_LINE_SIZE];
 	const char*const strCategory = 
 		   logCategory == PlatformLogCategory::K_INFO    ? "INFO"
@@ -41,7 +47,7 @@ internal PLATFORM_LOG(platformLog)
 	// Print out the leading meta-data tag for this log entry //
 	const int logLineMetaCharsWritten = 
 		_snprintf_s(logLineBuffer, MAX_LOG_LINE_SIZE, _TRUNCATE, 
-		            "[%s | %s | %s:%i] ", strCategory, timeBuffer, 
+		            "[%s|%s|%s:%i] ", strCategory, timeBuffer, 
 		            sourceFileName, sourceFileLineNumber);
 	kassert(logLineMetaCharsWritten > 0);
 	const size_t remainingLogLineSize = (logLineMetaCharsWritten < 0 ||
@@ -49,17 +55,17 @@ internal PLATFORM_LOG(platformLog)
 		: MAX_LOG_LINE_SIZE - logLineMetaCharsWritten;
 	int logLineCharsWritten = 0;
 	if(remainingLogLineSize > 0)// should never fail, but I'm paranoid.
+	// Print out the actual log entry into our temp line buffer //
 	{
 		va_list args;
 		va_start(args, formattedString);
-		// Print out the actual log entry into our temp line buffer //
 		logLineCharsWritten = 
 			vsnprintf_s(logLineBuffer + logLineMetaCharsWritten, 
 			            remainingLogLineSize, _TRUNCATE, formattedString, args);
 		va_end(args);
 		if(logLineCharsWritten < 0)
 		{
-			///TODO: handle overflow case for max characters per log line limit!
+			///TODO: handle overflow case for max characters per log line limit?
 #if INTERNAL_BUILD
 			OutputDebugStringA("LOG LINE OVERFLOW!\n");
 #endif
@@ -69,8 +75,15 @@ internal PLATFORM_LOG(platformLog)
 	//	line buffer into the appropriate log memory location.  First, 
 	//	logBeginning gets filled up until it can no longer contain any more 
 	//	lines.  For all lines afterwards, we use the logCircularBuffer. //
-#if 0
+#if 1
 	OutputDebugStringA(logLineBuffer);
+	OutputDebugStringA("\n");
+	// Errors should NEVER happen.  Assert now to ensure that they are fixed as
+	//	soon as possible!
+	if(logCategory == PlatformLogCategory::K_ERROR)
+	{
+		kassert(!"ERROR HAS BEEN LOGGED!");
+	}
 #endif
 	const size_t totalLogLineSize = 
 		logLineMetaCharsWritten + logLineCharsWritten;
@@ -106,7 +119,6 @@ internal PLATFORM_LOG(platformLog)
 		if(errno)
 		{
 			kassert(!"log circular buffer part 1 string print error!");
-			///TODO: handle error
 		}
 		else if(charsWritten < 0)
 		// If no errors have occurred, it means we have truncated the 
@@ -159,6 +171,129 @@ internal PLATFORM_LOG(platformLog)
 		g_logCircularBufferRunningTotal += totalLogLineSize + 1;
 	}
 }
+internal void w32WriteLogToFile()
+{
+	local_persist const DWORD MAX_DWORD = ~DWORD(1<<(sizeof(DWORD)*8-1));
+	static_assert(MAX_LOG_BUFFER_SIZE < MAX_DWORD);
+	///TODO: change this to use a platform-determined write directory
+	local_persist const char fileNameNewLog[] = "build/log.new";
+	local_persist const char fileNameLog[]    = "build/log.txt";
+	const HANDLE fileHandle = 
+		CreateFileA(fileNameNewLog, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 
+		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
+	if(fileHandle == INVALID_HANDLE_VALUE)
+	{
+		///TODO: handle GetLastError
+		kassert(!"Failed to create log file handle!");
+		return;
+	}
+	// write the beginning log buffer //
+	{
+		const DWORD byteWriteCount = static_cast<DWORD>(strlen(g_logBeginning));
+		DWORD bytesWritten;
+		if(!WriteFile(fileHandle, g_logBeginning, byteWriteCount, &bytesWritten, 
+		              nullptr))
+		{
+			///TODO: handle GetLastError (close fileHandle)
+			kassert(!"Failed to write log beginning!");
+			return;
+		}
+		if(bytesWritten != byteWriteCount)
+		{
+			///TODO: handle this error case(close fileHandle)
+			kassert(!"Failed to complete write log beginning!");
+			return;
+		}
+	}
+	// If the log's beginning buffer is full, that means we have stuff in the 
+	//	circular buffer to write out.
+	if(g_logCurrentBeginningChar == MAX_LOG_BUFFER_SIZE)
+	{
+		// If the total bytes written to the circular buffer exceed the buffer
+		//	size, that means we have to indicate a discontinuity in the log file
+		if(g_logCircularBufferRunningTotal >= MAX_LOG_BUFFER_SIZE - 1)
+		{
+			// write the log cut string //
+			{
+				local_persist const char CSTR_LOG_CUT[] = 
+					"- - - - - - LOG CUT - - - - - - - -\n";
+				const DWORD byteWriteCount = 
+					static_cast<DWORD>(strlen(CSTR_LOG_CUT));
+				DWORD bytesWritten;
+				if(!WriteFile(fileHandle, CSTR_LOG_CUT, byteWriteCount, 
+				              &bytesWritten, nullptr))
+				{
+					///TODO: handle GetLastError (close fileHandle)
+					kassert(!"Failed to write log cut string!");
+					return;
+				}
+				if(bytesWritten != byteWriteCount)
+				{
+					///TODO: handle this error case (close fileHandle)
+					kassert(!"Failed to complete write log cut string!");
+					return;
+				}
+			}
+			if(g_logCurrentCircularBufferChar < MAX_LOG_BUFFER_SIZE)
+			// write the oldest contents of the circular buffer //
+			{
+				const char*const data = 
+					g_logCircularBuffer + g_logCurrentCircularBufferChar + 1;
+				const DWORD byteWriteCount = static_cast<DWORD>(strlen(data));
+				DWORD bytesWritten;
+				if(!WriteFile(fileHandle, data, byteWriteCount, 
+				              &bytesWritten, nullptr))
+				{
+					///TODO: handle GetLastError (close fileHandle)
+					kassert(!"Failed to write log circular buffer old!");
+					return;
+				}
+				if(bytesWritten != byteWriteCount)
+				{
+					///TODO: handle this error case (close fileHandle)
+					kassert(!"Failed to complete write circular buffer old!");
+					return;
+				}
+			}
+		}
+		// write the newest contents of the circular buffer //
+		{
+			const DWORD byteWriteCount = 
+				static_cast<DWORD>(strlen(g_logCircularBuffer));
+			DWORD bytesWritten;
+			if(!WriteFile(fileHandle, g_logCircularBuffer, byteWriteCount, 
+			              &bytesWritten, nullptr))
+			{
+				///TODO: handle GetLastError (close fileHandle)
+				kassert(!"Failed to write log circular buffer new!");
+				return;
+			}
+			if(bytesWritten != byteWriteCount)
+			{
+				///TODO: handle this error case (close fileHandle)
+				kassert(!"Failed to complete write circular buffer new!");
+				return;
+			}
+		}
+	}
+	if(!CloseHandle(fileHandle))
+	{
+		///TODO: handle GetLastError
+		kassert(!"Failed to close new log file handle!");
+		return;
+	}
+	// Copy the new log file into the finalized file name //
+	if(!CopyFileA(fileNameNewLog, fileNameLog, false))
+	{
+		kassert(!"Failed to rename new log file!");
+		return;
+	}
+	// Once the log file has been finalized, we can delete the temporary file //
+	if(!DeleteFileA(fileNameNewLog))
+	{
+		kassert(!"Failed to delete temporary new log file!");
+	}
+}
 #if INTERNAL_BUILD
 internal void w32DebugPrintLog()
 {
@@ -191,29 +326,31 @@ PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to create file handle! GetLastError=%i",
+		           GetLastError());
 		return result;
 	}
+	defer({
+		if(!CloseHandle(fileHandle))
+		{
+			KLOG_ERROR("Failed to close file handle! GetLastError=%i",
+			           GetLastError());
+			result.data = nullptr;
+		}
+	});
 	u32 fileSize32;
 	{
 		LARGE_INTEGER fileSize;
 		if(!GetFileSizeEx(fileHandle, &fileSize))
 		{
-			///TODO: handle GetLastError
-			if(!CloseHandle(fileHandle))
-			{
-				///TODO: handle GetLastError
-			}
+			KLOG_ERROR("Failed to get file size! GetLastError=%i",
+			           GetLastError());
 			return result;
 		}
 		fileSize32 = kmath::safeTruncateU32(fileSize.QuadPart);
 		if(fileSize32 != fileSize.QuadPart)
 		{
-			///TODO: log this error case
-			if(!CloseHandle(fileHandle))
-			{
-				///TODO: handle GetLastError
-			}
+			KLOG_ERROR("File size exceeds 32 bits!");
 			return result;
 		}
 	}
@@ -221,53 +358,30 @@ PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 	                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if(!result.data)
 	{
-		///TODO: handle GetLastError
-		if(!CloseHandle(fileHandle))
-		{
-			///TODO: handle GetLastError
-		}
+		KLOG_ERROR("Failed to allocate %i bytes to read file! GetLastError=%i", 
+		           fileSize32, GetLastError());
 		return result;
 	}
+	defer({
+		if(!VirtualFree(result.data, 0, MEM_RELEASE))
+		{
+			KLOG_ERROR("Failed to VirtualFree! GetLastError=%i", 
+			           GetLastError());
+			result.data = nullptr;
+		}
+	});
 	DWORD numBytesRead;
 	if(!ReadFile(fileHandle, result.data, fileSize32, &numBytesRead, nullptr))
 	{
-		///TODO: handle GetLastError
-		if(!VirtualFree(result.data, 0, MEM_RELEASE))
-		{
-			///TODO: handle GetLastError
-		}
-		if(!CloseHandle(fileHandle))
-		{
-			///TODO: handle GetLastError
-		}
+		KLOG_ERROR("Failed to read file! GetLastError=%i", 
+		           fileSize32, GetLastError());
 		result.data = nullptr;
 		return result;
 	}
 	if(numBytesRead != fileSize32)
 	{
-		///TODO: handle this case
-		if(!VirtualFree(result.data, 0, MEM_RELEASE))
-		{
-			///TODO: handle GetLastError
-		}
-		if(!CloseHandle(fileHandle))
-		{
-			///TODO: handle GetLastError
-		}
-		result.data = nullptr;
-		return result;
-	}
-	if(!CloseHandle(fileHandle))
-	{
-		///TODO: handle GetLastError
-		if(!VirtualFree(result.data, 0, MEM_RELEASE))
-		{
-			///TODO: handle GetLastError
-		}
-		if(!CloseHandle(fileHandle))
-		{
-			///TODO: handle GetLastError
-		}
+		KLOG_ERROR("Failed to read file! bytes read: %i / %i", 
+		           numBytesRead, fileSize32);
 		result.data = nullptr;
 		return result;
 	}
@@ -278,8 +392,8 @@ PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory)
 {
 	if(!VirtualFree(fileMemory, 0, MEM_RELEASE))
 	{
-		///TODO: handle GetLastError
-		OutputDebugStringA("ERROR: Failed to free file memory!!!!!\n");
+		KLOG_ERROR("Failed to free file memory! GetLastError=%i", 
+		           GetLastError());
 	}
 }
 PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
@@ -290,26 +404,34 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to create write file handle '%s'! GetLastError=%i", 
+		           fileName, GetLastError());
 		return false;
 	}
+	bool result = true;
+	defer({
+		if(!CloseHandle(fileHandle))
+		{
+			KLOG_ERROR("Failed to close file handle '%s'! GetLastError=%i", 
+			           fileName, GetLastError());
+			result = false;
+		}
+	});
 	DWORD bytesWritten;
 	if(!WriteFile(fileHandle, data, dataBytes, &bytesWritten, nullptr))
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to write to file '%s'! GetLastError=%i", 
+		           fileName, GetLastError());
 		return false;
 	}
 	if(bytesWritten != dataBytes)
 	{
-		///TODO: handle this error case
+		KLOG_ERROR("Failed to completely write to file '%s'! "
+		           "Bytes written: %i / %i", 
+		           fileName, bytesWritten, dataBytes);
 		return false;
 	}
-	if(!CloseHandle(fileHandle))
-	{
-		///TODO: handle GetLastError
-		return false;
-	}
-	return false;
+	return result;
 }
 #endif
 GAME_RENDER_AUDIO(gameRenderAudioStub)
@@ -317,7 +439,6 @@ GAME_RENDER_AUDIO(gameRenderAudioStub)
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDrawStub)
 {
-	///TODO: log error?
 	// continue running the application to keep attempting to reload game code!
 	return true;
 }
@@ -328,8 +449,8 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
 	                         &fileAttributeData))
 	{
-		OutputDebugStringA("w32GetLastWriteTime failed!\n");
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to get last write time of file '%s'! "
+		           "GetLastError=%i", fileName, GetLastError());
 		return result;
 	}
 	result = fileAttributeData.ftLastWriteTime;
@@ -349,57 +470,39 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
 	{
-		const DWORD copyError = GetLastError();
-		switch(copyError)
-		{
-			case ERROR_FILE_NOT_FOUND:
-			{
-				OutputDebugStringA("w32LoadGameCode ERROR_FILE_NOT_FOUND\n");
-			} break;
-			case ERROR_ACCESS_DENIED:
-			{
-				OutputDebugStringA("w32LoadGameCode ERROR_ACCESS_DENIED\n");
-			} break;
-			case ERROR_ENCRYPTION_FAILED:
-			{
-				OutputDebugStringA("w32LoadGameCode ERROR_ENCRYPTION_FAILED\n");
-			} break;
-			case ERROR_SHARING_VIOLATION:
-			{
-				OutputDebugStringA("w32LoadGameCode ERROR_SHARING_VIOLATION\n");
-			} break;
-			default:
-			{
-				char outputBuffer[256] = {};
-				snprintf(outputBuffer, sizeof(outputBuffer), "copyError=%i\n", 
-				         copyError);
-				OutputDebugStringA(outputBuffer);
-			} break;
-		}
-		///TODO: log GetLastError
+		KLOG_ERROR("Failed to copy file '%s' to '%s'! GetLastError=%i", 
+		           fileNameDll, fileNameDllTemp, GetLastError());
 	}
 	else
 	{
 		result.hLib = LoadLibraryA(fileNameDllTemp);
+		if(!result.hLib)
+		{
+			KLOG_ERROR("Failed to load library '%s'! GetLastError=%i", 
+			           fileNameDllTemp, GetLastError());
+		}
 	}
 	if(result.hLib)
 	{
 		result.renderAudio = reinterpret_cast<fnSig_GameRenderAudio*>(
 			GetProcAddress(result.hLib, "gameRenderAudio"));
+		if(!result.renderAudio)
+		{
+			KLOG_ERROR("Failed to get proc address 'gameRenderAudio'! "
+			           "GetLastError=%i", GetLastError());
+		}
 		result.updateAndDraw = reinterpret_cast<fnSig_GameUpdateAndDraw*>(
 			GetProcAddress(result.hLib, "gameUpdateAndDraw"));
+		if(!result.updateAndDraw)
+		{
+			KLOG_ERROR("Failed to get proc address 'gameUpdateAndDraw'! "
+			           "GetLastError=%i", GetLastError());
+		}
 		result.isValid = (result.renderAudio && result.updateAndDraw);
-	}
-	else
-	{
-		OutputDebugStringA("load game dll failed!\n");
-		//kassert(!"load game dll failed!");
-		///TODO: handle GetLastError
 	}
 	if(!result.isValid)
 	{
-		OutputDebugStringA("game dll invalid!\n");
-		//kassert(!"game dll invalid!");
+		KLOG_WARNING("Game code is invalid!");
 		result.renderAudio   = gameRenderAudioStub;
 		result.updateAndDraw = gameUpdateAndDrawStub;
 	}
@@ -411,8 +514,8 @@ internal void w32UnloadGameCode(GameCode& gameCode)
 	{
 		if(!FreeLibrary(gameCode.hLib))
 		{
-			kassert(!"free game dll failed!");
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to free game code dll! GetLastError=", 
+			           GetLastError());
 		}
 		gameCode.hLib = NULL;
 	}
@@ -431,7 +534,8 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 	}
 	else
 	{
-		///TODO: log GetLastError
+		KLOG_ERROR("Failed to get window dimensions! GetLastError=%i", 
+		           GetLastError());
 		return W32Dimension2d{.width=0, .height=0};
 	}
 }
@@ -564,7 +668,7 @@ internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 	monitorInfo.cbSize = sizeof(MONITORINFOEXA);
 	if(!GetMonitorInfoA(nearestMonitor, &monitorInfo))
 	{
-		///TODO: log error
+		KLOG_ERROR("Failed to get monitor info!");
 		return DEFAULT_RESULT;
 	}
 	DEVMODEA monitorDevMode;
@@ -573,12 +677,13 @@ internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 	if(!EnumDisplaySettingsA(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, 
 	                         &monitorDevMode))
 	{
-		///TODO: log error
+		KLOG_ERROR("Failed to enum display settings!");
 		return DEFAULT_RESULT;
 	}
 	if(monitorDevMode.dmDisplayFrequency < 2)
 	{
-		///TODO: log warning: unknown hardware-defined refresh rate!!!
+		KLOG_WARNING("Unknown hardware-defined refresh rate! "
+		             "Defaulting to %ihz...", DEFAULT_RESULT);
 		return DEFAULT_RESULT;
 	}
 	return monitorDevMode.dmDisplayFrequency;
@@ -609,23 +714,23 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 		} break;
 		case WM_SIZE:
 		{
-			OutputDebugStringA("WM_SIZE\n");
+			KLOG_INFO("WM_SIZE");
 		} break;
 		case WM_DESTROY:
 		{
 			///TODO: handle this error: recreate window?
 			g_running = false;
-			OutputDebugStringA("WM_DESTROY\n");
+			KLOG_INFO("WM_DESTROY");
 		} break;
 		case WM_CLOSE:
 		{
 			///TODO: ask user first before destroying
 			g_running = false;
-			OutputDebugStringA("WM_CLOSE\n");
+			KLOG_INFO("WM_CLOSE");
 		} break;
 		case WM_ACTIVATEAPP:
 		{
-			OutputDebugStringA("WM_ACTIVATEAPP\n");
+			KLOG_INFO("WM_ACTIVATEAPP");
 		} break;
 #if 0
 		case WM_PAINT:
@@ -657,7 +762,8 @@ internal LARGE_INTEGER w32QueryPerformanceCounter()
 	LARGE_INTEGER result;
 	if(!QueryPerformanceCounter(&result))
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to query performance counter! GetLastError=%i", 
+		           GetLastError());
 	}
 	return result;
 }
@@ -674,40 +780,7 @@ internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount,
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                              PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
-#if INTERNAL_BUILD && 0
-	// how the fuck does _snprintf_s even work???
-	{
-		local_persist const size_t BUFFER_SIZE = 10;
-		char buffer[BUFFER_SIZE];
-		int logLineMetaCharsWritten;
-		buffer[9] = 69;
-		// This will just put a \0 at the end of the buffer.  None of the 
-		//	provided formatted string will be written!
-		logLineMetaCharsWritten = _snprintf_s(buffer+9, 1, _TRUNCATE, "0123");
-		// This will cause "012\0" to be written to the end of buffer, and 
-		//	logLineMetaCharsWritten will be -1.  You can infer that param2 - 1
-		//	bytes of the provided formatted string have been written!
-		logLineMetaCharsWritten = _snprintf_s(buffer+6, 4, _TRUNCATE, "0123");
-		// This command will write a null-terminator, and destroy the following
-		//	4 characters in the specified range //
-		logLineMetaCharsWritten = _snprintf_s(buffer, 5, _TRUNCATE, "");
-		// _TRUNCATE doesn't seem to affect the rest of the buffer...
-		logLineMetaCharsWritten = _snprintf_s(buffer, 5, _TRUNCATE, "0123");
-		// maximum # of bytes we can write to buffer = BUFFER_SIZE - 1.
-		// ALWAYS set the second param to either the total byte size of the 
-		//	first param, or the size of the fourth param INCLUDING the null-
-		//	terminating char at the end. (whichever is smaller!)
-		logLineMetaCharsWritten = 
-			_snprintf_s(buffer, BUFFER_SIZE, _TRUNCATE, "012345678");
-		// logLineMetaCharsWritten == 9
-		// buffer == "012345678\0"
-		KLOG_INFO("logLineMetaCharsWritten=%i", logLineMetaCharsWritten);
-		logLineMetaCharsWritten = _snprintf_s(buffer, 6, _TRUNCATE, "hello");
-		// logLineMetaCharsWritten == 5
-		// buffer == "hello\0678\0"
-		KLOG_INFO("logLineMetaCharsWritten=%i", logLineMetaCharsWritten);
-	}
-#endif
+	defer(w32WriteLogToFile());
 	KLOG_INFO("START!");
 	local_persist const char FILE_NAME_GAME_DLL[]      = "game.dll";
 	local_persist const char FILE_NAME_GAME_DLL_TEMP[] = "game_temp.dll";
@@ -719,7 +792,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		if(!GetModuleFileNameA(NULL, pathToExe, MAX_PATH))
 		{
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to get exe file path+name! GetLastError=%i", 
+			           GetLastError());
 			return -1;
 		}
 		char* lastBackslash = pathToExe;
@@ -740,24 +814,28 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		if(strcat_s(fullPathToGameDll, MAX_PATH, pathToExe))
 		{
-			///TODO: log error
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           pathToExe, fullPathToGameDll);
 			return -1;
 		}
 		if(strcat_s(fullPathToGameDll + pathToExeSize, 
 		            MAX_PATH - pathToExeSize, FILE_NAME_GAME_DLL))
 		{
-			///TODO: log error
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           FILE_NAME_GAME_DLL, fullPathToGameDll);
 			return -1;
 		}
 		if(strcat_s(fullPathToGameDllTemp, MAX_PATH, pathToExe))
 		{
-			///TODO: log error
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           pathToExe, fullPathToGameDllTemp);
 			return -1;
 		}
 		if(strcat_s(fullPathToGameDllTemp + pathToExeSize, 
 		            MAX_PATH - pathToExeSize, FILE_NAME_GAME_DLL_TEMP))
 		{
-			///TODO: log error
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           FILE_NAME_GAME_DLL_TEMP, fullPathToGameDllTemp);
 			return -1;
 		}
 	}
@@ -769,7 +847,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		                                         PAGE_READWRITE);
 		if(!stbImageMemory)
 		{
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to VirtualAlloc %i bytes for STB_IMAGE! "
+			           "GetLastError=%i", 
+			           STB_IMAGE_MEMORY_BYTES, GetLastError());
 			return -1;
 		}
 		g_genAllocStbImage = kgaInit(stbImageMemory, STB_IMAGE_MEMORY_BYTES);
@@ -778,7 +858,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                                fullPathToGameDllTemp);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
-		///TODO: log GetLastError
+		KLOG_ERROR("Failed to query for performance frequency! GetLastError=%i", 
+		           GetLastError());
 		return -1;
 	}
 	w32LoadXInput();
@@ -798,7 +879,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)
 	{
-		///TODO: log error
+		KLOG_ERROR("Failed to register WNDCLASS! GetLastError=%i", 
+		           GetLastError());
 		return -1;
 	}
 	const HWND mainWindow = CreateWindowExA(
@@ -814,7 +896,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		NULL );
 	if(!mainWindow)
 	{
-		///TODO: log error
+		KLOG_ERROR("Failed to create window! GetLastError=%i", GetLastError());
 		return -1;
 	}
 	w32KrbOglInitialize(mainWindow);
@@ -849,7 +931,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                                          PAGE_READWRITE);
 	if(!gameSoundMemory)
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to VirtualAlloc %i bytes for sound memory! "
+		           "GetLastError=%i", SOUND_BUFFER_BYTES, GetLastError());
 		return -1;
 	}
 	GameMemory gameMemory = {};
@@ -868,7 +951,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                                          PAGE_READWRITE);
 	if(!gameMemory.permanentMemory)
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to VirtualAlloc %i bytes for game memory! "
+		           "GetLastError=%i", totalGameMemoryBytes, GetLastError());
 		return -1;
 	}
 	gameMemory.transientMemory = 
@@ -892,7 +976,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	const HDC hdc = GetDC(mainWindow);
 	if(!hdc)
 	{
-		///TODO: log error
+		KLOG_ERROR("Failed to get main window device context!");
 		return -1;
 	}
 	local_persist const UINT DESIRED_OS_TIMER_GRANULARITY_MS = 1;
@@ -909,7 +993,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 		else
 		{
-			///TODO: log warning
+			KLOG_WARNING("System doesn't support custom scheduler granularity. "
+			             "Main thread will not be put to sleep!");
 		}
 	}
 	// set scheduler granularity using timeBeginPeriod //
@@ -917,31 +1002,29 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		timeBeginPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) == TIMERR_NOERROR;
 	if(!sleepIsGranular)
 	{
-		kassert(!"Failed to set OS sleep granularity!");
-		///TODO: log warning
+		KLOG_WARNING("System supports custom scheduler granularity, but "
+		             "setting this value has failed! Main thread will not be "
+		             "put to sleep!");
 	}
-#if 1
+	defer({
+		if (sleepIsGranular && 
+			timeEndPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
+		{
+			KLOG_ERROR("Failed to timeEndPeriod!");
+		}
+	});
+	// Set the process to a higher priority to minimize the chance of another 
+	//	process keeping us asleep hopefully. //
 	if(sleepIsGranular)
 	{
 		const HANDLE hProcess = GetCurrentProcess();
 		if(!SetPriorityClass(hProcess, HIGH_PRIORITY_CLASS))
 		{
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to set the process priority class to "
+			           "HIGH_PRIORITY_CLASS! GetLastError=%i", GetLastError());
 			return -1;
 		}
 	}
-#endif
-	///TODO: delete LIMIT_FRAMERATE_USING_TIMER stuff because it doesn't seem to 
-	///      work the way I want it to...
-#if LIMIT_FRAMERATE_USING_TIMER
-	const HANDLE hTimerMainThread = 
-		CreateWaitableTimerA(nullptr, true, "hTimerMainThread");
-	if(!hTimerMainThread)
-	{
-		///TODO: handle GetLastError
-		return -1;
-	}
-#endif
 	// main window loop //
 	{
 		g_running = true;
@@ -1054,7 +1137,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			// update window graphics //
 			if(!SwapBuffers(hdc))
 			{
-				///TODO: handle GetLastError
+				KLOG_ERROR("Failed to SwapBuffers! GetLastError=%i", 
+				           GetLastError());
 			}
 			// enforce targetSecondsElapsedPerFrame //
 			///TODO: we still have to Sleep/wait when VSync is on if SwapBuffers
@@ -1106,18 +1190,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				// send performance measurement to debugger as a string //
 				KLOG_INFO("%.2f ms/f | %.2f Mc/f", 
 				          elapsedSeconds*1000, clockCycleDiff/1000000.f);
-				w32DebugPrintLog();
 #endif
 				perfCountPrev   = perfCount;
 				clockCyclesPrev = clockCycles;
 			}
-		}
-	}
-	if(sleepIsGranular)
-	{
-		if(timeEndPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
-		{
-			///TODO: log error
 		}
 	}
 	kassert(kgaUsedBytes(g_genAllocStbImage) == 0);

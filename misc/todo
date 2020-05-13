@@ -18,10 +18,13 @@
 	[x] automatically print file+line#
 	[x] automatically print function name
 	[x] automatically print a timestamp
-	[ ] write log to disk platform function
-		[ ] automatically write the log when the program exits gracefully
+	[x] write log to disk platform function
+		[x] automatically write the log when the program exits gracefully
 			https://www.gingerbill.org/article/2015/08/19/defer-in-cpp/
 	[ ] complete logging tech debt
+		[x] fill in all the logging TODOs
+		[ ] remove ALL OutputDebugString calls and similar calls, replace w/ 
+			logging calls
 [ ] detect when the program crashes 
 	https://stackoverflow.com/q/19656946
 	https://stackoverflow.com/q/28629351

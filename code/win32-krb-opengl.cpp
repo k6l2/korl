@@ -24,8 +24,8 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		ChoosePixelFormat(windowDc, &desiredPixelFormat);
 	if(pixelFormatIndex == 0)
 	{
-		kassert(!"Failed to choose pixel format!");
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to choose pixel format! GetLastError=%i",
+		           GetLastError());
 	}
 	// verify that the OS-provided pixel format is good enough for our needs //
 	{
@@ -36,42 +36,41 @@ internal void w32KrbOglInitialize(HWND hwnd)
 			                    &providedPixelFormat);
 		if(maxPixelFormatIndex == 0)
 		{
-			kassert(!"Failed to describe pixel format!");
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to describe pixel format! GetLastError=%i",
+			           GetLastError());
 		}
 		if((providedPixelFormat.iPixelType != desiredPixelFormat.iPixelType) ||
 			(providedPixelFormat.cColorBits < desiredPixelFormat.cColorBits))
 		{
-			kassert(!"Invalid provided pixel format!");
-			///TODO: log error
+			KLOG_ERROR("Invalid provided pixel format!");
 			///TODO: do a more robust job of this for shipping
 		}
 	}
 	if(!SetPixelFormat(windowDc, pixelFormatIndex, &desiredPixelFormat))
 	{
-		kassert(!"Failed to set pixel format!");
-		///TODO: log error
+		KLOG_ERROR("Failed to set pixel format! GetLastError=%i", 
+		           GetLastError());
 	}
 	HGLRC openGlRc = wglCreateContext(windowDc);
 	if(!wglMakeCurrent(windowDc, openGlRc))
 	{
-		kassert(!"Failed to set the current OpenGL render context!");
-		///TODO: handle error
+		KLOG_ERROR("Failed to set the current OpenGL render context! "
+		           "GetLastError=%i", GetLastError());
 	}
 	wglGetExtensionsStringARB = 
 		reinterpret_cast<fnSig_wglGetExtensionsStringARB*>(
 			wglGetProcAddress("wglGetExtensionsStringARB"));
 	if(!wglGetExtensionsStringARB)
 	{
-		kassert(!"Failed to get wglGetExtensionsStringARB!");
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to get wglGetExtensionsStringARB! "
+		           "GetLastError=%i", GetLastError());
 	}
 	const char*const wglExtensionsString = wglGetExtensionsStringARB(windowDc);
 	ReleaseDC(hwnd, windowDc);
 	if(!wglExtensionsString)
 	{
-		kassert(!"Failed to get wgl extensions string!");
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to get wgl extensions string! "
+		           "GetLastError=%i", GetLastError());
 	}
 #if INTERNAL_BUILD
 	platformPrintDebugString(wglExtensionsString);
@@ -83,33 +82,37 @@ internal void w32KrbOglInitialize(HWND hwnd)
 				wglGetProcAddress("wglSwapIntervalEXT"));
 		if(!wglSwapIntervalEXT)
 		{
-			kassert(!"Failed to get wglSwapIntervalEXT!");
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to get 'wglSwapIntervalEXT'! "
+			           "GetLastError=%i", GetLastError());
 		}
 		wglGetSwapIntervalEXT =
 			reinterpret_cast<fnSig_wglGetSwapIntervalEXT*>(
 				wglGetProcAddress("wglGetSwapIntervalEXT"));
 		if(!wglGetSwapIntervalEXT)
 		{
-			kassert(!"Failed to get wglGetSwapIntervalEXT!");
-			///TODO: handle GetLastError
+			KLOG_ERROR("Failed to get 'wglGetSwapIntervalEXT'! "
+			           "GetLastError=%i", GetLastError());
 		}
 	}
 	else
 	{
-		///TODO: log warning.  Application should still be able to function w/o
-		///      the ability to use vertical-sync
+		KLOG_WARNING("System does not contain 'WGL_EXT_swap_control'; the "
+		             "application will not have vertical-sync capabilities!");
 	}
 }
 internal void w32KrbOglSetVSyncPreference(bool value)
 {
 	if(!wglSwapIntervalEXT)
 	{
+		KLOG_WARNING("System failed to initialize vertical-sync capabilities! "
+		             "Ignoring request...");
 		return;
 	}
-	if(!wglSwapIntervalEXT(value ? 1 : 0))
+	const int desiredInterval = value ? 1 : 0;
+	if(!wglSwapIntervalEXT(desiredInterval))
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed call wglSwapIntervalEXT with a value of %i! "
+		           "GetLastError=%i", desiredInterval, GetLastError());
 	}
 }
 internal bool w32KrbOglGetVSync()

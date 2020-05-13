@@ -12,26 +12,36 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 	const HMODULE LibDSound = LoadLibraryA("dsound.dll");
 	if(!LibDSound)
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to load dsound.dll! GetLastError=%i", 
+		           GetLastError());
 		return;
 	}
 	fnSig_DirectSoundCreate*const DirectSoundCreate = (fnSig_DirectSoundCreate*)	
 		GetProcAddress(LibDSound, "DirectSoundCreate");
 	if(!DirectSoundCreate)
 	{
-		///TODO: handle GetLastError
+		KLOG_ERROR("Failed to get 'DirectSoundCreate'! GetLastError=%i", 
+		           GetLastError());
 		return;
 	}
 	LPDIRECTSOUND dSound;
-	if(DirectSoundCreate(0, &dSound, NULL) != DS_OK)
 	{
-		///TODO: handle returned error code
-		return;
+		const HRESULT result = DirectSoundCreate(0, &dSound, NULL);
+		if(result != DS_OK)
+		{
+			KLOG_ERROR("Failed to create direct sound! result=%li", result);
+			return;
+		}
 	}
-	if(dSound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY) != DS_OK)
 	{
-		///TODO: handle returned error code
-		return;
+		const HRESULT result = 
+			dSound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY);
+		if(result != DS_OK)
+		{
+			KLOG_ERROR("Failed to set dsound cooperative level! result=%li", 
+			           result);
+			return;
+		}
 	}
 	LPDIRECTSOUNDBUFFER dsBufferPrimary;
 	// create primary buffer //
@@ -39,10 +49,12 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		DSBUFFERDESC bufferDescPrimary = {};
 		bufferDescPrimary.dwSize  = sizeof(DSBUFFERDESC);
 		bufferDescPrimary.dwFlags = DSBCAPS_PRIMARYBUFFER;
-		if(dSound->CreateSoundBuffer(&bufferDescPrimary, 
-		                             &dsBufferPrimary, NULL) != DS_OK)
+		const HRESULT result = 
+			dSound->CreateSoundBuffer(&bufferDescPrimary, 
+			                          &dsBufferPrimary, NULL);
+		if(result != DS_OK)
 		{
-			///TODO: handle returned error code
+			KLOG_ERROR("Failed to create sound buffer! result=%li", result);
 			return;
 		}
 	}
@@ -56,10 +68,14 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 	waveFormat.nAvgBytesPerSec = 
 		waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
 	waveFormat.cbSize = 0;
-	if(dsBufferPrimary->SetFormat(&waveFormat) != DS_OK)
 	{
-		///TODO: handle returned error code
-		return;
+		const HRESULT result = dsBufferPrimary->SetFormat(&waveFormat);
+		if(result != DS_OK)
+		{
+			KLOG_ERROR("Failed to set primary buffer format! result=%li", 
+			           result);
+			return;
+		}
 	}
 	// create secondary buffer //
 	{
@@ -68,19 +84,24 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		bufferDescSecondary.dwSize        = sizeof(DSBUFFERDESC);
 		bufferDescSecondary.lpwfxFormat   = &waveFormat;
 		bufferDescSecondary.dwBufferBytes = bufferBytes;
-		if(dSound->CreateSoundBuffer(&bufferDescSecondary, 
-		                             &g_dsBufferSecondary, NULL) != DS_OK)
+		const HRESULT result = 
+			dSound->CreateSoundBuffer(&bufferDescSecondary, 
+		                              &g_dsBufferSecondary, NULL);
+		if(result != DS_OK)
 		{
-			///TODO: handle returned error code
+			KLOG_ERROR("Failed to create sound buffer! result=%li", result);
 			return;
 		}
 	}
 	///TODO: initialize the buffer to ZERO probably?..
 	///TODO: initialize the buffer total # bytes written & prev write cursor
-	if(g_dsBufferSecondary->Play(0, 0, DSBPLAY_LOOPING) != DS_OK)
 	{
-		///TODO: handle returned error code
-		return;
+		const HRESULT result = g_dsBufferSecondary->Play(0, 0, DSBPLAY_LOOPING);
+		if(result != DS_OK)
+		{
+			KLOG_ERROR("Failed to play! result=%li", result);
+			return;
+		}
 	}
 	// initialize the running sound sample to be ahead of the volatile region //
 	//	NOTE: this does not actually guarantee that the running sound sample 
@@ -88,10 +109,11 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 	{
 		DWORD cursorPlay;
 		DWORD cursorWrite;
-		if(g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, 
-		                                           &cursorWrite) != DS_OK)
+		const HRESULT result = 
+			g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, &cursorWrite);
+		if(result != DS_OK)
 		{
-			///TODO: handle error code
+			KLOG_ERROR("Failed to get current position! result=%li", result);
 			return;
 		}
 		o_runningSoundSample = cursorWrite/(sizeof(i16)*numChannels) + 
@@ -111,11 +133,14 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	//	shouldn't be touched since the sound card is probably reading from it.
 	DWORD cursorPlay;
 	DWORD cursorWrite;
-	if(g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, 
-	                                           &cursorWrite) != DS_OK)
 	{
-		///TODO: handle error code
-		return;
+		const HRESULT result = 
+			g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, &cursorWrite);
+		if(result != DS_OK)
+		{
+			KLOG_ERROR("Failed to get current position! result=%li", result);
+			return;
+		}
 	}
 	// Based on our current running sound sample index, we need to determine the
 	//	region of the buffer that needs to be locked and written to.
@@ -131,6 +156,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	//	buffer shenanigans, as usual:
 	// x == the region whose size represents how far we want to fast-forward our
 	//	running sound sample variable to leave the volatile region
+	u32 skippedSamples = 0;
 	if(cursorPlay < cursorWrite)
 	{
 		const u32 runningSoundByte = 
@@ -142,6 +168,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			const u32 samplesToSkip = 
 				(cursorWrite - byteToLock)/bytesPerSample;
 			io_runningSoundSample += samplesToSkip;
+			skippedSamples        += samplesToSkip;
 		}
 	}
 	else
@@ -156,6 +183,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 				((cursorWrite - byteToLock) + (soundBufferBytes - byteToLock)) /
 				bytesPerSample;
 			io_runningSoundSample += samplesToSkip;
+			skippedSamples        += samplesToSkip;
 		}
 		// |---BxxxxxW----------------------------------------------P----------|
 		else if(byteToLock < cursorWrite)
@@ -163,14 +191,20 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			const u32 samplesToSkip = 
 				(cursorWrite - byteToLock)/bytesPerSample;
 			io_runningSoundSample += samplesToSkip;
+			skippedSamples        += samplesToSkip;
 		}
+	}
+	if(skippedSamples > 0)
+	{
+		KLOG_WARNING("Audio buffer under-run (failed to keep up w/ dsound?)! "
+		             "Skipped %i samples...", skippedSamples);
 	}
 #endif
 	const u32 runningSoundByte = io_runningSoundSample*bytesPerSample;
 	const DWORD byteToLock = runningSoundByte % soundBufferBytes;
 	if(byteToLock == cursorPlay)
 	{
-		OutputDebugStringA("byteToLock == cursorPlay!!!\n");
+		KLOG_WARNING("byteToLock == cursorPlay!!!");
 	}
 	// x == the region we want to fill in with new sound samples
 	const DWORD lockedBytes = (byteToLock < cursorPlay)
@@ -238,8 +272,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	//	temporary buffer whose contents will be dumped into the DSound buffer.
 	{
 		GameAudioBuffer gameAudioBuffer = {
-			.memory            = reinterpret_cast<SoundSample*>(
-			                                             gameSoundBufferMemory),
+			.memory     = reinterpret_cast<SoundSample*>(gameSoundBufferMemory),
 			.lockedSampleCount = maxLockedBytes / bytesPerSample,
 			.soundSampleHz     = soundSampleHz,
 			.numSoundChannels  = numSoundChannels
@@ -264,13 +297,16 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	DWORD lockRegion1Size;
 	VOID* lockRegion2;
 	DWORD lockRegion2Size;
-	if(g_dsBufferSecondary->Lock(byteToLock, maxLockedBytes,
-	                             &lockRegion1, &lockRegion1Size,
-	                             &lockRegion2, &lockRegion2Size,
-	                             0) != DS_OK)
 	{
-		///TODO: handle error code
-		return;
+		const HRESULT result = 
+			g_dsBufferSecondary->Lock(byteToLock, maxLockedBytes,
+			                          &lockRegion1, &lockRegion1Size,
+			                          &lockRegion2, &lockRegion2Size, 0);
+		if(result != DS_OK)
+		{
+			KLOG_WARNING("Failed to lock buffer! result=%li", result);
+			return;
+		}
 	}
 	const u32 lockedSampleCount = 
 		(lockRegion1Size + lockRegion2Size) / bytesPerSample;
@@ -293,10 +329,14 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 		}
 	}
 	io_runningSoundSample += lockedSampleCount;
-	if(g_dsBufferSecondary->Unlock(lockRegion1, lockRegion1Size,
-	                               lockRegion2, lockRegion2Size) != DS_OK)
 	{
-		///TODO: handle error code
-		return;
+		const HRESULT result =
+			g_dsBufferSecondary->Unlock(lockRegion1, lockRegion1Size,
+			                            lockRegion2, lockRegion2Size);
+		if(result != DS_OK)
+		{
+			KLOG_ERROR("Failed to unlock buffer! result=%li", result);
+			return;
+		}
 	}
 }

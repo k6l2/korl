@@ -10,6 +10,20 @@
 #endif
 #include "z85.h"
 #include "stb/stb_image.h"
+internal GLenum krbOglCheckErrors(const char* file, int line)
+{
+	GLenum errorCode;
+	do
+	{
+		errorCode = glGetError();
+	} while (errorCode != GL_NO_ERROR);
+	if(errorCode != GL_NO_ERROR)
+	{
+		KLOG_ERROR("[%s|%i] OpenGL ERROR=%i", file, line, errorCode);
+	}
+	return errorCode;
+}
+#define GL_CHECK_ERROR() krbOglCheckErrors(__FILENAME__, __LINE__)
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
@@ -27,13 +41,13 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
 	glOrtho(-windowSizeX/2, windowSizeX/2, -windowSizeY/2, windowSizeY/2, 
 	        halfDepth, -halfDepth);
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_LINE(krbDrawLine)
 {
@@ -43,7 +57,7 @@ internal KRB_DRAW_LINE(krbDrawLine)
 	glVertex2f(p0.x, p0.y);
 	glVertex2f(p1.x, p1.y);
 	glEnd();
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_TRI(krbDrawTri)
 {
@@ -56,7 +70,7 @@ internal KRB_DRAW_TRI(krbDrawTri)
 	glVertex2f(p1.x, p1.y);
 	glVertex2f(p2.x, p2.y);
 	glEnd();
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured)
 {
@@ -69,14 +83,14 @@ internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured)
 	glTexCoord2f(t1.x, t1.y); glVertex2f(p1.x, p1.y);
 	glTexCoord2f(t2.x, t2.y); glVertex2f(p2.x, p2.y);
 	glEnd();
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 {
 	glMatrixMode(GL_MODELVIEW);
 	glTranslatef(offset.x, offset.y, 0.f);
 	glPushMatrix();
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 {
@@ -89,7 +103,7 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 		glPushMatrix();
 	}
 	glTranslatef(translation.x, translation.y, 0.f);
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
 internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 {
@@ -98,8 +112,8 @@ internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 	if(!z85::decode(reinterpret_cast<const i8*>(z85ImageData), 
 	                tempImageDataBuffer))
 	{
-		kassert(!"z85::decode failure!");
-		///TODO: handle error
+		KLOG_ERROR("z85::decode failure!");
+		return 0;
 	}
 	int imgW, imgH, imgNumByteChannels;
 	u8*const img = 
@@ -109,8 +123,10 @@ internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 	kassert(img);
 	if(!img)
 	{
-		///TODO: handle error
+		KLOG_ERROR("stbi_load_from_memory failure!");
+		return 0;
 	}
+	defer(stbi_image_free(img));
 	GLuint texName;
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
@@ -118,12 +134,11 @@ internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imgW, imgH, 0, 
 	             GL_RGBA, GL_UNSIGNED_BYTE, img);
-	///TODO: check GL errors
-	stbi_image_free(img);
+	GL_CHECK_ERROR();
 	return texName;
 }
 internal KRB_USE_TEXTURE(krbUseTexture)
 {
 	glBindTexture(GL_TEXTURE_2D, kth);
-	///TODO: check GL errors
+	GL_CHECK_ERROR();
 }
