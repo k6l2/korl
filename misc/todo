@@ -31,11 +31,11 @@
 [x] Figure out why log file doesn't get output when running outside the 
 	debugger...
 	[x] remove LITERALLY all OutputDebugString calls for real this time??...
-[ ] detect when the program crashes 
+[x] detect when the program crashes 
 	https://stackoverflow.com/q/19656946
 	https://stackoverflow.com/q/28629351
 	[x] write log file
-	[ ] write minidump file
+	[x] write minidump file
 [ ] detect & properly handle stack overflows
 	[ ] reserve extra stack space for this case
 		https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadstackguarantee?redirectedfrom=MSDN

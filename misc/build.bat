@@ -61,9 +61,11 @@ rem            linking.
 rem /EXPORT:<name> - exports a function for a DLL
 rem /incremental:no - turn off incremental builds! wasting time for no reason.
 rem /pdb:<name> - specify a specific name for the PDB file
-rem user32.lib - ??? various win32 stuff
-rem Gdi32.lib - required to create an OpenGL render context
-rem winmm.lib - multimedia timer functions (granular sleep functionality)
+rem user32.lib   - various win32 stuff; probably required forever.
+rem Gdi32.lib    - required to create an OpenGL render context
+rem winmm.lib    - multimedia timer functions (granular sleep functionality)
+rem opengl32.lib - You know what this is for...
+rem Dbghelp.lib  - generate mini dumps
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
 	/MTd /WX /wd4201 /wd4514 /wd4505 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
@@ -92,7 +94,7 @@ if exist win32-main.exe (
 )
 cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
 	%CommonCompilerFlagsDebug% /W4 /wd4100 /link %CommonLinkerFlags% ^
-	user32.lib Gdi32.lib winmm.lib opengl32.lib
+	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE

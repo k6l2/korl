@@ -1,12 +1,13 @@
 #include "global-defines.h"
-// crt io
-#include <cstdio>
-#include <ctime>
 #include "win32-main.h"
 #include "win32-dsound.h"
 #include "win32-xinput.h"
 #include "win32-krb-opengl.h"
 #include "generalAllocator.h"
+#include <cstdio>
+#include <ctime>
+#include <dbghelp.h>
+#include <strsafe.h>
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
@@ -22,6 +23,7 @@ global_variable size_t g_logCurrentCircularBufferChar;
 //	including characters that are overwritten!
 global_variable size_t g_logCircularBufferRunningTotal;
 global_variable bool g_hasReceivedException;
+global_variable bool g_hasWrittenCrashDump;
 global_variable size_t g_pathToExeSize;
 ///TODO: handle file paths longer than MAX_PATH in the future...
 global_variable char g_pathToExe[MAX_PATH];
@@ -821,11 +823,61 @@ internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount,
 		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
 	return elapsedSeconds;
 }
+internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
+{
+	// copy-pasta from MSDN basically:
+	//	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
+	///TODO: maybe make this a little more robust in the future...
+	BOOL bMiniDumpSuccessful;
+	WCHAR szPath[MAX_PATH]; 
+	WCHAR szFileName[MAX_PATH]; 
+	///TODO: pull app name & version out of here to a more maintainable location
+	WCHAR* szAppName = L"w32-kml";
+	WCHAR* szVersion = L"v1.0";
+	DWORD dwBufferSize = MAX_PATH;
+	HANDLE hDumpFile;
+	SYSTEMTIME stLocalTime;
+	MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+	GetLocalTime( &stLocalTime );
+	GetTempPathW( dwBufferSize, szPath );
+	StringCchPrintfW( szFileName, MAX_PATH, L"%s%s", szPath, szAppName );
+	CreateDirectoryW( szFileName, NULL );
+	StringCchPrintfW( szFileName, MAX_PATH, 
+	                L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp", 
+	                szPath, szAppName, szVersion, 
+	                stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
+	                stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
+	                GetCurrentProcessId(), GetCurrentThreadId());
+	hDumpFile = CreateFileW(szFileName, GENERIC_READ|GENERIC_WRITE, 
+	                        FILE_SHARE_WRITE|FILE_SHARE_READ, 
+	                        0, CREATE_ALWAYS, 0, 0);
+	ExpParam.ThreadId          = GetCurrentThreadId();
+	ExpParam.ExceptionPointers = pExceptionPointers;
+	ExpParam.ClientPointers    = TRUE;
+	bMiniDumpSuccessful = 
+		MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
+		                  hDumpFile, MiniDumpWithDataSegs, &ExpParam, 
+		                  NULL, NULL);
+	if(bMiniDumpSuccessful)
+	{
+		g_hasWrittenCrashDump = true;
+		char byteFileName[MAX_PATH*2];
+		size_t convertedCharCount;
+		wcstombs_s(&convertedCharCount, byteFileName, sizeof(byteFileName), 
+		           szFileName, sizeof(szFileName));
+		platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
+		            "Successfully wrote mini dump to: '%s'", byteFileName);
+	}
+    return EXCEPTION_EXECUTE_HANDLER;
+}
 internal LONG WINAPI w32VectoredExceptionHandler(
                                              PEXCEPTION_POINTERS pExceptionInfo)
 {
 	g_hasReceivedException = true;
-	///TODO: take a big oooooooool' data dump right here.
+	if(!g_hasWrittenCrashDump)
+	{
+		w32GenerateDump(pExceptionInfo);
+	}
 	// break debugger to give us a chance to figure out what the hell happened
 	DebugBreak();
 	// I don't use the KLOG_ERROR macro here because `strrchr` from the 
@@ -836,7 +888,7 @@ internal LONG WINAPI w32VectoredExceptionHandler(
 	w32WriteLogToFile();
 	///TODO: cleanup system-wide settings/handles, such as the OS timer 
 	///      granularity setting!
-	ExitProcess(2);
+	ExitProcess(0xDEADC0DE);
 	// return EXCEPTION_CONTINUE_SEARCH;
 }
 #if 0
@@ -856,6 +908,10 @@ internal LONG WINAPI w32TopLevelExceptionHandler(
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                            PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
+	local_persist const int RETURN_CODE_SUCCESS = 0;
+	///TODO: OR the failure code with a more specific # to indicate why it 
+	///      failed probably?
+	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
 	defer(w32WriteLogToFile());
 #if 0
 	if(SetUnhandledExceptionFilter(w32TopLevelExceptionHandler))
@@ -881,7 +937,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		{
 			KLOG_ERROR("Failed to get exe file path+name! GetLastError=%i", 
 			           GetLastError());
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 		char* lastBackslash = g_pathToExe;
 		for(char* c = g_pathToExe; *c; c++)
@@ -903,27 +959,27 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
 			           g_pathToExe, fullPathToGameDll);
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 		if(strcat_s(fullPathToGameDll + g_pathToExeSize, 
 		            MAX_PATH - g_pathToExeSize, FILE_NAME_GAME_DLL))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
 			           FILE_NAME_GAME_DLL, fullPathToGameDll);
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 		if(strcat_s(fullPathToGameDllTemp, MAX_PATH, g_pathToExe))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
 			           g_pathToExe, fullPathToGameDllTemp);
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 		if(strcat_s(fullPathToGameDllTemp + g_pathToExeSize, 
 		            MAX_PATH - g_pathToExeSize, FILE_NAME_GAME_DLL_TEMP))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
 			           FILE_NAME_GAME_DLL_TEMP, fullPathToGameDllTemp);
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 	}
 	// allocate a dynamic memory arena for STB_IMAGE
@@ -937,7 +993,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			KLOG_ERROR("Failed to VirtualAlloc %i bytes for STB_IMAGE! "
 			           "GetLastError=%i", 
 			           STB_IMAGE_MEMORY_BYTES, GetLastError());
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 		g_genAllocStbImage = kgaInit(stbImageMemory, STB_IMAGE_MEMORY_BYTES);
 	}
@@ -947,7 +1003,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		KLOG_ERROR("Failed to query for performance frequency! GetLastError=%i", 
 		           GetLastError());
-		return -1;
+		return RETURN_CODE_FAILURE;
 	}
 	w32LoadXInput();
 #if 0
@@ -968,7 +1024,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		KLOG_ERROR("Failed to register WNDCLASS! GetLastError=%i", 
 		           GetLastError());
-		return -1;
+		return RETURN_CODE_FAILURE;
 	}
 	const HWND mainWindow = CreateWindowExA(
 		0,
@@ -984,7 +1040,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	if(!mainWindow)
 	{
 		KLOG_ERROR("Failed to create window! GetLastError=%i", GetLastError());
-		return -1;
+		return RETURN_CODE_FAILURE;
 	}
 	w32KrbOglInitialize(mainWindow);
 	w32KrbOglSetVSyncPreference(true);
@@ -1020,7 +1076,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		KLOG_ERROR("Failed to VirtualAlloc %i bytes for sound memory! "
 		           "GetLastError=%i", SOUND_BUFFER_BYTES, GetLastError());
-		return -1;
+		return RETURN_CODE_FAILURE;
 	}
 	GameMemory gameMemory = {};
 #if INTERNAL_BUILD
@@ -1040,7 +1096,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		KLOG_ERROR("Failed to VirtualAlloc %i bytes for game memory! "
 		           "GetLastError=%i", totalGameMemoryBytes, GetLastError());
-		return -1;
+		return RETURN_CODE_FAILURE;
 	}
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
@@ -1064,7 +1120,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	if(!hdc)
 	{
 		KLOG_ERROR("Failed to get main window device context!");
-		return -1;
+		return RETURN_CODE_FAILURE;
 	}
 	local_persist const UINT DESIRED_OS_TIMER_GRANULARITY_MS = 1;
 	// Determine if the system is capable of our desired timer granularity //
@@ -1109,7 +1165,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		{
 			KLOG_ERROR("Failed to set the process priority class to "
 			           "HIGH_PRIORITY_CLASS! GetLastError=%i", GetLastError());
-			return -1;
+			return RETURN_CODE_FAILURE;
 		}
 	}
 	// main window loop //
@@ -1282,7 +1338,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	kassert(kgaUsedBytes(g_genAllocStbImage) == 0);
 	KLOG_INFO("END! :)");
-	return 0;
+	return RETURN_CODE_SUCCESS;
 }
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
