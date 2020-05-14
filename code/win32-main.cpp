@@ -8,6 +8,9 @@
 #include <ctime>
 #include <dbghelp.h>
 #include <strsafe.h>
+#include <ShlObj.h>
+global_variable const TCHAR APPLICATION_NAME[]    = TEXT("Win32-KML");
+global_variable const TCHAR APPLICATION_VERSION[] = TEXT("r0");
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
@@ -23,10 +26,14 @@ global_variable size_t g_logCurrentCircularBufferChar;
 //	including characters that are overwritten!
 global_variable size_t g_logCircularBufferRunningTotal;
 global_variable bool g_hasReceivedException;
+// @assumption: once we have written a crash dump, there is never a need to 
+//	write any more, let alone continue execution.
 global_variable bool g_hasWrittenCrashDump;
 global_variable size_t g_pathToExeSize;
 ///TODO: handle file paths longer than MAX_PATH in the future...
-global_variable char g_pathToExe[MAX_PATH];
+global_variable TCHAR g_pathToExe[MAX_PATH];
+global_variable TCHAR g_pathTemp[MAX_PATH];
+global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 internal PLATFORM_LOG(platformLog)
 {
 	// Get a timestamp (Source: https://stackoverflow.com/a/35260146) //
@@ -828,45 +835,40 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 	// copy-pasta from MSDN basically:
 	//	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
 	///TODO: maybe make this a little more robust in the future...
-	BOOL bMiniDumpSuccessful;
-	WCHAR szPath[MAX_PATH]; 
-	WCHAR szFileName[MAX_PATH]; 
-	///TODO: pull app name & version out of here to a more maintainable location
-	WCHAR* szAppName = L"w32-kml";
-	WCHAR* szVersion = L"v1.0";
-	DWORD dwBufferSize = MAX_PATH;
-	HANDLE hDumpFile;
+	TCHAR szFileName[MAX_PATH]; 
 	SYSTEMTIME stLocalTime;
-	MINIDUMP_EXCEPTION_INFORMATION ExpParam;
 	GetLocalTime( &stLocalTime );
-	GetTempPathW( dwBufferSize, szPath );
-	StringCchPrintfW( szFileName, MAX_PATH, L"%s%s", szPath, szAppName );
-	CreateDirectoryW( szFileName, NULL );
-	StringCchPrintfW( szFileName, MAX_PATH, 
-	                L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp", 
-	                szPath, szAppName, szVersion, 
+	StringCchPrintf(szFileName, MAX_PATH, 
+	                TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp"), 
+	                g_pathTemp, APPLICATION_VERSION, 
 	                stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
 	                stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
 	                GetCurrentProcessId(), GetCurrentThreadId());
-	hDumpFile = CreateFileW(szFileName, GENERIC_READ|GENERIC_WRITE, 
-	                        FILE_SHARE_WRITE|FILE_SHARE_READ, 
-	                        0, CREATE_ALWAYS, 0, 0);
-	ExpParam.ThreadId          = GetCurrentThreadId();
-	ExpParam.ExceptionPointers = pExceptionPointers;
-	ExpParam.ClientPointers    = TRUE;
-	bMiniDumpSuccessful = 
+	const HANDLE hDumpFile = CreateFile(szFileName, GENERIC_READ|GENERIC_WRITE, 
+	                                    FILE_SHARE_WRITE|FILE_SHARE_READ, 
+	                                    0, CREATE_ALWAYS, 0, 0);
+	MINIDUMP_EXCEPTION_INFORMATION ExpParam = {
+		.ThreadId          = GetCurrentThreadId(),
+		.ExceptionPointers = pExceptionPointers,
+		.ClientPointers    = TRUE,
+	};
+	const BOOL bMiniDumpSuccessful = 
 		MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
 		                  hDumpFile, MiniDumpWithDataSegs, &ExpParam, 
 		                  NULL, NULL);
 	if(bMiniDumpSuccessful)
 	{
 		g_hasWrittenCrashDump = true;
-		char byteFileName[MAX_PATH*2];
+#if defined(UNICODE) || defined(_UNICODE)
+		char ansiFileName[MAX_PATH];
 		size_t convertedCharCount;
-		wcstombs_s(&convertedCharCount, byteFileName, sizeof(byteFileName), 
+		wcstombs_s(&convertedCharCount, ansiFileName, sizeof(ansiFileName), 
 		           szFileName, sizeof(szFileName));
+		///TODO: U16 platformLog
+#else
 		platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
-		            "Successfully wrote mini dump to: '%s'", byteFileName);
+		            "Successfully wrote mini dump to: '%s'", szFileName);
+#endif
 	}
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -923,7 +925,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		ULONG stackSizeInBytes = DESIRED_RESERVED_STACK_BYTES;
 		if(SetThreadStackGuarantee(&stackSizeInBytes))
 		{
-			KLOG_INFO("Previous reserved stack=%ld,  new reserved stack=%ld", 
+			KLOG_INFO("Previous reserved stack=%ld, new reserved stack=%ld", 
 			          stackSizeInBytes, DESIRED_RESERVED_STACK_BYTES);
 		}
 		else
@@ -948,6 +950,82 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		KLOG_WARNING("Failed to add vectored exception handler!");
 	}
 	KLOG_INFO("START!");
+	// Obtain and save a global copy of the app data folder path //
+	//	Source: https://stackoverflow.com/a/2899042
+	{
+		TCHAR szPath[MAX_PATH];
+		{
+			const HRESULT result = 
+				SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, 
+				                SHGFP_TYPE_CURRENT, szPath);
+			if(result != S_OK)
+			{
+				KLOG_ERROR("Failed to get APPDATA path! result=%ld", result);
+				return RETURN_CODE_FAILURE;
+			}
+		}
+		if(FAILED(StringCchPrintf(g_pathLocalAppData, MAX_PATH, TEXT("%s\\%s"), 
+		                          szPath, APPLICATION_NAME)))
+		{
+			KLOG_ERROR("Failed to build application APPDATA path!");
+			return RETURN_CODE_FAILURE;
+		}
+		KLOG_INFO("g_pathLocalAppData='%s'", g_pathLocalAppData);
+		if(!CreateDirectory(g_pathLocalAppData, NULL))
+		{
+			const int errorCode = GetLastError();
+			switch(errorCode)
+			{
+				case ERROR_ALREADY_EXISTS:
+				{
+					KLOG_INFO("Application APPDATA path '%s' already exists.", 
+					          g_pathLocalAppData);
+				} break;
+				default:
+				{
+					KLOG_ERROR("Failed to create APPDATA path '%s'! "
+					           "GetLastError=%i", 
+					           g_pathLocalAppData, errorCode);
+					return RETURN_CODE_FAILURE;
+				} break;
+			}
+		}
+	}
+	// Obtain and save a global copy of the app temp data folder path //
+	{
+		TCHAR szPath[MAX_PATH];
+		if(!GetTempPath(MAX_PATH, szPath))
+		{
+			KLOG_ERROR("Failed to get OS temp path! GetLastError=%i", 
+			           GetLastError());
+			return RETURN_CODE_FAILURE;
+		}
+		if(FAILED(StringCchPrintf(g_pathTemp, MAX_PATH, TEXT("%s%s"), szPath, 
+		                          APPLICATION_NAME)))
+		{
+			KLOG_ERROR("Failed to build application temp path!");
+			return RETURN_CODE_FAILURE;
+		}
+		KLOG_INFO("g_pathTemp='%s'", g_pathTemp);
+		if(!CreateDirectory(g_pathTemp, NULL))
+		{
+			const int errorCode = GetLastError();
+			switch(errorCode)
+			{
+				case ERROR_ALREADY_EXISTS:
+				{
+					KLOG_INFO("Application temp path '%s' already exists.", 
+					          g_pathTemp);
+				} break;
+				default:
+				{
+					KLOG_ERROR("Failed to create app temp path '%s'! "
+					           "GetLastError=%i", g_pathTemp, errorCode);
+					return RETURN_CODE_FAILURE;
+				} break;
+			}
+		}
+	}
 	local_persist const char FILE_NAME_GAME_DLL[]      = "game.dll";
 	local_persist const char FILE_NAME_GAME_DLL_TEMP[] = "game_temp.dll";
 	// locate where our exe file is on the OS so we can search for DLL files 

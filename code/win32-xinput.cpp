@@ -208,6 +208,14 @@ internal void w32XInputGetGamePadStates(u8* io_numGamePads,
 			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedTriggerRight);
 		gamePadArrayCurrentFrame[*io_numGamePads].
 			normalizedTriggerRight = pad.bRightTrigger/255.f;
+#if INTERNAL_BUILD && 0
+		///TODO: delete this test pls, future me.
+		if(gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceUp == 
+			ButtonState::PRESSED)
+		{
+			RaiseException(0xc0000374, 0, 0, NULL);// RUH ROH...
+		}
+#endif
 		(*io_numGamePads)++;
 	}
 }

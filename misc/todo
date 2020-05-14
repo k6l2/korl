@@ -39,6 +39,9 @@
 [x] detect & properly handle stack overflows
 	[x] reserve extra stack space for this case
 		https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadstackguarantee?redirectedfrom=MSDN
+[x] Obtain AppData folder specific to this application
+[x] Obtain TempData folder specific to this application
+[x] Write dump files to a global unified temp directory
 [ ] Write log files to temp directory instead of the application's exe directory
 [ ] Write game_temp dll file to temp directory instead of the application's exe 
 	directory
@@ -68,3 +71,6 @@
 	handler!
 [ ] turn on floating point exceptions
 	https://docs.microsoft.com/en-us/windows/win32/debug/floating-point-exceptions
+[ ] replace all ascii API calls with ambiguous char-width macros, and all CHAR 
+	buffers with TCHARs to allow more flexibility & unicode support!!!  
+	It's 2020.  We have infinite RAM.  Not supporting unicode is UNACCEPTABLE.

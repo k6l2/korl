@@ -66,6 +66,7 @@ rem Gdi32.lib    - required to create an OpenGL render context
 rem winmm.lib    - multimedia timer functions (granular sleep functionality)
 rem opengl32.lib - You know what this is for...
 rem Dbghelp.lib  - generate mini dumps
+rem Shell32.lib  - Obtain AppData path at runtime.
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
 	/MTd /WX /wd4201 /wd4514 /wd4505 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
@@ -94,7 +95,7 @@ if exist win32-main.exe (
 )
 cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
 	%CommonCompilerFlagsDebug% /W4 /wd4100 /link %CommonLinkerFlags% ^
-	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib
+	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE
@@ -112,7 +113,15 @@ set /A mm=rest/(60*100), rest%%=60*100, ss=rest/100, cc=rest%%100
 if %mm% lss 10 set mm=0%mm%
 if %ss% lss 10 set ss=0%ss%
 if %cc% lss 10 set cc=0%cc%
-echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
+IF %hh% LEQ 0 (
+	IF %mm% LEQ 0 (
+		echo Build script finished. Time elapsed: %ss%.%cc% seconds.
+	) ELSE (
+		echo Build script finished. Time elapsed: %mm%:%ss%.%cc%
+	)
+) ELSE (
+	echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
+)
 exit /B 0
 :ON_FAILURE
 exit /B %ERRORLEVEL%
