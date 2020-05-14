@@ -4,6 +4,7 @@
 #define global_variable static
 // Obtain the file name excluding the path //
 //	Source: https://stackoverflow.com/a/8488201
+#include <cstring>
 #define __FILENAME__ ( strrchr(__FILE__, '\\') \
 	? (strrchr(__FILE__, '\\') + 1) \
 	: ( (strrchr(__FILE__, '/' ) \

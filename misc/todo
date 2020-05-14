@@ -12,7 +12,7 @@
 [x] figure out why the game shuts down sometimes when hot-reloading game code
 [x] actually test kgaRealloc
 [x] override assert & memory allocators for stb_image
-[ ] logging system 
+[x] logging system 
 	[x] circular buffer with maximum begin/end log lengths
 	[x] selectable logging levels (info, error, warning)
 	[x] automatically print file+line#
@@ -21,10 +21,11 @@
 	[x] write log to disk platform function
 		[x] automatically write the log when the program exits gracefully
 			https://www.gingerbill.org/article/2015/08/19/defer-in-cpp/
-	[ ] complete logging tech debt
+	[x] complete logging tech debt
 		[x] fill in all the logging TODOs
-		[ ] remove ALL OutputDebugString calls and similar calls, replace w/ 
+		[x] remove ALL OutputDebugString calls and similar calls, replace w/ 
 			logging calls
+			[x] Allow game code to call platform log function.
 [ ] detect when the program crashes 
 	https://stackoverflow.com/q/19656946
 	https://stackoverflow.com/q/28629351
@@ -39,6 +40,7 @@
 	[ ] Hook IMGUI rendering operations into the OpenGL backend renderer API
 [ ] display debug frame metrics
 [ ] multi-threaded job queue
+	[ ] make log system thread-safe probably!
 	https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
 	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
 	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange
@@ -47,7 +49,10 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
 [ ] Asset streaming using multi-threaded job queue
 [ ] audio mixer
+	[ ] Investigate `Failed to lock buffer! result=-2147024809` warning! :(
 [ ] collision engine
 [ ] fullscreen toggle support 
 	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 [ ] pause audio output when window goes out of focus probably.
+[ ] Logging system: perhaps fix the size of the log line meta tag to increase 
+	readability, since source file name sizes tend to vary greatly

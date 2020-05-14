@@ -16,8 +16,6 @@ enum class PlatformLogCategory : u8
 typedef PLATFORM_LOG(fnSig_platformLog);
 // INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
 #if INTERNAL_BUILD
-#define PLATFORM_PRINT_DEBUG_STRING(name) void name(const char* const string)
-typedef PLATFORM_PRINT_DEBUG_STRING(fnSig_PlatformPrintDebugString);
 struct PlatformDebugReadFileResult
 {
 	u32 dataBytes;
@@ -209,7 +207,6 @@ struct GameMemory
 	u64   transientMemoryBytes;
 	fnSig_platformLog* platformLog;
 #if INTERNAL_BUILD
-	fnSig_PlatformPrintDebugString* platformPrintDebugString;
 	fnSig_PlatformReadEntireFile* platformReadEntireFile;
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
 	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;

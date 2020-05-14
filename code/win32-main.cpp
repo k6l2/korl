@@ -1,4 +1,3 @@
-#include "game.h"
 #include "global-defines.h"
 // crt io
 #include <stdio.h>
@@ -37,7 +36,7 @@ internal PLATFORM_LOG(platformLog)
 #endif
 	         &newTime);
 	// First, we build the new text to add to the log using a local buffer. //
-	local_persist const size_t MAX_LOG_LINE_SIZE = 512;
+	local_persist const size_t MAX_LOG_LINE_SIZE = 1024;
 	char logLineBuffer[MAX_LOG_LINE_SIZE];
 	const char*const strCategory = 
 		   logCategory == PlatformLogCategory::K_INFO    ? "INFO"
@@ -313,10 +312,6 @@ internal void w32DebugPrintLog()
 		OutputDebugStringA(g_logCircularBuffer);
 	}
 }
-PLATFORM_PRINT_DEBUG_STRING(platformPrintDebugString)
-{
-	OutputDebugStringA(string);
-}
 PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 {
 	PlatformDebugReadFileResult result = {};
@@ -449,8 +444,8 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
 	                         &fileAttributeData))
 	{
-		KLOG_ERROR("Failed to get last write time of file '%s'! "
-		           "GetLastError=%i", fileName, GetLastError());
+		KLOG_WARNING("Failed to get last write time of file '%s'! "
+		             "GetLastError=%i", fileName, GetLastError());
 		return result;
 	}
 	result = fileAttributeData.ftLastWriteTime;
@@ -470,8 +465,8 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
 	{
-		KLOG_ERROR("Failed to copy file '%s' to '%s'! GetLastError=%i", 
-		           fileNameDll, fileNameDllTemp, GetLastError());
+		KLOG_WARNING("Failed to copy file '%s' to '%s'! GetLastError=%i", 
+		             fileNameDll, fileNameDllTemp, GetLastError());
 	}
 	else
 	{
@@ -958,7 +953,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
-	gameMemory.platformPrintDebugString = platformPrintDebugString;
+	gameMemory.platformLog              = platformLog;
 	gameMemory.platformReadEntireFile   = platformReadEntireFile;
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
 	gameMemory.platformWriteEntireFile  = platformWriteEntireFile;

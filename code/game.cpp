@@ -1,10 +1,9 @@
 #include "game.h"
-#include "platform-game-interfaces.h"
 #include "z85.h"
 #include "z85_png_fighter.h"
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+	gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
 	// render theramin audio data to temporary sound buffer //
 	const u32 samplesPerWaveTheramin = static_cast<u32>(
 		audioBuffer.soundSampleHz / gameState->theraminHz);
@@ -40,7 +39,7 @@ struct GameGraphicsState
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
-	GameState* gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+	gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
 #if 0
 	kassert(sizeof(GameGraphicsState) <= memory.transientMemoryBytes);
 	GameGraphicsState* gameGraphicsState = 
@@ -49,6 +48,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!memory.initialized)
 	{
 		*gameState = {};
+		gameState->log = memory.platformLog;
 		gameState->gAllocTransient = kgaInit(memory.transientMemory, 
 		                                     memory.transientMemoryBytes);
 #if 0

@@ -72,9 +72,7 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG_ERROR("Failed to get wgl extensions string! "
 		           "GetLastError=%i", GetLastError());
 	}
-#if INTERNAL_BUILD
-	platformPrintDebugString(wglExtensionsString);
-#endif
+	KLOG_INFO("wglExtensionsString='%s'", wglExtensionsString);
 	if(strstr(wglExtensionsString, "WGL_EXT_swap_control"))
 	{
 		wglSwapIntervalEXT =
