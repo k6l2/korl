@@ -117,6 +117,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				gameState->viewOffset2d.x += 1.f;
 			}
+			if(gamePadArray[c].buttons.faceDown == ButtonState::PRESSED)
+			{
+				*(int*)0 = 0;// ;)
+			}
 			gameState->shipWorldPosition.x += 
 				10*gamePadArray[c].normalizedStickLeft.x;
 			gameState->shipWorldPosition.y += 

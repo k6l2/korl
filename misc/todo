@@ -26,10 +26,15 @@
 		[x] remove ALL OutputDebugString calls and similar calls, replace w/ 
 			logging calls
 			[x] Allow game code to call platform log function.
+[x] Logging system: perhaps fix the size of the log line meta tag to increase 
+	readability, since source file name sizes tend to vary greatly
+[x] Figure out why log file doesn't get output when running outside the 
+	debugger...
+	[x] remove LITERALLY all OutputDebugString calls for real this time??...
 [ ] detect when the program crashes 
 	https://stackoverflow.com/q/19656946
 	https://stackoverflow.com/q/28629351
-	[ ] write log file
+	[x] write log file
 	[ ] write minidump file
 [ ] detect & properly handle stack overflows
 	[ ] reserve extra stack space for this case
@@ -54,5 +59,6 @@
 [ ] fullscreen toggle support 
 	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 [ ] pause audio output when window goes out of focus probably.
-[ ] Logging system: perhaps fix the size of the log line meta tag to increase 
-	readability, since source file name sizes tend to vary greatly
+[ ] Disable asserts when `g_hasReceivedException` has been flagged, or else the 
+	log file will never get written if an assert fires during the exception 
+	handler!

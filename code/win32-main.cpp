@@ -1,6 +1,6 @@
 #include "global-defines.h"
 // crt io
-#include <stdio.h>
+#include <cstdio>
 #include <ctime>
 #include "win32-main.h"
 #include "win32-dsound.h"
@@ -21,6 +21,10 @@ global_variable size_t g_logCurrentCircularBufferChar;
 // This represents the total # of character sent to the circular buffer, 
 //	including characters that are overwritten!
 global_variable size_t g_logCircularBufferRunningTotal;
+global_variable bool g_hasReceivedException;
+global_variable size_t g_pathToExeSize;
+///TODO: handle file paths longer than MAX_PATH in the future...
+global_variable char g_pathToExe[MAX_PATH];
 internal PLATFORM_LOG(platformLog)
 {
 	// Get a timestamp (Source: https://stackoverflow.com/a/35260146) //
@@ -44,9 +48,11 @@ internal PLATFORM_LOG(platformLog)
 		: (logCategory == PlatformLogCategory::K_ERROR   ? "ERROR"
 		: "UNKNOWN-CATEGORY"));
 	// Print out the leading meta-data tag for this log entry //
+	// god help us all if we ever have to deal with a 6-figure source file...
+	kassert(sourceFileLineNumber >= 0 && sourceFileLineNumber < 100000);
 	const int logLineMetaCharsWritten = 
 		_snprintf_s(logLineBuffer, MAX_LOG_LINE_SIZE, _TRUNCATE, 
-		            "[%s|%s|%s:%i] ", strCategory, timeBuffer, 
+		            "[%-7.7s|%s|%-15.15s:%-5i] ", strCategory, timeBuffer, 
 		            sourceFileName, sourceFileLineNumber);
 	kassert(logLineMetaCharsWritten > 0);
 	const size_t remainingLogLineSize = (logLineMetaCharsWritten < 0 ||
@@ -65,25 +71,30 @@ internal PLATFORM_LOG(platformLog)
 		if(logLineCharsWritten < 0)
 		{
 			///TODO: handle overflow case for max characters per log line limit?
-#if INTERNAL_BUILD
-			OutputDebugStringA("LOG LINE OVERFLOW!\n");
-#endif
+			fprintf_s(stderr, "[WARNING|%s:%i] LOG LINE OVERFLOW!\n",
+			          __FILENAME__, __LINE__);
 		}
 	}
 	// Now that we know what needs to be added to the log, we need to dump this
 	//	line buffer into the appropriate log memory location.  First, 
 	//	logBeginning gets filled up until it can no longer contain any more 
 	//	lines.  For all lines afterwards, we use the logCircularBuffer. //
-#if 1
-	OutputDebugStringA(logLineBuffer);
-	OutputDebugStringA("\n");
+	// Duplicate log output to standard output streams //
+	{
+		FILE*const duplicatedOutput = 
+			logCategory < PlatformLogCategory::K_WARNING
+				? stdout : stderr;
+		fprintf_s(duplicatedOutput, "%s\n", logLineBuffer);
+#if SLOW_BUILD
+		fflush(duplicatedOutput);
+#endif
+	}
 	// Errors should NEVER happen.  Assert now to ensure that they are fixed as
 	//	soon as possible!
-	if(logCategory == PlatformLogCategory::K_ERROR)
+	if(logCategory == PlatformLogCategory::K_ERROR && !g_hasReceivedException)
 	{
 		kassert(!"ERROR HAS BEEN LOGGED!");
 	}
-#endif
 	const size_t totalLogLineSize = 
 		logLineMetaCharsWritten + logLineCharsWritten;
 	const size_t remainingLogBeginning = 
@@ -174,11 +185,42 @@ internal void w32WriteLogToFile()
 {
 	local_persist const DWORD MAX_DWORD = ~DWORD(1<<(sizeof(DWORD)*8-1));
 	static_assert(MAX_LOG_BUFFER_SIZE < MAX_DWORD);
+	local_persist const char fileNameNewLog[] = "log.new";
+	local_persist const char fileNameLog[]    = "log.txt";
 	///TODO: change this to use a platform-determined write directory
-	local_persist const char fileNameNewLog[] = "build/log.new";
-	local_persist const char fileNameLog[]    = "build/log.txt";
+	char fullPathToNewLog[MAX_PATH] = {};
+	char fullPathToLog[MAX_PATH] = {};
+	// use the `pathToExe` to determine the FULL path to the game DLL file //
+	{
+		if(strcat_s(fullPathToNewLog, MAX_PATH, g_pathToExe))
+		{
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           g_pathToExe, fullPathToNewLog);
+			return;
+		}
+		if(strcat_s(fullPathToNewLog + g_pathToExeSize, 
+		            MAX_PATH - g_pathToExeSize, fileNameNewLog))
+		{
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           fileNameNewLog, fullPathToNewLog);
+			return;
+		}
+		if(strcat_s(fullPathToLog, MAX_PATH, g_pathToExe))
+		{
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           g_pathToExe, fullPathToLog);
+			return;
+		}
+		if(strcat_s(fullPathToLog + g_pathToExeSize, 
+		            MAX_PATH - g_pathToExeSize, fileNameLog))
+		{
+			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
+			           fileNameLog, fullPathToLog);
+			return;
+		}
+	}
 	const HANDLE fileHandle = 
-		CreateFileA(fileNameNewLog, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 
+		CreateFileA(fullPathToNewLog, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
@@ -188,7 +230,12 @@ internal void w32WriteLogToFile()
 	}
 	// write the beginning log buffer //
 	{
-		const DWORD byteWriteCount = static_cast<DWORD>(strlen(g_logBeginning));
+#if 1
+		const DWORD byteWriteCount = 
+			static_cast<DWORD>(strnlen_s(g_logBeginning, MAX_LOG_BUFFER_SIZE));
+#else
+		const DWORD byteWriteCount = static_cast<DWORD>(100);
+#endif
 		DWORD bytesWritten;
 		if(!WriteFile(fileHandle, g_logBeginning, byteWriteCount, &bytesWritten, 
 		              nullptr))
@@ -216,8 +263,8 @@ internal void w32WriteLogToFile()
 			{
 				local_persist const char CSTR_LOG_CUT[] = 
 					"- - - - - - LOG CUT - - - - - - - -\n";
-				const DWORD byteWriteCount = 
-					static_cast<DWORD>(strlen(CSTR_LOG_CUT));
+				const DWORD byteWriteCount = static_cast<DWORD>(
+					strnlen_s(CSTR_LOG_CUT, sizeof(CSTR_LOG_CUT)));
 				DWORD bytesWritten;
 				if(!WriteFile(fileHandle, CSTR_LOG_CUT, byteWriteCount, 
 				              &bytesWritten, nullptr))
@@ -238,7 +285,9 @@ internal void w32WriteLogToFile()
 			{
 				const char*const data = 
 					g_logCircularBuffer + g_logCurrentCircularBufferChar + 1;
-				const DWORD byteWriteCount = static_cast<DWORD>(strlen(data));
+				const DWORD byteWriteCount = static_cast<DWORD>(
+					strnlen_s(data, MAX_LOG_BUFFER_SIZE - 
+					                g_logCurrentCircularBufferChar));
 				DWORD bytesWritten;
 				if(!WriteFile(fileHandle, data, byteWriteCount, 
 				              &bytesWritten, nullptr))
@@ -257,8 +306,8 @@ internal void w32WriteLogToFile()
 		}
 		// write the newest contents of the circular buffer //
 		{
-			const DWORD byteWriteCount = 
-				static_cast<DWORD>(strlen(g_logCircularBuffer));
+			const DWORD byteWriteCount = static_cast<DWORD>(
+				strnlen_s(g_logCircularBuffer, MAX_LOG_BUFFER_SIZE));
 			DWORD bytesWritten;
 			if(!WriteFile(fileHandle, g_logCircularBuffer, byteWriteCount, 
 			              &bytesWritten, nullptr))
@@ -282,18 +331,19 @@ internal void w32WriteLogToFile()
 		return;
 	}
 	// Copy the new log file into the finalized file name //
-	if(!CopyFileA(fileNameNewLog, fileNameLog, false))
+	if(!CopyFileA(fullPathToNewLog, fullPathToLog, false))
 	{
 		kassert(!"Failed to rename new log file!");
 		return;
 	}
 	// Once the log file has been finalized, we can delete the temporary file //
-	if(!DeleteFileA(fileNameNewLog))
+	if(!DeleteFileA(fullPathToNewLog))
 	{
 		kassert(!"Failed to delete temporary new log file!");
 	}
 }
 #if INTERNAL_BUILD
+#if 0
 internal void w32DebugPrintLog()
 {
 	OutputDebugStringA("=========== PRINTING LOG =================\n");
@@ -312,6 +362,7 @@ internal void w32DebugPrintLog()
 		OutputDebugStringA(g_logCircularBuffer);
 	}
 }
+#endif
 PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 {
 	PlatformDebugReadFileResult result = {};
@@ -540,10 +591,8 @@ internal void w32ProcessKeyEvent(MSG& msg, GameKeyboard& gameKeyboard)
 	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 	const WPARAM vKeyCode = msg.wParam;
 #if SLOW_BUILD
-	char outputBuffer[256] = {};
-	snprintf(outputBuffer, sizeof(outputBuffer), "vKeyCode=%i,0x%x\n", 
-	         static_cast<int>(vKeyCode), static_cast<int>(vKeyCode));
-	OutputDebugStringA(outputBuffer);
+	KLOG_INFO("vKeyCode=%i,0x%x", static_cast<int>(vKeyCode), 
+	          static_cast<int>(vKeyCode));
 #endif
 	const bool keyDown     = (msg.lParam & (1<<31)) == 0;
 	const bool keyDownPrev = (msg.lParam & (1<<30)) != 0;
@@ -772,27 +821,70 @@ internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount,
 		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
 	return elapsedSeconds;
 }
+internal LONG WINAPI w32VectoredExceptionHandler(
+                                             PEXCEPTION_POINTERS pExceptionInfo)
+{
+	g_hasReceivedException = true;
+	///TODO: take a big oooooooool' data dump right here.
+	// break debugger to give us a chance to figure out what the hell happened
+	DebugBreak();
+	// I don't use the KLOG_ERROR macro here because `strrchr` from the 
+	//	__FILENAME__ macro seems to just break everything :(
+	platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+	            "Vectored Exception! 0x%x", 
+	            pExceptionInfo->ExceptionRecord->ExceptionCode);
+	w32WriteLogToFile();
+	///TODO: cleanup system-wide settings/handles, such as the OS timer 
+	///      granularity setting!
+	ExitProcess(2);
+	// return EXCEPTION_CONTINUE_SEARCH;
+}
+#if 0
+internal LONG WINAPI w32TopLevelExceptionHandler(
+                                             PEXCEPTION_POINTERS pExceptionInfo)
+{
+	g_hasReceivedException = true;
+	fprintf_s(stderr, "Exception! 0x%x\n", 
+	          pExceptionInfo->ExceptionRecord->ExceptionCode);
+	fflush(stderr);
+	//KLOG_ERROR("Exception! 0x%x", 
+	//           pExceptionInfo->ExceptionRecord->ExceptionCode);
+	w32WriteLogToFile();
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
-                             PWSTR /*pCmdLine*/, int /*nCmdShow*/)
+                           PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
 	defer(w32WriteLogToFile());
+#if 0
+	if(SetUnhandledExceptionFilter(w32TopLevelExceptionHandler))
+	{
+		KLOG_INFO("Replaced top level exception filter!");
+	}
+	else
+	{
+		KLOG_INFO("Set new top level exception filter!");
+	}
+#endif
+	if(!AddVectoredExceptionHandler(1, w32VectoredExceptionHandler))
+	{
+		KLOG_WARNING("Failed to add vectored exception handler!");
+	}
 	KLOG_INFO("START!");
 	local_persist const char FILE_NAME_GAME_DLL[]      = "game.dll";
 	local_persist const char FILE_NAME_GAME_DLL_TEMP[] = "game_temp.dll";
-	///TODO: handle file paths longer than MAX_PATH in the future...
-	size_t pathToExeSize = 0;
-	char pathToExe[MAX_PATH];
 	// locate where our exe file is on the OS so we can search for DLL files 
 	//	there instead of whatever the current working directory is //
 	{
-		if(!GetModuleFileNameA(NULL, pathToExe, MAX_PATH))
+		if(!GetModuleFileNameA(NULL, g_pathToExe, MAX_PATH))
 		{
 			KLOG_ERROR("Failed to get exe file path+name! GetLastError=%i", 
 			           GetLastError());
 			return -1;
 		}
-		char* lastBackslash = pathToExe;
-		for(char* c = pathToExe; *c; c++)
+		char* lastBackslash = g_pathToExe;
+		for(char* c = g_pathToExe; *c; c++)
 		{
 			if(*c == '\\')
 			{
@@ -800,34 +892,34 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 		*(lastBackslash + 1) = 0;
-		pathToExeSize = lastBackslash - pathToExe;
+		g_pathToExeSize = lastBackslash - g_pathToExe;
 	}
 	///TODO: handle file paths longer than MAX_PATH in the future...
 	char fullPathToGameDll[MAX_PATH] = {};
 	char fullPathToGameDllTemp[MAX_PATH] = {};
 	// use the `pathToExe` to determine the FULL path to the game DLL file //
 	{
-		if(strcat_s(fullPathToGameDll, MAX_PATH, pathToExe))
+		if(strcat_s(fullPathToGameDll, MAX_PATH, g_pathToExe))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           pathToExe, fullPathToGameDll);
+			           g_pathToExe, fullPathToGameDll);
 			return -1;
 		}
-		if(strcat_s(fullPathToGameDll + pathToExeSize, 
-		            MAX_PATH - pathToExeSize, FILE_NAME_GAME_DLL))
+		if(strcat_s(fullPathToGameDll + g_pathToExeSize, 
+		            MAX_PATH - g_pathToExeSize, FILE_NAME_GAME_DLL))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
 			           FILE_NAME_GAME_DLL, fullPathToGameDll);
 			return -1;
 		}
-		if(strcat_s(fullPathToGameDllTemp, MAX_PATH, pathToExe))
+		if(strcat_s(fullPathToGameDllTemp, MAX_PATH, g_pathToExe))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           pathToExe, fullPathToGameDllTemp);
+			           g_pathToExe, fullPathToGameDllTemp);
 			return -1;
 		}
-		if(strcat_s(fullPathToGameDllTemp + pathToExeSize, 
-		            MAX_PATH - pathToExeSize, FILE_NAME_GAME_DLL_TEMP))
+		if(strcat_s(fullPathToGameDllTemp + g_pathToExeSize, 
+		            MAX_PATH - g_pathToExeSize, FILE_NAME_GAME_DLL_TEMP))
 		{
 			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
 			           FILE_NAME_GAME_DLL_TEMP, fullPathToGameDllTemp);
@@ -1043,7 +1135,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					                       fullPathToGameDllTemp);
 					if(game.isValid)
 					{
-						OutputDebugStringA("Game code hot-reload complete!\n");
+						KLOG_INFO("Game code hot-reload complete!");
 					}
 				}
 			}
@@ -1060,11 +1152,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					case WM_CHAR:
 					{
 #if SLOW_BUILD
-						char outputBuffer[256] = {};
-						snprintf(outputBuffer, sizeof(outputBuffer), 
-						         "character code=%i\n", 
-						         static_cast<int>(windowMessage.wParam));
-						OutputDebugStringA(outputBuffer);
+						KLOG_INFO("character code=%i", 
+						          static_cast<int>(windowMessage.wParam));
 #endif
 					} break;
 #endif
@@ -1192,6 +1281,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 	}
 	kassert(kgaUsedBytes(g_genAllocStbImage) == 0);
+	KLOG_INFO("END! :)");
 	return 0;
 }
 #include "win32-dsound.cpp"

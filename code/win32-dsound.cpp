@@ -304,7 +304,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			                          &lockRegion2, &lockRegion2Size, 0);
 		if(result != DS_OK)
 		{
-			KLOG_WARNING("Failed to lock buffer! result=%li", result);
+			KLOG_WARNING("Failed to lock buffer! result=0x%lX", result);
 			return;
 		}
 	}
