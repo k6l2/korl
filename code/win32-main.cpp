@@ -192,39 +192,29 @@ internal PLATFORM_LOG(platformLog)
 }
 internal void w32WriteLogToFile()
 {
+	local_persist const TCHAR fileNameLog[] = TEXT("log.txt");
 	local_persist const DWORD MAX_DWORD = ~DWORD(1<<(sizeof(DWORD)*8-1));
 	static_assert(MAX_LOG_BUFFER_SIZE < MAX_DWORD);
-	local_persist const char fileNameNewLog[] = "log.new";
-	local_persist const char fileNameLog[]    = "log.txt";
 	///TODO: change this to use a platform-determined write directory
-	char fullPathToNewLog[MAX_PATH] = {};
-	char fullPathToLog[MAX_PATH] = {};
-	// use the `pathToExe` to determine the FULL path to the game DLL file //
+	TCHAR fullPathToNewLog[MAX_PATH] = {};
+	TCHAR fullPathToLog[MAX_PATH] = {};
+	// determine full path to log files using platform-determined write 
+	//	directory //
 	{
-		if(strcat_s(fullPathToNewLog, MAX_PATH, g_pathToExe))
+		if(FAILED(StringCchPrintf(fullPathToNewLog, MAX_PATH, 
+		                          TEXT("%s\\%s.new"), g_pathTemp, fileNameLog)))
 		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           g_pathToExe, fullPathToNewLog);
+			KLOG_ERROR("Failed to build fullPathToNewLog!  "
+			           "g_pathTemp='%s' fileNameLog='%s'", 
+			           g_pathTemp, fileNameLog);
 			return;
 		}
-		if(strcat_s(fullPathToNewLog + g_pathToExeSize, 
-		            MAX_PATH - g_pathToExeSize, fileNameNewLog))
+		if(FAILED(StringCchPrintf(fullPathToLog, MAX_PATH, 
+		                          TEXT("%s\\%s"), g_pathTemp, fileNameLog)))
 		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           fileNameNewLog, fullPathToNewLog);
-			return;
-		}
-		if(strcat_s(fullPathToLog, MAX_PATH, g_pathToExe))
-		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           g_pathToExe, fullPathToLog);
-			return;
-		}
-		if(strcat_s(fullPathToLog + g_pathToExeSize, 
-		            MAX_PATH - g_pathToExeSize, fileNameLog))
-		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           fileNameLog, fullPathToLog);
+			KLOG_ERROR("Failed to build fullPathToLog!  "
+			           "g_pathTemp='%s' fileNameLog='%s'", 
+			           g_pathTemp, fileNameLog);
 			return;
 		}
 	}
@@ -239,12 +229,8 @@ internal void w32WriteLogToFile()
 	}
 	// write the beginning log buffer //
 	{
-#if 1
 		const DWORD byteWriteCount = 
 			static_cast<DWORD>(strnlen_s(g_logBeginning, MAX_LOG_BUFFER_SIZE));
-#else
-		const DWORD byteWriteCount = static_cast<DWORD>(100);
-#endif
 		DWORD bytesWritten;
 		if(!WriteFile(fileHandle, g_logBeginning, byteWriteCount, &bytesWritten, 
 		              nullptr))
@@ -352,26 +338,6 @@ internal void w32WriteLogToFile()
 	}
 }
 #if INTERNAL_BUILD
-#if 0
-internal void w32DebugPrintLog()
-{
-	OutputDebugStringA("=========== PRINTING LOG =================\n");
-	OutputDebugStringA(g_logBeginning);
-	if(g_logCurrentBeginningChar == MAX_LOG_BUFFER_SIZE)
-	{
-		if(g_logCircularBufferRunningTotal >= MAX_LOG_BUFFER_SIZE - 1)
-		{
-			OutputDebugStringA("- - - - - - LOG CUT - - - - - - - -\n");
-			if(g_logCurrentCircularBufferChar < MAX_LOG_BUFFER_SIZE)
-			{
-				OutputDebugStringA(g_logCircularBuffer + 
-				                   g_logCurrentCircularBufferChar + 1);
-			}
-		}
-		OutputDebugStringA(g_logCircularBuffer);
-	}
-}
-#endif
 PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 {
 	PlatformDebugReadFileResult result = {};
@@ -881,7 +847,10 @@ internal LONG WINAPI w32VectoredExceptionHandler(
 		w32GenerateDump(pExceptionInfo);
 	}
 	// break debugger to give us a chance to figure out what the hell happened
-	DebugBreak();
+	if(IsDebuggerPresent())
+	{
+		DebugBreak();
+	}
 	// I don't use the KLOG_ERROR macro here because `strrchr` from the 
 	//	__FILENAME__ macro seems to just break everything :(
 	platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,

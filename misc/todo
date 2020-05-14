@@ -42,7 +42,7 @@
 [x] Obtain AppData folder specific to this application
 [x] Obtain TempData folder specific to this application
 [x] Write dump files to a global unified temp directory
-[ ] Write log files to temp directory instead of the application's exe directory
+[x] Write log files to temp directory instead of the application's exe directory
 [ ] Write game_temp dll file to temp directory instead of the application's exe 
 	directory
 [ ] separate game code out of kml, and setup a different repo for a test game
