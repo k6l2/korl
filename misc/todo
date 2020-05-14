@@ -36,9 +36,12 @@
 	https://stackoverflow.com/q/28629351
 	[x] write log file
 	[x] write minidump file
-[ ] detect & properly handle stack overflows
-	[ ] reserve extra stack space for this case
+[x] detect & properly handle stack overflows
+	[x] reserve extra stack space for this case
 		https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadstackguarantee?redirectedfrom=MSDN
+[ ] Write log files to temp directory instead of the application's exe directory
+[ ] Write game_temp dll file to temp directory instead of the application's exe 
+	directory
 [ ] separate game code out of kml, and setup a different repo for a test game
 [ ] Create a test game package which utilizes IMGUI
 	[ ] Hook IMGUI into the general-purpose allocator for transient storage.
@@ -54,11 +57,14 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
 [ ] Asset streaming using multi-threaded job queue
 [ ] audio mixer
-	[ ] Investigate `Failed to lock buffer! result=-2147024809` warning! :(
+	[ ] Investigate `Failed to lock buffer! result=0x80070057` warning! :(
 [ ] collision engine
+[ ] fix KBR not being correct when window resizes
 [ ] fullscreen toggle support 
 	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 [ ] pause audio output when window goes out of focus probably.
 [ ] Disable asserts when `g_hasReceivedException` has been flagged, or else the 
 	log file will never get written if an assert fires during the exception 
 	handler!
+[ ] turn on floating point exceptions
+	https://docs.microsoft.com/en-us/windows/win32/debug/floating-point-exceptions

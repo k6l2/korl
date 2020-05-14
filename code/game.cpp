@@ -1,6 +1,7 @@
 #include "game.h"
 #include "z85.h"
 #include "z85_png_fighter.h"
+#include <cstdio>
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
 	gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
@@ -35,7 +36,11 @@ struct GameGraphicsState
 	u16 usedTextureHandleCount
 };
 #endif //0
-#include <cstdio>
+void poop()
+{
+	local_persist bool YES_STACK_OVERFLOW_PLS = true;
+	if(YES_STACK_OVERFLOW_PLS) poop(); else printf("loop");
+}
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
@@ -120,6 +125,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(gamePadArray[c].buttons.faceDown == ButtonState::PRESSED)
 			{
 				*(int*)0 = 0;// ;)
+			}
+			if(gamePadArray[c].buttons.faceRight == ButtonState::PRESSED)
+			{
+				poop();// ;o
 			}
 			gameState->shipWorldPosition.x += 
 				10*gamePadArray[c].normalizedStickLeft.x;

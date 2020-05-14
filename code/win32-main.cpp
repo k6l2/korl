@@ -913,6 +913,26 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///      failed probably?
 	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
 	defer(w32WriteLogToFile());
+	// Reserve stack space for stack overflow exceptions //
+	{
+		// Experimentally, this is about the minimum # of reserved stack bytes
+		//	required to carry out my debug dump/log routines when a stack 
+		//	overflow exception occurs.
+		local_persist const ULONG DESIRED_RESERVED_STACK_BYTES = 
+			static_cast<ULONG>(kmath::kilobytes(16));
+		ULONG stackSizeInBytes = DESIRED_RESERVED_STACK_BYTES;
+		if(SetThreadStackGuarantee(&stackSizeInBytes))
+		{
+			KLOG_INFO("Previous reserved stack=%ld,  new reserved stack=%ld", 
+			          stackSizeInBytes, DESIRED_RESERVED_STACK_BYTES);
+		}
+		else
+		{
+			KLOG_WARNING("Failed to set & retrieve reserved stack size!  "
+			             "The system probably won't be able to log stack "
+			             "overflow exceptions.");
+		}
+	}
 #if 0
 	if(SetUnhandledExceptionFilter(w32TopLevelExceptionHandler))
 	{
