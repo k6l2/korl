@@ -45,7 +45,7 @@
 [x] Write log files to temp directory instead of the application's exe directory
 [x] Write game_temp dll file to temp directory instead of the application's exe 
 	directory
-[ ] separate game code out of kml, and setup a different repo for a test game
+[x] separate game code out of kml, and setup a different repo for a test game
 [ ] Create a test game package which utilizes IMGUI, or integrate IMGUI into the
 	platform layer????
 	[ ] Hook IMGUI into the general-purpose allocator for transient storage.

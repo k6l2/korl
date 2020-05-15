@@ -9,9 +9,16 @@
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <ShlObj.h>
-global_variable const TCHAR APPLICATION_NAME[]        = TEXT("Win32-KML");
-global_variable const TCHAR APPLICATION_VERSION[]     = TEXT("r0");
-global_variable const TCHAR FILE_NAME_GAME_DLL[]      = TEXT("game");
+// Allow the pre-processor to store compiler definitions as string literals //
+//	Source: https://stackoverflow.com/a/39108392
+#define _DEFINE_TO_CSTR(define) #define
+#define DEFINE_TO_CSTR(d) _DEFINE_TO_CSTR(d)
+global_variable const TCHAR APPLICATION_NAME[] = 
+                                    TEXT(DEFINE_TO_CSTR(KML_APP_NAME));
+global_variable const TCHAR APPLICATION_VERSION[] = 
+                                    TEXT(DEFINE_TO_CSTR(KML_APP_VERSION));
+global_variable const TCHAR FILE_NAME_GAME_DLL[] = 
+                                    TEXT(DEFINE_TO_CSTR(KML_GAME_DLL_FILENAME));
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
@@ -1079,7 +1086,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
 		.hCursor       = g_cursor,
-		.lpszClassName = "K10WindowClass" };
+		.lpszClassName = "KmlWindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)
 	{
@@ -1090,14 +1097,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	const HWND mainWindow = CreateWindowExA(
 		0,
 		wndClass.lpszClassName,
-		"K10 Window",
+		APPLICATION_NAME,
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		NULL,
-		NULL,
-		hInstance,
-		NULL );
+		NULL, NULL, hInstance, NULL );
 	if(!mainWindow)
 	{
 		KLOG_ERROR("Failed to create window! GetLastError=%i", GetLastError());

@@ -1,5 +1,6 @@
 @echo off
-rem prerequisites: env.bat
+rem prerequisites: shell.bat has been run successfully
+rem                KML_HOME environment variable
 rem --- Save the timestamp before building for timing metric ---
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
@@ -14,6 +15,16 @@ rem remove any spaces from the generated timestamp:
 rem source: https://stackoverflow.com/a/10116045
 set fileNameSafeTimestamp=%fileNameSafeTimestamp: =%
 rem --- DEFINES ---
+rem     KML_APP_NAME = A string representing the name of the application,
+rem                    which is used in operating-system specific features
+rem                    such as determining app temporary data folders, etc.
+rem     KML_APP_VERSION = A string representing the application version.  This
+rem                       is useful for things such as mini dump analysis, as
+rem                       this string should be printed into the minidump's file
+rem                       name string.
+rem     KML_GAME_DLL_FILENAME = A string representing what the name of the game
+rem                             code's DLL should be (EXCLUDING the .dll file
+rem                             extension!)
 rem     INTERNAL_BUILD = set to 0 to disable all code which should never be 
 rem                      shipped to the end-user, such as debug functions etc...
 rem     SLOW_BUILD = set to 0 to disable code which typically has the following
@@ -68,7 +79,7 @@ rem opengl32.lib - You know what this is for...
 rem Dbghelp.lib  - generate mini dumps
 rem Shell32.lib  - Obtain AppData path at runtime.
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
-	/MTd /WX /wd4201 /wd4514 /wd4505 /Oi /Od /GR- /EHa- /Zi /FC ^
+	/MTd /WX /wd4201 /wd4514 /wd4505 /wd4100 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
 set CommonLinkerFlags=/opt:ref /incremental:no 
 rem 32-bit build
@@ -93,8 +104,11 @@ if exist win32-main.exe (
 		GOTO :SKIP_WIN32_BUILD
 	)
 )
-cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
-	%CommonCompilerFlagsDebug% /W4 /wd4100 /link %CommonLinkerFlags% ^
+cl %KML_HOME%\code\win32-main.cpp /Fmwin32-main.map ^
+	/DKML_APP_NAME=%kmlApplicationName% ^
+	/DKML_APP_VERSION=%kmlApplicationVersion% ^
+	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^
+	%CommonCompilerFlagsDebug% /W4 /link %CommonLinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
@@ -124,4 +138,5 @@ IF %hh% LEQ 0 (
 )
 exit /B 0
 :ON_FAILURE
+popd
 exit /B %ERRORLEVEL%
