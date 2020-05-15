@@ -1,7 +1,7 @@
 @echo off
 rem setup necessary environment variables to build the project, and switch our
 rem current working directory to be the project's root folder
-call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+call "%VISUAL_C_BUILD_SCRIPTS_HOME%\vcvarsall.bat" x64
 echo navigating to batch file's directory "%~dp0"...
 cd %~dp0
 cd ..
