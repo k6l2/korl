@@ -9,8 +9,9 @@
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <ShlObj.h>
-global_variable const TCHAR APPLICATION_NAME[]    = TEXT("Win32-KML");
-global_variable const TCHAR APPLICATION_VERSION[] = TEXT("r0");
+global_variable const TCHAR APPLICATION_NAME[]        = TEXT("Win32-KML");
+global_variable const TCHAR APPLICATION_VERSION[]     = TEXT("r0");
+global_variable const TCHAR FILE_NAME_GAME_DLL[]      = TEXT("game");
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
@@ -197,7 +198,7 @@ internal void w32WriteLogToFile()
 	static_assert(MAX_LOG_BUFFER_SIZE < MAX_DWORD);
 	///TODO: change this to use a platform-determined write directory
 	TCHAR fullPathToNewLog[MAX_PATH] = {};
-	TCHAR fullPathToLog[MAX_PATH] = {};
+	TCHAR fullPathToLog   [MAX_PATH] = {};
 	// determine full path to log files using platform-determined write 
 	//	directory //
 	{
@@ -331,10 +332,13 @@ internal void w32WriteLogToFile()
 		kassert(!"Failed to rename new log file!");
 		return;
 	}
+	platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
+	            "Log successfully wrote to '%s'!", fullPathToLog);
 	// Once the log file has been finalized, we can delete the temporary file //
 	if(!DeleteFileA(fullPathToNewLog))
 	{
-		kassert(!"Failed to delete temporary new log file!");
+		platformLog("win32-main", __LINE__, PlatformLogCategory::K_WARNING,
+		            "Failed to delete '%s'!", fullPathToNewLog);
 	}
 }
 #if INTERNAL_BUILD
@@ -995,10 +999,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 	}
-	local_persist const char FILE_NAME_GAME_DLL[]      = "game.dll";
-	local_persist const char FILE_NAME_GAME_DLL_TEMP[] = "game_temp.dll";
-	// locate where our exe file is on the OS so we can search for DLL files 
-	//	there instead of whatever the current working directory is //
+	// Locate where our exe file is on the OS.  This should also be the location
+	//	where all our application's code modules live! //
 	{
 		if(!GetModuleFileNameA(NULL, g_pathToExe, MAX_PATH))
 		{
@@ -1018,34 +1020,26 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		g_pathToExeSize = lastBackslash - g_pathToExe;
 	}
 	///TODO: handle file paths longer than MAX_PATH in the future...
-	char fullPathToGameDll[MAX_PATH] = {};
-	char fullPathToGameDllTemp[MAX_PATH] = {};
-	// use the `pathToExe` to determine the FULL path to the game DLL file //
+	TCHAR fullPathToGameDll    [MAX_PATH] = {};
+	TCHAR fullPathToGameDllTemp[MAX_PATH] = {};
+	// determine the FULL path to the game DLL file //
 	{
-		if(strcat_s(fullPathToGameDll, MAX_PATH, g_pathToExe))
+		if(FAILED(StringCchPrintf(fullPathToGameDll, MAX_PATH, 
+		                          TEXT("%s\\%s.dll"), g_pathToExe, 
+		                          FILE_NAME_GAME_DLL)))
 		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           g_pathToExe, fullPathToGameDll);
+			KLOG_ERROR("Failed to build fullPathToGameDll!  "
+			           "g_pathToExe='%s' FILE_NAME_GAME_DLL='%s'", 
+			           g_pathToExe, FILE_NAME_GAME_DLL);
 			return RETURN_CODE_FAILURE;
 		}
-		if(strcat_s(fullPathToGameDll + g_pathToExeSize, 
-		            MAX_PATH - g_pathToExeSize, FILE_NAME_GAME_DLL))
+		if(FAILED(StringCchPrintf(fullPathToGameDllTemp, MAX_PATH, 
+		                          TEXT("%s\\%s_temp.dll"), g_pathTemp, 
+		                          FILE_NAME_GAME_DLL)))
 		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           FILE_NAME_GAME_DLL, fullPathToGameDll);
-			return RETURN_CODE_FAILURE;
-		}
-		if(strcat_s(fullPathToGameDllTemp, MAX_PATH, g_pathToExe))
-		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           g_pathToExe, fullPathToGameDllTemp);
-			return RETURN_CODE_FAILURE;
-		}
-		if(strcat_s(fullPathToGameDllTemp + g_pathToExeSize, 
-		            MAX_PATH - g_pathToExeSize, FILE_NAME_GAME_DLL_TEMP))
-		{
-			KLOG_ERROR("Failed to strcat_s '%s' onto '%s'!", 
-			           FILE_NAME_GAME_DLL_TEMP, fullPathToGameDllTemp);
+			KLOG_ERROR("Failed to build fullPathToGameDllTemp!  "
+			           "g_pathTemp='%s' FILE_NAME_GAME_DLL='%s'", 
+			           g_pathTemp, FILE_NAME_GAME_DLL);
 			return RETURN_CODE_FAILURE;
 		}
 	}

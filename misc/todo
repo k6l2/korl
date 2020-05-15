@@ -43,10 +43,11 @@
 [x] Obtain TempData folder specific to this application
 [x] Write dump files to a global unified temp directory
 [x] Write log files to temp directory instead of the application's exe directory
-[ ] Write game_temp dll file to temp directory instead of the application's exe 
+[x] Write game_temp dll file to temp directory instead of the application's exe 
 	directory
 [ ] separate game code out of kml, and setup a different repo for a test game
-[ ] Create a test game package which utilizes IMGUI
+[ ] Create a test game package which utilizes IMGUI, or integrate IMGUI into the
+	platform layer????
 	[ ] Hook IMGUI into the general-purpose allocator for transient storage.
 	[ ] Hook IMGUI rendering operations into the OpenGL backend renderer API
 [ ] display debug frame metrics
@@ -74,3 +75,9 @@
 [ ] replace all ascii API calls with ambiguous char-width macros, and all CHAR 
 	buffers with TCHARs to allow more flexibility & unicode support!!!  
 	It's 2020.  We have infinite RAM.  Not supporting unicode is UNACCEPTABLE.
+[ ] Figure out if there is a good way to detect if an application was force-quit
+	by the user, like in situations such as an infinite loop, or the application
+	just generally taking too long to do something.
+[ ] Automatically delete older minidumps once enough accumulate.
+[ ] Give log files rolling file names like minidumps.
+[ ] Automatically delete older log files once enough accumulate.
