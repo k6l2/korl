@@ -29,7 +29,13 @@ privDefer<F> defer_func(F f) {
 // custom assert support //
 ///TODO: improve this to allow platform-specific behavior like trigger debugger?
 #if INTERNAL_BUILD || SLOW_BUILD
-	#define kassert(expression) if(!(expression)) { *(int*)0 = 0; }
+	#define kassert(expression) do \
+	{ \
+		if(!(expression)) \
+		{ \
+			*(int*)0 = 0; \
+		} \
+	}while(0)
 #else
 	#define kassert(expression) {}
 #endif

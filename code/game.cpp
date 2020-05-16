@@ -1,6 +1,14 @@
 #include "game.h"
 #include "z85.h"
 #include "z85_png_fighter.h"
+#pragma warning( push )
+	// warning C4820: bytes padding added after data member
+	#pragma warning( disable : 4820 )
+	// warning C5045: Compiler will insert Spectre mitigation for memory load if 
+	//                /Qspectre switch specified
+	#pragma warning( disable : 5045 )
+	#include "imgui/imgui.h"
+#pragma warning( pop )
 #include <cstdio>
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
@@ -94,6 +102,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 #endif
 		memory.initialized = true;
 	}
+	ImGui::SetCurrentContext(
+		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
+	ImGui::SetAllocatorFunctions(memory.platformImguiAlloc, 
+	                             memory.platformImguiFree, 
+	                             memory.imguiAllocUserData);
+	ImGui::ShowDemoWindow();
 	if (gameKeyboard.escape == ButtonState::PRESSED ||
 		(gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
 	{
@@ -193,3 +207,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 }
 #include "generalAllocator.cpp"
 #include "z85.cpp"
+#pragma warning( push )
+	// warning C4127: conditional expression is constant
+	#pragma warning( disable : 4127 )
+	// warning C4820: bytes padding added after data member
+	#pragma warning( disable : 4820 )
+	// warning C4365: 'argument': conversion
+	#pragma warning( disable : 4365 )
+	// warning C4577: 'noexcept' used with no exception handling mode 
+	//                specified...
+	#pragma warning( disable : 4577 )
+	// warning C5045: Compiler will insert Spectre mitigation for memory load if 
+	//                /Qspectre switch specified
+	#pragma warning( disable : 5045 )
+	// warning C4774: 'sscanf' : format string expected in argument 2 is not a 
+	//                string literal
+	#pragma warning( disable : 4774 )
+	#include "imgui/imgui_demo.cpp"
+	#include "imgui/imgui_draw.cpp"
+	#include "imgui/imgui_widgets.cpp"
+	#include "imgui/imgui.cpp"
+#pragma warning( pop )

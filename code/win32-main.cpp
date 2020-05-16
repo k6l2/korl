@@ -9,6 +9,11 @@
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <ShlObj.h>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+                             HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+#include "imgui/imgui_impl_opengl2.h"
 // Allow the pre-processor to store compiler definitions as string literals //
 //	Source: https://stackoverflow.com/a/39108392
 #define _DEFINE_TO_CSTR(define) #define
@@ -25,6 +30,7 @@ global_variable HCURSOR g_cursor;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
+global_variable KgaHandle g_genAllocImgui;
 global_variable const size_t MAX_LOG_BUFFER_SIZE = 32768;
 global_variable char g_logBeginning[MAX_LOG_BUFFER_SIZE];
 global_variable char g_logCircularBuffer[MAX_LOG_BUFFER_SIZE] = {};
@@ -42,6 +48,14 @@ global_variable size_t g_pathToExeSize;
 global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+internal PLATFORM_IMGUI_ALLOC(platformImguiAlloc)
+{
+	return kgaAlloc(user_data, sz);
+}
+internal PLATFORM_IMGUI_FREE(platformImguiFree)
+{
+	kgaFree(user_data, ptr);
+}
 internal PLATFORM_LOG(platformLog)
 {
 	// Get a timestamp (Source: https://stackoverflow.com/a/35260146) //
@@ -66,12 +80,18 @@ internal PLATFORM_LOG(platformLog)
 		: "UNKNOWN-CATEGORY"));
 	// Print out the leading meta-data tag for this log entry //
 	// god help us all if we ever have to deal with a 6-figure source file...
-	kassert(sourceFileLineNumber >= 0 && sourceFileLineNumber < 100000);
+	if(!g_hasReceivedException)
+	{
+		kassert(sourceFileLineNumber >= 0 && sourceFileLineNumber < 100000);
+	}
 	const int logLineMetaCharsWritten = 
 		_snprintf_s(logLineBuffer, MAX_LOG_LINE_SIZE, _TRUNCATE, 
 		            "[%-7.7s|%s|%-15.15s:%-5i] ", strCategory, timeBuffer, 
 		            sourceFileName, sourceFileLineNumber);
-	kassert(logLineMetaCharsWritten > 0);
+	if(!g_hasReceivedException)
+	{
+		kassert(logLineMetaCharsWritten > 0);
+	}
 	const size_t remainingLogLineSize = (logLineMetaCharsWritten < 0 ||
 		logLineMetaCharsWritten >= MAX_LOG_LINE_SIZE) ? 0
 		: MAX_LOG_LINE_SIZE - logLineMetaCharsWritten;
@@ -125,7 +145,10 @@ internal PLATFORM_LOG(platformLog)
 			            remainingLogBeginning, _TRUNCATE, 
 			            "%s\n", logLineBuffer);
 		// we should have written the total log line + "\n". \0 isn't counted!
-		kassert(charsWritten == totalLogLineSize + 1);
+		if(!g_hasReceivedException)
+		{
+			kassert(charsWritten == totalLogLineSize + 1);
+		}
 		g_logCurrentBeginningChar += charsWritten;
 	}
 	else
@@ -135,16 +158,20 @@ internal PLATFORM_LOG(platformLog)
 		g_logCurrentBeginningChar = MAX_LOG_BUFFER_SIZE;
 		const size_t remainingLogCircularBuffer = 
 			MAX_LOG_BUFFER_SIZE - g_logCurrentCircularBufferChar;
-		kassert(remainingLogCircularBuffer > 0);
+		if(!g_hasReceivedException)
+		{
+			kassert(remainingLogCircularBuffer > 0);
+		}
 		// I use `min` here as the second parameter to prevent _snprintf_s from 
 		//	preemptively destroying earlier buffer data!
-		int charsWritten = 
+		_set_errno(0); int charsWritten = 
 			_snprintf_s(g_logCircularBuffer + g_logCurrentCircularBufferChar,
 			            // +2 here to account for the \n\0 at the end !!!
 			            min(remainingLogCircularBuffer, totalLogLineSize + 2), 
 			            _TRUNCATE, "%s\n", logLineBuffer);
-		if(errno)
+		if(errno && !g_hasReceivedException)
 		{
+			const int error = errno;
 			kassert(!"log circular buffer part 1 string print error!");
 		}
 		else if(charsWritten < 0)
@@ -159,7 +186,11 @@ internal PLATFORM_LOG(platformLog)
 		//@ASSUMPTION: the log circular buffer is >= the local log line buffer
 		if(charsWritten == remainingLogCircularBuffer - 1)
 		{
-			kassert(g_logCurrentCircularBufferChar == MAX_LOG_BUFFER_SIZE - 1);
+			if(!g_hasReceivedException)
+			{
+				kassert(g_logCurrentCircularBufferChar == 
+				            MAX_LOG_BUFFER_SIZE - 1);
+			}
 			g_logCurrentCircularBufferChar = 0;
 			// +2 here because we need to make sure to write the \n\0 at the end
 			const size_t remainingLogLineBytes = 
@@ -170,15 +201,19 @@ internal PLATFORM_LOG(platformLog)
 				//	another call to _snprintf_s requesting a `\n` write!
 				*g_logCircularBuffer = '\0';
 			}
+			_set_errno(0);
 			const int charsWrittenClipped = remainingLogLineBytes < 2 
 				? static_cast<int>(remainingLogLineBytes)
 				: _snprintf_s(g_logCircularBuffer, remainingLogLineBytes, 
 				              _TRUNCATE, "%s\n", logLineBuffer + charsWritten);
-			if(errno)
+			if(errno && !g_hasReceivedException)
 			{
 				kassert(!"log circular buffer part 2 string print error!");
 			}
-			kassert(charsWrittenClipped >= 0);
+			if(!g_hasReceivedException)
+			{
+				kassert(charsWrittenClipped >= 0);
+			}
 			g_logCurrentCircularBufferChar += charsWrittenClipped;
 #if INTERNAL_BUILD && 0
 			// There should only ever be ONE \0 char in the circular buffer, 
@@ -190,7 +225,10 @@ internal PLATFORM_LOG(platformLog)
 			{
 				if(g_logCircularBuffer[c] == '\0')
 					nullCharCount++;
-				kassert(nullCharCount < 2);
+				if(!g_hasReceivedException)
+				{
+					kassert(nullCharCount < 2);
+				}
 			}
 #endif
 		}
@@ -721,6 +759,7 @@ internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, 
                                                 WPARAM wParam, LPARAM lParam)
 {
+	ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam);
 	LRESULT result = 0;
 	switch(uMsg)
 	{
@@ -1050,7 +1089,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 	}
-	// allocate a dynamic memory arena for STB_IMAGE
+	// allocate a dynamic memory arena for STB_IMAGE //
 	{
 		local_persist const SIZE_T STB_IMAGE_MEMORY_BYTES = kmath::megabytes(1);
 		VOID*const stbImageMemory = VirtualAlloc(NULL, STB_IMAGE_MEMORY_BYTES, 
@@ -1064,6 +1103,21 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 		g_genAllocStbImage = kgaInit(stbImageMemory, STB_IMAGE_MEMORY_BYTES);
+	}
+	// allocate a dynamic memory arena for ImGui //
+	{
+		local_persist const SIZE_T IMGUI_MEMORY_BYTES = kmath::megabytes(1);
+		VOID*const imguiMemory = VirtualAlloc(NULL, IMGUI_MEMORY_BYTES, 
+		                                      MEM_RESERVE | MEM_COMMIT, 
+		                                      PAGE_READWRITE);
+		if(!imguiMemory)
+		{
+			KLOG_ERROR("Failed to VirtualAlloc %i bytes for ImGui! "
+			           "GetLastError=%i", 
+			           IMGUI_MEMORY_BYTES, GetLastError());
+			return RETURN_CODE_FAILURE;
+		}
+		g_genAllocImgui = kgaInit(imguiMemory, IMGUI_MEMORY_BYTES);
 	}
 	GameCode game = w32LoadGameCode(fullPathToGameDll, 
 	                                fullPathToGameDllTemp);
@@ -1143,6 +1197,22 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		           "GetLastError=%i", SOUND_BUFFER_BYTES, GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
+	// Initialize ImGui~~~ //
+	{
+		ImGui::SetAllocatorFunctions(platformImguiAlloc, platformImguiFree, 
+		                             g_genAllocImgui);
+		ImGui::CreateContext();
+		if(!ImGui_ImplOpenGL2_Init())
+		{
+			KLOG_ERROR("ImGui_ImplOpenGL2_Init failure!");
+			return RETURN_CODE_FAILURE;
+		}
+		if(!ImGui_ImplWin32_Init(mainWindow))
+		{
+			KLOG_ERROR("ImGui_ImplWin32_Init failure!");
+			return RETURN_CODE_FAILURE;
+		}
+	}
 	GameMemory gameMemory = {};
 #if INTERNAL_BUILD
 	const LPVOID baseAddress = reinterpret_cast<LPVOID>(kmath::terabytes(1));
@@ -1179,6 +1249,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.krbSetModelXform         = krbSetModelXform;
 	gameMemory.krbLoadImageZ85          = krbLoadImageZ85;
 	gameMemory.krbUseTexture            = krbUseTexture;
+	gameMemory.imguiContext             = ImGui::GetCurrentContext();
+	gameMemory.platformImguiAlloc       = platformImguiAlloc;
+	gameMemory.platformImguiFree        = platformImguiFree;
+	gameMemory.imguiAllocUserData       = g_genAllocImgui;
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -1313,6 +1387,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			w32XInputGetGamePadStates(&numGamePads,
 			                          gamePadArrayCurrentFrame,
 			                          gamePadArrayPreviousFrame);
+			ImGui_ImplOpenGL2_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
+#if 0
+			ImGui::ShowDemoWindow();
+#endif
 			const W32Dimension2d windowDims = 
 				w32GetWindowDimensions(mainWindow);
 			if(!game.updateAndDraw(gameMemory, 
@@ -1340,6 +1420,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				}
 			}
 			// update window graphics //
+			ImGui::Render();
+			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 			if(!SwapBuffers(hdc))
 			{
 				KLOG_ERROR("Failed to SwapBuffers! GetLastError=%i", 
@@ -1418,3 +1500,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #define STBI_FREE(p)          kgaFree(g_genAllocStbImage,p)
 #include "stb/stb_image.h"
 #include "generalAllocator.cpp"
+#pragma warning( push )
+// warning C4127: conditional expression is constant
+#pragma warning( disable : 4127 )
+#include "imgui/imgui_demo.cpp"
+#include "imgui/imgui_draw.cpp"
+#include "imgui/imgui_impl_opengl2.cpp"
+#include "imgui/imgui_impl_win32.cpp"
+#include "imgui/imgui_widgets.cpp"
+#include "imgui/imgui.cpp"
+#pragma warning( pop )

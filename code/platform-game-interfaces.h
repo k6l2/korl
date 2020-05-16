@@ -13,7 +13,12 @@ enum class PlatformLogCategory : u8
                                      u32 sourceFileLineNumber, \
                                      PlatformLogCategory logCategory, \
                                      const char* formattedString, ...)
+
+#define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
+#define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
 typedef PLATFORM_LOG(fnSig_platformLog);
+typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
+typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 // INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
@@ -33,6 +38,39 @@ typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 #endif
 /***************************************************** END PLATFORM INTERFACE */
+struct GameMemory
+{
+	bool initialized;
+#if INTERNAL_BUILD
+	u8 initialized_PADDING[7];
+#endif
+	void* permanentMemory;
+	u64   permanentMemoryBytes;
+	void* transientMemory;
+	u64   transientMemoryBytes;
+	///TODO: maybe instead of passing shit tons of function pointers here, we 
+	///      can do something similar to ImGui and have a `platformContext` &
+	///      `krbContext` which is passed as a parameter to all these functions?
+	fnSig_platformLog* platformLog;
+#if INTERNAL_BUILD
+	fnSig_PlatformReadEntireFile* platformReadEntireFile;
+	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
+	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
+#endif
+	fnSig_krbBeginFrame* krbBeginFrame;
+	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
+	fnSig_krbDrawLine* krbDrawLine;
+	fnSig_krbDrawTri* krbDrawTri;
+	fnSig_krbDrawTriTextured* krbDrawTriTextured;
+	fnSig_krbViewTranslate* krbViewTranslate;
+	fnSig_krbSetModelXform* krbSetModelXform;
+	fnSig_krbLoadImageZ85* krbLoadImageZ85;
+	fnSig_krbUseTexture* krbUseTexture;
+	void* imguiContext;
+	fnSig_platformImguiAlloc* platformImguiAlloc;
+	fnSig_platformImguiFree* platformImguiFree;
+	void* imguiAllocUserData;
+};
 struct GameAudioBuffer
 {
 	SoundSample* memory;
@@ -194,32 +232,6 @@ struct GamePad
 	float normalizedTriggerRight;
 	float normalizedMotorSpeedLeft;
 	float normalizedMotorSpeedRight;
-};
-struct GameMemory
-{
-	bool initialized;
-#if INTERNAL_BUILD
-	u8 initialized_PADDING[7];
-#endif
-	void* permanentMemory;
-	u64   permanentMemoryBytes;
-	void* transientMemory;
-	u64   transientMemoryBytes;
-	fnSig_platformLog* platformLog;
-#if INTERNAL_BUILD
-	fnSig_PlatformReadEntireFile* platformReadEntireFile;
-	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
-	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
-#endif
-	fnSig_krbBeginFrame* krbBeginFrame;
-	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
-	fnSig_krbDrawLine* krbDrawLine;
-	fnSig_krbDrawTri* krbDrawTri;
-	fnSig_krbDrawTriTextured* krbDrawTriTextured;
-	fnSig_krbViewTranslate* krbViewTranslate;
-	fnSig_krbSetModelXform* krbSetModelXform;
-	fnSig_krbLoadImageZ85* krbLoadImageZ85;
-	fnSig_krbUseTexture* krbUseTexture;
 };
 /* GAME INTERFACE *************************************************************/
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
