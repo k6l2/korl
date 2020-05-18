@@ -59,7 +59,7 @@
 	[x] copy win32-main.pdb
 	[x] copy the latest version of game*.pdb
 	[x] copy the actual application executable as well!!!
-[ ] perform the code tree diff in the build batch file separately for KML and 
+[x] perform the code tree diff in the build batch file separately for KML and 
 	%project_dir%? (so that game projects can skip KML rebuilds and their own 
 	code using separate conditions)
 [ ] Figure out why ImGui demo widget randomly crashes.  It seemed to crash

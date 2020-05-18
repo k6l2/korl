@@ -15,24 +15,13 @@ FOR /F "delims=" %%G IN ('DIR /B /S') DO (
 	>>"%project_root%\build\code-tree-current.txt" ECHO %%~G,%%~tG,%%~zG
 )
 popd
+rem --- Create a text tree of KML code to conditionally skip the .exe build ---
+pushd %KML_HOME%\code
+FOR /F "delims=" %%G IN ('DIR /B /S') DO (
+	>>"%project_root%\build\code-tree-kml-current.txt" ECHO %%~G,%%~tG,%%~zG
+)
+popd
 pushd %project_root%\build
-rem --- Detect if the code tree differs, and if it doesn't, skip building ---
-set codeTreeIsDifferent=FALSE
-fc code-tree-existing.txt code-tree-current.txt > NUL 2> NUL
-if %ERRORLEVEL% GTR 0 (
-	set codeTreeIsDifferent=TRUE
-)
-del code-tree-existing.txt
-ren code-tree-current.txt code-tree-existing.txt
-IF "%codeTreeIsDifferent%"=="TRUE" (
-	echo Code tree has changed!  Continuing build...
-) ELSE (
-	echo Code tree is unchanged!  Skipping build...
-	GOTO :SKIP_ALL_BUILDS
-)
-rem --- Clean up build directory ---
-del *.pdb > NUL 2> NUL
-del *.dll > NUL 2> NUL
 set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
 set fileNameSafeTimestamp=%fileNameSafeDate%_%time:~0,2%%time:~3,2%%time:~6,2%
 rem remove any spaces from the generated timestamp:
@@ -111,12 +100,30 @@ set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
 	/MTd /WX /wd4201 /wd4514 /wd4505 /wd4100 /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
 set CommonLinkerFlags=/opt:ref /incremental:no 
+rem --- Detect if the code tree differs, and if it doesn't, skip building ---
+set codeTreeIsDifferent=FALSE
+fc code-tree-existing.txt code-tree-current.txt > NUL 2> NUL
+if %ERRORLEVEL% GTR 0 (
+	set codeTreeIsDifferent=TRUE
+)
+del code-tree-existing.txt
+ren code-tree-current.txt code-tree-existing.txt
+IF "%codeTreeIsDifferent%"=="TRUE" (
+	echo Code tree has changed!  Continuing build...
+) ELSE (
+	echo Code tree is unchanged!  Skipping build...
+	GOTO :SKIP_GAME_BUILD
+)
+rem --- Clean up build directory ---
+del %kmlGameDllFileName%*.pdb > NUL 2> NUL
+del %kmlGameDllFileName%*.dll > NUL 2> NUL
 rem 32-bit build
 rem cl %project_root%\code\%kmlApplicationName%.cpp /Fm%kmlApplicationName%.map ^
 rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
-cl %project_root%\code\game.cpp /Fmgame.map ^
+cl %project_root%\code\%kmlGameDllFileName%.cpp ^
+	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
 	%CommonCompilerFlagsDebug% /Wall /wd4710 /wd4577 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
@@ -125,15 +132,35 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo Game build failed!
 	GOTO :ON_FAILURE
 )
+:SKIP_GAME_BUILD
+rem --- Detect if the KML code tree differs, and if it doesn't, skip 
+rem building ---
+set codeTreeIsDifferent=FALSE
+fc code-tree-kml-existing.txt code-tree-kml-current.txt > NUL 2> NUL
+if %ERRORLEVEL% GTR 0 (
+	set codeTreeIsDifferent=TRUE
+)
+del code-tree-kml-existing.txt
+ren code-tree-kml-current.txt code-tree-kml-existing.txt
+IF "%codeTreeIsDifferent%"=="TRUE" (
+	echo KML Code tree has changed!  Continuing build...
+) ELSE (
+	echo KML Code tree is unchanged!  Skipping build...
+	GOTO :SKIP_WIN32_BUILD
+)
 rem Before building the win32 platform application, check to see if it's already
 rem running...
 if exist %kmlApplicationName%.exe (
 	del %kmlApplicationName%.exe >NUL 2>NUL
 	IF exist %kmlApplicationName%.exe (
 		echo %kmlApplicationName%.exe is locked! Skipping build...
+		del code-tree-kml-existing.txt
 		GOTO :SKIP_WIN32_BUILD
 	)
 )
+rem --- Clean up build directory ---
+del %kmlApplicationName%*.pdb > NUL 2> NUL
+del %kmlApplicationName%*.dll > NUL 2> NUL
 cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	/Fm%kmlApplicationName%.map ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
@@ -145,8 +172,8 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE
 )
-:SKIP_ALL_BUILDS
 :SKIP_WIN32_BUILD
+:SKIP_ALL_BUILDS
 popd
 rem --- Calculate how long it took the build script to run ---
 rem Source: https://stackoverflow.com/a/9935540
