@@ -847,9 +847,26 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 	TCHAR szFileName[MAX_PATH]; 
 	SYSTEMTIME stLocalTime;
 	GetLocalTime( &stLocalTime );
+	// Create a companion folder to store PDB files specifically for this 
+	//	dump! //
+	TCHAR szPdbDirectory[MAX_PATH];
+	StringCchPrintf(szPdbDirectory, MAX_PATH, 
+				TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld"), 
+				g_pathTemp, APPLICATION_VERSION, 
+				stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
+				stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
+				GetCurrentProcessId(), GetCurrentThreadId());
+	if(!CreateDirectory(szPdbDirectory, NULL))
+	{
+		platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+					"Failed to create dir '%s'!  GetLastError=%i",
+					szPdbDirectory, GetLastError());
+		return EXCEPTION_EXECUTE_HANDLER;
+	}
+	// Create the mini dump! //
 	StringCchPrintf(szFileName, MAX_PATH, 
 	                TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp"), 
-	                g_pathTemp, APPLICATION_VERSION, 
+	                szPdbDirectory, APPLICATION_VERSION, 
 	                stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
 	                stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
 	                GetCurrentProcessId(), GetCurrentThreadId());
@@ -878,7 +895,89 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
 		            "Successfully wrote mini dump to: '%s'", szFileName);
 #endif
-		///TODO: attempt to copy pdb file to the dump location here!
+		// Attempt to copy the win32 application's pdb file to the dump 
+		//	location //
+		TCHAR szFileNameCopySource[MAX_PATH];
+		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s.pdb"),
+		                g_pathToExe, APPLICATION_NAME);
+		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s.pdb"), 
+		                szPdbDirectory, APPLICATION_NAME);
+		if(!CopyFile(szFileNameCopySource, szFileName, false))
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
+			            szFileNameCopySource, szFileName, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+		// Find the most recent game*.pdb file, then place the filename into 
+		//	`szFileNameCopySource` //
+		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s*.pdb"),
+		                g_pathToExe, FILE_NAME_GAME_DLL);
+		WIN32_FIND_DATA findFileData;
+		HANDLE findHandleGameDll = 
+			FindFirstFile(szFileNameCopySource, &findFileData);
+		if(findHandleGameDll == INVALID_HANDLE_VALUE)
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to begin search for '%s'!  GetLastError=%i",
+			            szFileNameCopySource, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+		FILETIME creationTimeLatest = findFileData.ftCreationTime;
+		TCHAR fileNameGamePdb[MAX_PATH];
+		StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
+		                findFileData.cFileName);
+		while(BOOL findNextFileResult = 
+			FindNextFile(findHandleGameDll, &findFileData))
+		{
+			if(!findNextFileResult && GetLastError() != ERROR_NO_MORE_FILES)
+			{
+				platformLog("win32-main", __LINE__, 
+				            PlatformLogCategory::K_ERROR,
+				            "Failed to find next for '%s'!  GetLastError=%i",
+				            szFileNameCopySource, GetLastError());
+				return EXCEPTION_EXECUTE_HANDLER;
+			}
+			if(CompareFileTime(&findFileData.ftCreationTime, 
+			                   &creationTimeLatest) > 0)
+			{
+				creationTimeLatest = findFileData.ftCreationTime;
+				StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
+				                findFileData.cFileName);
+			}
+		}
+		if(!FindClose(findHandleGameDll))
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to close search for '%s*.pdb'!  "
+			            "GetLastError=%i",
+			            FILE_NAME_GAME_DLL, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+		// attempt to copy game's pdb file //
+		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s"),
+		                g_pathToExe, fileNameGamePdb);
+		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s"), 
+		                szPdbDirectory, fileNameGamePdb);
+		if(!CopyFile(szFileNameCopySource, szFileName, false))
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
+			            szFileNameCopySource, szFileName, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+		// Attempt to copy the win32 EXE file into the dump location //
+		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s.exe"),
+		                g_pathToExe, APPLICATION_NAME);
+		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s.exe"), 
+		                szPdbDirectory, APPLICATION_NAME);
+		if(!CopyFile(szFileNameCopySource, szFileName, false))
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
+			            szFileNameCopySource, szFileName, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
 	}
     return EXCEPTION_EXECUTE_HANDLER;
 }

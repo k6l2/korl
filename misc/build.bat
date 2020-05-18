@@ -89,6 +89,8 @@ rem /nologo - prevent the compiler from outputing the compiler version info,
 rem           architecture info, and other verbose output messages
 rem /std:c++latest - used for C++20 designated initializers
 rem /Fm<name> - generate a map file
+rem /Fe<name> - change name of output code file (don't include the file 
+rem             extension)
 rem /link - all linker options are placed after this token.
 rem --- LINKER OPTIONS ---
 rem /subsystem - affects the entry point symbol that the linker will select
@@ -110,7 +112,7 @@ set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
 	/nologo /std:c++latest
 set CommonLinkerFlags=/opt:ref /incremental:no 
 rem 32-bit build
-rem cl %project_root%\code\win32-main.cpp /Fmwin32-main.map ^
+rem cl %project_root%\code\%kmlApplicationName%.cpp /Fm%kmlApplicationName%.map ^
 rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
@@ -125,14 +127,15 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 rem Before building the win32 platform application, check to see if it's already
 rem running...
-if exist win32-main.exe (
-	del win32-main.exe >NUL 2>NUL
-	IF exist win32-main.exe (
-		echo win32-main.exe is locked! Skipping build...
+if exist %kmlApplicationName%.exe (
+	del %kmlApplicationName%.exe >NUL 2>NUL
+	IF exist %kmlApplicationName%.exe (
+		echo %kmlApplicationName%.exe is locked! Skipping build...
 		GOTO :SKIP_WIN32_BUILD
 	)
 )
-cl %KML_HOME%\code\win32-main.cpp /Fmwin32-main.map ^
+cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
+	/Fm%kmlApplicationName%.map ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
 	/DKML_APP_VERSION=%kmlApplicationVersion% ^
 	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^

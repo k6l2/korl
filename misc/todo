@@ -54,10 +54,14 @@
 	[x] Figure out why ImGui isn't getting keyboard events :| :| :|
 [x] Don't rebuild platform layer if none of the files have changed.
 	Compare diff trees in batch? https://www.dostips.com/forum/viewtopic.php?t=6223
-[ ] Copy the necessary .pdb files along side the mini dumps (if available) to
+[x] Copy the necessary .pdb files along side the mini dumps (if available) to
 	minimize the chance of accidentally recompiling the pdbs!
-	[ ] copy win32-main.pdb
-	[ ] copy the latest version of game*.pdb
+	[x] copy win32-main.pdb
+	[x] copy the latest version of game*.pdb
+	[x] copy the actual application executable as well!!!
+[ ] perform the code tree diff in the build batch file separately for KML and 
+	%project_dir%? (so that game projects can skip KML rebuilds and their own 
+	code using separate conditions)
 [ ] Figure out why ImGui demo widget randomly crashes.  It seemed to crash
 	when I had all the demo widgets open and then opened the console 
 	example.
