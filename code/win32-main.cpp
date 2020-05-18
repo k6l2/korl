@@ -774,13 +774,6 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 				SetCursor(NULL);
 			}
 		} break;
-		case WM_KEYDOWN:
-		case WM_KEYUP:
-		case WM_SYSKEYDOWN:
-		case WM_SYSKEYUP:
-		{
-			kassert(!"Unhandled keyboard event!");
-		} break;
 		case WM_SIZE:
 		{
 			KLOG_INFO("WM_SIZE");
@@ -1356,9 +1349,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					case WM_KEYUP:
 					case WM_SYSKEYDOWN:
 					case WM_SYSKEYUP:
-					{
 						w32ProcessKeyEvent(windowMessage, gameKeyboard);
-					} break;
 					default:
 					{
 						TranslateMessage(&windowMessage);

@@ -48,25 +48,25 @@
 [x] separate game code out of kml, and setup a different repo for a test game
 [x] For the love of god remove assertions from logging code to prevent infinite 
 	exceptions from firing...  Either that or make a better assert macro.
+[x] Integrate IMGUI into the platform layer.
+	[x] Hook IMGUI into the general-purpose allocator for transient storage.
+		See IMGUI_DISABLE_DEFAULT_ALLOCATORS in `imconfig.h`
+	[x] Figure out why ImGui isn't getting keyboard events :| :| :|
 [ ] Copy the necessary .pdb files along side the mini dumps (if available) to
 	minimize the chance of accidentally recompiling the pdbs!
 	[ ] copy win32-main.pdb
 	[ ] copy the latest version of game*.pdb
-[ ] Integrate IMGUI into the platform layer.
-	[x] Hook IMGUI into the general-purpose allocator for transient storage.
-		See IMGUI_DISABLE_DEFAULT_ALLOCATORS in `imconfig.h`
-	[ ] Figure out why ImGui isn't getting keyboard events :| :| :|
-	[ ] Figure out why ImGui demo widget randomly crashes.  It seemed to crash
-		when I had all the demo widgets open and then opened the console 
-		example.
-		[ ] Is it my allocator that's broken????
-			[ ] track the total # of allocations in the KGeneralAllocator
-				[ ] verify double linked-list integrity in SLOW_BUILD mode
-			[ ] track the size of the largest unallocated chunk, if it exists...
-			[ ] WRITE UNIT TESTSSSSSSSSSS :(
-			What other things can I verify??...
-		[ ] Does it only crash when called from game, or does win32-exe 
-			experience the same crash?
+[ ] Figure out why ImGui demo widget randomly crashes.  It seemed to crash
+	when I had all the demo widgets open and then opened the console 
+	example.
+	[ ] Is it my allocator that's broken????
+		[ ] track the total # of allocations in the KGeneralAllocator
+			[ ] verify double linked-list integrity in SLOW_BUILD mode
+		[ ] track the size of the largest unallocated chunk, if it exists...
+		[ ] WRITE UNIT TESTSSSSSSSSSS :(
+		What other things can I verify??...
+	[ ] Does it only crash when called from game, or does win32-exe 
+		experience the same crash?
 [ ] Don't rebuild platform layer if none of the files have changed.
 [ ] display debug frame metrics
 [ ] multi-threaded job queue
