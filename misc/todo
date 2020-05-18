@@ -62,18 +62,17 @@
 [x] perform the code tree diff in the build batch file separately for KML and 
 	%project_dir%? (so that game projects can skip KML rebuilds and their own 
 	code using separate conditions)
-[ ] Figure out why ImGui demo widget randomly crashes.  It seemed to crash
+[x] Figure out why ImGui demo widget randomly crashes.  It seemed to crash
 	when I had all the demo widgets open and then opened the console 
 	example.
-	[ ] Is it my allocator that's broken????
-		[ ] track the total # of allocations in the KGeneralAllocator
-			[ ] verify double linked-list integrity in SLOW_BUILD mode
-		[ ] track the size of the largest unallocated chunk, if it exists...
-		[ ] WRITE UNIT TESTSSSSSSSSSS :(
+	[x] Is it my allocator that's broken???? (yes, yes it was)
+		[x] track the total # of allocations in the KGeneralAllocator
+			[x] verify double linked-list integrity in SLOW_BUILD mode
+		[~] track the size of the largest unallocated chunk, if it exists...
+		[~] WRITE UNIT TESTSSSSSSSSSS :(
 		What other things can I verify??...
-	[ ] Does it only crash when called from game, or does win32-exe 
+	[-] Does it only crash when called from game, or does win32-exe 
 		experience the same crash?
-[ ] display debug frame metrics
 [ ] multi-threaded job queue
 	[ ] make log system thread-safe probably!
 	https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
@@ -85,6 +84,7 @@
 [ ] Asset streaming using multi-threaded job queue
 [ ] audio mixer
 	[ ] Investigate `Failed to lock buffer! result=0x80070057` warning! :(
+[ ] display debug frame metrics
 [ ] collision engine
 [ ] fix KBR not being correct when window resizes
 [ ] fullscreen toggle support 

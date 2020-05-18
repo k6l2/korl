@@ -61,6 +61,7 @@ rem /wd4577 - disable warning C4577 `'noexcept' used with no exception handling
 rem           mode specified; termination on exception is not guaranteed. 
 rem           Specify /EHsc`
 rem /wd4710 - disable warning C4710 `function not inlined`
+rem /wd5045 - disable warning C5045 `... Spectre mitigation for memory load ...`
 rem /Zi - Generates complete debugging information.
 rem /Oi - Generate intrinsic opcodes
 rem /Od - Disable all optimization.
@@ -97,7 +98,8 @@ rem opengl32.lib - You know what this is for...
 rem Dbghelp.lib  - generate mini dumps
 rem Shell32.lib  - Obtain AppData path at runtime.
 set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
-	/MTd /WX /wd4201 /wd4514 /wd4505 /wd4100 /Oi /Od /GR- /EHa- /Zi /FC ^
+	/WX /wd4201 /wd4514 /wd4505 /wd4100 /wd5045 ^
+	/MTd /Oi /Od /GR- /EHa- /Zi /FC ^
 	/nologo /std:c++latest
 set CommonLinkerFlags=/opt:ref /incremental:no 
 rem --- Detect if the code tree differs, and if it doesn't, skip building ---

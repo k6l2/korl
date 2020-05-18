@@ -25,95 +25,12 @@ struct KGeneralAllocator
 	 * is the theoretical maximum amount of data the allocator can allocate.
 	*/
 	size_t totalBytes;
+	size_t totalChunks;
 	KGeneralAllocatorChunk* firstChunk;
-	///TODO: keep track of the total # of chunks
 };
-internal KgaHandle kgaInit(void* allocatorMemoryLocation, 
-                           size_t allocatorByteCount)
-{
-	local_persist const size_t MIN_ALLOC_OVERHEAD =
-		sizeof(KGeneralAllocator) + sizeof(KGeneralAllocatorChunk);
-	kassert(allocatorByteCount > MIN_ALLOC_OVERHEAD);
-	KGeneralAllocator*const kga = 
-		reinterpret_cast<KGeneralAllocator*>(allocatorMemoryLocation);
-	*kga = {};
-	kga->freeBytes  = allocatorByteCount - MIN_ALLOC_OVERHEAD;
-	kga->totalBytes = allocatorByteCount - MIN_ALLOC_OVERHEAD;
-	kga->firstChunk = reinterpret_cast<KGeneralAllocatorChunk*>(
-	                  reinterpret_cast<u8*>(kga) + sizeof(KGeneralAllocator));
-	kga->firstChunk->chunkPrev = kga->firstChunk;
-	kga->firstChunk->chunkNext = kga->firstChunk;
-	kga->firstChunk->bytes     = allocatorByteCount - MIN_ALLOC_OVERHEAD;
-	kga->firstChunk->allocated = false;
-	return kga;
-}
-internal void* kgaAlloc(KgaHandle kgaHandle, size_t allocationByteCount)
-{
-	if(allocationByteCount == 0)
-	{
-		return nullptr;
-	}
-	local_persist const size_t MIN_ALLOC_OVERHEAD = 
-		sizeof(KGeneralAllocatorChunk);
-	KGeneralAllocator*const kga = 
-		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
-	if(kga->freeBytes < allocationByteCount)
-	{
-		return nullptr;
-	}
-	// First, we need to find the first unallocated chunk that satisfies our
-	//	memory requirements //
-	KGeneralAllocatorChunk* firstAvailableChunk = nullptr;
-	KGeneralAllocatorChunk* nextChunk = kga->firstChunk;
-	do
-	{
-		if(!nextChunk->allocated && 
-			nextChunk->bytes >= allocationByteCount)
-		{
-			firstAvailableChunk = nextChunk;
-			break;
-		}
-		nextChunk = nextChunk->chunkNext;
-	} while (nextChunk != kga->firstChunk);
-	if(!firstAvailableChunk)
-	{
-		return nullptr;
-	}
-	// Mark the available chunk as allocated & create a new empty chunk adjacent
-	//	in the double-linked list of memory //
-	if(firstAvailableChunk->bytes > 
-		allocationByteCount + MIN_ALLOC_OVERHEAD + 1)
-	{
-		// we only need to add another link in the chunk chain if there is 
-		//	enough memory leftover to support another chunk header PLUS some 
-		//	non-zero amount of allocatable memory! //
-		KGeneralAllocatorChunk*const newChunk = 
-			reinterpret_cast<KGeneralAllocatorChunk*>(
-				reinterpret_cast<u8*>(firstAvailableChunk) + 
-				MIN_ALLOC_OVERHEAD + allocationByteCount);
-		newChunk->chunkNext = firstAvailableChunk->chunkNext;
-		newChunk->chunkPrev = firstAvailableChunk;
-		newChunk->bytes     = firstAvailableChunk->bytes - MIN_ALLOC_OVERHEAD - 
-		                      allocationByteCount;
-		newChunk->allocated = false;
-		firstAvailableChunk->chunkNext = newChunk;
-		if(newChunk->chunkNext == firstAvailableChunk)
-		{
-			firstAvailableChunk->chunkPrev = newChunk;
-		}
-		firstAvailableChunk->bytes     = allocationByteCount;
-		kga->freeBytes -= MIN_ALLOC_OVERHEAD;
-	}
-	firstAvailableChunk->allocated = true;
-	kga->freeBytes -= allocationByteCount;
-	// Clear the newly allocated space to zero for safety //
-	memset(reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD, 
-	       0x0, firstAvailableChunk->bytes);
-	return reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD;
-}
 // This is just a relatively inexpensive sanity check to see if the address 
 //	spaces of the chunk and its immediate neighbors lie within the total address
-//	space of the allocator. //
+//	space of the allocator.  Also doing some other simple checks now... //
 internal bool kgaVerifyChunk(const KGeneralAllocator* kga, 
                              const KGeneralAllocatorChunk* chunk)
 {
@@ -153,7 +70,115 @@ internal bool kgaVerifyChunk(const KGeneralAllocator* kga,
 	{
 		return false;
 	}
+	// verify the integrity of the double-linked list using the `totalChunks` //
+	const KGeneralAllocatorChunk* chunkNextLeft  = chunk;
+	const KGeneralAllocatorChunk* chunkNextRight = chunk;
+	for(size_t c = 0; c < kga->totalChunks; c++)
+	{
+		chunkNextLeft  = chunkNextLeft ->chunkPrev;
+		chunkNextRight = chunkNextRight->chunkNext;
+		if(c < kga->totalChunks - 1)
+		{
+			if(chunkNextLeft == chunk || chunkNextRight == chunk)
+			{
+				return false;
+			}
+		}
+	}
+	if(chunkNextLeft != chunk || chunkNextRight != chunk)
+	{
+		return false;
+	}
 	return true;
+}
+internal KgaHandle kgaInit(void* allocatorMemoryLocation, 
+                           size_t allocatorByteCount)
+{
+	local_persist const size_t MIN_ALLOC_OVERHEAD =
+		sizeof(KGeneralAllocator) + sizeof(KGeneralAllocatorChunk);
+	kassert(allocatorByteCount > MIN_ALLOC_OVERHEAD);
+	KGeneralAllocator*const kga = 
+		reinterpret_cast<KGeneralAllocator*>(allocatorMemoryLocation);
+	*kga = {};
+	kga->freeBytes  = allocatorByteCount - MIN_ALLOC_OVERHEAD;
+	kga->totalBytes = allocatorByteCount - MIN_ALLOC_OVERHEAD;
+	kga->totalChunks = 1;
+	kga->firstChunk = reinterpret_cast<KGeneralAllocatorChunk*>(
+	                  reinterpret_cast<u8*>(kga) + sizeof(KGeneralAllocator));
+	kga->firstChunk->chunkPrev = kga->firstChunk;
+	kga->firstChunk->chunkNext = kga->firstChunk;
+	kga->firstChunk->bytes     = allocatorByteCount - MIN_ALLOC_OVERHEAD;
+	kga->firstChunk->allocated = false;
+	kassert(kgaVerifyChunk(kga, kga->firstChunk));
+	return kga;
+}
+internal void* kgaAlloc(KgaHandle kgaHandle, size_t allocationByteCount)
+{
+	if(allocationByteCount == 0)
+	{
+		return nullptr;
+	}
+	local_persist const size_t MIN_ALLOC_OVERHEAD = 
+		sizeof(KGeneralAllocatorChunk);
+	KGeneralAllocator*const kga = 
+		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
+	if(kga->freeBytes < allocationByteCount)
+	{
+		return nullptr;
+	}
+	// First, we need to find the first unallocated chunk that satisfies our
+	//	memory requirements //
+	KGeneralAllocatorChunk* firstAvailableChunk = nullptr;
+	KGeneralAllocatorChunk* nextChunk = kga->firstChunk;
+	do
+	{
+		if(!nextChunk->allocated && 
+			nextChunk->bytes >= allocationByteCount)
+		{
+			firstAvailableChunk = nextChunk;
+			break;
+		}
+		nextChunk = nextChunk->chunkNext;
+	} while (nextChunk != kga->firstChunk);
+	if(!firstAvailableChunk)
+	{
+		return nullptr;
+	}
+	kassert(kgaVerifyChunk(kga, firstAvailableChunk));
+	// Mark the available chunk as allocated & create a new empty chunk adjacent
+	//	in the double-linked list of memory //
+	if(firstAvailableChunk->bytes > 
+		allocationByteCount + MIN_ALLOC_OVERHEAD + 1)
+	{
+		// we only need to add another link in the chunk chain if there is 
+		//	enough memory leftover to support another chunk header PLUS some 
+		//	non-zero amount of allocatable memory! //
+		KGeneralAllocatorChunk*const newChunk = 
+			reinterpret_cast<KGeneralAllocatorChunk*>(
+				reinterpret_cast<u8*>(firstAvailableChunk) + 
+				MIN_ALLOC_OVERHEAD + allocationByteCount);
+		newChunk->chunkNext = firstAvailableChunk->chunkNext;
+		newChunk->chunkPrev = firstAvailableChunk;
+		newChunk->bytes     = firstAvailableChunk->bytes - MIN_ALLOC_OVERHEAD - 
+		                      allocationByteCount;
+		newChunk->allocated = false;
+		firstAvailableChunk->chunkNext->chunkPrev = newChunk;
+		firstAvailableChunk->chunkNext = newChunk;
+		if(newChunk->chunkNext == firstAvailableChunk)
+		{
+			firstAvailableChunk->chunkPrev = newChunk;
+		}
+		firstAvailableChunk->bytes     = allocationByteCount;
+		kga->freeBytes -= MIN_ALLOC_OVERHEAD;
+		kga->totalChunks++;
+		kassert(kgaVerifyChunk(kga, firstAvailableChunk));
+	}
+	firstAvailableChunk->allocated = true;
+	kga->freeBytes -= allocationByteCount;
+	// Clear the newly allocated space to zero for safety //
+	memset(reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD, 
+	       0x0, firstAvailableChunk->bytes);
+	return reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD;
 }
 internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress, 
                           size_t newAllocationSize)
@@ -222,8 +247,10 @@ internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
 		allocatedChunk->chunkPrev->bytes += 
 			allocatedChunk->bytes + sizeof(KGeneralAllocatorChunk);
 		kga->freeBytes += sizeof(KGeneralAllocatorChunk);
+		kga->totalChunks--;
 		KGeneralAllocatorChunk*const chunkToClear = allocatedChunk;
 		allocatedChunk = allocatedChunk->chunkPrev;
+		kassert(kgaVerifyChunk(kga, allocatedChunk));
 		// fill cleared memory space with some value for safety //
 		memset(reinterpret_cast<u8*>(chunkToClear), 0xFE, 
 		       sizeof(KGeneralAllocatorChunk) + chunkToClear->bytes);
@@ -238,8 +265,10 @@ internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
 		allocatedChunk->bytes +=
 			allocatedChunk->chunkNext->bytes + sizeof(KGeneralAllocatorChunk);
 		kga->freeBytes += sizeof(KGeneralAllocatorChunk);
+		kga->totalChunks--;
 		KGeneralAllocatorChunk*const chunkToClear = allocatedChunk->chunkNext;
 		allocatedChunk->chunkNext = allocatedChunk->chunkNext->chunkNext;
+		kassert(kgaVerifyChunk(kga, allocatedChunk));
 		// fill cleared memory space with some value for safety //
 		//	Here, we only have to clear the chunk header because free'd chunk
 		//	contents are assumed to already be cleared.
