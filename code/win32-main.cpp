@@ -878,6 +878,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
 		            "Successfully wrote mini dump to: '%s'", szFileName);
 #endif
+		///TODO: attempt to copy pdb file to the dump location here!
 	}
     return EXCEPTION_EXECUTE_HANDLER;
 }

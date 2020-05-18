@@ -5,12 +5,36 @@ rem --- Save the timestamp before building for timing metric ---
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
-rem --- Clean up build directory ---
+rem --- create the build directory ---
 if not exist "%project_root%\build" mkdir %project_root%\build
+rem --- Create a text tree of the code so we can skip the build if nothing 
+rem     changed ---
+rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
+pushd %project_root%\code
+FOR /F "delims=" %%G IN ('DIR /B /S') DO (
+	>>"%project_root%\build\code-tree-current.txt" ECHO %%~G,%%~tG,%%~zG
+)
+popd
 pushd %project_root%\build
+rem --- Detect if the code tree differs, and if it doesn't, skip building ---
+set codeTreeIsDifferent=FALSE
+fc code-tree-existing.txt code-tree-current.txt > NUL 2> NUL
+if %ERRORLEVEL% GTR 0 (
+	set codeTreeIsDifferent=TRUE
+)
+del code-tree-existing.txt
+ren code-tree-current.txt code-tree-existing.txt
+IF "%codeTreeIsDifferent%"=="TRUE" (
+	echo Code tree has changed!  Continuing build...
+) ELSE (
+	echo Code tree is unchanged!  Skipping build...
+	GOTO :SKIP_ALL_BUILDS
+)
+rem --- Clean up build directory ---
 del *.pdb > NUL 2> NUL
 del *.dll > NUL 2> NUL
-set fileNameSafeTimestamp=%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%
+set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
+set fileNameSafeTimestamp=%fileNameSafeDate%_%time:~0,2%%time:~3,2%%time:~6,2%
 rem remove any spaces from the generated timestamp:
 rem source: https://stackoverflow.com/a/10116045
 set fileNameSafeTimestamp=%fileNameSafeTimestamp: =%
@@ -118,6 +142,7 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE
 )
+:SKIP_ALL_BUILDS
 :SKIP_WIN32_BUILD
 popd
 rem --- Calculate how long it took the build script to run ---

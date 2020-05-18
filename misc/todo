@@ -52,6 +52,8 @@
 	[x] Hook IMGUI into the general-purpose allocator for transient storage.
 		See IMGUI_DISABLE_DEFAULT_ALLOCATORS in `imconfig.h`
 	[x] Figure out why ImGui isn't getting keyboard events :| :| :|
+[x] Don't rebuild platform layer if none of the files have changed.
+	Compare diff trees in batch? https://www.dostips.com/forum/viewtopic.php?t=6223
 [ ] Copy the necessary .pdb files along side the mini dumps (if available) to
 	minimize the chance of accidentally recompiling the pdbs!
 	[ ] copy win32-main.pdb
@@ -67,7 +69,6 @@
 		What other things can I verify??...
 	[ ] Does it only crash when called from game, or does win32-exe 
 		experience the same crash?
-[ ] Don't rebuild platform layer if none of the files have changed.
 [ ] display debug frame metrics
 [ ] multi-threaded job queue
 	[ ] make log system thread-safe probably!
