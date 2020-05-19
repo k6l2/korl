@@ -1,6 +1,7 @@
 @echo off
 rem prerequisites: shell.bat has been run successfully
 rem                KML_HOME environment variable
+rem                KCPP_HOME environment variable
 rem --- Save the timestamp before building for timing metric ---
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
@@ -119,12 +120,18 @@ IF "%codeTreeIsDifferent%"=="TRUE" (
 rem --- Clean up build directory ---
 del %kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
+rem --- Transform our game code using kc++ ---
+pushd %KCPP_HOME%
+echo Building kc++...
+call build.bat
+popd
+call %KCPP_HOME%\build\kc++.exe %project_root%\code %project_root%\build\code
 rem 32-bit build
 rem cl %project_root%\code\%kmlApplicationName%.cpp /Fm%kmlApplicationName%.map ^
 rem 	%CommonCompilerFlagsDebug% ^
 rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
 rem 64-bit build
-cl %project_root%\code\%kmlGameDllFileName%.cpp ^
+cl %project_root%\build\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
 	%CommonCompilerFlagsDebug% /Wall /wd4710 /wd4577 /LDd ^
 	/link %CommonLinkerFlags% ^
@@ -132,7 +139,7 @@ cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
 IF %ERRORLEVEL% NEQ 0 (
 	echo Game build failed!
-	GOTO :ON_FAILURE
+	GOTO :ON_FAILURE_GAME
 )
 :SKIP_GAME_BUILD
 rem --- Detect if the KML code tree differs, and if it doesn't, skip 
@@ -172,7 +179,7 @@ cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
-	GOTO :ON_FAILURE
+	GOTO :ON_FAILURE_KML
 )
 :SKIP_WIN32_BUILD
 :SKIP_ALL_BUILDS
@@ -198,6 +205,9 @@ IF %hh% LEQ 0 (
 	echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
 )
 exit /B 0
-:ON_FAILURE
+:ON_FAILURE_GAME
+del code-tree-existing.txt
+:ON_FAILURE_KML
+del code-tree-kml-existing.txt
 popd
 exit /B %ERRORLEVEL%

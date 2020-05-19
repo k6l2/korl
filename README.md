@@ -4,10 +4,13 @@ Currently, only the Windows platform is a thing.
 ## Installation Procedures
 - Install Visual Studio w/ C++ to get all the required build tools.
 - Clone repository somewhere.
+- [Clone the `kcpp` repository somewhere.](https://github.com/k6l2/kcpp)
 - Set the `VISUAL_C_BUILD_SCRIPTS_HOME` environment variable to point to the
 	location of `vcvarsall.bat`.
 - Set the `KML_HOME` environment variable to point to the root directory of this
 	repository.
+- Set the `KCPP_HOME` environment variable to point to the root directory of the
+	`kcpp` repository.
 
 ## Build Procedures
 - Run `%KML_HOME%\misc\shell.bat`.
