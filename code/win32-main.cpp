@@ -504,6 +504,12 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 	return result;
 }
 #endif
+GAME_INITIALIZE(gameInitializeStub)
+{
+}
+GAME_ON_RELOAD_CODE(gameOnReloadCodeStub)
+{
+}
 GAME_RENDER_AUDIO(gameRenderAudioStub)
 {
 }
@@ -530,6 +536,8 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
                                   const char* fileNameDllTemp)
 {
 	GameCode result = {};
+	result.initialize       = gameInitializeStub;
+	result.onReloadCode     = gameOnReloadCodeStub;
 	result.renderAudio      = gameRenderAudioStub;
 	result.updateAndDraw    = gameUpdateAndDrawStub;
 	result.dllLastWriteTime = w32GetLastWriteTime(fileNameDll);
@@ -554,25 +562,46 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	if(result.hLib)
 	{
-		result.renderAudio = reinterpret_cast<fnSig_GameRenderAudio*>(
+		result.initialize = reinterpret_cast<fnSig_gameInitialize*>(
+			GetProcAddress(result.hLib, "gameInitialize"));
+		if(!result.initialize)
+		{
+			KLOG_ERROR("Failed to get proc address 'gameInitialize'! "
+			           "GetLastError=%i", GetLastError());
+		}
+		result.onReloadCode = reinterpret_cast<fnSig_gameOnReloadCode*>(
+			GetProcAddress(result.hLib, "gameOnReloadCode"));
+		if(!result.onReloadCode)
+		{
+			// This is only a warning because the game can optionally just not
+			//	implement the hot-reload callback. //
+			///TODO: detect if `GameCode` has the ability to hot-reload and 
+			///      don't perform hot-reloading if this is not the case.
+			KLOG_WARNING("Failed to get proc address 'gameOnReloadCode'! "
+			             "GetLastError=%i", GetLastError());
+		}
+		result.renderAudio = reinterpret_cast<fnSig_gameRenderAudio*>(
 			GetProcAddress(result.hLib, "gameRenderAudio"));
 		if(!result.renderAudio)
 		{
 			KLOG_ERROR("Failed to get proc address 'gameRenderAudio'! "
 			           "GetLastError=%i", GetLastError());
 		}
-		result.updateAndDraw = reinterpret_cast<fnSig_GameUpdateAndDraw*>(
+		result.updateAndDraw = reinterpret_cast<fnSig_gameUpdateAndDraw*>(
 			GetProcAddress(result.hLib, "gameUpdateAndDraw"));
 		if(!result.updateAndDraw)
 		{
 			KLOG_ERROR("Failed to get proc address 'gameUpdateAndDraw'! "
 			           "GetLastError=%i", GetLastError());
 		}
-		result.isValid = (result.renderAudio && result.updateAndDraw);
+		result.isValid = (result.initialize && result.renderAudio && 
+		                  result.updateAndDraw);
 	}
 	if(!result.isValid)
 	{
 		KLOG_WARNING("Game code is invalid!");
+		result.initialize    = gameInitializeStub;
+		result.onReloadCode  = gameOnReloadCodeStub;
 		result.renderAudio   = gameRenderAudioStub;
 		result.updateAndDraw = gameUpdateAndDrawStub;
 	}
@@ -1214,6 +1243,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	GameCode game = w32LoadGameCode(fullPathToGameDll, 
 	                                fullPathToGameDllTemp);
+	kassert(game.isValid);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
 		KLOG_ERROR("Failed to query for performance frequency! GetLastError=%i", 
@@ -1346,6 +1376,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformImguiAlloc       = platformImguiAlloc;
 	gameMemory.platformImguiFree        = platformImguiFree;
 	gameMemory.imguiAllocUserData       = g_genAllocImgui;
+	game.onReloadCode(gameMemory);
+	game.initialize(gameMemory);
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
 	const HDC hdc = GetDC(mainWindow);
@@ -1424,6 +1456,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					if(game.isValid)
 					{
 						KLOG_INFO("Game code hot-reload complete!");
+						game.onReloadCode(gameMemory);
 					}
 				}
 			}

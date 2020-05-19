@@ -7,9 +7,39 @@
 	#include "imgui/imgui.h"
 #pragma warning( pop )
 #include <cstdio>
+GAME_ON_RELOAD_CODE(gameOnReloadCode)
+{
+	g_log = memory.platformLog;
+	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
+	g_gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+	ImGui::SetCurrentContext(
+		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
+	ImGui::SetAllocatorFunctions(memory.platformImguiAlloc, 
+	                             memory.platformImguiFree, 
+	                             memory.imguiAllocUserData);
+}
+GAME_INITIALIZE(gameInitialize)
+{
+	gameOnReloadCode(memory);
+	*g_gameState = {};
+	g_gameState->gAllocTransient = kgaInit(memory.transientMemory, 
+	                                       memory.transientMemoryBytes);
+	// upload a texture to the GPU //
+	const size_t tempImageDataBytes = 
+		z85::decodedFileSizeBytes(sizeof(z85_png_fighter) - 1);
+	i8*const tempImageDataBuffer = reinterpret_cast<i8*>(
+		kgaAlloc(g_gameState->gAllocTransient, 
+		         tempImageDataBytes));
+	g_gameState->kthFighter = 
+		memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter) - 1,
+		                       tempImageDataBuffer);
+	kgaFree(g_gameState->gAllocTransient, tempImageDataBuffer);
+	kassert(kgaUsedBytes(g_gameState->gAllocTransient) == 0);
+}
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+	///TODO: write data to the GameAudioBuffer using an AudioMixer API
+#if 0
 	// render theramin audio data to temporary sound buffer //
 	const u32 samplesPerWaveTheramin = static_cast<u32>(
 		audioBuffer.soundSampleHz / gameState->theraminHz);
@@ -31,16 +61,8 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 				static_cast<SoundSample>(gameState->theraminVolume * waveform);
 		}
 	}
+#endif// 0
 }
-#if 0
-struct GameGraphicsState
-{
-	KrbTextureHandle textureHandles[1024];
-	bool textureHandleUsed[1024];
-	u16 nextUnusedTextureHandle;
-	u16 usedTextureHandleCount
-};
-#endif //0
 void poop()
 {
 	local_persist bool YES_STACK_OVERFLOW_PLS = true;
@@ -48,62 +70,6 @@ void poop()
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
-	gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
-#if 0
-	kassert(sizeof(GameGraphicsState) <= memory.transientMemoryBytes);
-	GameGraphicsState* gameGraphicsState = 
-		reinterpret_cast<GameGraphicsState*>(memory.transientMemory);
-#endif //0
-	if(!memory.initialized)
-	{
-		*gameState = {};
-		gameState->log = memory.platformLog;
-		gameState->gAllocTransient = kgaInit(memory.transientMemory, 
-		                                     memory.transientMemoryBytes);
-#if 0
-		*gameGraphicsState = {};
-		memory.krbAllocTextureHandles(gameGraphicsState->textureHandles,
-		                             sizeof(gameGraphicsState->textureHandles));
-#endif //0
-		const size_t tempImageDataBytes = 
-			z85::decodedFileSizeBytes(sizeof(z85_png_fighter) - 1);
-		i8*const tempImageDataBuffer = reinterpret_cast<i8*>(
-			kgaAlloc(gameState->gAllocTransient, 
-			         tempImageDataBytes));
-		gameState->kthFighter = 
-			memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter) - 1,
-			                       tempImageDataBuffer);
-		// Test out realloc //
-		{
-			char* buffer = reinterpret_cast<char*>(
-				kgaAlloc(gameState->gAllocTransient, 25));
-			_snprintf_s(buffer, 25, _TRUNCATE, "Hello!");
-			buffer = reinterpret_cast<char*>(
-				kgaRealloc(gameState->gAllocTransient, buffer, 5));
-			buffer[4] = 0;
-			buffer = reinterpret_cast<char*>(
-				kgaRealloc(gameState->gAllocTransient, buffer, 0));
-		}
-		kgaFree(gameState->gAllocTransient, tempImageDataBuffer);
-		kassert(kgaUsedBytes(gameState->gAllocTransient) == 0);
-#if INTERNAL_BUILD && 0
-		PlatformDebugReadFileResult readFileResult = 
-			memory.platformReadEntireFile(__FILE__);
-		memory.platformPrintDebugString(
-			reinterpret_cast<char*>(readFileResult.data));
-		memory.platformWriteEntireFile("game_copy.cpp", 
-		                               readFileResult.data, 
-								       readFileResult.dataBytes);
-		memory.platformFreeFileMemory(readFileResult.data);
-#endif
-		memory.initialized = true;
-	}
-	ImGui::SetCurrentContext(
-		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
-	ImGui::SetAllocatorFunctions(memory.platformImguiAlloc, 
-	                             memory.platformImguiFree, 
-	                             memory.imguiAllocUserData);
 	ImGui::ShowDemoWindow();
 	if (gameKeyboard.escape == ButtonState::PRESSED ||
 		(gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
@@ -115,23 +81,25 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
 		{
-			gameState->theraminHz = 
+#if 0
+			g_gameState->theraminHz = 
 				294 + gamePadArray[c].normalizedStickLeft.y*256;
+#endif// 0
 			if(gamePadArray[c].buttons.dPadUp == ButtonState::HELD)
 			{
-				gameState->viewOffset2d.y += 1.f;
+				g_gameState->viewOffset2d.y += 1.f;
 			}
 			if(gamePadArray[c].buttons.dPadDown == ButtonState::HELD)
 			{
-				gameState->viewOffset2d.y -= 1.f;
+				g_gameState->viewOffset2d.y -= 1.f;
 			}
 			if(gamePadArray[c].buttons.dPadLeft == ButtonState::HELD)
 			{
-				gameState->viewOffset2d.x -= 1.f;
+				g_gameState->viewOffset2d.x -= 1.f;
 			}
 			if(gamePadArray[c].buttons.dPadRight == ButtonState::HELD)
 			{
-				gameState->viewOffset2d.x += 1.f;
+				g_gameState->viewOffset2d.x += 1.f;
 			}
 			if(gamePadArray[c].buttons.faceDown == ButtonState::PRESSED)
 			{
@@ -141,13 +109,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				poop();// ;o
 			}
-			gameState->shipWorldPosition.x += 
+			g_gameState->shipWorldPosition.x += 
 				10*gamePadArray[c].normalizedStickLeft.x;
-			gameState->shipWorldPosition.y += 
+			g_gameState->shipWorldPosition.y += 
 				10*gamePadArray[c].normalizedStickLeft.y;
-			gameState->viewOffset2d.x += 
+			g_gameState->viewOffset2d.x += 
 				10*gamePadArray[c].normalizedStickRight.x;
-			gameState->viewOffset2d.y += 
+			g_gameState->viewOffset2d.y += 
 				10*gamePadArray[c].normalizedStickRight.y;
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
@@ -160,11 +128,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}
 			if(gamePadArray[c].buttons.stickClickLeft == ButtonState::PRESSED)
 			{
-				gameState->shipWorldPosition = {};
+				g_gameState->shipWorldPosition = {};
 			}
 			if(gamePadArray[c].buttons.stickClickRight == ButtonState::PRESSED)
 			{
-				gameState->viewOffset2d = {};
+				g_gameState->viewOffset2d = {};
 			}
 			bgClearGreen = fabsf(gamePadArray[c].normalizedStickLeft.y);
 		}
@@ -172,12 +140,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbBeginFrame(0.2f, bgClearGreen, 0.2f);
 	memory.krbSetProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                             static_cast<f32>(windowDimensions.y), 1.f);
-	// gameState->viewOffset2d = gameState->shipWorldPosition;
-	memory.krbViewTranslate(-gameState->viewOffset2d);
-	memory.krbUseTexture(gameState->kthFighter);
+	// g_gameState->viewOffset2d = g_gameState->shipWorldPosition;
+	memory.krbViewTranslate(-g_gameState->viewOffset2d);
+	memory.krbUseTexture(g_gameState->kthFighter);
 	// memory.krbDrawTri({100,100}, {200,100}, {100,200});
 	// memory.krbDrawTri({200,100}, {100,200}, {200,200});
-	memory.krbSetModelXform(gameState->shipWorldPosition);
+	memory.krbSetModelXform(g_gameState->shipWorldPosition);
 	memory.krbDrawTriTextured({-50,-50}, {50,-50}, {-50,50},
 	                          {0,1}, {1,1}, {0,0});
 	memory.krbDrawTriTextured({50,-50}, {-50,50}, {50,50},
@@ -185,21 +153,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbSetModelXform({0,0});
 	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
 	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
-#if 0
-	// render a weird gradient pattern to the offscreen buffer //
-	u8* row = reinterpret_cast<u8*>(graphicsBuffer.bitmapMemory);
-	for (u32 y = 0; y < graphicsBuffer.height; y++)
-	{
-		u32* pixel = reinterpret_cast<u32*>(row);
-		for (u32 x = 0; x < graphicsBuffer.width; x++)
-		{
-			// pixel format: 0xXxRrGgBb
-			*pixel++ = static_cast<u32>(((u8)(x + gameState->offsetX) << 8) | 
-			                            ((u8)(y + gameState->offsetY) << 8));
-		}
-		row += graphicsBuffer.pitch;
-	}
-#endif
 	return true;
 }
 #include "generalAllocator.cpp"

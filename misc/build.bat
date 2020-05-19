@@ -136,7 +136,8 @@ cl %project_root%\build\code\%kmlGameDllFileName%.cpp ^
 	%CommonCompilerFlagsDebug% /Wall /wd4710 /wd4577 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
-	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw
+	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
+	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw 
 IF %ERRORLEVEL% NEQ 0 (
 	echo Game build failed!
 	GOTO :ON_FAILURE_GAME

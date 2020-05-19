@@ -75,10 +75,14 @@
 	[-] Does it only crash when called from game, or does win32-exe 
 		experience the same crash?
 [ ] Asset streaming system
-	[ ] Is there an easy way to bind asset names to code in an efficient way?
+	`push` request for an asset and receive an asset handle.
+	Until the asset is loaded into memory, the handle represents a default asset 
+		of some kind. (default texture, default mesh, default sound, etc...)
+	[-] Is there an easy way to bind asset names to code in an efficient way?
 		Hashing asset strings everywhere is slow/cumbersome.
-		[ ] Maybe a meta-programming solution? 
-			[ ] How long does it take to read all the files inside of the 
+		Actually, maybe I wont bother with this for now...
+		[-] Maybe a meta-programming solution? 
+			[-] How long does it take to read all the files inside of the 
 				'/code' folder and write copies of all these files into 
 				'/build/code' in the same folder structure???
 			Build a static database/manifest of asset strings in an array, which 
@@ -93,11 +97,8 @@
 			Or maybe just copy all source files into a temp code folder in the 
 				build directory, performing the necessary token transforms 
 				during this step???
-		[ ] Maybe use X-Macro for this? https://stackoverflow.com/a/320888
+		[-] Maybe use X-Macro for this? https://stackoverflow.com/a/320888
 			Scan thru code and replace a special empty macro with some value.
-	`push` request for an asset and receive an asset handle.
-	Until the asset is loaded into memory, the handle represents a default asset 
-		of some kind. (default texture, default mesh, default sound, etc...)
 [ ] multi-threaded job queue (HERE BE DRAGONS? LUL)
 	[ ] make log system thread-safe probably!
 	[ ] Asset streaming using multi-threaded job queue

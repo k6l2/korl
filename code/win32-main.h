@@ -31,8 +31,10 @@ struct W32Dimension2d
 };
 struct GameCode
 {
-	fnSig_GameRenderAudio* renderAudio;
-	fnSig_GameUpdateAndDraw* updateAndDraw;
+	fnSig_gameInitialize* initialize;
+	fnSig_gameOnReloadCode* onReloadCode;
+	fnSig_gameRenderAudio* renderAudio;
+	fnSig_gameUpdateAndDraw* updateAndDraw;
 	HMODULE hLib;
 	FILETIME dllLastWriteTime;
 	bool isValid;

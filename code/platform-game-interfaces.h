@@ -40,10 +40,6 @@ typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory
 {
-	bool initialized;
-#if INTERNAL_BUILD
-	u8 initialized_PADDING[7];
-#endif
 	void* permanentMemory;
 	u64   permanentMemoryBytes;
 	void* transientMemory;
@@ -234,6 +230,15 @@ struct GamePad
 	float normalizedMotorSpeedRight;
 };
 /* GAME INTERFACE *************************************************************/
+/**
+ * Guaranteed to be called once when the application starts.
+ */
+#define GAME_INITIALIZE(name) void name(GameMemory& memory)
+/**
+ * OPTIONAL.  Guaranteed to be called every time the game code is reloaded.
+ * Guaranteed to be called BEFORE GAME_INITIALIZE.
+ */
+#define GAME_ON_RELOAD_CODE(name) void name(GameMemory& memory)
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
                                           GameAudioBuffer& audioBuffer)
 /** 
@@ -244,8 +249,12 @@ struct GamePad
                                              GameKeyboard& gameKeyboard, \
                                              GamePad* gamePadArray, \
                                              u8 numGamePads)
-typedef GAME_RENDER_AUDIO(fnSig_GameRenderAudio);
-typedef GAME_UPDATE_AND_DRAW(fnSig_GameUpdateAndDraw);
+typedef GAME_INITIALIZE(fnSig_gameInitialize);
+typedef GAME_ON_RELOAD_CODE(fnSig_gameOnReloadCode);
+typedef GAME_RENDER_AUDIO(fnSig_gameRenderAudio);
+typedef GAME_UPDATE_AND_DRAW(fnSig_gameUpdateAndDraw);
+extern "C" GAME_INITIALIZE(gameInitialize);
+extern "C" GAME_ON_RELOAD_CODE(gameOnReloadCode);
 extern "C" GAME_RENDER_AUDIO(gameRenderAudio);
 extern "C" GAME_UPDATE_AND_DRAW(gameUpdateAndDraw);
 /********************************************************* END GAME INTERFACE */
