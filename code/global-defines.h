@@ -109,6 +109,18 @@ namespace kmath
 		kassert(value < MAX_U32);
 		return static_cast<u32>(value);
 	}
+	internal inline u32 safeTruncateU32(i32 value)
+	{
+		local_persist const u32 MAX_U32 = ~u32(0);
+		kassert(value >= 0 && value < MAX_U32);
+		return static_cast<u32>(value);
+	}
+	internal inline u32 safeTruncateU32(i64 value)
+	{
+		local_persist const u32 MAX_U32 = ~u32(0);
+		kassert(value >= 0 && value < MAX_U32);
+		return static_cast<u32>(value);
+	}
 	internal inline i32 safeTruncateI32(u64 value)
 	{
 		local_persist const i32 MAX_I32 = ~i32(1<<31);

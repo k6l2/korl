@@ -9,6 +9,13 @@ enum class PlatformLogCategory : u8
 	K_WARNING,
 	K_ERROR
 };
+struct RawImage
+{
+	// pixel data layout: 0xRrGgBbAa
+	u8* pixelData;
+	u32 sizeX;
+	u32 sizeY;
+};
 #define PLATFORM_LOG(name) void name(const char* sourceFileName, \
                                      u32 sourceFileLineNumber, \
                                      PlatformLogCategory logCategory, \
@@ -16,9 +23,14 @@ enum class PlatformLogCategory : u8
 
 #define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
 #define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
+#define PLATFORM_DECODE_Z85_PNG(name) RawImage name(const u8* z85PngData, \
+                                                    size_t z85ImageNumBytes)
+#define PLATFORM_FREE_RAW_IMAGE(name) void name(RawImage& rawImage)
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
+typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
+typedef PLATFORM_FREE_RAW_IMAGE(fnSig_platformFreeRawImage);
 // INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
@@ -48,6 +60,8 @@ struct GameMemory
 	///      can do something similar to ImGui and have a `platformContext` &
 	///      `krbContext` which is passed as a parameter to all these functions?
 	fnSig_platformLog* platformLog;
+	fnSig_platformDecodeZ85Png* platformDecodeZ85Png;
+	fnSig_platformFreeRawImage* platformFreeRawImage;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* platformReadEntireFile;
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
@@ -60,7 +74,7 @@ struct GameMemory
 	fnSig_krbDrawTriTextured* krbDrawTriTextured;
 	fnSig_krbViewTranslate* krbViewTranslate;
 	fnSig_krbSetModelXform* krbSetModelXform;
-	fnSig_krbLoadImageZ85* krbLoadImageZ85;
+	fnSig_krbLoadImage* krbLoadImage;
 	fnSig_krbUseTexture* krbUseTexture;
 	void* imguiContext;
 	fnSig_platformImguiAlloc* platformImguiAlloc;

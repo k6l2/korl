@@ -1,5 +1,4 @@
 #include "game.h"
-#include "z85.h"
 #include "z85_png_fighter.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
@@ -25,16 +24,11 @@ GAME_INITIALIZE(gameInitialize)
 	g_gameState->gAllocTransient = kgaInit(memory.transientMemory, 
 	                                       memory.transientMemoryBytes);
 	// upload a texture to the GPU //
-	const size_t tempImageDataBytes = 
-		z85::decodedFileSizeBytes(sizeof(z85_png_fighter) - 1);
-	i8*const tempImageDataBuffer = reinterpret_cast<i8*>(
-		kgaAlloc(g_gameState->gAllocTransient, 
-		         tempImageDataBytes));
-	g_gameState->kthFighter = 
-		memory.krbLoadImageZ85(z85_png_fighter, sizeof(z85_png_fighter) - 1,
-		                       tempImageDataBuffer);
-	kgaFree(g_gameState->gAllocTransient, tempImageDataBuffer);
-	kassert(kgaUsedBytes(g_gameState->gAllocTransient) == 0);
+	RawImage rawImage = 
+		memory.platformDecodeZ85Png(z85_png_fighter, 
+		                            sizeof(z85_png_fighter) - 1);
+	g_gameState->kthFighter = memory.krbLoadImage(rawImage);
+	memory.platformFreeRawImage(rawImage);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
@@ -156,7 +150,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	return true;
 }
 #include "generalAllocator.cpp"
-#include "z85.cpp"
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
 	#pragma warning( disable : 4127 )

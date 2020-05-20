@@ -14,6 +14,8 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
                              HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #include "imgui/imgui_impl_opengl2.h"
+#include "z85.h"
+#include "stb/stb_image.h"
 // Allow the pre-processor to store compiler definitions as string literals //
 //	Source: https://stackoverflow.com/a/39108392
 #define _DEFINE_TO_CSTR(define) #define
@@ -55,6 +57,46 @@ internal PLATFORM_IMGUI_ALLOC(platformImguiAlloc)
 internal PLATFORM_IMGUI_FREE(platformImguiFree)
 {
 	kgaFree(user_data, ptr);
+}
+internal PLATFORM_DECODE_Z85_PNG(platformDecodeZ85Png)
+{
+	local_persist const RawImage RESULT_FAILURE = {};
+	const i32 tempImageDataBytes = kmath::safeTruncateI32(
+		z85::decodedFileSizeBytes(z85ImageNumBytes));
+	i8*const tempImageDataBuffer = reinterpret_cast<i8*>(
+		kgaAlloc(g_genAllocStbImage, tempImageDataBytes));
+	if(!tempImageDataBuffer)
+	{
+		KLOG_ERROR("Failed to allocate temp image data buffer!");
+		return RESULT_FAILURE;
+	}
+	defer(kgaFree(g_genAllocStbImage, tempImageDataBuffer));
+	if(!z85::decode(reinterpret_cast<const i8*>(z85PngData), 
+	                tempImageDataBuffer))
+	{
+		KLOG_ERROR("z85::decode failure!");
+		return RESULT_FAILURE;
+	}
+	i32 imgW, imgH, imgNumByteChannels;
+	u8*const img = 
+		stbi_load_from_memory(reinterpret_cast<u8*>(tempImageDataBuffer), 
+		                      tempImageDataBytes, 
+		                      &imgW, &imgH, &imgNumByteChannels, 4);
+	kassert(img);
+	if(!img)
+	{
+		KLOG_ERROR("stbi_load_from_memory failure!");
+		return RESULT_FAILURE;
+	}
+	return RawImage{
+		.pixelData = img,
+		.sizeX     = kmath::safeTruncateU32(imgW),
+		.sizeY     = kmath::safeTruncateU32(imgH) };
+}
+internal PLATFORM_FREE_RAW_IMAGE(platformFreeRawImage)
+{
+	stbi_image_free(rawImage.pixelData);
+	rawImage.pixelData = nullptr;
 }
 internal PLATFORM_LOG(platformLog)
 {
@@ -1360,9 +1402,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
 	gameMemory.platformLog              = platformLog;
+	gameMemory.platformDecodeZ85Png     = platformDecodeZ85Png;
+	gameMemory.platformFreeRawImage     = platformFreeRawImage;
+#if INTERNAL_BUILD
 	gameMemory.platformReadEntireFile   = platformReadEntireFile;
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
 	gameMemory.platformWriteEntireFile  = platformWriteEntireFile;
+#endif// INTERNAL_BUILD
 	gameMemory.krbBeginFrame            = krbBeginFrame;
 	gameMemory.krbSetProjectionOrtho    = krbSetProjectionOrtho;
 	gameMemory.krbDrawLine              = krbDrawLine;
@@ -1370,7 +1416,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.krbDrawTriTextured       = krbDrawTriTextured;
 	gameMemory.krbViewTranslate         = krbViewTranslate;
 	gameMemory.krbSetModelXform         = krbSetModelXform;
-	gameMemory.krbLoadImageZ85          = krbLoadImageZ85;
+	gameMemory.krbLoadImage             = krbLoadImage;
 	gameMemory.krbUseTexture            = krbUseTexture;
 	gameMemory.imguiContext             = ImGui::GetCurrentContext();
 	gameMemory.platformImguiAlloc       = platformImguiAlloc;

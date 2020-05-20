@@ -5,11 +5,9 @@
 ///TODO: maybe figure out a more platform-independent way of getting OpenGL 
 ///      function definitions.
 #ifdef _WIN32
-	#include <windows.h>
+	#include "win32-main.h"
 	#include <GL/GL.h>
 #endif
-#include "z85.h"
-#include "stb/stb_image.h"
 internal GLenum krbOglCheckErrors(const char* file, int line)
 {
 	GLenum errorCode;
@@ -105,35 +103,15 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 	glTranslatef(translation.x, translation.y, 0.f);
 	GL_CHECK_ERROR();
 }
-internal KRB_LOAD_IMAGE_Z85(krbLoadImageZ85)
+internal KRB_LOAD_IMAGE(krbLoadImage)
 {
-	const i32 imageFileDataSize = kmath::safeTruncateI32(
-		z85::decodedFileSizeBytes(z85ImageNumBytes));
-	if(!z85::decode(reinterpret_cast<const i8*>(z85ImageData), 
-	                tempImageDataBuffer))
-	{
-		KLOG_ERROR("z85::decode failure!");
-		return 0;
-	}
-	int imgW, imgH, imgNumByteChannels;
-	u8*const img = 
-		stbi_load_from_memory(reinterpret_cast<u8*>(tempImageDataBuffer), 
-		                      imageFileDataSize, 
-		                      &imgW, &imgH, &imgNumByteChannels, 4);
-	kassert(img);
-	if(!img)
-	{
-		KLOG_ERROR("stbi_load_from_memory failure!");
-		return 0;
-	}
-	defer(stbi_image_free(img));
 	GLuint texName;
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imgW, imgH, 0, 
-	             GL_RGBA, GL_UNSIGNED_BYTE, img);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, rawImage.sizeX, rawImage.sizeY, 0, 
+	             GL_RGBA, GL_UNSIGNED_BYTE, rawImage.pixelData);
 	GL_CHECK_ERROR();
 	return texName;
 }
