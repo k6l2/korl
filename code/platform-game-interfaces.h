@@ -11,26 +11,45 @@ enum class PlatformLogCategory : u8
 };
 struct RawImage
 {
-	// pixel data layout: 0xRrGgBbAa
-	u8* pixelData;
 	u32 sizeX;
 	u32 sizeY;
+	// pixel data layout: 0xRrGgBbAa
+	u8* pixelData;
+};
+struct RawSound
+{
+	u8 channelCount;
+	u8 channelCount_PADDING;
+	u16 bitsPerSample;
+	u32 sampleHz;
+	// A sample block is a contiguous collection of all samples from all 
+	//	channels.  Sample data is stored in blocks.
+	SoundSample* sampleData;
 };
 #define PLATFORM_LOG(name) void name(const char* sourceFileName, \
                                      u32 sourceFileLineNumber, \
                                      PlatformLogCategory logCategory, \
                                      const char* formattedString, ...)
-
 #define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
 #define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
 #define PLATFORM_DECODE_Z85_PNG(name) RawImage name(const u8* z85PngData, \
                                                     size_t z85ImageNumBytes)
+///TODO: pass a general allocator to PLATFORM_DECODE_Z85_PNG to destroy the
+///      PLATFORM_FREE_RAW_IMAGE API since it would become completely useless
 #define PLATFORM_FREE_RAW_IMAGE(name) void name(RawImage& rawImage)
+/**
+ * @return If there is a failure loading the file, an invalid RawSound 
+ *         containing sampleData==nullptr is returned.
+ */
+using KgaHandle = void*;
+#define PLATFORM_LOAD_WAV(name) RawSound name(const char* fileName, \
+                                              KgaHandle kgaHandle)
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
 typedef PLATFORM_FREE_RAW_IMAGE(fnSig_platformFreeRawImage);
+typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 // INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
@@ -62,6 +81,7 @@ struct GameMemory
 	fnSig_platformLog* platformLog;
 	fnSig_platformDecodeZ85Png* platformDecodeZ85Png;
 	fnSig_platformFreeRawImage* platformFreeRawImage;
+	fnSig_platformLoadWav* platformLoadWav;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* platformReadEntireFile;
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;

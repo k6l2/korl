@@ -45,11 +45,160 @@ global_variable bool g_hasReceivedException;
 // @assumption: once we have written a crash dump, there is never a need to 
 //	write any more, let alone continue execution.
 global_variable bool g_hasWrittenCrashDump;
-global_variable size_t g_pathToExeSize;
 ///TODO: handle file paths longer than MAX_PATH in the future...
 global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+internal PLATFORM_LOAD_WAV(platformLoadWav)
+{
+	RawSound result = {};
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
+	                 g_pathToExe, fileName);
+	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
+	if(!file.data)
+	{
+		KLOG_ERROR("Failed to read entire file '%s'!", szFileFullPath);
+		return result;
+	}
+	defer(platformFreeFileMemory(file.data));
+	// Now that we have the entire file in memory, we can verify if the file is
+	//	valid and extract necessary meta data simultaneously! //
+	u8* currByte = reinterpret_cast<u8*>(file.data);
+	union U32Chars
+	{
+		u32 uInt;
+		char chars[4];
+	} u32Chars;
+	u32Chars.chars[0] = 'R';
+	u32Chars.chars[1] = 'I';
+	u32Chars.chars[2] = 'F';
+	u32Chars.chars[3] = 'F';
+	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
+	{
+		KLOG_ERROR("RIFF.ChunkId==0x%x invalid for '%s'!", 
+		           reinterpret_cast<u32*>(currByte), szFileFullPath);
+		return result;
+	}
+	currByte += 4;
+	const u32 riffChunkSize = *reinterpret_cast<u32*>(currByte);
+	currByte += 4;
+	u32Chars.chars[0] = 'W';
+	u32Chars.chars[1] = 'A';
+	u32Chars.chars[2] = 'V';
+	u32Chars.chars[3] = 'E';
+	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
+	{
+		KLOG_ERROR("RIFF.Format==0x%x invalid/unsupported for '%s'!", 
+		           *reinterpret_cast<u32*>(currByte), szFileFullPath);
+		return result;
+	}
+	currByte += 4;
+	u32Chars.chars[0] = 'f';
+	u32Chars.chars[1] = 'm';
+	u32Chars.chars[2] = 't';
+	u32Chars.chars[3] = ' ';
+	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
+	{
+		KLOG_ERROR("RIFF.fmt.id==0x%x invalid for '%s'!", 
+		           *reinterpret_cast<u32*>(currByte), szFileFullPath);
+		return result;
+	}
+	currByte += 4;
+	const u32 riffFmtChunkSize = *reinterpret_cast<u32*>(currByte);
+	currByte += 4;
+	if(riffFmtChunkSize != 16)
+	{
+		KLOG_ERROR("RIFF.fmt.chunkSize==%i invalid/unsupported for '%s'!", 
+		           riffFmtChunkSize, szFileFullPath);
+		return result;
+	}
+	const u16 riffFmtAudioFormat = *reinterpret_cast<u16*>(currByte);
+	currByte += 2;
+	if(riffFmtAudioFormat != 1)
+	{
+		KLOG_ERROR("RIFF.fmt.audioFormat==%i invalid/unsupported for '%s'!",
+		           riffFmtAudioFormat, szFileFullPath);
+		return result;
+	}
+	const u16 riffFmtNumChannels = *reinterpret_cast<u16*>(currByte);
+	currByte += 2;
+	if(riffFmtNumChannels > 255)
+	{
+		KLOG_ERROR("RIFF.fmt.numChannels==%i invalid/unsupported for '%s'!",
+		           riffFmtNumChannels, szFileFullPath);
+		return result;
+	}
+	const u32 riffFmtSampleRate = *reinterpret_cast<u32*>(currByte);
+	currByte += 4;
+	if(riffFmtSampleRate != 44100)
+	{
+		KLOG_ERROR("RIFF.fmt.riffFmtSampleRate==%i invalid/unsupported for "
+		           "'%s'!", riffFmtSampleRate, szFileFullPath);
+		return result;
+	}
+	const u32 riffFmtByteRate = *reinterpret_cast<u32*>(currByte);
+	currByte += 4;
+	const u16 riffFmtBlockAlign = *reinterpret_cast<u16*>(currByte);
+	currByte += 2;
+	const u16 riffFmtBitsPerSample = *reinterpret_cast<u16*>(currByte);
+	currByte += 2;
+	if(riffFmtBitsPerSample != sizeof(SoundSample)*8)
+	{
+		KLOG_ERROR("RIFF.fmt.riffFmtBitsPerSample==%i invalid/unsupported for "
+		           "'%s'!", riffFmtBitsPerSample, szFileFullPath);
+		return result;
+	}
+	if(riffFmtByteRate != 
+		riffFmtSampleRate * riffFmtNumChannels * riffFmtBitsPerSample/8)
+	{
+		KLOG_ERROR("RIFF.fmt.riffFmtByteRate==%i invalid for '%s'!", 
+		           riffFmtByteRate, szFileFullPath);
+		return result;
+	}
+	if(riffFmtBlockAlign != riffFmtNumChannels * riffFmtBitsPerSample/8)
+	{
+		KLOG_ERROR("RIFF.fmt.riffFmtBlockAlign==%i invalid for '%s'!", 
+		           riffFmtBlockAlign, szFileFullPath);
+		return result;
+	}
+	u32Chars.chars[0] = 'd';
+	u32Chars.chars[1] = 'a';
+	u32Chars.chars[2] = 't';
+	u32Chars.chars[3] = 'a';
+	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
+	{
+		KLOG_ERROR("RIFF.data.id==0x%x invalid for '%s'!", 
+		           *reinterpret_cast<u32*>(currByte), szFileFullPath);
+		return result;
+	}
+	currByte += 4;
+	const u32 riffDataSize = *reinterpret_cast<u32*>(currByte);
+	currByte += 4;
+	// Now we can extract the actual sound data from the WAV file //
+	if(currByte + riffDataSize > 
+		reinterpret_cast<u8*>(file.data) + file.dataBytes)
+	{
+		KLOG_ERROR("RIFF.data.size==%i invalid for '%s'!", 
+		           riffDataSize, szFileFullPath);
+		return result;
+	}
+	SoundSample*const sampleData = 
+		reinterpret_cast<SoundSample*>(kgaAlloc(kgaHandle, riffDataSize));
+	if(!sampleData)
+	{
+		KLOG_ERROR("Failed to allocate %i bytes for sample data!", 
+		           riffDataSize);
+		return result;
+	}
+	memcpy(sampleData, currByte, riffDataSize);
+	// Assemble & return a valid result! //
+	result.channelCount  = static_cast<u8>(riffFmtNumChannels);
+	result.sampleHz      = riffFmtSampleRate;
+	result.bitsPerSample = riffFmtBitsPerSample;
+	result.sampleData    = sampleData;
+	return result;
+}
 internal PLATFORM_IMGUI_ALLOC(platformImguiAlloc)
 {
 	return kgaAlloc(user_data, sz);
@@ -89,9 +238,9 @@ internal PLATFORM_DECODE_Z85_PNG(platformDecodeZ85Png)
 		return RESULT_FAILURE;
 	}
 	return RawImage{
-		.pixelData = img,
 		.sizeX     = kmath::safeTruncateU32(imgW),
-		.sizeY     = kmath::safeTruncateU32(imgH) };
+		.sizeY     = kmath::safeTruncateU32(imgH), 
+		.pixelData = img };
 }
 internal PLATFORM_FREE_RAW_IMAGE(platformFreeRawImage)
 {
@@ -428,8 +577,7 @@ internal void w32WriteLogToFile()
 		            "Failed to delete '%s'!", fullPathToNewLog);
 	}
 }
-#if INTERNAL_BUILD
-PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
+internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 {
 	PlatformDebugReadFileResult result = {};
 	const HANDLE fileHandle = 
@@ -475,32 +623,31 @@ PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 		return result;
 	}
 	defer({
-		if(!VirtualFree(result.data, 0, MEM_RELEASE))
+		if(result.dataBytes != fileSize32 &&
+			!VirtualFree(result.data, 0, MEM_RELEASE))
 		{
 			KLOG_ERROR("Failed to VirtualFree! GetLastError=%i", 
 			           GetLastError());
-			result.data = nullptr;
 		}
+		result.data = nullptr;
 	});
 	DWORD numBytesRead;
 	if(!ReadFile(fileHandle, result.data, fileSize32, &numBytesRead, nullptr))
 	{
 		KLOG_ERROR("Failed to read file! GetLastError=%i", 
 		           fileSize32, GetLastError());
-		result.data = nullptr;
 		return result;
 	}
 	if(numBytesRead != fileSize32)
 	{
 		KLOG_ERROR("Failed to read file! bytes read: %i / %i", 
 		           numBytesRead, fileSize32);
-		result.data = nullptr;
 		return result;
 	}
 	result.dataBytes = fileSize32;
 	return result;
 }
-PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory)
+internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory)
 {
 	if(!VirtualFree(fileMemory, 0, MEM_RELEASE))
 	{
@@ -545,7 +692,6 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 	}
 	return result;
 }
-#endif
 GAME_INITIALIZE(gameInitializeStub)
 {
 }
@@ -1227,7 +1373,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 		*(lastBackslash + 1) = 0;
-		g_pathToExeSize = lastBackslash - g_pathToExe;
 	}
 	///TODO: handle file paths longer than MAX_PATH in the future...
 	TCHAR fullPathToGameDll    [MAX_PATH] = {};
@@ -1347,7 +1492,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	GamePad* gamePadArrayPreviousFrame = gamePadArrayB;
 	u8 numGamePads = 0;
 	local_persist const u8 SOUND_CHANNELS = 2;
-	local_persist const u32 SOUND_SAMPLE_HZ = 48000;
+	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
 	local_persist const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
 	local_persist const u32 SOUND_BUFFER_BYTES = 
 		SOUND_SAMPLE_HZ * SOUND_BYTES_PER_SAMPLE;
@@ -1404,6 +1549,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformLog              = platformLog;
 	gameMemory.platformDecodeZ85Png     = platformDecodeZ85Png;
 	gameMemory.platformFreeRawImage     = platformFreeRawImage;
+	gameMemory.platformLoadWav          = platformLoadWav;
 #if INTERNAL_BUILD
 	gameMemory.platformReadEntireFile   = platformReadEntireFile;
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;

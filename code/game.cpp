@@ -23,12 +23,19 @@ GAME_INITIALIZE(gameInitialize)
 	*g_gameState = {};
 	g_gameState->gAllocTransient = kgaInit(memory.transientMemory, 
 	                                       memory.transientMemoryBytes);
+#if 0
 	// upload a texture to the GPU //
 	RawImage rawImage = 
 		memory.platformDecodeZ85Png(z85_png_fighter, 
 		                            sizeof(z85_png_fighter) - 1);
 	g_gameState->kthFighter = memory.krbLoadImage(rawImage);
 	memory.platformFreeRawImage(rawImage);
+#endif // 0
+	// Ask the platform to load us a RawSound asset //
+	RawSound rsShoot = 
+		memory.platformLoadWav("assets/joesteroids-shoot-modified.wav",
+		                       g_gameState->gAllocTransient);
+	kgaFree(g_gameState->gAllocTransient, rsShoot.sampleData);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {

@@ -39,3 +39,5 @@ struct GameCode
 	FILETIME dllLastWriteTime;
 	bool isValid;
 };
+internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile);
+internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory);

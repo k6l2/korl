@@ -74,10 +74,36 @@
 		What other things can I verify??...
 	[-] Does it only crash when called from game, or does win32-exe 
 		experience the same crash?
+[ ] Load a WAV sound and play it.
+	[x] Load entire WAV file into memory (temporary file memory pool).
+		For the purposes of getting things up and running, this can just be 
+	[x] Decode the WAV file format into a usable sound data structure.
+	[x] Place this `RawSound` data into its final resting memory location 
+		(game transient storage)
+	[ ] Encapsulate the memory location of the `RawSound` asset using an 
+		`AssetHandle`
+	[ ] Create an AudioMixer state
+		[ ] Initialize with a set # of `TapeDeck`s, which holds a `Tape`
+		[ ] A `Tape` holds a reference to a RawSound, and how many samples of 
+			the sound have been played so far.
+	[ ] Play a RawSound AssetHandle using the AudioMixer
+		[ ] Find an unused TapeDeck
+		[ ] If there is one, initialize the Tape using the AssetHandle to the 
+			RawSound
+		[ ] Each frame in GAME_RENDER_AUDIO, pump the audioBuffer with data from 
+			the AudioMixer
 [ ] Asset streaming system
-	`push` request for an asset and receive an asset handle.
-	Until the asset is loaded into memory, the handle represents a default asset 
-		of some kind. (default texture, default mesh, default sound, etc...)
+	[ ] `push` request for an asset and receive an asset handle.
+		[ ] Quickly read file meta data to determine raw data size so we can 
+			reserve it for whoever needs to load.
+			(image dimensions, sound hz/#channels/bits-per-sample)
+			PNG file spec: 
+				http://www.libpng.org/pub/png/spec/1.2/PNG-Contents.html
+			WAV file spec:
+				http://soundfile.sapp.org/doc/WaveFormat/
+	[ ] Until the asset is loaded into memory, the handle represents a default 
+		asset of some kind. 
+		(default texture, default mesh, default sound, etc...)
 	[-] Is there an easy way to bind asset names to code in an efficient way?
 		Hashing asset strings everywhere is slow/cumbersome.
 		Actually, maybe I wont bother with this for now...
