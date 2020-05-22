@@ -25,6 +25,7 @@
 #include "krb-interface.h"
 #include "generalAllocator.h"
 #include "kAssetManager.h"
+#include "kAudioMixer.h"
 struct GameState
 {
 	v2f32 viewOffset2d;
@@ -37,6 +38,11 @@ struct GameState
 	u8 kthFighter_PADDING[4];
 #endif //0
 	KAssetManager* assetManager;
+	KAudioMixer* kAudioMixer;
+	KAssetHandle kahSfxShoot;
+	KAssetHandle kahSfxHit;
+	KAssetHandle kahSfxExplosion;
+	u8 kahSfxExplosion_PADDING[4];
 	KgaHandle kgaHPermanent;
 	KgaHandle kgaHTransient;
 };

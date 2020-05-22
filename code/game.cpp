@@ -40,37 +40,22 @@ GAME_INITIALIZE(gameInitialize)
 	memory.platformFreeRawImage(rawImage);
 #endif // 0
 	// Ask the platform to load us a RawSound asset //
-	KAssetHandle ahSfxShoot = 
+	g_gameState->kahSfxShoot = 
 		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
 		            "assets/joesteroids-shoot-modified.wav");
-	kamFreeAsset(g_gameState->assetManager, ahSfxShoot);
+	g_gameState->kahSfxHit = 
+		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
+		            "assets/joesteroids-hit.wav");
+	g_gameState->kahSfxExplosion = 
+		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
+		            "assets/joesteroids-explosion.wav");
+	// Initialize the game's audio mixer //
+	g_gameState->kAudioMixer = kauConstruct(g_gameState->kgaHPermanent, 32, 
+	                                        g_gameState->assetManager);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	///TODO: write data to the GameAudioBuffer using an AudioMixer API
-#if 0
-	// render theramin audio data to temporary sound buffer //
-	const u32 samplesPerWaveTheramin = static_cast<u32>(
-		audioBuffer.soundSampleHz / gameState->theraminHz);
-	for(u32 s = 0; s < audioBuffer.lockedSampleCount; s++)
-	{
-		SoundSample* sample = 
-			audioBuffer.memory + (s*audioBuffer.numSoundChannels);
-		// Determine what the debug waveforms should look like at this point of
-		//	the running sound sample //
-		const f32 waveform = sinf(gameState->theraminSine);
-		gameState->theraminSine += 2*PI32*(1.f / samplesPerWaveTheramin);
-		if(gameState->theraminSine > 2*PI32)
-		{
-			gameState->theraminSine -= 2*PI32;
-		}
-		for(u8 c = 0; c < audioBuffer.numSoundChannels; c++)
-		{
-			*sample++ = 
-				static_cast<SoundSample>(gameState->theraminVolume * waveform);
-		}
-	}
-#endif// 0
+	kauMix(g_gameState->kAudioMixer, audioBuffer);
 }
 void poop()
 {
@@ -118,6 +103,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				poop();// ;o
 			}
+			if(gamePadArray[c].buttons.shoulderLeft == ButtonState::PRESSED)
+			{
+				kauPlaySound(g_gameState->kAudioMixer,
+				             g_gameState->kahSfxHit);
+			}
+			if(gamePadArray[c].buttons.shoulderRight == ButtonState::PRESSED)
+			{
+				if(gamePadArray[c].buttons.faceLeft >= ButtonState::PRESSED)
+				{
+					kauPlaySound(g_gameState->kAudioMixer,
+					             g_gameState->kahSfxExplosion);
+				}
+				else
+				{
+					kauPlaySound(g_gameState->kAudioMixer,
+					             g_gameState->kahSfxShoot);
+				}
+			}
 			g_gameState->shipWorldPosition.x += 
 				10*gamePadArray[c].normalizedStickLeft.x;
 			g_gameState->shipWorldPosition.y += 
@@ -164,6 +167,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
 	return true;
 }
+#include "kAudioMixer.cpp"
 #include "kAssetManager.cpp"
 #include "generalAllocator.cpp"
 #pragma warning( push )

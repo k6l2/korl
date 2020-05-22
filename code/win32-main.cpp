@@ -122,7 +122,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	}
 	const u16 riffFmtNumChannels = *reinterpret_cast<u16*>(currByte);
 	currByte += 2;
-	if(riffFmtNumChannels > 255)
+	if(riffFmtNumChannels > 255 || riffFmtNumChannels == 0)
 	{
 		KLOG_ERROR("RIFF.fmt.numChannels==%i invalid/unsupported for '%s'!",
 		           riffFmtNumChannels, szFileFullPath);
@@ -192,10 +192,12 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	}
 	memcpy(sampleData, currByte, riffDataSize);
 	// Assemble & return a valid result! //
-	result.channelCount  = static_cast<u8>(riffFmtNumChannels);
-	result.sampleHz      = riffFmtSampleRate;
-	result.bitsPerSample = riffFmtBitsPerSample;
-	result.sampleData    = sampleData;
+	result.channelCount     = static_cast<u8>(riffFmtNumChannels);
+	result.sampleHz         = riffFmtSampleRate;
+	result.bitsPerSample    = riffFmtBitsPerSample;
+	result.sampleBlockCount = riffDataSize / riffFmtNumChannels / 
+	                          (riffFmtBitsPerSample/8);
+	result.sampleData       = sampleData;
 	return result;
 }
 internal PLATFORM_IMGUI_ALLOC(platformImguiAlloc)

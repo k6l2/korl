@@ -105,3 +105,22 @@ internal void kamFreeAsset(KAssetManager* assetManager,
 	}
 	assetManager->usedAssetHandles--;
 }
+internal bool kamIsRawSound(KAssetManager* assetManager, KAssetHandle kah)
+{
+	if(kah < assetManager->maxAssetHandles)
+	{
+		KAsset*const assets = reinterpret_cast<KAsset*>(assetManager + 1);
+		return assets[kah].type == KAssetType::RAW_SOUND;
+	}
+	KLOG_ERROR("Attempted to access asset handle outside the range [0,%i)!",
+	           assetManager->maxAssetHandles);
+	return false;
+}
+internal RawSound kamGetRawSound(KAssetManager* assetManager,
+                                 KAssetHandle kahSound)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(assetManager + 1);
+	kassert(kahSound < assetManager->maxAssetHandles);
+	kassert(assets[kahSound].type == KAssetType::RAW_SOUND);
+	return assets[kahSound].assetData.sound;
+}

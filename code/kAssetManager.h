@@ -12,3 +12,6 @@ internal KAssetHandle kamAddAsset(KAssetManager* assetManager,
                                   const char* assetFileName);
 internal void kamFreeAsset(KAssetManager* assetManager, 
                            KAssetHandle assetHandle);
+internal bool kamIsRawSound(KAssetManager* assetManager, KAssetHandle kah);
+internal RawSound kamGetRawSound(KAssetManager* assetManager,
+                                 KAssetHandle kahSound);

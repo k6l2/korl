@@ -18,10 +18,11 @@ struct RawImage
 };
 struct RawSound
 {
-	u8 channelCount;
-	u8 channelCount_PADDING;
-	u16 bitsPerSample;
 	u32 sampleHz;
+	u32 sampleBlockCount;
+	u16 bitsPerSample;
+	u8 channelCount;
+	u8 channelCount_PADDING[5];
 	// A sample block is a contiguous collection of all samples from all 
 	//	channels.  Sample data is stored in blocks.
 	SoundSample* sampleData;
@@ -103,7 +104,11 @@ struct GameMemory
 };
 struct GameAudioBuffer
 {
+	// A sample block is a contiguous collection of all samples from all 
+	//	channels.  `memory` is stored in blocks.
+	///TODO: rename this to `sampleBlocks`
 	SoundSample* memory;
+	///TODO: rename this to `lockedSampleBlockCount`?
 	u32 lockedSampleCount;
 	u32 soundSampleHz;
 	u8 numSoundChannels;

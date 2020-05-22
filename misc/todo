@@ -74,7 +74,7 @@
 		What other things can I verify??...
 	[-] Does it only crash when called from game, or does win32-exe 
 		experience the same crash?
-[ ] Load a WAV sound and play it.
+[x] Load a WAV sound and play it.
 	[x] Load entire WAV file into memory (temporary file memory pool).
 		For the purposes of getting things up and running, this can just be 
 	[x] Decode the WAV file format into a usable sound data structure.
@@ -82,18 +82,20 @@
 		(game transient storage)
 	[x] Encapsulate the memory location of the `RawSound` asset using an 
 		`AssetHandle`
-	[ ] Create an AudioMixer state
-		[ ] Initialize with a set # of `TapeDeck`s, which holds a `Tape`
-		[ ] A `Tape` holds a reference to a RawSound, and how many samples of 
+	[x] Create an AudioMixer state
+		[x] Initialize with a set # of `TapeDeck`s, which holds a `Tape`
+		[x] A `Tape` holds a reference to a RawSound, and how many samples of 
 			the sound have been played so far.
-	[ ] Play a RawSound AssetHandle using the AudioMixer
-		[ ] Find an unused TapeDeck
-		[ ] If there is one, initialize the Tape using the AssetHandle to the 
+	[x] Play a RawSound AssetHandle using the AudioMixer
+		[x] Find an unused TapeDeck
+		[x] If there is one, initialize the Tape using the AssetHandle to the 
 			RawSound
-		[ ] Each frame in GAME_RENDER_AUDIO, pump the audioBuffer with data from 
+		[x] Each frame in GAME_RENDER_AUDIO, pump the audioBuffer with data from 
 			the AudioMixer
+[ ] KAssetManager - load png files
 [ ] KRB - draw textured quad
 [ ] KRB - modify model xform rotation
+[ ] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
 [ ] Asset streaming system
 	[ ] `push` request for an asset and receive an asset handle.
 		[ ] Quickly read file meta data to determine raw data size so we can 
@@ -136,8 +138,7 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
-[ ] audio mixer
-	[ ] Investigate `Failed to lock buffer! result=0x80070057` warning! :(
+[ ] Audio - Investigate `Failed to lock buffer! result=0x80070057` warning! :(
 [ ] Figure out a way to collapse the KLOG macros to relieve some of the 
 	implementation burdon of the game module
 [ ] display debug frame metrics
