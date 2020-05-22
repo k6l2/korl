@@ -1,7 +1,14 @@
 #pragma once
 #include "global-defines.h"
-#include "platform-game-interfaces.h"
-internal PLATFORM_LOG(platformLog);
+#if defined(KLOG_INFO)
+	#undef KLOG_INFO
+#endif
+#if defined(KLOG_WARNING)
+	#undef KLOG_WARNING
+#endif
+#if defined(KLOG_ERROR)
+	#undef KLOG_ERROR
+#endif
 #define KLOG_INFO(formattedString, ...) platformLog(__FILENAME__, __LINE__, \
                                                   PlatformLogCategory::K_INFO, \
                                                   formattedString, \
@@ -14,6 +21,8 @@ internal PLATFORM_LOG(platformLog);
                                                  PlatformLogCategory::K_ERROR, \
                                                  formattedString, \
                                                  ##__VA_ARGS__)
+#include "platform-game-interfaces.h"
+internal PLATFORM_LOG(platformLog);
 #include <windows.h>
 struct W32OffscreenBuffer
 {

@@ -1,4 +1,3 @@
-#include "global-defines.h"
 #include "win32-main.h"
 #include "win32-dsound.h"
 #include "win32-xinput.h"

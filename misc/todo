@@ -80,7 +80,7 @@
 	[x] Decode the WAV file format into a usable sound data structure.
 	[x] Place this `RawSound` data into its final resting memory location 
 		(game transient storage)
-	[ ] Encapsulate the memory location of the `RawSound` asset using an 
+	[x] Encapsulate the memory location of the `RawSound` asset using an 
 		`AssetHandle`
 	[ ] Create an AudioMixer state
 		[ ] Initialize with a set # of `TapeDeck`s, which holds a `Tape`
@@ -92,6 +92,8 @@
 			RawSound
 		[ ] Each frame in GAME_RENDER_AUDIO, pump the audioBuffer with data from 
 			the AudioMixer
+[ ] KRB - draw textured quad
+[ ] KRB - modify model xform rotation
 [ ] Asset streaming system
 	[ ] `push` request for an asset and receive an asset handle.
 		[ ] Quickly read file meta data to determine raw data size so we can 
@@ -136,6 +138,8 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
 [ ] audio mixer
 	[ ] Investigate `Failed to lock buffer! result=0x80070057` warning! :(
+[ ] Figure out a way to collapse the KLOG macros to relieve some of the 
+	implementation burdon of the game module
 [ ] display debug frame metrics
 [-] collision engine
 	I should just do this on another repository, since this seems outside the 
@@ -163,3 +167,5 @@
 [ ] Automatically delete older minidumps once enough accumulate.
 [ ] Give log files rolling file names like minidumps.
 [ ] Automatically delete older log files once enough accumulate.
+[ ] Platform Audio - clean up the sound buffer when the program ends so there is
+	no click artifact (if possible).

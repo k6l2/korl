@@ -39,6 +39,10 @@ privDefer<F> defer_func(F f) {
 #else
 	#define kassert(expression) {}
 #endif
+// These must be re-defined in the appropriate compilation units //
+#define KLOG_INFO(formattedString, ...) 
+#define KLOG_WARNING(formattedString, ...)
+#define KLOG_ERROR(formattedString, ...) 
 // crt math operations
 #include <math.h>
 #include <stdint.h>

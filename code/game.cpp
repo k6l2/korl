@@ -19,10 +19,18 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 }
 GAME_INITIALIZE(gameInitialize)
 {
-	gameOnReloadCode(memory);
+	// GameState memory initialization //
 	*g_gameState = {};
-	g_gameState->gAllocTransient = kgaInit(memory.transientMemory, 
-	                                       memory.transientMemoryBytes);
+	// initialize dynamic allocators //
+	g_gameState->kgaHPermanent = 
+		kgaInit(reinterpret_cast<u8*>(memory.permanentMemory) + 
+		            sizeof(GameState), 
+		        memory.permanentMemoryBytes - sizeof(GameState));
+	g_gameState->kgaHTransient = kgaInit(memory.transientMemory, 
+	                                     memory.transientMemoryBytes);
+	// Contruct/Initialize the game's AssetManager //
+	g_gameState->assetManager = kamConstruct(g_gameState->kgaHPermanent, 1024,
+	                                         g_gameState->kgaHTransient);
 #if 0
 	// upload a texture to the GPU //
 	RawImage rawImage = 
@@ -32,10 +40,10 @@ GAME_INITIALIZE(gameInitialize)
 	memory.platformFreeRawImage(rawImage);
 #endif // 0
 	// Ask the platform to load us a RawSound asset //
-	RawSound rsShoot = 
-		memory.platformLoadWav("assets/joesteroids-shoot-modified.wav",
-		                       g_gameState->gAllocTransient);
-	kgaFree(g_gameState->gAllocTransient, rsShoot.sampleData);
+	KAssetHandle ahSfxShoot = 
+		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
+		            "assets/joesteroids-shoot-modified.wav");
+	kamFreeAsset(g_gameState->assetManager, ahSfxShoot);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
@@ -143,7 +151,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                             static_cast<f32>(windowDimensions.y), 1.f);
 	// g_gameState->viewOffset2d = g_gameState->shipWorldPosition;
 	memory.krbViewTranslate(-g_gameState->viewOffset2d);
-	memory.krbUseTexture(g_gameState->kthFighter);
+	//memory.krbUseTexture(g_gameState->kthFighter);
 	// memory.krbDrawTri({100,100}, {200,100}, {100,200});
 	// memory.krbDrawTri({200,100}, {100,200}, {200,200});
 	memory.krbSetModelXform(g_gameState->shipWorldPosition);
@@ -156,6 +164,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
 	return true;
 }
+#include "kAssetManager.cpp"
 #include "generalAllocator.cpp"
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
