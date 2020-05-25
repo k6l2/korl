@@ -267,6 +267,12 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	const DWORD maxLockedBytes = maxBytesAheadOfWrite > bytesAheadOfWrite
 		? min(lockedBytes, maxBytesAheadOfWrite - bytesAheadOfWrite)
 		: 0;
+	if(maxLockedBytes <= 0)
+	{
+		KLOG_WARNING("maxBytesAheadOfWrite==%i <= bytesAheadOfWrite==%i",
+		             maxBytesAheadOfWrite, bytesAheadOfWrite);
+		return;
+	}
 	// At this point, we know how many bytes need to be filled into the sound
 	//	buffer, so now we can request this data from the game code via a 
 	//	temporary buffer whose contents will be dumped into the DSound buffer.
@@ -304,7 +310,32 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			                          &lockRegion2, &lockRegion2Size, 0);
 		if(result != DS_OK)
 		{
-			KLOG_WARNING("Failed to lock buffer! result=0x%lX", result);
+			const char* strErrorCode = nullptr;
+			switch(result)
+			{
+				case DSERR_BUFFERLOST:
+				{
+					strErrorCode = "DSERR_BUFFERLOST";
+				} break;
+				case DSERR_INVALIDCALL:
+				{
+					strErrorCode = "DSERR_INVALIDCALL";
+				} break;
+				case DSERR_INVALIDPARAM:
+				{
+					strErrorCode = "DSERR_INVALIDPARAM";
+				} break;
+				case DSERR_PRIOLEVELNEEDED:
+				{
+					strErrorCode = "DSERR_PRIOLEVELNEEDED";
+				} break;
+				default:
+				{
+					strErrorCode = "UNKNOWN_ERROR";
+				} break;
+			}
+			KLOG_ERROR("Failed to lock buffer! result=0x%lX(%s)", 
+			           result, strErrorCode);
 			return;
 		}
 	}

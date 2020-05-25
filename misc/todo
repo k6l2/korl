@@ -92,10 +92,11 @@
 			RawSound
 		[x] Each frame in GAME_RENDER_AUDIO, pump the audioBuffer with data from 
 			the AudioMixer
+[x] Audio - Investigate `Failed to lock buffer! result=0x80070057` warning! :(
+[ ] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
 [ ] KAssetManager - load png files
 [ ] KRB - draw textured quad
 [ ] KRB - modify model xform rotation
-[ ] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
 [ ] Asset streaming system
 	[ ] `push` request for an asset and receive an asset handle.
 		[ ] Quickly read file meta data to determine raw data size so we can 
@@ -138,7 +139,6 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
-[ ] Audio - Investigate `Failed to lock buffer! result=0x80070057` warning! :(
 [ ] Figure out a way to collapse the KLOG macros to relieve some of the 
 	implementation burdon of the game module
 [ ] display debug frame metrics
