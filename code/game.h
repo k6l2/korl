@@ -27,7 +27,7 @@ struct GameState
 	KAssetHandle kahSfxShoot;
 	KAssetHandle kahSfxHit;
 	KAssetHandle kahSfxExplosion;
-	u8 kahSfxExplosion_PADDING[4];
+	KAssetHandle kahBgmBattleTheme;
 	KgaHandle kgaHPermanent;
 	KgaHandle kgaHTransient;
 };

@@ -7,7 +7,6 @@
 	    formattedString, ##__VA_ARGS__)
 #endif
 #include "platform-game-interfaces.h"
-internal PLATFORM_LOG(platformLog);
 #include <windows.h>
 struct W32OffscreenBuffer
 {
@@ -33,5 +32,6 @@ struct GameCode
 	FILETIME dllLastWriteTime;
 	bool isValid;
 };
+internal PLATFORM_LOG(platformLog);
 internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile);
 internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory);

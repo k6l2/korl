@@ -41,17 +41,21 @@ GAME_INITIALIZE(gameInitialize)
 #endif // 0
 	// Ask the platform to load us a RawSound asset //
 	g_gameState->kahSfxShoot = 
-		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
-		            "assets/joesteroids-shoot-modified.wav");
+		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
+		          "assets/joesteroids-shoot-modified.wav");
 	g_gameState->kahSfxHit = 
-		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
-		            "assets/joesteroids-hit.wav");
+		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
+		          "assets/joesteroids-hit.wav");
 	g_gameState->kahSfxExplosion = 
-		kamAddAsset(g_gameState->assetManager, memory.platformLoadWav, 
-		            "assets/joesteroids-explosion.wav");
+		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
+		          "assets/joesteroids-explosion.wav");
+	g_gameState->kahBgmBattleTheme = 
+		kamAddOgg(g_gameState->assetManager, memory.platformLoadOgg, 
+		          "assets/joesteroids-battle-theme-modified.ogg");
 	// Initialize the game's audio mixer //
 	g_gameState->kAudioMixer = kauConstruct(g_gameState->kgaHPermanent, 32, 
 	                                        g_gameState->assetManager);
+	kauPlaySound(g_gameState->kAudioMixer, g_gameState->kahBgmBattleTheme);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {

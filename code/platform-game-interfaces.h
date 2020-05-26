@@ -1,6 +1,7 @@
 #pragma once
 #include "global-defines.h"
 #include "krb-interface.h"
+#include "generalAllocator.h"
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
 enum class PlatformLogCategory : u8
@@ -42,15 +43,21 @@ struct RawSound
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
  */
-using KgaHandle = void*;
 #define PLATFORM_LOAD_WAV(name) RawSound name(const char* fileName, \
-                                              KgaHandle kgaHandle)
+                                              KgaHandle sampleDataAllocator)
+/**
+ * @return If there is a failure loading the file, an invalid RawSound 
+ *         containing sampleData==nullptr is returned.
+ */
+#define PLATFORM_LOAD_OGG(name) RawSound name(const char* fileName, \
+                                              KgaHandle sampleDataAllocator)
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
 typedef PLATFORM_FREE_RAW_IMAGE(fnSig_platformFreeRawImage);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
+typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 // INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
@@ -83,6 +90,7 @@ struct GameMemory
 	fnSig_platformDecodeZ85Png* platformDecodeZ85Png;
 	fnSig_platformFreeRawImage* platformFreeRawImage;
 	fnSig_platformLoadWav* platformLoadWav;
+	fnSig_platformLoadOgg* platformLoadOgg;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* platformReadEntireFile;
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;

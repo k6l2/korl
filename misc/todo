@@ -95,7 +95,10 @@
 [x] Audio - Investigate `Failed to lock buffer! result=0x80070057` warning! :(
 [x] Figure out a way to collapse the KLOG macros to relieve some of the 
 	implementation burdon of the game module
-[ ] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
+[x] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
+[ ] Audio mixer - play+repeat forever
+[ ] Audio platform - fix buffer under-run when the application first starts due 
+	to lag, etc...
 [ ] KAssetManager - load png files
 [ ] KRB - draw textured quad
 [ ] KRB - modify model xform rotation

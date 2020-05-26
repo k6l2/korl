@@ -44,9 +44,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 	}
 	return result;
 }
-internal KAssetHandle kamAddAsset(KAssetManager* assetManager, 
-                                  fnSig_platformLoadWav* platformLoadWav, 
-                                  const char* assetFileName)
+internal KAssetHandle kamAddAsset(KAssetManager* assetManager, KAsset& kAsset)
 {
 	if(assetManager->usedAssetHandles >= assetManager->maxAssetHandles)
 	{
@@ -57,11 +55,8 @@ internal KAssetHandle kamAddAsset(KAssetManager* assetManager,
 	KAsset*const assets = reinterpret_cast<KAsset*>(assetManager + 1);
 	const KAssetHandle result = assetManager->nextUnusedHandle;
 	assetManager->usedAssetHandles++;
-	// Initialize the new RawSound asset //
-	assets[result].type            = KAssetType::RAW_SOUND;
-	assets[result].assetFileName   = assetFileName;
-	assets[result].assetData.sound = 
-		platformLoadWav(assetFileName, assetManager->assetDataAllocator);
+	// Initialize the new asset //
+	assets[result] = kAsset;
 	// now that we've acquired a KAsset, we can prepare for the next call to 
 	//	this function by computing the next unused asset slot //
 	if(assetManager->usedAssetHandles < assetManager->maxAssetHandles)
@@ -79,6 +74,28 @@ internal KAssetHandle kamAddAsset(KAssetManager* assetManager,
 		kassert(assetManager->nextUnusedHandle != result);
 	}
 	return result;
+}
+internal KAssetHandle kamAddWav(KAssetManager* assetManager, 
+                                fnSig_platformLoadWav* platformLoadWav, 
+                                const char* assetFileName)
+{
+	KAsset asset = {};
+	asset.type            = KAssetType::RAW_SOUND;
+	asset.assetFileName   = assetFileName;
+	asset.assetData.sound = platformLoadWav(assetFileName, 
+	                                        assetManager->assetDataAllocator);
+	return kamAddAsset(assetManager, asset);
+}
+internal KAssetHandle kamAddOgg(KAssetManager* assetManager, 
+                                fnSig_platformLoadOgg* platformLoadOgg, 
+                                const char* assetFileName)
+{
+	KAsset asset = {};
+	asset.type            = KAssetType::RAW_SOUND;
+	asset.assetFileName   = assetFileName;
+	asset.assetData.sound = platformLoadOgg(assetFileName, 
+	                                        assetManager->assetDataAllocator);
+	return kamAddAsset(assetManager, asset);
 }
 internal void kamFreeAsset(KAssetManager* assetManager, 
                            KAssetHandle assetHandle)

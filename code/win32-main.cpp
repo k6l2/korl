@@ -15,6 +15,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #include "imgui/imgui_impl_opengl2.h"
 #include "z85.h"
 #include "stb/stb_image.h"
+#include "stb/stb_vorbis.h"
 // Allow the pre-processor to store compiler definitions as string literals //
 //	Source: https://stackoverflow.com/a/39108392
 #define _DEFINE_TO_CSTR(define) #define
@@ -32,6 +33,7 @@ global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
 global_variable KgaHandle g_genAllocImgui;
+global_variable stb_vorbis_alloc g_oggVorbisAlloc;
 global_variable const size_t MAX_LOG_BUFFER_SIZE = 32768;
 global_variable char g_logBeginning[MAX_LOG_BUFFER_SIZE];
 global_variable char g_logCircularBuffer[MAX_LOG_BUFFER_SIZE] = {};
@@ -48,8 +50,76 @@ global_variable bool g_hasWrittenCrashDump;
 global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+internal PLATFORM_LOAD_OGG(platformLoadOgg)
+{
+	// Load the entire OGG file into memory //
+	RawSound result = {};
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
+	                 g_pathToExe, fileName);
+	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
+	if(!file.data)
+	{
+		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		return result;
+	}
+	defer(platformFreeFileMemory(file.data));
+	// Decode the OGG file into a RawSound //
+	int vorbisError;
+	stb_vorbis*const vorbis = 
+		stb_vorbis_open_memory(reinterpret_cast<u8*>(file.data), file.dataBytes, 
+		                       &vorbisError, &g_oggVorbisAlloc);
+	if(vorbisError != VORBIS__no_error)
+	{
+		KLOG(ERROR, "stb_vorbis_open_memory error=%i", vorbisError);
+		return result;
+	}
+	const stb_vorbis_info vorbisInfo = stb_vorbis_get_info(vorbis);
+	if(vorbisInfo.channels < 1 || vorbisInfo.channels > 255)
+	{
+		KLOG(ERROR, "vorbisInfo.channels==%i invalid/unsupported for '%s'!",
+		     vorbisInfo.channels, szFileFullPath);
+		return result;
+	}
+	if(vorbisInfo.sample_rate != 44100)
+	{
+		KLOG(ERROR, "vorbisInfo.sample_rate==%i invalid/unsupported for '%s'!", 
+		     vorbisInfo.sample_rate, szFileFullPath);
+		return result;
+	}
+	const i32 vorbisSampleLength = stb_vorbis_stream_length_in_samples(vorbis);
+	const size_t sampleDataSize = 
+		vorbisSampleLength*vorbisInfo.channels*sizeof(SoundSample);
+	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
+		kgaAlloc(sampleDataAllocator, sampleDataSize) );
+	if(!sampleData)
+	{
+		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
+		     sampleDataSize);
+		return result;
+	}
+	const i32 samplesDecoded = 
+		stb_vorbis_get_samples_short_interleaved(vorbis, vorbisInfo.channels, 
+		                                         sampleData, 
+		                                         vorbisSampleLength * 
+		                                            vorbisInfo.channels);
+	if(samplesDecoded != vorbisSampleLength)
+	{
+		KLOG(ERROR, "Failed to get samples for '%s'!", szFileFullPath);
+		kgaFree(sampleDataAllocator, sampleData);
+		return result;
+	}
+	// Assemble & return the final result //
+	result.bitsPerSample    = sizeof(SoundSample)*8;
+	result.channelCount     = static_cast<u8>(vorbisInfo.channels);
+	result.sampleHz         = vorbisInfo.sample_rate;
+	result.sampleBlockCount = vorbisSampleLength;
+	result.sampleData       = sampleData;
+	return result;
+}
 internal PLATFORM_LOAD_WAV(platformLoadWav)
 {
+	// Load the entire WAV file into memory //
 	RawSound result = {};
 	char szFileFullPath[MAX_PATH];
 	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
@@ -182,8 +252,8 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 		     riffDataSize, szFileFullPath);
 		return result;
 	}
-	SoundSample*const sampleData = 
-		reinterpret_cast<SoundSample*>(kgaAlloc(kgaHandle, riffDataSize));
+	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
+		kgaAlloc(sampleDataAllocator, riffDataSize) );
 	if(!sampleData)
 	{
 		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
@@ -1429,6 +1499,22 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 		g_genAllocImgui = kgaInit(imguiMemory, IMGUI_MEMORY_BYTES);
 	}
+	// allocate a chunk of memory for loading OGG files //
+	{
+		g_oggVorbisAlloc.alloc_buffer_length_in_bytes =
+			kmath::safeTruncateI32(kmath::megabytes(1));
+		g_oggVorbisAlloc.alloc_buffer = reinterpret_cast<char*>(
+			VirtualAlloc(NULL, g_oggVorbisAlloc.alloc_buffer_length_in_bytes, 
+			             MEM_RESERVE | MEM_COMMIT, 
+			             PAGE_READWRITE) );
+		if(!g_oggVorbisAlloc.alloc_buffer)
+		{
+			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for OGG decoding! "
+			     "GetLastError=%i", 
+			     g_oggVorbisAlloc.alloc_buffer_length_in_bytes, GetLastError());
+			return RETURN_CODE_FAILURE;
+		}
+	}
 	GameCode game = w32LoadGameCode(fullPathToGameDll, 
 	                                fullPathToGameDllTemp);
 	kassert(game.isValid);
@@ -1551,6 +1637,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformDecodeZ85Png     = platformDecodeZ85Png;
 	gameMemory.platformFreeRawImage     = platformFreeRawImage;
 	gameMemory.platformLoadWav          = platformLoadWav;
+	gameMemory.platformLoadOgg          = platformLoadOgg;
 #if INTERNAL_BUILD
 	gameMemory.platformReadEntireFile   = platformReadEntireFile;
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
@@ -1826,4 +1913,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "imgui/imgui_impl_win32.cpp"
 #include "imgui/imgui_widgets.cpp"
 #include "imgui/imgui.cpp"
+#pragma warning( pop )
+#pragma warning( push )
+#pragma warning( disable : 4244 )
+#pragma warning( disable : 4245 )
+#pragma warning( disable : 4369 )
+#pragma warning( disable : 4456 )
+#pragma warning( disable : 4457 )
+#pragma warning( disable : 4701 )
+#include "stb/stb_vorbis.c"
 #pragma warning( pop )
