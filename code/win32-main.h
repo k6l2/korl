@@ -1,26 +1,11 @@
 #pragma once
 #include "global-defines.h"
-#if defined(KLOG_INFO)
-	#undef KLOG_INFO
+#if defined(KLOG)
+	#undef KLOG
+	#define KLOG(platformLogCategory, formattedString, ...) platformLog(\
+	    __FILENAME__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
+	    formattedString, ##__VA_ARGS__)
 #endif
-#if defined(KLOG_WARNING)
-	#undef KLOG_WARNING
-#endif
-#if defined(KLOG_ERROR)
-	#undef KLOG_ERROR
-#endif
-#define KLOG_INFO(formattedString, ...) platformLog(__FILENAME__, __LINE__, \
-                                                  PlatformLogCategory::K_INFO, \
-                                                  formattedString, \
-                                                  ##__VA_ARGS__)
-#define KLOG_WARNING(formattedString, ...) platformLog(__FILENAME__, __LINE__, \
-                                               PlatformLogCategory::K_WARNING, \
-                                               formattedString, \
-                                               ##__VA_ARGS__)
-#define KLOG_ERROR(formattedString, ...) platformLog(__FILENAME__, __LINE__, \
-                                                 PlatformLogCategory::K_ERROR, \
-                                                 formattedString, \
-                                                 ##__VA_ARGS__)
 #include "platform-game-interfaces.h"
 internal PLATFORM_LOG(platformLog);
 #include <windows.h>

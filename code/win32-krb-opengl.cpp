@@ -24,8 +24,8 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		ChoosePixelFormat(windowDc, &desiredPixelFormat);
 	if(pixelFormatIndex == 0)
 	{
-		KLOG_ERROR("Failed to choose pixel format! GetLastError=%i",
-		           GetLastError());
+		KLOG(ERROR, "Failed to choose pixel format! GetLastError=%i",
+		     GetLastError());
 	}
 	// verify that the OS-provided pixel format is good enough for our needs //
 	{
@@ -36,43 +36,43 @@ internal void w32KrbOglInitialize(HWND hwnd)
 			                    &providedPixelFormat);
 		if(maxPixelFormatIndex == 0)
 		{
-			KLOG_ERROR("Failed to describe pixel format! GetLastError=%i",
-			           GetLastError());
+			KLOG(ERROR, "Failed to describe pixel format! GetLastError=%i",
+			     GetLastError());
 		}
 		if((providedPixelFormat.iPixelType != desiredPixelFormat.iPixelType) ||
 			(providedPixelFormat.cColorBits < desiredPixelFormat.cColorBits))
 		{
-			KLOG_ERROR("Invalid provided pixel format!");
+			KLOG(ERROR, "Invalid provided pixel format!");
 			///TODO: do a more robust job of this for shipping
 		}
 	}
 	if(!SetPixelFormat(windowDc, pixelFormatIndex, &desiredPixelFormat))
 	{
-		KLOG_ERROR("Failed to set pixel format! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to set pixel format! GetLastError=%i", 
+		     GetLastError());
 	}
 	HGLRC openGlRc = wglCreateContext(windowDc);
 	if(!wglMakeCurrent(windowDc, openGlRc))
 	{
-		KLOG_ERROR("Failed to set the current OpenGL render context! "
-		           "GetLastError=%i", GetLastError());
+		KLOG(ERROR, "Failed to set the current OpenGL render context! "
+		     "GetLastError=%i", GetLastError());
 	}
 	wglGetExtensionsStringARB = 
 		reinterpret_cast<fnSig_wglGetExtensionsStringARB*>(
 			wglGetProcAddress("wglGetExtensionsStringARB"));
 	if(!wglGetExtensionsStringARB)
 	{
-		KLOG_ERROR("Failed to get wglGetExtensionsStringARB! "
-		           "GetLastError=%i", GetLastError());
+		KLOG(ERROR, "Failed to get wglGetExtensionsStringARB! "
+		     "GetLastError=%i", GetLastError());
 	}
 	const char*const wglExtensionsString = wglGetExtensionsStringARB(windowDc);
 	ReleaseDC(hwnd, windowDc);
 	if(!wglExtensionsString)
 	{
-		KLOG_ERROR("Failed to get wgl extensions string! "
-		           "GetLastError=%i", GetLastError());
+		KLOG(ERROR, "Failed to get wgl extensions string! "
+		     "GetLastError=%i", GetLastError());
 	}
-	KLOG_INFO("wglExtensionsString='%s'", wglExtensionsString);
+	KLOG(INFO, "wglExtensionsString='%s'", wglExtensionsString);
 	if(strstr(wglExtensionsString, "WGL_EXT_swap_control"))
 	{
 		wglSwapIntervalEXT =
@@ -80,37 +80,37 @@ internal void w32KrbOglInitialize(HWND hwnd)
 				wglGetProcAddress("wglSwapIntervalEXT"));
 		if(!wglSwapIntervalEXT)
 		{
-			KLOG_ERROR("Failed to get 'wglSwapIntervalEXT'! "
-			           "GetLastError=%i", GetLastError());
+			KLOG(ERROR, "Failed to get 'wglSwapIntervalEXT'! "
+			     "GetLastError=%i", GetLastError());
 		}
 		wglGetSwapIntervalEXT =
 			reinterpret_cast<fnSig_wglGetSwapIntervalEXT*>(
 				wglGetProcAddress("wglGetSwapIntervalEXT"));
 		if(!wglGetSwapIntervalEXT)
 		{
-			KLOG_ERROR("Failed to get 'wglGetSwapIntervalEXT'! "
-			           "GetLastError=%i", GetLastError());
+			KLOG(ERROR, "Failed to get 'wglGetSwapIntervalEXT'! "
+			     "GetLastError=%i", GetLastError());
 		}
 	}
 	else
 	{
-		KLOG_WARNING("System does not contain 'WGL_EXT_swap_control'; the "
-		             "application will not have vertical-sync capabilities!");
+		KLOG(WARNING, "System does not contain 'WGL_EXT_swap_control'; the "
+		     "application will not have vertical-sync capabilities!");
 	}
 }
 internal void w32KrbOglSetVSyncPreference(bool value)
 {
 	if(!wglSwapIntervalEXT)
 	{
-		KLOG_WARNING("System failed to initialize vertical-sync capabilities! "
-		             "Ignoring request...");
+		KLOG(WARNING, "System failed to initialize vertical-sync capabilities! "
+		     "Ignoring request...");
 		return;
 	}
 	const int desiredInterval = value ? 1 : 0;
 	if(!wglSwapIntervalEXT(desiredInterval))
 	{
-		KLOG_ERROR("Failed call wglSwapIntervalEXT with a value of %i! "
-		           "GetLastError=%i", desiredInterval, GetLastError());
+		KLOG(ERROR, "Failed call wglSwapIntervalEXT with a value of %i! "
+		     "GetLastError=%i", desiredInterval, GetLastError());
 	}
 }
 internal bool w32KrbOglGetVSync()

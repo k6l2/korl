@@ -93,6 +93,8 @@
 		[x] Each frame in GAME_RENDER_AUDIO, pump the audioBuffer with data from 
 			the AudioMixer
 [x] Audio - Investigate `Failed to lock buffer! result=0x80070057` warning! :(
+[x] Figure out a way to collapse the KLOG macros to relieve some of the 
+	implementation burdon of the game module
 [ ] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
 [ ] KAssetManager - load png files
 [ ] KRB - draw textured quad
@@ -139,8 +141,6 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
-[ ] Figure out a way to collapse the KLOG macros to relieve some of the 
-	implementation burdon of the game module
 [ ] display debug frame metrics
 [-] collision engine
 	I should just do this on another repository, since this seems outside the 

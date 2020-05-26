@@ -57,7 +57,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
 	{
-		KLOG_ERROR("Failed to read entire file '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
 		return result;
 	}
 	defer(platformFreeFileMemory(file.data));
@@ -75,8 +75,8 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	u32Chars.chars[3] = 'F';
 	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
 	{
-		KLOG_ERROR("RIFF.ChunkId==0x%x invalid for '%s'!", 
-		           reinterpret_cast<u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.ChunkId==0x%x invalid for '%s'!", 
+		     reinterpret_cast<u32*>(currByte), szFileFullPath);
 		return result;
 	}
 	currByte += 4;
@@ -88,8 +88,8 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	u32Chars.chars[3] = 'E';
 	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
 	{
-		KLOG_ERROR("RIFF.Format==0x%x invalid/unsupported for '%s'!", 
-		           *reinterpret_cast<u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.Format==0x%x invalid/unsupported for '%s'!", 
+		     *reinterpret_cast<u32*>(currByte), szFileFullPath);
 		return result;
 	}
 	currByte += 4;
@@ -99,8 +99,8 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	u32Chars.chars[3] = ' ';
 	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
 	{
-		KLOG_ERROR("RIFF.fmt.id==0x%x invalid for '%s'!", 
-		           *reinterpret_cast<u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.id==0x%x invalid for '%s'!", 
+		     *reinterpret_cast<u32*>(currByte), szFileFullPath);
 		return result;
 	}
 	currByte += 4;
@@ -108,32 +108,32 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	currByte += 4;
 	if(riffFmtChunkSize != 16)
 	{
-		KLOG_ERROR("RIFF.fmt.chunkSize==%i invalid/unsupported for '%s'!", 
-		           riffFmtChunkSize, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.chunkSize==%i invalid/unsupported for '%s'!", 
+		     riffFmtChunkSize, szFileFullPath);
 		return result;
 	}
 	const u16 riffFmtAudioFormat = *reinterpret_cast<u16*>(currByte);
 	currByte += 2;
 	if(riffFmtAudioFormat != 1)
 	{
-		KLOG_ERROR("RIFF.fmt.audioFormat==%i invalid/unsupported for '%s'!",
-		           riffFmtAudioFormat, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.audioFormat==%i invalid/unsupported for '%s'!",
+		     riffFmtAudioFormat, szFileFullPath);
 		return result;
 	}
 	const u16 riffFmtNumChannels = *reinterpret_cast<u16*>(currByte);
 	currByte += 2;
 	if(riffFmtNumChannels > 255 || riffFmtNumChannels == 0)
 	{
-		KLOG_ERROR("RIFF.fmt.numChannels==%i invalid/unsupported for '%s'!",
-		           riffFmtNumChannels, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.numChannels==%i invalid/unsupported for '%s'!",
+		     riffFmtNumChannels, szFileFullPath);
 		return result;
 	}
 	const u32 riffFmtSampleRate = *reinterpret_cast<u32*>(currByte);
 	currByte += 4;
 	if(riffFmtSampleRate != 44100)
 	{
-		KLOG_ERROR("RIFF.fmt.riffFmtSampleRate==%i invalid/unsupported for "
-		           "'%s'!", riffFmtSampleRate, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtSampleRate==%i invalid/unsupported for "
+		     "'%s'!", riffFmtSampleRate, szFileFullPath);
 		return result;
 	}
 	const u32 riffFmtByteRate = *reinterpret_cast<u32*>(currByte);
@@ -144,21 +144,21 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	currByte += 2;
 	if(riffFmtBitsPerSample != sizeof(SoundSample)*8)
 	{
-		KLOG_ERROR("RIFF.fmt.riffFmtBitsPerSample==%i invalid/unsupported for "
-		           "'%s'!", riffFmtBitsPerSample, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtBitsPerSample==%i invalid/unsupported for "
+		     "'%s'!", riffFmtBitsPerSample, szFileFullPath);
 		return result;
 	}
 	if(riffFmtByteRate != 
 		riffFmtSampleRate * riffFmtNumChannels * riffFmtBitsPerSample/8)
 	{
-		KLOG_ERROR("RIFF.fmt.riffFmtByteRate==%i invalid for '%s'!", 
-		           riffFmtByteRate, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtByteRate==%i invalid for '%s'!", 
+		     riffFmtByteRate, szFileFullPath);
 		return result;
 	}
 	if(riffFmtBlockAlign != riffFmtNumChannels * riffFmtBitsPerSample/8)
 	{
-		KLOG_ERROR("RIFF.fmt.riffFmtBlockAlign==%i invalid for '%s'!", 
-		           riffFmtBlockAlign, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtBlockAlign==%i invalid for '%s'!", 
+		     riffFmtBlockAlign, szFileFullPath);
 		return result;
 	}
 	u32Chars.chars[0] = 'd';
@@ -167,8 +167,8 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	u32Chars.chars[3] = 'a';
 	if(u32Chars.uInt != *reinterpret_cast<u32*>(currByte))
 	{
-		KLOG_ERROR("RIFF.data.id==0x%x invalid for '%s'!", 
-		           *reinterpret_cast<u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.data.id==0x%x invalid for '%s'!", 
+		     *reinterpret_cast<u32*>(currByte), szFileFullPath);
 		return result;
 	}
 	currByte += 4;
@@ -178,16 +178,16 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	if(currByte + riffDataSize > 
 		reinterpret_cast<u8*>(file.data) + file.dataBytes)
 	{
-		KLOG_ERROR("RIFF.data.size==%i invalid for '%s'!", 
-		           riffDataSize, szFileFullPath);
+		KLOG(ERROR, "RIFF.data.size==%i invalid for '%s'!", 
+		     riffDataSize, szFileFullPath);
 		return result;
 	}
 	SoundSample*const sampleData = 
 		reinterpret_cast<SoundSample*>(kgaAlloc(kgaHandle, riffDataSize));
 	if(!sampleData)
 	{
-		KLOG_ERROR("Failed to allocate %i bytes for sample data!", 
-		           riffDataSize);
+		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
+		     riffDataSize);
 		return result;
 	}
 	memcpy(sampleData, currByte, riffDataSize);
@@ -217,14 +217,14 @@ internal PLATFORM_DECODE_Z85_PNG(platformDecodeZ85Png)
 		kgaAlloc(g_genAllocStbImage, tempImageDataBytes));
 	if(!tempImageDataBuffer)
 	{
-		KLOG_ERROR("Failed to allocate temp image data buffer!");
+		KLOG(ERROR, "Failed to allocate temp image data buffer!");
 		return RESULT_FAILURE;
 	}
 	defer(kgaFree(g_genAllocStbImage, tempImageDataBuffer));
 	if(!z85::decode(reinterpret_cast<const i8*>(z85PngData), 
 	                tempImageDataBuffer))
 	{
-		KLOG_ERROR("z85::decode failure!");
+		KLOG(ERROR, "z85::decode failure!");
 		return RESULT_FAILURE;
 	}
 	i32 imgW, imgH, imgNumByteChannels;
@@ -235,7 +235,7 @@ internal PLATFORM_DECODE_Z85_PNG(platformDecodeZ85Png)
 	kassert(img);
 	if(!img)
 	{
-		KLOG_ERROR("stbi_load_from_memory failure!");
+		KLOG(ERROR, "stbi_load_from_memory failure!");
 		return RESULT_FAILURE;
 	}
 	return RawImage{
@@ -442,17 +442,17 @@ internal void w32WriteLogToFile()
 		if(FAILED(StringCchPrintf(fullPathToNewLog, MAX_PATH, 
 		                          TEXT("%s\\%s.new"), g_pathTemp, fileNameLog)))
 		{
-			KLOG_ERROR("Failed to build fullPathToNewLog!  "
-			           "g_pathTemp='%s' fileNameLog='%s'", 
-			           g_pathTemp, fileNameLog);
+			KLOG(ERROR, "Failed to build fullPathToNewLog!  "
+			     "g_pathTemp='%s' fileNameLog='%s'", 
+			     g_pathTemp, fileNameLog);
 			return;
 		}
 		if(FAILED(StringCchPrintf(fullPathToLog, MAX_PATH, 
 		                          TEXT("%s\\%s"), g_pathTemp, fileNameLog)))
 		{
-			KLOG_ERROR("Failed to build fullPathToLog!  "
-			           "g_pathTemp='%s' fileNameLog='%s'", 
-			           g_pathTemp, fileNameLog);
+			KLOG(ERROR, "Failed to build fullPathToLog!  "
+			     "g_pathTemp='%s' fileNameLog='%s'", 
+			     g_pathTemp, fileNameLog);
 			return;
 		}
 	}
@@ -587,15 +587,15 @@ internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
-		KLOG_ERROR("Failed to create file handle! GetLastError=%i",
-		           GetLastError());
+		KLOG(ERROR, "Failed to create file handle! GetLastError=%i",
+		     GetLastError());
 		return result;
 	}
 	defer({
 		if(!CloseHandle(fileHandle))
 		{
-			KLOG_ERROR("Failed to close file handle! GetLastError=%i",
-			           GetLastError());
+			KLOG(ERROR, "Failed to close file handle! GetLastError=%i",
+			     GetLastError());
 			result.data = nullptr;
 		}
 	});
@@ -604,14 +604,14 @@ internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 		LARGE_INTEGER fileSize;
 		if(!GetFileSizeEx(fileHandle, &fileSize))
 		{
-			KLOG_ERROR("Failed to get file size! GetLastError=%i",
-			           GetLastError());
+			KLOG(ERROR, "Failed to get file size! GetLastError=%i",
+			     GetLastError());
 			return result;
 		}
 		fileSize32 = kmath::safeTruncateU32(fileSize.QuadPart);
 		if(fileSize32 != fileSize.QuadPart)
 		{
-			KLOG_ERROR("File size exceeds 32 bits!");
+			KLOG(ERROR, "File size exceeds 32 bits!");
 			return result;
 		}
 	}
@@ -619,30 +619,30 @@ internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile)
 	                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if(!result.data)
 	{
-		KLOG_ERROR("Failed to allocate %i bytes to read file! GetLastError=%i", 
-		           fileSize32, GetLastError());
+		KLOG(ERROR, "Failed to allocate %i bytes to read file! GetLastError=%i", 
+		     fileSize32, GetLastError());
 		return result;
 	}
 	defer({
 		if(result.dataBytes != fileSize32 &&
 			!VirtualFree(result.data, 0, MEM_RELEASE))
 		{
-			KLOG_ERROR("Failed to VirtualFree! GetLastError=%i", 
-			           GetLastError());
+			KLOG(ERROR, "Failed to VirtualFree! GetLastError=%i", 
+			     GetLastError());
 		}
 		result.data = nullptr;
 	});
 	DWORD numBytesRead;
 	if(!ReadFile(fileHandle, result.data, fileSize32, &numBytesRead, nullptr))
 	{
-		KLOG_ERROR("Failed to read file! GetLastError=%i", 
-		           fileSize32, GetLastError());
+		KLOG(ERROR, "Failed to read file! GetLastError=%i", 
+		     fileSize32, GetLastError());
 		return result;
 	}
 	if(numBytesRead != fileSize32)
 	{
-		KLOG_ERROR("Failed to read file! bytes read: %i / %i", 
-		           numBytesRead, fileSize32);
+		KLOG(ERROR, "Failed to read file! bytes read: %i / %i", 
+		     numBytesRead, fileSize32);
 		return result;
 	}
 	result.dataBytes = fileSize32;
@@ -652,8 +652,8 @@ internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory)
 {
 	if(!VirtualFree(fileMemory, 0, MEM_RELEASE))
 	{
-		KLOG_ERROR("Failed to free file memory! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to free file memory! GetLastError=%i", 
+		     GetLastError());
 	}
 }
 PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
@@ -664,31 +664,31 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
-		KLOG_ERROR("Failed to create write file handle '%s'! GetLastError=%i", 
-		           fileName, GetLastError());
+		KLOG(ERROR, "Failed to create write file handle '%s'! GetLastError=%i", 
+		     fileName, GetLastError());
 		return false;
 	}
 	bool result = true;
 	defer({
 		if(!CloseHandle(fileHandle))
 		{
-			KLOG_ERROR("Failed to close file handle '%s'! GetLastError=%i", 
-			           fileName, GetLastError());
+			KLOG(ERROR, "Failed to close file handle '%s'! GetLastError=%i", 
+			     fileName, GetLastError());
 			result = false;
 		}
 	});
 	DWORD bytesWritten;
 	if(!WriteFile(fileHandle, data, dataBytes, &bytesWritten, nullptr))
 	{
-		KLOG_ERROR("Failed to write to file '%s'! GetLastError=%i", 
-		           fileName, GetLastError());
+		KLOG(ERROR, "Failed to write to file '%s'! GetLastError=%i", 
+		     fileName, GetLastError());
 		return false;
 	}
 	if(bytesWritten != dataBytes)
 	{
-		KLOG_ERROR("Failed to completely write to file '%s'! "
-		           "Bytes written: %i / %i", 
-		           fileName, bytesWritten, dataBytes);
+		KLOG(ERROR, "Failed to completely write to file '%s'! "
+		     "Bytes written: %i / %i", 
+		     fileName, bytesWritten, dataBytes);
 		return false;
 	}
 	return result;
@@ -714,8 +714,8 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
 	                         &fileAttributeData))
 	{
-		KLOG_WARNING("Failed to get last write time of file '%s'! "
-		             "GetLastError=%i", fileName, GetLastError());
+		KLOG(WARNING, "Failed to get last write time of file '%s'! "
+		     "GetLastError=%i", fileName, GetLastError());
 		return result;
 	}
 	result = fileAttributeData.ftLastWriteTime;
@@ -737,16 +737,16 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
 	{
-		KLOG_WARNING("Failed to copy file '%s' to '%s'! GetLastError=%i", 
-		             fileNameDll, fileNameDllTemp, GetLastError());
+		KLOG(WARNING, "Failed to copy file '%s' to '%s'! GetLastError=%i", 
+		     fileNameDll, fileNameDllTemp, GetLastError());
 	}
 	else
 	{
 		result.hLib = LoadLibraryA(fileNameDllTemp);
 		if(!result.hLib)
 		{
-			KLOG_ERROR("Failed to load library '%s'! GetLastError=%i", 
-			           fileNameDllTemp, GetLastError());
+			KLOG(ERROR, "Failed to load library '%s'! GetLastError=%i", 
+			     fileNameDllTemp, GetLastError());
 		}
 	}
 	if(result.hLib)
@@ -755,8 +755,8 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 			GetProcAddress(result.hLib, "gameInitialize"));
 		if(!result.initialize)
 		{
-			KLOG_ERROR("Failed to get proc address 'gameInitialize'! "
-			           "GetLastError=%i", GetLastError());
+			KLOG(ERROR, "Failed to get proc address 'gameInitialize'! "
+			     "GetLastError=%i", GetLastError());
 		}
 		result.onReloadCode = reinterpret_cast<fnSig_gameOnReloadCode*>(
 			GetProcAddress(result.hLib, "gameOnReloadCode"));
@@ -766,29 +766,29 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 			//	implement the hot-reload callback. //
 			///TODO: detect if `GameCode` has the ability to hot-reload and 
 			///      don't perform hot-reloading if this is not the case.
-			KLOG_WARNING("Failed to get proc address 'gameOnReloadCode'! "
-			             "GetLastError=%i", GetLastError());
+			KLOG(WARNING, "Failed to get proc address 'gameOnReloadCode'! "
+			     "GetLastError=%i", GetLastError());
 		}
 		result.renderAudio = reinterpret_cast<fnSig_gameRenderAudio*>(
 			GetProcAddress(result.hLib, "gameRenderAudio"));
 		if(!result.renderAudio)
 		{
-			KLOG_ERROR("Failed to get proc address 'gameRenderAudio'! "
-			           "GetLastError=%i", GetLastError());
+			KLOG(ERROR, "Failed to get proc address 'gameRenderAudio'! "
+			     "GetLastError=%i", GetLastError());
 		}
 		result.updateAndDraw = reinterpret_cast<fnSig_gameUpdateAndDraw*>(
 			GetProcAddress(result.hLib, "gameUpdateAndDraw"));
 		if(!result.updateAndDraw)
 		{
-			KLOG_ERROR("Failed to get proc address 'gameUpdateAndDraw'! "
-			           "GetLastError=%i", GetLastError());
+			KLOG(ERROR, "Failed to get proc address 'gameUpdateAndDraw'! "
+			     "GetLastError=%i", GetLastError());
 		}
 		result.isValid = (result.initialize && result.renderAudio && 
 		                  result.updateAndDraw);
 	}
 	if(!result.isValid)
 	{
-		KLOG_WARNING("Game code is invalid!");
+		KLOG(WARNING, "Game code is invalid!");
 		result.initialize    = gameInitializeStub;
 		result.onReloadCode  = gameOnReloadCodeStub;
 		result.renderAudio   = gameRenderAudioStub;
@@ -802,8 +802,8 @@ internal void w32UnloadGameCode(GameCode& gameCode)
 	{
 		if(!FreeLibrary(gameCode.hLib))
 		{
-			KLOG_ERROR("Failed to free game code dll! GetLastError=", 
-			           GetLastError());
+			KLOG(ERROR, "Failed to free game code dll! GetLastError=", 
+			     GetLastError());
 		}
 		gameCode.hLib = NULL;
 	}
@@ -822,8 +822,8 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 	}
 	else
 	{
-		KLOG_ERROR("Failed to get window dimensions! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to get window dimensions! GetLastError=%i", 
+		     GetLastError());
 		return W32Dimension2d{.width=0, .height=0};
 	}
 }
@@ -833,8 +833,8 @@ internal void w32ProcessKeyEvent(MSG& msg, GameKeyboard& gameKeyboard)
 	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 	const WPARAM vKeyCode = msg.wParam;
 #if SLOW_BUILD
-	KLOG_INFO("vKeyCode=%i,0x%x", static_cast<int>(vKeyCode), 
-	          static_cast<int>(vKeyCode));
+	KLOG(INFO, "vKeyCode=%i,0x%x", static_cast<int>(vKeyCode), 
+	     static_cast<int>(vKeyCode));
 #endif
 	const bool keyDown     = (msg.lParam & (1<<31)) == 0;
 	const bool keyDownPrev = (msg.lParam & (1<<30)) != 0;
@@ -954,7 +954,7 @@ internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 	monitorInfo.cbSize = sizeof(MONITORINFOEXA);
 	if(!GetMonitorInfoA(nearestMonitor, &monitorInfo))
 	{
-		KLOG_ERROR("Failed to get monitor info!");
+		KLOG(ERROR, "Failed to get monitor info!");
 		return DEFAULT_RESULT;
 	}
 	DEVMODEA monitorDevMode;
@@ -963,13 +963,13 @@ internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 	if(!EnumDisplaySettingsA(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, 
 	                         &monitorDevMode))
 	{
-		KLOG_ERROR("Failed to enum display settings!");
+		KLOG(ERROR, "Failed to enum display settings!");
 		return DEFAULT_RESULT;
 	}
 	if(monitorDevMode.dmDisplayFrequency < 2)
 	{
-		KLOG_WARNING("Unknown hardware-defined refresh rate! "
-		             "Defaulting to %ihz...", DEFAULT_RESULT);
+		KLOG(WARNING, "Unknown hardware-defined refresh rate! "
+		     "Defaulting to %ihz...", DEFAULT_RESULT);
 		return DEFAULT_RESULT;
 	}
 	return monitorDevMode.dmDisplayFrequency;
@@ -994,23 +994,23 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 		} break;
 		case WM_SIZE:
 		{
-			KLOG_INFO("WM_SIZE");
+			KLOG(INFO, "WM_SIZE");
 		} break;
 		case WM_DESTROY:
 		{
 			///TODO: handle this error: recreate window?
 			g_running = false;
-			KLOG_INFO("WM_DESTROY");
+			KLOG(INFO, "WM_DESTROY");
 		} break;
 		case WM_CLOSE:
 		{
 			///TODO: ask user first before destroying
 			g_running = false;
-			KLOG_INFO("WM_CLOSE");
+			KLOG(INFO, "WM_CLOSE");
 		} break;
 		case WM_ACTIVATEAPP:
 		{
-			KLOG_INFO("WM_ACTIVATEAPP");
+			KLOG(INFO, "WM_ACTIVATEAPP");
 		} break;
 #if 0
 		case WM_PAINT:
@@ -1042,8 +1042,8 @@ internal LARGE_INTEGER w32QueryPerformanceCounter()
 	LARGE_INTEGER result;
 	if(!QueryPerformanceCounter(&result))
 	{
-		KLOG_ERROR("Failed to query performance counter! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to query performance counter! GetLastError=%i", 
+		     GetLastError());
 	}
 	return result;
 }
@@ -1212,7 +1212,7 @@ internal LONG WINAPI w32VectoredExceptionHandler(
 	{
 		DebugBreak();
 	}
-	// I don't use the KLOG_ERROR macro here because `strrchr` from the 
+	// I don't use the KLOG macro here because `strrchr` from the 
 	//	__FILENAME__ macro seems to just break everything :(
 	platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
 	            "Vectored Exception! 0x%x", 
@@ -1231,8 +1231,8 @@ internal LONG WINAPI w32TopLevelExceptionHandler(
 	fprintf_s(stderr, "Exception! 0x%x\n", 
 	          pExceptionInfo->ExceptionRecord->ExceptionCode);
 	fflush(stderr);
-	//KLOG_ERROR("Exception! 0x%x", 
-	//           pExceptionInfo->ExceptionRecord->ExceptionCode);
+	//KLOG(ERROR, "Exception! 0x%x", 
+	//     pExceptionInfo->ExceptionRecord->ExceptionCode);
 	w32WriteLogToFile();
     return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -1255,31 +1255,31 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		ULONG stackSizeInBytes = DESIRED_RESERVED_STACK_BYTES;
 		if(SetThreadStackGuarantee(&stackSizeInBytes))
 		{
-			KLOG_INFO("Previous reserved stack=%ld, new reserved stack=%ld", 
-			          stackSizeInBytes, DESIRED_RESERVED_STACK_BYTES);
+			KLOG(INFO, "Previous reserved stack=%ld, new reserved stack=%ld", 
+			     stackSizeInBytes, DESIRED_RESERVED_STACK_BYTES);
 		}
 		else
 		{
-			KLOG_WARNING("Failed to set & retrieve reserved stack size!  "
-			             "The system probably won't be able to log stack "
-			             "overflow exceptions.");
+			KLOG(WARNING, "Failed to set & retrieve reserved stack size!  "
+			     "The system probably won't be able to log stack "
+			     "overflow exceptions.");
 		}
 	}
 #if 0
 	if(SetUnhandledExceptionFilter(w32TopLevelExceptionHandler))
 	{
-		KLOG_INFO("Replaced top level exception filter!");
+		KLOG(INFO, "Replaced top level exception filter!");
 	}
 	else
 	{
-		KLOG_INFO("Set new top level exception filter!");
+		KLOG(INFO, "Set new top level exception filter!");
 	}
 #endif
 	if(!AddVectoredExceptionHandler(1, w32VectoredExceptionHandler))
 	{
-		KLOG_WARNING("Failed to add vectored exception handler!");
+		KLOG(WARNING, "Failed to add vectored exception handler!");
 	}
-	KLOG_INFO("START!");
+	KLOG(INFO, "START!");
 	// Obtain and save a global copy of the app data folder path //
 	//	Source: https://stackoverflow.com/a/2899042
 	{
@@ -1290,17 +1290,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				                SHGFP_TYPE_CURRENT, szPath);
 			if(result != S_OK)
 			{
-				KLOG_ERROR("Failed to get APPDATA path! result=%ld", result);
+				KLOG(ERROR, "Failed to get APPDATA path! result=%ld", result);
 				return RETURN_CODE_FAILURE;
 			}
 		}
 		if(FAILED(StringCchPrintf(g_pathLocalAppData, MAX_PATH, TEXT("%s\\%s"), 
 		                          szPath, APPLICATION_NAME)))
 		{
-			KLOG_ERROR("Failed to build application APPDATA path!");
+			KLOG(ERROR, "Failed to build application APPDATA path!");
 			return RETURN_CODE_FAILURE;
 		}
-		KLOG_INFO("g_pathLocalAppData='%s'", g_pathLocalAppData);
+		KLOG(INFO, "g_pathLocalAppData='%s'", g_pathLocalAppData);
 		if(!CreateDirectory(g_pathLocalAppData, NULL))
 		{
 			const int errorCode = GetLastError();
@@ -1308,14 +1308,14 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			{
 				case ERROR_ALREADY_EXISTS:
 				{
-					KLOG_INFO("Application APPDATA path '%s' already exists.", 
-					          g_pathLocalAppData);
+					KLOG(INFO, "Application APPDATA path '%s' already exists.", 
+					     g_pathLocalAppData);
 				} break;
 				default:
 				{
-					KLOG_ERROR("Failed to create APPDATA path '%s'! "
-					           "GetLastError=%i", 
-					           g_pathLocalAppData, errorCode);
+					KLOG(ERROR, "Failed to create APPDATA path '%s'! "
+					     "GetLastError=%i", 
+					     g_pathLocalAppData, errorCode);
 					return RETURN_CODE_FAILURE;
 				} break;
 			}
@@ -1326,17 +1326,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		TCHAR szPath[MAX_PATH];
 		if(!GetTempPath(MAX_PATH, szPath))
 		{
-			KLOG_ERROR("Failed to get OS temp path! GetLastError=%i", 
-			           GetLastError());
+			KLOG(ERROR, "Failed to get OS temp path! GetLastError=%i", 
+			     GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 		if(FAILED(StringCchPrintf(g_pathTemp, MAX_PATH, TEXT("%s%s"), szPath, 
 		                          APPLICATION_NAME)))
 		{
-			KLOG_ERROR("Failed to build application temp path!");
+			KLOG(ERROR, "Failed to build application temp path!");
 			return RETURN_CODE_FAILURE;
 		}
-		KLOG_INFO("g_pathTemp='%s'", g_pathTemp);
+		KLOG(INFO, "g_pathTemp='%s'", g_pathTemp);
 		if(!CreateDirectory(g_pathTemp, NULL))
 		{
 			const int errorCode = GetLastError();
@@ -1344,13 +1344,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			{
 				case ERROR_ALREADY_EXISTS:
 				{
-					KLOG_INFO("Application temp path '%s' already exists.", 
-					          g_pathTemp);
+					KLOG(INFO, "Application temp path '%s' already exists.", 
+					     g_pathTemp);
 				} break;
 				default:
 				{
-					KLOG_ERROR("Failed to create app temp path '%s'! "
-					           "GetLastError=%i", g_pathTemp, errorCode);
+					KLOG(ERROR, "Failed to create app temp path '%s'! "
+					     "GetLastError=%i", g_pathTemp, errorCode);
 					return RETURN_CODE_FAILURE;
 				} break;
 			}
@@ -1361,8 +1361,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		if(!GetModuleFileNameA(NULL, g_pathToExe, MAX_PATH))
 		{
-			KLOG_ERROR("Failed to get exe file path+name! GetLastError=%i", 
-			           GetLastError());
+			KLOG(ERROR, "Failed to get exe file path+name! GetLastError=%i", 
+			     GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 		char* lastBackslash = g_pathToExe;
@@ -1384,18 +1384,18 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		                          TEXT("%s\\%s.dll"), g_pathToExe, 
 		                          FILE_NAME_GAME_DLL)))
 		{
-			KLOG_ERROR("Failed to build fullPathToGameDll!  "
-			           "g_pathToExe='%s' FILE_NAME_GAME_DLL='%s'", 
-			           g_pathToExe, FILE_NAME_GAME_DLL);
+			KLOG(ERROR, "Failed to build fullPathToGameDll!  "
+			     "g_pathToExe='%s' FILE_NAME_GAME_DLL='%s'", 
+			     g_pathToExe, FILE_NAME_GAME_DLL);
 			return RETURN_CODE_FAILURE;
 		}
 		if(FAILED(StringCchPrintf(fullPathToGameDllTemp, MAX_PATH, 
 		                          TEXT("%s\\%s_temp.dll"), g_pathTemp, 
 		                          FILE_NAME_GAME_DLL)))
 		{
-			KLOG_ERROR("Failed to build fullPathToGameDllTemp!  "
-			           "g_pathTemp='%s' FILE_NAME_GAME_DLL='%s'", 
-			           g_pathTemp, FILE_NAME_GAME_DLL);
+			KLOG(ERROR, "Failed to build fullPathToGameDllTemp!  "
+			     "g_pathTemp='%s' FILE_NAME_GAME_DLL='%s'", 
+			     g_pathTemp, FILE_NAME_GAME_DLL);
 			return RETURN_CODE_FAILURE;
 		}
 	}
@@ -1407,9 +1407,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		                                         PAGE_READWRITE);
 		if(!stbImageMemory)
 		{
-			KLOG_ERROR("Failed to VirtualAlloc %i bytes for STB_IMAGE! "
-			           "GetLastError=%i", 
-			           STB_IMAGE_MEMORY_BYTES, GetLastError());
+			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for STB_IMAGE! "
+			     "GetLastError=%i", 
+			     STB_IMAGE_MEMORY_BYTES, GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 		g_genAllocStbImage = kgaInit(stbImageMemory, STB_IMAGE_MEMORY_BYTES);
@@ -1422,9 +1422,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		                                      PAGE_READWRITE);
 		if(!imguiMemory)
 		{
-			KLOG_ERROR("Failed to VirtualAlloc %i bytes for ImGui! "
-			           "GetLastError=%i", 
-			           IMGUI_MEMORY_BYTES, GetLastError());
+			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for ImGui! "
+			     "GetLastError=%i", 
+			     IMGUI_MEMORY_BYTES, GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 		g_genAllocImgui = kgaInit(imguiMemory, IMGUI_MEMORY_BYTES);
@@ -1434,8 +1434,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	kassert(game.isValid);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
-		KLOG_ERROR("Failed to query for performance frequency! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to query for performance frequency! GetLastError=%i", 
+		     GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 	w32LoadXInput();
@@ -1455,8 +1455,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)
 	{
-		KLOG_ERROR("Failed to register WNDCLASS! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to register WNDCLASS! GetLastError=%i", 
+		     GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 	const HWND mainWindow = CreateWindowExA(
@@ -1469,7 +1469,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		NULL, NULL, hInstance, NULL );
 	if(!mainWindow)
 	{
-		KLOG_ERROR("Failed to create window! GetLastError=%i", GetLastError());
+		KLOG(ERROR, "Failed to create window! GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 	w32KrbOglInitialize(mainWindow);
@@ -1504,8 +1504,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                                          PAGE_READWRITE);
 	if(!gameSoundMemory)
 	{
-		KLOG_ERROR("Failed to VirtualAlloc %i bytes for sound memory! "
-		           "GetLastError=%i", SOUND_BUFFER_BYTES, GetLastError());
+		KLOG(ERROR, "Failed to VirtualAlloc %i bytes for sound memory! "
+		     "GetLastError=%i", SOUND_BUFFER_BYTES, GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 	// Initialize ImGui~~~ //
@@ -1515,12 +1515,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		ImGui::CreateContext();
 		if(!ImGui_ImplOpenGL2_Init())
 		{
-			KLOG_ERROR("ImGui_ImplOpenGL2_Init failure!");
+			KLOG(ERROR, "ImGui_ImplOpenGL2_Init failure!");
 			return RETURN_CODE_FAILURE;
 		}
 		if(!ImGui_ImplWin32_Init(mainWindow))
 		{
-			KLOG_ERROR("ImGui_ImplWin32_Init failure!");
+			KLOG(ERROR, "ImGui_ImplWin32_Init failure!");
 			return RETURN_CODE_FAILURE;
 		}
 	}
@@ -1540,8 +1540,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                                          PAGE_READWRITE);
 	if(!gameMemory.permanentMemory)
 	{
-		KLOG_ERROR("Failed to VirtualAlloc %i bytes for game memory! "
-		           "GetLastError=%i", totalGameMemoryBytes, GetLastError());
+		KLOG(ERROR, "Failed to VirtualAlloc %i bytes for game memory! "
+		     "GetLastError=%i", totalGameMemoryBytes, GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 	gameMemory.transientMemory = 
@@ -1576,7 +1576,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	const HDC hdc = GetDC(mainWindow);
 	if(!hdc)
 	{
-		KLOG_ERROR("Failed to get main window device context!");
+		KLOG(ERROR, "Failed to get main window device context!");
 		return RETURN_CODE_FAILURE;
 	}
 	local_persist const UINT DESIRED_OS_TIMER_GRANULARITY_MS = 1;
@@ -1593,8 +1593,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 		else
 		{
-			KLOG_WARNING("System doesn't support custom scheduler granularity. "
-			             "Main thread will not be put to sleep!");
+			KLOG(WARNING, "System doesn't support custom scheduler granularity."
+			     " Main thread will not be put to sleep!");
 		}
 	}
 	// set scheduler granularity using timeBeginPeriod //
@@ -1602,15 +1602,15 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		timeBeginPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) == TIMERR_NOERROR;
 	if(!sleepIsGranular)
 	{
-		KLOG_WARNING("System supports custom scheduler granularity, but "
-		             "setting this value has failed! Main thread will not be "
-		             "put to sleep!");
+		KLOG(WARNING, "System supports custom scheduler granularity, but "
+		     "setting this value has failed! Main thread will not be "
+		     "put to sleep!");
 	}
 	defer({
 		if (sleepIsGranular && 
 			timeEndPeriod(DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
 		{
-			KLOG_ERROR("Failed to timeEndPeriod!");
+			KLOG(ERROR, "Failed to timeEndPeriod!");
 		}
 	});
 	// Set the process to a higher priority to minimize the chance of another 
@@ -1620,8 +1620,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		const HANDLE hProcess = GetCurrentProcess();
 		if(!SetPriorityClass(hProcess, HIGH_PRIORITY_CLASS))
 		{
-			KLOG_ERROR("Failed to set the process priority class to "
-			           "HIGH_PRIORITY_CLASS! GetLastError=%i", GetLastError());
+			KLOG(ERROR, "Failed to set the process priority class to "
+			     "HIGH_PRIORITY_CLASS! GetLastError=%i", GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 	}
@@ -1648,7 +1648,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					                       fullPathToGameDllTemp);
 					if(game.isValid)
 					{
-						KLOG_INFO("Game code hot-reload complete!");
+						KLOG(INFO, "Game code hot-reload complete!");
 						game.onReloadCode(gameMemory);
 					}
 				}
@@ -1666,8 +1666,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					case WM_CHAR:
 					{
 #if SLOW_BUILD
-						KLOG_INFO("character code=%i", 
-						          static_cast<int>(windowMessage.wParam));
+						KLOG(INFO, "character code=%i", 
+						     static_cast<int>(windowMessage.wParam));
 #endif
 					} break;
 #endif
@@ -1741,8 +1741,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 			if(!SwapBuffers(hdc))
 			{
-				KLOG_ERROR("Failed to SwapBuffers! GetLastError=%i", 
-				           GetLastError());
+				KLOG(ERROR, "Failed to SwapBuffers! GetLastError=%i", 
+				     GetLastError());
 			}
 			// enforce targetSecondsElapsedPerFrame //
 			///TODO: we still have to Sleep/wait when VSync is on if SwapBuffers
@@ -1792,8 +1792,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #endif
 #if SLOW_BUILD
 				// send performance measurement to debugger as a string //
-				KLOG_INFO("%.2f ms/f | %.2f Mc/f", 
-				          elapsedSeconds*1000, clockCycleDiff/1000000.f);
+				KLOG(INFO, "%.2f ms/f | %.2f Mc/f", 
+				     elapsedSeconds*1000, clockCycleDiff/1000000.f);
 #endif
 				perfCountPrev   = perfCount;
 				clockCyclesPrev = clockCycles;
@@ -1801,7 +1801,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 	}
 	kassert(kgaUsedBytes(g_genAllocStbImage) == 0);
-	KLOG_INFO("END! :)");
+	KLOG(INFO, "END! :)");
 	return RETURN_CODE_SUCCESS;
 }
 #include "win32-dsound.cpp"

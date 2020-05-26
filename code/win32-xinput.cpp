@@ -13,20 +13,20 @@ internal void w32LoadXInput()
 	HMODULE LibXInput = LoadLibraryA("xinput1_4.dll");
 	if(!LibXInput)
 	{
-		KLOG_WARNING("Failed to load xinput1_4.dll! GetLastError=i", 
-		             GetLastError());
+		KLOG(WARNING, "Failed to load xinput1_4.dll! GetLastError=i", 
+		     GetLastError());
 		LibXInput = LoadLibraryA("xinput9_1_0.dll");
 	}
 	if(!LibXInput)
 	{
-		KLOG_WARNING("Failed to load xinput9_1_0.dll! GetLastError=i", 
-		             GetLastError());
+		KLOG(WARNING, "Failed to load xinput9_1_0.dll! GetLastError=i", 
+		     GetLastError());
 		LibXInput = LoadLibraryA("xinput1_3.dll");
 	}
 	if(!LibXInput)
 	{
-		KLOG_WARNING("Failed to load xinput1_3.dll! GetLastError=i", 
-		             GetLastError());
+		KLOG(WARNING, "Failed to load xinput1_3.dll! GetLastError=i", 
+		     GetLastError());
 	}
 	if(LibXInput)
 	{
@@ -35,21 +35,21 @@ internal void w32LoadXInput()
 		if(!XInputGetState)
 		{
 			XInputGetState_ = XInputGetStateStub;
-			KLOG_WARNING("Failed to get XInputGetState! GetLastError=i", 
-			             GetLastError());
+			KLOG(WARNING, "Failed to get XInputGetState! GetLastError=i", 
+			     GetLastError());
 		}
 		XInputSetState = 
 			(fnSig_XInputSetState*)GetProcAddress(LibXInput, "XInputSetState");
 		if(!XInputSetState)
 		{
 			XInputSetState_ = XInputSetStateStub;
-			KLOG_WARNING("Failed to get XInputSetState! GetLastError=i", 
-			             GetLastError());
+			KLOG(WARNING, "Failed to get XInputSetState! GetLastError=i", 
+			     GetLastError());
 		}
 	}
 	else
 	{
-		KLOG_ERROR("Failed to load XInput!");
+		KLOG(ERROR, "Failed to load XInput!");
 	}
 }
 internal void w32ProcessXInputStick(SHORT xiThumbX, SHORT xiThumbY,

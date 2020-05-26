@@ -12,16 +12,16 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 	const HMODULE LibDSound = LoadLibraryA("dsound.dll");
 	if(!LibDSound)
 	{
-		KLOG_ERROR("Failed to load dsound.dll! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to load dsound.dll! GetLastError=%i", 
+		     GetLastError());
 		return;
 	}
 	fnSig_DirectSoundCreate*const DirectSoundCreate = (fnSig_DirectSoundCreate*)	
 		GetProcAddress(LibDSound, "DirectSoundCreate");
 	if(!DirectSoundCreate)
 	{
-		KLOG_ERROR("Failed to get 'DirectSoundCreate'! GetLastError=%i", 
-		           GetLastError());
+		KLOG(ERROR, "Failed to get 'DirectSoundCreate'! GetLastError=%i", 
+		     GetLastError());
 		return;
 	}
 	LPDIRECTSOUND dSound;
@@ -29,7 +29,7 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		const HRESULT result = DirectSoundCreate(0, &dSound, NULL);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to create direct sound! result=%li", result);
+			KLOG(ERROR, "Failed to create direct sound! result=%li", result);
 			return;
 		}
 	}
@@ -38,8 +38,8 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 			dSound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to set dsound cooperative level! result=%li", 
-			           result);
+			KLOG(ERROR, "Failed to set dsound cooperative level! result=%li", 
+			     result);
 			return;
 		}
 	}
@@ -54,7 +54,7 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 			                          &dsBufferPrimary, NULL);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to create sound buffer! result=%li", result);
+			KLOG(ERROR, "Failed to create sound buffer! result=%li", result);
 			return;
 		}
 	}
@@ -72,8 +72,8 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		const HRESULT result = dsBufferPrimary->SetFormat(&waveFormat);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to set primary buffer format! result=%li", 
-			           result);
+			KLOG(ERROR, "Failed to set primary buffer format! result=%li", 
+			     result);
 			return;
 		}
 	}
@@ -89,7 +89,7 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		                              &g_dsBufferSecondary, NULL);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to create sound buffer! result=%li", result);
+			KLOG(ERROR, "Failed to create sound buffer! result=%li", result);
 			return;
 		}
 	}
@@ -99,7 +99,7 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		const HRESULT result = g_dsBufferSecondary->Play(0, 0, DSBPLAY_LOOPING);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to play! result=%li", result);
+			KLOG(ERROR, "Failed to play! result=%li", result);
 			return;
 		}
 	}
@@ -113,7 +113,7 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 			g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, &cursorWrite);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to get current position! result=%li", result);
+			KLOG(ERROR, "Failed to get current position! result=%li", result);
 			return;
 		}
 		o_runningSoundSample = cursorWrite/(sizeof(i16)*numChannels) + 
@@ -138,7 +138,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, &cursorWrite);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to get current position! result=%li", result);
+			KLOG(ERROR, "Failed to get current position! result=%li", result);
 			return;
 		}
 	}
@@ -196,15 +196,15 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	}
 	if(skippedSamples > 0)
 	{
-		KLOG_WARNING("Audio buffer under-run (failed to keep up w/ dsound?)! "
-		             "Skipped %i samples...", skippedSamples);
+		KLOG(WARNING, "Audio buffer under-run (failed to keep up w/ dsound?)! "
+		     "Skipped %i samples...", skippedSamples);
 	}
 #endif
 	const u32 runningSoundByte = io_runningSoundSample*bytesPerSample;
 	const DWORD byteToLock = runningSoundByte % soundBufferBytes;
 	if(byteToLock == cursorPlay)
 	{
-		KLOG_WARNING("byteToLock == cursorPlay!!!");
+		KLOG(WARNING, "byteToLock == cursorPlay == %i!!!", byteToLock);
 	}
 	// x == the region we want to fill in with new sound samples
 	const DWORD lockedBytes = (byteToLock < cursorPlay)
@@ -269,8 +269,8 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 		: 0;
 	if(maxLockedBytes <= 0)
 	{
-		KLOG_WARNING("maxBytesAheadOfWrite==%i <= bytesAheadOfWrite==%i",
-		             maxBytesAheadOfWrite, bytesAheadOfWrite);
+		KLOG(WARNING, "maxBytesAheadOfWrite==%i <= bytesAheadOfWrite==%i",
+		     maxBytesAheadOfWrite, bytesAheadOfWrite);
 		return;
 	}
 	// At this point, we know how many bytes need to be filled into the sound
@@ -334,8 +334,8 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 					strErrorCode = "UNKNOWN_ERROR";
 				} break;
 			}
-			KLOG_ERROR("Failed to lock buffer! result=0x%lX(%s)", 
-			           result, strErrorCode);
+			KLOG(ERROR, "Failed to lock buffer! result=0x%lX(%s)", 
+			     result, strErrorCode);
 			return;
 		}
 	}
@@ -366,7 +366,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			                            lockRegion2, lockRegion2Size);
 		if(result != DS_OK)
 		{
-			KLOG_ERROR("Failed to unlock buffer! result=%li", result);
+			KLOG(ERROR, "Failed to unlock buffer! result=%li", result);
 			return;
 		}
 	}

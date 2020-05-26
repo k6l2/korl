@@ -17,7 +17,7 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 	} while (errorCode != GL_NO_ERROR);
 	if(errorCode != GL_NO_ERROR)
 	{
-		KLOG_ERROR("[%s|%i] OpenGL ERROR=%i", file, line, errorCode);
+		KLOG(ERROR, "[%s|%i] OpenGL ERROR=%i", file, line, errorCode);
 	}
 	return errorCode;
 }

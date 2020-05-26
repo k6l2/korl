@@ -94,7 +94,7 @@ internal void kamFreeAsset(KAssetManager* assetManager,
 		case KAssetType::UNUSED: 
 		default:
 		{
-			KLOG_ERROR("Attempted to free an unused asset handle!");
+			KLOG(ERROR, "Attempted to free an unused asset handle!");
 			return;
 		} break;
 	}
@@ -112,8 +112,8 @@ internal bool kamIsRawSound(KAssetManager* assetManager, KAssetHandle kah)
 		KAsset*const assets = reinterpret_cast<KAsset*>(assetManager + 1);
 		return assets[kah].type == KAssetType::RAW_SOUND;
 	}
-	KLOG_ERROR("Attempted to access asset handle outside the range [0,%i)!",
-	           assetManager->maxAssetHandles);
+	KLOG(ERROR, "Attempted to access asset handle outside the range [0,%i)!",
+	     assetManager->maxAssetHandles);
 	return false;
 }
 internal RawSound kamGetRawSound(KAssetManager* assetManager,
