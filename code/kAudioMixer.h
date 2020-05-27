@@ -7,7 +7,8 @@ struct KAudioMixer;
 using KTapeHandle = u64;
 internal KAudioMixer* kauConstruct(KgaHandle allocator, u16 audioTrackCount, 
                                    KAssetManager* assetManager);
-internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer);
+internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer, 
+                     u32 sampleBlocksConsumed);
 internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer, 
                                   KAssetHandle kahSound);
 internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 

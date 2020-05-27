@@ -53,7 +53,7 @@ GAME_INITIALIZE(gameInitialize)
 		kamAddOgg(g_gameState->assetManager, memory.platformLoadOgg, 
 		          "assets/joesteroids-battle-theme-modified.ogg");
 	// Initialize the game's audio mixer //
-	g_gameState->kAudioMixer = kauConstruct(g_gameState->kgaHPermanent, 32, 
+	g_gameState->kAudioMixer = kauConstruct(g_gameState->kgaHPermanent, 16, 
 	                                        g_gameState->assetManager);
 	KTapeHandle tapeBgmBattleTheme = 
 		kauPlaySound(g_gameState->kAudioMixer, g_gameState->kahBgmBattleTheme);
@@ -61,7 +61,7 @@ GAME_INITIALIZE(gameInitialize)
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kauMix(g_gameState->kAudioMixer, audioBuffer);
+	kauMix(g_gameState->kAudioMixer, audioBuffer, sampleBlocksConsumed);
 }
 void poop()
 {
@@ -114,7 +114,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				kauPlaySound(g_gameState->kAudioMixer,
 				             g_gameState->kahSfxHit);
 			}
-			if(gamePadArray[c].buttons.shoulderRight == ButtonState::PRESSED)
+			if(gamePadArray[c].buttons.shoulderRight >= ButtonState::PRESSED)
 			{
 				if(gamePadArray[c].buttons.faceLeft >= ButtonState::PRESSED)
 				{

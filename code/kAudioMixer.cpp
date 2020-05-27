@@ -49,21 +49,47 @@ internal KAudioMixer* kauConstruct(KgaHandle allocator, u16 audioTrackCount,
 	}
 	return result;
 }
-internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer)
+internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
+                     u32 sampleBlocksConsumed)
 {
 	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
 	u16 tracksActive = 0;
+	// Examine all the tape tracks of the audio mixer.  
+	//	Determine if there are any tapes currently playing.
+	//	Determine how much of the tape has been consumed by the platform's audio 
+	//	layer, and consequently if the track has run out of tape.
 	for(u16 t = 0; t < audioMixer->trackCount; t++)
 	{
+		if(tracks[t].soundAssetHandle == INVALID_KASSET_HANDLE)
+		{
+			continue;
+		}
+		const RawSound tRawSound = 
+			kamGetRawSound(audioMixer->assetManager, 
+			               tracks[t].soundAssetHandle);
+		tracks[t].currentSampleBlock += sampleBlocksConsumed;
+		if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
+		{
+			if(tracks[t].repeat)
+			{
+				tracks[t].currentSampleBlock %= tRawSound.sampleBlockCount;
+			}
+			else
+			{
+				tracks[t].soundAssetHandle = INVALID_KASSET_HANDLE;
+			}
+		}
 		if(tracks[t].soundAssetHandle != INVALID_KASSET_HANDLE)
 		{
 			tracksActive++;
 		}
 	}
-	for(u32 s = 0; s < audioBuffer.lockedSampleCount; s++)
+	// Mix the audio from all the tape tracks into the platform's provided audio 
+	//	buffer //
+	for(u32 s = 0; s < audioBuffer.lockedSampleBlockCount; s++)
 	{
 		SoundSample*const sampleBlockStart = 
-			audioBuffer.memory + (s*audioBuffer.numSoundChannels);
+			audioBuffer.sampleBlocks + (s*audioBuffer.numSoundChannels);
 		for(u8 c = 0; c < audioBuffer.numSoundChannels; c++)
 		{
 			*(sampleBlockStart + c) = 0;
@@ -81,26 +107,26 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer)
 			const RawSound tRawSound = 
 				kamGetRawSound(audioMixer->assetManager, 
 				               tracks[t].soundAssetHandle);
+			u32 currTapeSampleBlock = s + tracks[t].currentSampleBlock;
+			if(currTapeSampleBlock >= tRawSound.sampleBlockCount)
+			{
+				if(tracks[t].repeat)
+				{
+					currTapeSampleBlock %= tRawSound.sampleBlockCount;
+				}
+				else
+				{
+					continue;
+				}
+			}
 			SoundSample*const rawSoundSampleBlockStart = tRawSound.sampleData + 
-				tRawSound.channelCount*tracks[t].currentSampleBlock;
+				tRawSound.channelCount*currTapeSampleBlock;
 			for(u8 c = 0; c < audioBuffer.numSoundChannels; c++)
 			{
 				const u8 rawSoundChannel = static_cast<u8>(
 					c % tRawSound.channelCount);
 				*(sampleBlockStart + c) += 
 					*(rawSoundSampleBlockStart + rawSoundChannel);
-			}
-			tracks[t].currentSampleBlock++;
-			if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
-			{
-				if(tracks[t].repeat)
-				{
-					tracks[t].currentSampleBlock = 0;
-				}
-				else
-				{
-					tracks[t].soundAssetHandle = INVALID_KASSET_HANDLE;
-				}
 			}
 		}
 	}

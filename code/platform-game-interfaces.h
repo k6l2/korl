@@ -113,11 +113,9 @@ struct GameMemory
 struct GameAudioBuffer
 {
 	// A sample block is a contiguous collection of all samples from all 
-	//	channels.  `memory` is stored in blocks.
-	///TODO: rename this to `sampleBlocks`
-	SoundSample* memory;
-	///TODO: rename this to `lockedSampleBlockCount`?
-	u32 lockedSampleCount;
+	//	channels for a single moment in time.
+	SoundSample* sampleBlocks;
+	u32 lockedSampleBlockCount;
 	u32 soundSampleHz;
 	u8 numSoundChannels;
 #if INTERNAL_BUILD
@@ -287,7 +285,8 @@ struct GamePad
  */
 #define GAME_ON_RELOAD_CODE(name) void name(GameMemory& memory)
 #define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
-                                          GameAudioBuffer& audioBuffer)
+                                          GameAudioBuffer& audioBuffer, \
+                                          u32 sampleBlocksConsumed)
 /** 
  * @return false if the platform should close the game application
  */

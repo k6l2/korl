@@ -6,8 +6,7 @@ global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
                                                 LPUNKNOWN pUnkOuter)
 typedef DSOUND_CREATE(fnSig_DirectSoundCreate);
 internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
-                            u8 numChannels, u32 soundLatencySamples, 
-                            u32& o_runningSoundSample)
+                            u8 numChannels, DWORD& o_cursorWritePrev)
 {
 	const HMODULE LibDSound = LoadLibraryA("dsound.dll");
 	if(!LibDSound)
@@ -116,19 +115,17 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 			KLOG(ERROR, "Failed to get current position! result=%li", result);
 			return;
 		}
-		o_runningSoundSample = cursorWrite/(sizeof(i16)*numChannels) + 
-			soundLatencySamples;
+		o_cursorWritePrev = cursorWrite;
 	}
 }
 internal void w32WriteDSoundAudio(u32 soundBufferBytes, 
                                   u32 soundSampleHz,
                                   u8 numSoundChannels,
-                                  u32 soundLatencySamples,
-                                  u32& io_runningSoundSample,
                                   VOID* gameSoundBufferMemory,
+                                  DWORD& io_cursorWritePrev,
                                   GameMemory& gameMemory, GameCode& game)
 {
-	const u32 bytesPerSample = sizeof(SoundSample)*numSoundChannels;
+	const u32 bytesPerSampleBlock = sizeof(SoundSample)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
 	//	shouldn't be touched since the sound card is probably reading from it.
 	DWORD cursorPlay;
@@ -142,6 +139,17 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			return;
 		}
 	}
+	// As soon as we obtain the audio cursors, we can calculate how much audio
+	//	data DirectSound has consumed, assuming nothing has lagged - which 
+	//	should always be a good assumption if I believe I can do my job well.  
+	//	Like most things in this function, there are several cases to handle 
+	//	because the audio cursors run along a circular buffer.
+	const u32 bytesConsumed = cursorWrite > io_cursorWritePrev
+		? cursorWrite - io_cursorWritePrev
+		: (cursorWrite < io_cursorWritePrev 
+			? (soundBufferBytes - io_cursorWritePrev) + cursorWrite
+			: 0);
+	io_cursorWritePrev = cursorWrite;
 	// Based on our current running sound sample index, we need to determine the
 	//	region of the buffer that needs to be locked and written to.
 	// There are two cases that need to be handled because the sound buffer is
@@ -149,59 +157,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 	// P == cursorPlay
 	// W == cursorWrite
 	// B == byteToLock
-#if 1
-	// If the byteToLock is inside the range [P, W), let's skip 
-	//	bytesToSamples(W-B) samples in our running sound sample count to avoid
-	//	that case entirely.  Two cases must be handled due to circular sound 
-	//	buffer shenanigans, as usual:
-	// x == the region whose size represents how far we want to fast-forward our
-	//	running sound sample variable to leave the volatile region
-	u32 skippedSamples = 0;
-	if(cursorPlay < cursorWrite)
-	{
-		const u32 runningSoundByte = 
-			io_runningSoundSample*bytesPerSample;
-		const DWORD byteToLock = runningSoundByte % soundBufferBytes;
-		// |---------------------------P----BxxW-------------------------------|
-		if(byteToLock >= cursorPlay && byteToLock < cursorWrite)
-		{
-			const u32 samplesToSkip = 
-				(cursorWrite - byteToLock)/bytesPerSample;
-			io_runningSoundSample += samplesToSkip;
-			skippedSamples        += samplesToSkip;
-		}
-	}
-	else
-	{
-		const u32 runningSoundByte = 
-			io_runningSoundSample*bytesPerSample;
-		const DWORD byteToLock = runningSoundByte % soundBufferBytes;
-		// |xxxxxxxxxW----------------------------------------------P----Bxxxxx|
-		if(byteToLock >= cursorPlay)
-		{
-			const u32 samplesToSkip = 
-				((cursorWrite - byteToLock) + (soundBufferBytes - byteToLock)) /
-				bytesPerSample;
-			io_runningSoundSample += samplesToSkip;
-			skippedSamples        += samplesToSkip;
-		}
-		// |---BxxxxxW----------------------------------------------P----------|
-		else if(byteToLock < cursorWrite)
-		{
-			const u32 samplesToSkip = 
-				(cursorWrite - byteToLock)/bytesPerSample;
-			io_runningSoundSample += samplesToSkip;
-			skippedSamples        += samplesToSkip;
-		}
-	}
-	if(skippedSamples > 0)
-	{
-		KLOG(WARNING, "Audio buffer under-run (failed to keep up w/ dsound?)! "
-		     "Skipped %i samples...", skippedSamples);
-	}
-#endif
-	const u32 runningSoundByte = io_runningSoundSample*bytesPerSample;
-	const DWORD byteToLock = runningSoundByte % soundBufferBytes;
+	const DWORD byteToLock = cursorWrite;
 	if(byteToLock == cursorPlay)
 	{
 		KLOG(WARNING, "byteToLock == cursorPlay == %i!!!", byteToLock);
@@ -211,101 +167,42 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 		// |------------Bxxxxxxxxxxxxx-P-------W-------------------------------|
 		// EDGE CASE: make sure that there is enough padding between B & P such
 		//	that we don't ever end up in a situation where B == P!!!
-		? (cursorPlay - byteToLock > bytesPerSample
-			? (cursorPlay - byteToLock) - bytesPerSample
+		? (cursorPlay - byteToLock > bytesPerSampleBlock
+			? (cursorPlay - byteToLock) - bytesPerSampleBlock
 			: 0)
 		// It should also be possible for B==W, but that should be okay I think!
 		// |xxxxxxxxxxxxxxxxxxxxxxxxxx-P-------WBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|
 		// EDGE CASE: make sure that there is enough padding between B & P such
 		//	that we don't ever end up in a situation where B == P!!!
 		// |P--------------------------------------------------------WBxxxxxxx-|
-		: ((soundBufferBytes - byteToLock) + cursorPlay > bytesPerSample
+		: ((soundBufferBytes - byteToLock) + cursorPlay > bytesPerSampleBlock
 			? (soundBufferBytes - byteToLock) + 
 				(cursorPlay > 0 
-					? cursorPlay - bytesPerSample 
-					: -static_cast<i32>(bytesPerSample))
+					? cursorPlay - bytesPerSampleBlock 
+					: -static_cast<i32>(bytesPerSampleBlock))
 			: 0);
-#if 0
-	// advance our total bytes sent to the audio device //
-	//	Need to handle two cases because the write cursor diff from the previous
-	//	frame might overlap with the circular buffer start/end.
-	//	P == io_cursorWritePrev
-	//	W == cursorWrite
-	//	x == the region we want to add to the total # of buffer bytes sent
-	if(cursorWrite > io_cursorWritePrev)
-	{
-		// |--------------PxxxxxxW---------------------------------------------|
-		io_bufferTotalBytesSent += cursorWrite - io_cursorWritePrev;
-	}
-	else
-	{
-		// |xxW-----------------------------------------------------------Pxxxx|
-		io_bufferTotalBytesSent += 
-			(soundBufferBytes - io_cursorWritePrev) + cursorWrite;
-	}
-	io_cursorWritePrev = cursorWrite;
-#endif
-	// The maximum amount of the buffer we should lock and subsequently write 
-	//	data to is NOT the entire section between W and P.  There is an area 
-	//	shown below as 'l' which is the data within the maximum latency samples
-	//	range which should be a strict subset of lockedBytes in most cases.  We
-	//	want to lock & write the MINIMUM of these two values.
-	// |xxxxxxxxxxxxx-P------WlllllBlllxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|
-	//	Because of the code that runs above this, we know that B is never going 
-	//	to be inside the range of [P, W)!
-	// bytes_ahead_of_write = 
-	//	B < W ? (bufferSize - W) + B
-	//	      : B - W
-	// maximum_bytes_ahead_of_write = soundLatencySamples*bytesPerSample
-	// maximum_lock_byte_count = min(lockable_bytes, 
-	//                               maximum_bytes_ahead_of_write - 
-	//                                       bytes_ahead_of_write)
-	const u32 bytesAheadOfWrite = byteToLock < cursorWrite
-		? (soundBufferBytes - cursorWrite) + byteToLock
-		: byteToLock - cursorWrite;
-	const u32 maxBytesAheadOfWrite = soundLatencySamples*bytesPerSample;
-	const DWORD maxLockedBytes = maxBytesAheadOfWrite > bytesAheadOfWrite
-		? min(lockedBytes, maxBytesAheadOfWrite - bytesAheadOfWrite)
-		: 0;
-	if(maxLockedBytes <= 0)
-	{
-		KLOG(WARNING, "maxBytesAheadOfWrite==%i <= bytesAheadOfWrite==%i",
-		     maxBytesAheadOfWrite, bytesAheadOfWrite);
-		return;
-	}
 	// At this point, we know how many bytes need to be filled into the sound
 	//	buffer, so now we can request this data from the game code via a 
 	//	temporary buffer whose contents will be dumped into the DSound buffer.
 	{
+		SoundSample*const sampleBlocks = 
+			reinterpret_cast<SoundSample*>(gameSoundBufferMemory);
 		GameAudioBuffer gameAudioBuffer = {
-			.memory     = reinterpret_cast<SoundSample*>(gameSoundBufferMemory),
-			.lockedSampleCount = maxLockedBytes / bytesPerSample,
-			.soundSampleHz     = soundSampleHz,
-			.numSoundChannels  = numSoundChannels
+			.sampleBlocks           = sampleBlocks,
+			.lockedSampleBlockCount = lockedBytes / bytesPerSampleBlock,
+			.soundSampleHz          = soundSampleHz,
+			.numSoundChannels       = numSoundChannels
 		};
-		game.renderAudio(gameMemory, gameAudioBuffer);
+		game.renderAudio(gameMemory, gameAudioBuffer, 
+		                 bytesConsumed / bytesPerSampleBlock);
 	}
-	// Because audio buffer is circular, we have to handle two cases.  In one 
-	//	case, the volatile region is contiguous inside the buffer.  In the other
-	//	case, the volatile region is occupying the beginning & and of the 
-	//	circular buffer.
-	// case 0: cursorPlay  < cursorWrite
-	//	we can lock (soundBufferBytes - cursorWrite) + cursorPlay
-	// case 1: cursorWrite < cursorPlay
-	//	volatile play region wraps around the circular buffer;
-	//	we can lock (cursorPlay - cursorWrite)
-#if 0
-	const DWORD lockedBytes = (cursorPlay < cursorWrite)
-		? ((soundBufferBytes - cursorWrite) + cursorPlay)
-		: (cursorPlay - cursorWrite);
-#endif
 	VOID* lockRegion1;
 	DWORD lockRegion1Size;
 	VOID* lockRegion2;
 	DWORD lockRegion2Size;
 	{
 		const HRESULT result = 
-			g_dsBufferSecondary->Lock(byteToLock, maxLockedBytes,
+			g_dsBufferSecondary->Lock(byteToLock, lockedBytes,
 			                          &lockRegion1, &lockRegion1Size,
 			                          &lockRegion2, &lockRegion2Size, 0);
 		if(result != DS_OK)
@@ -339,18 +236,17 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			return;
 		}
 	}
-	const u32 lockedSampleCount = 
-		(lockRegion1Size + lockRegion2Size) / bytesPerSample;
-	const u32 lockRegion1Samples = lockRegion1Size/bytesPerSample;
-	const u32 lockRegion2Samples = lockRegion2Size/bytesPerSample;
+	const u32 lockedSampleBlockCount = 
+		(lockRegion1Size + lockRegion2Size) / bytesPerSampleBlock;
+	const u32 lockRegion1SampleBlocks = lockRegion1Size/bytesPerSampleBlock;
 	// Fill the locked DSound buffer regions with the sound we should have 
 	//	rendered from the game code.
-	for(u32 s = 0; s < lockedSampleCount; s++)
+	for(u32 s = 0; s < lockedSampleBlockCount; s++)
 	{
-		SoundSample* sample = (s < lockRegion1Samples)
+		SoundSample* sample = (s < lockRegion1SampleBlocks)
 			? reinterpret_cast<SoundSample*>(lockRegion1) + (s*numSoundChannels)
 			: reinterpret_cast<SoundSample*>(lockRegion2) + 
-				((s - lockRegion1Samples) * numSoundChannels);
+				((s - lockRegion1SampleBlocks) * numSoundChannels);
 		SoundSample* gameSample = 
 			reinterpret_cast<SoundSample*>(gameSoundBufferMemory) +
 			(s*numSoundChannels);
@@ -359,7 +255,6 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			*sample++ = *gameSample++;
 		}
 	}
-	io_runningSoundSample += lockedSampleCount;
 	{
 		const HRESULT result =
 			g_dsBufferSecondary->Unlock(lockRegion1, lockRegion1Size,

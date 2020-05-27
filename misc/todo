@@ -97,16 +97,16 @@
 	implementation burdon of the game module
 [x] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
 [x] Audio mixer - play+repeat forever
-[ ] Audio platform - go back to locking the maximum amount of the audio buffer;
+[x] Audio platform - go back to locking the maximum amount of the audio buffer;
 	lock the entire range between [writeCursor, playCursor)
-	[ ] tell the audio mixer to fill as much of the buffer as possible with the 
+	[x] tell the audio mixer to fill as much of the buffer as possible with the 
 		current tracks
-	[ ] calculate the # of consumed audio samples since last frame
-	[ ] change the track invalidation condition such that audio tracks only 
+	[x] calculate the # of consumed audio samples since last frame
+	[x] change the track invalidation condition such that audio tracks only 
 		become invalid when the audio platform has CONSUMED all of their audio 
 		sample blocks (instead of becoming invalid as soon as all sample blocks 
 		have been written to the buffer)
-[ ] Audio platform - fix buffer under-run when the application first starts due 
+[x] Audio platform - fix buffer under-run when the application first starts due 
 	to lag, etc...
 [ ] KAssetManager - load png files
 [ ] KRB - draw textured quad
@@ -184,3 +184,4 @@
 [ ] Automatically delete older log files once enough accumulate.
 [ ] Platform Audio - clean up the sound buffer when the program ends so there is
 	no click artifact (if possible).
+[ ] Audio Mixer - optimize `kauMix`

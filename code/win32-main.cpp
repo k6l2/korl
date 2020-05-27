@@ -1582,9 +1582,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
 	local_persist const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
 	local_persist const u32 SOUND_BUFFER_BYTES = 
-		SOUND_SAMPLE_HZ * SOUND_BYTES_PER_SAMPLE;
-	local_persist const u32 SOUND_LATENCY_SAMPLES = SOUND_SAMPLE_HZ / 15;
-	u32 runningSoundSample = 0;
+		SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
+	DWORD cursorWritePrev;
 	VOID*const gameSoundMemory = VirtualAlloc(NULL, SOUND_BUFFER_BYTES, 
 	                                          MEM_RESERVE | MEM_COMMIT, 
 	                                          PAGE_READWRITE);
@@ -1659,7 +1658,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	game.onReloadCode(gameMemory);
 	game.initialize(gameMemory);
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
-	              SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, runningSoundSample);
+	              SOUND_CHANNELS, cursorWritePrev);
 	const HDC hdc = GetDC(mainWindow);
 	if(!hdc)
 	{
@@ -1807,9 +1806,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				g_running = false;
 			}
 			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
-			                    SOUND_CHANNELS, SOUND_LATENCY_SAMPLES, 
-			                    runningSoundSample, gameSoundMemory, 
-			                    gameMemory, game);
+			                    SOUND_CHANNELS, gameSoundMemory, 
+			                    cursorWritePrev, gameMemory, game);
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
 			{
