@@ -55,7 +55,9 @@ GAME_INITIALIZE(gameInitialize)
 	// Initialize the game's audio mixer //
 	g_gameState->kAudioMixer = kauConstruct(g_gameState->kgaHPermanent, 32, 
 	                                        g_gameState->assetManager);
-	kauPlaySound(g_gameState->kAudioMixer, g_gameState->kahBgmBattleTheme);
+	KTapeHandle tapeBgmBattleTheme = 
+		kauPlaySound(g_gameState->kAudioMixer, g_gameState->kahBgmBattleTheme);
+	kauSetRepeat(g_gameState->kAudioMixer, &tapeBgmBattleTheme, true);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {

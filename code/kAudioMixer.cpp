@@ -1,8 +1,11 @@
 #include "kAudioMixer.h"
 struct AudioTrack
 {
-	KAssetHandle soundAssetHandle;
+	KAssetHandle soundAssetHandle = INVALID_KASSET_HANDLE;
 	u32 currentSampleBlock;
+	u16 idSalt;
+	bool repeat;
+	u8 repeat_PADDING;
 };
 struct KAudioMixer
 {
@@ -11,6 +14,22 @@ struct KAudioMixer
 	u8 trackCount_PADDING[6];
 	//AudioTrack tracks[];
 };
+internal KTapeHandle kauHashTrack(KAudioMixer* audioMixer, u16 trackIndex)
+{
+	if(trackIndex == audioMixer->trackCount)
+	{
+		return trackIndex;
+	}
+	kassert(trackIndex < audioMixer->trackCount);
+	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
+	return (static_cast<u64>(tracks[trackIndex].soundAssetHandle) << 32) |
+		   (static_cast<u32>(tracks[trackIndex].idSalt) << 16) |
+		   trackIndex;
+}
+internal u16 kauSoundHandleTrackIndex(KTapeHandle soundHandle)
+{
+	return soundHandle & 0xFFFF;
+}
 internal KAudioMixer* kauConstruct(KgaHandle allocator, u16 audioTrackCount, 
                                    KAssetManager* assetManager)
 {
@@ -25,7 +44,7 @@ internal KAudioMixer* kauConstruct(KgaHandle allocator, u16 audioTrackCount,
 		AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(result + 1);
 		for(u16 t = 0; t < audioTrackCount; t++)
 		{
-			tracks[t].soundAssetHandle = INVALID_KASSET_HANDLE;
+			tracks[t] = {};
 		}
 	}
 	return result;
@@ -74,12 +93,20 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer)
 			tracks[t].currentSampleBlock++;
 			if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
 			{
-				tracks[t].soundAssetHandle = INVALID_KASSET_HANDLE;
+				if(tracks[t].repeat)
+				{
+					tracks[t].currentSampleBlock = 0;
+				}
+				else
+				{
+					tracks[t].soundAssetHandle = INVALID_KASSET_HANDLE;
+				}
 			}
 		}
 	}
 }
-internal void kauPlaySound(KAudioMixer* audioMixer, KAssetHandle kahSound)
+internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer, 
+                                  KAssetHandle kahSound)
 {
 	kassert(kamIsRawSound(audioMixer->assetManager, kahSound));
 	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
@@ -96,8 +123,33 @@ internal void kauPlaySound(KAudioMixer* audioMixer, KAssetHandle kahSound)
 	if(trackIndexFirstAvailable >= audioMixer->trackCount)
 	{
 		// all of the audio mixer's tracks are currently playing sounds //
+		return kauHashTrack(audioMixer, audioMixer->trackCount);
+	}
+	const u16 nextTapeSalt = static_cast<u16>( 
+		tracks[trackIndexFirstAvailable].idSalt + u16(1) );
+	tracks[trackIndexFirstAvailable] = {};
+	tracks[trackIndexFirstAvailable].soundAssetHandle = kahSound;
+	tracks[trackIndexFirstAvailable].idSalt           = nextTapeSalt;
+	return kauHashTrack(audioMixer, trackIndexFirstAvailable);
+}
+internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
+                           bool value)
+{
+	const u16 trackIndex = kauSoundHandleTrackIndex(*tapeHandle);
+	if(trackIndex >= audioMixer->trackCount)
+	// Silently ignore the request to modify the track if the handle is invalid
+	{
 		return;
 	}
-	tracks[trackIndexFirstAvailable].soundAssetHandle = kahSound;
-	tracks[trackIndexFirstAvailable].currentSampleBlock = 0;
+	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
+	const KTapeHandle currHandle = kauHashTrack(audioMixer, trackIndex);
+	if(*tapeHandle != currHandle)
+	// if the requested sound handle's identification doesn't match the current
+	//	sound handle at the same track index, then we should invalidate the 
+	//	caller's sound handle since the tape no longer exists in the mixer!
+	{
+		*tapeHandle = kauHashTrack(audioMixer, audioMixer->trackCount);
+		return;
+	}
+	tracks[trackIndex].repeat = value;
 }

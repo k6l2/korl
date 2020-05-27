@@ -96,7 +96,16 @@
 [x] Figure out a way to collapse the KLOG macros to relieve some of the 
 	implementation burdon of the game module
 [x] Audio Platform - decode OGG Vorbis files into RawSound using stb_vorbis
-[ ] Audio mixer - play+repeat forever
+[x] Audio mixer - play+repeat forever
+[ ] Audio platform - go back to locking the maximum amount of the audio buffer;
+	lock the entire range between [writeCursor, playCursor)
+	[ ] tell the audio mixer to fill as much of the buffer as possible with the 
+		current tracks
+	[ ] calculate the # of consumed audio samples since last frame
+	[ ] change the track invalidation condition such that audio tracks only 
+		become invalid when the audio platform has CONSUMED all of their audio 
+		sample blocks (instead of becoming invalid as soon as all sample blocks 
+		have been written to the buffer)
 [ ] Audio platform - fix buffer under-run when the application first starts due 
 	to lag, etc...
 [ ] KAssetManager - load png files
@@ -145,6 +154,8 @@
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
 [ ] display debug frame metrics
+	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
+		application runs for ~30seconds after startup...
 [-] collision engine
 	I should just do this on another repository, since this seems outside the 
 	scope of a platform layer...
