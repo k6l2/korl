@@ -1671,30 +1671,31 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
-	gameMemory.platformLog              = platformLog;
-	gameMemory.platformDecodeZ85Png     = platformDecodeZ85Png;
-	gameMemory.platformFreeRawImage     = platformFreeRawImage;
-	gameMemory.platformLoadWav          = platformLoadWav;
-	gameMemory.platformLoadOgg          = platformLoadOgg;
-	gameMemory.platformLoadPng          = platformLoadPng;
+	gameMemory.platformLog             = platformLog;
+	gameMemory.platformDecodeZ85Png    = platformDecodeZ85Png;
+	gameMemory.platformFreeRawImage    = platformFreeRawImage;
+	gameMemory.platformLoadWav         = platformLoadWav;
+	gameMemory.platformLoadOgg         = platformLoadOgg;
+	gameMemory.platformLoadPng         = platformLoadPng;
 #if INTERNAL_BUILD
-	gameMemory.platformReadEntireFile   = platformReadEntireFile;
-	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
-	gameMemory.platformWriteEntireFile  = platformWriteEntireFile;
+	gameMemory.platformReadEntireFile  = platformReadEntireFile;
+	gameMemory.platformFreeFileMemory  = platformFreeFileMemory;
+	gameMemory.platformWriteEntireFile = platformWriteEntireFile;
 #endif// INTERNAL_BUILD
-	gameMemory.krbBeginFrame            = krbBeginFrame;
-	gameMemory.krbSetProjectionOrtho    = krbSetProjectionOrtho;
-	gameMemory.krbDrawLine              = krbDrawLine;
-	gameMemory.krbDrawTri               = krbDrawTri;
-	gameMemory.krbDrawTriTextured       = krbDrawTriTextured;
-	gameMemory.krbViewTranslate         = krbViewTranslate;
-	gameMemory.krbSetModelXform         = krbSetModelXform;
-	gameMemory.krbLoadImage             = krbLoadImage;
-	gameMemory.krbUseTexture            = krbUseTexture;
-	gameMemory.imguiContext             = ImGui::GetCurrentContext();
-	gameMemory.platformImguiAlloc       = platformImguiAlloc;
-	gameMemory.platformImguiFree        = platformImguiFree;
-	gameMemory.imguiAllocUserData       = g_genAllocImgui;
+	gameMemory.krbBeginFrame           = krbBeginFrame;
+	gameMemory.krbSetProjectionOrtho   = krbSetProjectionOrtho;
+	gameMemory.krbDrawLine             = krbDrawLine;
+	gameMemory.krbDrawTri              = krbDrawTri;
+	gameMemory.krbDrawTriTextured      = krbDrawTriTextured;
+	gameMemory.krbDrawQuadTextured     = krbDrawQuadTextured;
+	gameMemory.krbViewTranslate        = krbViewTranslate;
+	gameMemory.krbSetModelXform        = krbSetModelXform;
+	gameMemory.krbLoadImage            = krbLoadImage;
+	gameMemory.krbUseTexture           = krbUseTexture;
+	gameMemory.imguiContext            = ImGui::GetCurrentContext();
+	gameMemory.platformImguiAlloc      = platformImguiAlloc;
+	gameMemory.platformImguiFree       = platformImguiFree;
+	gameMemory.imguiAllocUserData      = g_genAllocImgui;
 	game.onReloadCode(gameMemory);
 	game.initialize(gameMemory);
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 

@@ -109,8 +109,10 @@
 [x] Audio platform - fix buffer under-run when the application first starts due 
 	to lag, etc...
 [x] KAssetManager - load png files
-[ ] KRB - draw textured quad
+[x] KRB - draw textured quad
 [ ] KRB - modify model xform rotation
+[ ] Win32: Fix v-sync frame timing issues (not properly maintaining the target 
+	frame rate)
 [ ] KRB - refactor API such that `KrbTextureHandle` is no longer required by 
 	client code.  
 	[ ] Perhaps `KAssetManager` maintains a `KrbTextureHandle` alongside the 

@@ -83,6 +83,30 @@ internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured)
 	glEnd();
 	GL_CHECK_ERROR();
 }
+internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+	glEnable(GL_TEXTURE_2D);
+	glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
+	glBegin(GL_TRIANGLES);
+	// draw the bottom-left triangle //
+	glTexCoord2f(texCoordUL.x, texCoordUL.y); 
+	glVertex2f(-halfSize.x, halfSize.y);
+	glTexCoord2f(texCoordDL.x, texCoordDL.y); 
+	glVertex2f(-halfSize.x, -halfSize.y);
+	glTexCoord2f(texCoordDR.x, texCoordDR.y); 
+	glVertex2f(halfSize.x, -halfSize.y);
+	// draw the upper-right triangle //
+	glTexCoord2f(texCoordUL.x, texCoordUL.y); 
+	glVertex2f(-halfSize.x, halfSize.y);
+	glTexCoord2f(texCoordDR.x, texCoordDR.y); 
+	glVertex2f(halfSize.x, -halfSize.y);
+	glTexCoord2f(texCoordUR.x, texCoordUR.y); 
+	glVertex2f(halfSize.x, halfSize.y);
+	glEnd();
+	GL_CHECK_ERROR();
+}
 internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 {
 	glMatrixMode(GL_MODELVIEW);

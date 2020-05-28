@@ -109,6 +109,7 @@ struct GameMemory
 	fnSig_krbDrawLine* krbDrawLine;
 	fnSig_krbDrawTri* krbDrawTri;
 	fnSig_krbDrawTriTextured* krbDrawTriTextured;
+	fnSig_krbDrawQuadTextured* krbDrawQuadTextured;
 	fnSig_krbViewTranslate* krbViewTranslate;
 	fnSig_krbSetModelXform* krbSetModelXform;
 	fnSig_krbLoadImage* krbLoadImage;

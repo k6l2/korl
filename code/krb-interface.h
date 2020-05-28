@@ -29,6 +29,11 @@ namespace krb
 #define KRB_DRAW_TRI_TEXTURED(name) void name(const v2f32& p0, const v2f32& p1,\
                                               const v2f32& p2, const v2f32& t0,\
                                               const v2f32& t1, const v2f32& t2)
+#define KRB_DRAW_QUAD_TEXTURED(name) void name(const v2f32& halfSize, \
+                                               const v2f32& texCoordUL, \
+                                               const v2f32& texCoordDL, \
+                                               const v2f32& texCoordDR, \
+                                               const v2f32& texCoordUR)
 #define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
 #define KRB_SET_MODEL_XFORM(name) void name(const v2f32& translation)
 #define KRB_LOAD_IMAGE(name) KrbTextureHandle name(const RawImage& rawImage)
@@ -38,6 +43,7 @@ typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_DRAW_LINE(fnSig_krbDrawLine);
 typedef KRB_DRAW_TRI(fnSig_krbDrawTri);
 typedef KRB_DRAW_TRI_TEXTURED(fnSig_krbDrawTriTextured);
+typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
@@ -47,11 +53,8 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_DRAW_LINE(krbDrawLine);
 internal KRB_DRAW_TRI(krbDrawTri);
 internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured);
+internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
-/** @param tempImageDataBuffer must point to an array of bytes which has a 
- *                             minimum size of:
- *                                 z85::decodedFileSizeBytes(z85ImageNumBytes)
- */
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_USE_TEXTURE(krbUseTexture);
