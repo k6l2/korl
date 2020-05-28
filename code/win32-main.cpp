@@ -1682,16 +1682,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformFreeFileMemory  = platformFreeFileMemory;
 	gameMemory.platformWriteEntireFile = platformWriteEntireFile;
 #endif// INTERNAL_BUILD
-	gameMemory.krbBeginFrame           = krbBeginFrame;
-	gameMemory.krbSetProjectionOrtho   = krbSetProjectionOrtho;
-	gameMemory.krbDrawLine             = krbDrawLine;
-	gameMemory.krbDrawTri              = krbDrawTri;
-	gameMemory.krbDrawTriTextured      = krbDrawTriTextured;
-	gameMemory.krbDrawQuadTextured     = krbDrawQuadTextured;
-	gameMemory.krbViewTranslate        = krbViewTranslate;
-	gameMemory.krbSetModelXform        = krbSetModelXform;
-	gameMemory.krbLoadImage            = krbLoadImage;
-	gameMemory.krbUseTexture           = krbUseTexture;
+	gameMemory.krb                     = {};
 	gameMemory.imguiContext            = ImGui::GetCurrentContext();
 	gameMemory.platformImguiAlloc      = platformImguiAlloc;
 	gameMemory.platformImguiFree       = platformImguiFree;

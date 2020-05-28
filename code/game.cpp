@@ -36,8 +36,8 @@ GAME_INITIALIZE(gameInitialize)
 		kamAddPng(g_gameState->assetManager, memory.platformLoadPng,
 		          "assets/fighter.png");
 	g_gameState->kthFighter = 
-		memory.krbLoadImage(kamGetRawImage(g_gameState->assetManager, 
-		                                   g_gameState->kahImgFighter));
+		memory.krb.loadImage(kamGetRawImage(g_gameState->assetManager, 
+		                                    g_gameState->kahImgFighter));
 	// Ask the platform to load us a RawSound asset //
 	g_gameState->kahSfxShoot = 
 		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
@@ -118,16 +118,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	g_gameState->viewOffset2d = g_gameState->shipWorldPosition;
-	memory.krbBeginFrame(0.2f, bgClearGreen, 0.2f);
-	memory.krbSetProjectionOrtho(static_cast<f32>(windowDimensions.x), 
-	                             static_cast<f32>(windowDimensions.y), 1.f);
-	memory.krbViewTranslate(-g_gameState->viewOffset2d);
-	memory.krbUseTexture(g_gameState->kthFighter);
-	memory.krbSetModelXform(g_gameState->shipWorldPosition);
-	memory.krbDrawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
-	memory.krbSetModelXform({0,0});
-	memory.krbDrawLine({0,0}, {100,0}, krb::RED);
-	memory.krbDrawLine({0,0}, {0,100}, krb::GREEN);
+	memory.krb.beginFrame(0.2f, bgClearGreen, 0.2f);
+	memory.krb.setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
+	                              static_cast<f32>(windowDimensions.y), 1.f);
+	memory.krb.viewTranslate(-g_gameState->viewOffset2d);
+	memory.krb.useTexture(g_gameState->kthFighter);
+	memory.krb.setModelXform(g_gameState->shipWorldPosition);
+	memory.krb.drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
+	memory.krb.setModelXform({0,0});
+	memory.krb.drawLine({0,0}, {100,0}, krb::RED);
+	memory.krb.drawLine({0,0}, {0,100}, krb::GREEN);
 	return true;
 }
 #include "kAudioMixer.cpp"

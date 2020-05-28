@@ -104,16 +104,7 @@ struct GameMemory
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
 	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
 #endif
-	fnSig_krbBeginFrame* krbBeginFrame;
-	fnSig_krbSetProjectionOrtho* krbSetProjectionOrtho;
-	fnSig_krbDrawLine* krbDrawLine;
-	fnSig_krbDrawTri* krbDrawTri;
-	fnSig_krbDrawTriTextured* krbDrawTriTextured;
-	fnSig_krbDrawQuadTextured* krbDrawQuadTextured;
-	fnSig_krbViewTranslate* krbViewTranslate;
-	fnSig_krbSetModelXform* krbSetModelXform;
-	fnSig_krbLoadImage* krbLoadImage;
-	fnSig_krbUseTexture* krbUseTexture;
+	KrbApi krb;
 	void* imguiContext;
 	fnSig_platformImguiAlloc* platformImguiAlloc;
 	fnSig_platformImguiFree* platformImguiFree;

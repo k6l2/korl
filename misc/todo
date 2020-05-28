@@ -110,6 +110,8 @@
 	to lag, etc...
 [x] KAssetManager - load png files
 [x] KRB - draw textured quad
+[x] KRB: pass the API to the game module in a more graceful way to allow API 
+	changes in a single file.
 [ ] KRB - modify model xform rotation
 [ ] Win32: Fix v-sync frame timing issues (not properly maintaining the target 
 	frame rate)

@@ -58,3 +58,16 @@ internal KRB_VIEW_TRANSLATE(krbViewTranslate);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_USE_TEXTURE(krbUseTexture);
+struct KrbApi
+{
+	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
+	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
+	fnSig_krbDrawLine*           drawLine           = krbDrawLine;
+	fnSig_krbDrawTri*            drawTri            = krbDrawTri;
+	fnSig_krbDrawTriTextured*    drawTriTextured    = krbDrawTriTextured;
+	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;
+	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
+	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
+	fnSig_krbLoadImage*          loadImage          = krbLoadImage;
+	fnSig_krbUseTexture*         useTexture         = krbUseTexture;
+};
