@@ -31,14 +31,13 @@ GAME_INITIALIZE(gameInitialize)
 	// Contruct/Initialize the game's AssetManager //
 	g_gameState->assetManager = kamConstruct(g_gameState->kgaHPermanent, 1024,
 	                                         g_gameState->kgaHTransient);
-#if 0
-	// upload a texture to the GPU //
-	RawImage rawImage = 
-		memory.platformDecodeZ85Png(z85_png_fighter, 
-		                            sizeof(z85_png_fighter) - 1);
-	g_gameState->kthFighter = memory.krbLoadImage(rawImage);
-	memory.platformFreeRawImage(rawImage);
-#endif // 0
+	// load RawImages from platform files //
+	g_gameState->kahImgFighter =
+		kamAddPng(g_gameState->assetManager, memory.platformLoadPng,
+		          "assets/fighter.png");
+	g_gameState->kthFighter = 
+		memory.krbLoadImage(kamGetRawImage(g_gameState->assetManager, 
+		                                   g_gameState->kahImgFighter));
 	// Ask the platform to load us a RawSound asset //
 	g_gameState->kahSfxShoot = 
 		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
@@ -160,7 +159,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                             static_cast<f32>(windowDimensions.y), 1.f);
 	// g_gameState->viewOffset2d = g_gameState->shipWorldPosition;
 	memory.krbViewTranslate(-g_gameState->viewOffset2d);
-	//memory.krbUseTexture(g_gameState->kthFighter);
+	memory.krbUseTexture(g_gameState->kthFighter);
 	// memory.krbDrawTri({100,100}, {200,100}, {100,200});
 	// memory.krbDrawTri({200,100}, {100,200}, {200,200});
 	memory.krbSetModelXform(g_gameState->shipWorldPosition);

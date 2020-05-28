@@ -13,8 +13,13 @@ internal KAssetHandle kamAddWav(KAssetManager* assetManager,
 internal KAssetHandle kamAddOgg(KAssetManager* assetManager, 
                                 fnSig_platformLoadOgg* platformLoadOgg, 
                                 const char* assetFileName);
+internal KAssetHandle kamAddPng(KAssetManager* assetManager, 
+                                fnSig_platformLoadPng* platformLoadPng, 
+                                const char* assetFileName);
 internal void kamFreeAsset(KAssetManager* assetManager, 
                            KAssetHandle assetHandle);
 internal bool kamIsRawSound(KAssetManager* assetManager, KAssetHandle kah);
 internal RawSound kamGetRawSound(KAssetManager* assetManager,
                                  KAssetHandle kahSound);
+internal RawImage kamGetRawImage(KAssetManager* assetManager,
+                                 KAssetHandle kahImage);

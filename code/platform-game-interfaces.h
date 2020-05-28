@@ -51,6 +51,12 @@ struct RawSound
  */
 #define PLATFORM_LOAD_OGG(name) RawSound name(const char* fileName, \
                                               KgaHandle sampleDataAllocator)
+/**
+ * @return If there is a failure loading the file, an invalid RawImage 
+ *         containing pixelData==nullptr is returned.
+ */
+#define PLATFORM_LOAD_PNG(name) RawImage name(const char* fileName, \
+                                              KgaHandle pixelDataAllocator)
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
@@ -58,6 +64,7 @@ typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
 typedef PLATFORM_FREE_RAW_IMAGE(fnSig_platformFreeRawImage);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
+typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
 // INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
@@ -91,6 +98,7 @@ struct GameMemory
 	fnSig_platformFreeRawImage* platformFreeRawImage;
 	fnSig_platformLoadWav* platformLoadWav;
 	fnSig_platformLoadOgg* platformLoadOgg;
+	fnSig_platformLoadPng* platformLoadPng;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* platformReadEntireFile;
 	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;

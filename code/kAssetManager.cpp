@@ -2,6 +2,7 @@
 enum class KAssetType : u8
 {
 	UNUSED,
+	RAW_IMAGE,
 	RAW_SOUND
 };
 struct KAsset
@@ -97,12 +98,28 @@ internal KAssetHandle kamAddOgg(KAssetManager* assetManager,
 	                                        assetManager->assetDataAllocator);
 	return kamAddAsset(assetManager, asset);
 }
+internal KAssetHandle kamAddPng(KAssetManager* assetManager, 
+                                fnSig_platformLoadPng* platformLoadPng, 
+                                const char* assetFileName)
+{
+	KAsset asset = {};
+	asset.type            = KAssetType::RAW_IMAGE;
+	asset.assetFileName   = assetFileName;
+	asset.assetData.image = platformLoadPng(assetFileName, 
+	                                        assetManager->assetDataAllocator);
+	return kamAddAsset(assetManager, asset);
+}
 internal void kamFreeAsset(KAssetManager* assetManager, 
                            KAssetHandle assetHandle)
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(assetManager + 1);
 	switch(assets[assetHandle].type)
 	{
+		case KAssetType::RAW_IMAGE:
+		{
+			kgaFree(assetManager->assetDataAllocator, 
+			        assets[assetHandle].assetData.image.pixelData);
+		} break;
 		case KAssetType::RAW_SOUND:
 		{
 			kgaFree(assetManager->assetDataAllocator, 
@@ -140,4 +157,12 @@ internal RawSound kamGetRawSound(KAssetManager* assetManager,
 	kassert(kahSound < assetManager->maxAssetHandles);
 	kassert(assets[kahSound].type == KAssetType::RAW_SOUND);
 	return assets[kahSound].assetData.sound;
+}
+internal RawImage kamGetRawImage(KAssetManager* assetManager,
+                                 KAssetHandle kahImage)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(assetManager + 1);
+	kassert(kahImage < assetManager->maxAssetHandles);
+	kassert(assets[kahImage].type == KAssetType::RAW_IMAGE);
+	return assets[kahImage].assetData.image;
 }

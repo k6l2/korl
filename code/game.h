@@ -15,19 +15,14 @@ struct GameState
 {
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
-#if 0
-	f32 theraminHz = 294.f;
-	f32 theraminSine = 0;
-	f32 theraminVolume = 1000;
-	KrbTextureHandle kthFighter;
-	u8 kthFighter_PADDING[4];
-#endif //0
 	KAssetManager* assetManager;
 	KAudioMixer* kAudioMixer;
 	KAssetHandle kahSfxShoot;
 	KAssetHandle kahSfxHit;
 	KAssetHandle kahSfxExplosion;
 	KAssetHandle kahBgmBattleTheme;
+	KAssetHandle kahImgFighter;
+	KrbTextureHandle kthFighter;
 	KgaHandle kgaHPermanent;
 	KgaHandle kgaHTransient;
 };

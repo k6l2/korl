@@ -50,6 +50,45 @@ global_variable bool g_hasWrittenCrashDump;
 global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+internal PLATFORM_LOAD_PNG(platformLoadPng)
+{
+	// Load the entire PNG file into memory //
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
+	                 g_pathToExe, fileName);
+	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
+	if(!file.data)
+	{
+		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		return {};
+	}
+	defer(platformFreeFileMemory(file.data));
+	// Decode the PNG into a RawImage //
+	i32 imgW, imgH, imgNumByteChannels;
+	u8*const img = 
+		stbi_load_from_memory(reinterpret_cast<u8*>(file.data), file.dataBytes, 
+		                      &imgW, &imgH, &imgNumByteChannels, 4);
+	kassert(img);
+	if(!img)
+	{
+		KLOG(ERROR, "stbi_load_from_memory failure!");
+		return {};
+	}
+	defer(stbi_image_free(img));
+	// Copy the output from STBI to a buffer in our pixelDataAllocator //
+	u8*const pixelData = reinterpret_cast<u8*>(
+		kgaAlloc(pixelDataAllocator, imgW*imgH*4));
+	if(!pixelData)
+	{
+		KLOG(ERROR, "Failed to allocate pixelData!");
+		return {};
+	}
+	memcpy(pixelData, img, imgW*imgH*4);
+	return RawImage{
+		.sizeX     = kmath::safeTruncateU32(imgW),
+		.sizeY     = kmath::safeTruncateU32(imgH), 
+		.pixelData = pixelData };
+}
 internal PLATFORM_LOAD_OGG(platformLoadOgg)
 {
 	// Load the entire OGG file into memory //
@@ -1637,6 +1676,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformFreeRawImage     = platformFreeRawImage;
 	gameMemory.platformLoadWav          = platformLoadWav;
 	gameMemory.platformLoadOgg          = platformLoadOgg;
+	gameMemory.platformLoadPng          = platformLoadPng;
 #if INTERNAL_BUILD
 	gameMemory.platformReadEntireFile   = platformReadEntireFile;
 	gameMemory.platformFreeFileMemory   = platformFreeFileMemory;
