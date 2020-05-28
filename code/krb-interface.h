@@ -35,7 +35,8 @@ namespace krb
                                                const v2f32& texCoordDR, \
                                                const v2f32& texCoordUR)
 #define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
-#define KRB_SET_MODEL_XFORM(name) void name(const v2f32& translation)
+#define KRB_SET_MODEL_XFORM(name) void name(const v2f32& translation, \
+                                           const kmath::Quaternion& orientation)
 #define KRB_LOAD_IMAGE(name) KrbTextureHandle name(const RawImage& rawImage)
 #define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);

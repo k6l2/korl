@@ -70,7 +70,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		return false;
 	}
-	f32 bgClearGreen = 0;
 	if(numGamePads > 0)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
@@ -97,6 +96,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				10*gamePadArray[c].normalizedStickLeft.x;
 			g_gameState->shipWorldPosition.y += 
 				10*gamePadArray[c].normalizedStickLeft.y;
+			if(!kmath::isNearlyZero(gamePadArray[c].normalizedStickLeft.x) ||
+			   !kmath::isNearlyZero(gamePadArray[c].normalizedStickLeft.y))
+			{
+				const f32 stickRadians = 
+					kmath::v2Radians(gamePadArray[c].normalizedStickLeft);
+				g_gameState->shipWorldOrientation = 
+					kmath::quat({0,0,1}, stickRadians - PI32/2);
+			}
 			gamePadArray[c].normalizedMotorSpeedLeft = 
 				gamePadArray[c].normalizedTriggerLeft;
 			gamePadArray[c].normalizedMotorSpeedRight = 
@@ -114,20 +121,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				g_gameState->viewOffset2d = {};
 			}
-			bgClearGreen = fabsf(gamePadArray[c].normalizedStickLeft.y);
 		}
 	}
 	g_gameState->viewOffset2d = g_gameState->shipWorldPosition;
-	memory.krb.beginFrame(0.2f, bgClearGreen, 0.2f);
+	memory.krb.beginFrame(0.2f, 0.f, 0.2f);
 	memory.krb.setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                              static_cast<f32>(windowDimensions.y), 1.f);
 	memory.krb.viewTranslate(-g_gameState->viewOffset2d);
 	memory.krb.useTexture(g_gameState->kthFighter);
-	memory.krb.setModelXform(g_gameState->shipWorldPosition);
+	memory.krb.setModelXform(g_gameState->shipWorldPosition, 
+	                         g_gameState->shipWorldOrientation);
 	memory.krb.drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
-	memory.krb.setModelXform({0,0});
-	memory.krb.drawLine({0,0}, {100,0}, krb::RED);
-	memory.krb.drawLine({0,0}, {0,100}, krb::GREEN);
+	memory.krb.setModelXform({0,0}, kmath::IDENTITY_QUATERNION);
+	memory.krb.drawLine({0,0}, {100,   0}, krb::RED);
+	memory.krb.drawLine({0,0}, {  0, 100}, krb::GREEN);
 	return true;
 }
 #include "kAudioMixer.cpp"

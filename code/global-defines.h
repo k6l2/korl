@@ -30,11 +30,11 @@ privDefer<F> defer_func(F f) {
 ///TODO: improve this to allow platform-specific behavior like trigger debugger?
 #if INTERNAL_BUILD || SLOW_BUILD
 	#define kassert(expression) do \
-	{ \
-		if(!(expression)) \
-		{ \
-			*(int*)0 = 0; \
-		} \
+	{\
+		if(!(expression))\
+		{\
+			*(int*)0 = 0;\
+		}\
 	}while(0)
 #else
 	#define kassert(expression) {}
@@ -66,6 +66,14 @@ public:
 		return v2f32{-x,-y};
 	}
 };
+struct v3f32
+{
+	f32 x, y, z;
+};
+struct v4f32
+{
+	f32 x, y, z, w;
+};
 struct v2u32
 {
 	u32 x;
@@ -73,6 +81,8 @@ struct v2u32
 };
 namespace kmath
 {
+	using Quaternion = v4f32;
+	global_variable const Quaternion IDENTITY_QUATERNION = {0,0,0,1};
 	// Thanks, Micha Wiedenmann
 	// Derived from: https://stackoverflow.com/q/19837576
 	internal inline bool isNearlyEqual(f32 fA, f32 fB)
@@ -128,5 +138,23 @@ namespace kmath
 		local_persist const i32 MAX_I32 = ~i32(1<<31);
 		kassert(value < MAX_I32);
 		return static_cast<i32>(value);
+	}
+	internal inline f32 v2Radians(const v2f32& v)
+	{
+		if(isNearlyZero(v.x) && isNearlyZero(v.y))
+		{
+			return 0;
+		}
+		return atan2f(v.y, v.x);
+	}
+	internal inline Quaternion quat(const v3f32& axis, f32 radians)
+	{
+		Quaternion result;
+		const f32 sine = sinf(radians/2);
+		result.w = cosf(radians/2);
+		result.x = sine * axis.x;
+		result.y = sine * axis.y;
+		result.z = sine * axis.z;
+		return result;
 	}
 }

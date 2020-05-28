@@ -125,6 +125,18 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 		glPushMatrix();
 	}
 	glTranslatef(translation.x, translation.y, 0.f);
+	{
+		const f32 orientationRadians = 2 * acosf(orientation.w);
+		const f32 axisDivisor = 
+			kmath::isNearlyZero(1 - orientation.w*orientation.w)
+				? 1
+				: sqrtf(1 - orientation.w*orientation.w);
+		const f32 orientationAxisX = orientation.x / axisDivisor;
+		const f32 orientationAxisY = orientation.y / axisDivisor;
+		const f32 orientationAxisZ = orientation.z / axisDivisor;
+		glRotatef(orientationRadians*180/PI32, 
+		          orientationAxisX, orientationAxisY, orientationAxisZ);
+	}
 	GL_CHECK_ERROR();
 }
 internal KRB_LOAD_IMAGE(krbLoadImage)
