@@ -113,7 +113,7 @@
 [x] KRB: pass the API to the game module in a more graceful way to allow API 
 	changes in a single file.
 [x] KRB - modify model xform rotation
-[ ] Win32: Fix v-sync frame timing issues (not properly maintaining the target 
+[x] Win32: Fix v-sync frame timing issues (not properly maintaining the target 
 	frame rate)
 [ ] KRB - refactor API such that `KrbTextureHandle` is no longer required by 
 	client code.  

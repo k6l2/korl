@@ -1602,8 +1602,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///TODO: update the monitorRefreshHz and dependent variable realtime when 
 	///      the window gets moved around to another monitor.
 	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(mainWindow);
-	u32 gameUpdateHz = monitorRefreshHz / 2;
-	f32 targetSecondsElapsedPerFrame = 1.f / gameUpdateHz;
+	f32 targetSecondsElapsedPerFrame = 1.f / monitorRefreshHz;
 	GameKeyboard gameKeyboard = {};
 #if INTERNAL_BUILD
 	// ensure that the size of the keyboard's vKeys array matches the size of
@@ -1862,13 +1861,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				     GetLastError());
 			}
 			// enforce targetSecondsElapsedPerFrame //
-			///TODO: we still have to Sleep/wait when VSync is on if SwapBuffers
-			///      completes too early!!! (like when the double-buffer is not
-			///      yet filled up at beginning of execution)
+			// we still have to Sleep/wait when VSync is on if SwapBuffers
+			//      completes too early!!! (like when the double-buffer is not
+			//      yet filled up at beginning of execution) //
 			///TODO: maybe just don't sleep/wait the first frame at all because
 			///      the windows message queue needs to be unclogged and game
 			///      state memory needs to be initialized.
-			if(!w32KrbOglGetVSync())
 			{
 				// It is possible for windows to sleep us for longer than we 
 				//	would want it to, so we will ask the OS to wake us up a 
