@@ -117,6 +117,7 @@ internal void kamFreeAsset(KAssetManager* assetManager,
 	{
 		case KAssetType::RAW_IMAGE:
 		{
+			kassert(!"TODO: free image data from KBR!");
 			kgaFree(assetManager->assetDataAllocator, 
 			        assets[assetHandle].assetData.image.pixelData);
 		} break;

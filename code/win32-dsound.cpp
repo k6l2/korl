@@ -123,7 +123,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
                                   u8 numSoundChannels,
                                   VOID* gameSoundBufferMemory,
                                   DWORD& io_cursorWritePrev,
-                                  GameMemory& gameMemory, GameCode& game)
+                                  GameCode& game)
 {
 	const u32 bytesPerSampleBlock = sizeof(SoundSample)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 
@@ -193,8 +193,7 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			.soundSampleHz          = soundSampleHz,
 			.numSoundChannels       = numSoundChannels
 		};
-		game.renderAudio(gameMemory, gameAudioBuffer, 
-		                 bytesConsumed / bytesPerSampleBlock);
+		game.renderAudio(gameAudioBuffer, bytesConsumed / bytesPerSampleBlock);
 	}
 	VOID* lockRegion1;
 	DWORD lockRegion1Size;

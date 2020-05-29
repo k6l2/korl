@@ -23,9 +23,10 @@ struct GameState
 	KAssetHandle kahSfxExplosion;
 	KAssetHandle kahBgmBattleTheme;
 	KAssetHandle kahImgFighter;
-	KrbTextureHandle kthFighter;
+	u8 kahImgFighter_PADDING[4];
 	KgaHandle kgaHPermanent;
 	KgaHandle kgaHTransient;
 };
-global_variable GameState* g_gameState;
+global_variable GameState* g_gs;
 global_variable fnSig_platformLog* g_log;
+global_variable KrbApi* g_krb;

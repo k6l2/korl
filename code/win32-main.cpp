@@ -85,9 +85,10 @@ internal PLATFORM_LOAD_PNG(platformLoadPng)
 	}
 	memcpy(pixelData, img, imgW*imgH*4);
 	return RawImage{
-		.sizeX     = kmath::safeTruncateU32(imgW),
-		.sizeY     = kmath::safeTruncateU32(imgH), 
-		.pixelData = pixelData };
+		.krbTextureHandle = krbLoadImage(imgW, imgH, pixelData),
+		.sizeX            = kmath::safeTruncateU32(imgW),
+		.sizeY            = kmath::safeTruncateU32(imgH), 
+		.pixelData        = pixelData };
 }
 internal PLATFORM_LOAD_OGG(platformLoadOgg)
 {
@@ -1829,8 +1830,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #endif
 			const W32Dimension2d windowDims = 
 				w32GetWindowDimensions(mainWindow);
-			if(!game.updateAndDraw(gameMemory, 
-			                       {windowDims.width, windowDims.height}, 
+			if(!game.updateAndDraw({windowDims.width, windowDims.height}, 
 			                       gameKeyboard,
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{
@@ -1838,7 +1838,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
 			                    SOUND_CHANNELS, gameSoundMemory, 
-			                    cursorWritePrev, gameMemory, game);
+			                    cursorWritePrev, game);
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
 			{

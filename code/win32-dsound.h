@@ -7,4 +7,4 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
                                   u8 numSoundChannels,
                                   VOID* gameSoundBufferMemory,
                                   DWORD& io_cursorWritePrev,
-                                  GameMemory& gameMemory, GameCode& game);
+                                  GameCode& game);

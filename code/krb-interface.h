@@ -2,7 +2,6 @@
 #pragma once
 #include "global-defines.h"
 using KrbTextureHandle = u32;
-struct RawImage;
 struct Color4f32
 {
 	f32 r;
@@ -37,7 +36,9 @@ namespace krb
 #define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
 #define KRB_SET_MODEL_XFORM(name) void name(const v2f32& translation, \
                                            const kmath::Quaternion& orientation)
-#define KRB_LOAD_IMAGE(name) KrbTextureHandle name(const RawImage& rawImage)
+#define KRB_LOAD_IMAGE(name) KrbTextureHandle name(u32 imageSizeX, \
+                                                   u32 imageSizeY, \
+                                                   u8* imageDataRGBA)
 #define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);

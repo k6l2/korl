@@ -12,6 +12,8 @@ enum class PlatformLogCategory : u8
 };
 struct RawImage
 {
+	KrbTextureHandle krbTextureHandle;
+	u8 krbTextureHandle_PADDING[4];
 	u32 sizeX;
 	u32 sizeY;
 	// pixel data layout: 0xRrGgBbAa
@@ -284,14 +286,12 @@ struct GamePad
  * Guaranteed to be called BEFORE GAME_INITIALIZE.
  */
 #define GAME_ON_RELOAD_CODE(name) void name(GameMemory& memory)
-#define GAME_RENDER_AUDIO(name) void name(GameMemory& memory, \
-                                          GameAudioBuffer& audioBuffer, \
+#define GAME_RENDER_AUDIO(name) void name(GameAudioBuffer& audioBuffer, \
                                           u32 sampleBlocksConsumed)
 /** 
  * @return false if the platform should close the game application
  */
-#define GAME_UPDATE_AND_DRAW(name) bool name(GameMemory& memory, \
-                                             v2u32 windowDimensions, \
+#define GAME_UPDATE_AND_DRAW(name) bool name(v2u32 windowDimensions, \
                                              GameKeyboard& gameKeyboard, \
                                              GamePad* gamePadArray, \
                                              u8 numGamePads)

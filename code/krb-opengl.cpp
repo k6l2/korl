@@ -146,8 +146,8 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	glBindTexture(GL_TEXTURE_2D, texName);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, rawImage.sizeX, rawImage.sizeY, 0, 
-	             GL_RGBA, GL_UNSIGNED_BYTE, rawImage.pixelData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageSizeX, imageSizeY, 0, 
+	             GL_RGBA, GL_UNSIGNED_BYTE, imageDataRGBA);
 	GL_CHECK_ERROR();
 	return texName;
 }

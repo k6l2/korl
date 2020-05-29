@@ -10,7 +10,8 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	g_log = memory.platformLog;
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
-	g_gameState = reinterpret_cast<GameState*>(memory.permanentMemory);
+	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	g_krb = &memory.krb;
 	ImGui::SetCurrentContext(
 		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
 	ImGui::SetAllocatorFunctions(memory.platformImguiAlloc, 
@@ -20,47 +21,44 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 GAME_INITIALIZE(gameInitialize)
 {
 	// GameState memory initialization //
-	*g_gameState = {};
+	*g_gs = {};
 	// initialize dynamic allocators //
-	g_gameState->kgaHPermanent = 
+	g_gs->kgaHPermanent = 
 		kgaInit(reinterpret_cast<u8*>(memory.permanentMemory) + 
 		            sizeof(GameState), 
 		        memory.permanentMemoryBytes - sizeof(GameState));
-	g_gameState->kgaHTransient = kgaInit(memory.transientMemory, 
-	                                     memory.transientMemoryBytes);
+	g_gs->kgaHTransient = kgaInit(memory.transientMemory, 
+	                              memory.transientMemoryBytes);
 	// Contruct/Initialize the game's AssetManager //
-	g_gameState->assetManager = kamConstruct(g_gameState->kgaHPermanent, 1024,
-	                                         g_gameState->kgaHTransient);
+	g_gs->assetManager = kamConstruct(g_gs->kgaHPermanent, 1024,
+	                                  g_gs->kgaHTransient);
 	// load RawImages from platform files //
-	g_gameState->kahImgFighter =
-		kamAddPng(g_gameState->assetManager, memory.platformLoadPng,
+	g_gs->kahImgFighter =
+		kamAddPng(g_gs->assetManager, memory.platformLoadPng,
 		          "assets/fighter.png");
-	g_gameState->kthFighter = 
-		memory.krb.loadImage(kamGetRawImage(g_gameState->assetManager, 
-		                                    g_gameState->kahImgFighter));
 	// Ask the platform to load us a RawSound asset //
-	g_gameState->kahSfxShoot = 
-		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
+	g_gs->kahSfxShoot = 
+		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
 		          "assets/joesteroids-shoot-modified.wav");
-	g_gameState->kahSfxHit = 
-		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
+	g_gs->kahSfxHit = 
+		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
 		          "assets/joesteroids-hit.wav");
-	g_gameState->kahSfxExplosion = 
-		kamAddWav(g_gameState->assetManager, memory.platformLoadWav, 
+	g_gs->kahSfxExplosion = 
+		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
 		          "assets/joesteroids-explosion.wav");
-	g_gameState->kahBgmBattleTheme = 
-		kamAddOgg(g_gameState->assetManager, memory.platformLoadOgg, 
+	g_gs->kahBgmBattleTheme = 
+		kamAddOgg(g_gs->assetManager, memory.platformLoadOgg, 
 		          "assets/joesteroids-battle-theme-modified.ogg");
 	// Initialize the game's audio mixer //
-	g_gameState->kAudioMixer = kauConstruct(g_gameState->kgaHPermanent, 16, 
-	                                        g_gameState->assetManager);
+	g_gs->kAudioMixer = kauConstruct(g_gs->kgaHPermanent, 16, 
+	                                 g_gs->assetManager);
 	KTapeHandle tapeBgmBattleTheme = 
-		kauPlaySound(g_gameState->kAudioMixer, g_gameState->kahBgmBattleTheme);
-	kauSetRepeat(g_gameState->kAudioMixer, &tapeBgmBattleTheme, true);
+		kauPlaySound(g_gs->kAudioMixer, g_gs->kahBgmBattleTheme);
+	kauSetRepeat(g_gs->kAudioMixer, &tapeBgmBattleTheme, true);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kauMix(g_gameState->kAudioMixer, audioBuffer, sampleBlocksConsumed);
+	kauMix(g_gs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -74,67 +72,61 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
 		{
-			if(gamePadArray[c].buttons.shoulderLeft == ButtonState::PRESSED)
+			GamePad& gpad = gamePadArray[c];
+			if(gpad.buttons.shoulderLeft == ButtonState::PRESSED)
 			{
-				kauPlaySound(g_gameState->kAudioMixer,
-				             g_gameState->kahSfxHit);
+				kauPlaySound(g_gs->kAudioMixer, g_gs->kahSfxHit);
 			}
-			if(gamePadArray[c].buttons.shoulderRight >= ButtonState::PRESSED)
+			if(gpad.buttons.shoulderRight >= ButtonState::PRESSED)
 			{
-				if(gamePadArray[c].buttons.faceLeft >= ButtonState::PRESSED)
+				if(gpad.buttons.faceLeft >= ButtonState::PRESSED)
 				{
-					kauPlaySound(g_gameState->kAudioMixer,
-					             g_gameState->kahSfxExplosion);
+					kauPlaySound(g_gs->kAudioMixer, g_gs->kahSfxExplosion);
 				}
 				else
 				{
-					kauPlaySound(g_gameState->kAudioMixer,
-					             g_gameState->kahSfxShoot);
+					kauPlaySound(g_gs->kAudioMixer, g_gs->kahSfxShoot);
 				}
 			}
-			g_gameState->shipWorldPosition.x += 
-				10*gamePadArray[c].normalizedStickLeft.x;
-			g_gameState->shipWorldPosition.y += 
-				10*gamePadArray[c].normalizedStickLeft.y;
-			if(!kmath::isNearlyZero(gamePadArray[c].normalizedStickLeft.x) ||
-			   !kmath::isNearlyZero(gamePadArray[c].normalizedStickLeft.y))
+			g_gs->shipWorldPosition.x += 10*gpad.normalizedStickLeft.x;
+			g_gs->shipWorldPosition.y += 10*gpad.normalizedStickLeft.y;
+			if(!kmath::isNearlyZero(gpad.normalizedStickLeft.x) ||
+			   !kmath::isNearlyZero(gpad.normalizedStickLeft.y))
 			{
 				const f32 stickRadians = 
-					kmath::v2Radians(gamePadArray[c].normalizedStickLeft);
-				g_gameState->shipWorldOrientation = 
+					kmath::v2Radians(gpad.normalizedStickLeft);
+				g_gs->shipWorldOrientation = 
 					kmath::quat({0,0,1}, stickRadians - PI32/2);
 			}
-			gamePadArray[c].normalizedMotorSpeedLeft = 
-				gamePadArray[c].normalizedTriggerLeft;
-			gamePadArray[c].normalizedMotorSpeedRight = 
-				gamePadArray[c].normalizedTriggerRight;
-			if (gamePadArray[c].buttons.back  == ButtonState::HELD &&
-			    gamePadArray[c].buttons.start == ButtonState::PRESSED)
+			gpad.normalizedMotorSpeedLeft  = gpad.normalizedTriggerLeft;
+			gpad.normalizedMotorSpeedRight = gpad.normalizedTriggerRight;
+			if (gpad.buttons.back  == ButtonState::HELD &&
+			    gpad.buttons.start == ButtonState::PRESSED)
 			{
 				return false;
 			}
-			if(gamePadArray[c].buttons.stickClickLeft == ButtonState::PRESSED)
+			if(gpad.buttons.stickClickLeft == ButtonState::PRESSED)
 			{
-				g_gameState->shipWorldPosition = {};
+				g_gs->shipWorldPosition = {};
 			}
-			if(gamePadArray[c].buttons.stickClickRight == ButtonState::PRESSED)
+			if(gpad.buttons.stickClickRight == ButtonState::PRESSED)
 			{
-				g_gameState->viewOffset2d = {};
+				g_gs->viewOffset2d = {};
 			}
 		}
 	}
-	g_gameState->viewOffset2d = g_gameState->shipWorldPosition;
-	memory.krb.beginFrame(0.2f, 0.f, 0.2f);
-	memory.krb.setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
-	                              static_cast<f32>(windowDimensions.y), 1.f);
-	memory.krb.viewTranslate(-g_gameState->viewOffset2d);
-	memory.krb.useTexture(g_gameState->kthFighter);
-	memory.krb.setModelXform(g_gameState->shipWorldPosition, 
-	                         g_gameState->shipWorldOrientation);
-	memory.krb.drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
-	memory.krb.setModelXform({0,0}, kmath::IDENTITY_QUATERNION);
-	memory.krb.drawLine({0,0}, {100,   0}, krb::RED);
-	memory.krb.drawLine({0,0}, {  0, 100}, krb::GREEN);
+	g_gs->viewOffset2d = g_gs->shipWorldPosition;
+	g_krb->beginFrame(0.2f, 0.f, 0.2f);
+	g_krb->setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
+	                          static_cast<f32>(windowDimensions.y), 1.f);
+	g_krb->viewTranslate(-g_gs->viewOffset2d);
+	g_krb->useTexture(kamGetRawImage(g_gs->assetManager, 
+	                                 g_gs->kahImgFighter).krbTextureHandle);
+	g_krb->setModelXform(g_gs->shipWorldPosition, g_gs->shipWorldOrientation);
+	g_krb->drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
+	g_krb->setModelXform({0,0}, kmath::IDENTITY_QUATERNION);
+	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
+	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);
 	return true;
 }
 #include "kAudioMixer.cpp"

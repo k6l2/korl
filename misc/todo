@@ -115,11 +115,11 @@
 [x] KRB - modify model xform rotation
 [x] Win32: Fix v-sync frame timing issues (not properly maintaining the target 
 	frame rate)
-[ ] KRB - refactor API such that `KrbTextureHandle` is no longer required by 
+[x] KRB - refactor API such that `KrbTextureHandle` is no longer required by 
 	client code.  
-	[ ] Perhaps `KAssetManager` maintains a `KrbTextureHandle` alongside the 
+	[-] Perhaps `KAssetManager` maintains a `KrbTextureHandle` alongside the 
 		`RawImage`, which gets loaded into the KRB when the asset is added?
-	[ ] Perhaps `RawImage` just contains a `KrbTextureHandle` which simply gets 
+	[x] Perhaps `RawImage` just contains a `KrbTextureHandle` which simply gets 
 		loaded into the KRB when the image gets loaded from the platform?
 [ ] Asset streaming system
 	[ ] `push` request for an asset and receive an asset handle.
@@ -133,6 +133,7 @@
 	[ ] Until the asset is loaded into memory, the handle represents a default 
 		asset of some kind. 
 		(default texture, default mesh, default sound, etc...)
+	[ ] Free RawImage KRB resources when the asset gets freed
 	[-] Is there an easy way to bind asset names to code in an efficient way?
 		Hashing asset strings everywhere is slow/cumbersome.
 		Actually, maybe I wont bother with this for now...
