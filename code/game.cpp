@@ -1,11 +1,9 @@
 #include "game.h"
-#include "z85_png_fighter.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )
 	#include "imgui/imgui.h"
 #pragma warning( pop )
-#include <cstdio>
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	g_log = memory.platformLog;
@@ -34,21 +32,21 @@ GAME_INITIALIZE(gameInitialize)
 	                                  g_gs->kgaHTransient);
 	// load RawImages from platform files //
 	g_gs->kahImgFighter =
-		kamAddPng(g_gs->assetManager, memory.platformLoadPng,
-		          "assets/fighter.png");
+		kamAddPng(g_gs->assetManager, memory.platformLoadPng, 
+		          "fighter.png");
 	// Ask the platform to load us a RawSound asset //
 	g_gs->kahSfxShoot = 
 		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
-		          "assets/joesteroids-shoot-modified.wav");
+		          "joesteroids-shoot-modified.wav");
 	g_gs->kahSfxHit = 
 		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
-		          "assets/joesteroids-hit.wav");
+		          "joesteroids-hit.wav");
 	g_gs->kahSfxExplosion = 
 		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
-		          "assets/joesteroids-explosion.wav");
+		          "joesteroids-explosion.wav");
 	g_gs->kahBgmBattleTheme = 
 		kamAddOgg(g_gs->assetManager, memory.platformLoadOgg, 
-		          "assets/joesteroids-battle-theme-modified.ogg");
+		          "joesteroids-battle-theme-modified.ogg");
 	// Initialize the game's audio mixer //
 	g_gs->kAudioMixer = kauConstruct(g_gs->kgaHPermanent, 16, 
 	                                 g_gs->assetManager);

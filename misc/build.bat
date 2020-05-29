@@ -121,6 +121,9 @@ rem --- Clean up build directory ---
 del %kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
 rem --- Transform our game code using kc++ ---
+rem First, delete all previous read-only generated source files so that kc++ can
+rem 	actually re-write to those file handles:
+del /S /F /Q code\* > NUL 2> NUL
 pushd %KCPP_HOME%
 echo Building kc++...
 call build.bat

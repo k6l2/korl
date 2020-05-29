@@ -121,7 +121,32 @@
 		`RawImage`, which gets loaded into the KRB when the asset is added?
 	[x] Perhaps `RawImage` just contains a `KrbTextureHandle` which simply gets 
 		loaded into the KRB when the image gets loaded from the platform?
+[x] Set where assets get loaded from locally at the platform level to remove the 
+	need to continuously add "assets/" to the beginning of every asset string.
+[x] Set kcpp output files to be read-only to reduce chance of accidentally 
+	editing them instead of the original source files.
 [ ] Asset streaming system
+	[ ] Is there an easy way to bind asset names to code in an efficient way?
+		Hashing asset strings everywhere is slow/cumbersome.
+		[ ] Maybe a meta-programming solution? 
+			[x] How long does it take to read all the files inside of the 
+				'/code' folder and write copies of all these files into 
+				'/build/code' in the same folder structure???
+				Answer: less than a second.
+			[ ] Or maybe just copy all source files into a temp code folder in 
+				the build directory, performing the necessary token transforms 
+				during this step???
+			[ ] Build a static database/manifest of asset strings in an array, 
+				which  is included in source files that contain an instance of 
+				the special macro.
+			[ ] Maybe sort the array of asset strings alphabetically for easier 
+				debugging?
+			[-] Output `*.gen.cpp` files for source files which contain replaced 
+				asset strings.
+			[-] Output `*.gen.cpp` files for source files which include files 
+				which have been generated RECURSIVELY.
+		[-] Maybe use X-Macro for this? https://stackoverflow.com/a/320888
+			Scan thru code and replace a special empty macro with some value.
 	[ ] `push` request for an asset and receive an asset handle.
 		[ ] Quickly read file meta data to determine raw data size so we can 
 			reserve it for whoever needs to load.
@@ -134,27 +159,6 @@
 		asset of some kind. 
 		(default texture, default mesh, default sound, etc...)
 	[ ] Free RawImage KRB resources when the asset gets freed
-	[-] Is there an easy way to bind asset names to code in an efficient way?
-		Hashing asset strings everywhere is slow/cumbersome.
-		Actually, maybe I wont bother with this for now...
-		[-] Maybe a meta-programming solution? 
-			[-] How long does it take to read all the files inside of the 
-				'/code' folder and write copies of all these files into 
-				'/build/code' in the same folder structure???
-			Build a static database/manifest of asset strings in an array, which 
-				is included in source files that contain an instance of the 
-				special macro.
-			Maybe sort the array of asset strings alphabetically for easier 
-				debugging?
-			Output `*.gen.cpp` files for source files which contain replaced 
-				asset strings.
-			Output `*.gen.cpp` files for source files which include files which 
-				have been generated RECURSIVELY.
-			Or maybe just copy all source files into a temp code folder in the 
-				build directory, performing the necessary token transforms 
-				during this step???
-		[-] Maybe use X-Macro for this? https://stackoverflow.com/a/320888
-			Scan thru code and replace a special empty macro with some value.
 [ ] multi-threaded job queue (HERE BE DRAGONS? LUL)
 	[ ] make log system thread-safe probably!
 	[ ] Asset streaming using multi-threaded job queue
@@ -167,6 +171,7 @@
 [ ] display debug frame metrics
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
 		application runs for ~30seconds after startup...
+[ ] "Release" build script
 [-] collision engine
 	I should just do this on another repository, since this seems outside the 
 	scope of a platform layer...

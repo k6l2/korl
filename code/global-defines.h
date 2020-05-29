@@ -41,6 +41,8 @@ privDefer<F> defer_func(F f) {
 #endif
 // These must be re-defined in the appropriate compilation units //
 #define KLOG(platformLogCategory, formattedString, ...)
+// KC++ support //
+#define KASSET(cstrFileName) 0
 // crt math operations
 #include <math.h>
 #include <stdint.h>

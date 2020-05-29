@@ -54,7 +54,7 @@ internal PLATFORM_LOAD_PNG(platformLoadPng)
 {
 	// Load the entire PNG file into memory //
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
 	                 g_pathToExe, fileName);
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
@@ -95,7 +95,7 @@ internal PLATFORM_LOAD_OGG(platformLoadOgg)
 	// Load the entire OGG file into memory //
 	RawSound result = {};
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
 	                 g_pathToExe, fileName);
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
@@ -162,7 +162,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	// Load the entire WAV file into memory //
 	RawSound result = {};
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\%s"), 
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
 	                 g_pathToExe, fileName);
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
