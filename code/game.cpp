@@ -34,6 +34,7 @@ GAME_INITIALIZE(gameInitialize)
 	g_gs->kahImgFighter =
 		kamAddPng(g_gs->assetManager, memory.platformLoadPng, 
 		          "fighter.png");
+	const int assetIndexFighter = KASSET("fighter.png");
 	// Ask the platform to load us a RawSound asset //
 	g_gs->kahSfxShoot = 
 		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
