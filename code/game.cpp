@@ -34,7 +34,11 @@ GAME_INITIALIZE(gameInitialize)
 	g_gs->kahImgFighter =
 		kamAddPng(g_gs->assetManager, memory.platformLoadPng, 
 		          "fighter.png");
-	const int assetIndexFighter = KASSET("fighter.png");
+#pragma warning( push )
+#pragma warning(disable : 4189)
+	KAssetCStr assetIndexFighter = KASSET("fighter.png");
+	KAssetCStr assetIndexSfxShoot = KASSET("joesteroids-shoot-modified.wav");
+#pragma warning( pop )
 	// Ask the platform to load us a RawSound asset //
 	g_gs->kahSfxShoot = 
 		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 

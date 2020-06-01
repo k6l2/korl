@@ -126,20 +126,22 @@
 [x] Set kcpp output files to be read-only to reduce chance of accidentally 
 	editing them instead of the original source files.
 [ ] Asset streaming system
-	[ ] Is there an easy way to bind asset names to code in an efficient way?
+	[x] Is there an easy way to bind asset names to code in an efficient way?
 		Hashing asset strings everywhere is slow/cumbersome.
-		[ ] Maybe a meta-programming solution? 
+		[x] Maybe a meta-programming solution? 
 			[x] How long does it take to read all the files inside of the 
 				'/code' folder and write copies of all these files into 
 				'/build/code' in the same folder structure???
 				Answer: less than a second.
-			[ ] Or maybe just copy all source files into a temp code folder in 
+			[x] Or maybe just copy all source files into a temp code folder in 
 				the build directory, performing the necessary token transforms 
-				during this step???
-			[ ] Build a static database/manifest of asset strings in an array, 
+				during this step.
+			[x] Build a static database/manifest of asset strings in an array, 
 				which  is included in source files that contain an instance of 
 				the special macro.
-			[ ] Maybe sort the array of asset strings alphabetically for easier 
+			[x] Include the asset string manifest in all files that use KASSET 
+				macro functionality. (automatically?)
+			[~] Maybe sort the array of asset strings alphabetically for easier 
 				debugging?
 			[-] Output `*.gen.cpp` files for source files which contain replaced 
 				asset strings.

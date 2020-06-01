@@ -42,7 +42,8 @@ privDefer<F> defer_func(F f) {
 // These must be re-defined in the appropriate compilation units //
 #define KLOG(platformLogCategory, formattedString, ...)
 // KC++ support //
-#define KASSET(cstrFileName) 0
+using KAssetCStr = const char*const*;
+#define KASSET(cstrFileName) nullptr
 // crt math operations
 #include <math.h>
 #include <stdint.h>
