@@ -30,6 +30,8 @@ GAME_INITIALIZE(gameInitialize)
 	// Contruct/Initialize the game's AssetManager //
 	g_gs->assetManager = kamConstruct(g_gs->kgaHPermanent, KASSET_COUNT,
 	                                  g_gs->kgaHTransient, g_kpl);
+	// push textures we're going to need... //
+	g_gs->kahImgShip = kamPushAsset(g_gs->assetManager, KASSET("fighter.png"));
 	// Initialize the game's audio mixer //
 	g_gs->kAudioMixer = kauConstruct(g_gs->kgaHPermanent, 16, 
 	                                 g_gs->assetManager);
@@ -104,7 +106,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                          static_cast<f32>(windowDimensions.y), 1.f);
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
-	// g_krb->useTexture(g_gs->assetManager, KASSET("fighter.png"));
+	g_krb->useTexture(
+		kamGetRawImage(g_gs->assetManager, g_gs->kahImgShip).krbTextureHandle);
 	g_krb->setModelXform(g_gs->shipWorldPosition, g_gs->shipWorldOrientation);
 	g_krb->drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
 	g_krb->setModelXform({0,0}, kmath::IDENTITY_QUATERNION);

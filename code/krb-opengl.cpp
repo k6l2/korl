@@ -8,6 +8,7 @@
 	#include "win32-main.h"
 	#include <GL/GL.h>
 #endif
+#include "kAssetManager.h"
 internal GLenum krbOglCheckErrors(const char* file, int line)
 {
 	GLenum errorCode;

@@ -16,6 +16,8 @@ struct GameState
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kmath::Quaternion shipWorldOrientation = kmath::quat({0,0,1}, 0);
+	KAssetHandle kahImgShip;
+	u8 kahImgShip_PADDING[4];
 	KAssetManager* assetManager;
 	KAudioMixer* kAudioMixer;
 	KgaHandle kgaHPermanent;

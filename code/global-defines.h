@@ -41,20 +41,24 @@ privDefer<F> defer_func(F f) {
 #endif
 // These must be re-defined in the appropriate compilation units //
 #define KLOG(platformLogCategory, formattedString, ...)
-// KC++ support //
-//	IMPORTANT!!!  Do not use the values defined here for actual logic.  These 
+/* KC++ support ***************************************************************/
+// NEVER manually assign a KAssetCStr to something.  ONLY use the KASSET(x) 
+//	macro to set the value to something, because the value is meaningless until
+//	kc++ processes our source code.
+using KAssetCStr = const char*const*;
+// IMPORTANT!!!  Do not use the values defined here for actual logic.  These 
 //	macros are pre-defined with specific values only to shut up the compiler/
 //	intellisense.  When kc++ runs over the source code containing these macros,
 //	they are replaced with actual useful values.
-using KAssetCStr = const char*const*;
 #define KASSET(cstrFileName) nullptr
 #define KASSET_INDEX(KAssetCStr) 0
 #define KASSET_COUNT 0
 #define KASSET_TYPE(KAssetCStr) 0
-#define KASSET_TYPE_PNG 0
-#define KASSET_TYPE_WAV 1
-#define KASSET_TYPE_OGG 2
-#define KASSET_TYPE_UNKNOWN 3
+#define KASSET_TYPE_UNKNOWN 0
+#define KASSET_TYPE_PNG 1
+#define KASSET_TYPE_WAV 2
+#define KASSET_TYPE_OGG 3
+/*********************************************************** END KC++ support */
 // crt math operations
 #include <math.h>
 #include <stdint.h>
