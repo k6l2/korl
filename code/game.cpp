@@ -6,7 +6,7 @@
 #pragma warning( pop )
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	g_log = memory.platformLog;
+	g_kpl = &memory.kpl;
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 	g_krb = &memory.krb;
@@ -28,35 +28,14 @@ GAME_INITIALIZE(gameInitialize)
 	g_gs->kgaHTransient = kgaInit(memory.transientMemory, 
 	                              memory.transientMemoryBytes);
 	// Contruct/Initialize the game's AssetManager //
-	g_gs->assetManager = kamConstruct(g_gs->kgaHPermanent, 1024,
-	                                  g_gs->kgaHTransient);
-	// load RawImages from platform files //
-	g_gs->kahImgFighter =
-		kamAddPng(g_gs->assetManager, memory.platformLoadPng, 
-		          "fighter.png");
-#pragma warning( push )
-#pragma warning(disable : 4189)
-	KAssetCStr assetIndexFighter = KASSET("fighter.png");
-	KAssetCStr assetIndexSfxShoot = KASSET("joesteroids-shoot-modified.wav");
-#pragma warning( pop )
-	// Ask the platform to load us a RawSound asset //
-	g_gs->kahSfxShoot = 
-		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
-		          "joesteroids-shoot-modified.wav");
-	g_gs->kahSfxHit = 
-		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
-		          "joesteroids-hit.wav");
-	g_gs->kahSfxExplosion = 
-		kamAddWav(g_gs->assetManager, memory.platformLoadWav, 
-		          "joesteroids-explosion.wav");
-	g_gs->kahBgmBattleTheme = 
-		kamAddOgg(g_gs->assetManager, memory.platformLoadOgg, 
-		          "joesteroids-battle-theme-modified.ogg");
+	g_gs->assetManager = kamConstruct(g_gs->kgaHPermanent, KASSET_COUNT,
+	                                  g_gs->kgaHTransient, g_kpl);
 	// Initialize the game's audio mixer //
 	g_gs->kAudioMixer = kauConstruct(g_gs->kgaHPermanent, 16, 
 	                                 g_gs->assetManager);
 	KTapeHandle tapeBgmBattleTheme = 
-		kauPlaySound(g_gs->kAudioMixer, g_gs->kahBgmBattleTheme);
+		kauPlaySound(g_gs->kAudioMixer, 
+		             KASSET("joesteroids-battle-theme-modified.ogg"));
 	kauSetRepeat(g_gs->kAudioMixer, &tapeBgmBattleTheme, true);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
@@ -78,17 +57,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			GamePad& gpad = gamePadArray[c];
 			if(gpad.buttons.shoulderLeft == ButtonState::PRESSED)
 			{
-				kauPlaySound(g_gs->kAudioMixer, g_gs->kahSfxHit);
+				kauPlaySound(g_gs->kAudioMixer, KASSET("joesteroids-hit.wav"));
 			}
 			if(gpad.buttons.shoulderRight >= ButtonState::PRESSED)
 			{
 				if(gpad.buttons.faceLeft >= ButtonState::PRESSED)
 				{
-					kauPlaySound(g_gs->kAudioMixer, g_gs->kahSfxExplosion);
+					kauPlaySound(g_gs->kAudioMixer, 
+					             KASSET("joesteroids-explosion.wav"));
 				}
 				else
 				{
-					kauPlaySound(g_gs->kAudioMixer, g_gs->kahSfxShoot);
+					kauPlaySound(g_gs->kAudioMixer, 
+					             KASSET("joesteroids-shoot-modified.wav"));
 				}
 			}
 			g_gs->shipWorldPosition.x += 10*gpad.normalizedStickLeft.x;
@@ -123,8 +104,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                          static_cast<f32>(windowDimensions.y), 1.f);
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
-	g_krb->useTexture(kamGetRawImage(g_gs->assetManager, 
-	                                 g_gs->kahImgFighter).krbTextureHandle);
+	// g_krb->useTexture(g_gs->assetManager, KASSET("fighter.png"));
 	g_krb->setModelXform(g_gs->shipWorldPosition, g_gs->shipWorldOrientation);
 	g_krb->drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
 	g_krb->setModelXform({0,0}, kmath::IDENTITY_QUATERNION);

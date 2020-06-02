@@ -34,6 +34,8 @@ global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
 global_variable KgaHandle g_genAllocImgui;
 global_variable stb_vorbis_alloc g_oggVorbisAlloc;
+// Remember, there are two log buffers: one beginning & a circular buffer.  So,
+//	the total # of characters used for logging is 2*MAX_LOG_BUFFER_SIZE.
 global_variable const size_t MAX_LOG_BUFFER_SIZE = 32768;
 global_variable char g_logBeginning[MAX_LOG_BUFFER_SIZE];
 global_variable char g_logCircularBuffer[MAX_LOG_BUFFER_SIZE] = {};
@@ -1671,22 +1673,22 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
-	gameMemory.platformLog             = platformLog;
-	gameMemory.platformDecodeZ85Png    = platformDecodeZ85Png;
-	gameMemory.platformFreeRawImage    = platformFreeRawImage;
-	gameMemory.platformLoadWav         = platformLoadWav;
-	gameMemory.platformLoadOgg         = platformLoadOgg;
-	gameMemory.platformLoadPng         = platformLoadPng;
+	gameMemory.kpl.log             = platformLog;
+	gameMemory.kpl.decodeZ85Png    = platformDecodeZ85Png;
+	gameMemory.kpl.freeRawImage    = platformFreeRawImage;
+	gameMemory.kpl.loadWav         = platformLoadWav;
+	gameMemory.kpl.loadOgg         = platformLoadOgg;
+	gameMemory.kpl.loadPng         = platformLoadPng;
 #if INTERNAL_BUILD
-	gameMemory.platformReadEntireFile  = platformReadEntireFile;
-	gameMemory.platformFreeFileMemory  = platformFreeFileMemory;
-	gameMemory.platformWriteEntireFile = platformWriteEntireFile;
+	gameMemory.kpl.readEntireFile  = platformReadEntireFile;
+	gameMemory.kpl.freeFileMemory  = platformFreeFileMemory;
+	gameMemory.kpl.writeEntireFile = platformWriteEntireFile;
 #endif// INTERNAL_BUILD
-	gameMemory.krb                     = {};
-	gameMemory.imguiContext            = ImGui::GetCurrentContext();
-	gameMemory.platformImguiAlloc      = platformImguiAlloc;
-	gameMemory.platformImguiFree       = platformImguiFree;
-	gameMemory.imguiAllocUserData      = g_genAllocImgui;
+	gameMemory.krb                 = {};
+	gameMemory.imguiContext        = ImGui::GetCurrentContext();
+	gameMemory.platformImguiAlloc  = platformImguiAlloc;
+	gameMemory.platformImguiFree   = platformImguiFree;
+	gameMemory.imguiAllocUserData  = g_genAllocImgui;
 	game.onReloadCode(gameMemory);
 	game.initialize(gameMemory);
 	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 

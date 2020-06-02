@@ -125,6 +125,7 @@
 	need to continuously add "assets/" to the beginning of every asset string.
 [x] Set kcpp output files to be read-only to reduce chance of accidentally 
 	editing them instead of the original source files.
+[x] move all the platform API calls into a PlatformApi struct.
 [ ] Asset streaming system
 	[x] Is there an easy way to bind asset names to code in an efficient way?
 		Hashing asset strings everywhere is slow/cumbersome.
@@ -150,13 +151,15 @@
 		[-] Maybe use X-Macro for this? https://stackoverflow.com/a/320888
 			Scan thru code and replace a special empty macro with some value.
 	[ ] `push` request for an asset and receive an asset handle.
-		[ ] Quickly read file meta data to determine raw data size so we can 
+		[-] Quickly read file meta data to determine raw data size so we can 
 			reserve it for whoever needs to load.
 			(image dimensions, sound hz/#channels/bits-per-sample)
 			PNG file spec: 
 				http://www.libpng.org/pub/png/spec/1.2/PNG-Contents.html
 			WAV file spec:
 				http://soundfile.sapp.org/doc/WaveFormat/
+		[x] push audio assets
+		[ ] push PNG assets
 	[ ] Until the asset is loaded into memory, the handle represents a default 
 		asset of some kind. 
 		(default texture, default mesh, default sound, etc...)

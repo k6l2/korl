@@ -85,6 +85,20 @@ typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
 typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 #endif
+struct PlatformApi
+{
+	fnSig_platformLog* log;
+	fnSig_platformDecodeZ85Png* decodeZ85Png;
+	fnSig_platformFreeRawImage* freeRawImage;
+	fnSig_platformLoadWav* loadWav;
+	fnSig_platformLoadOgg* loadOgg;
+	fnSig_platformLoadPng* loadPng;
+#if INTERNAL_BUILD
+	fnSig_PlatformReadEntireFile* readEntireFile;
+	fnSig_PlatformFreeFileMemory* freeFileMemory;
+	fnSig_PlatformWriteEntireFile* writeEntireFile;
+#endif
+};
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory
 {
@@ -92,20 +106,7 @@ struct GameMemory
 	u64   permanentMemoryBytes;
 	void* transientMemory;
 	u64   transientMemoryBytes;
-	///TODO: maybe instead of passing shit tons of function pointers here, we 
-	///      can do something similar to ImGui and have a `platformContext` &
-	///      `krbContext` which is passed as a parameter to all these functions?
-	fnSig_platformLog* platformLog;
-	fnSig_platformDecodeZ85Png* platformDecodeZ85Png;
-	fnSig_platformFreeRawImage* platformFreeRawImage;
-	fnSig_platformLoadWav* platformLoadWav;
-	fnSig_platformLoadOgg* platformLoadOgg;
-	fnSig_platformLoadPng* platformLoadPng;
-#if INTERNAL_BUILD
-	fnSig_PlatformReadEntireFile* platformReadEntireFile;
-	fnSig_PlatformFreeFileMemory* platformFreeFileMemory;
-	fnSig_PlatformWriteEntireFile* platformWriteEntireFile;
-#endif
+	PlatformApi kpl;
 	KrbApi krb;
 	void* imguiContext;
 	fnSig_platformImguiAlloc* platformImguiAlloc;

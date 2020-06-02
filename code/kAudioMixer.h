@@ -10,6 +10,6 @@ internal KAudioMixer* kauConstruct(KgaHandle allocator, u16 audioTrackCount,
 internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer, 
                      u32 sampleBlocksConsumed);
 internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer, 
-                                  KAssetHandle kahSound);
+                                  KAssetCStr kAssetCStr);
 internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
                            bool value);

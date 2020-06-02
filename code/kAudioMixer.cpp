@@ -132,8 +132,10 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 	}
 }
 internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer, 
-                                  KAssetHandle kahSound)
+                                  KAssetCStr kAssetCStr)
 {
+	const KAssetHandle kahSound = 
+		kamPushAsset(audioMixer->assetManager, kAssetCStr);
 	kassert(kamIsRawSound(audioMixer->assetManager, kahSound));
 	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
 	u16 trackIndexFirstAvailable = 0;

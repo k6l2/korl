@@ -2,7 +2,7 @@
 #include "global-defines.h"
 #if defined(KLOG)
 	#undef KLOG
-	#define KLOG(platformLogCategory, formattedString, ...) g_log(\
+	#define KLOG(platformLogCategory, formattedString, ...) g_kpl->log(\
 	    __FILENAME__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
 	    formattedString, ##__VA_ARGS__)
 #endif
@@ -18,15 +18,9 @@ struct GameState
 	kmath::Quaternion shipWorldOrientation = kmath::quat({0,0,1}, 0);
 	KAssetManager* assetManager;
 	KAudioMixer* kAudioMixer;
-	KAssetHandle kahSfxShoot;
-	KAssetHandle kahSfxHit;
-	KAssetHandle kahSfxExplosion;
-	KAssetHandle kahBgmBattleTheme;
-	KAssetHandle kahImgFighter;
-	u8 kahImgFighter_PADDING[4];
 	KgaHandle kgaHPermanent;
 	KgaHandle kgaHTransient;
 };
+global_variable PlatformApi* g_kpl;
 global_variable GameState* g_gs;
-global_variable fnSig_platformLog* g_log;
 global_variable KrbApi* g_krb;
