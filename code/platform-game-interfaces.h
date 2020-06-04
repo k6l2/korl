@@ -37,10 +37,11 @@ struct RawSound
 #define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
 #define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
 #define PLATFORM_DECODE_Z85_PNG(name) RawImage name(const u8* z85PngData, \
-                                                    size_t z85ImageNumBytes)
-///TODO: pass a general allocator to PLATFORM_DECODE_Z85_PNG to destroy the
-///      PLATFORM_FREE_RAW_IMAGE API since it would become completely useless
-#define PLATFORM_FREE_RAW_IMAGE(name) void name(RawImage& rawImage)
+                                                   size_t z85PngNumBytes, \
+                                                   KgaHandle pixelDataAllocator)
+#define PLATFORM_DECODE_Z85_WAV(name) RawSound name(const u8* z85WavData, \
+                                                  size_t z85WavNumBytes, \
+                                                  KgaHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
@@ -63,7 +64,7 @@ typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
-typedef PLATFORM_FREE_RAW_IMAGE(fnSig_platformFreeRawImage);
+typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
@@ -84,12 +85,12 @@ struct PlatformDebugReadFileResult
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
 typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
-#endif
+#endif// INTERNAL_BUILD
 struct PlatformApi
 {
 	fnSig_platformLog* log;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
-	fnSig_platformFreeRawImage* freeRawImage;
+	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;

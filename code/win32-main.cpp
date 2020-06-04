@@ -60,20 +60,9 @@ struct W32ThreadInfo
 	u32 index;
 	JobQueue* jobQueue;
 };
-internal PLATFORM_LOAD_PNG(platformLoadPng)
+internal RawImage decodePng(const PlatformDebugReadFileResult& file,
+                            KgaHandle pixelDataAllocator)
 {
-	// Load the entire PNG file into memory //
-	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, fileName);
-	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
-	if(!file.data)
-	{
-		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
-		return {};
-	}
-	defer(platformFreeFileMemory(file.data));
-	// Decode the PNG into a RawImage //
 	i32 imgW, imgH, imgNumByteChannels;
 	u8*const img = 
 		stbi_load_from_memory(reinterpret_cast<u8*>(file.data), file.dataBytes, 
@@ -99,6 +88,21 @@ internal PLATFORM_LOAD_PNG(platformLoadPng)
 		.sizeX            = kmath::safeTruncateU32(imgW),
 		.sizeY            = kmath::safeTruncateU32(imgH), 
 		.pixelData        = pixelData };
+}
+internal PLATFORM_LOAD_PNG(platformLoadPng)
+{
+	// Load the entire PNG file into memory //
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
+	                 g_pathToExe, fileName);
+	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
+	if(!file.data)
+	{
+		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		return {};
+	}
+	defer(platformFreeFileMemory(file.data));
+	return decodePng(file, pixelDataAllocator);
 }
 internal PLATFORM_LOAD_OGG(platformLoadOgg)
 {
@@ -167,20 +171,10 @@ internal PLATFORM_LOAD_OGG(platformLoadOgg)
 	result.sampleData       = sampleData;
 	return result;
 }
-internal PLATFORM_LOAD_WAV(platformLoadWav)
+internal RawSound decodeWav(const PlatformDebugReadFileResult& file,
+                            KgaHandle sampleDataAllocator,
+							const TCHAR* szFileFullPath)
 {
-	// Load the entire WAV file into memory //
-	RawSound result = {};
-	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, fileName);
-	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
-	if(!file.data)
-	{
-		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
-		return result;
-	}
-	defer(platformFreeFileMemory(file.data));
 	// Now that we have the entire file in memory, we can verify if the file is
 	//	valid and extract necessary meta data simultaneously! //
 	u8* currByte = reinterpret_cast<u8*>(file.data);
@@ -197,7 +191,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.ChunkId==0x%x invalid for '%s'!", 
 		     reinterpret_cast<u32*>(currByte), szFileFullPath);
-		return result;
+		return {};
 	}
 	currByte += 4;
 	const u32 riffChunkSize = *reinterpret_cast<u32*>(currByte);
@@ -210,7 +204,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.Format==0x%x invalid/unsupported for '%s'!", 
 		     *reinterpret_cast<u32*>(currByte), szFileFullPath);
-		return result;
+		return {};
 	}
 	currByte += 4;
 	u32Chars.chars[0] = 'f';
@@ -221,7 +215,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.fmt.id==0x%x invalid for '%s'!", 
 		     *reinterpret_cast<u32*>(currByte), szFileFullPath);
-		return result;
+		return {};
 	}
 	currByte += 4;
 	const u32 riffFmtChunkSize = *reinterpret_cast<u32*>(currByte);
@@ -230,7 +224,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.fmt.chunkSize==%i invalid/unsupported for '%s'!", 
 		     riffFmtChunkSize, szFileFullPath);
-		return result;
+		return {};
 	}
 	const u16 riffFmtAudioFormat = *reinterpret_cast<u16*>(currByte);
 	currByte += 2;
@@ -238,7 +232,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.fmt.audioFormat==%i invalid/unsupported for '%s'!",
 		     riffFmtAudioFormat, szFileFullPath);
-		return result;
+		return {};
 	}
 	const u16 riffFmtNumChannels = *reinterpret_cast<u16*>(currByte);
 	currByte += 2;
@@ -246,7 +240,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.fmt.numChannels==%i invalid/unsupported for '%s'!",
 		     riffFmtNumChannels, szFileFullPath);
-		return result;
+		return {};
 	}
 	const u32 riffFmtSampleRate = *reinterpret_cast<u32*>(currByte);
 	currByte += 4;
@@ -254,7 +248,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.fmt.riffFmtSampleRate==%i invalid/unsupported for "
 		     "'%s'!", riffFmtSampleRate, szFileFullPath);
-		return result;
+		return {};
 	}
 	const u32 riffFmtByteRate = *reinterpret_cast<u32*>(currByte);
 	currByte += 4;
@@ -266,20 +260,20 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.fmt.riffFmtBitsPerSample==%i invalid/unsupported for "
 		     "'%s'!", riffFmtBitsPerSample, szFileFullPath);
-		return result;
+		return {};
 	}
 	if(riffFmtByteRate != 
 		riffFmtSampleRate * riffFmtNumChannels * riffFmtBitsPerSample/8)
 	{
 		KLOG(ERROR, "RIFF.fmt.riffFmtByteRate==%i invalid for '%s'!", 
 		     riffFmtByteRate, szFileFullPath);
-		return result;
+		return {};
 	}
 	if(riffFmtBlockAlign != riffFmtNumChannels * riffFmtBitsPerSample/8)
 	{
 		KLOG(ERROR, "RIFF.fmt.riffFmtBlockAlign==%i invalid for '%s'!", 
 		     riffFmtBlockAlign, szFileFullPath);
-		return result;
+		return {};
 	}
 	u32Chars.chars[0] = 'd';
 	u32Chars.chars[1] = 'a';
@@ -289,7 +283,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.data.id==0x%x invalid for '%s'!", 
 		     *reinterpret_cast<u32*>(currByte), szFileFullPath);
-		return result;
+		return {};
 	}
 	currByte += 4;
 	const u32 riffDataSize = *reinterpret_cast<u32*>(currByte);
@@ -300,7 +294,7 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "RIFF.data.size==%i invalid for '%s'!", 
 		     riffDataSize, szFileFullPath);
-		return result;
+		return {};
 	}
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
 		kgaAlloc(sampleDataAllocator, riffDataSize) );
@@ -308,17 +302,34 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 	{
 		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
 		     riffDataSize);
-		return result;
+		return {};
 	}
 	memcpy(sampleData, currByte, riffDataSize);
 	// Assemble & return a valid result! //
-	result.channelCount     = static_cast<u8>(riffFmtNumChannels);
-	result.sampleHz         = riffFmtSampleRate;
-	result.bitsPerSample    = riffFmtBitsPerSample;
-	result.sampleBlockCount = riffDataSize / riffFmtNumChannels / 
-	                          (riffFmtBitsPerSample/8);
-	result.sampleData       = sampleData;
+	const RawSound result = {
+		.sampleHz         = riffFmtSampleRate,
+		.sampleBlockCount = riffDataSize / riffFmtNumChannels / 
+		                      (riffFmtBitsPerSample/8),
+		.bitsPerSample    = riffFmtBitsPerSample,
+		.channelCount     = static_cast<u8>(riffFmtNumChannels),
+		.sampleData       = sampleData,
+	};
 	return result;
+}
+internal PLATFORM_LOAD_WAV(platformLoadWav)
+{
+	// Load the entire WAV file into memory //
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
+	                 g_pathToExe, fileName);
+	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
+	if(!file.data)
+	{
+		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		return {};
+	}
+	defer(platformFreeFileMemory(file.data));
+	return decodeWav(file, sampleDataAllocator, szFileFullPath);
 }
 internal PLATFORM_IMGUI_ALLOC(platformImguiAlloc)
 {
@@ -330,43 +341,49 @@ internal PLATFORM_IMGUI_FREE(platformImguiFree)
 }
 internal PLATFORM_DECODE_Z85_PNG(platformDecodeZ85Png)
 {
-	local_persist const RawImage RESULT_FAILURE = {};
-	const i32 tempImageDataBytes = kmath::safeTruncateI32(
-		z85::decodedFileSizeBytes(z85ImageNumBytes));
-	i8*const tempImageDataBuffer = reinterpret_cast<i8*>(
-		kgaAlloc(g_genAllocStbImage, tempImageDataBytes));
-	if(!tempImageDataBuffer)
+	///TODO: use a separate allocator for Z85 decoding functionality
+	const i32 tempFileBytes = kmath::safeTruncateI32(
+		z85::decodedFileSizeBytes(z85PngNumBytes));
+	i8*const tempFileData = reinterpret_cast<i8*>(
+		kgaAlloc(g_genAllocStbImage, tempFileBytes));
+	if(!tempFileData)
 	{
-		KLOG(ERROR, "Failed to allocate temp image data buffer!");
-		return RESULT_FAILURE;
+		KLOG(ERROR, "Failed to allocate temp file data buffer!");
+		return {};
 	}
-	defer(kgaFree(g_genAllocStbImage, tempImageDataBuffer));
-	if(!z85::decode(reinterpret_cast<const i8*>(z85PngData), 
-	                tempImageDataBuffer))
+	defer(kgaFree(g_genAllocStbImage, tempFileData));
+	if(!z85::decode(reinterpret_cast<const i8*>(z85PngData), tempFileData))
 	{
 		KLOG(ERROR, "z85::decode failure!");
-		return RESULT_FAILURE;
+		return {};
 	}
-	i32 imgW, imgH, imgNumByteChannels;
-	u8*const img = 
-		stbi_load_from_memory(reinterpret_cast<u8*>(tempImageDataBuffer), 
-		                      tempImageDataBytes, 
-		                      &imgW, &imgH, &imgNumByteChannels, 4);
-	kassert(img);
-	if(!img)
-	{
-		KLOG(ERROR, "stbi_load_from_memory failure!");
-		return RESULT_FAILURE;
-	}
-	return RawImage{
-		.sizeX     = kmath::safeTruncateU32(imgW),
-		.sizeY     = kmath::safeTruncateU32(imgH), 
-		.pixelData = img };
+	const PlatformDebugReadFileResult memorizedFile = {
+		.dataBytes = kmath::safeTruncateU32(tempFileBytes),
+		.data      = tempFileData };
+	return decodePng(memorizedFile, pixelDataAllocator);
 }
-internal PLATFORM_FREE_RAW_IMAGE(platformFreeRawImage)
+internal PLATFORM_DECODE_Z85_WAV(platformDecodeZ85Wav)
 {
-	stbi_image_free(rawImage.pixelData);
-	rawImage.pixelData = nullptr;
+	///TODO: use a separate allocator for Z85 decoding functionality
+	const i32 tempFileBytes = kmath::safeTruncateI32(
+		z85::decodedFileSizeBytes(z85WavNumBytes));
+	i8*const tempFileData = reinterpret_cast<i8*>(
+		kgaAlloc(g_genAllocStbImage, tempFileBytes));
+	if(!tempFileData)
+	{
+		KLOG(ERROR, "Failed to allocate temp file data buffer!");
+		return {};
+	}
+	defer(kgaFree(g_genAllocStbImage, tempFileData));
+	if(!z85::decode(reinterpret_cast<const i8*>(z85WavData), tempFileData))
+	{
+		KLOG(ERROR, "z85::decode failure!");
+		return {};
+	}
+	const PlatformDebugReadFileResult memorizedFile = {
+		.dataBytes = kmath::safeTruncateU32(tempFileBytes),
+		.data      = tempFileData };
+	return decodeWav(memorizedFile, sampleDataAllocator, TEXT("z85"));
 }
 internal PLATFORM_LOG(platformLog)
 {
@@ -1377,16 +1394,6 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 	}
 	return 0;
 }
-#if 0
-JOB_QUEUE_FUNCTION(testFunc)
-{
-	char*const cstrToPrint = reinterpret_cast<char*>(data);
-	char debugBuffer[256];
-	_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
-				"thread[%i]: cstrToPrint='%s'\n", threadId, cstrToPrint);
-	OutputDebugString(debugBuffer);
-}
-#endif // 0
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                            PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
@@ -1464,37 +1471,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 	}
-#if 0
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A0 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A1 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A2 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A3 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A4 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A5 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A6 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A7 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A8 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A9 ---");
-	while(jobQueueHasIncompleteJobs(&g_jobQueue))
-	{
-		jobQueuePerformWork(&g_jobQueue, 7);
-	}
-	Sleep(1000);
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B0 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B1 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B2 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B3 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B4 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B5 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B6 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B7 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B8 ---");
-	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B9 ---");
-	while(jobQueueHasIncompleteJobs(&g_jobQueue))
-	{
-		jobQueuePerformWork(&g_jobQueue, 7);
-	}
-#endif // 0
 	// Obtain and save a global copy of the app data folder path //
 	//	Source: https://stackoverflow.com/a/2899042
 	{
@@ -1778,7 +1754,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		gameMemory.permanentMemoryBytes;
 	gameMemory.kpl.log             = platformLog;
 	gameMemory.kpl.decodeZ85Png    = platformDecodeZ85Png;
-	gameMemory.kpl.freeRawImage    = platformFreeRawImage;
+	gameMemory.kpl.decodeZ85Wav    = platformDecodeZ85Wav;
 	gameMemory.kpl.loadWav         = platformLoadWav;
 	gameMemory.kpl.loadOgg         = platformLoadOgg;
 	gameMemory.kpl.loadPng         = platformLoadPng;

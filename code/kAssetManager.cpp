@@ -1,4 +1,6 @@
 #include "kAssetManager.h"
+#include "z85-png-default.h"
+#include "z85-wav-default.h"
 enum class KAssetType : u8
 {
 	UNUSED,
@@ -22,6 +24,8 @@ struct KAssetManager
 	KAssetHandle maxAssetHandles;
 	KAssetHandle nextUnusedHandle;
 	u8 nextUnusedHandle_PADDING[4];
+	KAsset defaultAssetImage;
+	KAsset defaultAssetSound;
 	KgaHandle assetDataAllocator;
 	PlatformApi* kpl;
 	//KAsset assets[];
@@ -39,10 +43,29 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		                        sizeof(KAsset)*maxAssetHandles));
 	if(result)
 	{
+		// Quickly load very tiny default assets which can be immediately used
+		//	in place of any asset handle which has not yet been loaded from the
+		//	platform and decoded into useful data for us yet! //
+		KAsset defaultAssetImage;
+		defaultAssetImage.type = KAssetType::RAW_IMAGE;
+		defaultAssetImage.assetFileName = "z85_png_default";
+		defaultAssetImage.assetData.image = 
+			kpl->decodeZ85Png(z85_png_default, 
+			                  CARRAY_COUNT(z85_png_default) - 1,
+			                  assetDataAllocator);
+		KAsset defaultAssetSound;
+		defaultAssetSound.type = KAssetType::RAW_SOUND;
+		defaultAssetSound.assetFileName = "z85_wav_default";
+		defaultAssetSound.assetData.sound =
+			kpl->decodeZ85Wav(z85_wav_default, 
+			                  CARRAY_COUNT(z85_wav_default) - 1,
+			                  assetDataAllocator);
 		*result = 
 			{ .usedAssetHandles = 0
 			, .maxAssetHandles = maxAssetHandles
 			, .nextUnusedHandle = 0
+			, .defaultAssetImage = defaultAssetImage
+			, .defaultAssetSound = defaultAssetSound
 			, .assetDataAllocator = assetDataAllocator
 			, .kpl = kpl };
 	}

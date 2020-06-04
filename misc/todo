@@ -173,7 +173,7 @@
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
 [ ] Asset streaming system (multi-threaded)
-	[ ] Load default assets when application first starts using Z85 files or 
+	[x] Load default assets when application first starts using Z85 files or 
 		something
 	[ ] Until the asset is loaded into memory, the handle represents a default 
 		asset of some kind. 
@@ -184,7 +184,9 @@
 		it, calculate the oldest/least-used asset(s) and free them until we are 
 		able to allocate successfully!
 	[ ] Free RawImage KRB resources when the asset gets freed
+[ ] Hot-reload "active" assets when their date modified has changed.
 [ ] display debug frame metrics
+	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
 		application runs for ~30seconds after startup...
 [ ] "Release" build script
