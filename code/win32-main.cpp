@@ -1349,6 +1349,82 @@ internal LONG WINAPI w32TopLevelExceptionHandler(
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
+struct JobQueueJob
+{
+	bool taken;
+	TCHAR* cstrToPrint;
+};
+struct JobQueue
+{
+	JobQueueJob jobs[16];
+	size_t nextJobIndex;
+	size_t availableJobCount;
+	CRITICAL_SECTION lock;
+};
+internal void jobQueueInit(JobQueue* jobQueue)
+{
+	InitializeCriticalSection(&jobQueue->lock);
+}
+internal void jobQueueDestroy(JobQueue* jobQueue)
+{
+	DeleteCriticalSection(&jobQueue->lock);
+}
+internal void jobQueuePostJobDebugString(JobQueue* jobQueue, TCHAR* cstr)
+{
+	EnterCriticalSection(&jobQueue->lock);
+	defer(LeaveCriticalSection(&jobQueue->lock));
+	kassert(jobQueue->availableJobCount < CARRAY_COUNT(jobQueue->jobs));
+	const size_t newJobIndex = 
+		jobQueue->nextJobIndex + jobQueue->availableJobCount;
+	kassert(!jobQueue->jobs[newJobIndex].taken);
+	jobQueue->jobs[newJobIndex].cstrToPrint = cstr;
+	jobQueue->availableJobCount++;
+}
+internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)
+{
+	if(TryEnterCriticalSection(&jobQueue->lock))
+	{
+		defer(LeaveCriticalSection(&jobQueue->lock));
+		if(jobQueue->availableJobCount)
+		{
+			JobQueueJob* job = &jobQueue->jobs[jobQueue->nextJobIndex];
+			jobQueue->nextJobIndex = 
+				(jobQueue->nextJobIndex + 1) % CARRAY_COUNT(jobQueue->jobs);
+			jobQueue->availableJobCount--;
+			job->taken = true;
+			return job;
+		}
+	}
+	return nullptr;
+}
+global_variable JobQueue jobQueue;
+struct W32ThreadInfo
+{
+	u32 index;
+};
+DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
+{
+	W32ThreadInfo*const threadInfo = 
+		reinterpret_cast<W32ThreadInfo*>(lpParameter);
+	{
+		char debugBuffer[256];
+		_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
+					"thread[%i]: started!\n", threadInfo->index);
+		OutputDebugString(debugBuffer);
+	}
+	while(true)
+	{
+		if(JobQueueJob*const job = jobQueueTakeJob(&jobQueue))
+		{
+			char debugBuffer[256];
+			_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
+			            "thread[%i]: cstrToPrint='%s'\n", threadInfo->index,
+			            job->cstrToPrint);
+			OutputDebugString(debugBuffer);
+		}
+	}
+	return 0;
+}
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                            PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
@@ -1392,6 +1468,41 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		KLOG(WARNING, "Failed to add vectored exception handler!");
 	}
 	KLOG(INFO, "START!");
+	jobQueueInit(&jobQueue);
+	// Spawn threads //
+	W32ThreadInfo threadInfos[7];
+	for(u32 threadIndex = 0; 
+		threadIndex < sizeof(threadInfos)/sizeof(threadInfos[0]); 
+		threadIndex++)
+	{
+		threadInfos[threadIndex].index = threadIndex;
+		DWORD threadId;
+		const HANDLE hThread = 
+			CreateThread(nullptr, 0, w32WorkThread, &threadInfos[threadIndex], 
+			             0, &threadId);
+		if(!hThread)
+		{
+			KLOG(ERROR, "Failed to create thread! getlasterror=%i", 
+			     GetLastError());
+			return RETURN_CODE_FAILURE;
+		}
+		if(!CloseHandle(hThread))
+		{
+			KLOG(ERROR, "Failed to close thread handle! getlasterror=%i", 
+			     GetLastError());
+			return RETURN_CODE_FAILURE;
+		}
+	}
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 0 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 1 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 2 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 3 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 4 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 5 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 6 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 7 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 8 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING 9 ---");
 	// Obtain and save a global copy of the app data folder path //
 	//	Source: https://stackoverflow.com/a/2899042
 	{
@@ -1907,7 +2018,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				const LONGLONG elapsedMicroseconds = 
 					(perfCountDiff*1000000) / g_perfCounterHz.QuadPart;
 #endif
-#if SLOW_BUILD
+#if SLOW_BUILD && 0
 				// send performance measurement to debugger as a string //
 				KLOG(INFO, "%.2f ms/f | %.2f Mc/f", 
 				     elapsedSeconds*1000, clockCycleDiff/1000000.f);

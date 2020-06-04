@@ -161,11 +161,15 @@
 		[x] push audio assets
 		[x] push PNG assets
 [ ] multi-threaded job queue (HERE BE DRAGONS? LUL)
+	[x] spawn a bunch of threads
+	[x] pull test jobs off a queue in a thread-safe manor
+	[ ] wait for all jobs to complete.
+	[ ] instead of burning a hole in my CPU, yield the threads to a semaphore 
+		until work actually gets posted to the queue
+	[ ] generalize the queue to process any job
 	[ ] make log system thread-safe probably!
-	[ ] Asset streaming using multi-threaded job queue
+	[ ] make allocator thread safe?  Not actually sure on this one.
 	https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
-	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
-	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange
 	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
@@ -176,6 +180,9 @@
 		asset of some kind. 
 		(default texture, default mesh, default sound, etc...)
 	[ ] Submit a job to load pushed KASSET
+	[ ] When attempting to load an asset and we're unable to allocate memory for 
+		it, calculate the oldest/least-used asset(s) and free them until we are 
+		able to allocate successfully!
 	[ ] Free RawImage KRB resources when the asset gets freed
 [ ] display debug frame metrics
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
@@ -210,3 +217,6 @@
 [ ] Platform Audio - clean up the sound buffer when the program ends so there is
 	no click artifact (if possible).
 [ ] Audio Mixer - optimize `kauMix`
+[ ] Job Queue - synchronize without locks
+	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
+	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange

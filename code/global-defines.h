@@ -2,6 +2,7 @@
 #define internal        static
 #define local_persist   static
 #define global_variable static
+#define CARRAY_COUNT(array) (sizeof(array)/sizeof(array[0]))
 // Obtain the file name excluding the path //
 //	Source: https://stackoverflow.com/a/8488201
 #include <cstring>
