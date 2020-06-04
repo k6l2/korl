@@ -160,11 +160,11 @@
 				http://soundfile.sapp.org/doc/WaveFormat/
 		[x] push audio assets
 		[x] push PNG assets
-[ ] multi-threaded job queue (HERE BE DRAGONS? LUL)
+[ ] multi-threaded job queue
 	[x] spawn a bunch of threads
 	[x] pull test jobs off a queue in a thread-safe manor
-	[ ] wait for all jobs to complete.
-	[ ] instead of burning a hole in my CPU, yield the threads to a semaphore 
+	[x] wait for all jobs to complete.
+	[x] instead of burning a hole in my CPU, yield the threads to a semaphore 
 		until work actually gets posted to the queue
 	[ ] generalize the queue to process any job
 	[ ] make log system thread-safe probably!
@@ -217,6 +217,9 @@
 [ ] Platform Audio - clean up the sound buffer when the program ends so there is
 	no click artifact (if possible).
 [ ] Audio Mixer - optimize `kauMix`
-[ ] Job Queue - synchronize without locks
+[ ] Print GetLastError messages in human-readable format using FormatMessage
+	https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
+[ ] Job Queue - synchronize without locks (HERE BE DRAGONS I guess or something)
+	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/lockless-programming?redirectedfrom=MSDN#xbox-360-performance
 	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
 	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange

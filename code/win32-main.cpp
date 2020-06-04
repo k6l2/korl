@@ -1359,15 +1359,28 @@ struct JobQueue
 	JobQueueJob jobs[16];
 	size_t nextJobIndex;
 	size_t availableJobCount;
+	size_t incompleteJobCount;
 	CRITICAL_SECTION lock;
+	HANDLE hSemaphore;
 };
-internal void jobQueueInit(JobQueue* jobQueue)
+internal bool jobQueueInit(JobQueue* jobQueue)
 {
 	InitializeCriticalSection(&jobQueue->lock);
+	jobQueue->hSemaphore = 
+		CreateSemaphore(nullptr, 0, CARRAY_COUNT(jobQueue->jobs), nullptr);
+	if(!jobQueue->hSemaphore)
+	{
+		KLOG(ERROR, "Failed to create job queue semaphore! getlasterror=%i",
+		     GetLastError());
+		return false;
+	}
+	return true;
 }
 internal void jobQueueDestroy(JobQueue* jobQueue)
 {
 	DeleteCriticalSection(&jobQueue->lock);
+	CloseHandle(jobQueue->hSemaphore);
+	jobQueue->hSemaphore = NULL;
 }
 internal void jobQueuePostJobDebugString(JobQueue* jobQueue, TCHAR* cstr)
 {
@@ -1375,10 +1388,17 @@ internal void jobQueuePostJobDebugString(JobQueue* jobQueue, TCHAR* cstr)
 	defer(LeaveCriticalSection(&jobQueue->lock));
 	kassert(jobQueue->availableJobCount < CARRAY_COUNT(jobQueue->jobs));
 	const size_t newJobIndex = 
-		jobQueue->nextJobIndex + jobQueue->availableJobCount;
+		(jobQueue->nextJobIndex + jobQueue->availableJobCount) % 
+		CARRAY_COUNT(jobQueue->jobs);
 	kassert(!jobQueue->jobs[newJobIndex].taken);
 	jobQueue->jobs[newJobIndex].cstrToPrint = cstr;
 	jobQueue->availableJobCount++;
+	jobQueue->incompleteJobCount++;
+	if(!ReleaseSemaphore(jobQueue->hSemaphore, 1, nullptr))
+	{
+		KLOG(ERROR, "Failed to release semaphore! getlasterror=%i", 
+		     GetLastError());
+	}
 }
 internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)
 {
@@ -1397,10 +1417,47 @@ internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)
 	}
 	return nullptr;
 }
+internal void jobQueueCompleteJob(JobQueue* jobQueue, JobQueueJob* job)
+{
+	EnterCriticalSection(&jobQueue->lock);
+	defer(LeaveCriticalSection(&jobQueue->lock));
+	job->taken = false;
+	kassert(jobQueue->incompleteJobCount > 0);
+	jobQueue->incompleteJobCount--;
+}
+internal bool jobQueueHasIncompleteJobs(JobQueue* jobQueue)
+{
+	return jobQueue->incompleteJobCount;
+}
+internal void jobQueueWaitForWork(JobQueue* jobQueue)
+{
+	const DWORD waitResult = 
+		WaitForSingleObject(jobQueue->hSemaphore, INFINITE);
+	if(waitResult == WAIT_FAILED)
+	{
+		KLOG(ERROR, "Wait failed! getlasterror=%i", GetLastError());
+	}
+}
+/** @return true if work was performed */
+internal bool jobQueuePerformWork(JobQueue* jobQueue, u32 threadId)
+{
+	JobQueueJob*const job = jobQueueTakeJob(jobQueue);
+	if(!job)
+	{
+		return false;
+	}
+	char debugBuffer[256];
+	_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
+				"thread[%i]: cstrToPrint='%s'\n", threadId, job->cstrToPrint);
+	OutputDebugString(debugBuffer);
+	jobQueueCompleteJob(jobQueue, job);
+	return true;
+}
 global_variable JobQueue jobQueue;
 struct W32ThreadInfo
 {
 	u32 index;
+	JobQueue* jobQueue;
 };
 DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 {
@@ -1414,13 +1471,9 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 	}
 	while(true)
 	{
-		if(JobQueueJob*const job = jobQueueTakeJob(&jobQueue))
+		if(!jobQueuePerformWork(threadInfo->jobQueue, threadInfo->index))
 		{
-			char debugBuffer[256];
-			_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
-			            "thread[%i]: cstrToPrint='%s'\n", threadInfo->index,
-			            job->cstrToPrint);
-			OutputDebugString(debugBuffer);
+			jobQueueWaitForWork(threadInfo->jobQueue);
 		}
 	}
 	return 0;
@@ -1468,18 +1521,23 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		KLOG(WARNING, "Failed to add vectored exception handler!");
 	}
 	KLOG(INFO, "START!");
-	jobQueueInit(&jobQueue);
+	if(!jobQueueInit(&jobQueue))
+	{
+		KLOG(ERROR, "Failed to initialize job queue!");
+		return RETURN_CODE_FAILURE;
+	}
 	// Spawn threads //
 	W32ThreadInfo threadInfos[7];
 	for(u32 threadIndex = 0; 
 		threadIndex < sizeof(threadInfos)/sizeof(threadInfos[0]); 
 		threadIndex++)
 	{
-		threadInfos[threadIndex].index = threadIndex;
+		threadInfos[threadIndex].index    = threadIndex;
+		threadInfos[threadIndex].jobQueue = &jobQueue;
 		DWORD threadId;
 		const HANDLE hThread = 
-			CreateThread(nullptr, 0, w32WorkThread, &threadInfos[threadIndex], 
-			             0, &threadId);
+			CreateThread(nullptr, 0, w32WorkThread, 
+			             &threadInfos[threadIndex], 0, &threadId);
 		if(!hThread)
 		{
 			KLOG(ERROR, "Failed to create thread! getlasterror=%i", 
@@ -1493,16 +1551,37 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 	}
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 0 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 1 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 2 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 3 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 4 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 5 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 6 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 7 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 8 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING 9 ---");
+#if 1
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A0 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A1 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A2 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A3 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A4 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A5 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A6 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A7 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A8 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING A9 ---");
+	while(jobQueueHasIncompleteJobs(&jobQueue))
+	{
+		jobQueuePerformWork(&jobQueue, 7);
+	}
+	Sleep(1000);
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B0 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B1 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B2 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B3 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B4 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B5 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B6 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B7 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B8 ---");
+	jobQueuePostJobDebugString(&jobQueue, "--- STRING B9 ---");
+	while(jobQueueHasIncompleteJobs(&jobQueue))
+	{
+		jobQueuePerformWork(&jobQueue, 7);
+	}
+#endif // 0
 	// Obtain and save a global copy of the app data folder path //
 	//	Source: https://stackoverflow.com/a/2899042
 	{
