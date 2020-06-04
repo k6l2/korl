@@ -2,6 +2,7 @@
 #include "win32-dsound.h"
 #include "win32-xinput.h"
 #include "win32-krb-opengl.h"
+#include "win32-jobQueue.h"
 #include "generalAllocator.h"
 #include <cstdio>
 #include <ctime>
@@ -44,6 +45,7 @@ global_variable size_t g_logCurrentCircularBufferChar;
 // This represents the total # of character sent to the circular buffer, 
 //	including characters that are overwritten!
 global_variable size_t g_logCircularBufferRunningTotal;
+global_variable CRITICAL_SECTION g_logCsLock;
 global_variable bool g_hasReceivedException;
 // @assumption: once we have written a crash dump, there is never a need to 
 //	write any more, let alone continue execution.
@@ -52,6 +54,12 @@ global_variable bool g_hasWrittenCrashDump;
 global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+global_variable JobQueue g_jobQueue;
+struct W32ThreadInfo
+{
+	u32 index;
+	JobQueue* jobQueue;
+};
 internal PLATFORM_LOAD_PNG(platformLoadPng)
 {
 	// Load the entire PNG file into memory //
@@ -436,6 +444,12 @@ internal PLATFORM_LOG(platformLog)
 	{
 		kassert(!"ERROR HAS BEEN LOGGED!");
 	}
+	//	Everything past this point modifies global log buffer state ////////////
+	// Ensure writes to the global log buffer states are thread-safe! //
+	EnterCriticalSection(&g_logCsLock);
+	defer(LeaveCriticalSection(&g_logCsLock));
+	// Calculate how big this new log line is, & which of the log buffers we 
+	//	will write to //
 	const size_t totalLogLineSize = 
 		logLineMetaCharsWritten + logLineCharsWritten;
 	const size_t remainingLogBeginning = 
@@ -1349,126 +1363,11 @@ internal LONG WINAPI w32TopLevelExceptionHandler(
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
-struct JobQueueJob
-{
-	bool taken;
-	TCHAR* cstrToPrint;
-};
-struct JobQueue
-{
-	JobQueueJob jobs[16];
-	size_t nextJobIndex;
-	size_t availableJobCount;
-	size_t incompleteJobCount;
-	CRITICAL_SECTION lock;
-	HANDLE hSemaphore;
-};
-internal bool jobQueueInit(JobQueue* jobQueue)
-{
-	InitializeCriticalSection(&jobQueue->lock);
-	jobQueue->hSemaphore = 
-		CreateSemaphore(nullptr, 0, CARRAY_COUNT(jobQueue->jobs), nullptr);
-	if(!jobQueue->hSemaphore)
-	{
-		KLOG(ERROR, "Failed to create job queue semaphore! getlasterror=%i",
-		     GetLastError());
-		return false;
-	}
-	return true;
-}
-internal void jobQueueDestroy(JobQueue* jobQueue)
-{
-	DeleteCriticalSection(&jobQueue->lock);
-	CloseHandle(jobQueue->hSemaphore);
-	jobQueue->hSemaphore = NULL;
-}
-internal void jobQueuePostJobDebugString(JobQueue* jobQueue, TCHAR* cstr)
-{
-	EnterCriticalSection(&jobQueue->lock);
-	defer(LeaveCriticalSection(&jobQueue->lock));
-	kassert(jobQueue->availableJobCount < CARRAY_COUNT(jobQueue->jobs));
-	const size_t newJobIndex = 
-		(jobQueue->nextJobIndex + jobQueue->availableJobCount) % 
-		CARRAY_COUNT(jobQueue->jobs);
-	kassert(!jobQueue->jobs[newJobIndex].taken);
-	jobQueue->jobs[newJobIndex].cstrToPrint = cstr;
-	jobQueue->availableJobCount++;
-	jobQueue->incompleteJobCount++;
-	if(!ReleaseSemaphore(jobQueue->hSemaphore, 1, nullptr))
-	{
-		KLOG(ERROR, "Failed to release semaphore! getlasterror=%i", 
-		     GetLastError());
-	}
-}
-internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)
-{
-	if(TryEnterCriticalSection(&jobQueue->lock))
-	{
-		defer(LeaveCriticalSection(&jobQueue->lock));
-		if(jobQueue->availableJobCount)
-		{
-			JobQueueJob* job = &jobQueue->jobs[jobQueue->nextJobIndex];
-			jobQueue->nextJobIndex = 
-				(jobQueue->nextJobIndex + 1) % CARRAY_COUNT(jobQueue->jobs);
-			jobQueue->availableJobCount--;
-			job->taken = true;
-			return job;
-		}
-	}
-	return nullptr;
-}
-internal void jobQueueCompleteJob(JobQueue* jobQueue, JobQueueJob* job)
-{
-	EnterCriticalSection(&jobQueue->lock);
-	defer(LeaveCriticalSection(&jobQueue->lock));
-	job->taken = false;
-	kassert(jobQueue->incompleteJobCount > 0);
-	jobQueue->incompleteJobCount--;
-}
-internal bool jobQueueHasIncompleteJobs(JobQueue* jobQueue)
-{
-	return jobQueue->incompleteJobCount;
-}
-internal void jobQueueWaitForWork(JobQueue* jobQueue)
-{
-	const DWORD waitResult = 
-		WaitForSingleObject(jobQueue->hSemaphore, INFINITE);
-	if(waitResult == WAIT_FAILED)
-	{
-		KLOG(ERROR, "Wait failed! getlasterror=%i", GetLastError());
-	}
-}
-/** @return true if work was performed */
-internal bool jobQueuePerformWork(JobQueue* jobQueue, u32 threadId)
-{
-	JobQueueJob*const job = jobQueueTakeJob(jobQueue);
-	if(!job)
-	{
-		return false;
-	}
-	char debugBuffer[256];
-	_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
-				"thread[%i]: cstrToPrint='%s'\n", threadId, job->cstrToPrint);
-	OutputDebugString(debugBuffer);
-	jobQueueCompleteJob(jobQueue, job);
-	return true;
-}
-global_variable JobQueue jobQueue;
-struct W32ThreadInfo
-{
-	u32 index;
-	JobQueue* jobQueue;
-};
 DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 {
 	W32ThreadInfo*const threadInfo = 
 		reinterpret_cast<W32ThreadInfo*>(lpParameter);
-	{
-		char debugBuffer[256];
-		_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
-					"thread[%i]: started!\n", threadInfo->index);
-		OutputDebugString(debugBuffer);
-	}
+	KLOG(INFO, "thread[%i]: started!", threadInfo->index);
 	while(true)
 	{
 		if(!jobQueuePerformWork(threadInfo->jobQueue, threadInfo->index))
@@ -1478,6 +1377,16 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 	}
 	return 0;
 }
+#if 0
+JOB_QUEUE_FUNCTION(testFunc)
+{
+	char*const cstrToPrint = reinterpret_cast<char*>(data);
+	char debugBuffer[256];
+	_snprintf_s(debugBuffer, CARRAY_COUNT(debugBuffer), _TRUNCATE, 
+				"thread[%i]: cstrToPrint='%s'\n", threadId, cstrToPrint);
+	OutputDebugString(debugBuffer);
+}
+#endif // 0
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                            PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
@@ -1486,6 +1395,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///      failed probably?
 	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
 	defer(w32WriteLogToFile());
+	// Initialize the logging system's lock to ensure thread safety //
+	{
+		InitializeCriticalSection(&g_logCsLock);
+	}
 	// Reserve stack space for stack overflow exceptions //
 	{
 		// Experimentally, this is about the minimum # of reserved stack bytes
@@ -1521,19 +1434,19 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		KLOG(WARNING, "Failed to add vectored exception handler!");
 	}
 	KLOG(INFO, "START!");
-	if(!jobQueueInit(&jobQueue))
+	if(!jobQueueInit(&g_jobQueue))
 	{
 		KLOG(ERROR, "Failed to initialize job queue!");
 		return RETURN_CODE_FAILURE;
 	}
-	// Spawn threads //
+	// Spawn worker threads for g_jobQueue //
 	W32ThreadInfo threadInfos[7];
 	for(u32 threadIndex = 0; 
 		threadIndex < sizeof(threadInfos)/sizeof(threadInfos[0]); 
 		threadIndex++)
 	{
 		threadInfos[threadIndex].index    = threadIndex;
-		threadInfos[threadIndex].jobQueue = &jobQueue;
+		threadInfos[threadIndex].jobQueue = &g_jobQueue;
 		DWORD threadId;
 		const HANDLE hThread = 
 			CreateThread(nullptr, 0, w32WorkThread, 
@@ -1551,35 +1464,35 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 	}
-#if 1
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A0 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A1 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A2 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A3 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A4 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A5 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A6 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A7 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A8 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING A9 ---");
-	while(jobQueueHasIncompleteJobs(&jobQueue))
+#if 0
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A0 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A1 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A2 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A3 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A4 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A5 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A6 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A7 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A8 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING A9 ---");
+	while(jobQueueHasIncompleteJobs(&g_jobQueue))
 	{
-		jobQueuePerformWork(&jobQueue, 7);
+		jobQueuePerformWork(&g_jobQueue, 7);
 	}
 	Sleep(1000);
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B0 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B1 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B2 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B3 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B4 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B5 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B6 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B7 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B8 ---");
-	jobQueuePostJobDebugString(&jobQueue, "--- STRING B9 ---");
-	while(jobQueueHasIncompleteJobs(&jobQueue))
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B0 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B1 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B2 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B3 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B4 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B5 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B6 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B7 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B8 ---");
+	jobQueuePostJob(&g_jobQueue, testFunc, "--- STRING B9 ---");
+	while(jobQueueHasIncompleteJobs(&g_jobQueue))
 	{
-		jobQueuePerformWork(&jobQueue, 7);
+		jobQueuePerformWork(&g_jobQueue, 7);
 	}
 #endif // 0
 	// Obtain and save a global copy of the app data folder path //
@@ -2114,6 +2027,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
 #include "win32-krb-opengl.cpp"
+#include "win32-jobQueue.cpp"
 #include "krb-opengl.cpp"
 #include "z85.cpp"
 #define STB_IMAGE_IMPLEMENTATION

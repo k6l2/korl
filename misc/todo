@@ -160,15 +160,14 @@
 				http://soundfile.sapp.org/doc/WaveFormat/
 		[x] push audio assets
 		[x] push PNG assets
-[ ] multi-threaded job queue
+[x] multi-threaded job queue
 	[x] spawn a bunch of threads
 	[x] pull test jobs off a queue in a thread-safe manor
 	[x] wait for all jobs to complete.
 	[x] instead of burning a hole in my CPU, yield the threads to a semaphore 
 		until work actually gets posted to the queue
-	[ ] generalize the queue to process any job
-	[ ] make log system thread-safe probably!
-	[ ] make allocator thread safe?  Not actually sure on this one.
+	[x] generalize the queue to process any job
+	[x] make log system thread-safe probably!
 	https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
 	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
@@ -180,6 +179,7 @@
 		asset of some kind. 
 		(default texture, default mesh, default sound, etc...)
 	[ ] Submit a job to load pushed KASSET
+	[ ] make allocator thread safe?  Not actually sure on this one.
 	[ ] When attempting to load an asset and we're unable to allocate memory for 
 		it, calculate the oldest/least-used asset(s) and free them until we are 
 		able to allocate successfully!
@@ -217,6 +217,8 @@
 [ ] Platform Audio - clean up the sound buffer when the program ends so there is
 	no click artifact (if possible).
 [ ] Audio Mixer - optimize `kauMix`
+[ ] Detect how many worker threads to spawn based on how many logical cores are 
+	available on the system.
 [ ] Print GetLastError messages in human-readable format using FormatMessage
 	https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
 [ ] Job Queue - synchronize without locks (HERE BE DRAGONS I guess or something)
