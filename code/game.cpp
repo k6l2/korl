@@ -37,10 +37,15 @@ GAME_INITIALIZE(gameInitialize)
 		kauPlaySound(g_gs->kAudioMixer, 
 		             KASSET("joesteroids-battle-theme-modified.ogg"));
 	kauSetRepeat(g_gs->kAudioMixer, &tapeBgmBattleTheme, true);
+	// Tell the asset manager to load assets asynchronously! //
+	kamPushAsset(g_gs->assetManager, KASSET("fighter.png"));
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kauMix(g_gs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
+	if(!kamIsLoadingSounds(g_gs->assetManager))
+	{
+		kauMix(g_gs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
+	}
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -49,6 +54,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		(gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
 	{
 		return false;
+	}
+	if(kamIsLoadingImages(g_gs->assetManager))
+	{
+		return true;
 	}
 	if(numGamePads > 0)
 	{

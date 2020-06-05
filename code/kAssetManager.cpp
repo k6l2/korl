@@ -199,6 +199,33 @@ internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah)
 	     kam->maxAssetHandles);
 	return false;
 }
+internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	kassert(kah < kam->maxAssetHandles);
+	KAsset*const asset = assets + kah;
+	switch(asset->type)
+	{
+		case KAssetType::RAW_IMAGE:
+		{
+			kassert(asset->assetData.image.krbTextureHandle == 
+				krb::INVALID_TEXTURE_HANDLE);
+			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
+				asset->assetData.image.rawImage.sizeX,
+				asset->assetData.image.rawImage.sizeY,
+				asset->assetData.image.rawImage.pixelData);
+			asset->loaded = true;
+		}break;
+		case KAssetType::RAW_SOUND:
+		{
+			asset->loaded = true;
+		}break;
+		case KAssetType::UNUSED:
+		{
+			KLOG(ERROR, "UNUSED asset!");
+		}break;
+	}
+}
 internal RawSound kamGetRawSound(KAssetManager* kam,
                                  KAssetHandle kahSound)
 {
@@ -214,7 +241,7 @@ internal RawSound kamGetRawSound(KAssetManager* kam,
 	{
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
-			asset->loaded = true;
+			kamOnLoadingJobFinished(kam, kahSound);
 			return asset->assetData.sound;
 		}
 		return kam->defaultAssetSound.assetData.sound;
@@ -256,13 +283,7 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 	{
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
-			kassert(asset->assetData.image.krbTextureHandle == 
-				krb::INVALID_TEXTURE_HANDLE);
-			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
-				asset->assetData.image.rawImage.sizeX,
-				asset->assetData.image.rawImage.sizeY,
-				asset->assetData.image.rawImage.pixelData);
-			asset->loaded = true;
+			kamOnLoadingJobFinished(kam, assetHandle);
 			return asset->assetData.image.krbTextureHandle;
 		}
 		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
@@ -338,4 +359,30 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 		// asset is already loaded into memory, do nothing? //
 	}
 	return assetHandle;
+}
+internal bool kamIsLoadingAssets(KAssetManager* kam, KAssetType type)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	for(KAssetHandle kah = 0; kah < kam->maxAssetHandles; kah++)
+	{
+		KAsset*const asset = assets + kah;
+		if(asset->type == type && !asset->loaded)
+		{
+			if(kam->kpl->jobDone(&asset->jqTicketLoading))
+			{
+				kamOnLoadingJobFinished(kam, kah);
+				continue;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+internal bool kamIsLoadingImages(KAssetManager* kam)
+{
+	return kamIsLoadingAssets(kam, KAssetType::RAW_IMAGE);
+}
+internal bool kamIsLoadingSounds(KAssetManager* kam)
+{
+	return kamIsLoadingAssets(kam, KAssetType::RAW_SOUND);
 }

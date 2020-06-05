@@ -172,7 +172,7 @@
 	https://docs.microsoft.com/en-us/windows/win32/sync/semaphore-objects
 	https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasesemaphore?redirectedfrom=MSDN
 	https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
-[ ] Asset streaming system (multi-threaded)
+[x] Asset streaming system (multi-threaded)
 	[x] Load default assets when application first starts using Z85 files or 
 		something
 	[x] Until the asset is loaded into memory, the handle represents a default 
@@ -189,7 +189,7 @@
 		This would eliminate the need to perform primitive synchronization 
 		outside of the platform layer.
 	[x] Free RawImage KRB resources when the asset gets freed
-	[ ] Query KAM for asset load status.  Use case: we don't want to perform 
+	[x] Query KAM for asset load status.  Use case: we don't want to perform 
 		certain logic until all assets finish loading; if we're at a loading 
 		screen or w/e.
 [ ] Hot-reload "active" assets when their date modified has changed.

@@ -23,3 +23,5 @@ internal RawImage kamGetRawImage(KAssetManager* kam, KAssetHandle kahImage);
 internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
                                         KAssetCStr kAssetCStr);
 internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetCStr kAssetCStr);
+internal bool kamIsLoadingImages(KAssetManager* kam);
+internal bool kamIsLoadingSounds(KAssetManager* kam);
