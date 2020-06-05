@@ -1,7 +1,5 @@
 #pragma once
 #include "win32-main.h"
-#define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
-typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 struct JobQueueJob
 {
 	bool taken;

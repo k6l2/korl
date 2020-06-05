@@ -10,13 +10,23 @@ enum class KAssetType : u8
 struct KAsset
 {
 	KAssetType type;
-	u8 assetFileName_PADDING[7];
+	///TODO: make this atomic somehow!
+	bool loaded;
+	u8 loaded_PADDING[6];
 	const char* assetFileName;
 	union 
 	{
-		RawImage image;
+		struct 
+		{
+			RawImage rawImage;
+			KrbTextureHandle krbTextureHandle;
+			u8 krbTextureHandle_PADDING[4];
+		} image;
 		RawSound sound;
 	} assetData;
+	// This pointer is here only for convenience with respect to asynchronous 
+	//	job posting to the platform layer.
+	KAssetManager* kam;
 };
 struct KAssetManager
 {
@@ -28,11 +38,12 @@ struct KAssetManager
 	KAsset defaultAssetSound;
 	KgaHandle assetDataAllocator;
 	PlatformApi* kpl;
+	KrbApi* krb;
 	//KAsset assets[];
 };
 internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
                                      KgaHandle assetDataAllocator,
-                                     PlatformApi* kpl)
+                                     PlatformApi* kpl, KrbApi* krb)
 {
 	if(maxAssetHandles >= INVALID_KASSET_HANDLE)
 	{
@@ -49,10 +60,14 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		KAsset defaultAssetImage;
 		defaultAssetImage.type = KAssetType::RAW_IMAGE;
 		defaultAssetImage.assetFileName = "z85_png_default";
-		defaultAssetImage.assetData.image = 
+		defaultAssetImage.assetData.image.rawImage = 
 			kpl->decodeZ85Png(z85_png_default, 
 			                  CARRAY_COUNT(z85_png_default) - 1,
 			                  assetDataAllocator);
+		defaultAssetImage.assetData.image.krbTextureHandle = krb->loadImage(
+			defaultAssetImage.assetData.image.rawImage.sizeX,
+			defaultAssetImage.assetData.image.rawImage.sizeY,
+			defaultAssetImage.assetData.image.rawImage.pixelData);
 		KAsset defaultAssetSound;
 		defaultAssetSound.type = KAssetType::RAW_SOUND;
 		defaultAssetSound.assetFileName = "z85_wav_default";
@@ -67,7 +82,8 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 			, .defaultAssetImage = defaultAssetImage
 			, .defaultAssetSound = defaultAssetSound
 			, .assetDataAllocator = assetDataAllocator
-			, .kpl = kpl };
+			, .kpl = kpl
+			, .krb = krb };
 	}
 	return result;
 }
@@ -142,9 +158,9 @@ internal void kamFreeAsset(KAssetManager* kam,
 	{
 		case KAssetType::RAW_IMAGE:
 		{
-			kassert(!"TODO: free image data from KBR!");
+			kassert(!"TODO: free image data from KRB!");
 			kgaFree(kam->assetDataAllocator, 
-			        assets[assetHandle].assetData.image.pixelData);
+			        assets[assetHandle].assetData.image.rawImage.pixelData);
 		} break;
 		case KAssetType::RAW_SOUND:
 		{
@@ -182,15 +198,83 @@ internal RawSound kamGetRawSound(KAssetManager* kam,
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	kassert(kahSound < kam->maxAssetHandles);
 	kassert(assets[kahSound].type == KAssetType::RAW_SOUND);
-	return assets[kahSound].assetData.sound;
+	if(assets[kahSound].loaded)
+	{
+		return assets[kahSound].assetData.sound;
+	}
+	else
+	{
+		return kam->defaultAssetSound.assetData.sound;
+	}
 }
+#if 0
 internal RawImage kamGetRawImage(KAssetManager* kam,
                                  KAssetHandle kahImage)
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	kassert(kahImage < kam->maxAssetHandles);
 	kassert(assets[kahImage].type == KAssetType::RAW_IMAGE);
-	return assets[kahImage].assetData.image;
+	if(assets[kahImage].loaded)
+	{
+		return assets[kahImage].assetData.image.rawImage;
+	}
+	else
+	{
+		return kam->defaultAssetImage.assetData.image.rawImage;
+	}
+}
+#endif// 0
+internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
+                                        KAssetCStr kAssetCStr)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
+	kassert(assetHandle < kam->maxAssetHandles);
+	KAsset*const asset = assets + assetHandle;
+	if(asset->type == KAssetType::UNUSED)
+	{
+		kamPushAsset(kam, kAssetCStr);
+	}
+	if(asset->loaded)
+	{
+		if(asset->assetData.image.krbTextureHandle == 
+			krb::INVALID_TEXTURE_HANDLE)
+		{
+			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
+				asset->assetData.image.rawImage.sizeX,
+				asset->assetData.image.rawImage.sizeY,
+				asset->assetData.image.rawImage.pixelData);
+		}
+		return asset->assetData.image.krbTextureHandle;
+	}
+	else
+	{
+		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
+	}
+}
+JOB_QUEUE_FUNCTION(asyncLoadPng)
+{
+	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	asset->assetData.image.rawImage = 
+		asset->kam->kpl->loadPng(asset->assetFileName, 
+		                         asset->kam->assetDataAllocator);
+	asset->loaded = true;
+}
+JOB_QUEUE_FUNCTION(asyncLoadWav)
+{
+	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	asset->assetData.sound = 
+		asset->kam->kpl->loadWav(asset->assetFileName, 
+		                         asset->kam->assetDataAllocator);
+	asset->loaded = true;
+}
+JOB_QUEUE_FUNCTION(asyncLoadOgg)
+{
+	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	asset->assetData.sound = 
+		asset->kam->kpl->loadOgg(asset->assetFileName, 
+		                         asset->kam->assetDataAllocator);
+	asset->loaded = true;
 }
 internal KAssetHandle kamPushAsset(KAssetManager* kam, 
                                    KAssetCStr kAssetCStr)
@@ -201,28 +285,30 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 	if(assets[assetHandle].type == KAssetType::UNUSED)
 	{
 		// load the asset from the platform layer //
+		assets[assetHandle].loaded = false;
 		switch(KASSET_TYPE(kAssetCStr))
 		{
 			case KASSET_TYPE_PNG:
 			{
 				assets[assetHandle].type            = KAssetType::RAW_IMAGE;
 				assets[assetHandle].assetFileName   = *kAssetCStr;
-				assets[assetHandle].assetData.image = 
-					kam->kpl->loadPng(*kAssetCStr, kam->assetDataAllocator);
+				assets[assetHandle].kam             = kam;
+				assets[assetHandle].assetData.image = {};
+				kam->kpl->postJob(asyncLoadPng, &assets[assetHandle]);
 			}break;
 			case KASSET_TYPE_WAV:
 			{
-				assets[assetHandle].type            = KAssetType::RAW_SOUND;
-				assets[assetHandle].assetFileName   = *kAssetCStr;
-				assets[assetHandle].assetData.sound = 
-					kam->kpl->loadWav(*kAssetCStr, kam->assetDataAllocator);
+				assets[assetHandle].type          = KAssetType::RAW_SOUND;
+				assets[assetHandle].assetFileName = *kAssetCStr;
+				assets[assetHandle].kam           = kam;
+				kam->kpl->postJob(asyncLoadWav, &assets[assetHandle]);
 			}break;
 			case KASSET_TYPE_OGG:
 			{
-				assets[assetHandle].type            = KAssetType::RAW_SOUND;
-				assets[assetHandle].assetFileName   = *kAssetCStr;
-				assets[assetHandle].assetData.sound = 
-					kam->kpl->loadOgg(*kAssetCStr, kam->assetDataAllocator);
+				assets[assetHandle].type          = KAssetType::RAW_SOUND;
+				assets[assetHandle].assetFileName = *kAssetCStr;
+				assets[assetHandle].kam           = kam;
+				kam->kpl->postJob(asyncLoadOgg, &assets[assetHandle]);
 			}break;
 			case KASSET_TYPE_UNKNOWN:
 			default:

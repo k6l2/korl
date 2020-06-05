@@ -7,7 +7,7 @@ global_variable const KAssetHandle INVALID_KASSET_HANDLE = ~KAssetHandle(0);
 struct KAssetManager;
 internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
                                      KgaHandle assetDataAllocator, 
-                                     PlatformApi* kpl);
+                                     PlatformApi* kpl, KrbApi* krb);
 #if 0
 internal KAssetHandle kamAddWav(KAssetManager* kam, const char* assetFileName);
 internal KAssetHandle kamAddOgg(KAssetManager* kam, const char* assetFileName);
@@ -16,5 +16,9 @@ internal KAssetHandle kamAddPng(KAssetManager* kam, const char* assetFileName);
 internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle);
 internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah);
 internal RawSound kamGetRawSound(KAssetManager* kam, KAssetHandle kahSound);
+#if 0
 internal RawImage kamGetRawImage(KAssetManager* kam, KAssetHandle kahImage);
+#endif// 0
+internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
+                                        KAssetCStr kAssetCStr);
 internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetCStr kAssetCStr);

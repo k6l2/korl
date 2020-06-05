@@ -35,6 +35,9 @@ global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
 global_variable KgaHandle g_genAllocImgui;
 global_variable stb_vorbis_alloc g_oggVorbisAlloc;
+global_variable CRITICAL_SECTION g_assetAllocationCsLock;
+global_variable CRITICAL_SECTION g_vorbisAllocationCsLock;
+global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
 // Remember, there are two log buffers: one beginning & a circular buffer.  So,
 //	the total # of characters used for logging is 2*MAX_LOG_BUFFER_SIZE.
 global_variable const size_t MAX_LOG_BUFFER_SIZE = 32768;
@@ -60,6 +63,10 @@ struct W32ThreadInfo
 	u32 index;
 	JobQueue* jobQueue;
 };
+internal PLATFORM_POST_JOB(platformPostJob)
+{
+	jobQueuePostJob(&g_jobQueue, function, data);
+}
 internal RawImage decodePng(const PlatformDebugReadFileResult& file,
                             KgaHandle pixelDataAllocator)
 {
@@ -75,8 +82,10 @@ internal RawImage decodePng(const PlatformDebugReadFileResult& file,
 	}
 	defer(stbi_image_free(img));
 	// Copy the output from STBI to a buffer in our pixelDataAllocator //
+	EnterCriticalSection(&g_assetAllocationCsLock);
 	u8*const pixelData = reinterpret_cast<u8*>(
 		kgaAlloc(pixelDataAllocator, imgW*imgH*4));
+	LeaveCriticalSection(&g_assetAllocationCsLock);
 	if(!pixelData)
 	{
 		KLOG(ERROR, "Failed to allocate pixelData!");
@@ -84,7 +93,6 @@ internal RawImage decodePng(const PlatformDebugReadFileResult& file,
 	}
 	memcpy(pixelData, img, imgW*imgH*4);
 	return RawImage{
-		.krbTextureHandle = krbLoadImage(imgW, imgH, pixelData),
 		.sizeX            = kmath::safeTruncateU32(imgW),
 		.sizeY            = kmath::safeTruncateU32(imgH), 
 		.pixelData        = pixelData };
@@ -120,47 +128,58 @@ internal PLATFORM_LOAD_OGG(platformLoadOgg)
 	defer(platformFreeFileMemory(file.data));
 	// Decode the OGG file into a RawSound //
 	int vorbisError;
+	EnterCriticalSection(&g_vorbisAllocationCsLock);
 	stb_vorbis*const vorbis = 
 		stb_vorbis_open_memory(reinterpret_cast<u8*>(file.data), file.dataBytes, 
 		                       &vorbisError, &g_oggVorbisAlloc);
 	if(vorbisError != VORBIS__no_error)
 	{
+		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "stb_vorbis_open_memory error=%i", vorbisError);
 		return result;
 	}
 	const stb_vorbis_info vorbisInfo = stb_vorbis_get_info(vorbis);
 	if(vorbisInfo.channels < 1 || vorbisInfo.channels > 255)
 	{
+		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "vorbisInfo.channels==%i invalid/unsupported for '%s'!",
 		     vorbisInfo.channels, szFileFullPath);
 		return result;
 	}
 	if(vorbisInfo.sample_rate != 44100)
 	{
+		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "vorbisInfo.sample_rate==%i invalid/unsupported for '%s'!", 
 		     vorbisInfo.sample_rate, szFileFullPath);
 		return result;
 	}
 	const i32 vorbisSampleLength = stb_vorbis_stream_length_in_samples(vorbis);
+	LeaveCriticalSection(&g_vorbisAllocationCsLock);
 	const size_t sampleDataSize = 
 		vorbisSampleLength*vorbisInfo.channels*sizeof(SoundSample);
+	EnterCriticalSection(&g_assetAllocationCsLock);
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
 		kgaAlloc(sampleDataAllocator, sampleDataSize) );
+	LeaveCriticalSection(&g_assetAllocationCsLock);
 	if(!sampleData)
 	{
 		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
 		     sampleDataSize);
 		return result;
 	}
+	EnterCriticalSection(&g_vorbisAllocationCsLock);
 	const i32 samplesDecoded = 
 		stb_vorbis_get_samples_short_interleaved(vorbis, vorbisInfo.channels, 
 		                                         sampleData, 
 		                                         vorbisSampleLength * 
 		                                            vorbisInfo.channels);
+	LeaveCriticalSection(&g_vorbisAllocationCsLock);
 	if(samplesDecoded != vorbisSampleLength)
 	{
 		KLOG(ERROR, "Failed to get samples for '%s'!", szFileFullPath);
+		EnterCriticalSection(&g_assetAllocationCsLock);
 		kgaFree(sampleDataAllocator, sampleData);
+		LeaveCriticalSection(&g_assetAllocationCsLock);
 		return result;
 	}
 	// Assemble & return the final result //
@@ -296,8 +315,10 @@ internal RawSound decodeWav(const PlatformDebugReadFileResult& file,
 		     riffDataSize, szFileFullPath);
 		return {};
 	}
+	EnterCriticalSection(&g_assetAllocationCsLock);
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
 		kgaAlloc(sampleDataAllocator, riffDataSize) );
+	LeaveCriticalSection(&g_assetAllocationCsLock);
 	if(!sampleData)
 	{
 		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
@@ -1402,9 +1423,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///      failed probably?
 	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
 	defer(w32WriteLogToFile());
-	// Initialize the logging system's lock to ensure thread safety //
+	// Initialize locks to ensure thread safety for various systems //
 	{
 		InitializeCriticalSection(&g_logCsLock);
+		InitializeCriticalSection(&g_assetAllocationCsLock);
+		InitializeCriticalSection(&g_vorbisAllocationCsLock);
+		InitializeCriticalSection(&g_stbiAllocationCsLock);
 	}
 	// Reserve stack space for stack overflow exceptions //
 	{
@@ -1752,6 +1776,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
+	gameMemory.kpl.postJob         = platformPostJob;
 	gameMemory.kpl.log             = platformLog;
 	gameMemory.kpl.decodeZ85Png    = platformDecodeZ85Png;
 	gameMemory.kpl.decodeZ85Wav    = platformDecodeZ85Wav;
@@ -2009,9 +2034,29 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #define STBI_ASSERT(x) kassert(x)
-#define STBI_MALLOC(sz)       kgaAlloc(g_genAllocStbImage,sz)
-#define STBI_REALLOC(p,newsz) kgaRealloc(g_genAllocStbImage,p,newsz)
-#define STBI_FREE(p)          kgaFree(g_genAllocStbImage,p)
+internal void* stbiMalloc(size_t allocationByteCount)
+{
+	EnterCriticalSection(&g_stbiAllocationCsLock);
+	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
+	return kgaAlloc(g_genAllocStbImage, allocationByteCount);
+}
+internal void* stbiRealloc(void* allocatedAddress, 
+                           size_t newAllocationByteCount)
+{
+	EnterCriticalSection(&g_stbiAllocationCsLock);
+	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
+	return kgaRealloc(g_genAllocStbImage, 
+	                  allocatedAddress, newAllocationByteCount);
+}
+internal void stbiFree(void* allocatedAddress)
+{
+	EnterCriticalSection(&g_stbiAllocationCsLock);
+	kgaFree(g_genAllocStbImage, allocatedAddress);
+	LeaveCriticalSection(&g_stbiAllocationCsLock);
+}
+#define STBI_MALLOC(sz)       stbiMalloc(sz)
+#define STBI_REALLOC(p,newsz) stbiRealloc(p,newsz)
+#define STBI_FREE(p)          stbiFree(p)
 #include "stb/stb_image.h"
 #include "generalAllocator.cpp"
 #pragma warning( push )

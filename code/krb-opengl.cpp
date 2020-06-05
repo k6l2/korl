@@ -15,11 +15,11 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 	do
 	{
 		errorCode = glGetError();
+		if(errorCode != GL_NO_ERROR)
+		{
+			KLOG(ERROR, "[%s|%i] OpenGL ERROR=%i", file, line, errorCode);
+		}
 	} while (errorCode != GL_NO_ERROR);
-	if(errorCode != GL_NO_ERROR)
-	{
-		KLOG(ERROR, "[%s|%i] OpenGL ERROR=%i", file, line, errorCode);
-	}
 	return errorCode;
 }
 #define GL_CHECK_ERROR() krbOglCheckErrors(__FILENAME__, __LINE__)
@@ -32,7 +32,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	{
 		GLint modelViewStackDepth;
 		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-		for(; modelViewStackDepth; modelViewStackDepth--)
+		for(; modelViewStackDepth > 1; modelViewStackDepth--)
 		{
 			glPopMatrix();
 		}

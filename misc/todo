@@ -175,16 +175,29 @@
 [ ] Asset streaming system (multi-threaded)
 	[x] Load default assets when application first starts using Z85 files or 
 		something
-	[ ] Until the asset is loaded into memory, the handle represents a default 
+	[x] Until the asset is loaded into memory, the handle represents a default 
 		asset of some kind. 
 		(default texture, default mesh, default sound, etc...)
-	[ ] Submit a job to load pushed KASSET
-	[ ] make allocator thread safe?  Not actually sure on this one.
-	[ ] When attempting to load an asset and we're unable to allocate memory for 
-		it, calculate the oldest/least-used asset(s) and free them until we are 
-		able to allocate successfully!
+	[x] Submit a job to load pushed KASSET
+	[x] make assetDataAllocator thread safe in the appropriate platform loading 
+		functions.  (the allocator itself doesn't really have to be threadsafe)
+		[x] Use a separate lock for vorbis operations
+		[x] Make STBI allocations threadsafe
+	[x] Fix KRB bug with glGetError not reporting all errors.
+	[x] Fix KRB_BEGIN_FRAME bug where we pop too many matrices.
 	[ ] Free RawImage KRB resources when the asset gets freed
 [ ] Hot-reload "active" assets when their date modified has changed.
+[ ] Make asset streaming implementation more robust
+	[ ] When attempting to load an asset and we're unable to allocate memory for 
+		it...
+		[ ] Ask platform to give us a new memory pool.
+		[ ] If we are at maximum # of memory pools allowable, calculate the 
+			oldest/least-used asset(s) and free them until we are able to 
+			allocate successfully!
+	[ ] Detect the condition where the allocator has enough space but is too 
+		fragmented to place the asset.
+		[ ] Attempt to de-fragment the asset memory pool.
+		[ ] Release memory pools if they are emptied.
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 

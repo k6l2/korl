@@ -12,8 +12,6 @@ enum class PlatformLogCategory : u8
 };
 struct RawImage
 {
-	KrbTextureHandle krbTextureHandle;
-	u8 krbTextureHandle_PADDING[4];
 	u32 sizeX;
 	u32 sizeY;
 	// pixel data layout: 0xRrGgBbAa
@@ -30,6 +28,10 @@ struct RawSound
 	//	channels.  Sample data is stored in blocks.
 	SoundSample* sampleData;
 };
+#define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
+typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
+#define PLATFORM_POST_JOB(name) void name(fnSig_jobQueueFunction* function, \
+                                          void* data)
 #define PLATFORM_LOG(name) void name(const char* sourceFileName, \
                                      u32 sourceFileLineNumber, \
                                      PlatformLogCategory logCategory, \
@@ -60,6 +62,7 @@ struct RawSound
  */
 #define PLATFORM_LOAD_PNG(name) RawImage name(const char* fileName, \
                                               KgaHandle pixelDataAllocator)
+typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
@@ -88,6 +91,7 @@ typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 #endif// INTERNAL_BUILD
 struct PlatformApi
 {
+	fnSig_platformPostJob* postJob;
 	fnSig_platformLog* log;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
