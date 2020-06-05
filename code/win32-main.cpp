@@ -889,6 +889,47 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	result = fileAttributeData.ftLastWriteTime;
 	return result;
 }
+internal PLATFORM_GET_ASSET_WRITE_TIME(platformGetAssetWriteTime)
+{
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
+	                 g_pathToExe, assetFileName);
+	FILETIME fileWriteTime = w32GetLastWriteTime(szFileFullPath);
+	ULARGE_INTEGER largeInt;
+	largeInt.HighPart = fileWriteTime.dwHighDateTime;
+	largeInt.LowPart  = fileWriteTime.dwLowDateTime;
+	return largeInt.QuadPart;
+}
+internal PLATFORM_IS_ASSET_CHANGED(platformIsAssetChanged)
+{
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
+	                 g_pathToExe, assetFileName);
+	FILETIME fileWriteTime = w32GetLastWriteTime(szFileFullPath);
+	ULARGE_INTEGER largeInt;
+	largeInt.QuadPart = lastWriteTime;
+	FILETIME fileWriteTimePrev;
+	fileWriteTimePrev.dwHighDateTime = largeInt.HighPart;
+	fileWriteTimePrev.dwLowDateTime  = largeInt.LowPart;
+	return CompareFileTime(&fileWriteTime, &fileWriteTimePrev) != 0;
+}
+internal PLATFORM_IS_ASSET_AVAILABLE(platformIsAssetAvailable)
+{
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
+	                 g_pathToExe, assetFileName);
+	// Check to see if the file is open exclusively by another program by 
+	//	attempting to open it in exclusive mode.
+	// https://stackoverflow.com/a/12821767
+	const HANDLE hFile = CreateFileA(szFileFullPath, GENERIC_READ, 0, nullptr, 
+	                                 OPEN_EXISTING, 0, NULL);
+	defer(CloseHandle(hFile));
+	if(hFile && hFile != INVALID_HANDLE_VALUE)
+	{
+		return true;
+	}
+	return false;
+}
 internal GameCode w32LoadGameCode(const char* fileNameDll, 
                                   const char* fileNameDllTemp)
 {
@@ -1780,18 +1821,21 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
-	gameMemory.kpl.postJob         = platformPostJob;
-	gameMemory.kpl.jobDone         = platformJobDone;
-	gameMemory.kpl.log             = platformLog;
-	gameMemory.kpl.decodeZ85Png    = platformDecodeZ85Png;
-	gameMemory.kpl.decodeZ85Wav    = platformDecodeZ85Wav;
-	gameMemory.kpl.loadWav         = platformLoadWav;
-	gameMemory.kpl.loadOgg         = platformLoadOgg;
-	gameMemory.kpl.loadPng         = platformLoadPng;
+	gameMemory.kpl.postJob           = platformPostJob;
+	gameMemory.kpl.jobDone           = platformJobDone;
+	gameMemory.kpl.log               = platformLog;
+	gameMemory.kpl.decodeZ85Png      = platformDecodeZ85Png;
+	gameMemory.kpl.decodeZ85Wav      = platformDecodeZ85Wav;
+	gameMemory.kpl.loadWav           = platformLoadWav;
+	gameMemory.kpl.loadOgg           = platformLoadOgg;
+	gameMemory.kpl.loadPng           = platformLoadPng;
+	gameMemory.kpl.getAssetWriteTime = platformGetAssetWriteTime;
+	gameMemory.kpl.isAssetChanged    = platformIsAssetChanged;
+	gameMemory.kpl.isAssetAvailable  = platformIsAssetAvailable;
 #if INTERNAL_BUILD
-	gameMemory.kpl.readEntireFile  = platformReadEntireFile;
-	gameMemory.kpl.freeFileMemory  = platformFreeFileMemory;
-	gameMemory.kpl.writeEntireFile = platformWriteEntireFile;
+	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
+	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;
+	gameMemory.kpl.writeEntireFile   = platformWriteEntireFile;
 #endif// INTERNAL_BUILD
 	gameMemory.krb                 = {};
 	gameMemory.imguiContext        = ImGui::GetCurrentContext();

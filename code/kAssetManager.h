@@ -25,3 +25,4 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetCStr kAssetCStr);
 internal bool kamIsLoadingImages(KAssetManager* kam);
 internal bool kamIsLoadingSounds(KAssetManager* kam);
+internal void kamUnloadChangedAssets(KAssetManager* kam);

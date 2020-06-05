@@ -59,6 +59,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		return true;
 	}
+	kamUnloadChangedAssets(g_gs->assetManager);
 	if(numGamePads > 0)
 	{
 		for(u8 c = 0; c < numGamePads; c++)
@@ -97,10 +98,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			    gpad.buttons.start == ButtonState::PRESSED)
 			{
 				return false;
-			}
-			if(gpad.buttons.faceDown == ButtonState::PRESSED)
-			{
-				kamFreeAsset(g_gs->assetManager, KASSET("fighter.png"));
 			}
 			if(gpad.buttons.stickClickLeft == ButtonState::PRESSED)
 			{

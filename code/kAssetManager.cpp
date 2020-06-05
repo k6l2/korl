@@ -9,6 +9,7 @@ enum class KAssetType : u8
 };
 struct KAsset
 {
+	FileWriteTime lastWriteTime;
 	KAssetType type;
 	bool loaded;
 	u8 loaded_PADDING[2];
@@ -176,7 +177,8 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 			return;
 		} break;
 	}
-	asset->type = KAssetType::UNUSED;
+	asset->type   = KAssetType::UNUSED;
+	asset->loaded = false;
 	if(kam->usedAssetHandles == kam->maxAssetHandles)
 	{
 		kam->nextUnusedHandle = assetHandle;
@@ -214,17 +216,19 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 				asset->assetData.image.rawImage.sizeX,
 				asset->assetData.image.rawImage.sizeY,
 				asset->assetData.image.rawImage.pixelData);
-			asset->loaded = true;
 		}break;
 		case KAssetType::RAW_SOUND:
 		{
-			asset->loaded = true;
 		}break;
 		case KAssetType::UNUSED:
 		{
 			KLOG(ERROR, "UNUSED asset!");
+			return;
 		}break;
 	}
+	asset->lastWriteTime = 
+		kam->kpl->getAssetWriteTime(asset->assetFileName);
+	asset->loaded = true;
 }
 internal RawSound kamGetRawSound(KAssetManager* kam,
                                  KAssetHandle kahSound)
@@ -292,6 +296,10 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 JOB_QUEUE_FUNCTION(asyncLoadPng)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+	}
 	asset->assetData.image.rawImage = 
 		asset->kam->kpl->loadPng(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
@@ -299,6 +307,10 @@ JOB_QUEUE_FUNCTION(asyncLoadPng)
 JOB_QUEUE_FUNCTION(asyncLoadWav)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+	}
 	asset->assetData.sound = 
 		asset->kam->kpl->loadWav(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
@@ -306,6 +318,10 @@ JOB_QUEUE_FUNCTION(asyncLoadWav)
 JOB_QUEUE_FUNCTION(asyncLoadOgg)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+	}
 	asset->assetData.sound = 
 		asset->kam->kpl->loadOgg(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
@@ -385,4 +401,20 @@ internal bool kamIsLoadingImages(KAssetManager* kam)
 internal bool kamIsLoadingSounds(KAssetManager* kam)
 {
 	return kamIsLoadingAssets(kam, KAssetType::RAW_SOUND);
+}
+internal void kamUnloadChangedAssets(KAssetManager* kam)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	for(KAssetHandle kah = 0; kah < kam->maxAssetHandles; kah++)
+	{
+		KAsset*const asset = assets + kah;
+		if(asset->type != KAssetType::UNUSED && asset->loaded)
+		{
+			if(kam->kpl->isAssetChanged(asset->assetFileName, 
+			                            asset->lastWriteTime))
+			{
+				kamFreeAsset(kam, kah);
+			}
+		}
+	}
 }

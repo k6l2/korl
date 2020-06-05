@@ -28,6 +28,7 @@ struct RawSound
 	//	channels.  Sample data is stored in blocks.
 	SoundSample* sampleData;
 };
+using FileWriteTime = u64;
 using JobQueueTicket = u32;
 #define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
 typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
@@ -65,6 +66,11 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
  */
 #define PLATFORM_LOAD_PNG(name) RawImage name(const char* fileName, \
                                               KgaHandle pixelDataAllocator)
+#define PLATFORM_GET_ASSET_WRITE_TIME(name) FileWriteTime name(\
+                                                      const char* assetFileName)
+#define PLATFORM_IS_ASSET_CHANGED(name) bool name(const char* assetFileName, \
+                                                  FileWriteTime lastWriteTime)
+#define PLATFORM_IS_ASSET_AVAILABLE(name) bool name(const char* assetFileName)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_LOG(fnSig_platformLog);
@@ -75,7 +81,9 @@ typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
-// INTERNAL DEBUG INTERFACE STUFF //////////////////////////////////////////////
+typedef PLATFORM_GET_ASSET_WRITE_TIME(fnSig_platformGetAssetWriteTime);
+typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
+typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
 {
@@ -103,11 +111,14 @@ struct PlatformApi
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;
+	fnSig_platformGetAssetWriteTime* getAssetWriteTime;
+	fnSig_platformIsAssetChanged* isAssetChanged;
+	fnSig_platformIsAssetAvailable* isAssetAvailable;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;
 	fnSig_PlatformFreeFileMemory* freeFileMemory;
 	fnSig_PlatformWriteEntireFile* writeEntireFile;
-#endif
+#endif// INTERNAL_BUILD
 };
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory

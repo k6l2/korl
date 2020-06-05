@@ -192,7 +192,16 @@
 	[x] Query KAM for asset load status.  Use case: we don't want to perform 
 		certain logic until all assets finish loading; if we're at a loading 
 		screen or w/e.
-[ ] Hot-reload "active" assets when their date modified has changed.
+[x] Hot-reload "active" assets when their date modified has changed.
+[ ] fix KRB not being correct when window resizes
+[ ] display debug frame metrics
+	[ ] allow the game code to probe the platform for cycle counts for timing.
+	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
+		application runs for ~30seconds after startup...
+[ ] "Release" build script
+[ ] fullscreen toggle support 
+	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+[ ] pause audio output when window goes out of focus probably.
 [ ] Make asset streaming implementation more robust
 	[ ] When attempting to load an asset and we're unable to allocate memory for 
 		it...
@@ -210,18 +219,9 @@
 		be then returning immediately, allocating space for the data, then 
 		asynchronously loading the rest of the file & decoding it into the 
 		pre-allocated space.
-[ ] display debug frame metrics
-	[ ] allow the game code to probe the platform for cycle counts for timing.
-	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
-		application runs for ~30seconds after startup...
-[ ] "Release" build script
 [-] collision engine
 	I should just do this on another repository, since this seems outside the 
 	scope of a platform layer...
-[ ] fix KBR not being correct when window resizes
-[ ] fullscreen toggle support 
-	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
-[ ] pause audio output when window goes out of focus probably.
 [~] Disable asserts when `g_hasReceivedException` has been flagged, or else the 
 	log file will never get written if an assert fires during the exception 
 	handler!
@@ -241,6 +241,7 @@
 [ ] Automatically delete older minidumps once enough accumulate.
 [ ] Give log files rolling file names like minidumps.
 [ ] Automatically delete older log files once enough accumulate.
+[ ] Platform audio: pause playback when window moving around.
 [ ] Platform Audio - clean up the sound buffer when the program ends so there is
 	no click artifact (if possible).
 [ ] Audio Mixer - optimize `kauMix`
