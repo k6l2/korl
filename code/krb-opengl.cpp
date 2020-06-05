@@ -152,6 +152,11 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	GL_CHECK_ERROR();
 	return texName;
 }
+internal KRB_DELETE_TEXTURE(krbDeleteTexture)
+{
+	glDeleteTextures(1, &krbTextureHandle);
+	GL_CHECK_ERROR();
+}
 internal KRB_USE_TEXTURE(krbUseTexture)
 {
 	glBindTexture(GL_TEXTURE_2D, kth);

@@ -10,9 +10,9 @@ enum class KAssetType : u8
 struct KAsset
 {
 	KAssetType type;
-	///TODO: make this atomic somehow!
 	bool loaded;
-	u8 loaded_PADDING[6];
+	u8 loaded_PADDING[2];
+	JobQueueTicket jqTicketLoading;
 	const char* assetFileName;
 	union 
 	{
@@ -150,22 +150,24 @@ internal KAssetHandle kamAddPng(KAssetManager* kam,
 	return kamAddAsset(kam, asset);
 }
 #endif// 0
-internal void kamFreeAsset(KAssetManager* kam, 
-                           KAssetHandle assetHandle)
+internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
-	switch(assets[assetHandle].type)
+	kassert(assetHandle < kam->maxAssetHandles);
+	KAsset*const asset = assets + assetHandle;
+	kassert(asset->loaded);
+	switch(asset->type)
 	{
 		case KAssetType::RAW_IMAGE:
 		{
-			kassert(!"TODO: free image data from KRB!");
+			kam->krb->deleteTexture(asset->assetData.image.krbTextureHandle);
 			kgaFree(kam->assetDataAllocator, 
-			        assets[assetHandle].assetData.image.rawImage.pixelData);
+			        asset->assetData.image.rawImage.pixelData);
 		} break;
 		case KAssetType::RAW_SOUND:
 		{
 			kgaFree(kam->assetDataAllocator, 
-			        assets[assetHandle].assetData.sound.sampleData);
+			        asset->assetData.sound.sampleData);
 		} break;
 		case KAssetType::UNUSED: 
 		default:
@@ -174,12 +176,17 @@ internal void kamFreeAsset(KAssetManager* kam,
 			return;
 		} break;
 	}
-	assets[assetHandle].type = KAssetType::UNUSED;
+	asset->type = KAssetType::UNUSED;
 	if(kam->usedAssetHandles == kam->maxAssetHandles)
 	{
 		kam->nextUnusedHandle = assetHandle;
 	}
 	kam->usedAssetHandles--;
+}
+internal void kamFreeAsset(KAssetManager* kam, KAssetCStr kAssetCStr)
+{
+	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
+	kamFreeAsset(kam, assetHandle);
 }
 internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah)
 {
@@ -197,13 +204,19 @@ internal RawSound kamGetRawSound(KAssetManager* kam,
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	kassert(kahSound < kam->maxAssetHandles);
-	kassert(assets[kahSound].type == KAssetType::RAW_SOUND);
-	if(assets[kahSound].loaded)
+	KAsset*const asset = assets + kahSound;
+	kassert(asset->type == KAssetType::RAW_SOUND);
+	if(asset->loaded)
 	{
-		return assets[kahSound].assetData.sound;
+		return asset->assetData.sound;
 	}
 	else
 	{
+		if(kam->kpl->jobDone(&asset->jqTicketLoading))
+		{
+			asset->loaded = true;
+			return asset->assetData.sound;
+		}
 		return kam->defaultAssetSound.assetData.sound;
 	}
 }
@@ -237,18 +250,21 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 	}
 	if(asset->loaded)
 	{
-		if(asset->assetData.image.krbTextureHandle == 
-			krb::INVALID_TEXTURE_HANDLE)
-		{
-			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
-				asset->assetData.image.rawImage.sizeX,
-				asset->assetData.image.rawImage.sizeY,
-				asset->assetData.image.rawImage.pixelData);
-		}
 		return asset->assetData.image.krbTextureHandle;
 	}
 	else
 	{
+		if(kam->kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kassert(asset->assetData.image.krbTextureHandle == 
+				krb::INVALID_TEXTURE_HANDLE);
+			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
+				asset->assetData.image.rawImage.sizeX,
+				asset->assetData.image.rawImage.sizeY,
+				asset->assetData.image.rawImage.pixelData);
+			asset->loaded = true;
+			return asset->assetData.image.krbTextureHandle;
+		}
 		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
 	}
 }
@@ -258,7 +274,6 @@ JOB_QUEUE_FUNCTION(asyncLoadPng)
 	asset->assetData.image.rawImage = 
 		asset->kam->kpl->loadPng(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
-	asset->loaded = true;
 }
 JOB_QUEUE_FUNCTION(asyncLoadWav)
 {
@@ -266,7 +281,6 @@ JOB_QUEUE_FUNCTION(asyncLoadWav)
 	asset->assetData.sound = 
 		asset->kam->kpl->loadWav(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
-	asset->loaded = true;
 }
 JOB_QUEUE_FUNCTION(asyncLoadOgg)
 {
@@ -274,7 +288,6 @@ JOB_QUEUE_FUNCTION(asyncLoadOgg)
 	asset->assetData.sound = 
 		asset->kam->kpl->loadOgg(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
-	asset->loaded = true;
 }
 internal KAssetHandle kamPushAsset(KAssetManager* kam, 
                                    KAssetCStr kAssetCStr)
@@ -282,33 +295,34 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
 	kassert(assetHandle < kam->maxAssetHandles);
-	if(assets[assetHandle].type == KAssetType::UNUSED)
+	KAsset*const asset = assets + assetHandle;
+	if(asset->type == KAssetType::UNUSED)
 	{
 		// load the asset from the platform layer //
-		assets[assetHandle].loaded = false;
+		asset->loaded = false;
 		switch(KASSET_TYPE(kAssetCStr))
 		{
 			case KASSET_TYPE_PNG:
 			{
-				assets[assetHandle].type            = KAssetType::RAW_IMAGE;
-				assets[assetHandle].assetFileName   = *kAssetCStr;
-				assets[assetHandle].kam             = kam;
-				assets[assetHandle].assetData.image = {};
-				kam->kpl->postJob(asyncLoadPng, &assets[assetHandle]);
+				asset->type            = KAssetType::RAW_IMAGE;
+				asset->assetFileName   = *kAssetCStr;
+				asset->kam             = kam;
+				asset->assetData.image = {};
+				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadPng, asset);
 			}break;
 			case KASSET_TYPE_WAV:
 			{
-				assets[assetHandle].type          = KAssetType::RAW_SOUND;
-				assets[assetHandle].assetFileName = *kAssetCStr;
-				assets[assetHandle].kam           = kam;
-				kam->kpl->postJob(asyncLoadWav, &assets[assetHandle]);
+				asset->type            = KAssetType::RAW_SOUND;
+				asset->assetFileName   = *kAssetCStr;
+				asset->kam             = kam;
+				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadWav, asset);
 			}break;
 			case KASSET_TYPE_OGG:
 			{
-				assets[assetHandle].type          = KAssetType::RAW_SOUND;
-				assets[assetHandle].assetFileName = *kAssetCStr;
-				assets[assetHandle].kam           = kam;
-				kam->kpl->postJob(asyncLoadOgg, &assets[assetHandle]);
+				asset->type            = KAssetType::RAW_SOUND;
+				asset->assetFileName   = *kAssetCStr;
+				asset->kam             = kam;
+				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadOgg, asset);
 			}break;
 			case KASSET_TYPE_UNKNOWN:
 			default:

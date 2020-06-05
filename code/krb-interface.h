@@ -40,6 +40,7 @@ namespace krb
 #define KRB_LOAD_IMAGE(name) KrbTextureHandle name(u32 imageSizeX, \
                                                    u32 imageSizeY, \
                                                    u8* imageDataRGBA)
+#define KRB_DELETE_TEXTURE(name) void name(KrbTextureHandle krbTextureHandle)
 #define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
@@ -50,6 +51,7 @@ typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
+typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
@@ -60,6 +62,7 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_LOAD_IMAGE(krbLoadImage);
+internal KRB_DELETE_TEXTURE(krbDeleteTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
 struct KrbApi
 {
@@ -72,5 +75,6 @@ struct KrbApi
 	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
 	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
 	fnSig_krbLoadImage*          loadImage          = krbLoadImage;
+	fnSig_krbDeleteTexture*      deleteTexture      = krbDeleteTexture;
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;
 };

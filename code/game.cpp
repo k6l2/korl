@@ -89,6 +89,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				return false;
 			}
+			if(gpad.buttons.faceDown == ButtonState::PRESSED)
+			{
+				kamFreeAsset(g_gs->assetManager, KASSET("fighter.png"));
+			}
 			if(gpad.buttons.stickClickLeft == ButtonState::PRESSED)
 			{
 				g_gs->shipWorldPosition = {};

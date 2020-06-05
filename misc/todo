@@ -185,7 +185,13 @@
 		[x] Make STBI allocations threadsafe
 	[x] Fix KRB bug with glGetError not reporting all errors.
 	[x] Fix KRB_BEGIN_FRAME bug where we pop too many matrices.
-	[ ] Free RawImage KRB resources when the asset gets freed
+	[x] Query the platform layer for job completion status using a job handle.  
+		This would eliminate the need to perform primitive synchronization 
+		outside of the platform layer.
+	[x] Free RawImage KRB resources when the asset gets freed
+	[ ] Query KAM for asset load status.  Use case: we don't want to perform 
+		certain logic until all assets finish loading; if we're at a loading 
+		screen or w/e.
 [ ] Hot-reload "active" assets when their date modified has changed.
 [ ] Make asset streaming implementation more robust
 	[ ] When attempting to load an asset and we're unable to allocate memory for 
@@ -198,6 +204,12 @@
 		fragmented to place the asset.
 		[ ] Attempt to de-fragment the asset memory pool.
 		[ ] Release memory pools if they are emptied.
+	[ ] We can eliminate the need for a platform-side lock on asset allocation 
+		calls (or even allocation for that matter) by doing the thing where I 
+		quickly read file data that tells me how big the raw asset is going to 
+		be then returning immediately, allocating space for the data, then 
+		asynchronously loading the rest of the file & decoding it into the 
+		pre-allocated space.
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 

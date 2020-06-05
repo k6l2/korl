@@ -14,6 +14,7 @@ internal KAssetHandle kamAddOgg(KAssetManager* kam, const char* assetFileName);
 internal KAssetHandle kamAddPng(KAssetManager* kam, const char* assetFileName);
 #endif// 0
 internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle);
+internal void kamFreeAsset(KAssetManager* kam, KAssetCStr kAssetCStr);
 internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah);
 internal RawSound kamGetRawSound(KAssetManager* kam, KAssetHandle kahSound);
 #if 0

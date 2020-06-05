@@ -65,7 +65,11 @@ struct W32ThreadInfo
 };
 internal PLATFORM_POST_JOB(platformPostJob)
 {
-	jobQueuePostJob(&g_jobQueue, function, data);
+	return jobQueuePostJob(&g_jobQueue, function, data);
+}
+internal PLATFORM_JOB_DONE(platformJobDone)
+{
+	return jobQueueJobIsDone(&g_jobQueue, ticket);
 }
 internal RawImage decodePng(const PlatformDebugReadFileResult& file,
                             KgaHandle pixelDataAllocator)
@@ -1777,6 +1781,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
 	gameMemory.kpl.postJob         = platformPostJob;
+	gameMemory.kpl.jobDone         = platformJobDone;
 	gameMemory.kpl.log             = platformLog;
 	gameMemory.kpl.decodeZ85Png    = platformDecodeZ85Png;
 	gameMemory.kpl.decodeZ85Wav    = platformDecodeZ85Wav;
