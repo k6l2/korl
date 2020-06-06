@@ -30,6 +30,11 @@ global_variable const TCHAR FILE_NAME_GAME_DLL[] =
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursor;
+global_variable HCURSOR g_cursorArrow;
+global_variable HCURSOR g_cursorSizeVertical;
+global_variable HCURSOR g_cursorSizeHorizontal;
+global_variable HCURSOR g_cursorSizeNeSw;
+global_variable HCURSOR g_cursorSizeNwSe;
 global_variable W32OffscreenBuffer g_backBuffer;
 global_variable LARGE_INTEGER g_perfCounterHz;
 global_variable KgaHandle g_genAllocStbImage;
@@ -1192,6 +1197,28 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 	{
 		case WM_SETCURSOR:
 		{
+			switch(LOWORD(lParam))
+			{
+				case HTBOTTOM:
+				case HTTOP:
+					g_cursor = g_cursorSizeVertical;
+				break;
+				case HTLEFT:
+				case HTRIGHT:
+					g_cursor = g_cursorSizeHorizontal;
+				break;
+				case HTBOTTOMLEFT:
+				case HTTOPRIGHT:
+					g_cursor = g_cursorSizeNeSw;
+				break;
+				case HTBOTTOMRIGHT:
+				case HTTOPLEFT:
+					g_cursor = g_cursorSizeNwSe;
+				break;
+				default:
+					g_cursor = g_cursorArrow;
+				break;
+			}
 			if(g_displayCursor)
 			{
 				SetCursor(g_cursor);
@@ -1721,7 +1748,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #if INTERNAL_BUILD
 	g_displayCursor = true;
 #endif
-	g_cursor = LoadCursorA(NULL, IDC_ARROW);
+	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
+	g_cursorSizeHorizontal = LoadCursorA(NULL, IDC_SIZEWE);
+	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);
+	g_cursorSizeNeSw       = LoadCursorA(NULL, IDC_SIZENESW);
+	g_cursorSizeNwSe       = LoadCursorA(NULL, IDC_SIZENWSE);
+	g_cursor = g_cursorArrow;
 	const WNDCLASS wndClass = {
 		.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 		.lpfnWndProc   = w32MainWindowCallback,
