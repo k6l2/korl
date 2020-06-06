@@ -44,6 +44,9 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 }
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
+	glViewport(0, 0, 
+	           static_cast<GLsizei>(windowSizeX),
+	           static_cast<GLsizei>(windowSizeY));
 	glOrtho(-windowSizeX/2, windowSizeX/2, -windowSizeY/2, windowSizeY/2, 
 	        halfDepth, -halfDepth);
 	GL_CHECK_ERROR();

@@ -193,7 +193,8 @@
 		certain logic until all assets finish loading; if we're at a loading 
 		screen or w/e.
 [x] Hot-reload "active" assets when their date modified has changed.
-[ ] fix KRB not being correct when window resizes
+[x] fix KRB not being correct when window resizes
+[ ] Win32: Fix mouse not displaying resize cursor
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
