@@ -88,7 +88,6 @@ typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
 typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
 typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
 typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
-#if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
 {
 	u32 dataBytes;
@@ -104,7 +103,6 @@ struct PlatformDebugReadFileResult
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
 typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
-#endif// INTERNAL_BUILD
 struct PlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -148,9 +146,7 @@ struct GameAudioBuffer
 	u32 lockedSampleBlockCount;
 	u32 soundSampleHz;
 	u8 numSoundChannels;
-#if INTERNAL_BUILD
 	u8 numSoundChannels_PADDING[7];
-#endif
 };
 enum class ButtonState : u8
 {
@@ -297,9 +293,7 @@ struct GamePad
 		ButtonState stickClickLeft;
 		ButtonState stickClickRight;
 	} buttons;
-#if INTERNAL_BUILD
-	i16 buttons_PADDING;
-#endif
+	i8 buttons_PADDING[2];
 	float normalizedTriggerLeft;
 	float normalizedTriggerRight;
 	float normalizedMotorSpeedLeft;

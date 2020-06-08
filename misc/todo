@@ -203,7 +203,13 @@
 [x] Fix keyboard buttonstates incorrect
 	[x] differentiate between left/right alt keys
 [x] Figure out why there is a beep when I press alt+enter
+[x] "clean" build script
 [ ] "Release" build script
+	[x] set appropriate code generation compiler options
+	[ ] Set win32 application icon.
+	[ ] procedurally set the asset load directory relative to the executable
+	[ ] automatically "clean" if requested debug/release selection differs from
+		previous build's settings
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
@@ -256,7 +262,6 @@
 [ ] Audio Mixer - optimize `kauMix`
 [ ] Detect how many worker threads to spawn based on how many logical cores are 
 	available on the system.
-[ ] Set win32 application icon.
 [ ] Print GetLastError messages in human-readable format using FormatMessage
 	https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
 [ ] Job Queue - synchronize without locks (HERE BE DRAGONS I guess or something)

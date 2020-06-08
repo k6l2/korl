@@ -1,4 +1,30 @@
 @echo off
+rem --- Iterate over build script arguments ---
+set buildOptionClean=FALSE
+set buildOptionRelease=FALSE
+if "%~1"=="" goto ARGUMENT_LOOP_END
+rem set argNumber=0
+:ARGUMENT_LOOP_START
+rem echo arg%argNumber%=%1
+if "%~1"=="release" (
+	set buildOptionRelease=TRUE
+)
+if "%~1"=="clean" (
+	set buildOptionClean=TRUE
+)
+shift
+rem set /A argNumber+=1
+if not "%~1"=="" goto ARGUMENT_LOOP_START
+:ARGUMENT_LOOP_END
+rem --- CLEAN build command ---
+if "%buildOptionClean%"=="TRUE" (
+	echo Cleaning all build files...
+	del /S /F /Q "%project_root%\build" > NUL 2> NUL
+	rmdir /S /Q "%project_root%\build" > NUL 2> NUL
+	rmdir /S /Q "%project_root%\build" > NUL 2> NUL
+	echo Clean complete!
+	exit /B 0
+)
 rem prerequisites: shell.bat has been run successfully
 rem                KML_HOME environment variable
 rem                KCPP_HOME environment variable
@@ -48,6 +74,7 @@ rem                      -most likely will assist with debugging during
 rem                           development
 rem                      -incurs a non-zero runtime cost
 rem                  Example: debug printing timing info to standard output.
+rem /w - disable ALL warnings
 rem /W4 - warning level 4
 rem /Wall - use ALL warnings
 rem /WX - treat all warnings as errors
@@ -62,6 +89,7 @@ rem /wd4577 - disable warning C4577 `'noexcept' used with no exception handling
 rem           mode specified; termination on exception is not guaranteed. 
 rem           Specify /EHsc`
 rem /wd4710 - disable warning C4710 `function not inlined`
+rem /wd4711 - disable warning C4711 `automatic inline selection`
 rem /wd5045 - disable warning C5045 `... Spectre mitigation for memory load ...`
 rem /Zi - Generates complete debugging information.
 rem /Oi - Generate intrinsic opcodes
@@ -98,10 +126,17 @@ rem winmm.lib    - multimedia timer functions (granular sleep functionality)
 rem opengl32.lib - You know what this is for...
 rem Dbghelp.lib  - generate mini dumps
 rem Shell32.lib  - Obtain AppData path at runtime.
-set CommonCompilerFlagsDebug= /DINTERNAL_BUILD=1 /DSLOW_BUILD=1 ^
-	/WX /wd4201 /wd4514 /wd4505 /wd4100 /wd5045 ^
-	/MTd /Oi /Od /GR- /EHa- /Zi /FC ^
-	/nologo /std:c++latest
+set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 ^
+	/Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
+set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
+	/DINTERNAL_BUILD=0 /DSLOW_BUILD=0 
+set CommonCompilerFlagsDebug=%CommonCompilerFlags% /MTd /Od /WX ^
+	/DINTERNAL_BUILD=1 /DSLOW_BUILD=1 
+set CommonCompilerFlagsChosen=%CommonCompilerFlagsDebug%
+if "%buildOptionRelease%"=="TRUE" (
+	set CommonCompilerFlagsChosen=%CommonCompilerFlagsRelease%
+)
+rem echo CommonCompilerFlagsChosen=%CommonCompilerFlagsChosen%
 set CommonLinkerFlags=/opt:ref /incremental:no 
 rem --- Detect if the code tree differs, and if it doesn't, skip building ---
 set codeTreeIsDifferent=FALSE
@@ -129,14 +164,10 @@ echo Building kc++...
 call build.bat
 popd
 call %KCPP_HOME%\build\kc++.exe %project_root%\code %project_root%\build\code
-rem 32-bit build
-rem cl %project_root%\code\%kmlApplicationName%.cpp /Fm%kmlApplicationName%.map ^
-rem 	%CommonCompilerFlagsDebug% ^
-rem 	/link /subsystem:windows,5.02 %CommonLinkerFlags%
-rem 64-bit build
+rem --- Compile game code module ---
 cl %project_root%\build\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-	%CommonCompilerFlagsDebug% /Wall /wd4710 /wd4577 /LDd ^
+	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
@@ -174,12 +205,13 @@ if exist %kmlApplicationName%.exe (
 rem --- Clean up build directory ---
 del %kmlApplicationName%*.pdb > NUL 2> NUL
 del %kmlApplicationName%*.dll > NUL 2> NUL
+rem --- Compile Windows Executable ---
 cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	/Fm%kmlApplicationName%.map ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
 	/DKML_APP_VERSION=%kmlApplicationVersion% ^
 	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^
-	%CommonCompilerFlagsDebug% /W4 /link %CommonLinkerFlags% ^
+	/W4 %CommonCompilerFlagsChosen% /link %CommonLinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!

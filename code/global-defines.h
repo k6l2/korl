@@ -38,7 +38,7 @@ privDefer<F> defer_func(F f) {
 		}\
 	}while(0)
 #else
-	#define kassert(expression) {}
+	#define kassert(expression) do {}while(0)
 #endif
 // These must be re-defined in the appropriate compilation units //
 #define KLOG(platformLogCategory, formattedString, ...)
