@@ -18,6 +18,7 @@ namespace krb
 #define KRB_BEGIN_FRAME(name) void name(f32 clamped0_1_red, \
                                         f32 clamped0_1_green, \
                                         f32 clamped0_1_blue)
+/** Setup a right-handed axis where +Y is UP. */
 #define KRB_SET_PROJECTION_ORTHO(name) void name(f32 windowSizeX, \
                                                  f32 windowSizeY, \
                                                  f32 halfDepth)

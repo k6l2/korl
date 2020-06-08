@@ -55,6 +55,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		return false;
 	}
+	if(gameKeyboard.enter == ButtonState::PRESSED && gameKeyboard.modifiers.alt)
+	{
+		g_kpl->setFullscreen(!g_kpl->isFullscreen());
+	}
 	if(kamIsLoadingImages(g_gs->assetManager))
 	{
 		return true;

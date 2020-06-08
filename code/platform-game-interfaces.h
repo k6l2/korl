@@ -71,6 +71,8 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 #define PLATFORM_IS_ASSET_CHANGED(name) bool name(const char* assetFileName, \
                                                   FileWriteTime lastWriteTime)
 #define PLATFORM_IS_ASSET_AVAILABLE(name) bool name(const char* assetFileName)
+#define PLATFORM_IS_FULLSCREEN(name) bool name()
+#define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_LOG(fnSig_platformLog);
@@ -84,6 +86,8 @@ typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
 typedef PLATFORM_GET_ASSET_WRITE_TIME(fnSig_platformGetAssetWriteTime);
 typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
 typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
+typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
+typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
 #if INTERNAL_BUILD
 struct PlatformDebugReadFileResult
 {
@@ -114,6 +118,8 @@ struct PlatformApi
 	fnSig_platformGetAssetWriteTime* getAssetWriteTime;
 	fnSig_platformIsAssetChanged* isAssetChanged;
 	fnSig_platformIsAssetAvailable* isAssetAvailable;
+	fnSig_platformIsFullscreen* isFullscreen;
+	fnSig_platformSetFullscreen* setFullscreen;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;
 	fnSig_PlatformFreeFileMemory* freeFileMemory;
@@ -162,7 +168,7 @@ struct GameKeyboard
 	} modifiers;
 	union
 	{
-		ButtonState vKeys[94];
+		ButtonState vKeys[95];
 		struct 
 		{
 			ButtonState a;
@@ -221,7 +227,8 @@ struct GameKeyboard
 			ButtonState shiftRight;
 			ButtonState controlLeft;
 			ButtonState controlRight;
-			ButtonState alt;
+			ButtonState altLeft;
+			ButtonState altRight;
 			ButtonState f1;
 			ButtonState f2;
 			ButtonState f3;

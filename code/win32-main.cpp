@@ -63,11 +63,112 @@ global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 global_variable JobQueue g_jobQueue;
+global_variable WINDOWPLACEMENT g_lastKnownWindowedPlacement;
 struct W32ThreadInfo
 {
 	u32 index;
 	JobQueue* jobQueue;
 };
+internal PLATFORM_IS_FULLSCREEN(platformIsFullscreen)
+{
+	const HWND hwnd = GetActiveWindow();
+	if(!hwnd)
+	{
+		KLOG(WARNING, "Failed to get active window.");
+		return false;
+	}
+	const DWORD windowStyle = GetWindowLong(hwnd, GWL_STYLE);
+	if(windowStyle == 0)
+	{
+		KLOG(ERROR, "Failed to get window style!");
+		return false;
+	}
+	return !(windowStyle & WS_OVERLAPPEDWINDOW);
+}
+internal PLATFORM_SET_FULLSCREEN(platformSetFullscreen)
+{
+	const HWND hwnd = GetActiveWindow();
+	if(!hwnd)
+	{
+		KLOG(WARNING, "Failed to get active window.  "
+		              "Ignoring fullscreen change request.");
+		return;
+	}
+	const DWORD windowStyle = GetWindowLong(hwnd, GWL_STYLE);
+	if(windowStyle == 0)
+	{
+		KLOG(ERROR, "Failed to get window style!");
+		return;
+	}
+	if(windowStyle & WS_OVERLAPPEDWINDOW)
+	{
+		if(!isFullscreenDesired)
+		{
+			KLOG(WARNING, "Window is already not fullscreen.  "
+			              "Ignoring fullscreen change request.");
+			return;
+		}
+		MONITORINFO monitorInfo = { sizeof(monitorInfo) };
+		const HMONITOR monitor = 
+			MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+		if( GetWindowPlacement(hwnd, &g_lastKnownWindowedPlacement) &&
+			GetMonitorInfo(monitor, &monitorInfo) )
+		{
+			if(!SetWindowLong(hwnd, GWL_STYLE, 
+			                  windowStyle & ~WS_OVERLAPPEDWINDOW))
+			{
+				KLOG(ERROR, "Failed to set window style! getlasterror=%i", 
+				     GetLastError());
+				return;
+			}
+			const int windowSizeX = 
+				monitorInfo.rcMonitor.right  - monitorInfo.rcMonitor.left;
+			const int windowSizeY = 
+				monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
+			if(!SetWindowPos(hwnd, HWND_TOP, 
+			                 monitorInfo.rcMonitor.left,
+			                 monitorInfo.rcMonitor.top,
+			                 windowSizeX, windowSizeY, 
+			                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED))
+			{
+				KLOG(ERROR, "Failed to set window position! getlasterror=%i", 
+				     GetLastError());
+			}
+		}
+		else
+		{
+			KLOG(ERROR, "Failed to get monitor info!");
+		}
+	}
+	else
+	{
+		if(isFullscreenDesired)
+		{
+			KLOG(WARNING, "Window is already fullscreen.  "
+			              "Ignoring fullscreen change request.");
+			return;
+		}
+		if(!SetWindowLong(hwnd, GWL_STYLE, windowStyle | WS_OVERLAPPEDWINDOW))
+		{
+			KLOG(ERROR, "Failed to set window style! getlasterror=%i", 
+			     GetLastError());
+			return;
+		}
+		if(!SetWindowPlacement(hwnd, &g_lastKnownWindowedPlacement))
+		{
+			KLOG(ERROR, "Failed to set window placement! getlasterror=%i", 
+			     GetLastError());
+			return;
+		}
+		if(!SetWindowPos(hwnd, NULL, 0, 0, 0, 0, 
+		                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+		                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED))
+		{
+			KLOG(ERROR, "Failed to set window position! getlasterror=%i", 
+			     GetLastError());
+		}
+	}
+}
 internal PLATFORM_POST_JOB(platformPostJob)
 {
 	return jobQueuePostJob(&g_jobQueue, function, data);
@@ -1041,123 +1142,104 @@ internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
 		return W32Dimension2d{.width=0, .height=0};
 	}
 }
-internal void w32ProcessKeyEvent(MSG& msg, GameKeyboard& gameKeyboard)
+internal ButtonState* w32DecodeVirtualKey(GameKeyboard* gk, WPARAM vKeyCode)
 {
+	ButtonState* buttonState = nullptr;
 	// Virtual-Key Codes: 
 	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	const WPARAM vKeyCode = msg.wParam;
-#if SLOW_BUILD
-	KLOG(INFO, "vKeyCode=%i,0x%x", static_cast<int>(vKeyCode), 
-	     static_cast<int>(vKeyCode));
-#endif
-	const bool keyDown     = (msg.lParam & (1<<31)) == 0;
-	const bool keyDownPrev = (msg.lParam & (1<<30)) != 0;
-#if 0
-	const bool altKeyDown  = (msg.lParam & (1<<29)) != 0;
-#endif
-	ButtonState* buttonState = nullptr;
 	switch(vKeyCode)
 	{
-		case VK_OEM_COMMA:
-			buttonState = &gameKeyboard.comma; break;
-		case VK_OEM_PERIOD:
-			buttonState = &gameKeyboard.period; break;
-		case VK_OEM_2: 
-			buttonState = &gameKeyboard.slashForward; break;
-		case VK_OEM_5: 
-			buttonState = &gameKeyboard.slashBack; break;
-		case VK_OEM_4: 
-			buttonState = &gameKeyboard.curlyBraceLeft; break;
-		case VK_OEM_6: 
-			buttonState = &gameKeyboard.curlyBraceRight; break;
-		case VK_OEM_1: 
-			buttonState = &gameKeyboard.semicolon; break;
-		case VK_OEM_7: 
-			buttonState = &gameKeyboard.quote; break;
-		case VK_OEM_3: 
-			buttonState = &gameKeyboard.grave; break;
-		case VK_OEM_MINUS: 
-			buttonState = &gameKeyboard.tenkeyless_minus; break;
-		case VK_OEM_PLUS: 
-			buttonState = &gameKeyboard.equals; break;
-		case VK_BACK: 
-			buttonState = &gameKeyboard.backspace; break;
-		case VK_ESCAPE: 
-			buttonState = &gameKeyboard.escape; break;
-		case VK_RETURN: 
-			buttonState = &gameKeyboard.enter; break;
-		case VK_SPACE: 
-			buttonState = &gameKeyboard.space; break;
-		case VK_TAB: 
-			buttonState = &gameKeyboard.tab; break;
-		case VK_LSHIFT: 
-			buttonState = &gameKeyboard.shiftLeft; break;
-		case VK_RSHIFT: 
-			buttonState = &gameKeyboard.shiftRight; break;
-		case VK_LCONTROL: 
-			buttonState = &gameKeyboard.controlLeft; break;
-		case VK_RCONTROL: 
-			buttonState = &gameKeyboard.controlRight; break;
-		case VK_MENU: 
-			buttonState = &gameKeyboard.alt; break;
-		case VK_UP: 
-			buttonState = &gameKeyboard.arrowUp; break;
-		case VK_DOWN: 
-			buttonState = &gameKeyboard.arrowDown; break;
-		case VK_LEFT: 
-			buttonState = &gameKeyboard.arrowLeft; break;
-		case VK_RIGHT: 
-			buttonState = &gameKeyboard.arrowRight; break;
-		case VK_INSERT: 
-			buttonState = &gameKeyboard.insert; break;
-		case VK_DELETE: 
-			buttonState = &gameKeyboard.deleteKey; break;
-		case VK_HOME: 
-			buttonState = &gameKeyboard.home; break;
-		case VK_END: 
-			buttonState = &gameKeyboard.end; break;
-		case VK_PRIOR: 
-			buttonState = &gameKeyboard.pageUp; break;
-		case VK_NEXT: 
-			buttonState = &gameKeyboard.pageDown; break;
-		case VK_DECIMAL: 
-			buttonState = &gameKeyboard.numpad_period; break;
-		case VK_DIVIDE: 
-			buttonState = &gameKeyboard.numpad_divide; break;
-		case VK_MULTIPLY: 
-			buttonState = &gameKeyboard.numpad_multiply; break;
-		case VK_SEPARATOR: 
-			buttonState = &gameKeyboard.numpad_minus; break;
-		case VK_ADD: 
-			buttonState = &gameKeyboard.numpad_add; break;
+		case VK_OEM_COMMA:  buttonState = &gk->comma; break;
+		case VK_OEM_PERIOD: buttonState = &gk->period; break;
+		case VK_OEM_2:      buttonState = &gk->slashForward; break;
+		case VK_OEM_5:      buttonState = &gk->slashBack; break;
+		case VK_OEM_4:      buttonState = &gk->curlyBraceLeft; break;
+		case VK_OEM_6:      buttonState = &gk->curlyBraceRight; break;
+		case VK_OEM_1:      buttonState = &gk->semicolon; break;
+		case VK_OEM_7:      buttonState = &gk->quote; break;
+		case VK_OEM_3:      buttonState = &gk->grave; break;
+		case VK_OEM_MINUS:  buttonState = &gk->tenkeyless_minus; break;
+		case VK_OEM_PLUS:   buttonState = &gk->equals; break;
+		case VK_BACK:       buttonState = &gk->backspace; break;
+		case VK_ESCAPE:     buttonState = &gk->escape; break;
+		case VK_RETURN:     buttonState = &gk->enter; break;
+		case VK_SPACE:      buttonState = &gk->space; break;
+		case VK_TAB:        buttonState = &gk->tab; break;
+		case VK_LSHIFT:     buttonState = &gk->shiftLeft; break;
+		case VK_RSHIFT:     buttonState = &gk->shiftRight; break;
+		case VK_LCONTROL:   buttonState = &gk->controlLeft; break;
+		case VK_RCONTROL:   buttonState = &gk->controlRight; break;
+		case VK_LMENU:      buttonState = &gk->altLeft; break;
+		case VK_RMENU:      buttonState = &gk->altRight; break;
+		case VK_UP:         buttonState = &gk->arrowUp; break;
+		case VK_DOWN:       buttonState = &gk->arrowDown; break;
+		case VK_LEFT:       buttonState = &gk->arrowLeft; break;
+		case VK_RIGHT:      buttonState = &gk->arrowRight; break;
+		case VK_INSERT:     buttonState = &gk->insert; break;
+		case VK_DELETE:     buttonState = &gk->deleteKey; break;
+		case VK_HOME:       buttonState = &gk->home; break;
+		case VK_END:        buttonState = &gk->end; break;
+		case VK_PRIOR:      buttonState = &gk->pageUp; break;
+		case VK_NEXT:       buttonState = &gk->pageDown; break;
+		case VK_DECIMAL:    buttonState = &gk->numpad_period; break;
+		case VK_DIVIDE:     buttonState = &gk->numpad_divide; break;
+		case VK_MULTIPLY:   buttonState = &gk->numpad_multiply; break;
+		case VK_SEPARATOR:  buttonState = &gk->numpad_minus; break;
+		case VK_ADD:        buttonState = &gk->numpad_add; break;
 		default:
 		{
 			if(vKeyCode >= 0x41 && vKeyCode <= 0x5A)
 			{
-				buttonState = &gameKeyboard.a + (vKeyCode - 0x41);
+				buttonState = &gk->a + (vKeyCode - 0x41);
 			}
 			else if(vKeyCode >= 0x30 && vKeyCode <= 0x39)
 			{
-				buttonState = &gameKeyboard.tenkeyless_0 + (vKeyCode - 0x30);
+				buttonState = &gk->tenkeyless_0 + (vKeyCode - 0x30);
 			}
 			else if(vKeyCode >= 0x70 && vKeyCode <= 0x7B)
 			{
-				buttonState = &gameKeyboard.f1 + (vKeyCode - 0x70);
+				buttonState = &gk->f1 + (vKeyCode - 0x70);
 			}
 			else if(vKeyCode >= 0x60 && vKeyCode <= 0x69)
 			{
-				buttonState = &gameKeyboard.numpad_0 + (vKeyCode - 0x60);
+				buttonState = &gk->numpad_0 + (vKeyCode - 0x60);
 			}
 		} break;
 	}
-	if(buttonState)
+	return buttonState;
+}
+internal void w32GetKeyboardKeyStates(GameKeyboard* gkCurrFrame, 
+                                      GameKeyboard* gkPrevFrame)
+{
+	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
 	{
-		*buttonState = keyDown
-			? (keyDownPrev
-				? ButtonState::HELD
-				: ButtonState::PRESSED)
-			: ButtonState::NOT_PRESSED;
+		ButtonState* buttonState = w32DecodeVirtualKey(gkCurrFrame, vKeyCode);
+		if(buttonState)
+		{
+			const SHORT asyncKeyState = 
+				GetAsyncKeyState(static_cast<int>(vKeyCode));
+			// do NOT use the least-significant bit to determine key state!
+			//	Why? See documentation on the GetAsyncKeyState function:
+			// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+			const bool keyDown = (asyncKeyState & ~1) != 0;
+			const size_t buttonIndex = buttonState - gkCurrFrame->vKeys;
+			*buttonState = keyDown
+				? (gkPrevFrame->vKeys[buttonIndex] >= ButtonState::PRESSED
+					? ButtonState::HELD
+					: ButtonState::PRESSED)
+				: ButtonState::NOT_PRESSED;
+		}
 	}
+	// update the game keyboard modifier states //
+	gkCurrFrame->modifiers.shift =
+		(gkCurrFrame->shiftLeft  > ButtonState::NOT_PRESSED ||
+		 gkCurrFrame->shiftRight > ButtonState::NOT_PRESSED);
+	gkCurrFrame->modifiers.control =
+		(gkCurrFrame->controlLeft  > ButtonState::NOT_PRESSED ||
+		 gkCurrFrame->controlRight > ButtonState::NOT_PRESSED);
+	gkCurrFrame->modifiers.alt =
+		(gkCurrFrame->altLeft  > ButtonState::NOT_PRESSED ||
+		 gkCurrFrame->altRight > ButtonState::NOT_PRESSED);
 }
 internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 {
@@ -1786,13 +1868,16 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///      the window gets moved around to another monitor.
 	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(mainWindow);
 	f32 targetSecondsElapsedPerFrame = 1.f / monitorRefreshHz;
-	GameKeyboard gameKeyboard = {};
+	GameKeyboard gameKeyboardA = {};
+	GameKeyboard gameKeyboardB = {};
+	GameKeyboard* gameKeyboardCurrentFrame  = &gameKeyboardA;
+	GameKeyboard* gameKeyboardPreviousFrame = &gameKeyboardB;
 #if INTERNAL_BUILD
 	// ensure that the size of the keyboard's vKeys array matches the size of
 	//	the anonymous struct which defines the names of all the game keys //
-	kassert(static_cast<size_t>(&gameKeyboard.DUMMY_LAST_BUTTON_STATE - 
-	                            &gameKeyboard.vKeys[0]) ==
-	        (sizeof(gameKeyboard.vKeys) / sizeof(gameKeyboard.vKeys[0])));
+	kassert(static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
+	                            &gameKeyboardA.vKeys[0]) ==
+	        (sizeof(gameKeyboardA.vKeys) / sizeof(gameKeyboardA.vKeys[0])));
 #endif
 	GamePad gamePadArrayA[XUSER_MAX_COUNT] = {};
 	GamePad gamePadArrayB[XUSER_MAX_COUNT] = {};
@@ -1864,6 +1949,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getAssetWriteTime = platformGetAssetWriteTime;
 	gameMemory.kpl.isAssetChanged    = platformIsAssetChanged;
 	gameMemory.kpl.isAssetAvailable  = platformIsAssetAvailable;
+	gameMemory.kpl.isFullscreen      = platformIsFullscreen;
+	gameMemory.kpl.setFullscreen     = platformSetFullscreen;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;
@@ -1967,20 +2054,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					{
 						g_running = false;
 					} break;
-#if 0
-					case WM_CHAR:
-					{
-#if SLOW_BUILD
-						KLOG(INFO, "character code=%i", 
-						     static_cast<int>(windowMessage.wParam));
-#endif
-					} break;
-#endif
-					case WM_KEYDOWN:
-					case WM_KEYUP:
-					case WM_SYSKEYDOWN:
-					case WM_SYSKEYUP:
-						w32ProcessKeyEvent(windowMessage, gameKeyboard);
 					default:
 					{
 						TranslateMessage(&windowMessage);
@@ -1988,14 +2061,22 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					} break;
 				}
 			}
-			gameKeyboard.modifiers.shift =
-				(gameKeyboard.shiftLeft  > ButtonState::NOT_PRESSED ||
-				 gameKeyboard.shiftRight > ButtonState::NOT_PRESSED);
-			gameKeyboard.modifiers.control =
-				(gameKeyboard.controlLeft  > ButtonState::NOT_PRESSED ||
-				 gameKeyboard.controlRight > ButtonState::NOT_PRESSED);
-			gameKeyboard.modifiers.alt =
-				gameKeyboard.alt > ButtonState::NOT_PRESSED;
+			// Process gameKeyboard by comparing the keys to the previous 
+			//	frame's keys, because we cannot determine if a key has been 
+			//	newly pressed this frame just from the windows message loop data
+			if(gameKeyboardCurrentFrame == &gameKeyboardA)
+			{
+				gameKeyboardCurrentFrame  = &gameKeyboardB;
+				gameKeyboardPreviousFrame = &gameKeyboardA;
+			}
+			else
+			{
+				gameKeyboardCurrentFrame  = &gameKeyboardA;
+				gameKeyboardPreviousFrame = &gameKeyboardB;
+			}
+			w32GetKeyboardKeyStates(gameKeyboardCurrentFrame, 
+			                        gameKeyboardPreviousFrame);
+			// swap game pad arrays & update the current frame //
 			if(gamePadArrayCurrentFrame == gamePadArrayA)
 			{
 				gamePadArrayPreviousFrame = gamePadArrayA;
@@ -2012,13 +2093,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
-#if 0
-			ImGui::ShowDemoWindow();
-#endif
 			const W32Dimension2d windowDims = 
 				w32GetWindowDimensions(mainWindow);
 			if(!game.updateAndDraw({windowDims.width, windowDims.height}, 
-			                       gameKeyboard,
+			                       *gameKeyboardCurrentFrame,
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{
 				g_running = false;

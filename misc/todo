@@ -198,14 +198,19 @@
 	Use the low-word of lParam of a WM_SETCURSOR message to determine what 
 	cursor to use.
 	https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-nchittest
+[x] fullscreen toggle support 
+	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+[x] Fix keyboard buttonstates incorrect
+	[x] differentiate between left/right alt keys
+[ ] Figure out why there is a beep when I press alt+enter
+[ ] "Release" build script
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
 		application runs for ~30seconds after startup...
-[ ] "Release" build script
-[ ] fullscreen toggle support 
-	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+[ ] KAU: change tape volume
 [ ] pause audio output when window goes out of focus probably.
+[ ] Pay TODO debt.
 [ ] Make asset streaming implementation more robust
 	[ ] When attempting to load an asset and we're unable to allocate memory for 
 		it...
