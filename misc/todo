@@ -202,7 +202,7 @@
 	https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 [x] Fix keyboard buttonstates incorrect
 	[x] differentiate between left/right alt keys
-[ ] Figure out why there is a beep when I press alt+enter
+[x] Figure out why there is a beep when I press alt+enter
 [ ] "Release" build script
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.

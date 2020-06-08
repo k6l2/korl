@@ -1277,6 +1277,24 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 	LRESULT result = 0;
 	switch(uMsg)
 	{
+		case WM_SYSCOMMAND:
+		{
+			KLOG(INFO, "WM_SYSCOMMAND: type=0x%x", wParam);
+			if(wParam == SC_KEYMENU)
+			// These window messages need to be captured in order to stop 
+			//	windows from needlessly beeping when we use ALT+KEY combinations 
+			{
+				break;
+			}
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}break;
+#if 0
+		case WM_MENUCHAR:
+		{
+			KLOG(INFO, "WM_MENUCHAR");
+			result = MAKELRESULT(0, MNC_IGNORE);
+		}break;
+#endif // 0
 		case WM_SETCURSOR:
 		{
 			switch(LOWORD(lParam))
@@ -1312,7 +1330,8 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 		} break;
 		case WM_SIZE:
 		{
-			KLOG(INFO, "WM_SIZE");
+			KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
+			     wParam, LOWORD(lParam), HIWORD(lParam));
 		} break;
 		case WM_DESTROY:
 		{
@@ -1328,7 +1347,8 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 		} break;
 		case WM_ACTIVATEAPP:
 		{
-			KLOG(INFO, "WM_ACTIVATEAPP");
+			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
+			     (wParam ? "TRUE" : "FALSE"), lParam);
 		} break;
 #if 0
 		case WM_PAINT:
@@ -1350,7 +1370,10 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 #endif
 		default:
 		{
-			result = DefWindowProcA(hwnd, uMsg, wParam, lParam);
+#if 0
+			KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
+#endif // 0
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}break;
 	}
 	return result;
