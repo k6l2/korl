@@ -209,7 +209,7 @@
 	[x] Set win32 application icon.
 	[x] Set win32 window icon.
 	[x] procedurally set the asset load directory relative to the executable
-	[ ] automatically "clean" if requested debug/release selection differs from
+	[x] automatically "clean" if requested debug/release selection differs from
 		previous build's settings
 	[ ] If hiding the mouse cursor, only hide it if the cursor is inside the 
 		client's rectangle; do not hide the mouse if we're in the window border!

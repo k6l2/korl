@@ -1,4 +1,9 @@
 @echo off
+rem prerequisites: shell.bat has been run successfully
+rem                KML_HOME environment variable
+rem                KCPP_HOME environment variable
+set codeTreeFileNamePrefixGame=code-tree-game
+set codeTreeFileNamePrefixKpl=code-tree-kpl
 rem --- Iterate over build script arguments ---
 set buildOptionClean=FALSE
 set buildOptionRelease=FALSE
@@ -25,9 +30,6 @@ if "%buildOptionClean%"=="TRUE" (
 	echo Clean complete!
 	exit /B 0
 )
-rem prerequisites: shell.bat has been run successfully
-rem                KML_HOME environment variable
-rem                KCPP_HOME environment variable
 rem --- Save the timestamp before building for timing metric ---
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
@@ -39,15 +41,17 @@ rem     changed ---
 rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
 pushd %project_root%\code
 FOR /F "delims=" %%G IN ('DIR /B /S') DO (
-	>>"%project_root%\build\code-tree-current.txt" ECHO %%~G,%%~tG,%%~zG
+	>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt" ECHO %%~G,%%~tG,%%~zG
 )
 popd
+echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt"
 rem --- Create a text tree of KML code to conditionally skip the .exe build ---
 pushd %KML_HOME%\code
 FOR /F "delims=" %%G IN ('DIR /B /S') DO (
-	>>"%project_root%\build\code-tree-kml-current.txt" ECHO %%~G,%%~tG,%%~zG
+	>>"%project_root%\build\%codeTreeFileNamePrefixKpl%-current.txt" ECHO %%~G,%%~tG,%%~zG
 )
 popd
+echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixKpl%-current.txt"
 pushd %project_root%\build
 rem --- Compile the win32 application's resource file in release mode ---
 rem ---    The resource file contains the application icon ---
@@ -149,12 +153,12 @@ if "%buildOptionRelease%"=="TRUE" (
 )
 rem --- Detect if the code tree differs, and if it doesn't, skip building ---
 set codeTreeIsDifferent=FALSE
-fc code-tree-existing.txt code-tree-current.txt > NUL 2> NUL
+fc %codeTreeFileNamePrefixGame%-existing.txt %codeTreeFileNamePrefixGame%-current.txt > NUL 2> NUL
 if %ERRORLEVEL% GTR 0 (
 	set codeTreeIsDifferent=TRUE
 )
-del code-tree-existing.txt
-ren code-tree-current.txt code-tree-existing.txt
+del %codeTreeFileNamePrefixGame%-existing.txt
+ren %codeTreeFileNamePrefixGame%-current.txt %codeTreeFileNamePrefixGame%-existing.txt
 IF "%codeTreeIsDifferent%"=="TRUE" (
 	echo Code tree has changed!  Continuing build...
 ) ELSE (
@@ -189,12 +193,12 @@ IF %ERRORLEVEL% NEQ 0 (
 rem --- Detect if the KML code tree differs, and if it doesn't, skip 
 rem building ---
 set codeTreeIsDifferent=FALSE
-fc code-tree-kml-existing.txt code-tree-kml-current.txt > NUL 2> NUL
+fc %codeTreeFileNamePrefixKpl%-existing.txt %codeTreeFileNamePrefixKpl%-current.txt > NUL 2> NUL
 if %ERRORLEVEL% GTR 0 (
 	set codeTreeIsDifferent=TRUE
 )
-del code-tree-kml-existing.txt
-ren code-tree-kml-current.txt code-tree-kml-existing.txt
+del %codeTreeFileNamePrefixKpl%-existing.txt
+ren %codeTreeFileNamePrefixKpl%-current.txt %codeTreeFileNamePrefixKpl%-existing.txt
 IF "%codeTreeIsDifferent%"=="TRUE" (
 	echo KML Code tree has changed!  Continuing build...
 ) ELSE (
@@ -207,7 +211,7 @@ if exist %kmlApplicationName%.exe (
 	del %kmlApplicationName%.exe >NUL 2>NUL
 	IF exist %kmlApplicationName%.exe (
 		echo %kmlApplicationName%.exe is locked! Skipping build...
-		del code-tree-kml-existing.txt
+		del %codeTreeFileNamePrefixKpl%-existing.txt
 		GOTO :SKIP_WIN32_BUILD
 	)
 )
@@ -251,8 +255,8 @@ IF %hh% LEQ 0 (
 )
 exit /B 0
 :ON_FAILURE_GAME
-del code-tree-existing.txt
+del %codeTreeFileNamePrefixGame%-existing.txt
 :ON_FAILURE_KML
-del code-tree-kml-existing.txt
+del %codeTreeFileNamePrefixKpl%-existing.txt
 popd
 exit /B %ERRORLEVEL%
