@@ -208,7 +208,7 @@
 	[x] set appropriate code generation compiler options
 	[x] Set win32 application icon.
 	[x] Set win32 window icon.
-	[ ] procedurally set the asset load directory relative to the executable
+	[x] procedurally set the asset load directory relative to the executable
 	[ ] automatically "clean" if requested debug/release selection differs from
 		previous build's settings
 	[ ] If hiding the mouse cursor, only hide it if the cursor is inside the 

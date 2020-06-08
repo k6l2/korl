@@ -60,6 +60,7 @@ global_variable bool g_hasReceivedException;
 global_variable bool g_hasWrittenCrashDump;
 ///TODO: handle file paths longer than MAX_PATH in the future...
 global_variable TCHAR g_pathToExe[MAX_PATH];
+global_variable TCHAR g_pathToAssets[MAX_PATH];
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 global_variable JobQueue g_jobQueue;
@@ -211,8 +212,8 @@ internal PLATFORM_LOAD_PNG(platformLoadPng)
 {
 	// Load the entire PNG file into memory //
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, fileName);
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, fileName);
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
 	{
@@ -227,8 +228,8 @@ internal PLATFORM_LOAD_OGG(platformLoadOgg)
 	// Load the entire OGG file into memory //
 	RawSound result = {};
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, fileName);
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, fileName);
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
 	{
@@ -451,8 +452,8 @@ internal PLATFORM_LOAD_WAV(platformLoadWav)
 {
 	// Load the entire WAV file into memory //
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, fileName);
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, fileName);
 	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
 	if(!file.data)
 	{
@@ -998,8 +999,8 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 internal PLATFORM_GET_ASSET_WRITE_TIME(platformGetAssetWriteTime)
 {
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, assetFileName);
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, assetFileName);
 	FILETIME fileWriteTime = w32GetLastWriteTime(szFileFullPath);
 	ULARGE_INTEGER largeInt;
 	largeInt.HighPart = fileWriteTime.dwHighDateTime;
@@ -1009,8 +1010,8 @@ internal PLATFORM_GET_ASSET_WRITE_TIME(platformGetAssetWriteTime)
 internal PLATFORM_IS_ASSET_CHANGED(platformIsAssetChanged)
 {
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, assetFileName);
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, assetFileName);
 	FILETIME fileWriteTime = w32GetLastWriteTime(szFileFullPath);
 	ULARGE_INTEGER largeInt;
 	largeInt.QuadPart = lastWriteTime;
@@ -1022,8 +1023,8 @@ internal PLATFORM_IS_ASSET_CHANGED(platformIsAssetChanged)
 internal PLATFORM_IS_ASSET_AVAILABLE(platformIsAssetAvailable)
 {
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\..\\assets\\%s"), 
-	                 g_pathToExe, assetFileName);
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, assetFileName);
 	// Check to see if the file is open exclusively by another program by 
 	//	attempting to open it in exclusive mode.
 	// https://stackoverflow.com/a/12821767
@@ -1599,7 +1600,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///TODO: OR the failure code with a more specific # to indicate why it 
 	///      failed probably?
 	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
-	defer(w32WriteLogToFile());
 	// Initialize locks to ensure thread safety for various systems //
 	{
 		InitializeCriticalSection(&g_logCsLock);
@@ -1641,7 +1641,36 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		KLOG(WARNING, "Failed to add vectored exception handler!");
 	}
+	defer(w32WriteLogToFile());
 	KLOG(INFO, "START!");
+	// parse command line arguments //
+	WCHAR relativeAssetDir[MAX_PATH];
+	relativeAssetDir[0] = '\0';
+	{
+		int argc;
+		LPWSTR*const argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+		if(argv)
+		{
+			for(int arg = 0; arg < argc; arg++)
+			{
+				KLOG(INFO, "arg[%i]=='%ws'", arg, argv[arg]);
+				if(arg == 1)
+				{
+					if(FAILED(StringCchPrintfW(relativeAssetDir, MAX_PATH, 
+					                           L"%ws", argv[arg])))
+					{
+						KLOG(ERROR, "Failed to extract relative asset path!");
+						return RETURN_CODE_FAILURE;
+					}
+				}
+			}
+			LocalFree(argv);
+		}
+		else
+		{
+			KLOG(ERROR, "CommandLineToArgvW failed!");
+		}
+	}
 	if(!jobQueueInit(&g_jobQueue))
 	{
 		KLOG(ERROR, "Failed to initialize job queue!");
@@ -1766,6 +1795,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 		*(lastBackslash + 1) = 0;
+	}
+	// Locate what directory we should look in for assets //
+	{
+		if(FAILED(StringCchPrintf(g_pathToAssets, MAX_PATH, 
+		                          TEXT("%s\\%wsassets"), 
+		                          g_pathToExe, relativeAssetDir)))
+		{
+			KLOG(ERROR, "Failed to build g_pathToAssets!  g_pathToExe='%s'", 
+			     g_pathToExe);
+			return RETURN_CODE_FAILURE;
+		}
 	}
 	///TODO: handle file paths longer than MAX_PATH in the future...
 	TCHAR fullPathToGameDll    [MAX_PATH] = {};
