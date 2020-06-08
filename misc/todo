@@ -206,10 +206,18 @@
 [x] "clean" build script
 [ ] "Release" build script
 	[x] set appropriate code generation compiler options
-	[ ] Set win32 application icon.
+	[x] Set win32 application icon.
+	[x] Set win32 window icon.
 	[ ] procedurally set the asset load directory relative to the executable
 	[ ] automatically "clean" if requested debug/release selection differs from
 		previous build's settings
+	[ ] If hiding the mouse cursor, only hide it if the cursor is inside the 
+		client's rectangle; do not hide the mouse if we're in the window border!
+[ ] kc++: only include the generated kasset header ONCE per file!
+	[ ] Manually put an include macro at the top of files to help maintain line 
+		#'s while debugging?
+	[ ] Automatically detect if we've already injected the include statement &
+		ignore subsequent injections?
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 

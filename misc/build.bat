@@ -49,6 +49,11 @@ FOR /F "delims=" %%G IN ('DIR /B /S') DO (
 )
 popd
 pushd %project_root%\build
+rem --- Compile the win32 application's resource file in release mode ---
+rem ---    The resource file contains the application icon ---
+if "%buildOptionRelease%"=="TRUE" (
+	rc /fo win32.res %KML_HOME%\default-assets\win32.rc
+)
 set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
 set fileNameSafeTimestamp=%fileNameSafeDate%_%time:~0,2%%time:~3,2%%time:~6,2%
 rem remove any spaces from the generated timestamp:
@@ -138,6 +143,10 @@ if "%buildOptionRelease%"=="TRUE" (
 )
 rem echo CommonCompilerFlagsChosen=%CommonCompilerFlagsChosen%
 set CommonLinkerFlags=/opt:ref /incremental:no 
+set Win32LinkerFlags=%CommonLinkerFlags%
+if "%buildOptionRelease%"=="TRUE" (
+	set Win32LinkerFlags=%CommonLinkerFlags% win32.res
+)
 rem --- Detect if the code tree differs, and if it doesn't, skip building ---
 set codeTreeIsDifferent=FALSE
 fc code-tree-existing.txt code-tree-current.txt > NUL 2> NUL
@@ -211,7 +220,7 @@ cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
 	/DKML_APP_VERSION=%kmlApplicationVersion% ^
 	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^
-	/W4 %CommonCompilerFlagsChosen% /link %CommonLinkerFlags% ^
+	/W4 %CommonCompilerFlagsChosen% /link %Win32LinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!

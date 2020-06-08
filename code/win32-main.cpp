@@ -1863,6 +1863,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
+		.hIcon         = LoadIcon(hInstance, TEXT("kpl-application-icon")),
 		.hCursor       = g_cursor,
 		.lpszClassName = "KmlWindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
