@@ -13,3 +13,5 @@ internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer,
                                   KAssetCStr kAssetCStr);
 internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
                            bool value);
+internal void kauSetVolume(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
+                           f32 volumeRatio);

@@ -235,8 +235,30 @@
 		#'s while debugging?
 	[-] Automatically detect if we've already injected the include statement &
 		ignore subsequent injections?
-[ ] KAU: change tape volume
+[x] KAU: change tape volume
+[ ] Flipbook sprites
+	[ ] Flipbook metadata KASSET
+		[ ] frame dimensions
+		[ ] frame count
+		[ ] texture asset file name
+			[ ] Is there a way to pre-compile this like KASSET filename strings?
+			[ ] Maybe we can just do a single pass over the g_kassets to convert 
+				the asset filename into a KAssetCStr
+		[ ] default repeat?
+		[ ] default reverse?
+		[ ] default playback speed
+	[ ] Flipbook instance
+		[ ] repeat?
+		[ ] reverse?
+		[ ] playback speed
+	[ ] pass deltaSeconds to GAME_UPDATE_AND_DRAW
+	[ ] Create some sort of Flipbook manager construct which manages Flipbook 
+		instances (using a handle/ticket system)???
+		[ ] Step all the Flipbook instances in the update function.
+		[ ] automatically change non-default Flipbook properties if the Flipbook 
+			asset's values change (is this even necessary?)
 [ ] display debug frame metrics
+	[ ] Can I just use Optick?..  I really liked Optick..
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
 		application runs for ~30seconds after startup...

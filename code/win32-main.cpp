@@ -1982,8 +1982,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #else
 	const LPVOID baseAddress = 0;
 #endif
-	gameMemory.permanentMemoryBytes = kmath::megabytes(64);
-	gameMemory.transientMemoryBytes = kmath::gigabytes(4);
+	gameMemory.permanentMemoryBytes = kmath::megabytes(16);
+	gameMemory.transientMemoryBytes = kmath::megabytes(128);
 	const u64 totalGameMemoryBytes = 
 		gameMemory.permanentMemoryBytes + gameMemory.transientMemoryBytes;
 	gameMemory.permanentMemory = VirtualAlloc(baseAddress, 

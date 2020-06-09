@@ -22,22 +22,22 @@ GAME_INITIALIZE(gameInitialize)
 	// GameState memory initialization //
 	*g_gs = {};
 	// initialize dynamic allocators //
-	g_gs->kgaHPermanent = 
+	g_gs->hKgaPermanent = 
 		kgaInit(reinterpret_cast<u8*>(memory.permanentMemory) + 
 		            sizeof(GameState), 
 		        memory.permanentMemoryBytes - sizeof(GameState));
-	g_gs->kgaHTransient = kgaInit(memory.transientMemory, 
+	g_gs->hKgaTransient = kgaInit(memory.transientMemory, 
 	                              memory.transientMemoryBytes);
 	// Contruct/Initialize the game's AssetManager //
-	g_gs->assetManager = kamConstruct(g_gs->kgaHPermanent, KASSET_COUNT,
-	                                  g_gs->kgaHTransient, g_kpl, g_krb);
+	g_gs->assetManager = kamConstruct(g_gs->hKgaPermanent, KASSET_COUNT,
+	                                  g_gs->hKgaTransient, g_kpl, g_krb);
 	// Initialize the game's audio mixer //
-	g_gs->kAudioMixer = kauConstruct(g_gs->kgaHPermanent, 16, 
+	g_gs->kAudioMixer = kauConstruct(g_gs->hKgaPermanent, 16, 
 	                                 g_gs->assetManager);
-	KTapeHandle tapeBgmBattleTheme = 
+	g_gs->tapeBgmBattleTheme = 
 		kauPlaySound(g_gs->kAudioMixer, 
 		             KASSET("joesteroids-battle-theme-modified.ogg"));
-	kauSetRepeat(g_gs->kAudioMixer, &tapeBgmBattleTheme, true);
+	kauSetRepeat(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, true);
 	// Tell the asset manager to load assets asynchronously! //
 	kamPushAsset(g_gs->assetManager, KASSET("fighter.png"));
 }
@@ -97,6 +97,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				g_gs->shipWorldOrientation = 
 					kmath::quat({0,0,1}, stickRadians - PI32/2);
 			}
+			const f32 controlVolumeRatio = 
+				(gpad.normalizedStickRight.y/2) + 0.5f;
+			kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 
+			             controlVolumeRatio);
 			gpad.normalizedMotorSpeedLeft  = gpad.normalizedTriggerLeft;
 			gpad.normalizedMotorSpeedRight = gpad.normalizedTriggerRight;
 			if (gpad.buttons.back  == ButtonState::HELD &&

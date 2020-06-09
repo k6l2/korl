@@ -13,13 +13,14 @@
 #include "kAudioMixer.h"
 struct GameState
 {
+	KAssetManager* assetManager;
+	KAudioMixer* kAudioMixer;
+	KgaHandle hKgaPermanent;
+	KgaHandle hKgaTransient;
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kmath::Quaternion shipWorldOrientation = kmath::quat({0,0,1}, 0);
-	KAssetManager* assetManager;
-	KAudioMixer* kAudioMixer;
-	KgaHandle kgaHPermanent;
-	KgaHandle kgaHTransient;
+	KTapeHandle tapeBgmBattleTheme;
 };
 global_variable PlatformApi* g_kpl;
 global_variable GameState* g_gs;

@@ -6,6 +6,7 @@ struct AudioTrack
 	u16 idSalt;
 	bool repeat;
 	u8 repeat_PADDING;
+	f32 volumeRatio = 1.f;
 };
 struct KAudioMixer
 {
@@ -104,6 +105,12 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 			{
 				continue;
 			}
+			if(kmath::isNearlyZero(tracks[t].volumeRatio))
+			{
+				continue;
+			}
+			kassert(tracks[t].volumeRatio >= 0.f && 
+			        tracks[t].volumeRatio <= 1.f);
 			const RawSound tRawSound = 
 				kamGetRawSound(audioMixer->assetManager, 
 				               tracks[t].soundAssetHandle);
@@ -125,8 +132,10 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 			{
 				const u8 rawSoundChannel = static_cast<u8>(
 					c % tRawSound.channelCount);
-				*(sampleBlockStart + c) += 
-					*(rawSoundSampleBlockStart + rawSoundChannel);
+				const SoundSample sample = static_cast<SoundSample>(
+					*(rawSoundSampleBlockStart + rawSoundChannel) * 
+					tracks[t].volumeRatio);
+				*(sampleBlockStart + c) += sample;
 			}
 		}
 	}
@@ -180,4 +189,25 @@ internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle,
 		return;
 	}
 	tracks[trackIndex].repeat = value;
+}
+internal void kauSetVolume(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
+                           f32 volumeRatio)
+{
+	const u16 trackIndex = kauSoundHandleTrackIndex(*tapeHandle);
+	if(trackIndex >= audioMixer->trackCount)
+	// Silently ignore the request to modify the track if the handle is invalid
+	{
+		return;
+	}
+	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
+	const KTapeHandle currHandle = kauHashTrack(audioMixer, trackIndex);
+	if(*tapeHandle != currHandle)
+	// if the requested sound handle's identification doesn't match the current
+	//	sound handle at the same track index, then we should invalidate the 
+	//	caller's sound handle since the tape no longer exists in the mixer!
+	{
+		*tapeHandle = kauHashTrack(audioMixer, audioMixer->trackCount);
+		return;
+	}
+	tracks[trackIndex].volumeRatio = volumeRatio;
 }
