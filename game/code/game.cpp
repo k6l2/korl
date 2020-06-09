@@ -1,4 +1,5 @@
 #include "game.h"
+INCLUDE_KASSET()
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )

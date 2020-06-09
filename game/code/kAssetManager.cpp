@@ -1,6 +1,7 @@
 #include "kAssetManager.h"
 #include "z85-png-default.h"
 #include "z85-wav-default.h"
+INCLUDE_KASSET()
 enum class KAssetType : u8
 {
 	UNUSED,

@@ -51,6 +51,7 @@ using KAssetCStr = const char*const*;
 //	macros are pre-defined with specific values only to shut up the compiler/
 //	intellisense.  When kc++ runs over the source code containing these macros,
 //	they are replaced with actual useful values.
+#define INCLUDE_KASSET() 
 #define KASSET(cstrFileName) nullptr
 #define KASSET_INDEX(KAssetCStr) 0
 #define KASSET_COUNT 0

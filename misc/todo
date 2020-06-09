@@ -230,16 +230,16 @@
 		into the game layer code?
 [x] Update README now that project is restructured, especially `new game 
 	project` section.
-[ ] kc++: only include the generated kasset header ONCE per file!
-	[ ] Manually put an include macro at the top of files to help maintain line 
+[x] kc++: only include the generated kasset header ONCE per file!
+	[x] Manually put an include macro at the top of files to help maintain line 
 		#'s while debugging?
-	[ ] Automatically detect if we've already injected the include statement &
+	[-] Automatically detect if we've already injected the include statement &
 		ignore subsequent injections?
+[ ] KAU: change tape volume
 [ ] display debug frame metrics
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
 		application runs for ~30seconds after startup...
-[ ] KAU: change tape volume
 [ ] pause audio output when window goes out of focus probably.
 [ ] Pay TODO debt.
 [ ] Make asset streaming implementation more robust
