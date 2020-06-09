@@ -29,7 +29,6 @@ global_variable const TCHAR FILE_NAME_GAME_DLL[] =
                                     TEXT(DEFINE_TO_CSTR(KML_GAME_DLL_FILENAME));
 global_variable bool g_running;
 global_variable bool g_displayCursor;
-global_variable HCURSOR g_cursor;
 global_variable HCURSOR g_cursorArrow;
 global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
@@ -1298,36 +1297,35 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 #endif // 0
 		case WM_SETCURSOR:
 		{
+			HCURSOR cursor = NULL;
 			switch(LOWORD(lParam))
 			{
 				case HTBOTTOM:
 				case HTTOP:
-					g_cursor = g_cursorSizeVertical;
+					cursor = g_cursorSizeVertical;
 				break;
 				case HTLEFT:
 				case HTRIGHT:
-					g_cursor = g_cursorSizeHorizontal;
+					cursor = g_cursorSizeHorizontal;
 				break;
 				case HTBOTTOMLEFT:
 				case HTTOPRIGHT:
-					g_cursor = g_cursorSizeNeSw;
+					cursor = g_cursorSizeNeSw;
 				break;
 				case HTBOTTOMRIGHT:
 				case HTTOPLEFT:
-					g_cursor = g_cursorSizeNwSe;
+					cursor = g_cursorSizeNwSe;
 				break;
+				case HTCLIENT:
+					if(!g_displayCursor)
+					{
+						break;
+					}
 				default:
-					g_cursor = g_cursorArrow;
+					cursor = g_cursorArrow;
 				break;
 			}
-			if(g_displayCursor)
-			{
-				SetCursor(g_cursor);
-			}
-			else
-			{
-				SetCursor(NULL);
-			}
+			SetCursor(cursor);
 		} break;
 		case WM_SIZE:
 		{
@@ -1898,13 +1896,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);
 	g_cursorSizeNeSw       = LoadCursorA(NULL, IDC_SIZENESW);
 	g_cursorSizeNwSe       = LoadCursorA(NULL, IDC_SIZENWSE);
-	g_cursor = g_cursorArrow;
 	const WNDCLASS wndClass = {
 		.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
 		.hIcon         = LoadIcon(hInstance, TEXT("kpl-application-icon")),
-		.hCursor       = g_cursor,
+		.hCursor       = g_cursorArrow,
 		.lpszClassName = "KmlWindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)

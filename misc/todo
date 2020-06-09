@@ -204,14 +204,14 @@
 	[x] differentiate between left/right alt keys
 [x] Figure out why there is a beep when I press alt+enter
 [x] "clean" build script
-[ ] "Release" build script
+[x] "Release" build script
 	[x] set appropriate code generation compiler options
 	[x] Set win32 application icon.
 	[x] Set win32 window icon.
 	[x] procedurally set the asset load directory relative to the executable
 	[x] automatically "clean" if requested debug/release selection differs from
 		previous build's settings
-	[ ] If hiding the mouse cursor, only hide it if the cursor is inside the 
+	[x] If hiding the mouse cursor, only hide it if the cursor is inside the 
 		client's rectangle; do not hide the mouse if we're in the window border!
 [ ] kc++: only include the generated kasset header ONCE per file!
 	[ ] Manually put an include macro at the top of files to help maintain line 
