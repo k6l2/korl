@@ -13,24 +13,28 @@ Currently, only the Windows platform is a thing.
 	`kcpp` repository.
 
 ## Build Procedures
-- Run `%KML_HOME%\misc\shell.bat`.
+- Run `%KML_HOME%\game\misc\shell.bat`.
 - Execute `build` from this windows shell.
 
 ## Visual Studio Debugger
-- Run `devenv build\win32-main.exe` to debug the project in Visual Studio.
+- Run `devenv build\Win32-KML.exe` to debug the project in Visual Studio.
 
 ## Optional Editor
-- Run `code .` to use VSCode, conveniently configured to build & debug 
+- Run `code ..` to use VSCode, conveniently configured to build & debug 
 	in-editor.
 
 ## Create a New Game Project Procedures
 - Follow `Installation Procedures` above to install KML somewhere.
 - Create a new directory anywhere.
-- Copy `misc\shell.bat` into this directory in the same folder structure & edit 
-	the options as you see fit.
-- Copy `code\game.*` into this directory in the same folder structure.
-- Optionally, copy the `.vscode` folder into this directory.
-- Follow the `Build Procedures` & `Visual Studio Debugger` steps in this 
-	document for this directory.
-- Optionally, follow `Optional Editor` for this directory.
+- Copy the `%KML_HOME%\game` directory contents into this new directory.
+- Edit the contents of `misc\shell.bat` in the new directory as you see fit.
+- Optionally, copy the `%KML_HOME%\.vscode` folder into the new directory.
+
+## Developing a New Game Project Procedures
+- Follow `Build Procedures` using the new directory instead of 
+	`%KML_HOME%\game`.
+- Follow `Visual Studio Debugger` using whatever you set `kmlApplicationName` in 
+	`misc\shell.bat` instead of `Win32-KML`.exe.
+- Optionally, follow `Optional Editor` for this new directory using `.` instead 
+	of `..`.
 - We gucci, fam'.

@@ -213,6 +213,23 @@
 		previous build's settings
 	[x] If hiding the mouse cursor, only hide it if the cursor is inside the 
 		client's rectangle; do not hide the mouse if we're in the window border!
+[x] Attempt to separate the test "game" code from the rest of the platform 
+	layer for the sake of organization.
+	[-] kc++: apply code transformations on all included files?
+		[-] How do you find where the included file is?
+			We probably need the same build environment variable.
+		[-] Process the included files.
+		[-] Place them into the same directory as the transformed source file.  
+			(ONLY if they have transformations applied!)
+	[-] Refactor media layer code that contains code transformations so that it 
+		no longer does so?
+		[-] maybe KASSET macro expands to `assetCstr, kassetIndex`?
+		[-] change KAssetManager API 
+		[-] change KAudioMixer API
+	[x] Just move KAssetManager & KAudioMixer out of the platform layer code &
+		into the game layer code?
+[x] Update README now that project is restructured, especially `new game 
+	project` section.
 [ ] kc++: only include the generated kasset header ONCE per file!
 	[ ] Manually put an include macro at the top of files to help maintain line 
 		#'s while debugging?
