@@ -186,7 +186,7 @@ internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file,
 {
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(file.data);
-	u8 fbPropertiesFound = 0;
+	u16 fbPropertiesFoundBitflags = 0;
 	u8 fbPropertiesFoundCount = 0;
 	// destructively read the file line by line //
 	// source: https://stackoverflow.com/a/17983619
@@ -206,26 +206,26 @@ internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file,
 			idValueSeparator++;
 			if(strstr(currLine, "frame-size-x"))
 			{
-				fbPropertiesFound |= 1<<0;
+				fbPropertiesFoundBitflags |= 1<<0;
 				fbPropertiesFoundCount++;
 				o_fbMeta->frameSizeX = atoi(idValueSeparator);
 			}
 			else if(strstr(currLine, "frame-size-y"))
 			{
-				fbPropertiesFound |= 1<<1;
+				fbPropertiesFoundBitflags |= 1<<1;
 				fbPropertiesFoundCount++;
 				o_fbMeta->frameSizeY = atoi(idValueSeparator);
 			}
 			else if(strstr(currLine, "frame-count"))
 			{
-				fbPropertiesFound |= 1<<2;
+				fbPropertiesFoundBitflags |= 1<<2;
 				fbPropertiesFoundCount++;
 				o_fbMeta->frameCount = 
 					kmath::safeTruncateU16(atoi(idValueSeparator));
 			}
 			else if(strstr(currLine, "texture-asset-file-name"))
 			{
-				fbPropertiesFound |= 1<<3;
+				fbPropertiesFoundBitflags |= 1<<3;
 				fbPropertiesFoundCount++;
 				while(*idValueSeparator && isspace(*idValueSeparator))
 				{
@@ -250,28 +250,43 @@ internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file,
 			}
 			else if(strstr(currLine, "default-repeat"))
 			{
-				fbPropertiesFound |= 1<<4;
+				fbPropertiesFoundBitflags |= 1<<4;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultRepeat = atoi(idValueSeparator) != 0;
 			}
 			else if(strstr(currLine, "default-reverse"))
 			{
-				fbPropertiesFound |= 1<<5;
+				fbPropertiesFoundBitflags |= 1<<5;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultReverse = atoi(idValueSeparator) != 0;
 			}
 			else if(strstr(currLine, "default-seconds-per-frame"))
 			{
-				fbPropertiesFound |= 1<<6;
+				fbPropertiesFoundBitflags |= 1<<6;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultSecondsPerFrame = 
+					static_cast<f32>(atof(idValueSeparator));
+			}
+			else if(strstr(currLine, "default-anchor-ratio-x"))
+			{
+				fbPropertiesFoundBitflags |= 1<<7;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultAnchorRatioX = 
+					static_cast<f32>(atof(idValueSeparator));
+			}
+			else if(strstr(currLine, "default-anchor-ratio-y"))
+			{
+				fbPropertiesFoundBitflags |= 1<<8;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultAnchorRatioY = 
 					static_cast<f32>(atof(idValueSeparator));
 			}
 		}
 		if(nextLine) *nextLine = '\n';
 		currLine = nextLine ? (nextLine + 1) : nullptr;
 	}
-	return (fbPropertiesFoundCount == 7) && (fbPropertiesFound == 0x7F);
+	return (fbPropertiesFoundCount == 9) && 
+		(fbPropertiesFoundBitflags == 0x1FF);
 }
 internal RawImage decodePng(const PlatformDebugReadFileResult& file,
                             KgaHandle pixelDataAllocator)

@@ -1,7 +1,7 @@
-frame-size-x              : 48
+frame-size-x              : 0
 frame-size-y              : 0
 frame-count               : 0
-texture-asset-file-name   : fighter-exhaust.png
+texture-asset-file-name   : fighter.png
 default-repeat            : 1
 default-reverse           : 0
 default-seconds-per-frame : 0.05

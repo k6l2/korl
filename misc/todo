@@ -253,17 +253,19 @@
 		reference to it to the platform.
 	[x] default FlipbookMetaData KAsset
 	[x] save the KAssetCStr into FlipbookMetaData KAsset
-	[ ] Flipbook instance
-		[ ] repeat?
-		[ ] reverse?
-		[ ] playback speed
-	[ ] Draw Flipbook using KRB draw textured quad.
+	[x] Add anchor ratio to flipbook meta data so we can correctly rotate the 
+		flipbook's quad mesh.
+	[x] Flipbook instance
+		[x] repeat?
+		[x] reverse?
+		[x] playback speed
+	[x] Draw Flipbook using KRB draw textured quad.
 	[ ] pass deltaSeconds to GAME_UPDATE_AND_DRAW
 	[ ] Update Flipbook based on deltaSeconds.
-	[ ] Create some sort of Flipbook manager construct which manages Flipbook 
+	[-] Create some sort of Flipbook manager construct which manages Flipbook 
 		instances (using a handle/ticket system)???
-		[ ] Step all the Flipbook instances in the update function.
-		[ ] automatically change non-default Flipbook properties if the Flipbook 
+		[-] Step all the Flipbook instances in the update function.
+		[-] automatically change non-default Flipbook properties if the Flipbook 
 			asset's values change (is this even necessary?)
 [ ] KAU: master volume control, default to like ~80% or something...
 	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
@@ -326,6 +328,8 @@
 [ ] Platform Audio - clean up the sound buffer when the program ends so there is
 	no click artifact (if possible).
 [ ] Audio Mixer - optimize `kauMix`
+[ ] Move `KAsset.assetData.flipbook.textureAssetFileName` out of KAsset to keep 
+	the size of KAsset as small as possible!
 [ ] Detect how many worker threads to spawn based on how many logical cores are 
 	available on the system.
 [ ] Win32-KRB-opengl: Investigate the need to create a "proper context"

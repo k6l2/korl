@@ -93,20 +93,21 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 	glEnable(GL_TEXTURE_2D);
 	glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
 	glBegin(GL_TRIANGLES);
+	const v2f32 quadMeshOffset = {-ratioAnchor.x*size.x, ratioAnchor.y*size.y};
 	// draw the bottom-left triangle //
 	glTexCoord2f(texCoordUL.x, texCoordUL.y); 
-	glVertex2f(-halfSize.x, halfSize.y);
+	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
 	glTexCoord2f(texCoordDL.x, texCoordDL.y); 
-	glVertex2f(-halfSize.x, -halfSize.y);
+	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + -size.y);
 	glTexCoord2f(texCoordDR.x, texCoordDR.y); 
-	glVertex2f(halfSize.x, -halfSize.y);
+	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
 	// draw the upper-right triangle //
 	glTexCoord2f(texCoordUL.x, texCoordUL.y); 
-	glVertex2f(-halfSize.x, halfSize.y);
+	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
 	glTexCoord2f(texCoordDR.x, texCoordDR.y); 
-	glVertex2f(halfSize.x, -halfSize.y);
+	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
 	glTexCoord2f(texCoordUR.x, texCoordUR.y); 
-	glVertex2f(halfSize.x, halfSize.y);
+	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + 0);
 	glEnd();
 	GL_CHECK_ERROR();
 }
@@ -118,6 +119,32 @@ internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_MODEL_XFORM(krbSetModelXform)
+{
+	glMatrixMode(GL_MODELVIEW);
+	GLint modelViewStackDepth;
+	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+	if(modelViewStackDepth > 0)
+	{
+		glPopMatrix();
+		glPushMatrix();
+	}
+	glTranslatef(translation.x, translation.y, translation.z);
+	{
+		const f32 orientationRadians = 2 * acosf(orientation.w);
+		const f32 axisDivisor = 
+			kmath::isNearlyZero(1 - orientation.w*orientation.w)
+				? 1
+				: sqrtf(1 - orientation.w*orientation.w);
+		const f32 orientationAxisX = orientation.x / axisDivisor;
+		const f32 orientationAxisY = orientation.y / axisDivisor;
+		const f32 orientationAxisZ = orientation.z / axisDivisor;
+		glRotatef(orientationRadians*180/PI32, 
+		          orientationAxisX, orientationAxisY, orientationAxisZ);
+	}
+	glScalef(scale.x, scale.y, scale.z);
+	GL_CHECK_ERROR();
+}
+internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 {
 	glMatrixMode(GL_MODELVIEW);
 	GLint modelViewStackDepth;
@@ -140,6 +167,7 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 		glRotatef(orientationRadians*180/PI32, 
 		          orientationAxisX, orientationAxisY, orientationAxisZ);
 	}
+	glScalef(scale.x, scale.y, 1.f);
 	GL_CHECK_ERROR();
 }
 internal KRB_LOAD_IMAGE(krbLoadImage)

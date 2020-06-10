@@ -22,6 +22,10 @@ internal RawImage kamGetRawImage(KAssetManager* kam, KAssetHandle kahImage);
 #endif// 0
 internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
                                         KAssetCStr kAssetCStr);
+internal v2u32 kamGetTextureSize(KAssetManager* kam, 
+                                 KAssetCStr kAssetCStr);
+internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam, 
+                                                 KAssetCStr kAssetCStr);
 internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetCStr kAssetCStr);
 internal bool kamIsLoadingImages(KAssetManager* kam);
 internal bool kamIsLoadingSounds(KAssetManager* kam);

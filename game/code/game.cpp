@@ -39,7 +39,7 @@ GAME_INITIALIZE(gameInitialize)
 		             KASSET("joesteroids-battle-theme-modified.ogg"));
 	kauSetRepeat(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, true);
 	// Tell the asset manager to load assets asynchronously! //
-	kamPushAsset(g_gs->assetManager, KASSET("fighter.png"));
+	kamPushAsset(g_gs->assetManager, KASSET("fighter.fbm"));
 	kamPushAsset(g_gs->assetManager, KASSET("fighter-exhaust.fbm"));
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
@@ -124,14 +124,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
 	                          static_cast<f32>(windowDimensions.y), 1.f);
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
-	g_krb->useTexture(kamGetTexture(g_gs->assetManager, KASSET("fighter.png")));
-	g_krb->setModelXform(g_gs->shipWorldPosition, g_gs->shipWorldOrientation);
-	g_krb->drawQuadTextured({50,50}, {0,0}, {0,1}, {1,1}, {1,0});
-	g_krb->setModelXform({0,0}, kmath::IDENTITY_QUATERNION);
+	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
+	                       {2.5f, 2.5f});
+	kfbDraw(g_krb, g_gs->assetManager, KASSET("fighter.fbm"),
+	        g_gs->kFbShip);
+	kfbDraw(g_krb, g_gs->assetManager, KASSET("fighter-exhaust.fbm"),
+	        g_gs->kFbShipExhaust);
+	g_krb->setModelXform({0,0,0}, kmath::IDENTITY_QUATERNION, {1,1,1});
 	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);
 	return true;
 }
+#include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"
 #include "kAssetManager.cpp"
 #include "generalAllocator.cpp"

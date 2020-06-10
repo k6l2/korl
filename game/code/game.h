@@ -11,13 +11,7 @@
 #include "generalAllocator.h"
 #include "kAssetManager.h"
 #include "kAudioMixer.h"
-struct KFlipBook
-{
-	f32 secondsPerFrame;
-	bool repeat;
-	bool reverse;
-	u8 reverse_PADDING[2];
-};
+#include "kFlipBook.h"
 struct GameState
 {
 	KAssetManager* assetManager;
@@ -28,6 +22,8 @@ struct GameState
 	v2f32 shipWorldPosition;
 	kmath::Quaternion shipWorldOrientation = kmath::quat({0,0,1}, 0);
 	KTapeHandle tapeBgmBattleTheme;
+	KFlipBook kFbShip;
+	KFlipBook kFbShipExhaust;
 };
 global_variable GameState* g_gs;
 global_variable PlatformApi* g_kpl;

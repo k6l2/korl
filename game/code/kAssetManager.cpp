@@ -245,9 +245,10 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 		{
 			char*const fbTexAssetFileName = 
 				asset->assetData.flipbook.textureAssetFileName;
-			asset->assetData.flipbook.metaData.kAssetCStr = 
+			asset->assetData.flipbook.metaData.textureKAssetCStr = 
 				KASSET_SEARCH(fbTexAssetFileName);
-			kamPushAsset(kam, asset->assetData.flipbook.metaData.kAssetCStr);
+			kamPushAsset(kam, 
+			             asset->assetData.flipbook.metaData.textureKAssetCStr);
 		}break;
 		case KAssetType::UNUSED:
 		{
@@ -300,6 +301,10 @@ internal RawImage kamGetRawImage(KAssetManager* kam,
 internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
                                         KAssetCStr kAssetCStr)
 {
+	if(!kAssetCStr)
+	{
+		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
+	}
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
 	kassert(assetHandle < kam->maxAssetHandles);
@@ -320,6 +325,68 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 			return asset->assetData.image.krbTextureHandle;
 		}
 		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
+	}
+}
+internal v2u32 kamGetTextureSize(KAssetManager* kam, 
+                                 KAssetCStr kAssetCStr)
+{
+	if(!kAssetCStr)
+	{
+		return {kam->defaultAssetImage.assetData.image.rawImage.sizeX,
+		        kam->defaultAssetImage.assetData.image.rawImage.sizeY};
+	}
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
+	kassert(assetHandle < kam->maxAssetHandles);
+	KAsset*const asset = assets + assetHandle;
+	if(asset->type == KAssetType::UNUSED)
+	{
+		kamPushAsset(kam, kAssetCStr);
+	}
+	if(asset->loaded)
+	{
+		return {asset->assetData.image.rawImage.sizeX,
+		        asset->assetData.image.rawImage.sizeY};
+	}
+	else
+	{
+		if(kam->kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kamOnLoadingJobFinished(kam, assetHandle);
+			return {asset->assetData.image.rawImage.sizeX,
+			        asset->assetData.image.rawImage.sizeY};
+		}
+		return {kam->defaultAssetImage.assetData.image.rawImage.sizeX,
+		        kam->defaultAssetImage.assetData.image.rawImage.sizeY};
+	}
+}
+internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam, 
+                                                 KAssetCStr kAssetCStr)
+{
+	if(!kAssetCStr)
+	{
+		return kam->defaultAssetFlipbookMetaData.assetData.flipbook.metaData;
+	}
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
+	kassert(assetHandle < kam->maxAssetHandles);
+	KAsset*const asset = assets + assetHandle;
+	if(asset->type == KAssetType::UNUSED)
+	{
+		kamPushAsset(kam, kAssetCStr);
+	}
+	if(asset->loaded)
+	{
+		return asset->assetData.flipbook.metaData;
+	}
+	else
+	{
+		if(kam->kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kamOnLoadingJobFinished(kam, assetHandle);
+			return asset->assetData.flipbook.metaData;
+		}
+		return kam->defaultAssetFlipbookMetaData.assetData.flipbook.metaData;
 	}
 }
 JOB_QUEUE_FUNCTION(asyncLoadPng)
