@@ -28,6 +28,18 @@ struct RawSound
 	//	channels.  Sample data is stored in blocks.
 	SoundSample* sampleData;
 };
+struct FlipbookMetaData
+{
+	u32 frameSizeX;
+	u32 frameSizeY;
+	u16 frameCount;
+	u8 frameCount_PADDING[2];
+	f32 defaultSecondsPerFrame;
+	bool defaultRepeat;
+	bool defaultReverse;
+	u8 textureAssetFileName[128];
+	u8 textureAssetFileName_PADDING[2];
+};
 using FileWriteTime = u64;
 using JobQueueTicket = u32;
 #define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
@@ -66,6 +78,8 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
  */
 #define PLATFORM_LOAD_PNG(name) RawImage name(const char* fileName, \
                                               KgaHandle pixelDataAllocator)
+#define PLATFORM_LOAD_FLIPBOOK_META(name) bool name(const char* fileName, \
+                                                    FlipbookMetaData* o_fbMeta)
 #define PLATFORM_GET_ASSET_WRITE_TIME(name) FileWriteTime name(\
                                                       const char* assetFileName)
 #define PLATFORM_IS_ASSET_CHANGED(name) bool name(const char* assetFileName, \
@@ -83,6 +97,7 @@ typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
+typedef PLATFORM_LOAD_FLIPBOOK_META(fnSig_platformLoadFlipbookMeta);
 typedef PLATFORM_GET_ASSET_WRITE_TIME(fnSig_platformGetAssetWriteTime);
 typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
 typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
@@ -113,6 +128,7 @@ struct PlatformApi
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;
+	fnSig_platformLoadFlipbookMeta* loadFlipbookMeta;
 	fnSig_platformGetAssetWriteTime* getAssetWriteTime;
 	fnSig_platformIsAssetChanged* isAssetChanged;
 	fnSig_platformIsAssetAvailable* isAssetAvailable;

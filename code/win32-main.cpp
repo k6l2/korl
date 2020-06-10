@@ -69,6 +69,8 @@ struct W32ThreadInfo
 	u32 index;
 	JobQueue* jobQueue;
 };
+///TODO: rename all these windows implementations of these platform functions 
+///      appropriately using w32 prefix like everything else!
 internal PLATFORM_IS_FULLSCREEN(platformIsFullscreen)
 {
 	const HWND hwnd = GetActiveWindow();
@@ -177,6 +179,101 @@ internal PLATFORM_JOB_DONE(platformJobDone)
 {
 	return jobQueueJobIsDone(&g_jobQueue, ticket);
 }
+internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file, 
+                                 FlipbookMetaData* o_fbMeta)
+{
+	*o_fbMeta = {};
+	char*const fileCStr = reinterpret_cast<char*>(file.data);
+	u8 fbPropertiesFound = 0;
+	u8 fbPropertiesFoundCount = 0;
+	// destructively read the file line by line //
+	// source: https://stackoverflow.com/a/17983619
+	char* currLine = fileCStr;
+	while(currLine)
+	{
+		char* nextLine = strchr(currLine, '\n');
+		if(nextLine) *nextLine = '\0';
+		// parse `currLine` for flipbook meta data //
+		{
+			char* idValueSeparator = strchr(currLine, ':');
+			if(!idValueSeparator)
+			{
+				return false;
+			}
+			*idValueSeparator = '\0';
+			idValueSeparator++;
+			if(strstr(currLine, "frame-size-x"))
+			{
+				fbPropertiesFound |= 1<<0;
+				fbPropertiesFoundCount++;
+				o_fbMeta->frameSizeX = atoi(idValueSeparator);
+			}
+			else if(strstr(currLine, "frame-size-y"))
+			{
+				fbPropertiesFound |= 1<<1;
+				fbPropertiesFoundCount++;
+				o_fbMeta->frameSizeY = atoi(idValueSeparator);
+			}
+			else if(strstr(currLine, "frame-count"))
+			{
+				fbPropertiesFound |= 1<<2;
+				fbPropertiesFoundCount++;
+				o_fbMeta->frameCount = 
+					kmath::safeTruncateU16(atoi(idValueSeparator));
+			}
+			else if(strstr(currLine, "texture-asset-file-name"))
+			{
+				fbPropertiesFound |= 1<<3;
+				fbPropertiesFoundCount++;
+				while(*idValueSeparator && isspace(*idValueSeparator))
+				{
+					idValueSeparator++;
+				}
+				for(char* spaceSearchChar = idValueSeparator + 1; 
+					*spaceSearchChar; spaceSearchChar++)
+				{
+					if(isspace(*spaceSearchChar))
+					{
+						*spaceSearchChar = '\0';
+						break;
+					}
+				}
+				const size_t valueStrLength = strlen(idValueSeparator);
+				if(valueStrLength >= 
+					CARRAY_COUNT(o_fbMeta->textureAssetFileName) - 1)
+				{
+					return false;
+				}
+				strcpy_s(reinterpret_cast<char*>(
+				             o_fbMeta->textureAssetFileName),
+				         CARRAY_COUNT(o_fbMeta->textureAssetFileName),
+				         idValueSeparator);
+			}
+			else if(strstr(currLine, "default-repeat"))
+			{
+				fbPropertiesFound |= 1<<4;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultRepeat = atoi(idValueSeparator) != 0;
+			}
+			else if(strstr(currLine, "default-reverse"))
+			{
+				fbPropertiesFound |= 1<<5;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultReverse = atoi(idValueSeparator) != 0;
+			}
+			else if(strstr(currLine, "default-seconds-per-frame"))
+			{
+				fbPropertiesFound |= 1<<6;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultSecondsPerFrame = 
+					static_cast<f32>(atof(idValueSeparator));
+			}
+		}
+		if(nextLine) *nextLine = '\n';
+		currLine = nextLine ? (nextLine + 1) : nullptr;
+	}
+	return (fbPropertiesFoundCount == 7) && (fbPropertiesFound == 0x7F);
+}
 internal RawImage decodePng(const PlatformDebugReadFileResult& file,
                             KgaHandle pixelDataAllocator)
 {
@@ -209,7 +306,6 @@ internal RawImage decodePng(const PlatformDebugReadFileResult& file,
 }
 internal PLATFORM_LOAD_PNG(platformLoadPng)
 {
-	// Load the entire PNG file into memory //
 	char szFileFullPath[MAX_PATH];
 	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
 	                 g_pathToAssets, fileName);
@@ -221,6 +317,20 @@ internal PLATFORM_LOAD_PNG(platformLoadPng)
 	}
 	defer(platformFreeFileMemory(file.data));
 	return decodePng(file, pixelDataAllocator);
+}
+internal PLATFORM_LOAD_FLIPBOOK_META(platformLoadFlipbookMeta)
+{
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, fileName);
+	PlatformDebugReadFileResult file = platformReadEntireFile(szFileFullPath);
+	if(!file.data)
+	{
+		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		return {};
+	}
+	defer(platformFreeFileMemory(file.data));
+	return decodeFlipbookMeta(file, o_fbMeta);
 }
 internal PLATFORM_LOAD_OGG(platformLoadOgg)
 {
@@ -2007,6 +2117,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.loadWav           = platformLoadWav;
 	gameMemory.kpl.loadOgg           = platformLoadOgg;
 	gameMemory.kpl.loadPng           = platformLoadPng;
+	gameMemory.kpl.loadFlipbookMeta  = platformLoadFlipbookMeta;
 	gameMemory.kpl.getAssetWriteTime = platformGetAssetWriteTime;
 	gameMemory.kpl.isAssetChanged    = platformIsAssetChanged;
 	gameMemory.kpl.isAssetAvailable  = platformIsAssetAvailable;

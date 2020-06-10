@@ -40,6 +40,7 @@ GAME_INITIALIZE(gameInitialize)
 	kauSetRepeat(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, true);
 	// Tell the asset manager to load assets asynchronously! //
 	kamPushAsset(g_gs->assetManager, KASSET("fighter.png"));
+	kamPushAsset(g_gs->assetManager, KASSET("fighter-exhaust.fbm"));
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {

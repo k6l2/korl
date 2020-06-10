@@ -6,7 +6,8 @@ enum class KAssetType : u8
 {
 	UNUSED,
 	RAW_IMAGE,
-	RAW_SOUND
+	RAW_SOUND,
+	FLIPBOOK_META
 };
 struct KAsset
 {
@@ -25,6 +26,7 @@ struct KAsset
 			u8 krbTextureHandle_PADDING[4];
 		} image;
 		RawSound sound;
+		FlipbookMetaData fbMeta;
 	} assetData;
 	// This pointer is here only for convenience with respect to asynchronous 
 	//	job posting to the platform layer.
@@ -171,6 +173,10 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 			kgaFree(kam->assetDataAllocator, 
 			        asset->assetData.sound.sampleData);
 		} break;
+		case KAssetType::FLIPBOOK_META:
+		{
+			kassert(!"TODO?");
+		} break;
 		case KAssetType::UNUSED: 
 		default:
 		{
@@ -220,6 +226,12 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 		}break;
 		case KAssetType::RAW_SOUND:
 		{
+		}break;
+		case KAssetType::FLIPBOOK_META:
+		{
+			char*const fbTexAssetFileName = reinterpret_cast<char*>(
+				asset->assetData.fbMeta.textureAssetFileName);
+			kamPushAsset(kam, KASSET_SEARCH(fbTexAssetFileName));
 		}break;
 		case KAssetType::UNUSED:
 		{
@@ -327,6 +339,18 @@ JOB_QUEUE_FUNCTION(asyncLoadOgg)
 		asset->kam->kpl->loadOgg(asset->assetFileName, 
 		                         asset->kam->assetDataAllocator);
 }
+JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
+{
+	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+	}
+	const bool loadFbmSuccess = 
+		asset->kam->kpl->loadFlipbookMeta(asset->assetFileName, 
+		                                  &asset->assetData.fbMeta);
+	kassert(loadFbmSuccess);
+}
 internal KAssetHandle kamPushAsset(KAssetManager* kam, 
                                    KAssetCStr kAssetCStr)
 {
@@ -362,6 +386,14 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 				asset->kam             = kam;
 				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadOgg, asset);
 			}break;
+			case KASSET_TYPE_FLIPBOOK_META:
+			{
+				asset->type            = KAssetType::FLIPBOOK_META;
+				asset->assetFileName   = *kAssetCStr;
+				asset->kam             = kam;
+				asset->jqTicketLoading = 
+				                kam->kpl->postJob(asyncLoadFlipbookMeta, asset);
+			}break;
 			case KASSET_TYPE_UNKNOWN:
 			default:
 			{
@@ -377,6 +409,8 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 	}
 	return assetHandle;
 }
+///TODO: make the type parameter a bitfield so we can call this function once 
+///      for multiple types!
 internal bool kamIsLoadingAssets(KAssetManager* kam, KAssetType type)
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
@@ -397,7 +431,8 @@ internal bool kamIsLoadingAssets(KAssetManager* kam, KAssetType type)
 }
 internal bool kamIsLoadingImages(KAssetManager* kam)
 {
-	return kamIsLoadingAssets(kam, KAssetType::RAW_IMAGE);
+	return kamIsLoadingAssets(kam, KAssetType::RAW_IMAGE) |
+	       kamIsLoadingAssets(kam, KAssetType::FLIPBOOK_META);
 }
 internal bool kamIsLoadingSounds(KAssetManager* kam)
 {

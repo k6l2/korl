@@ -52,7 +52,8 @@ using KAssetCStr = const char*const*;
 //	intellisense.  When kc++ runs over the source code containing these macros,
 //	they are replaced with actual useful values.
 #define INCLUDE_KASSET() 
-#define KASSET(cstrFileName) nullptr
+#define KASSET(cstr_constant) nullptr
+#define KASSET_SEARCH(u8_pointer_variable) nullptr
 #define KASSET_INDEX(KAssetCStr) 0
 #define KASSET_COUNT 0
 #define KASSET_TYPE(KAssetCStr) 0
@@ -60,6 +61,7 @@ using KAssetCStr = const char*const*;
 #define KASSET_TYPE_PNG 1
 #define KASSET_TYPE_WAV 2
 #define KASSET_TYPE_OGG 3
+#define KASSET_TYPE_FLIPBOOK_META 4
 /*********************************************************** END KC++ support */
 // crt math operations
 #include <math.h>
@@ -158,6 +160,12 @@ namespace kmath
 		local_persist const i32 MAX_I32 = ~i32(1<<31);
 		kassert(value < MAX_I32);
 		return static_cast<i32>(value);
+	}
+	internal inline u16 safeTruncateU16(i32 value)
+	{
+		local_persist const u16 MAX_U16 = static_cast<u16>(~u16(0));
+		kassert(value >= 0 && value < MAX_U16);
+		return static_cast<u16>(value);
 	}
 	internal inline f32 v2Radians(const v2f32& v)
 	{
