@@ -247,20 +247,34 @@
 		[x] default repeat?
 		[x] default reverse?
 		[x] default playback speed
+	[x] Don't store the texture asset file name in FlipbookMetaData.  Instead, 
+		store a KAssetCStr.  
+	[x] Store a textureAssetFileName buffer inside KAsset in the KAM and pass a 
+		reference to it to the platform.
+	[x] default FlipbookMetaData KAsset
+	[x] save the KAssetCStr into FlipbookMetaData KAsset
 	[ ] Flipbook instance
 		[ ] repeat?
 		[ ] reverse?
 		[ ] playback speed
+	[ ] Draw Flipbook using KRB draw textured quad.
 	[ ] pass deltaSeconds to GAME_UPDATE_AND_DRAW
+	[ ] Update Flipbook based on deltaSeconds.
 	[ ] Create some sort of Flipbook manager construct which manages Flipbook 
 		instances (using a handle/ticket system)???
 		[ ] Step all the Flipbook instances in the update function.
 		[ ] automatically change non-default Flipbook properties if the Flipbook 
 			asset's values change (is this even necessary?)
+[ ] KAU: master volume control, default to like ~80% or something...
+	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 
 	provided by default from KML to allow the game to customize the application 
 	icon
 	[ ] Add a `Deployment Procedures` section to README to document this process
+[ ] KRB-opengl: Figure out why GL_UNSIGNED_INT_8_8_8_8 is undefined
+[ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
+	Wichmann–Hill for the memes since it was apparently used in Windwaker.
+	https://en.wikipedia.org/wiki/List_of_random_number_generators
 [ ] display debug frame metrics
 	[ ] Can I just use Optick?..  I really liked Optick..
 	[ ] allow the game code to probe the platform for cycle counts for timing.
@@ -288,6 +302,7 @@
 [-] collision engine
 	I should just do this on another repository, since this seems outside the 
 	scope of a platform layer...
+	https://www10.cs.fau.de/publications/theses/2010/Suenkel_BT_2010.pdf
 [~] Disable asserts when `g_hasReceivedException` has been flagged, or else the 
 	log file will never get written if an assert fires during the exception 
 	handler!
@@ -313,6 +328,8 @@
 [ ] Audio Mixer - optimize `kauMix`
 [ ] Detect how many worker threads to spawn based on how many logical cores are 
 	available on the system.
+[ ] Win32-KRB-opengl: Investigate the need to create a "proper context"
+	https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#Proper_Context_Creation
 [ ] Print GetLastError messages in human-readable format using FormatMessage
 	https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
 [ ] Job Queue - synchronize without locks (HERE BE DRAGONS I guess or something)

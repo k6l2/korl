@@ -180,7 +180,9 @@ internal PLATFORM_JOB_DONE(platformJobDone)
 	return jobQueueJobIsDone(&g_jobQueue, ticket);
 }
 internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file, 
-                                 FlipbookMetaData* o_fbMeta)
+                                 FlipbookMetaData* o_fbMeta, 
+                                 char* o_texAssetFileName, 
+                                 size_t texAssetFileNameBufferSize)
 {
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(file.data);
@@ -239,14 +241,11 @@ internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file,
 					}
 				}
 				const size_t valueStrLength = strlen(idValueSeparator);
-				if(valueStrLength >= 
-					CARRAY_COUNT(o_fbMeta->textureAssetFileName) - 1)
+				if(valueStrLength >= texAssetFileNameBufferSize - 1)
 				{
 					return false;
 				}
-				strcpy_s(reinterpret_cast<char*>(
-				             o_fbMeta->textureAssetFileName),
-				         CARRAY_COUNT(o_fbMeta->textureAssetFileName),
+				strcpy_s(o_texAssetFileName, texAssetFileNameBufferSize,
 				         idValueSeparator);
 			}
 			else if(strstr(currLine, "default-repeat"))
@@ -330,7 +329,8 @@ internal PLATFORM_LOAD_FLIPBOOK_META(platformLoadFlipbookMeta)
 		return {};
 	}
 	defer(platformFreeFileMemory(file.data));
-	return decodeFlipbookMeta(file, o_fbMeta);
+	return decodeFlipbookMeta(file, o_fbMeta, o_texAssetFileName, 
+	                          texAssetFileNameBufferSize);
 }
 internal PLATFORM_LOAD_OGG(platformLoadOgg)
 {

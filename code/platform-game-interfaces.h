@@ -33,12 +33,10 @@ struct FlipbookMetaData
 	u32 frameSizeX;
 	u32 frameSizeY;
 	u16 frameCount;
-	u8 frameCount_PADDING[2];
-	f32 defaultSecondsPerFrame;
 	bool defaultRepeat;
 	bool defaultReverse;
-	u8 textureAssetFileName[128];
-	u8 textureAssetFileName_PADDING[2];
+	f32 defaultSecondsPerFrame;
+	KAssetCStr kAssetCStr;
 };
 using FileWriteTime = u64;
 using JobQueueTicket = u32;
@@ -79,7 +77,9 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 #define PLATFORM_LOAD_PNG(name) RawImage name(const char* fileName, \
                                               KgaHandle pixelDataAllocator)
 #define PLATFORM_LOAD_FLIPBOOK_META(name) bool name(const char* fileName, \
-                                                    FlipbookMetaData* o_fbMeta)
+                                              FlipbookMetaData* o_fbMeta, \
+                                              char* o_texAssetFileName, \
+                                              size_t texAssetFileNameBufferSize)
 #define PLATFORM_GET_ASSET_WRITE_TIME(name) FileWriteTime name(\
                                                       const char* assetFileName)
 #define PLATFORM_IS_ASSET_CHANGED(name) bool name(const char* assetFileName, \

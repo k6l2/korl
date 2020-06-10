@@ -26,7 +26,11 @@ struct KAsset
 			u8 krbTextureHandle_PADDING[4];
 		} image;
 		RawSound sound;
-		FlipbookMetaData fbMeta;
+		struct 
+		{
+			FlipbookMetaData metaData;
+			char textureAssetFileName[128];
+		} flipbook;
 	} assetData;
 	// This pointer is here only for convenience with respect to asynchronous 
 	//	job posting to the platform layer.
@@ -40,6 +44,7 @@ struct KAssetManager
 	u8 nextUnusedHandle_PADDING[4];
 	KAsset defaultAssetImage;
 	KAsset defaultAssetSound;
+	KAsset defaultAssetFlipbookMetaData;
 	KgaHandle assetDataAllocator;
 	PlatformApi* kpl;
 	KrbApi* krb;
@@ -79,13 +84,22 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 			kpl->decodeZ85Wav(z85_wav_default, 
 			                  CARRAY_COUNT(z85_wav_default) - 1,
 			                  assetDataAllocator);
+		KAsset defaultAssetFlipbook;
+		defaultAssetFlipbook.type = KAssetType::FLIPBOOK_META;
+		defaultAssetFlipbook.assetFileName = "flipbook_default";
+		defaultAssetFlipbook.assetData.flipbook.metaData = {};
+		strcpy_s(defaultAssetFlipbook.assetData.flipbook.textureAssetFileName, 
+			CARRAY_COUNT(
+				defaultAssetFlipbook.assetData.flipbook.textureAssetFileName),
+			defaultAssetImage.assetFileName);
 		*result = 
-			{ .usedAssetHandles = 0
-			, .maxAssetHandles = maxAssetHandles
-			, .nextUnusedHandle = 0
-			, .defaultAssetImage = defaultAssetImage
-			, .defaultAssetSound = defaultAssetSound
-			, .assetDataAllocator = assetDataAllocator
+			{ .usedAssetHandles             = 0
+			, .maxAssetHandles              = maxAssetHandles
+			, .nextUnusedHandle             = 0
+			, .defaultAssetImage            = defaultAssetImage
+			, .defaultAssetSound            = defaultAssetSound
+			, .defaultAssetFlipbookMetaData = defaultAssetFlipbook
+			, .assetDataAllocator           = assetDataAllocator
 			, .kpl = kpl
 			, .krb = krb };
 	}
@@ -229,9 +243,11 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 		}break;
 		case KAssetType::FLIPBOOK_META:
 		{
-			char*const fbTexAssetFileName = reinterpret_cast<char*>(
-				asset->assetData.fbMeta.textureAssetFileName);
-			kamPushAsset(kam, KASSET_SEARCH(fbTexAssetFileName));
+			char*const fbTexAssetFileName = 
+				asset->assetData.flipbook.textureAssetFileName;
+			asset->assetData.flipbook.metaData.kAssetCStr = 
+				KASSET_SEARCH(fbTexAssetFileName);
+			kamPushAsset(kam, asset->assetData.flipbook.metaData.kAssetCStr);
 		}break;
 		case KAssetType::UNUSED:
 		{
@@ -347,8 +363,11 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
 	}
 	const bool loadFbmSuccess = 
-		asset->kam->kpl->loadFlipbookMeta(asset->assetFileName, 
-		                                  &asset->assetData.fbMeta);
+		asset->kam->kpl->loadFlipbookMeta(
+		          asset->assetFileName, 
+		          &asset->assetData.flipbook.metaData,
+		          asset->assetData.flipbook.textureAssetFileName,
+		          CARRAY_COUNT(asset->assetData.flipbook.textureAssetFileName));
 	kassert(loadFbmSuccess);
 }
 internal KAssetHandle kamPushAsset(KAssetManager* kam, 
