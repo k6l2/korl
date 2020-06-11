@@ -134,6 +134,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setModelXform({0,0,0}, kmath::IDENTITY_QUATERNION, {1,1,1});
 	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);
+	g_krb->drawCircle(50, 10, {1,0,0,0.5f}, {1,0,0,1}, 16);
 	return true;
 }
 #include "kFlipBook.cpp"

@@ -111,6 +111,62 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 	glEnd();
 	GL_CHECK_ERROR();
 }
+internal KRB_DRAW_CIRCLE(krbDrawCircle)
+{
+	if(vertexCount < 3)
+	{
+		KLOG(WARNING, "Attempting to draw a degenerate circle!  Ignoring...");
+		return;
+	}
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+	glDisable(GL_TEXTURE_2D);
+	const f32 deltaRadians = 2*PI32 / vertexCount;
+	if(!kmath::isNearlyZero(colorFill.a))
+	// Draw the fill region //
+	{
+		glColor4f(colorFill.r, colorFill.g, colorFill.b, colorFill.a);
+		glBegin(GL_TRIANGLE_FAN);
+		glVertex2f(0,0);
+		for(u16 v = 0; v <= vertexCount; v++)
+		{
+			const f32 radians = v*deltaRadians;
+			glVertex2f(radius*cosf(radians), radius*sinf(radians));
+		}
+		glEnd();
+	}
+	if(!kmath::isNearlyZero(colorOutline.a))
+	// Draw the outline region //
+	{
+		glColor4f(colorOutline.r, colorOutline.g, colorOutline.b, 
+		          colorOutline.a);
+		if(kmath::isNearlyZero(outlineThickness))
+		// Draw the outline as a LINE_LOOP primitive //
+		{
+			glBegin(GL_LINE_LOOP);
+			for(u16 v = 0; v < vertexCount; v++)
+			{
+				const f32 radians = v*deltaRadians;
+				glVertex2f(radius*cosf(radians), radius*sinf(radians));
+			}
+			glEnd();
+		}
+		else
+		// Draw the outline as a TRIANGLE_STRIP primitive //
+		{
+			glBegin(GL_TRIANGLE_STRIP);
+			for(u16 v = 0; v <= vertexCount; v++)
+			{
+				const f32 radians = v*deltaRadians;
+				glVertex2f(radius*cosf(radians), radius*sinf(radians));
+				glVertex2f((radius+outlineThickness)*cosf(radians), 
+				           (radius+outlineThickness)*sinf(radians));
+			}
+			glEnd();
+		}
+	}
+	GL_CHECK_ERROR();
+}
 internal KRB_VIEW_TRANSLATE(krbViewTranslate)
 {
 	glMatrixMode(GL_MODELVIEW);

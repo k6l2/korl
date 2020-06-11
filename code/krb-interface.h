@@ -44,6 +44,10 @@ namespace krb
                                                const v2f32& texCoordDL, \
                                                const v2f32& texCoordDR, \
                                                const v2f32& texCoordUR)
+#define KRB_DRAW_CIRCLE(name) void name(f32 radius, f32 outlineThickness, \
+                                        const Color4f32& colorFill, \
+                                        const Color4f32& colorOutline, \
+										u16 vertexCount)
 #define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
 #define KRB_SET_MODEL_XFORM(name) void name(const v3f32& translation, \
                                          const kmath::Quaternion& orientation, \
@@ -62,6 +66,7 @@ typedef KRB_DRAW_LINE(fnSig_krbDrawLine);
 typedef KRB_DRAW_TRI(fnSig_krbDrawTri);
 typedef KRB_DRAW_TRI_TEXTURED(fnSig_krbDrawTriTextured);
 typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
+typedef KRB_DRAW_CIRCLE(fnSig_krbDrawCircle);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_SET_MODEL_XFORM_2D(fnSig_krbSetModelXform2d);
@@ -74,6 +79,7 @@ internal KRB_DRAW_LINE(krbDrawLine);
 internal KRB_DRAW_TRI(krbDrawTri);
 internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured);
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
+internal KRB_DRAW_CIRCLE(krbDrawCircle);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d);
@@ -88,6 +94,7 @@ struct KrbApi
 	fnSig_krbDrawTri*            drawTri            = krbDrawTri;
 	fnSig_krbDrawTriTextured*    drawTriTextured    = krbDrawTriTextured;
 	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;
+	fnSig_krbDrawCircle*         drawCircle         = krbDrawCircle;
 	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
 	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
 	fnSig_krbSetModelXform2d*    setModelXform2d    = krbSetModelXform2d;

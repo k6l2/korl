@@ -272,6 +272,7 @@
 	or something else entirely?..
 	[x] replace all appropriate strings in the project to the one I choose.
 [x] generalAllocator => KGeneralAllocator
+[x] KRB: draw circle
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 
 	provided by default from KML to allow the game to customize the application 
