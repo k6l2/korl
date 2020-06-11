@@ -85,9 +85,39 @@ struct v2f32
 public:
 	inline v2f32 operator-()
 	{
-		return v2f32{-x,-y};
+		return {-x,-y};
 	}
+	inline v2f32 operator*(f32 scalar)
+	{
+		return {scalar*x, scalar*y};
+	}
+	inline v2f32& operator*=(const f32 scalar)
+	{
+		x *= scalar;
+		y *= scalar;
+		return *this;
+	}
+	inline v2f32& operator+=(const v2f32& other)
+	{
+		x += other.x;
+		y += other.y;
+		return *this;
+	}
+	inline f32 magnitude()
+	{
+		return sqrtf(powf(x,2) + powf(y,2));
+	}
+	inline f32 magnitudeSquared()
+	{
+		return powf(x,2) + powf(y,2);
+	}
+	/** @return the magnitude of the vector before normalization */
+	inline f32 normalize();
 };
+inline v2f32 operator*(f32 lhs, const v2f32& rhs)
+{
+	return {lhs*rhs.x, lhs*rhs.y};
+}
 struct v3f32
 {
 	f32 x, y, z;
@@ -191,4 +221,15 @@ namespace kmath
 		result.z = sine * axis.z;
 		return result;
 	}
+}
+inline f32 v2f32::normalize()
+{
+	const f32 mag = magnitude();
+	if(kmath::isNearlyZero(mag))
+	{
+		return x = y = 0;
+	}
+	x /= mag;
+	y /= mag;
+	return mag;
 }

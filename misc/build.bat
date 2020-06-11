@@ -99,6 +99,7 @@ rem           mode specified; termination on exception is not guaranteed.
 rem           Specify /EHsc`
 rem /wd4710 - disable warning C4710 `function not inlined`
 rem /wd4711 - disable warning C4711 `automatic inline selection`
+rem /wd4820 - disable warning C4820 `x byte padding after data member...`
 rem /wd5045 - disable warning C5045 `... Spectre mitigation for memory load ...`
 rem /Zi - Generates complete debugging information.
 rem /Oi - Generate intrinsic opcodes
@@ -180,7 +181,7 @@ call %KCPP_HOME%\build\kc++.exe %project_root%\code %project_root%\build\code
 rem --- Compile game code module ---
 cl %project_root%\build\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /LDd ^
+	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
