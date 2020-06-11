@@ -1,7 +1,7 @@
 #pragma once
 #include "global-defines.h"
 #include "krb-interface.h"
-#include "generalAllocator.h"
+#include "kGeneralAllocator.h"
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
 enum class PlatformLogCategory : u8
@@ -146,7 +146,7 @@ struct PlatformDebugReadFileResult
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
 typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
-struct PlatformApi
+struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
 	fnSig_platformJobDone* jobDone;
@@ -175,7 +175,7 @@ struct GameMemory
 	u64   permanentMemoryBytes;
 	void* transientMemory;
 	u64   transientMemoryBytes;
-	PlatformApi kpl;
+	KmlPlatformApi kpl;
 	KrbApi krb;
 	void* imguiContext;
 	fnSig_platformImguiAlloc* platformImguiAlloc;

@@ -1,6 +1,6 @@
 #pragma once
 #include "global-defines.h"
-#include "generalAllocator.h"
+#include "kGeneralAllocator.h"
 #include "kAssetManager.h"
 #include "platform-game-interfaces.h"
 struct KAudioMixer;

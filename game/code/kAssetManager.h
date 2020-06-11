@@ -1,13 +1,13 @@
 #pragma once
 #include "global-defines.h"
-#include "generalAllocator.h"
+#include "kGeneralAllocator.h"
 #include "platform-game-interfaces.h"
 using KAssetHandle = u32;
 global_variable const KAssetHandle INVALID_KASSET_HANDLE = ~KAssetHandle(0);
 struct KAssetManager;
 internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
                                      KgaHandle assetDataAllocator, 
-                                     PlatformApi* kpl, KrbApi* krb);
+                                     KmlPlatformApi* kpl, KrbApi* krb);
 #if 0
 internal KAssetHandle kamAddWav(KAssetManager* kam, const char* assetFileName);
 internal KAssetHandle kamAddOgg(KAssetManager* kam, const char* assetFileName);

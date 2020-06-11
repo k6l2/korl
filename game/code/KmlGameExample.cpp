@@ -139,7 +139,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"
 #include "kAssetManager.cpp"
-#include "generalAllocator.cpp"
+#include "kGeneralAllocator.cpp"
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
 	#pragma warning( disable : 4127 )

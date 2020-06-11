@@ -8,7 +8,7 @@
 #endif
 #include "platform-game-interfaces.h"
 #include "krb-interface.h"
-#include "generalAllocator.h"
+#include "kGeneralAllocator.h"
 #include "kAssetManager.h"
 #include "kAudioMixer.h"
 #include "kFlipBook.h"
@@ -26,5 +26,5 @@ struct GameState
 	KFlipBook kFbShipExhaust;
 };
 global_variable GameState* g_gs;
-global_variable PlatformApi* g_kpl;
+global_variable KmlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;

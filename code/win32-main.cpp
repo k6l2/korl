@@ -3,7 +3,7 @@
 #include "win32-xinput.h"
 #include "win32-krb-opengl.h"
 #include "win32-jobQueue.h"
-#include "generalAllocator.h"
+#include "kGeneralAllocator.h"
 #include <cstdio>
 #include <ctime>
 #include <dbghelp.h>
@@ -2026,7 +2026,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 		.lpfnWndProc   = w32MainWindowCallback,
 		.hInstance     = hInstance,
-		.hIcon         = LoadIcon(hInstance, TEXT("kpl-application-icon")),
+		.hIcon         = LoadIcon(hInstance, TEXT("kml-application-icon")),
 		.hCursor       = g_cursorArrow,
 		.lpszClassName = "KmlWindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
@@ -2408,7 +2408,7 @@ internal void stbiFree(void* allocatedAddress)
 #define STBI_REALLOC(p,newsz) stbiRealloc(p,newsz)
 #define STBI_FREE(p)          stbiFree(p)
 #include "stb/stb_image.h"
-#include "generalAllocator.cpp"
+#include "kGeneralAllocator.cpp"
 #pragma warning( push )
 // warning C4127: conditional expression is constant
 #pragma warning( disable : 4127 )

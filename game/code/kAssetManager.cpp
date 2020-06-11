@@ -46,13 +46,13 @@ struct KAssetManager
 	KAsset defaultAssetSound;
 	KAsset defaultAssetFlipbookMetaData;
 	KgaHandle assetDataAllocator;
-	PlatformApi* kpl;
+	KmlPlatformApi* kpl;
 	KrbApi* krb;
 	//KAsset assets[];
 };
 internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
                                      KgaHandle assetDataAllocator,
-                                     PlatformApi* kpl, KrbApi* krb)
+                                     KmlPlatformApi* kpl, KrbApi* krb)
 {
 	if(maxAssetHandles >= INVALID_KASSET_HANDLE)
 	{
