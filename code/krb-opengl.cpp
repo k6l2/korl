@@ -123,7 +123,7 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 	glMatrixMode(GL_MODELVIEW);
 	GLint modelViewStackDepth;
 	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	if(modelViewStackDepth > 0)
+	if(modelViewStackDepth > 1)
 	{
 		glPopMatrix();
 		glPushMatrix();
@@ -149,7 +149,7 @@ internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 	glMatrixMode(GL_MODELVIEW);
 	GLint modelViewStackDepth;
 	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	if(modelViewStackDepth > 0)
+	if(modelViewStackDepth > 1)
 	{
 		glPopMatrix();
 		glPushMatrix();
