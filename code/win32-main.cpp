@@ -27,6 +27,7 @@ global_variable const TCHAR APPLICATION_VERSION[] =
                                     TEXT(DEFINE_TO_CSTR(KML_APP_VERSION));
 global_variable const TCHAR FILE_NAME_GAME_DLL[] = 
                                     TEXT(DEFINE_TO_CSTR(KML_GAME_DLL_FILENAME));
+global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KML_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable HCURSOR g_cursorArrow;
@@ -2061,9 +2062,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #if INTERNAL_BUILD
 	// ensure that the size of the keyboard's vKeys array matches the size of
 	//	the anonymous struct which defines the names of all the game keys //
-	kassert(static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
-	                            &gameKeyboardA.vKeys[0]) ==
-	        (sizeof(gameKeyboardA.vKeys) / sizeof(gameKeyboardA.vKeys[0])));
+	kassert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
+	                             &gameKeyboardA.vKeys[0]) ==
+	         CARRAY_COUNT(gameKeyboardA.vKeys) );
 #endif
 	GamePad gamePadArrayA[XUSER_MAX_COUNT] = {};
 	GamePad gamePadArrayB[XUSER_MAX_COUNT] = {};
@@ -2282,7 +2283,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			ImGui::NewFrame();
 			const W32Dimension2d windowDims = 
 				w32GetWindowDimensions(mainWindow);
-			if(!game.updateAndDraw({windowDims.width, windowDims.height}, 
+			const f32 deltaSeconds = 
+				min(MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
+			if(!game.updateAndDraw(deltaSeconds,
+			                       {windowDims.width, windowDims.height}, 
 			                       *gameKeyboardCurrentFrame,
 			                       gamePadArrayCurrentFrame, numGamePads))
 			{

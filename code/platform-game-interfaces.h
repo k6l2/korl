@@ -358,7 +358,8 @@ struct GamePad
 /** 
  * @return false if the platform should close the game application
  */
-#define GAME_UPDATE_AND_DRAW(name) bool name(v2u32 windowDimensions, \
+#define GAME_UPDATE_AND_DRAW(name) bool name(f32 deltaSeconds, \
+                                             v2u32 windowDimensions, \
                                              GameKeyboard& gameKeyboard, \
                                              GamePad* gamePadArray, \
                                              u8 numGamePads)

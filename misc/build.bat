@@ -224,6 +224,7 @@ cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
 	/DKML_APP_VERSION=%kmlApplicationVersion% ^
 	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^
+	/DKML_MINIMUM_FRAME_RATE=%kmlMinimumFrameRate% ^
 	/W4 %CommonCompilerFlagsChosen% /link %Win32LinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib
 IF %ERRORLEVEL% NEQ 0 (

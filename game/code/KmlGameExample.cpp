@@ -1,4 +1,4 @@
-#include "game.h"
+#include "KmlGameExample.h"
 INCLUDE_KASSET()
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
@@ -126,10 +126,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
 	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
 	                       {2.5f, 2.5f});
-	kfbDraw(g_krb, g_gs->assetManager, KASSET("fighter.fbm"),
-	        g_gs->kFbShip);
-	kfbDraw(g_krb, g_gs->assetManager, KASSET("fighter-exhaust.fbm"),
-	        g_gs->kFbShipExhaust);
+	kfbStep(&g_gs->kFbShip       , g_gs->assetManager, deltaSeconds);
+	kfbStep(&g_gs->kFbShipExhaust, g_gs->assetManager, deltaSeconds);
+	kfbDraw(&g_gs->kFbShip, g_krb, g_gs->assetManager, KASSET("fighter.fbm"));
+	kfbDraw(&g_gs->kFbShipExhaust, g_krb, g_gs->assetManager, 
+	        KASSET("fighter-exhaust.fbm"));
 	g_krb->setModelXform({0,0,0}, kmath::IDENTITY_QUATERNION, {1,1,1});
 	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);

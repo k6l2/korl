@@ -13,5 +13,6 @@ struct KFlipBook
 	bool reverse;
 	u8 reverse_PADDING[6];
 };
-internal void kfbDraw(KrbApi *krb, KAssetManager *kam, KAssetCStr kAssetCStr,
-                      KFlipBook& flipbook);
+internal void kfbDraw(KFlipBook* kfb, KrbApi *krb, KAssetManager *kam, 
+                      KAssetCStr kAssetCStr);
+internal void kfbStep(KFlipBook* kfb, KAssetManager *kam, f32 deltaSeconds);

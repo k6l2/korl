@@ -236,7 +236,7 @@
 	[-] Automatically detect if we've already injected the include statement &
 		ignore subsequent injections?
 [x] KAU: change tape volume
-[ ] Flipbook sprites
+[x] Flipbook sprites
 	[x] Flipbook metadata KASSET
 		[x] frame dimensions
 		[x] frame count
@@ -260,20 +260,24 @@
 		[x] reverse?
 		[x] playback speed
 	[x] Draw Flipbook using KRB draw textured quad.
-	[ ] pass deltaSeconds to GAME_UPDATE_AND_DRAW
-	[ ] Update Flipbook based on deltaSeconds.
+	[x] pass deltaSeconds to GAME_UPDATE_AND_DRAW
+	[x] Update Flipbook based on deltaSeconds.
 	[-] Create some sort of Flipbook manager construct which manages Flipbook 
 		instances (using a handle/ticket system)???
 		[-] Step all the Flipbook instances in the update function.
 		[-] automatically change non-default Flipbook properties if the Flipbook 
 			asset's values change (is this even necessary?)
+	[x] hot-reload flipbook meta data assets
+[ ] Decide on whether or not I want this project to be `KML` or `KPL` or `KMPL` 
+	or something else entirely?..
+	[ ] replace all appropriate strings in the project to the one I choose.
 [ ] KAU: master volume control, default to like ~80% or something...
-	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 
 	provided by default from KML to allow the game to customize the application 
 	icon
 	[ ] Add a `Deployment Procedures` section to README to document this process
 [ ] KRB-opengl: Figure out why GL_UNSIGNED_INT_8_8_8_8 is undefined
+	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators

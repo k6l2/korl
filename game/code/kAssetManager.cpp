@@ -189,7 +189,8 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 		} break;
 		case KAssetType::FLIPBOOK_META:
 		{
-			kassert(!"TODO?");
+			kamFreeAsset(kam, 
+			             asset->assetData.flipbook.metaData.textureKAssetCStr);
 		} break;
 		case KAssetType::UNUSED: 
 		default:
