@@ -275,15 +275,16 @@
 [x] KRB: draw circle
 [x] Rebuild the game code if the KML code tree is changed, since game code 
 	includes KML code and depends on it.
-[ ] kc++: Attempt to modify the input souce code IN-PLACE so when the compiler 
+[x] kc++: Attempt to modify the input souce code IN-PLACE so when the compiler 
 	builds the application, the debug files will point us back to the original 
 	files instead of the read-only kc++ output code.
-	[ ] Save an exact copy of the input source code directory.
-	[ ] On top of outputing modified read-only source into a build directory, 
-		also OVERWRITE the existing file with the new code.
-	[ ] In KML's build script: erase the modified code directory.
-	[ ] In KML's build script: rename the copied source directory back to the 
+	[x] Rename the input source code directory (temporarily)
+	[x] On top of outputing modified read-only source into a build directory, 
+		also output regular files to the original source code directory's name.
+	[x] In KML's build script: erase the modified code directory.
+	[x] In KML's build script: rename the copied source directory back to the 
 		original name
+[ ] kc++: release build
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 
 	provided by default from KML to allow the game to customize the application 

@@ -90,6 +90,7 @@ rem /WX - treat all warnings as errors
 rem /wd4100 - disable warning C4100 `unreferenced formal parameter`
 rem /wd4201 - disable warning C4201 
 rem           `nonstandard extension used: nameless struct/union`
+rem /wd4464 - disable warning C4464: relative include path contains '..'
 rem /wd4505 - disable warning C4505 
 rem           `unreferenced local function has been removed`
 rem /wd4514 - disable warning C4514 
@@ -193,9 +194,9 @@ call build.bat
 popd
 call %KCPP_HOME%\build\kc++.exe %project_root%\code %project_root%\build\code
 rem --- Compile game code module ---
-cl %project_root%\build\code\%kmlGameDllFileName%.cpp ^
+cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
+	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /wd4464 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:game%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
@@ -204,6 +205,9 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo %kmlGameDllFileName% build failed!
 	GOTO :ON_FAILURE_GAME
 )
+rem --- Delete the temporary KC++ code and replace it with the backup code ---
+rmdir /S /Q "%project_root%\code" > NUL 2> NUL
+ren "%project_root%\code_backup" "code"
 :SKIP_GAME_BUILD
 rem --- If the KML code tree is unchanged, skip the build ---
 IF "%codeTreeIsDifferentKml%"=="TRUE" (
@@ -264,6 +268,9 @@ IF %hh% LEQ 0 (
 exit /B 0
 :ON_FAILURE_GAME
 del %codeTreeFileNamePrefixGame%-existing.txt
+rem --- Delete the temporary KC++ code and replace it with the backup code ---
+rmdir /S /Q "%project_root%\code" > NUL 2> NUL
+ren "%project_root%\code_backup" "code"
 :ON_FAILURE_KML
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
