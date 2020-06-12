@@ -182,8 +182,8 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 	if(modelViewStackDepth > 1)
 	{
 		glPopMatrix();
-		glPushMatrix();
 	}
+	glPushMatrix();
 	glTranslatef(translation.x, translation.y, translation.z);
 	{
 		const f32 orientationRadians = 2 * acosf(orientation.w);
@@ -208,8 +208,8 @@ internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 	if(modelViewStackDepth > 1)
 	{
 		glPopMatrix();
-		glPushMatrix();
 	}
+	glPushMatrix();
 	glTranslatef(translation.x, translation.y, 0.f);
 	{
 		const f32 orientationRadians = 2 * acosf(orientation.w);

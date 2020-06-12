@@ -91,6 +91,14 @@ public:
 	{
 		return {scalar*x, scalar*y};
 	}
+	inline v2f32 operator+(const v2f32& other)
+	{
+		return {x + other.x, y + other.y};
+	}
+	inline v2f32 operator-(const v2f32& other)
+	{
+		return {x - other.x, y - other.y};
+	}
 	inline v2f32& operator*=(const f32 scalar)
 	{
 		x *= scalar;
