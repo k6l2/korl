@@ -19,6 +19,15 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 }
 GAME_INITIALIZE(gameInitialize)
 {
+	// TEST QUATERNION STUFF //
+	{
+		kmath::quatTransform(kmath::quat({0,0,1}, PI32/2), {25,0});
+		kmath::quatTransform(kmath::quat({0,0,1}, PI32/4), {25,0});
+		kmath::quatTransform(kmath::quat({0,0,-1}, PI32/2), {25,0});
+		kmath::quatTransform(kmath::quat({0,0,1}, PI32/2), {25,0}, true);
+		kmath::quatTransform(kmath::quat({0,0,1}, PI32/4), {25,0}, true);
+		kmath::quatTransform(kmath::quat({0,0,-1}, PI32/2), {25,0}, true);
+	}
 	// GameState memory initialization //
 	*g_gs = {};
 	// initialize dynamic allocators //
@@ -66,57 +75,54 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		return true;
 	}
 	kamUnloadChangedAssets(g_gs->assetManager);
-	if(numGamePads > 0)
+	for(u8 c = 0; c < numGamePads; c++)
 	{
-		for(u8 c = 0; c < numGamePads; c++)
+		GamePad& gpad = gamePadArray[c];
+		if(gpad.buttons.shoulderLeft == ButtonState::PRESSED)
 		{
-			GamePad& gpad = gamePadArray[c];
-			if(gpad.buttons.shoulderLeft == ButtonState::PRESSED)
+			kauPlaySound(g_gs->kAudioMixer, KASSET("joesteroids-hit.wav"));
+		}
+		if(gpad.buttons.shoulderRight >= ButtonState::PRESSED)
+		{
+			if(gpad.buttons.faceLeft >= ButtonState::PRESSED)
 			{
-				kauPlaySound(g_gs->kAudioMixer, KASSET("joesteroids-hit.wav"));
+				kauPlaySound(g_gs->kAudioMixer, 
+				             KASSET("joesteroids-explosion.wav"));
 			}
-			if(gpad.buttons.shoulderRight >= ButtonState::PRESSED)
+			else
 			{
-				if(gpad.buttons.faceLeft >= ButtonState::PRESSED)
-				{
-					kauPlaySound(g_gs->kAudioMixer, 
-					             KASSET("joesteroids-explosion.wav"));
-				}
-				else
-				{
-					kauPlaySound(g_gs->kAudioMixer, 
-					             KASSET("joesteroids-shoot-modified.wav"));
-				}
+				kauPlaySound(g_gs->kAudioMixer, 
+				             KASSET("joesteroids-shoot-modified.wav"));
 			}
-			g_gs->shipWorldPosition.x += 10*gpad.normalizedStickLeft.x;
-			g_gs->shipWorldPosition.y += 10*gpad.normalizedStickLeft.y;
-			if(!kmath::isNearlyZero(gpad.normalizedStickLeft.x) ||
-			   !kmath::isNearlyZero(gpad.normalizedStickLeft.y))
-			{
-				const f32 stickRadians = 
-					kmath::v2Radians(gpad.normalizedStickLeft);
-				g_gs->shipWorldOrientation = 
-					kmath::quat({0,0,1}, stickRadians - PI32/2);
-			}
-			const f32 controlVolumeRatio = 
-				(gpad.normalizedStickRight.y/2) + 0.5f;
-			kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 
-			             controlVolumeRatio);
-			gpad.normalizedMotorSpeedLeft  = gpad.normalizedTriggerLeft;
-			gpad.normalizedMotorSpeedRight = gpad.normalizedTriggerRight;
-			if (gpad.buttons.back  == ButtonState::HELD &&
-			    gpad.buttons.start == ButtonState::PRESSED)
-			{
-				return false;
-			}
-			if(gpad.buttons.stickClickLeft == ButtonState::PRESSED)
-			{
-				g_gs->shipWorldPosition = {};
-			}
-			if(gpad.buttons.stickClickRight == ButtonState::PRESSED)
-			{
-				g_gs->viewOffset2d = {};
-			}
+		}
+		g_gs->shipWorldPosition.x += 10*gpad.normalizedStickLeft.x;
+		g_gs->shipWorldPosition.y += 10*gpad.normalizedStickLeft.y;
+		if(!kmath::isNearlyZero(gpad.normalizedStickLeft.x) ||
+		   !kmath::isNearlyZero(gpad.normalizedStickLeft.y))
+		{
+			const f32 stickRadians = 
+				kmath::v2Radians(gpad.normalizedStickLeft);
+			g_gs->shipWorldOrientation = 
+				kmath::quat({0,0,1}, stickRadians - PI32/2);
+		}
+		const f32 controlVolumeRatio = 
+			(gpad.normalizedStickRight.y/2) + 0.5f;
+		kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 
+		             controlVolumeRatio);
+		gpad.normalizedMotorSpeedLeft  = gpad.normalizedTriggerLeft;
+		gpad.normalizedMotorSpeedRight = gpad.normalizedTriggerRight;
+		if (gpad.buttons.back  == ButtonState::HELD &&
+		    gpad.buttons.start == ButtonState::PRESSED)
+		{
+			return false;
+		}
+		if(gpad.buttons.stickClickLeft == ButtonState::PRESSED)
+		{
+			g_gs->shipWorldPosition = {};
+		}
+		if(gpad.buttons.stickClickRight == ButtonState::PRESSED)
+		{
+			g_gs->viewOffset2d = {};
 		}
 	}
 	g_gs->viewOffset2d = g_gs->shipWorldPosition;

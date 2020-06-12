@@ -125,6 +125,17 @@ struct v3f32
 struct v4f32
 {
 	f32 x, y, z, w;
+public:
+	inline f32 magnitude()
+	{
+		return sqrtf(powf(x,2) + powf(y,2) + powf(z,2) + powf(w,2));
+	}
+	inline f32 magnitudeSquared()
+	{
+		return powf(x,2) + powf(y,2) + powf(z,2) + powf(w,2);
+	}
+	/** @return the magnitude of the vector before normalization */
+	inline f32 normalize();
 };
 struct v2u32
 {
@@ -221,6 +232,33 @@ namespace kmath
 		result.z = sine * axis.z;
 		return result;
 	}
+	// Source: https://en.wikipedia.org/wiki/Quaternion#Hamilton_product
+	internal inline Quaternion quatHamilton(const Quaternion& q0, 
+	                                        const Quaternion& q1)
+	{
+		return { q0.w*q1.x + q0.x*q1.w + q0.y*q1.z - q0.z*q1.y,
+		         q0.w*q1.y - q0.x*q1.z + q0.y*q1.w + q0.z*q1.x,
+		         q0.w*q1.z + q0.x*q1.y - q0.y*q1.x + q0.z*q1.w,
+		         q0.w*q1.w - q0.x*q1.x - q0.y*q1.y - q0.z*q1.z };
+	}
+	//Source: https://en.wikipedia.org/wiki/Quaternion#Conjugation,_the_norm,_and_reciprocal
+	internal inline Quaternion quatConjugate(const Quaternion& q)
+	{
+		return {-q.x, -q.y, -q.z, q.w};
+	}
+	internal inline v2f32 quatTransform(Quaternion quat, 
+	                                    const v2f32& v2d, 
+	                                    bool quatIsNormalized = false)
+	{
+		if(!quatIsNormalized)
+		{
+			quat.normalize();
+		}
+		const Quaternion result = 
+			quatHamilton(quatHamilton(quat, {v2d.x, v2d.y, 0, 0}), 
+			             quatConjugate(quat));
+		return {result.x, result.y};
+	}
 }
 inline f32 v2f32::normalize()
 {
@@ -231,5 +269,18 @@ inline f32 v2f32::normalize()
 	}
 	x /= mag;
 	y /= mag;
+	return mag;
+}
+inline f32 v4f32::normalize()
+{
+	const f32 mag = magnitude();
+	if(kmath::isNearlyZero(mag))
+	{
+		return x = y = z = w = 0;
+	}
+	x /= mag;
+	y /= mag;
+	z /= mag;
+	w /= mag;
 	return mag;
 }
