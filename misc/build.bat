@@ -152,7 +152,15 @@ set Win32LinkerFlags=%CommonLinkerFlags%
 if "%buildOptionRelease%"=="TRUE" (
 	set Win32LinkerFlags=%CommonLinkerFlags% win32.res
 )
-rem --- Detect if the code tree differs, and if it doesn't, skip building ---
+rem --- Detect if the KML code tree differs ---
+set codeTreeIsDifferentKml=FALSE
+fc %codeTreeFileNamePrefixKml%-existing.txt %codeTreeFileNamePrefixKml%-current.txt > NUL 2> NUL
+if %ERRORLEVEL% GTR 0 (
+	set codeTreeIsDifferentKml=TRUE
+)
+del %codeTreeFileNamePrefixKml%-existing.txt
+ren %codeTreeFileNamePrefixKml%-current.txt %codeTreeFileNamePrefixKml%-existing.txt
+rem --- Detect if the game code tree differs ---
 set codeTreeIsDifferent=FALSE
 fc %codeTreeFileNamePrefixGame%-existing.txt %codeTreeFileNamePrefixGame%-current.txt > NUL 2> NUL
 if %ERRORLEVEL% GTR 0 (
@@ -160,11 +168,17 @@ if %ERRORLEVEL% GTR 0 (
 )
 del %codeTreeFileNamePrefixGame%-existing.txt
 ren %codeTreeFileNamePrefixGame%-current.txt %codeTreeFileNamePrefixGame%-existing.txt
+rem --- We can only skip the game code build if BOTH the game code tree AND KML
+rem --- are unchanged! ---
 IF "%codeTreeIsDifferent%"=="TRUE" (
-	echo Code tree has changed!  Continuing build...
+	echo %kmlGameDllFileName% code tree has changed!  Continuing build...
 ) ELSE (
-	echo Code tree is unchanged!  Skipping build...
-	GOTO :SKIP_GAME_BUILD
+	if "%codeTreeIsDifferentKml%"=="TRUE" (
+		echo %kmlGameDllFileName% code tree is unchanged, but KML differs! Continuing build...
+	) ELSE (
+		echo %kmlGameDllFileName% code tree and KML are unchanged!  Skipping all builds...
+		GOTO :SKIP_ALL_BUILDS
+	)
 )
 rem --- Clean up build directory ---
 del %kmlGameDllFileName%*.pdb > NUL 2> NUL
@@ -187,20 +201,12 @@ cl %project_root%\build\code\%kmlGameDllFileName%.cpp ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw 
 IF %ERRORLEVEL% NEQ 0 (
-	echo Game build failed!
+	echo %kmlGameDllFileName% build failed!
 	GOTO :ON_FAILURE_GAME
 )
 :SKIP_GAME_BUILD
-rem --- Detect if the KML code tree differs, and if it doesn't, skip 
-rem building ---
-set codeTreeIsDifferent=FALSE
-fc %codeTreeFileNamePrefixKml%-existing.txt %codeTreeFileNamePrefixKml%-current.txt > NUL 2> NUL
-if %ERRORLEVEL% GTR 0 (
-	set codeTreeIsDifferent=TRUE
-)
-del %codeTreeFileNamePrefixKml%-existing.txt
-ren %codeTreeFileNamePrefixKml%-current.txt %codeTreeFileNamePrefixKml%-existing.txt
-IF "%codeTreeIsDifferent%"=="TRUE" (
+rem --- If the KML code tree is unchanged, skip the build ---
+IF "%codeTreeIsDifferentKml%"=="TRUE" (
 	echo KML Code tree has changed!  Continuing build...
 ) ELSE (
 	echo KML Code tree is unchanged!  Skipping build...

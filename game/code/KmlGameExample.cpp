@@ -21,12 +21,17 @@ GAME_INITIALIZE(gameInitialize)
 {
 	// TEST QUATERNION STUFF //
 	{
-		kmath::quatTransform(kmath::quat({0,0,1}, PI32/2), {25,0});
+		v3f32 vec = {0,0,-992.727295f};
+		vec.normalize();
+		kmath::quatTransform(kmath::quat({0,0,-992.727295f}, PI32/2), {25,0});
 		kmath::quatTransform(kmath::quat({0,0,1}, PI32/4), {25,0});
 		kmath::quatTransform(kmath::quat({0,0,-1}, PI32/2), {25,0});
 		kmath::quatTransform(kmath::quat({0,0,1}, PI32/2), {25,0}, true);
 		kmath::quatTransform(kmath::quat({0,0,1}, PI32/4), {25,0}, true);
 		kmath::quatTransform(kmath::quat({0,0,-1}, PI32/2), {25,0}, true);
+		v2f32 v0 = { 348.525726f, 1.85656059f };
+		v2f32 v1 = {0.999985814f, 0.00533986418f };
+		kmath::radiansBetween(v0, v1);
 	}
 	// GameState memory initialization //
 	*g_gs = {};

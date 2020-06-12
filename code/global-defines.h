@@ -113,6 +113,10 @@ public:
 	}
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
+	inline f32 dot(const v2f32& other)
+	{
+		return x*other.x + y*other.y;
+	}
 };
 inline v2f32 operator*(f32 lhs, const v2f32& rhs)
 {
@@ -121,18 +125,29 @@ inline v2f32 operator*(f32 lhs, const v2f32& rhs)
 struct v3f32
 {
 	f32 x, y, z;
-};
-struct v4f32
-{
-	f32 x, y, z, w;
 public:
 	inline f32 magnitude()
 	{
-		return sqrtf(powf(x,2) + powf(y,2) + powf(z,2) + powf(w,2));
+		return sqrtf(powf(x,2) + powf(y,2) + powf(z,2));
 	}
 	inline f32 magnitudeSquared()
 	{
-		return powf(x,2) + powf(y,2) + powf(z,2) + powf(w,2);
+		return powf(x,2) + powf(y,2) + powf(z,2);
+	}
+	/** @return the magnitude of the vector before normalization */
+	inline f32 normalize();
+};
+struct v4f32
+{
+	f32 w, x, y, z;
+public:
+	inline f32 magnitude()
+	{
+		return sqrtf(powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2));
+	}
+	inline f32 magnitudeSquared()
+	{
+		return powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2);
 	}
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
@@ -145,7 +160,7 @@ struct v2u32
 namespace kmath
 {
 	using Quaternion = v4f32;
-	global_variable const Quaternion IDENTITY_QUATERNION = {0,0,0,1};
+	global_variable const Quaternion IDENTITY_QUATERNION = {1,0,0,0};
 	// Thanks, Micha Wiedenmann
 	// Derived from: https://stackoverflow.com/q/19837576
 	internal inline bool isNearlyEqual(f32 fA, f32 fB)
@@ -222,8 +237,48 @@ namespace kmath
 		}
 		return atan2f(v.y, v.x);
 	}
-	internal inline Quaternion quat(const v3f32& axis, f32 radians)
+	internal inline f32 radiansBetween(v2f32 v0, v2f32 v1, 
+	                                   bool v0IsNormalized = false, 
+	                                   bool v1IsNormalized = false)
 	{
+		if(!v0IsNormalized)
+		{
+			v0.normalize();
+		}
+		if(!v1IsNormalized)
+		{
+			v1.normalize();
+		}
+		f32 dot = v0.dot(v1);
+		// It should be mathematically impossible for the dot product to be 
+		//	outside the range of [-1,1] since the vectors are normalized, but I 
+		//	have to account for weird floating-point error shenanigans here.
+		// I also have to handle the case where the caller claimed that a 
+		//	vector was normalized, when actually it wasn't, which would cause us 
+		//	to go far beyond this range!
+		if(dot < -1)
+		{
+			kassert(isNearlyEqual(dot, -1));
+			dot = -1;
+		}
+		if(dot > 1)
+		{
+			kassert(isNearlyEqual(dot, 1));
+			dot = 1;
+		}
+		return acosf(dot);
+	}
+	internal inline v3f32 cross(const v2f32& lhs, const v2f32& rhs)
+	{
+		return {0, 0, lhs.x*rhs.y - lhs.y*rhs.x};
+	}
+	internal inline Quaternion quat(v3f32 axis, f32 radians, 
+	                                bool axisIsNormalized = false)
+	{
+		if(!axisIsNormalized)
+		{
+			axis.normalize();
+		}
 		Quaternion result;
 		const f32 sine = sinf(radians/2);
 		result.w = cosf(radians/2);
@@ -236,15 +291,15 @@ namespace kmath
 	internal inline Quaternion quatHamilton(const Quaternion& q0, 
 	                                        const Quaternion& q1)
 	{
-		return { q0.w*q1.x + q0.x*q1.w + q0.y*q1.z - q0.z*q1.y,
+		return { q0.w*q1.w - q0.x*q1.x - q0.y*q1.y - q0.z*q1.z, 
+		         q0.w*q1.x + q0.x*q1.w + q0.y*q1.z - q0.z*q1.y,
 		         q0.w*q1.y - q0.x*q1.z + q0.y*q1.w + q0.z*q1.x,
-		         q0.w*q1.z + q0.x*q1.y - q0.y*q1.x + q0.z*q1.w,
-		         q0.w*q1.w - q0.x*q1.x - q0.y*q1.y - q0.z*q1.z };
+		         q0.w*q1.z + q0.x*q1.y - q0.y*q1.x + q0.z*q1.w };
 	}
 	//Source: https://en.wikipedia.org/wiki/Quaternion#Conjugation,_the_norm,_and_reciprocal
 	internal inline Quaternion quatConjugate(const Quaternion& q)
 	{
-		return {-q.x, -q.y, -q.z, q.w};
+		return {q.w, -q.x, -q.y, -q.z};
 	}
 	internal inline v2f32 quatTransform(Quaternion quat, 
 	                                    const v2f32& v2d, 
@@ -255,10 +310,19 @@ namespace kmath
 			quat.normalize();
 		}
 		const Quaternion result = 
-			quatHamilton(quatHamilton(quat, {v2d.x, v2d.y, 0, 0}), 
+			quatHamilton(quatHamilton(quat, {0, v2d.x, v2d.y, 0}), 
 			             quatConjugate(quat));
 		return {result.x, result.y};
 	}
+	internal inline f32 quatNormalize(Quaternion* q)
+	{
+		return q->normalize();
+	}
+}
+internal inline kmath::Quaternion operator*(const kmath::Quaternion& lhs, 
+                                            const kmath::Quaternion& rhs)
+{
+	return kmath::quatHamilton(lhs, rhs);
 }
 inline f32 v2f32::normalize()
 {
@@ -271,16 +335,28 @@ inline f32 v2f32::normalize()
 	y /= mag;
 	return mag;
 }
+inline f32 v3f32::normalize()
+{
+	const f32 mag = magnitude();
+	if(kmath::isNearlyZero(mag))
+	{
+		return x = y = z = 0;
+	}
+	x /= mag;
+	y /= mag;
+	z /= mag;
+	return mag;
+}
 inline f32 v4f32::normalize()
 {
 	const f32 mag = magnitude();
 	if(kmath::isNearlyZero(mag))
 	{
-		return x = y = z = w = 0;
+		return w = x = y = z = 0;
 	}
+	w /= mag;
 	x /= mag;
 	y /= mag;
 	z /= mag;
-	w /= mag;
 	return mag;
 }
