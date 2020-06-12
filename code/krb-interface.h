@@ -19,9 +19,14 @@ namespace krb
                                         f32 clamped0_1_green, \
                                         f32 clamped0_1_blue)
 /** Setup a right-handed axis where +Y is UP. */
-#define KRB_SET_PROJECTION_ORTHO(name) void name(f32 windowSizeX, \
-                                                 f32 windowSizeY, \
+#define KRB_SET_PROJECTION_ORTHO(name) void name(u32 windowSizeX, \
+                                                 u32 windowSizeY, \
                                                  f32 halfDepth)
+/** Setup a right-handed axis where +Y is UP. */
+#define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) void name(u32 windowSizeX, \
+                                                              u32 windowSizeY, \
+                                                              u32 fixedHeight, \
+                                                              f32 halfDepth)
 ///TODO: use separate colors per vertex
 #define KRB_DRAW_LINE(name) void name(const v2f32& p0, const v2f32& p1, \
                                       const Color4f32& color)
@@ -62,6 +67,8 @@ namespace krb
 #define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
+typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
+	fnSig_krbSetProjectionOrthoFixedHeight);
 typedef KRB_DRAW_LINE(fnSig_krbDrawLine);
 typedef KRB_DRAW_TRI(fnSig_krbDrawTri);
 typedef KRB_DRAW_TRI_TEXTURED(fnSig_krbDrawTriTextured);
@@ -75,6 +82,8 @@ typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
+internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
+	krbSetProjectionOrthoFixedHeight);
 internal KRB_DRAW_LINE(krbDrawLine);
 internal KRB_DRAW_TRI(krbDrawTri);
 internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured);
@@ -90,6 +99,8 @@ struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
+	fnSig_krbSetProjectionOrthoFixedHeight* setProjectionOrthoFixedHeight = 
+	                                           krbSetProjectionOrthoFixedHeight;
 	fnSig_krbDrawLine*           drawLine           = krbDrawLine;
 	fnSig_krbDrawTri*            drawTri            = krbDrawTri;
 	fnSig_krbDrawTriTextured*    drawTriTextured    = krbDrawTriTextured;

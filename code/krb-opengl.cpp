@@ -43,10 +43,27 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 }
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
-	glViewport(0, 0, 
-	           static_cast<GLsizei>(windowSizeX),
-	           static_cast<GLsizei>(windowSizeY));
-	glOrtho(-windowSizeX/2, windowSizeX/2, -windowSizeY/2, windowSizeY/2, 
+	glMatrixMode(GL_PROJECTION);
+	glViewport(0, 0, windowSizeX, windowSizeY);
+	glOrtho(-static_cast<f32>(windowSizeX)/2, static_cast<f32>(windowSizeX)/2, 
+	        -static_cast<f32>(windowSizeY)/2, static_cast<f32>(windowSizeY)/2, 
+	        halfDepth, -halfDepth);
+	GL_CHECK_ERROR();
+}
+internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
+{
+	/*
+		w / fixedHeight == windowAspectRatio
+	*/
+	const f32 windowAspectRatio = windowSizeY == 0
+		? 1.f : static_cast<f32>(windowSizeX) / windowSizeY;
+	const GLsizei viewportWidth = 
+		static_cast<GLsizei>(windowAspectRatio * fixedHeight);
+	glMatrixMode(GL_PROJECTION);
+	glViewport(0, 0, windowSizeX, windowSizeY);
+	glOrtho(-static_cast<f32>(viewportWidth)/2, 
+	         static_cast<f32>(viewportWidth)/2, 
+	        -static_cast<f32>(fixedHeight)/2, static_cast<f32>(fixedHeight)/2, 
 	        halfDepth, -halfDepth);
 	GL_CHECK_ERROR();
 }

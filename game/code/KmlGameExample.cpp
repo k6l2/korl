@@ -132,11 +132,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	g_gs->viewOffset2d = g_gs->shipWorldPosition;
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);
-	g_krb->setProjectionOrtho(static_cast<f32>(windowDimensions.x), 
-	                          static_cast<f32>(windowDimensions.y), 1.f);
+	const f32 windowAspectRatio = windowDimensions.y == 0 
+		? 1 : static_cast<f32>(windowDimensions.x) / windowDimensions.y;
+	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
+	                                     300, 1.f);
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
 	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
-	                       {2.5f, 2.5f});
+	                       {1,1});
 	kfbStep(&g_gs->kFbShip       , g_gs->assetManager, deltaSeconds);
 	kfbStep(&g_gs->kFbShipExhaust, g_gs->assetManager, deltaSeconds);
 	kfbDraw(&g_gs->kFbShip, g_krb, g_gs->assetManager, KASSET("fighter.fbm"));
