@@ -198,7 +198,7 @@ cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
 	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /wd4464 /LDd ^
 	/link %CommonLinkerFlags% ^
-	/PDB:game%fileNameSafeTimestamp%.pdb ^
+	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw 
 IF %ERRORLEVEL% NEQ 0 (
