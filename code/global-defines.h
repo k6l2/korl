@@ -83,19 +83,19 @@ struct v2f32
 	f32 x;
 	f32 y;
 public:
-	inline v2f32 operator-()
+	inline v2f32 operator-() const
 	{
 		return {-x,-y};
 	}
-	inline v2f32 operator*(f32 scalar)
+	inline v2f32 operator*(f32 scalar) const
 	{
 		return {scalar*x, scalar*y};
 	}
-	inline v2f32 operator+(const v2f32& other)
+	inline v2f32 operator+(const v2f32& other) const
 	{
 		return {x + other.x, y + other.y};
 	}
-	inline v2f32 operator-(const v2f32& other)
+	inline v2f32 operator-(const v2f32& other) const
 	{
 		return {x - other.x, y - other.y};
 	}
@@ -111,20 +111,21 @@ public:
 		y += other.y;
 		return *this;
 	}
-	inline f32 magnitude()
+	inline f32 magnitude() const
 	{
 		return sqrtf(powf(x,2) + powf(y,2));
 	}
-	inline f32 magnitudeSquared()
+	inline f32 magnitudeSquared() const
 	{
 		return powf(x,2) + powf(y,2);
 	}
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
-	inline f32 dot(const v2f32& other)
+	inline f32 dot(const v2f32& other) const
 	{
 		return x*other.x + y*other.y;
 	}
+	inline v2f32 projectOnto(v2f32 other, bool otherIsNormalized = false) const;
 };
 inline v2f32 operator*(f32 lhs, const v2f32& rhs)
 {
@@ -134,11 +135,11 @@ struct v3f32
 {
 	f32 x, y, z;
 public:
-	inline f32 magnitude()
+	inline f32 magnitude() const
 	{
 		return sqrtf(powf(x,2) + powf(y,2) + powf(z,2));
 	}
-	inline f32 magnitudeSquared()
+	inline f32 magnitudeSquared() const
 	{
 		return powf(x,2) + powf(y,2) + powf(z,2);
 	}
@@ -149,11 +150,11 @@ struct v4f32
 {
 	f32 w, x, y, z;
 public:
-	inline f32 magnitude()
+	inline f32 magnitude() const
 	{
 		return sqrtf(powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2));
 	}
-	inline f32 magnitudeSquared()
+	inline f32 magnitudeSquared() const
 	{
 		return powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2);
 	}
@@ -280,6 +281,11 @@ namespace kmath
 	{
 		return {0, 0, lhs.x*rhs.y - lhs.y*rhs.x};
 	}
+	internal inline v2f32 normal(v2f32 v)
+	{
+		v.normalize();
+		return v;
+	}
 	internal inline Quaternion quat(v3f32 axis, f32 radians, 
 	                                bool axisIsNormalized = false)
 	{
@@ -342,6 +348,15 @@ inline f32 v2f32::normalize()
 	x /= mag;
 	y /= mag;
 	return mag;
+}
+inline v2f32 v2f32::projectOnto(v2f32 other, bool otherIsNormalized) const
+{
+	if(!otherIsNormalized)
+	{
+		other.normalize();
+	}
+	const f32 scalarProjection = dot(other);
+	return scalarProjection*other;
 }
 inline f32 v3f32::normalize()
 {

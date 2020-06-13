@@ -167,7 +167,8 @@ fc %codeTreeFileNamePrefixGame%-existing.txt %codeTreeFileNamePrefixGame%-curren
 if %ERRORLEVEL% GTR 0 (
 	set codeTreeIsDifferent=TRUE
 )
-del %codeTreeFileNamePrefixGame%-existing.txt
+del %codeTreeFileNamePrefixGame%-previous.txt
+ren %codeTreeFileNamePrefixGame%-existing.txt %codeTreeFileNamePrefixGame%-previous.txt
 ren %codeTreeFileNamePrefixGame%-current.txt %codeTreeFileNamePrefixGame%-existing.txt
 rem --- We can only skip the game code build if BOTH the game code tree AND KML
 rem --- are unchanged! ---
