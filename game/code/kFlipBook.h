@@ -11,6 +11,7 @@ struct KFlipBook
 	f32 currentAnimationLoopSeconds;
 	bool repeat;
 	bool reverse;
+	bool flipH;
 	u8 reverse_PADDING[6];
 };
 internal void kfbDraw(KFlipBook* kfb, KrbApi *krb, KAssetManager *kam, 

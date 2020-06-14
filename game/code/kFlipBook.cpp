@@ -90,9 +90,9 @@ internal void kfbDraw(KFlipBook* kfb, KrbApi *krb, KAssetManager *kam,
 	const f32 pageTexCoordDown  = 
 	                           static_cast<f32>((pageRow + 1))/flipbookPageRows;
 	const f32 pageTexCoordLeft  = 
-	                           static_cast<f32>( pageCol     )/flipbookPageCols;
+	          static_cast<f32>(pageCol + (kfb->flipH ? 1 : 0))/flipbookPageCols;
 	const f32 pageTexCoordRight = 
-	                           static_cast<f32>((pageCol + 1))/flipbookPageCols;
+	          static_cast<f32>(pageCol + (kfb->flipH ? 0 : 1))/flipbookPageCols;
 	// Submit draw commands to the render backend. //
 	krb->useTexture(kamGetTexture(kam, kfb->metaData.textureKAssetCStr));
 	krb->drawQuadTextured({ static_cast<f32>(frameSizeX), 
