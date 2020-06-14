@@ -320,24 +320,38 @@ struct GamePad
 {
 	v2f32 normalizedStickLeft;
 	v2f32 normalizedStickRight;
-	struct Buttons
+	union
 	{
-		ButtonState faceUp;
-		ButtonState faceDown;
-		ButtonState faceLeft;
-		ButtonState faceRight;
-		ButtonState start;
-		ButtonState back;
-		ButtonState dPadUp;
-		ButtonState dPadDown;
-		ButtonState dPadLeft;
-		ButtonState dPadRight;
-		ButtonState shoulderLeft;
-		ButtonState shoulderRight;
-		ButtonState stickClickLeft;
-		ButtonState stickClickRight;
-	} buttons;
-	i8 buttons_PADDING[2];
+		ButtonState buttons[14];
+		struct
+		{
+			ButtonState faceUp;
+			ButtonState faceDown;
+			ButtonState faceLeft;
+			ButtonState faceRight;
+			ButtonState start;
+			ButtonState back;
+			ButtonState dPadUp;
+			ButtonState dPadDown;
+			ButtonState dPadLeft;
+			ButtonState dPadRight;
+			ButtonState shoulderLeft;
+			ButtonState shoulderRight;
+			ButtonState stickClickLeft;
+			ButtonState stickClickRight;
+	#if INTERNAL_BUILD
+			/** KEEP THIS THE LAST VAR IN THE STRUCT ! ! ! 
+			 * See similar struct in GameKeyboard for additional info.
+			*/
+			ButtonState DUMMY_LAST_BUTTON_STATE;
+	#endif // INTERNAL_BUILD
+		};
+	#if INTERNAL_BUILD
+		i8 buttons_PADDING[1];
+	#else
+		i8 buttons_PADDING[2];
+	#endif // INTERNAL_BUILD
+	};
 	float normalizedTriggerLeft;
 	float normalizedTriggerRight;
 	float normalizedMotorSpeedLeft;

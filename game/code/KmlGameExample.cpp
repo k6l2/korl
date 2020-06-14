@@ -83,13 +83,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	for(u8 c = 0; c < numGamePads; c++)
 	{
 		GamePad& gpad = gamePadArray[c];
-		if(gpad.buttons.shoulderLeft == ButtonState::PRESSED)
+		if(gpad.shoulderLeft == ButtonState::PRESSED)
 		{
 			kauPlaySound(g_gs->kAudioMixer, KASSET("joesteroids-hit.wav"));
 		}
-		if(gpad.buttons.shoulderRight >= ButtonState::PRESSED)
+		if(gpad.shoulderRight >= ButtonState::PRESSED)
 		{
-			if(gpad.buttons.faceLeft >= ButtonState::PRESSED)
+			if(gpad.faceLeft >= ButtonState::PRESSED)
 			{
 				kauPlaySound(g_gs->kAudioMixer, 
 				             KASSET("joesteroids-explosion.wav"));
@@ -116,16 +116,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		             controlVolumeRatio);
 		gpad.normalizedMotorSpeedLeft  = gpad.normalizedTriggerLeft;
 		gpad.normalizedMotorSpeedRight = gpad.normalizedTriggerRight;
-		if (gpad.buttons.back  == ButtonState::HELD &&
-		    gpad.buttons.start == ButtonState::PRESSED)
+		if (gpad.back  == ButtonState::HELD &&
+		    gpad.start == ButtonState::PRESSED)
 		{
 			return false;
 		}
-		if(gpad.buttons.stickClickLeft == ButtonState::PRESSED)
+		if(gpad.stickClickLeft == ButtonState::PRESSED)
 		{
 			g_gs->shipWorldPosition = {};
 		}
-		if(gpad.buttons.stickClickRight == ButtonState::PRESSED)
+		if(gpad.stickClickRight == ButtonState::PRESSED)
 		{
 			g_gs->viewOffset2d = {};
 		}

@@ -2070,6 +2070,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	GamePad gamePadArrayB[XUSER_MAX_COUNT] = {};
 	GamePad* gamePadArrayCurrentFrame  = gamePadArrayA;
 	GamePad* gamePadArrayPreviousFrame = gamePadArrayB;
+#if INTERNAL_BUILD
+	// ensure that the size of the gamepad's button array matches the size of
+	//	the anonymous struct which defines the names of all the buttons //
+	kassert( static_cast<size_t>(&gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
+	                             &gamePadArrayA[0].buttons[0]) ==
+	         CARRAY_COUNT(gamePadArrayA[0].buttons) );
+#endif
 	u8 numGamePads = 0;
 	local_persist const u8 SOUND_CHANNELS = 2;
 	local_persist const u32 SOUND_SAMPLE_HZ = 44100;

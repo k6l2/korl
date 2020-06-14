@@ -284,9 +284,12 @@
 	[x] In KML's build script: erase the modified code directory.
 	[x] In KML's build script: rename the copied source directory back to the 
 		original name
+[x] Restructure GamePad similar to GameKeyboard to allow buttons to be iterated 
+	over a loop.
 [ ] Figure out if there's a good way to include files from KML which need to be 
 	processed by kc++ so that I don't have duplicate code in KML & individual 
 	game folders.
+[ ] Do not poll async keyboard state if the window is not currently active.
 [ ] kc++: release build
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 

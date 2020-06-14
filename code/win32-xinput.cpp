@@ -144,60 +144,60 @@ internal void w32XInputGetGamePadStates(u8* io_numGamePads,
 			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedStickRight.y);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_UP,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.dPadUp,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.dPadUp);
+			gamePadArrayPreviousFrame[*io_numGamePads].dPadUp,
+			&gamePadArrayCurrentFrame[*io_numGamePads].dPadUp);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.dPadDown,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.dPadDown);
+			gamePadArrayPreviousFrame[*io_numGamePads].dPadDown,
+			&gamePadArrayCurrentFrame[*io_numGamePads].dPadDown);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.dPadLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.dPadLeft);
+			gamePadArrayPreviousFrame[*io_numGamePads].dPadLeft,
+			&gamePadArrayCurrentFrame[*io_numGamePads].dPadLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.dPadRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.dPadRight);
+			gamePadArrayPreviousFrame[*io_numGamePads].dPadRight,
+			&gamePadArrayCurrentFrame[*io_numGamePads].dPadRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_START,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.start,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.start);
+			gamePadArrayPreviousFrame[*io_numGamePads].start,
+			&gamePadArrayCurrentFrame[*io_numGamePads].start);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_BACK,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.back,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.back);
+			gamePadArrayPreviousFrame[*io_numGamePads].back,
+			&gamePadArrayCurrentFrame[*io_numGamePads].back);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.stickClickLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.stickClickLeft);
+			gamePadArrayPreviousFrame[*io_numGamePads].stickClickLeft,
+			&gamePadArrayCurrentFrame[*io_numGamePads].stickClickLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.stickClickRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.stickClickRight);
+			gamePadArrayPreviousFrame[*io_numGamePads].stickClickRight,
+			&gamePadArrayCurrentFrame[*io_numGamePads].stickClickRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.shoulderLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.shoulderLeft);
+			gamePadArrayPreviousFrame[*io_numGamePads].shoulderLeft,
+			&gamePadArrayCurrentFrame[*io_numGamePads].shoulderLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.shoulderRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.shoulderRight);
+			gamePadArrayPreviousFrame[*io_numGamePads].shoulderRight,
+			&gamePadArrayCurrentFrame[*io_numGamePads].shoulderRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_A,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.faceDown,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceDown);
+			gamePadArrayPreviousFrame[*io_numGamePads].faceDown,
+			&gamePadArrayCurrentFrame[*io_numGamePads].faceDown);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_B,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.faceRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceRight);
+			gamePadArrayPreviousFrame[*io_numGamePads].faceRight,
+			&gamePadArrayCurrentFrame[*io_numGamePads].faceRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_X,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.faceLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceLeft);
+			gamePadArrayPreviousFrame[*io_numGamePads].faceLeft,
+			&gamePadArrayCurrentFrame[*io_numGamePads].faceLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_Y,
-			gamePadArrayPreviousFrame[*io_numGamePads].buttons.faceUp,
-			&gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceUp);
+			gamePadArrayPreviousFrame[*io_numGamePads].faceUp,
+			&gamePadArrayCurrentFrame[*io_numGamePads].faceUp);
 		w32ProcessXInputTrigger(
 			pad.bLeftTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
