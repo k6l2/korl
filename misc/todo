@@ -289,8 +289,39 @@
 [ ] Figure out if there's a good way to include files from KML which need to be 
 	processed by kc++ so that I don't have duplicate code in KML & individual 
 	game folders.
-[ ] Do not poll async keyboard state if the window is not currently active.
+	[ ] Option 1: dynamic recursive source inclusion
+		[ ] Extract include directories from the %INCLUDE% environment variable
+			http://www.cplusplus.com/reference/cstdlib/getenv/
+		[ ] For each "include" directive found while processing our input code:
+			[ ] Find the file using the %INCLUDE% directories 
+			[ ] assert/fail if file isn't found
+			[ ] check if the folder containing this file is already contained by 
+				another added folder
+			[ ] check if the folder contains other folders that were previously 
+				added
+		[ ] for each code folder that was added due to "include" directives:
+			[ ] rename the folder temporarily
+			[ ] create a folder with the same name and fill it with kcpp code!
+		[ ] Problem: how does the build script know that this folder exists so 
+			that we can delete the kcpp folders and rename the stashed code 
+			folders?
+	[ ] Option 2: special %KCPP_INCLUDE% environment variable
+		[ ] extract all code directories from %KCPP_INCLUDE% 
+		[ ] for each directory extracted:
+			[ ] rename the folder temporarily
+			[ ] create a folder with the same name and run kcpp on the original 
+				code
+		[ ] back in batch script, we can now restore the externally processed 
+			kcpp code by extracting the directories from %KCPP_INCLUDE%
+			https://stackoverflow.com/a/36432837
+	[ ] Option 3: just run kc++ on all the %KCPP_INCLUDE% directories!
+		[ ] extract all code directories from %KCPP_INCLUDE% in batch
+		[ ] run kc++ on the directory, with read-only code output to our local 
+			build directory as usual
+		[ ] delete the kcpp code and rename the backup code folders for all the 
+			%KCPP_INCLUDE% directories
 [ ] kc++: release build
+[ ] Do not poll async keyboard state if the window is not currently active.
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 
 	provided by default from KML to allow the game to customize the application 
