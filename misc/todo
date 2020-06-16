@@ -286,6 +286,11 @@
 		original name
 [x] Restructure GamePad similar to GameKeyboard to allow buttons to be iterated 
 	over a loop.
+[ ] KPL: `isApplicationFocused` functionality
+	[ ] Don't quit application when ESC is pressed outside app focus!
+[ ] Log: output milliseconds in timestamp
+[ ] KAM: Fix asset->assetFileName memory becoming undefined after reloading game 
+	code, which sometimes causes a crash on game code reload.
 [ ] Figure out if there's a good way to include files from KML which need to be 
 	processed by kc++ so that I don't have duplicate code in KML & individual 
 	game folders.
