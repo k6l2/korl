@@ -645,18 +645,18 @@ internal PLATFORM_DECODE_Z85_WAV(platformDecodeZ85Wav)
 }
 internal PLATFORM_LOG(platformLog)
 {
-	// Get a timestamp (Source: https://stackoverflow.com/a/35260146) //
-	time_t now = time(nullptr);
-	struct tm newTime;
-	localtime_s(&newTime, &now);
-	char timeBuffer[80];
-	strftime(timeBuffer, sizeof(timeBuffer), 
+	SYSTEMTIME stLocalTime;
+	GetLocalTime( &stLocalTime );
+	TCHAR timeBuffer[80];
+	StringCchPrintf(timeBuffer, CARRAY_COUNT(timeBuffer), 
 #if INTERNAL_BUILD
-	         "%M.%S", 
+	                TEXT("%02d,%03d"), 
+	                stLocalTime.wSecond, stLocalTime.wMilliseconds );
 #else
-	         "%H:%M.%S", 
-#endif
-	         &newTime);
+	                TEXT("%02d:%02d.%02d"), 
+	                stLocalTime.wHour, stLocalTime.wMinute, 
+	                stLocalTime.wSecond );
+#endif// INTERNAL_BUILD
 	// First, we build the new text to add to the log using a local buffer. //
 	local_persist const size_t MAX_LOG_LINE_SIZE = 1024;
 	char logLineBuffer[MAX_LOG_LINE_SIZE];

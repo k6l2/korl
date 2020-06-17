@@ -288,7 +288,7 @@
 	over a loop.
 [x] KPL: `isApplicationFocused` functionality
 	[x] Don't quit application when ESC is pressed outside app focus!
-[ ] Log: output milliseconds in timestamp
+[x] Log: output milliseconds in timestamp
 [ ] KAM: Fix asset->assetFileName memory becoming undefined after reloading game 
 	code, which sometimes causes a crash on game code reload.
 [ ] Figure out if there's a good way to include files from KML which need to be 
@@ -326,7 +326,13 @@
 		[ ] delete the kcpp code and rename the backup code folders for all the 
 			%KCPP_INCLUDE% directories
 [ ] kc++: release build
-[ ] Do not poll async keyboard state if the window is not currently active.
+[ ] vscode: create my own extension 
+	[ ] automatically place a semicolon at the end of a line
+		[ ] work correctly with multiple cursors
+	[ ] automatically place a semicolon at the end of a struct/enum/class 
+		definition
+[ ] Do not poll async keyboard state if the window is not currently active 
+	(optionally?)
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] Allow the game's build command to pass it's own .rc file to replace the one 
 	provided by default from KML to allow the game to customize the application 
