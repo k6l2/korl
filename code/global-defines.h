@@ -286,6 +286,10 @@ namespace kmath
 		v.normalize();
 		return v;
 	}
+	internal inline f32 lerp(f32 min, f32 max, f32 ratio)
+	{
+		return min + ratio*(max - min);
+	}
 	internal inline Quaternion quat(v3f32 axis, f32 radians, 
 	                                bool axisIsNormalized = false)
 	{
