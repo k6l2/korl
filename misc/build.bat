@@ -39,11 +39,13 @@ if not exist "%project_root%\build" mkdir %project_root%\build
 rem --- Create a text tree of the code so we can skip the build if nothing 
 rem     changed ---
 rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
-pushd %project_root%\code
-FOR /F "delims=" %%G IN ('DIR /B /S') DO (
-	>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt" ECHO %%~G,%%~tG,%%~zG
+for %%a in ("%KCPP_INCLUDE:;=" "%") do (
+	pushd %%~a
+	FOR /F "delims=" %%G IN ('DIR /B /S') DO (
+		>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt" ECHO %%~G,%%~tG,%%~zG
+	)
+	popd
 )
-popd
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt"
 rem --- Create a text tree of KML code to conditionally skip the .exe build ---
 pushd %KML_HOME%\code
@@ -90,7 +92,6 @@ rem /WX - treat all warnings as errors
 rem /wd4100 - disable warning C4100 `unreferenced formal parameter`
 rem /wd4201 - disable warning C4201 
 rem           `nonstandard extension used: nameless struct/union`
-rem /wd4464 - disable warning C4464: relative include path contains '..'
 rem /wd4505 - disable warning C4505 
 rem           `unreferenced local function has been removed`
 rem /wd4514 - disable warning C4514 
@@ -186,18 +187,18 @@ rem --- Clean up build directory ---
 del %kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
 rem --- Transform our game code using kc++ ---
-rem First, delete all previous read-only generated source files so that kc++ can
-rem 	actually re-write to those file handles:
-del /S /F /Q code\* > NUL 2> NUL
 pushd %KCPP_HOME%
 echo Building kc++...
 call build.bat
 popd
-call %KCPP_HOME%\build\kc++.exe %project_root%\code %project_root%\build\code
+for %%a in ("%KCPP_INCLUDE:;=" "%") do (
+	echo calling "kc++ %%~a"...
+	call %KCPP_HOME%\build\kc++.exe %%~a
+)
 rem --- Compile game code module ---
 cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /wd4464 /LDd ^
+	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
@@ -206,9 +207,7 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo %kmlGameDllFileName% build failed!
 	GOTO :ON_FAILURE_GAME
 )
-rem --- Delete the temporary KC++ code and replace it with the backup code ---
-rmdir /S /Q "%project_root%\code" > NUL 2> NUL
-ren "%project_root%\code_backup" "code"
+call :cleanupAllKcppCode
 :SKIP_GAME_BUILD
 rem --- If the KML code tree is unchanged, skip the build ---
 IF "%codeTreeIsDifferentKml%"=="TRUE" (
@@ -269,10 +268,28 @@ IF %hh% LEQ 0 (
 exit /B 0
 :ON_FAILURE_GAME
 del %codeTreeFileNamePrefixGame%-existing.txt
-rem --- Delete the temporary KC++ code and replace it with the backup code ---
-rmdir /S /Q "%project_root%\code" > NUL 2> NUL
-ren "%project_root%\code_backup" "code"
+call :cleanupAllKcppCode
 :ON_FAILURE_KML
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
 exit /B %ERRORLEVEL%
+rem --- Delete the temporary KC++ code and replace it with the backup code ---
+:cleanupAllKcppCode
+	SETLOCAL
+	for %%a in ("%KCPP_INCLUDE:;=" "%") do (
+		call :cleanupKcppDirectory %%~a
+	)
+	ENDLOCAL
+	exit /B 0
+:cleanupKcppDirectory
+	SETLOCAL
+	rmdir /S /Q %~1 > NUL 2> NUL
+	call :extractFileName %~1
+	ren "%~1_backup" "%return_string%"
+	ENDLOCAL
+	exit /B 0
+:extractFileName
+	SETLOCAL
+	set "result=%~n1"
+	ENDLOCAL & set "return_string=%result%"
+	exit /B 0
