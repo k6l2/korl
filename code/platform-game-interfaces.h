@@ -376,7 +376,8 @@ struct GamePad
                                              v2u32 windowDimensions, \
                                              GameKeyboard& gameKeyboard, \
                                              GamePad* gamePadArray, \
-                                             u8 numGamePads)
+                                             u8 numGamePads, \
+                                             bool windowIsFocused)
 typedef GAME_INITIALIZE(fnSig_gameInitialize);
 typedef GAME_ON_RELOAD_CODE(fnSig_gameOnReloadCode);
 typedef GAME_RENDER_AUDIO(fnSig_gameRenderAudio);

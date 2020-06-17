@@ -69,7 +69,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if (gameKeyboard.escape == ButtonState::PRESSED ||
 		(gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
 	{
-		return false;
+		if(windowIsFocused)
+			return false;
 	}
 	if(gameKeyboard.enter == ButtonState::PRESSED && gameKeyboard.modifiers.alt)
 	{

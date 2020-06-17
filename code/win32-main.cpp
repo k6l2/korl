@@ -30,6 +30,7 @@ global_variable const TCHAR FILE_NAME_GAME_DLL[] =
 global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KML_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_displayCursor;
+global_variable bool g_isFocused;
 global_variable HCURSOR g_cursorArrow;
 global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
@@ -1472,6 +1473,7 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 		} break;
 		case WM_ACTIVATEAPP:
 		{
+			g_isFocused = wParam;
 			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
 			     (wParam ? "TRUE" : "FALSE"), lParam);
 		} break;
@@ -2295,7 +2297,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			if(!game.updateAndDraw(deltaSeconds,
 			                       {windowDims.width, windowDims.height}, 
 			                       *gameKeyboardCurrentFrame,
-			                       gamePadArrayCurrentFrame, numGamePads))
+			                       gamePadArrayCurrentFrame, numGamePads, 
+			                       g_isFocused))
 			{
 				g_running = false;
 			}
