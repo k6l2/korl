@@ -54,6 +54,7 @@ using KAssetCStr = const char*const*;
 #define INCLUDE_KASSET() 
 #define KASSET(cstr_constant) nullptr
 #define KASSET_SEARCH(u8_pointer_variable) nullptr
+#define KASSET_CSTR(size_t_kAssetIndex) nullptr
 #define KASSET_INDEX(KAssetCStr) 0
 #define KASSET_COUNT 0
 #define KASSET_TYPE(KAssetCStr) 0

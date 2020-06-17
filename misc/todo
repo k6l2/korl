@@ -325,7 +325,7 @@
 		[x] run kc++ on all %KCPP_INCLUDE% code directories
 		[x] delete the kcpp code and rename the backup code folders for all the 
 			%KCPP_INCLUDE% directories
-[ ] KAM: Fix asset->assetFileName memory becoming undefined after reloading game 
+[x] KAM: Fix asset->assetFileName memory becoming undefined after reloading game 
 	code, which sometimes causes a crash on game code reload.
 [ ] cleanup build script by using windows batch functions (if possible)
 [ ] kc++: release build

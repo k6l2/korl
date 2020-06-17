@@ -14,16 +14,13 @@ struct KAsset
 	FileWriteTime lastWriteTime;
 	KAssetType type;
 	bool loaded;
-	u8 loaded_PADDING[2];
 	JobQueueTicket jqTicketLoading;
-	const char* assetFileName;
 	union 
 	{
 		struct 
 		{
 			RawImage rawImage;
 			KrbTextureHandle krbTextureHandle;
-			u8 krbTextureHandle_PADDING[4];
 		} image;
 		RawSound sound;
 		struct 
@@ -35,6 +32,8 @@ struct KAsset
 	// This pointer is here only for convenience with respect to asynchronous 
 	//	job posting to the platform layer.
 	KAssetManager* kam;
+	// Likewise, this is only for the convenience of the async job functions
+	size_t kAssetIndex;
 };
 struct KAssetManager
 {
@@ -68,7 +67,6 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		//	platform and decoded into useful data for us yet! //
 		KAsset defaultAssetImage;
 		defaultAssetImage.type = KAssetType::RAW_IMAGE;
-		defaultAssetImage.assetFileName = "z85_png_default";
 		defaultAssetImage.assetData.image.rawImage = 
 			kpl->decodeZ85Png(z85_png_default, 
 			                  CARRAY_COUNT(z85_png_default) - 1,
@@ -79,19 +77,17 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 			defaultAssetImage.assetData.image.rawImage.pixelData);
 		KAsset defaultAssetSound;
 		defaultAssetSound.type = KAssetType::RAW_SOUND;
-		defaultAssetSound.assetFileName = "z85_wav_default";
 		defaultAssetSound.assetData.sound =
 			kpl->decodeZ85Wav(z85_wav_default, 
 			                  CARRAY_COUNT(z85_wav_default) - 1,
 			                  assetDataAllocator);
 		KAsset defaultAssetFlipbook;
 		defaultAssetFlipbook.type = KAssetType::FLIPBOOK_META;
-		defaultAssetFlipbook.assetFileName = "flipbook_default";
 		defaultAssetFlipbook.assetData.flipbook.metaData = {};
 		strcpy_s(defaultAssetFlipbook.assetData.flipbook.textureAssetFileName, 
 			CARRAY_COUNT(
 				defaultAssetFlipbook.assetData.flipbook.textureAssetFileName),
-			defaultAssetImage.assetFileName);
+			"flipbook-default");
 		*result = 
 			{ .usedAssetHandles             = 0
 			, .maxAssetHandles              = maxAssetHandles
@@ -105,69 +101,6 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 	}
 	return result;
 }
-#if 0
-internal KAssetHandle kamAddAsset(KAssetManager* kam, KAsset& kAsset)
-{
-	if(kam->usedAssetHandles >= kam->maxAssetHandles)
-	{
-		return INVALID_KASSET_HANDLE;
-	}
-	///TODO: check to see if this asset already exists in the manager, and if so
-	///      just return a handle to it.
-	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
-	const KAssetHandle result = kam->nextUnusedHandle;
-	kam->usedAssetHandles++;
-	// Initialize the new asset //
-	assets[result] = kAsset;
-	// now that we've acquired a KAsset, we can prepare for the next call to 
-	//	this function by computing the next unused asset slot //
-	if(kam->usedAssetHandles < kam->maxAssetHandles)
-	{
-		for(KAssetHandle h = 0; h < kam->maxAssetHandles; h++)
-		{
-			const KAssetHandle nextHandleModMax = 
-				(result + h) % kam->maxAssetHandles;
-			if(assets[nextHandleModMax].type == KAssetType::UNUSED)
-			{
-				kam->nextUnusedHandle = nextHandleModMax;
-				break;
-			}
-		}
-		kassert(kam->nextUnusedHandle != result);
-	}
-	return result;
-}
-internal KAssetHandle kamAddWav(KAssetManager* kam, 
-                                const char* assetFileName)
-{
-	KAsset asset = {};
-	asset.type            = KAssetType::RAW_SOUND;
-	asset.assetFileName   = assetFileName;
-	asset.assetData.sound = kam->kpl->loadWav(assetFileName, 
-	                                          kam->assetDataAllocator);
-	return kamAddAsset(kam, asset);
-}
-internal KAssetHandle kamAddOgg(KAssetManager* kam, 
-                                const char* assetFileName)
-{
-	KAsset asset = {};
-	asset.type            = KAssetType::RAW_SOUND;
-	asset.assetFileName   = assetFileName;
-	asset.assetData.sound = kam->kpl->loadOgg(assetFileName, 
-	                                          kam->assetDataAllocator);
-	return kamAddAsset(kam, asset);
-}
-internal KAssetHandle kamAddPng(KAssetManager* kam, 
-                                const char* assetFileName)
-{
-	KAsset asset = {};
-	asset.type            = KAssetType::RAW_IMAGE;
-	asset.assetFileName   = assetFileName;
-	asset.assetData.image = kam->kpl->loadPng(assetFileName, 
-	                                          kam->assetDataAllocator);
-	return kamAddAsset(kam, asset);
-}
-#endif// 0
 internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
@@ -257,8 +190,7 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 			return;
 		}break;
 	}
-	asset->lastWriteTime = 
-		kam->kpl->getAssetWriteTime(asset->assetFileName);
+	asset->lastWriteTime = kam->kpl->getAssetWriteTime(KASSET_CSTR(kah));
 	asset->loaded = true;
 }
 internal RawSound kamGetRawSound(KAssetManager* kam,
@@ -393,46 +325,50 @@ internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam,
 JOB_QUEUE_FUNCTION(asyncLoadPng)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
-	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	const size_t kAssetId = asset->kAssetIndex;
+	while(!asset->kam->kpl->isAssetAvailable(KASSET_CSTR(kAssetId)))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+		KLOG(INFO, "Waiting for asset '%s'...", KASSET_CSTR(kAssetId));
 	}
 	asset->assetData.image.rawImage = 
-		asset->kam->kpl->loadPng(asset->assetFileName, 
+		asset->kam->kpl->loadPng(KASSET_CSTR(kAssetId), 
 		                         asset->kam->assetDataAllocator);
 }
 JOB_QUEUE_FUNCTION(asyncLoadWav)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
-	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	const size_t kAssetId = asset->kAssetIndex;
+	while(!asset->kam->kpl->isAssetAvailable(KASSET_CSTR(kAssetId)))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+		KLOG(INFO, "Waiting for asset '%s'...", KASSET_CSTR(kAssetId));
 	}
 	asset->assetData.sound = 
-		asset->kam->kpl->loadWav(asset->assetFileName, 
+		asset->kam->kpl->loadWav(KASSET_CSTR(kAssetId), 
 		                         asset->kam->assetDataAllocator);
 }
 JOB_QUEUE_FUNCTION(asyncLoadOgg)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
-	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	const size_t kAssetId = asset->kAssetIndex;
+	while(!asset->kam->kpl->isAssetAvailable(KASSET_CSTR(kAssetId)))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+		KLOG(INFO, "Waiting for asset '%s'...", KASSET_CSTR(kAssetId));
 	}
 	asset->assetData.sound = 
-		asset->kam->kpl->loadOgg(asset->assetFileName, 
+		asset->kam->kpl->loadOgg(KASSET_CSTR(kAssetId), 
 		                         asset->kam->assetDataAllocator);
 }
 JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 {
 	KAsset*const asset = reinterpret_cast<KAsset*>(data);
-	while(!asset->kam->kpl->isAssetAvailable(asset->assetFileName))
+	const size_t kAssetId = asset->kAssetIndex;
+	while(!asset->kam->kpl->isAssetAvailable(KASSET_CSTR(kAssetId)))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", asset->assetFileName);
+		KLOG(INFO, "Waiting for asset '%s'...", KASSET_CSTR(kAssetId));
 	}
 	const bool loadFbmSuccess = 
 		asset->kam->kpl->loadFlipbookMeta(
-		          asset->assetFileName, 
+		          KASSET_CSTR(kAssetId), 
 		          &asset->assetData.flipbook.metaData,
 		          asset->assetData.flipbook.textureAssetFileName,
 		          CARRAY_COUNT(asset->assetData.flipbook.textureAssetFileName));
@@ -449,12 +385,12 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 	{
 		// load the asset from the platform layer //
 		asset->loaded = false;
+		asset->kAssetIndex = assetHandle;
 		switch(KASSET_TYPE(kAssetCStr))
 		{
 			case KASSET_TYPE_PNG:
 			{
 				asset->type            = KAssetType::RAW_IMAGE;
-				asset->assetFileName   = *kAssetCStr;
 				asset->kam             = kam;
 				asset->assetData.image = {};
 				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadPng, asset);
@@ -462,21 +398,18 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 			case KASSET_TYPE_WAV:
 			{
 				asset->type            = KAssetType::RAW_SOUND;
-				asset->assetFileName   = *kAssetCStr;
 				asset->kam             = kam;
 				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadWav, asset);
 			}break;
 			case KASSET_TYPE_OGG:
 			{
 				asset->type            = KAssetType::RAW_SOUND;
-				asset->assetFileName   = *kAssetCStr;
 				asset->kam             = kam;
 				asset->jqTicketLoading = kam->kpl->postJob(asyncLoadOgg, asset);
 			}break;
 			case KASSET_TYPE_FLIPBOOK_META:
 			{
 				asset->type            = KAssetType::FLIPBOOK_META;
-				asset->assetFileName   = *kAssetCStr;
 				asset->kam             = kam;
 				asset->jqTicketLoading = 
 				                kam->kpl->postJob(asyncLoadFlipbookMeta, asset);
@@ -533,7 +466,7 @@ internal void kamUnloadChangedAssets(KAssetManager* kam)
 		KAsset*const asset = assets + kah;
 		if(asset->type != KAssetType::UNUSED && asset->loaded)
 		{
-			if(kam->kpl->isAssetChanged(asset->assetFileName, 
+			if(kam->kpl->isAssetChanged(KASSET_CSTR(kah), 
 			                            asset->lastWriteTime))
 			{
 				kamFreeAsset(kam, kah);

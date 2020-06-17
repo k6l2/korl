@@ -8,20 +8,14 @@ struct KAssetManager;
 internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
                                      KgaHandle assetDataAllocator, 
                                      KmlPlatformApi* kpl, KrbApi* krb);
-#if 0
-internal KAssetHandle kamAddWav(KAssetManager* kam, const char* assetFileName);
-internal KAssetHandle kamAddOgg(KAssetManager* kam, const char* assetFileName);
-internal KAssetHandle kamAddPng(KAssetManager* kam, const char* assetFileName);
-#endif// 0
 internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle);
 internal void kamFreeAsset(KAssetManager* kam, KAssetCStr kAssetCStr);
 internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah);
 internal RawSound kamGetRawSound(KAssetManager* kam, KAssetHandle kahSound);
-#if 0
-internal RawImage kamGetRawImage(KAssetManager* kam, KAssetHandle kahImage);
-#endif// 0
 internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
                                         KAssetCStr kAssetCStr);
+///TODO: maybe rename this to kamGetImageSize, since texture & image can have 
+///	very different implications...
 internal v2u32 kamGetTextureSize(KAssetManager* kam, 
                                  KAssetCStr kAssetCStr);
 internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam, 
