@@ -62,7 +62,7 @@ struct FlipbookMetaData
 	bool defaultRepeat;
 	bool defaultReverse;
 	f32 defaultSecondsPerFrame;
-	KAssetCStr textureKAssetCStr;
+	size_t textureKAssetIndex;
 	f32 defaultAnchorRatioX;
 	f32 defaultAnchorRatioY;
 };

@@ -4,7 +4,10 @@
 #include "kAssetManager.h"
 struct KFlipBook
 {
-	FlipbookMetaData metaData;
+	KAssetManager *kam;
+	KrbApi *krb;
+	size_t kAssetIndexMetaData;
+	FlipbookMetaData cachedMetaData;
 	f32 secondsPerFrame;
 	f32 anchorRatioX;
 	f32 anchorRatioY;
@@ -12,8 +15,8 @@ struct KFlipBook
 	bool repeat;
 	bool reverse;
 	bool flipH;
-	u8 reverse_PADDING[6];
 };
-internal void kfbDraw(KFlipBook* kfb, KrbApi *krb, KAssetManager *kam, 
-                      KAssetCStr kAssetCStr);
-internal void kfbStep(KFlipBook* kfb, KAssetManager *kam, f32 deltaSeconds);
+internal void kfbInit(KFlipBook* kfb, KAssetManager *kam, 
+                      KrbApi *krb, KAssetCStr kAssetCStrFlipBook);
+internal void kfbStep(KFlipBook* kfb, f32 deltaSeconds);
+internal void kfbDraw(KFlipBook* kfb);

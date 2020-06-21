@@ -327,10 +327,14 @@
 			%KCPP_INCLUDE% directories
 [x] KAM: Fix asset->assetFileName memory becoming undefined after reloading game 
 	code, which sometimes causes a crash on game code reload.
+[x] KFB: fix kfb->metaData.textureKAssetCStr memory becoming undefined after 
+	reloading code, which sometimes causes a crash on game code reload.
 [ ] instead of deleting the kcpp code at the end of a build, how about we just 
 	rename it to `*_kcpp` and delete these folders at the beginning of a new 
 	build???
 	[ ] ignore these `*_kcpp` folders in git
+[ ] kc++: refactor macros to have names that actually make sense; current API is 
+	pretty confusing/garbage.
 [ ] cleanup build script by using windows batch functions (if possible)
 [ ] kc++: release build
 [ ] KAU: master volume control, default to like ~80% or something...

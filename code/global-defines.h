@@ -52,8 +52,10 @@ using KAssetCStr = const char*const*;
 //	intellisense.  When kc++ runs over the source code containing these macros,
 //	they are replaced with actual useful values.
 #define INCLUDE_KASSET() 
+// expands to a KAssetCStr
 #define KASSET(cstr_constant) nullptr
 #define KASSET_SEARCH(u8_pointer_variable) nullptr
+// expands to a `const char*`
 #define KASSET_CSTR(size_t_kAssetIndex) nullptr
 #define KASSET_INDEX(KAssetCStr) 0
 #define KASSET_COUNT 0

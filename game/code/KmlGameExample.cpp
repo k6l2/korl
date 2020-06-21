@@ -55,6 +55,11 @@ GAME_INITIALIZE(gameInitialize)
 	// Tell the asset manager to load assets asynchronously! //
 	kamPushAsset(g_gs->assetManager, KASSET("fighter.fbm"));
 	kamPushAsset(g_gs->assetManager, KASSET("fighter-exhaust.fbm"));
+	// Initialize flipbooks //
+	kfbInit(&g_gs->kFbShip, g_gs->assetManager, g_krb, 
+	        KASSET("fighter.fbm"));
+	kfbInit(&g_gs->kFbShipExhaust, g_gs->assetManager, g_krb, 
+	        KASSET("fighter-exhaust.fbm"));
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
@@ -140,11 +145,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
 	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
 	                       {1,1});
-	kfbStep(&g_gs->kFbShip       , g_gs->assetManager, deltaSeconds);
-	kfbStep(&g_gs->kFbShipExhaust, g_gs->assetManager, deltaSeconds);
-	kfbDraw(&g_gs->kFbShip, g_krb, g_gs->assetManager, KASSET("fighter.fbm"));
-	kfbDraw(&g_gs->kFbShipExhaust, g_krb, g_gs->assetManager, 
-	        KASSET("fighter-exhaust.fbm"));
+	kfbStep(&g_gs->kFbShip       , deltaSeconds);
+	kfbStep(&g_gs->kFbShipExhaust, deltaSeconds);
+	kfbDraw(&g_gs->kFbShip);
+	kfbDraw(&g_gs->kFbShipExhaust);
 	g_krb->setModelXform({0,0,0}, kmath::IDENTITY_QUATERNION, {1,1,1});
 	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);

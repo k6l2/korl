@@ -84,6 +84,8 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		KAsset defaultAssetFlipbook;
 		defaultAssetFlipbook.type = KAssetType::FLIPBOOK_META;
 		defaultAssetFlipbook.assetData.flipbook.metaData = {};
+		defaultAssetFlipbook.assetData.flipbook.metaData.textureKAssetIndex = 
+			KASSET_COUNT;
 		strcpy_s(defaultAssetFlipbook.assetData.flipbook.textureAssetFileName, 
 			CARRAY_COUNT(
 				defaultAssetFlipbook.assetData.flipbook.textureAssetFileName),
@@ -122,8 +124,9 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 		} break;
 		case KAssetType::FLIPBOOK_META:
 		{
-			kamFreeAsset(kam, 
-			             asset->assetData.flipbook.metaData.textureKAssetCStr);
+			KAssetHandle kahTexture = static_cast<KAssetHandle>(
+				asset->assetData.flipbook.metaData.textureKAssetIndex);
+			kamFreeAsset(kam, kahTexture);
 		} break;
 		case KAssetType::UNUSED: 
 		default:
@@ -179,10 +182,11 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 		{
 			char*const fbTexAssetFileName = 
 				asset->assetData.flipbook.textureAssetFileName;
-			asset->assetData.flipbook.metaData.textureKAssetCStr = 
+			const KAssetCStr textureKAssetCStr = 
 				KASSET_SEARCH(fbTexAssetFileName);
-			kamPushAsset(kam, 
-			             asset->assetData.flipbook.metaData.textureKAssetCStr);
+			asset->assetData.flipbook.metaData.textureKAssetIndex = 
+				KASSET_INDEX(textureKAssetCStr);
+			kamPushAsset(kam, textureKAssetCStr);
 		}break;
 		case KAssetType::UNUSED:
 		{
@@ -272,6 +276,8 @@ internal v2u32 kamGetTextureSize(KAssetManager* kam,
 	const KAssetHandle assetHandle = KASSET_INDEX(kAssetCStr);
 	kassert(assetHandle < kam->maxAssetHandles);
 	KAsset*const asset = assets + assetHandle;
+	kassert(asset->type == KAssetType::UNUSED || 
+	        asset->type == KAssetType::RAW_IMAGE);
 	if(asset->type == KAssetType::UNUSED)
 	{
 		kamPushAsset(kam, kAssetCStr);
