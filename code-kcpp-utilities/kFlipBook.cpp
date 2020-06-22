@@ -1,6 +1,7 @@
 #include "kFlipBook.h"
-internal void kfbInit(KFlipBook* kfb, KAssetManager *kam, 
-                      KrbApi *krb, KAssetCStr kAssetCStrFlipBook)
+#include "kAssetManager.h"
+internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
+                      KrbApi* krb, KAssetCStr kAssetCStrFlipBook)
 {
 	kfb->kam = kam;
 	kfb->krb = krb;

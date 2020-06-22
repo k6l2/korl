@@ -2226,11 +2226,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			{
 				const FILETIME gameCodeLastWriteTime = 
 					w32GetLastWriteTime(fullPathToGameDll);
-				if((CompareFileTime(&gameCodeLastWriteTime, 
-				                    &game.dllLastWriteTime) &&
-					!(gameCodeLastWriteTime.dwHighDateTime == 0 &&
-					gameCodeLastWriteTime.dwLowDateTime    == 0)) ||
-					!game.isValid)
+				if( gameCodeLastWriteTime.dwHighDateTime == 0 &&
+				    gameCodeLastWriteTime.dwLowDateTime  == 0 )
+				// Immediately invalidate the game code if we fail to get the 
+				//	last write time of the dll, since it means the dll is 
+				//	probably in the process of getting recompiled!
+				{
+					game.isValid = false;
+				}
+				if( CompareFileTime(&gameCodeLastWriteTime, 
+				                    &game.dllLastWriteTime) ||
+				    !game.isValid )
 				{
 					w32UnloadGameCode(game);
 					game = w32LoadGameCode(fullPathToGameDll, 
@@ -2292,6 +2298,27 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			ImGui::NewFrame();
 			const W32Dimension2d windowDims = 
 				w32GetWindowDimensions(mainWindow);
+			if(!game.isValid)
+			// display a "loading" message while we wait for cl.exe to 
+			//	relinquish control of the game binary //
+			{
+				const ImVec2 displayCenter(
+					windowDims.width*0.5f, windowDims.height*0.5f);
+				ImGui::SetNextWindowPos(displayCenter, ImGuiCond_Always, 
+				                        ImVec2(0.5f, 0.5f));
+				ImGui::Begin("Reloading Game Code", nullptr, 
+				             ImGuiWindowFlags_NoTitleBar |
+				             ImGuiWindowFlags_NoResize |
+				             ImGuiWindowFlags_NoMove |
+				             ImGuiWindowFlags_NoScrollbar |
+				             ImGuiWindowFlags_NoScrollWithMouse |
+				             ImGuiWindowFlags_AlwaysAutoResize |
+				             ImGuiWindowFlags_NoSavedSettings |
+				             ImGuiWindowFlags_NoMouseInputs );
+				ImGui::Text("Loading Game Code...%c", 
+				            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
+				ImGui::End();
+			}
 			const f32 deltaSeconds = 
 				min(MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
 			if(!game.updateAndDraw(deltaSeconds,
