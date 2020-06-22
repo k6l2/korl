@@ -35,7 +35,7 @@ for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
 rem --- create the build directory ---
-if not exist "%project_root%\build" mkdir %project_root%\build
+if not exist "%project_root%\build" mkdir "%project_root%\build"
 rem --- Create a text tree of the code so we can skip the build if nothing 
 rem     changed ---
 rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
@@ -191,6 +191,7 @@ pushd %KCPP_HOME%
 echo Building kc++...
 call build.bat
 popd
+call :cleanupAllKcppCode
 for %%a in ("%KCPP_INCLUDE:;=" "%") do (
 	echo calling "kc++ %%~a"...
 	call %KCPP_HOME%\build\kc++.exe %%~a
@@ -207,7 +208,7 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo %kmlGameDllFileName% build failed!
 	GOTO :ON_FAILURE_GAME
 )
-call :cleanupAllKcppCode
+call :stashAllKcppCode
 :SKIP_GAME_BUILD
 rem --- If the KML code tree is unchanged, skip the build ---
 IF "%codeTreeIsDifferentKml%"=="TRUE" (
@@ -268,12 +269,12 @@ IF %hh% LEQ 0 (
 exit /B 0
 :ON_FAILURE_GAME
 del %codeTreeFileNamePrefixGame%-existing.txt
-call :cleanupAllKcppCode
+call :stashAllKcppCode
 :ON_FAILURE_KML
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
 exit /B %ERRORLEVEL%
-rem --- Delete the temporary KC++ code and replace it with the backup code ---
+rem --- Delete the temporary KC++ code (if it exists) ---
 :cleanupAllKcppCode
 	SETLOCAL
 	for %%a in ("%KCPP_INCLUDE:;=" "%") do (
@@ -283,8 +284,23 @@ rem --- Delete the temporary KC++ code and replace it with the backup code ---
 	exit /B 0
 :cleanupKcppDirectory
 	SETLOCAL
-	rmdir /S /Q %~1 > NUL 2> NUL
 	call :extractFileName %~1
+	rmdir /S /Q "%~1_kcpp" > NUL 2> NUL
+	ENDLOCAL
+	exit /B 0
+rem --- Stash all KC++ code into a separate folder & 
+rem --- restore the original code ---
+:stashAllKcppCode
+	SETLOCAL
+	for %%a in ("%KCPP_INCLUDE:;=" "%") do (
+		call :stashKcppDirectory %%~a
+	)
+	ENDLOCAL
+	exit /B 0
+:stashKcppDirectory
+	SETLOCAL
+	call :extractFileName %~1
+	ren "%~1" "%return_string%_kcpp"
 	ren "%~1_backup" "%return_string%"
 	ENDLOCAL
 	exit /B 0
