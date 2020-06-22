@@ -147,8 +147,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                       {1,1});
 	kfbStep(&g_gs->kFbShip       , deltaSeconds);
 	kfbStep(&g_gs->kFbShipExhaust, deltaSeconds);
-	kfbDraw(&g_gs->kFbShip);
-	kfbDraw(&g_gs->kFbShipExhaust);
+	kfbDraw(&g_gs->kFbShip, krb::WHITE);
+	kfbDraw(&g_gs->kFbShipExhaust, krb::WHITE);
 	g_krb->setModelXform({0,0,0}, kmath::IDENTITY_QUATERNION, {1,1,1});
 	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);

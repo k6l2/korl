@@ -108,22 +108,33 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
 	glEnable(GL_TEXTURE_2D);
-	glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
 	glBegin(GL_TRIANGLES);
 	const v2f32 quadMeshOffset = {-ratioAnchor.x*size.x, ratioAnchor.y*size.y};
 	// draw the bottom-left triangle //
-	glTexCoord2f(texCoordUL.x, texCoordUL.y); 
+	// up-left vertex
+	glTexCoord2f(texCoords[0].x, texCoords[0].y);
+	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
 	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
-	glTexCoord2f(texCoordDL.x, texCoordDL.y); 
+	// down-left vertex
+	glTexCoord2f(texCoords[1].x, texCoords[1].y); 
+	glColor4f(colors[1].r, colors[1].g, colors[1].b, colors[1].a);
 	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + -size.y);
-	glTexCoord2f(texCoordDR.x, texCoordDR.y); 
+	// down-right vertex
+	glTexCoord2f(texCoords[2].x, texCoords[2].y); 
+	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
 	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
 	// draw the upper-right triangle //
-	glTexCoord2f(texCoordUL.x, texCoordUL.y); 
+	// up-left vertex
+	glTexCoord2f(texCoords[0].x, texCoords[0].y);
+	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
 	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
-	glTexCoord2f(texCoordDR.x, texCoordDR.y); 
+	// down-right vertex
+	glTexCoord2f(texCoords[2].x, texCoords[2].y); 
+	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
 	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
-	glTexCoord2f(texCoordUR.x, texCoordUR.y); 
+	// up-right vertex
+	glTexCoord2f(texCoords[3].x, texCoords[3].y); 
+	glColor4f(colors[3].r, colors[3].g, colors[3].b, colors[3].a);
 	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + 0);
 	glEnd();
 	GL_CHECK_ERROR();

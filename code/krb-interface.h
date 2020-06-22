@@ -12,6 +12,7 @@ struct Color4f32
 namespace krb
 {
 	global_variable const KrbTextureHandle INVALID_TEXTURE_HANDLE = 0;
+	global_variable const Color4f32 WHITE = {1,1,1,1};
 	global_variable const Color4f32 RED   = {1,0,0,1};
 	global_variable const Color4f32 GREEN = {0,1,0,1};
 }
@@ -42,13 +43,13 @@ namespace krb
  *                    the mesh to be in the center.  {0,0} will set the pivot of 
  *                    the mesh to be the top-left corner of the mesh, which 
  *                    should correspond to the top-left corner of the texture!
+ * @param texCoords [up-left, down-left, down-right, up-right]
+ * @param colors [up-left, down-left, down-right, up-right]
 */
 #define KRB_DRAW_QUAD_TEXTURED(name) void name(const v2f32& size, \
                                                const v2f32& ratioAnchor, \
-                                               const v2f32& texCoordUL, \
-                                               const v2f32& texCoordDL, \
-                                               const v2f32& texCoordDR, \
-                                               const v2f32& texCoordUR)
+                                               const v2f32 texCoords[4], \
+											   const Color4f32 colors[4])
 #define KRB_DRAW_CIRCLE(name) void name(f32 radius, f32 outlineThickness, \
                                         const Color4f32& colorFill, \
                                         const Color4f32& colorOutline, \

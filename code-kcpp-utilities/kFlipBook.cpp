@@ -71,7 +71,7 @@ internal void kfbGetPageProperties(KFlipBook* kfb,
 	}
 	kassert(*o_pageCount >= 1);
 }
-internal void kfbDraw(KFlipBook* kfb)
+internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
 {
 	// If the flipbook's meta data doesn't match the meta data of the flipbook 
 	//	asset, then initialize the flipbook using the latest asset data. //
@@ -119,13 +119,15 @@ internal void kfbDraw(KFlipBook* kfb)
 		? &KASSET_CSTR(kassetIdTexture)
 		: nullptr;
 	kfb->krb->useTexture(kamGetTexture(kfb->kam, kAssetCStrTexture));
+	v2f32 texCoords[4] = {{pageTexCoordLeft, pageTexCoordUp},
+	                      {pageTexCoordLeft, pageTexCoordDown},
+	                      {pageTexCoordRight, pageTexCoordDown},
+	                      {pageTexCoordRight, pageTexCoordUp}};
+	Color4f32 colors[4] = {color,color,color,color};
 	kfb->krb->drawQuadTextured({ static_cast<f32>(frameSizeX), 
 	                             static_cast<f32>(frameSizeY) }, 
 	                           {kfb->anchorRatioX, kfb->anchorRatioY},
-	                           {pageTexCoordLeft, pageTexCoordUp},
-	                           {pageTexCoordLeft, pageTexCoordDown},
-	                           {pageTexCoordRight, pageTexCoordDown},
-	                           {pageTexCoordRight, pageTexCoordUp});
+	                           texCoords, colors);
 }
 internal void kfbStep(KFlipBook* kfb, f32 deltaSeconds)
 {

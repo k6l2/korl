@@ -19,4 +19,4 @@ struct KFlipBook
 internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
                       KrbApi* krb, KAssetCStr kAssetCStrFlipBook);
 internal void kfbStep(KFlipBook* kfb, f32 deltaSeconds);
-internal void kfbDraw(KFlipBook* kfb);
+internal void kfbDraw(KFlipBook* kfb, const Color4f32& color);
