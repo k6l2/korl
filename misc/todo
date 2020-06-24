@@ -339,6 +339,18 @@
 [x] KFB+KRB: draw with vertex colors
 [x] build: compare file write timestamps using SECONDS so that I can perform 
 	more than one fucking build per minute
+[x] figure out why the debugger can't seem to load symbols for structs (both 
+	vscode & vs have this issue)
+	[x] attempt to compile manually using the *_kcpp folders to see if that 
+		might be the issue.
+		Results: yes, this does seem to fix the issue, but tells the debugger to 
+			open the kcpp source in the editor which is not what I want ☹
+	[x] attempt to clone the original file's timestamps in the kcpp code files
+		(probably only lastWriteTime is necessary, but try all timestamps just 
+		in case)
+		https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfiletime
+		https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfiletime
+		Results: YEP, that was the issue.  🙃
 [ ] kc++: refactor macros to have names that actually make sense; current API is 
 	pretty confusing/garbage.
 [ ] kc++: create a new macro in place of `&KASSET_CSTR` because this syntax 
