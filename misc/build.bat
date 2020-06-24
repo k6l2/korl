@@ -40,19 +40,11 @@ rem --- Create a text tree of the code so we can skip the build if nothing
 rem     changed ---
 rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
 for %%a in ("%KCPP_INCLUDE:;=" "%") do (
-	pushd %%~a
-	FOR /F "delims=" %%G IN ('DIR /B /S') DO (
-		>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt" ECHO %%~G,%%~tG,%%~zG
-	)
-	popd
+	call :recursivelyAppendFileSignatures %%~a %codeTreeFileNamePrefixGame%
 )
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt"
 rem --- Create a text tree of KML code to conditionally skip the .exe build ---
-pushd %KML_HOME%\code
-FOR /F "delims=" %%G IN ('DIR /B /S') DO (
-	>>"%project_root%\build\%codeTreeFileNamePrefixKml%-current.txt" ECHO %%~G,%%~tG,%%~zG
-)
-popd
+call :recursivelyAppendFileSignatures %KML_HOME%\code %codeTreeFileNamePrefixKml%
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixKml%-current.txt"
 pushd %project_root%\build
 rem --- Compile the win32 application's resource file in release mode ---
@@ -308,4 +300,46 @@ rem --- restore the original code ---
 	SETLOCAL
 	set "result=%~n1"
 	ENDLOCAL & set "return_string=%result%"
+	exit /B 0
+rem This function is apprently EXTREMELY slow for some fuckin reason!  Only use 
+rem 	this if it's ABSOLUTELY necessary!
+rem parameters: [full file path] [file last write date] [file last write time] 
+rem             [codeTreeFileNamePrefix]
+:appendFileSignatureFull
+	SETLOCAL
+	rem Windows batch script is fucking stupid.  You have to do shit like 
+	rem 	this in order to get a timestamp including seconds.
+	rem 	Sources: https://superuser.com/a/701594 
+	rem 	         https://stackoverflow.com/a/56091878
+	FOR /F "tokens=* USEBACKQ" %%t IN (`forfiles /p %~dp1 /m %~nx1 /c "cmd /c echo @ftime"`) do (
+		SET "timestamp=%%t"
+	)
+	>>"%project_root%\build\%~4-current.txt" ECHO %~1,%~2,%timestamp%
+	ENDLOCAL
+	exit /B 0
+rem parameters: [directory] [codeTreeFileNamePrefix]
+:recursivelyAppendFileSignatures
+	SETLOCAL
+	pushd %~1
+	rem This is how to do a thing on the first for loop iteration only! Source:
+	rem https://stackoverflow.com/a/21683583
+	set "mostRecentlyWrittenFile="
+	FOR /F "delims=" %%G IN ('DIR /B /A-D /O-D') DO (
+		rem %%~G expands to the full file name
+		rem %%~tG expands to the file's last write date/time (Mm/Dd/Yyyy Hh:Mm)
+		rem %%~zG expands to the file's byte size
+		if not defined mostRecentlyWrittenFile (
+			call :appendFileSignatureFull %cd%\%%~G %%~tG %~2
+			set "mostRecentlyWrittenFile=%%~G"
+		) else (
+			>>"%project_root%\build\%~2-current.txt" ECHO %cd%\%%~G
+		)
+	)
+	rem Recursively process this function on all subdirectories.  Source:
+	rem https://stackoverflow.com/a/8398621
+	FOR /D %%d in (*) do (
+		call :recursivelyAppendFileSignatures %cd%\%%d %~2
+	)
+	popd
+	ENDLOCAL
 	exit /B 0
