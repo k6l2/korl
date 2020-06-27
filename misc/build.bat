@@ -1,7 +1,6 @@
 @echo off
 rem prerequisites: shell.bat has been run successfully
 rem                KML_HOME environment variable
-rem                KCPP_HOME environment variable
 set codeTreeFileNamePrefixGame=code-tree-game
 set codeTreeFileNamePrefixKml=code-tree-kml
 rem --- Iterate over build script arguments ---
@@ -34,6 +33,13 @@ rem --- Save the timestamp before building for timing metric ---
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
+rem --- generate asset manifest C++ header file using `kasset` ---
+rem     NOTE: this also creates the build directory in the process
+pushd %KASSET_HOME%
+echo Building kasset.exe...
+call build.bat
+popd
+call %KASSET_HOME%\build\kasset.exe %project_root%\assets %project_root%\build\code
 rem --- create the build directory ---
 if not exist "%project_root%\build" mkdir "%project_root%\build"
 rem --- Create a text tree of the code so we can skip the build if nothing 
@@ -140,7 +146,6 @@ set CommonCompilerFlagsChosen=%CommonCompilerFlagsDebug%
 if "%buildOptionRelease%"=="TRUE" (
 	set CommonCompilerFlagsChosen=%CommonCompilerFlagsRelease%
 )
-rem echo CommonCompilerFlagsChosen=%CommonCompilerFlagsChosen%
 set CommonLinkerFlags=/opt:ref /incremental:no 
 set Win32LinkerFlags=%CommonLinkerFlags%
 if "%buildOptionRelease%"=="TRUE" (
@@ -178,16 +183,6 @@ IF "%codeTreeIsDifferent%"=="TRUE" (
 rem --- Clean up build directory ---
 del %kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
-rem --- Transform our game code using kc++ ---
-pushd %KCPP_HOME%
-echo Building kc++...
-call build.bat
-popd
-call :cleanupAllKcppCode
-for %%a in ("%KCPP_INCLUDE:;=" "%") do (
-	echo calling "kc++ %%~a"...
-	call %KCPP_HOME%\build\kc++.exe %%~a
-)
 rem --- Compile game code module ---
 cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
@@ -200,7 +195,6 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo %kmlGameDllFileName% build failed!
 	GOTO :ON_FAILURE_GAME
 )
-call :stashAllKcppCode
 :SKIP_GAME_BUILD
 rem --- If the KML code tree is unchanged, skip the build ---
 IF "%codeTreeIsDifferentKml%"=="TRUE" (
@@ -261,46 +255,10 @@ IF %hh% LEQ 0 (
 exit /B 0
 :ON_FAILURE_GAME
 del %codeTreeFileNamePrefixGame%-existing.txt
-call :stashAllKcppCode
 :ON_FAILURE_KML
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
 exit /B %ERRORLEVEL%
-rem --- Delete the temporary KC++ code (if it exists) ---
-:cleanupAllKcppCode
-	SETLOCAL
-	for %%a in ("%KCPP_INCLUDE:;=" "%") do (
-		call :cleanupKcppDirectory %%~a
-	)
-	ENDLOCAL
-	exit /B 0
-:cleanupKcppDirectory
-	SETLOCAL
-	call :extractFileName %~1
-	rmdir /S /Q "%~1_kcpp" > NUL 2> NUL
-	ENDLOCAL
-	exit /B 0
-rem --- Stash all KC++ code into a separate folder & 
-rem --- restore the original code ---
-:stashAllKcppCode
-	SETLOCAL
-	for %%a in ("%KCPP_INCLUDE:;=" "%") do (
-		call :stashKcppDirectory %%~a
-	)
-	ENDLOCAL
-	exit /B 0
-:stashKcppDirectory
-	SETLOCAL
-	call :extractFileName %~1
-	ren "%~1" "%return_string%_kcpp"
-	ren "%~1_backup" "%return_string%"
-	ENDLOCAL
-	exit /B 0
-:extractFileName
-	SETLOCAL
-	set "result=%~n1"
-	ENDLOCAL & set "return_string=%result%"
-	exit /B 0
 rem This function is apprently EXTREMELY slow for some fuckin reason!  Only use 
 rem 	this if it's ABSOLUTELY necessary!
 rem parameters: [full file path] [file last write date] [file last write time] 

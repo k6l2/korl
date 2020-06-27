@@ -339,7 +339,7 @@
 [x] KFB+KRB: draw with vertex colors
 [x] build: compare file write timestamps using SECONDS so that I can perform 
 	more than one fucking build per minute
-[x] figure out why the debugger can't seem to load symbols for structs (both 
+[ ] figure out why the debugger can't seem to load symbols for structs (both 
 	vscode & vs have this issue)
 	[x] attempt to compile manually using the *_kcpp folders to see if that 
 		might be the issue.
@@ -351,6 +351,28 @@
 		https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfiletime
 		https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfiletime
 		Results: YEP, that was the issue.  🙃
+		Actually NO, that was NOT the issue.  PDB files store a cryptographic 
+		hash checksum of the source files!  😭 Source:
+		https://docs.microsoft.com/en-us/cpp/build/reference/zh?view=vs-2019
+	[x] remove kc++ from entire project build pipeline
+	[x] build: remove kcpp source code shuffling nonsense
+	[x] just supply an asset manifest from the game!
+		[x] build a tool to automatically generate an asset manifest in the form 
+			of a C++ header file
+	[-] figure out how to refer to specific assets in the asset manifest in code
+		[-] just hash to cstrings?
+		[-] scan the asset manifest and generate c++ code that contains variable 
+			names for each asset, and refer to these generated names in code?
+		[-] x-macros? https://stackoverflow.com/a/320888
+	[ ] remove `code-kcpp-utilities`
+		[ ] move the code back into the code folder
+		[ ] remove code-kcpp-utilities from build environment
+	[ ] kasset: if gen_kassets.h already exists, perform a cryptographic hash on 
+		the contents and compare them with the cryptographic hash of the 
+		file we just generated.  If they match, don't write the file!
+		http://people.csail.mit.edu/rivest/Md5.c
+	[ ] kasset: filter out assets based on `assets.ignore` file patterns
+		http://www.cplusplus.com/reference/regex/regex_match/
 [ ] kc++: refactor macros to have names that actually make sense; current API is 
 	pretty confusing/garbage.
 [ ] kc++: create a new macro in place of `&KASSET_CSTR` because this syntax 

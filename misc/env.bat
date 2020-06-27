@@ -18,6 +18,8 @@ echo adding "%KML_HOME%\code-kcpp-utilities" to INCLUDE environment variable...
 set INCLUDE=%KML_HOME%\code-kcpp-utilities;%INCLUDE%
 echo adding "%project_root%\code" to INCLUDE environment variable...
 set INCLUDE=%project_root%\code;%INCLUDE%
-set KCPP_INCLUDE=%project_root%\code;%KML_HOME%\code-kcpp-utilities
+echo adding "%project_root%\build\code" to INCLUDE environment variable...
+set INCLUDE=%project_root%\build\code;%INCLUDE%
+set KCPP_INCLUDE=%project_root%\build\code;%project_root%\code;%KML_HOME%\code-kcpp-utilities
 echo KCPP_INCLUDE==%KCPP_INCLUDE%
 cd %project_root%

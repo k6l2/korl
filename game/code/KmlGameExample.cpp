@@ -1,10 +1,10 @@
 #include "KmlGameExample.h"
-INCLUDE_KASSET()
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )
 	#include "imgui/imgui.h"
 #pragma warning( pop )
+#include "gen_kassets.h"
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	g_kpl = &memory.kpl;
@@ -50,16 +50,16 @@ GAME_INITIALIZE(gameInitialize)
 	                                 g_gs->assetManager);
 	g_gs->tapeBgmBattleTheme = 
 		kauPlaySound(g_gs->kAudioMixer, 
-		             KASSET("joesteroids-battle-theme-modified.ogg"));
+		             KAssetIndex::sfx_joesteroids_battle_theme_modified_ogg);
 	kauSetRepeat(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, true);
 	// Tell the asset manager to load assets asynchronously! //
-	kamPushAsset(g_gs->assetManager, KASSET("fighter.fbm"));
-	kamPushAsset(g_gs->assetManager, KASSET("fighter-exhaust.fbm"));
+	kamPushAsset(g_gs->assetManager, KAssetIndex::gfx_fighter_fbm);
+	kamPushAsset(g_gs->assetManager, KAssetIndex::gfx_fighter_exhaust_fbm);
 	// Initialize flipbooks //
 	kfbInit(&g_gs->kFbShip, g_gs->assetManager, g_krb, 
-	        KASSET("fighter.fbm"));
+	        KAssetIndex::gfx_fighter_fbm);
 	kfbInit(&g_gs->kFbShipExhaust, g_gs->assetManager, g_krb, 
-	        KASSET("fighter-exhaust.fbm"));
+	        KAssetIndex::gfx_fighter_exhaust_fbm);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
@@ -91,19 +91,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		GamePad& gpad = gamePadArray[c];
 		if(gpad.shoulderLeft == ButtonState::PRESSED)
 		{
-			kauPlaySound(g_gs->kAudioMixer, KASSET("joesteroids-hit.wav"));
+			kauPlaySound(g_gs->kAudioMixer, 
+			             KAssetIndex::sfx_joesteroids_hit_wav);
 		}
 		if(gpad.shoulderRight >= ButtonState::PRESSED)
 		{
 			if(gpad.faceLeft >= ButtonState::PRESSED)
 			{
 				kauPlaySound(g_gs->kAudioMixer, 
-				             KASSET("joesteroids-explosion.wav"));
+				             KAssetIndex::sfx_joesteroids_explosion_wav);
 			}
 			else
 			{
 				kauPlaySound(g_gs->kAudioMixer, 
-				             KASSET("joesteroids-shoot-modified.wav"));
+				             KAssetIndex::sfx_joesteroids_shoot_modified_wav);
 			}
 		}
 		g_gs->shipWorldPosition.x += 10*gpad.normalizedStickLeft.x;

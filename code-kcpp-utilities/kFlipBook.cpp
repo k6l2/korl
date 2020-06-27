@@ -1,14 +1,13 @@
 #include "kFlipBook.h"
 #include "kAssetManager.h"
 internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
-                      KrbApi* krb, KAssetCStr kAssetCStrFlipBook)
+                      KrbApi* krb, KAssetIndex assetIndex)
 {
 	kfb->kam = kam;
 	kfb->krb = krb;
-	kfb->kAssetIndexMetaData = KASSET_INDEX(kAssetCStrFlipBook);
+	kfb->kAssetIndexMetaData = static_cast<size_t>(assetIndex);
 	const size_t kAssetIndexMetaData = kfb->kAssetIndexMetaData;
-	kfb->cachedMetaData = 
-		kamGetFlipbookMetaData(kfb->kam, &KASSET_CSTR(kAssetIndexMetaData));
+	kfb->cachedMetaData = kamGetFlipbookMetaData(kfb->kam, assetIndex);
 	kfb->anchorRatioX    = kfb->cachedMetaData.defaultAnchorRatioX;
 	kfb->anchorRatioY    = kfb->cachedMetaData.defaultAnchorRatioY;
 	kfb->repeat          = kfb->cachedMetaData.defaultRepeat;
@@ -49,11 +48,9 @@ internal void kfbGetPageProperties(KFlipBook* kfb,
 	*o_pageSizeX = kfb->cachedMetaData.frameSizeX;
 	*o_pageSizeY = kfb->cachedMetaData.frameSizeY;
 	*o_pageCount = kfb->cachedMetaData.frameCount;
-	const size_t kassetIdTexture = kfb->cachedMetaData.textureKAssetIndex;
-	const KAssetCStr kAssetCStrTexture = kassetIdTexture < KASSET_COUNT
-		? &KASSET_CSTR(kassetIdTexture)
-		: nullptr;
-	const v2u32 texSize = kamGetTextureSize(kfb->kam, kAssetCStrTexture);
+	const KAssetIndex kAssetIdTex = 
+		KAssetIndex(kfb->cachedMetaData.textureKAssetIndex);
+	const v2u32 texSize = kamGetTextureSize(kfb->kam, kAssetIdTex);
 	if(*o_pageSizeX == 0)
 	{
 		*o_pageSizeX = texSize.x;
@@ -75,9 +72,8 @@ internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
 {
 	// If the flipbook's meta data doesn't match the meta data of the flipbook 
 	//	asset, then initialize the flipbook using the latest asset data. //
-	const size_t kAssetIndexMetaData = kfb->kAssetIndexMetaData;
-	const FlipbookMetaData fbmd = 
-		kamGetFlipbookMetaData(kfb->kam, &KASSET_CSTR(kAssetIndexMetaData));
+	const KAssetIndex kAssetIdFb = KAssetIndex(kfb->kAssetIndexMetaData);
+	const FlipbookMetaData fbmd = kamGetFlipbookMetaData(kfb->kam, kAssetIdFb);
 	if(kfb->cachedMetaData != fbmd)
 	{
 		kfb->cachedMetaData  = fbmd;
@@ -114,11 +110,9 @@ internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
 	const f32 pageTexCoordRight = 
 	          static_cast<f32>(pageCol + (kfb->flipH ? 0 : 1))/flipbookPageCols;
 	// Submit draw commands to the render backend. //
-	const size_t kassetIdTexture = kfb->cachedMetaData.textureKAssetIndex;
-	const KAssetCStr kAssetCStrTexture = kassetIdTexture < KASSET_COUNT
-		? &KASSET_CSTR(kassetIdTexture)
-		: nullptr;
-	kfb->krb->useTexture(kamGetTexture(kfb->kam, kAssetCStrTexture));
+	const KAssetIndex kAssetIdTex = 
+		KAssetIndex(kfb->cachedMetaData.textureKAssetIndex);
+	kfb->krb->useTexture(kamGetTexture(kfb->kam, kAssetIdTex));
 	v2f32 texCoords[4] = {{pageTexCoordLeft, pageTexCoordUp},
 	                      {pageTexCoordLeft, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordDown},

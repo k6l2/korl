@@ -1,6 +1,7 @@
 #pragma once
 #include "global-defines.h"
 #include "platform-game-interfaces.h"
+#include "gen_kassets.h"
 struct KAssetManager;
 struct KFlipBook
 {
@@ -17,6 +18,6 @@ struct KFlipBook
 	bool flipH;
 };
 internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
-                      KrbApi* krb, KAssetCStr kAssetCStrFlipBook);
+                      KrbApi* krb, KAssetIndex assetIndex);
 internal void kfbStep(KFlipBook* kfb, f32 deltaSeconds);
 internal void kfbDraw(KFlipBook* kfb, const Color4f32& color);
