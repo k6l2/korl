@@ -373,7 +373,7 @@
 		http://people.csail.mit.edu/rivest/Md5.c
 	[ ] kasset: filter out assets based on `assets.ignore` file patterns
 		http://www.cplusplus.com/reference/regex/regex_match/
-[ ] build: use crypto hashes instead of timestamps to see if files have changed
+[x] build: use crypto hashes instead of timestamps to see if files have changed
 	https://stackoverflow.com/a/41188026
 [ ] kc++: refactor macros to have names that actually make sense; current API is 
 	pretty confusing/garbage.

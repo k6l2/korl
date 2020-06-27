@@ -259,20 +259,14 @@ del %codeTreeFileNamePrefixGame%-existing.txt
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
 exit /B %ERRORLEVEL%
-rem This function is apprently EXTREMELY slow for some fuckin reason!  Only use 
-rem 	this if it's ABSOLUTELY necessary!
-rem parameters: [full file path] [file last write date] [file last write time] 
-rem             [codeTreeFileNamePrefix]
-:appendFileSignatureFull
+rem parameters: [full file path] [codeTreeFileNamePrefix]
+:appendFileSignatureHash
 	SETLOCAL
-	rem Windows batch script is fucking stupid.  You have to do shit like 
-	rem 	this in order to get a timestamp including seconds.
-	rem 	Sources: https://superuser.com/a/701594 
-	rem 	         https://stackoverflow.com/a/56091878
-	FOR /F "tokens=* USEBACKQ" %%t IN (`forfiles /p %~dp1 /m %~nx1 /c "cmd /c echo @ftime"`) do (
-		SET "timestamp=%%t"
+	set "MD5="
+	for /f "skip=1 delims=" %%# in ('certutil -hashfile "%~f1" MD5') do (
+		if not defined MD5 set MD5=%%#
 	)
-	>>"%project_root%\build\%~4-current.txt" ECHO %~1,%~2,%timestamp%
+	>>"%project_root%\build\%~2-current.txt" ECHO %~1,%MD5%
 	ENDLOCAL
 	exit /B 0
 rem parameters: [directory] [codeTreeFileNamePrefix]
@@ -282,12 +276,15 @@ rem parameters: [directory] [codeTreeFileNamePrefix]
 	rem This is how to do a thing on the first for loop iteration only! Source:
 	rem https://stackoverflow.com/a/21683583
 	set "mostRecentlyWrittenFile="
+	rem This DIR command sorts the files from newest-write-time to 
+	rem 	oldest-write-time.  This allows us to only perform expensive hashes 
+	rem 	on the first file of each directory.
 	FOR /F "delims=" %%G IN ('DIR /B /A-D /O-D') DO (
 		rem %%~G expands to the full file name
 		rem %%~tG expands to the file's last write date/time (Mm/Dd/Yyyy Hh:Mm)
 		rem %%~zG expands to the file's byte size
 		if not defined mostRecentlyWrittenFile (
-			call :appendFileSignatureFull %cd%\%%~G %%~tG %~2
+			call :appendFileSignatureHash %cd%\%%~G %~2
 			set "mostRecentlyWrittenFile=%%~G"
 		) else (
 			>>"%project_root%\build\%~2-current.txt" ECHO %cd%\%%~G
