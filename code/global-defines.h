@@ -149,17 +149,19 @@ namespace kmath
 {
 	using Quaternion = v4f32;
 	global_variable const Quaternion IDENTITY_QUATERNION = {1,0,0,0};
-	// Thanks, Micha Wiedenmann
-	// Derived from: https://stackoverflow.com/q/19837576
-	internal inline bool isNearlyEqual(f32 fA, f32 fB)
+	// Thanks, Bruce Dawson
+	// Source: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f)
 	{
-		local_persist const f32 EPSILON = 1e-5f;
-		return fabsf(fA - fB) <= EPSILON * fabsf(fA);
+		const f32 diff = fabsf(fA - fB);
+		fA = fabsf(fA);
+		fB = fabsf(fB);
+		const f32 largest = (fB > fA) ? fB : fA;
+		return (diff <= largest * epsilon);
 	}
-	internal inline bool isNearlyZero(f32 f)
+	internal inline bool isNearlyZero(f32 f, f32 epsilon = 1e-5f)
 	{
-		local_persist const f32 EPSILON = 1e-5f;
-		return isNearlyEqual(f, 0.f);
+		return isNearlyEqual(f, 0.f, epsilon);
 	}
 	/** @return # of bytes which represent `k` kilobytes */
 	internal inline u64 kilobytes(u64 k)
