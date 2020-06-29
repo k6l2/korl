@@ -339,7 +339,7 @@
 [x] KFB+KRB: draw with vertex colors
 [x] build: compare file write timestamps using SECONDS so that I can perform 
 	more than one fucking build per minute
-[ ] figure out why the debugger can't seem to load symbols for structs (both 
+[x] figure out why the debugger can't seem to load symbols for structs (both 
 	vscode & vs have this issue)
 	[x] attempt to compile manually using the *_kcpp folders to see if that 
 		might be the issue.
@@ -371,7 +371,7 @@
 		the contents and compare them with the cryptographic hash of the 
 		file we just generated.  If they match, don't write the file!
 		http://people.csail.mit.edu/rivest/Md5.c
-	[ ] kasset: filter out assets based on `assets.ignore` file patterns
+	[x] kasset: filter out assets based on `assets.ignore` file patterns
 		http://www.cplusplus.com/reference/regex/regex_match/
 [x] build: use crypto hashes instead of timestamps to see if files have changed
 	https://stackoverflow.com/a/41188026
@@ -379,8 +379,8 @@
 	pretty confusing/garbage.
 [-] kc++: create a new macro in place of `&KASSET_CSTR` because this syntax 
 	makes intellisense shit the bed
-[ ] cleanup build script by using windows batch functions (if possible)
 [-] kc++: release build
+[ ] cleanup build script by using windows batch functions (if possible)
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] vscode: create my own extension 
 	[ ] automatically place a semicolon at the end of a line
