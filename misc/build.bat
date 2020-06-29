@@ -1,6 +1,7 @@
 @echo off
 rem prerequisites: shell.bat has been run successfully
 rem                KML_HOME environment variable
+rem                KMD5_HOME environment variable
 set codeTreeFileNamePrefixGame=code-tree-game
 set codeTreeFileNamePrefixKml=code-tree-kml
 rem --- Iterate over build script arguments ---
@@ -42,15 +43,21 @@ popd
 call %KASSET_HOME%\build\kasset.exe %project_root%\assets %project_root%\build\code
 rem --- create the build directory ---
 if not exist "%project_root%\build" mkdir "%project_root%\build"
+rem --- build kmd5 program so we can use it to check if source files have 
+rem     changed, requiring new builds ---
+pushd %KMD5_HOME%
+echo Building kmd5.exe...
+call build.bat
+popd
 rem --- Create a text tree of the code so we can skip the build if nothing 
 rem     changed ---
 rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
 for %%a in ("%KCPP_INCLUDE:;=" "%") do (
-	call :recursivelyAppendFileSignatures %%~a %codeTreeFileNamePrefixGame%
+	call %KMD5_HOME%\build\kmd5.exe %%~a %project_root%\build %codeTreeFileNamePrefixGame%-current.txt --append
 )
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt"
 rem --- Create a text tree of KML code to conditionally skip the .exe build ---
-call :recursivelyAppendFileSignatures %KML_HOME%\code %codeTreeFileNamePrefixKml%
+call %KMD5_HOME%\build\kmd5.exe %KML_HOME%\code %project_root%\build %codeTreeFileNamePrefixKml%-current.txt
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixKml%-current.txt"
 pushd %project_root%\build
 rem --- Compile the win32 application's resource file in release mode ---
@@ -259,42 +266,3 @@ del %codeTreeFileNamePrefixGame%-existing.txt
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
 exit /B %ERRORLEVEL%
-rem parameters: [full file path] [codeTreeFileNamePrefix]
-:appendFileSignatureHash
-	SETLOCAL
-	set "MD5="
-	for /f "skip=1 delims=" %%# in ('certutil -hashfile "%~f1" MD5') do (
-		if not defined MD5 set MD5=%%#
-	)
-	>>"%project_root%\build\%~2-current.txt" ECHO %~1,%MD5%
-	ENDLOCAL
-	exit /B 0
-rem parameters: [directory] [codeTreeFileNamePrefix]
-:recursivelyAppendFileSignatures
-	SETLOCAL
-	pushd %~1
-	rem This is how to do a thing on the first for loop iteration only! Source:
-	rem https://stackoverflow.com/a/21683583
-	set "mostRecentlyWrittenFile="
-	rem This DIR command sorts the files from newest-write-time to 
-	rem 	oldest-write-time.  This allows us to only perform expensive hashes 
-	rem 	on the first file of each directory.
-	FOR /F "delims=" %%G IN ('DIR /B /A-D /O-D') DO (
-		rem %%~G expands to the full file name
-		rem %%~tG expands to the file's last write date/time (Mm/Dd/Yyyy Hh:Mm)
-		rem %%~zG expands to the file's byte size
-		if not defined mostRecentlyWrittenFile (
-			call :appendFileSignatureHash %cd%\%%~G %~2
-			set "mostRecentlyWrittenFile=%%~G"
-		) else (
-			>>"%project_root%\build\%~2-current.txt" ECHO %cd%\%%~G
-		)
-	)
-	rem Recursively process this function on all subdirectories.  Source:
-	rem https://stackoverflow.com/a/8398621
-	FOR /D %%d in (*) do (
-		call :recursivelyAppendFileSignatures %cd%\%%d %~2
-	)
-	popd
-	ENDLOCAL
-	exit /B 0

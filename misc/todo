@@ -375,12 +375,12 @@
 		http://www.cplusplus.com/reference/regex/regex_match/
 [x] build: use crypto hashes instead of timestamps to see if files have changed
 	https://stackoverflow.com/a/41188026
-[ ] kc++: refactor macros to have names that actually make sense; current API is 
+[-] kc++: refactor macros to have names that actually make sense; current API is 
 	pretty confusing/garbage.
-[ ] kc++: create a new macro in place of `&KASSET_CSTR` because this syntax 
+[-] kc++: create a new macro in place of `&KASSET_CSTR` because this syntax 
 	makes intellisense shit the bed
 [ ] cleanup build script by using windows batch functions (if possible)
-[ ] kc++: release build
+[-] kc++: release build
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] vscode: create my own extension 
 	[ ] automatically place a semicolon at the end of a line
