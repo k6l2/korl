@@ -5,12 +5,15 @@ Currently, only the Windows platform is a thing.
 - Install Visual Studio w/ C++ to get all the required build tools.
 - Clone repository somewhere.
 - [Clone the `kasset` repository somewhere.](https://github.com/k6l2/kasset)
+- [Clone the `kmd5` repository somewhere.](https://github.com/k6l2/kmd5)
 - Set the `VISUAL_C_BUILD_SCRIPTS_HOME` environment variable to point to the
 	location of `vcvarsall.bat`.
 - Set the `KML_HOME` environment variable to point to the root directory of this
 	repository.
 - Set the `KASSET_HOME` environment variable to point to the root directory of 
 	the `kasset` repository.
+- Set the `KMD5_HOME` environment variable to point to the root directory of 
+	the `kmd5` repository.
 
 ## Build Procedures
 - Run `%KML_HOME%\game\misc\shell.bat`.
