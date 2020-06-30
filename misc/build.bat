@@ -104,6 +104,10 @@ rem           `unreferenced inline function has been removed`
 rem /wd4577 - disable warning C4577 `'noexcept' used with no exception handling 
 rem           mode specified; termination on exception is not guaranteed. 
 rem           Specify /EHsc`
+rem /wd4626 - disable warning C4626 `assignment operator was implicitly defined 
+rem           as deleted` because this is emitted every time a lambda is 
+rem           declared for some stupid reason?  See:
+rem https://developercommunity.visualstudio.com/content/problem/749985/msvc-1922-emitts-c4626-warning-on-simple-lambdas-w.html
 rem /wd4710 - disable warning C4710 `function not inlined`
 rem /wd4711 - disable warning C4711 `automatic inline selection`
 rem /wd4820 - disable warning C4820 `x byte padding after data member...`
@@ -143,7 +147,7 @@ rem winmm.lib    - multimedia timer functions (granular sleep functionality)
 rem opengl32.lib - You know what this is for...
 rem Dbghelp.lib  - generate mini dumps
 rem Shell32.lib  - Obtain AppData path at runtime.
-set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 ^
+set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 ^
 	/Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
 set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
 	/DINTERNAL_BUILD=0 /DSLOW_BUILD=0 
