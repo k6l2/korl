@@ -25,7 +25,8 @@ internal KalHandle kalInit(void* allocatorMemoryStart,
 internal void* kalAlloc(KalHandle hKal, size_t allocationByteCount)
 {
 	KAllocatorLinear*const kal = static_cast<KAllocatorLinear*>(hKal);
-	if(allocationByteCount > kalMaxTotalUsableBytes(kal))
+	if(allocationByteCount > kalMaxTotalUsableBytes(kal) ||
+	   allocationByteCount <= 0)
 	{
 		return nullptr;
 	}
