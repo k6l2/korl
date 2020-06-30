@@ -380,6 +380,7 @@
 [-] kc++: create a new macro in place of `&KASSET_CSTR` because this syntax 
 	makes intellisense shit the bed
 [-] kc++: release build
+[ ] linear allocator 
 [ ] cleanup build script by using windows batch functions (if possible)
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] vscode: create my own extension 
