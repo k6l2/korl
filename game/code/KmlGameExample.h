@@ -12,12 +12,14 @@
 #include "kAssetManager.h"
 #include "kAudioMixer.h"
 #include "kFlipBook.h"
+#include "kAllocatorLinear.h"
 struct GameState
 {
 	KAssetManager* assetManager;
 	KAudioMixer* kAudioMixer;
 	KgaHandle hKgaPermanent;
 	KgaHandle hKgaTransient;
+	KalHandle hKalFrame;
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kmath::Quaternion shipWorldOrientation = kmath::quat({0,0,1}, 0);

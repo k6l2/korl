@@ -42,6 +42,13 @@ GAME_INITIALIZE(gameInitialize)
 		        memory.permanentMemoryBytes - sizeof(GameState));
 	g_gs->hKgaTransient = kgaInit(memory.transientMemory, 
 	                              memory.transientMemoryBytes);
+	// construct a linear frame allocator //
+	{
+		const size_t kalFrameSize = kmath::megabytes(5);
+		void*const kalFrameStartAddress = 
+			kgaAlloc(g_gs->hKgaPermanent, kalFrameSize);
+		g_gs->hKalFrame = kalInit(kalFrameStartAddress, kalFrameSize);
+	}
 	// Contruct/Initialize the game's AssetManager //
 	g_gs->assetManager = kamConstruct(g_gs->hKgaPermanent, KASSET_COUNT,
 	                                  g_gs->hKgaTransient, g_kpl, g_krb);
@@ -70,9 +77,31 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
+	kalReset(g_gs->hKalFrame);
+#if INTERNAL_BUILD
+	// TESTING LINEAR ALLOCATOR //
+	{
+		if(gameKeyboard.tenkeyless_1 >= ButtonState::PRESSED)
+		{
+			kalAlloc(g_gs->hKalFrame, 1);
+		}
+		if(gameKeyboard.tenkeyless_2 >= ButtonState::PRESSED)
+		{
+			kalAlloc(g_gs->hKalFrame, 2);
+		}
+		if(gameKeyboard.tenkeyless_3 >= ButtonState::PRESSED)
+		{
+			kalAlloc(g_gs->hKalFrame, 3);
+		}
+		if(gameKeyboard.tenkeyless_4 >= ButtonState::PRESSED)
+		{
+			kalAlloc(g_gs->hKalFrame, 4);
+		}
+	}
+#endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
-	if (gameKeyboard.escape == ButtonState::PRESSED ||
-		(gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
+	if(gameKeyboard.escape == ButtonState::PRESSED ||
+	   (gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
 	{
 		if(windowIsFocused)
 			return false;
@@ -160,6 +189,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 #include "kAudioMixer.cpp"
 #include "kAssetManager.cpp"
 #include "kGeneralAllocator.cpp"
+#include "kAllocatorLinear.cpp"
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
 	#pragma warning( disable : 4127 )
