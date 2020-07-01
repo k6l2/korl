@@ -397,6 +397,7 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 		          CARRAY_COUNT(asset->assetData.flipbook.textureAssetFileName));
 	kassert(loadFbmSuccess);
 }
+// @optimization (minor): just bake this info using `kasset`
 enum class KAssetFileType
 {
 	PNG, WAV, OGG, FLIPBOOK_META, 

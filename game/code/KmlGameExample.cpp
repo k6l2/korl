@@ -98,6 +98,28 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			kalAlloc(g_gs->hKalFrame, 4);
 		}
 	}
+	// TESTING STB_DS //
+	if(ImGui::Begin("TESTING STB_DS"))
+	{
+		if(ImGui::Button("-") && arrlenu(g_gs->testStbDynArr))
+		{
+			arrpop(g_gs->testStbDynArr);
+		}
+		ImGui::SameLine();
+		if(ImGui::Button("+"))
+		{
+			arrput(g_gs->testStbDynArr, 0);
+		}
+		ImGui::Separator();
+		const size_t testStbDynArrLength = arrlenu(g_gs->testStbDynArr);
+		for(size_t i = 0; i < testStbDynArrLength; i++)
+		{
+			ImGui::PushID(static_cast<int>(i));
+			ImGui::SliderInt("slider",&g_gs->testStbDynArr[i],0,255);
+			ImGui::PopID();
+		}
+	}
+	ImGui::End();
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
@@ -207,4 +229,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	#include "imgui/imgui_draw.cpp"
 	#include "imgui/imgui_widgets.cpp"
 	#include "imgui/imgui.cpp"
+#pragma warning( pop )
+#define STB_DS_IMPLEMENTATION
+internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize)
+{
+	return kgaRealloc(g_gs->hKgaPermanent, allocatedAddress, newAllocationSize);
+}
+internal void kStbDsFree(void* allocatedAddress)
+{
+	kgaFree(g_gs->hKgaPermanent, allocatedAddress);
+}
+#pragma warning( push )
+	// warning C4365: 'argument': conversion
+	#pragma warning( disable : 4365 )
+	// warning C4456: declaration of 'i' hides previous local declaration
+	#pragma warning( disable : 4456 )
+	#include "stb/stb_ds.h"
 #pragma warning( pop )

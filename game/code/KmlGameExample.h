@@ -13,6 +13,9 @@
 #include "kAudioMixer.h"
 #include "kFlipBook.h"
 #include "kAllocatorLinear.h"
+#define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size)
+#define STBDS_FREE(context,ptr)         kStbDsFree(ptr)
+#include "stb/stb_ds.h"
 struct GameState
 {
 	KAssetManager* assetManager;
@@ -26,7 +29,10 @@ struct GameState
 	KTapeHandle tapeBgmBattleTheme;
 	KFlipBook kFbShip;
 	KFlipBook kFbShipExhaust;
+	int* testStbDynArr;
 };
 global_variable GameState* g_gs;
 global_variable KmlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;
+internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize);
+internal void  kStbDsFree(void* allocatedAddress);
