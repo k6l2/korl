@@ -9,6 +9,15 @@ struct Color4f32
 	f32 b;
 	f32 a;
 };
+internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratioLerp)
+{
+	Color4f32 result;
+	result.r = a.r + (b.r - a.r)*ratioLerp;
+	result.g = a.g + (b.g - a.g)*ratioLerp;
+	result.b = a.b + (b.b - a.b)*ratioLerp;
+	result.a = a.a + (b.a - a.a)*ratioLerp;
+	return result;
+}
 namespace krb
 {
 	global_variable const KrbTextureHandle INVALID_TEXTURE_HANDLE = 0;
