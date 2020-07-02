@@ -131,6 +131,8 @@ rem /std:c++latest - used for C++20 designated initializers
 rem /Fm<name> - generate a map file
 rem /Fe<name> - change name of output code file (don't include the file 
 rem             extension)
+rem /Fd<name> - change name of VCx0.pdb (where x is the major version of Visual 
+rem             C++ in use; VCToolsVersion environment variable probably?)
 rem /link - all linker options are placed after this token.
 rem --- LINKER OPTIONS ---
 rem /subsystem - affects the entry point symbol that the linker will select
@@ -192,11 +194,12 @@ IF "%codeTreeIsDifferent%"=="TRUE" (
 	)
 )
 rem --- Clean up build directory ---
-del %kmlGameDllFileName%*.pdb > NUL 2> NUL
+del *%kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
 rem --- Compile game code module ---
 cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
+	/FdVC_%kmlGameDllFileName% ^
 	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
@@ -225,11 +228,12 @@ if exist %kmlApplicationName%.exe (
 	)
 )
 rem --- Clean up build directory ---
+del *%kmlApplicationName%*.pdb > NUL 2> NUL
 del %kmlApplicationName%*.pdb > NUL 2> NUL
 del %kmlApplicationName%*.dll > NUL 2> NUL
 rem --- Compile Windows Executable ---
 cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
-	/Fm%kmlApplicationName%.map ^
+	/FdVC_%kmlApplicationName% /Fm%kmlApplicationName%.map ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
 	/DKML_APP_VERSION=%kmlApplicationVersion% ^
 	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^

@@ -381,8 +381,14 @@
 	makes intellisense shit the bed
 [-] kc++: release build
 [x] linear allocator 
-[ ] cleanup build script by using windows batch functions (if possible)
+[x] build: set /Fd output for cl to prevent the VCx0.pdb files from overwriting 
+	each other!
+[ ] win32: copy VC_*.pdb files to the minidump file output location
+[ ] KAM: when `kamGetRawSound` gets called and the asset is UNUSED, attempt to 
+	load the asset by calling `kamPushAsset` (see `kamGetTexture`)
 [ ] KAU: master volume control, default to like ~80% or something...
+[ ] KML-platform: UDP networking API
+[ ] cleanup build script by using windows batch functions (if possible)
 [ ] vscode: create my own extension 
 	[ ] automatically place a semicolon at the end of a line
 		[ ] work correctly with multiple cursors
