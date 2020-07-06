@@ -77,6 +77,13 @@ namespace krb
                                                    u8* imageDataRGBA)
 #define KRB_DELETE_TEXTURE(name) void name(KrbTextureHandle krbTextureHandle)
 #define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
+/** 
+ * @return {NAN,NAN} if the provided world position is not contained within the 
+ *         camera's clip space.  This does NOT mean that non-{NAN,NAN} values 
+ *         are on the screen!
+*/
+#define KRB_WORLD_TO_SCREEN(name) v2f32 name(const f32* pWorldPosition, \
+                                             u8 worldPositionDimension)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
@@ -92,6 +99,7 @@ typedef KRB_SET_MODEL_XFORM_2D(fnSig_krbSetModelXform2d);
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
 typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
+typedef KRB_WORLD_TO_SCREEN(fnSig_krbWorldToScreen);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
@@ -107,6 +115,7 @@ internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d);
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_DELETE_TEXTURE(krbDeleteTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
+internal KRB_WORLD_TO_SCREEN(krbWorldToScreen);
 struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
@@ -124,4 +133,5 @@ struct KrbApi
 	fnSig_krbLoadImage*          loadImage          = krbLoadImage;
 	fnSig_krbDeleteTexture*      deleteTexture      = krbDeleteTexture;
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;
+	fnSig_krbWorldToScreen*      worldToScreen      = krbWorldToScreen;
 };

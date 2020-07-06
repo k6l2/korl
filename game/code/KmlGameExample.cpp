@@ -195,6 +195,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
 	                                     300, 1.f);
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
+#if INTERNAL_BUILD
+	// TESTING krbWorldToScreen //
+	if(ImGui::Begin("TESTING krbWorldToScreen"))
+	{
+		local_persist const v2f32 ORIGIN = {};
+		const v2f32 originScreenSpace = 
+			g_krb->worldToScreen(reinterpret_cast<const f32*>(&ORIGIN), 2);
+		ImGui::Text("origin in screen-space={%f, %f}", 
+		            originScreenSpace.x, originScreenSpace.y);
+	}
+	ImGui::End();
+#endif// INTERNAL_BUILD
 	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
 	                       {1,1});
 	kfbStep(&g_gs->kFbShip       , deltaSeconds);

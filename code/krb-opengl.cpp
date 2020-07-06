@@ -276,3 +276,57 @@ internal KRB_USE_TEXTURE(krbUseTexture)
 	glBindTexture(GL_TEXTURE_2D, kth);
 	GL_CHECK_ERROR();
 }
+internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
+{
+	kassert(worldPositionDimension < 4);
+	/* obtain VP matrix from opengl driver */
+	glMatrixMode(GL_MODELVIEW);
+	GLint modelViewStackDepth;
+	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+	while(modelViewStackDepth > 1)
+	{
+		glPopMatrix();
+		modelViewStackDepth--;
+	}
+	GLfloat gl_matrixView[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, gl_matrixView);
+	glMatrixMode(GL_PROJECTION);
+	GLfloat gl_matrixProjection[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, gl_matrixProjection);
+	const m4x4f32 mView       = m4x4f32::transpose(gl_matrixView);
+	const m4x4f32 mProjection = m4x4f32::transpose(gl_matrixProjection);
+	GL_CHECK_ERROR();
+	/* obtain viewport size & viewport offset from driver */
+	GLint viewportValues[4];// [x,y, width,height]
+	glGetIntegerv(GL_VIEWPORT, viewportValues);
+	GL_CHECK_ERROR();
+	/* calculate clip-space */
+	v4f32 worldPoint = {};
+	worldPoint.elements[3] = 1.f;
+	for(u8 d = 0; d < worldPositionDimension; d++)
+	{
+		worldPoint.elements[d] = pWorldPosition[d];
+	}
+	const v4f32 cameraSpacePoint = mView * worldPoint;
+	const v4f32 clipSpacePoint   = mProjection * cameraSpacePoint;
+	if(kmath::isNearlyZero(clipSpacePoint.elements[3]))
+	{
+		local_persist const v2f32 INVALID_RESULT = {nanf(""), nanf("")};
+		return INVALID_RESULT;
+	}
+	/* calculate normalized-device-coordinate-space */
+	const v3f32 ndcSpacePoint = 
+		{ .x = clipSpacePoint.elements[0] / clipSpacePoint.elements[3]
+		, .y = clipSpacePoint.elements[1] / clipSpacePoint.elements[3]
+		, .z = clipSpacePoint.elements[2] / clipSpacePoint.elements[3]
+	};
+	/* calculate screen-space.  glsl formula = 
+	   ((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
+	const v2f32 result = 
+		{ .x = ((ndcSpacePoint.x + 1.f) / 2.f) * viewportValues[2] + 
+		       viewportValues[0]
+		, .y = ((ndcSpacePoint.y + 1.f) / 2.f) * viewportValues[3] + 
+		       viewportValues[1]
+	};
+	return result;
+}

@@ -2,6 +2,7 @@
 #define internal        static
 #define local_persist   static
 #define global_variable static
+#define class_namespace static
 #define CARRAY_COUNT(array) (sizeof(array)/sizeof(array[0]))
 // Obtain the file name excluding the path //
 //	Source: https://stackoverflow.com/a/8488201
@@ -127,7 +128,14 @@ public:
 };
 struct v4f32
 {
-	f32 w, x, y, z;
+	union 
+	{
+		f32 elements[4];
+		struct
+		{
+			f32 w, x, y, z;
+		};
+	};
 public:
 	inline f32 magnitude() const
 	{
@@ -145,6 +153,23 @@ struct v2u32
 	u32 x;
 	u32 y;
 };
+struct m4x4f32
+{
+	union 
+	{
+		f32 elements[16];
+		struct
+		{
+			f32 r0c0, r0c1, r0c2, r0c3;
+			f32 r1c0, r1c1, r1c2, r1c3;
+			f32 r2c0, r2c1, r2c2, r2c3;
+			f32 r3c0, r3c1, r3c2, r3c3;
+		};
+	};
+public:
+	class_namespace m4x4f32 transpose(const f32* elements);
+};
+internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
 namespace kmath
 {
 	using Quaternion = v4f32;
@@ -367,4 +392,29 @@ inline f32 v4f32::normalize()
 	y /= mag;
 	z /= mag;
 	return mag;
+}
+m4x4f32 m4x4f32::transpose(const f32* elements)
+{
+	m4x4f32 result = {};
+	for(u8 r = 0; r < 4; r++)
+	{
+		for(u8 c = 0; c < 4; c++)
+		{
+			result.elements[4*r + c] = elements[4*c + r];
+		}
+	}
+	return result;
+}
+internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs)
+{
+	v4f32 result = {};
+	for(u8 r = 0; r < 4; r++)
+	{
+		result.elements[r] = lhs.elements[4*r + 0]*rhs.elements[0];
+		for(u8 c = 1; c < 4; c++)
+		{
+			result.elements[r] += lhs.elements[4*r + c]*rhs.elements[c];
+		}
+	}
+	return result;
 }
