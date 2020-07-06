@@ -314,10 +314,11 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 		local_persist const v2f32 INVALID_RESULT = {nanf(""), nanf("")};
 		return INVALID_RESULT;
 	}
-	/* calculate normalized-device-coordinate-space */
+	/* calculate normalized-device-coordinate-space 
+		y is inverted here because screen-space y axis is flipped! */
 	const v3f32 ndcSpacePoint = 
 		{ .x = clipSpacePoint.elements[0] / clipSpacePoint.elements[3]
-		, .y = clipSpacePoint.elements[1] / clipSpacePoint.elements[3]
+		, .y = clipSpacePoint.elements[1] / clipSpacePoint.elements[3] * -1
 		, .z = clipSpacePoint.elements[2] / clipSpacePoint.elements[3]
 	};
 	/* calculate screen-space.  glsl formula = 
