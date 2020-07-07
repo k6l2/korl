@@ -392,6 +392,7 @@
 [ ] KML-platform: UDP networking API
 [ ] cleanup build script by using windows batch functions (if possible)
 [ ] vscode: create my own extension 
+	https://code.visualstudio.com/api/get-started/your-first-extension
 	[ ] automatically place a semicolon at the end of a line
 		[ ] work correctly with multiple cursors
 	[ ] automatically place a semicolon at the end of a struct/enum/class 
@@ -472,3 +473,5 @@
 	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/lockless-programming?redirectedfrom=MSDN#xbox-360-performance
 	https://docs.microsoft.com/en-us/cpp/standard-library/atomic-functions?view=vs-2019#atomic_thread_fence
 	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange
+[ ] investigate using `gedit` to test for hidden memory errors
+	https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/gflags

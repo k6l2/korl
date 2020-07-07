@@ -293,6 +293,8 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 	glMatrixMode(GL_PROJECTION);
 	GLfloat gl_matrixProjection[16];
 	glGetFloatv(GL_PROJECTION_MATRIX, gl_matrixProjection);
+	/* @optimization: apparently you can just pass GL_TRANSPOSE_MODELVIEW_MATRIX 
+		to glGet* functions, so I don't need to transpose my matrices? */
 	const m4x4f32 mView       = m4x4f32::transpose(gl_matrixView);
 	const m4x4f32 mProjection = m4x4f32::transpose(gl_matrixProjection);
 	GL_CHECK_ERROR();
