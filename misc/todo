@@ -388,6 +388,13 @@
 [ ] win32: copy VC_*.pdb files to the minidump file output location
 [ ] KAM: when `kamGetRawSound` gets called and the asset is UNUSED, attempt to 
 	load the asset by calling `kamPushAsset` (see `kamGetTexture`)
+[ ] win32: DirectInput 
+	https://bell0bytes.eu/directinput/
+	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
+	[ ] Logitech F310 support
+	[ ] PS4 controller support
+		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37
+[ ] pull kmath out of global-defines
 [ ] change `kassert` to be platform-specific code
 [ ] build: ensure all necessary environment variables are set
 	https://stackoverflow.com/a/37073832

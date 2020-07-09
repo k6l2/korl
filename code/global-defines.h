@@ -71,6 +71,10 @@ public:
 	{
 		return {scalar*x, scalar*y};
 	}
+	inline v2f32 operator/(f32 scalar) const
+	{
+		return {x/scalar, y/scalar};
+	}
 	inline v2f32 operator+(const v2f32& other) const
 	{
 		return {x + other.x, y + other.y};
