@@ -1,7 +1,7 @@
 #include "kAudioMixer.h"
 struct AudioTrack
 {
-	KAssetHandle soundAssetHandle = INVALID_KASSET_HANDLE;
+	KAssetIndex soundKAssetId = KAssetIndex::ENUM_SIZE;
 	u32 currentSampleBlock;
 	u16 idSalt;
 	bool repeat;
@@ -23,7 +23,7 @@ internal KTapeHandle kauHashTrack(KAudioMixer* audioMixer, u16 trackIndex)
 	}
 	kassert(trackIndex < audioMixer->trackCount);
 	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
-	return (static_cast<u64>(tracks[trackIndex].soundAssetHandle) << 32) |
+	return (static_cast<u64>(tracks[trackIndex].soundKAssetId) << 32) |
 		   (static_cast<u32>(tracks[trackIndex].idSalt) << 16) |
 		   trackIndex;
 }
@@ -61,13 +61,12 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 	//	layer, and consequently if the track has run out of tape.
 	for(u16 t = 0; t < audioMixer->trackCount; t++)
 	{
-		if(tracks[t].soundAssetHandle == INVALID_KASSET_HANDLE)
+		if(tracks[t].soundKAssetId == KAssetIndex::ENUM_SIZE)
 		{
 			continue;
 		}
 		const RawSound tRawSound = 
-			kamGetRawSound(audioMixer->assetManager, 
-			               tracks[t].soundAssetHandle);
+			kamGetRawSound(audioMixer->assetManager, tracks[t].soundKAssetId);
 		tracks[t].currentSampleBlock += sampleBlocksConsumed;
 		if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
 		{
@@ -77,10 +76,10 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 			}
 			else
 			{
-				tracks[t].soundAssetHandle = INVALID_KASSET_HANDLE;
+				tracks[t].soundKAssetId = KAssetIndex::ENUM_SIZE;
 			}
 		}
-		if(tracks[t].soundAssetHandle != INVALID_KASSET_HANDLE)
+		if(tracks[t].soundKAssetId != KAssetIndex::ENUM_SIZE)
 		{
 			tracksActive++;
 		}
@@ -101,7 +100,7 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 		}
 		for(u16 t = 0; t < audioMixer->trackCount; t++)
 		{
-			if(tracks[t].soundAssetHandle == INVALID_KASSET_HANDLE)
+			if(tracks[t].soundKAssetId == KAssetIndex::ENUM_SIZE)
 			{
 				continue;
 			}
@@ -113,7 +112,7 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 			        tracks[t].volumeRatio <= 1.f);
 			const RawSound tRawSound = 
 				kamGetRawSound(audioMixer->assetManager, 
-				               tracks[t].soundAssetHandle);
+				               tracks[t].soundKAssetId);
 			u32 currTapeSampleBlock = s + tracks[t].currentSampleBlock;
 			if(currTapeSampleBlock >= tRawSound.sampleBlockCount)
 			{
@@ -143,30 +142,31 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer, 
                                   KAssetIndex assetIndex)
 {
-	const KAssetHandle kahSound = 
-		kamPushAsset(audioMixer->assetManager, assetIndex);
-	kassert(kamIsRawSound(audioMixer->assetManager, kahSound));
+	/* locate the first available audio track in the mixer (if one exists) */
 	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
 	u16 trackIndexFirstAvailable = 0;
 	for(; trackIndexFirstAvailable < audioMixer->trackCount
 		; trackIndexFirstAvailable++)
 	{
-		if(tracks[trackIndexFirstAvailable].soundAssetHandle == 
-			INVALID_KASSET_HANDLE)
+		if(tracks[trackIndexFirstAvailable].soundKAssetId == 
+			KAssetIndex::ENUM_SIZE)
 		{
 			break;
 		}
 	}
 	if(trackIndexFirstAvailable >= audioMixer->trackCount)
+	/* all of the audio mixer's tracks are currently playing sounds */
 	{
-		// all of the audio mixer's tracks are currently playing sounds //
 		return kauHashTrack(audioMixer, audioMixer->trackCount);
 	}
+	/* there is an available tape track to put the sound in!  setup the track to 
+		use the sound contained in `assetIndex` and pop it into the mixer.  We 
+		then just return a handle to the tape */
 	const u16 nextTapeSalt = static_cast<u16>( 
 		tracks[trackIndexFirstAvailable].idSalt + u16(1) );
 	tracks[trackIndexFirstAvailable] = {};
-	tracks[trackIndexFirstAvailable].soundAssetHandle = kahSound;
-	tracks[trackIndexFirstAvailable].idSalt           = nextTapeSalt;
+	tracks[trackIndexFirstAvailable].soundKAssetId = assetIndex;
+	tracks[trackIndexFirstAvailable].idSalt        = nextTapeSalt;
 	return kauHashTrack(audioMixer, trackIndexFirstAvailable);
 }
 internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 

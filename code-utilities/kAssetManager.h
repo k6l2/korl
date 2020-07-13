@@ -11,8 +11,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
                                      KmlPlatformApi* kpl, KrbApi* krb);
 internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle);
 internal void kamFreeAsset(KAssetManager* kam, KAssetIndex assetIndex);
-internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah);
-internal RawSound kamGetRawSound(KAssetManager* kam, KAssetHandle kahSound);
+internal RawSound kamGetRawSound(KAssetManager* kam, KAssetIndex assetIndex);
 internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
                                         KAssetIndex assetIndex);
 ///TODO: maybe rename this to kamGetImageSize, since texture & image can have 
@@ -24,4 +23,8 @@ internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam,
 internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetIndex assetIndex);
 internal bool kamIsLoadingImages(KAssetManager* kam);
 internal bool kamIsLoadingSounds(KAssetManager* kam);
-internal void kamUnloadChangedAssets(KAssetManager* kam);
+/**
+ * @return # of assets that were unloaded
+ */
+internal u32 kamUnloadChangedAssets(KAssetManager* kam);
+internal void kamPushAllKAssets(KAssetManager* kam);

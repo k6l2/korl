@@ -147,17 +147,6 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetIndex assetIndex)
 	const KAssetHandle assetHandle = static_cast<KAssetHandle>(assetIndex);
 	kamFreeAsset(kam, assetHandle);
 }
-internal bool kamIsRawSound(KAssetManager* kam, KAssetHandle kah)
-{
-	if(kah < kam->maxAssetHandles)
-	{
-		KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
-		return assets[kah].type == KAssetType::RAW_SOUND;
-	}
-	KLOG(ERROR, "Attempted to access asset handle outside the range [0,%i)!",
-	     kam->maxAssetHandles);
-	return false;
-}
 internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 {
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
@@ -215,21 +204,31 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 	asset->loaded = true;
 }
 internal RawSound kamGetRawSound(KAssetManager* kam,
-                                 KAssetHandle kahSound)
+                                 KAssetIndex assetIndex)
 {
+	if(assetIndex >= KAssetIndex::ENUM_SIZE)
+	{
+		return kam->defaultAssetSound.assetData.sound;
+	}
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
-	kassert(kahSound < kam->maxAssetHandles);
-	KAsset*const asset = assets + kahSound;
-	kassert(asset->type == KAssetType::RAW_SOUND);
+	const KAssetHandle assetHandle = static_cast<KAssetHandle>(assetIndex);
+	kassert(assetHandle < kam->maxAssetHandles);
+	KAsset*const asset = assets + assetHandle;
+	if(asset->type == KAssetType::UNUSED)
+	{
+		kamPushAsset(kam, assetIndex);
+	}
 	if(asset->loaded)
 	{
+		kassert(asset->type == KAssetType::RAW_SOUND);
 		return asset->assetData.sound;
 	}
 	else
 	{
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
-			kamOnLoadingJobFinished(kam, kahSound);
+			kamOnLoadingJobFinished(kam, assetHandle);
+			kassert(asset->type == KAssetType::RAW_SOUND);
 			return asset->assetData.sound;
 		}
 		return kam->defaultAssetSound.assetData.sound;
@@ -269,6 +268,7 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 	}
 	if(asset->loaded)
 	{
+		kassert(asset->type == KAssetType::RAW_IMAGE);
 		return asset->assetData.image.krbTextureHandle;
 	}
 	else
@@ -276,6 +276,7 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kamOnLoadingJobFinished(kam, assetHandle);
+			kassert(asset->type == KAssetType::RAW_IMAGE);
 			return asset->assetData.image.krbTextureHandle;
 		}
 		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
@@ -293,14 +294,13 @@ internal v2u32 kamGetTextureSize(KAssetManager* kam,
 	const KAssetHandle assetHandle = static_cast<KAssetHandle>(assetIndex);
 	kassert(assetHandle < kam->maxAssetHandles);
 	KAsset*const asset = assets + assetHandle;
-	kassert(asset->type == KAssetType::UNUSED || 
-	        asset->type == KAssetType::RAW_IMAGE);
 	if(asset->type == KAssetType::UNUSED)
 	{
 		kamPushAsset(kam, assetIndex);
 	}
 	if(asset->loaded)
 	{
+		kassert(asset->type == KAssetType::RAW_IMAGE);
 		return {asset->assetData.image.rawImage.sizeX,
 		        asset->assetData.image.rawImage.sizeY};
 	}
@@ -309,6 +309,7 @@ internal v2u32 kamGetTextureSize(KAssetManager* kam,
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kamOnLoadingJobFinished(kam, assetHandle);
+			kassert(asset->type == KAssetType::RAW_IMAGE);
 			return {asset->assetData.image.rawImage.sizeX,
 			        asset->assetData.image.rawImage.sizeY};
 		}
@@ -333,6 +334,7 @@ internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam,
 	}
 	if(asset->loaded)
 	{
+		kassert(asset->type == KAssetType::FLIPBOOK_META);
 		return asset->assetData.flipbook.metaData;
 	}
 	else
@@ -340,6 +342,7 @@ internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam,
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kamOnLoadingJobFinished(kam, assetHandle);
+			kassert(asset->type == KAssetType::FLIPBOOK_META);
 			return asset->assetData.flipbook.metaData;
 		}
 		return kam->defaultAssetFlipbookMetaData.assetData.flipbook.metaData;
@@ -431,9 +434,10 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 	kassert(assetHandle < kam->maxAssetHandles);
 	KAsset*const asset = assets + assetHandle;
 	if(asset->type == KAssetType::UNUSED)
+	/* load the asset from the platform layer */
 	{
-		// load the asset from the platform layer //
-		asset->loaded = false;
+		KLOG(INFO, "Loading asset '%s'...", kAssetFileNames[assetHandle]);
+		asset->loaded      = false;
 		asset->kAssetIndex = assetHandle;
 		switch(kamAssetFileType(assetIndex))
 		{
@@ -508,8 +512,9 @@ internal bool kamIsLoadingSounds(KAssetManager* kam)
 {
 	return kamIsLoadingAssets(kam, KAssetType::RAW_SOUND);
 }
-internal void kamUnloadChangedAssets(KAssetManager* kam)
+internal u32 kamUnloadChangedAssets(KAssetManager* kam)
 {
+	u32 unloadedAssetCount = 0;
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	for(KAssetHandle kah = 0; kah < kam->maxAssetHandles; kah++)
 	{
@@ -519,8 +524,18 @@ internal void kamUnloadChangedAssets(KAssetManager* kam)
 			if(kam->kpl->isAssetChanged(kAssetFileNames[kah], 
 			                            asset->lastWriteTime))
 			{
+				KLOG(INFO, "Unloading asset '%s'...", kAssetFileNames[kah]);
 				kamFreeAsset(kam, kah);
+				unloadedAssetCount++;
 			}
 		}
+	}
+	return unloadedAssetCount;
+}
+internal void kamPushAllKAssets(KAssetManager* kam)
+{
+	for(u32 kAssetId = 0; kAssetId < KASSET_COUNT; kAssetId++)
+	{
+		kamPushAsset(kam, KAssetIndex(kAssetId));
 	}
 }

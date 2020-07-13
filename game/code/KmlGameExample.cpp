@@ -60,8 +60,7 @@ GAME_INITIALIZE(gameInitialize)
 		             KAssetIndex::sfx_joesteroids_battle_theme_modified_ogg);
 	kauSetRepeat(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, true);
 	// Tell the asset manager to load assets asynchronously! //
-	kamPushAsset(g_gs->assetManager, KAssetIndex::gfx_fighter_fbm);
-	kamPushAsset(g_gs->assetManager, KAssetIndex::gfx_fighter_exhaust_fbm);
+	kamPushAllKAssets(g_gs->assetManager);
 	// Initialize flipbooks //
 	kfbInit(&g_gs->kFbShip, g_gs->assetManager, g_krb, 
 	        KAssetIndex::gfx_fighter_fbm);
@@ -136,7 +135,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		return true;
 	}
-	kamUnloadChangedAssets(g_gs->assetManager);
+	/* hot-reload all assets which have been reported to be changed by the 
+		platform layer (newer file write timestamp) */
+	if(kamUnloadChangedAssets(g_gs->assetManager))
+		kamPushAllKAssets(g_gs->assetManager);
 	for(u8 c = 0; c < numGamePads; c++)
 	{
 		GamePad& gpad = gamePadArray[c];
