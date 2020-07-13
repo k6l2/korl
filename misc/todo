@@ -391,6 +391,7 @@
 [ ] win32: DirectInput 
 	https://bell0bytes.eu/directinput/
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
+	[x] ignore Xinput devices, because Xinput gives more functionality
 	[ ] Logitech F310 support
 	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37

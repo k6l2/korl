@@ -1,6 +1,7 @@
 #include "win32-main.h"
 #include "win32-dsound.h"
 #include "win32-xinput.h"
+#include "win32-directinput.h"
 #include "win32-krb-opengl.h"
 #include "win32-jobQueue.h"
 #include "kGeneralAllocator.h"
@@ -2037,6 +2038,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		     GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
+	w32LoadDInput(hInstance);
 	w32LoadXInput();
 #if 0
 	w32ResizeDibSection(g_backBuffer, 1280, 720);
@@ -2439,6 +2441,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 }
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
+#include "win32-directinput.cpp"
 #include "win32-krb-opengl.cpp"
 #include "win32-jobQueue.cpp"
 #include "krb-opengl.cpp"
