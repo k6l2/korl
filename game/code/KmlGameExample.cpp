@@ -187,6 +187,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			g_gs->viewOffset2d = {};
 		}
+#if 1
+		if(gpad.faceDown == ButtonState::PRESSED)
+		{
+			*(int*)0 = 0;
+		}
+#endif //1
 	}
 	g_gs->viewOffset2d = g_gs->shipWorldPosition;
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);

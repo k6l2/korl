@@ -385,7 +385,7 @@
 	each other!
 [x] KRB: convert world-space vectors to screen-space
 	https://stackoverflow.com/a/8493759
-[ ] win32: copy VC_*.pdb files to the minidump file output location
+[x] win32: copy VC_*.pdb files to the minidump file output location
 [ ] KAM: when `kamGetRawSound` gets called and the asset is UNUSED, attempt to 
 	load the asset by calling `kamPushAsset` (see `kamGetTexture`)
 [ ] win32: DirectInput 

@@ -1595,6 +1595,19 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 			            szFileNameCopySource, szFileName, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
 		}
+		/* Attempt to copy the win32 application's VC_*.pdb file to the dump 
+			location */
+		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\VC_%s.pdb"),
+		                g_pathToExe, APPLICATION_NAME);
+		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\VC_%s.pdb"), 
+		                szPdbDirectory, APPLICATION_NAME);
+		if(!CopyFile(szFileNameCopySource, szFileName, false))
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
+			            szFileNameCopySource, szFileName, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
 		// Find the most recent game*.pdb file, then place the filename into 
 		//	`szFileNameCopySource` //
 		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s*.pdb"),
@@ -1644,6 +1657,18 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s"),
 		                g_pathToExe, fileNameGamePdb);
 		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s"), 
+		                szPdbDirectory, fileNameGamePdb);
+		if(!CopyFile(szFileNameCopySource, szFileName, false))
+		{
+			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
+			            szFileNameCopySource, szFileName, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+		/* attempt to copy the game's VC_*.pdb file */
+		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\VC_%s"),
+		                g_pathToExe, fileNameGamePdb);
+		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\VC_%s"), 
 		                szPdbDirectory, fileNameGamePdb);
 		if(!CopyFile(szFileNameCopySource, szFileName, false))
 		{

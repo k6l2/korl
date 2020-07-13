@@ -199,7 +199,7 @@ del %kmlGameDllFileName%*.dll > NUL 2> NUL
 rem --- Compile game code module ---
 cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-	/FdVC_%kmlGameDllFileName% ^
+	/FdVC_%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
 	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
 	/link %CommonLinkerFlags% ^
 	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
@@ -233,7 +233,7 @@ del %kmlApplicationName%*.pdb > NUL 2> NUL
 del %kmlApplicationName%*.dll > NUL 2> NUL
 rem --- Compile Windows Executable ---
 cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
-	/FdVC_%kmlApplicationName% /Fm%kmlApplicationName%.map ^
+	/FdVC_%kmlApplicationName%.pdb /Fm%kmlApplicationName%.map ^
 	/DKML_APP_NAME=%kmlApplicationName% ^
 	/DKML_APP_VERSION=%kmlApplicationVersion% ^
 	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^
