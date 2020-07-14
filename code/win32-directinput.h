@@ -2,6 +2,8 @@
 #include "global-defines.h"
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
+global_variable IDirectInput8* g_pIDInput;
+global_variable LPDIRECTINPUTDEVICE8 g_dInputDevices[8];
 #if 0
 #define DINPUT_CREATE(name) HRESULT name(HINSTANCE hinst,    \
                                          DWORD dwVersion,    \
