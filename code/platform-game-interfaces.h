@@ -193,10 +193,9 @@ struct GameAudioBuffer
 	u8 numSoundChannels_PADDING[7];
 };
 enum class ButtonState : u8
-{
-	NOT_PRESSED,
-	PRESSED,
-	HELD
+	{ NOT_PRESSED
+	, PRESSED
+	, HELD
 };
 struct GameKeyboard
 {
@@ -316,8 +315,18 @@ struct GameKeyboard
 		};
 	};
 };
+enum class GamePadType : u8
+	{ UNPLUGGED
+	, XINPUT
+	, DINPUT_GENERIC
+};
 struct GamePad
 {
+	/** the GamePadType serves two purposes: 
+	 * - determining whether or not the controller is plugged in
+	 * - determining what type of controller it is 
+	 */
+	GamePadType type;
 	v2f32 normalizedStickLeft;
 	v2f32 normalizedStickRight;
 	union

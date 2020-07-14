@@ -2095,8 +2095,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                             &gameKeyboardA.vKeys[0]) ==
 	         CARRAY_COUNT(gameKeyboardA.vKeys) );
 #endif
-	GamePad gamePadArrayA[XUSER_MAX_COUNT] = {};
-	GamePad gamePadArrayB[XUSER_MAX_COUNT] = {};
+	GamePad gamePadArrayA[XUSER_MAX_COUNT + CARRAY_COUNT(g_dInputDevices)] = {};
+	GamePad gamePadArrayB[XUSER_MAX_COUNT + CARRAY_COUNT(g_dInputDevices)] = {};
 	GamePad* gamePadArrayCurrentFrame  = gamePadArrayA;
 	GamePad* gamePadArrayPreviousFrame = gamePadArrayB;
 #if INTERNAL_BUILD
@@ -2106,7 +2106,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                             &gamePadArrayA[0].buttons[0]) ==
 	         CARRAY_COUNT(gamePadArrayA[0].buttons) );
 #endif
-	u8 numGamePads = 0;
 	local_persist const u8 SOUND_CHANNELS = 2;
 	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
 	local_persist const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
@@ -2317,9 +2316,15 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				gamePadArrayPreviousFrame = gamePadArrayB;
 				gamePadArrayCurrentFrame  = gamePadArrayA;
 			}
+#if 1
+			/* read game pads from DirectInput & XInput */
+			{
+			}
+#else// !0
 			w32XInputGetGamePadStates(&numGamePads,
 			                          gamePadArrayCurrentFrame,
 			                          gamePadArrayPreviousFrame);
+#endif// 0
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
@@ -2351,7 +2356,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			if(!game.updateAndDraw(deltaSeconds,
 			                       {windowDims.width, windowDims.height}, 
 			                       *gameKeyboardCurrentFrame,
-			                       gamePadArrayCurrentFrame, numGamePads, 
+			                       gamePadArrayCurrentFrame, 
+			                       CARRAY_COUNT(gamePadArrayA), 
 			                       g_isFocused))
 			{
 				g_running = false;
@@ -2359,6 +2365,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
 			                    SOUND_CHANNELS, gameSoundMemory, 
 			                    cursorWritePrev, game);
+#if 0
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
 			{
@@ -2372,6 +2379,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					///TODO: error & controller not connected return values
 				}
 			}
+#endif // 0
 			// update window graphics //
 			ImGui::Render();
 			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());

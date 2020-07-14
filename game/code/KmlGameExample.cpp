@@ -142,6 +142,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	for(u8 c = 0; c < numGamePads; c++)
 	{
 		GamePad& gpad = gamePadArray[c];
+		if(gpad.type == GamePadType::UNPLUGGED)
+			continue;
 		if(gpad.shoulderLeft == ButtonState::PRESSED)
 		{
 			kauPlaySound(g_gs->kAudioMixer, 

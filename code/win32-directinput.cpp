@@ -132,6 +132,54 @@ LCleanup:
 	return bIsXinputDevice;
 }
 #endif // SHITTY_MICROSOFT_CHECK_IF_DINPUT_DEVICE_IS_XINPUT_COMPATIBLE_CODE
+BOOL DIEnumDeviceAbsoluteAxes(LPCDIDEVICEOBJECTINSTANCE lpddoi, 
+                              LPVOID pvDI8Device)
+{
+	LPDIRECTINPUTDEVICE8 di8Device = 
+		reinterpret_cast<LPDIRECTINPUTDEVICE8>(pvDI8Device);
+	/* set the axis range */
+	{
+		DIPROPRANGE gameControllerRange;
+		gameControllerRange.diph.dwSize       = sizeof(DIPROPRANGE);
+		gameControllerRange.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+		gameControllerRange.diph.dwHow        = DIPH_BYID;
+		gameControllerRange.diph.dwObj        = lpddoi->dwType;
+		gameControllerRange.lMin = -0xFFFF;
+		gameControllerRange.lMax =  0xFFFF;
+		const HRESULT hResult = 
+			di8Device->SetProperty(DIPROP_RANGE, &gameControllerRange.diph);
+		if(hResult == DI_PROPNOEFFECT)
+		{
+			KLOG(WARNING, "Axis range property is read-only.");
+		}
+		else if(hResult != DI_OK)
+		{
+			KLOG(ERROR, "Failed to set axis range!");
+		}
+	}
+	/* set the deadzone range */
+	{
+		DIPROPDWORD gameControllerDeadZone;
+		gameControllerDeadZone.diph.dwSize       = sizeof(DIPROPDWORD);
+		gameControllerDeadZone.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+		gameControllerDeadZone.diph.dwHow        = DIPH_BYID;
+		gameControllerDeadZone.diph.dwObj        = lpddoi->dwType;
+		/* the deadzone data is measured in centi-percents [0,10000] */
+		gameControllerDeadZone.dwData = 100;
+		const HRESULT hResult = 
+			di8Device->SetProperty(DIPROP_DEADZONE, 
+			                       &gameControllerDeadZone.diph);
+		if(hResult == DI_PROPNOEFFECT)
+		{
+			KLOG(WARNING, "Deadzone property is read-only.");
+		}
+		else if(hResult != DI_OK)
+		{
+			KLOG(ERROR, "Failed to set deadzone!");
+		}
+	}
+	return DIENUM_CONTINUE;
+}
 /**
  * This function will attempt to use the given device instance to create a 
  * direct input device and store it in `g_dInputDevices`.  If the device has 
@@ -204,12 +252,62 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 			return;
 		}
 	}
+	/* set the data format of the new device.  Setting the data format to 
+		c_dfDIJoystick2 will allow us to fetch data into the pre-defined 
+		directinput struct DIJOYSTATE2 */
+	{
+		const HRESULT hResult = g_dInputDevices[firstEmptyInputDevice]->
+			SetDataFormat(&c_dfDIJoystick2);
+		if(hResult != DI_OK)
+		{
+			KLOG(ERROR, "Failed to set direct input device data format! "
+			     "'%s':'%s'", lpddi->tszProductName, lpddi->tszInstanceName);
+			return;
+		}
+	}
+	/* query the device for capabilities and set device properties */
+	{
+		DIDEVCAPS capabilities;
+		capabilities.dwSize = sizeof(DIDEVCAPS);
+		const HRESULT hResultGetCaps = 
+			g_dInputDevices[firstEmptyInputDevice]->
+				GetCapabilities(&capabilities);
+		if(hResultGetCaps != DI_OK)
+		{
+			KLOG(ERROR, "Failed to get direct input device capabilities! "
+			     "'%s':'%s'", lpddi->tszProductName, lpddi->tszInstanceName);
+			return;
+		}
+		const HRESULT hResultEnumAbsAxes = 
+			g_dInputDevices[firstEmptyInputDevice]->
+				EnumObjects(DIEnumDeviceAbsoluteAxes, 
+				            g_dInputDevices[firstEmptyInputDevice], 
+				            DIDFT_ABSAXIS);
+		if(hResultEnumAbsAxes != DI_OK)
+		{
+			KLOG(ERROR, "Failed to enum direct input device absolute axes! "
+			     "'%s':'%s'", lpddi->tszProductName, lpddi->tszInstanceName);
+			return;
+		}
+	}
+	/* actually acquire the device so that we can start getting input! */
+	{
+		const HRESULT hResult = 
+			g_dInputDevices[firstEmptyInputDevice]->Acquire();
+		if(hResult != DI_OK)
+		{
+			KLOG(ERROR, "Failed to acquire direct input device! '%s':'%s'",
+			     lpddi->tszProductName, lpddi->tszInstanceName);
+			return;
+		}
+	}
 }
 /**
  * @return DIENUM_CONTINUE to continue the enumeration.  DIENUM_STOP to stop the 
  *         enumeration.
  */
-internal BOOL DIEnumDevicesCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
+internal BOOL DIEnumAttachedGameControllers(LPCDIDEVICEINSTANCE lpddi, 
+                                            LPVOID /*pvRef*/)
 {
 	if(IsXInputDevice(&lpddi->guidProduct))
 	{
@@ -278,7 +376,8 @@ internal void w32LoadDInput(HINSTANCE hInst)
 	/* enumerate DirectInput compatible devices */
 	{
 		const HRESULT hResult = 
-			g_pIDInput->EnumDevices(DI8DEVCLASS_GAMECTRL, DIEnumDevicesCallback, 
+			g_pIDInput->EnumDevices(DI8DEVCLASS_GAMECTRL, 
+			                        DIEnumAttachedGameControllers, 
 			                        nullptr, DIEDFL_ATTACHEDONLY);
 		if(hResult != DI_OK)
 		{

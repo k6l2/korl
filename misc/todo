@@ -393,8 +393,10 @@
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
 	[x] ignore Xinput devices, because Xinput gives more functionality
 	[ ] Logitech F310 support
+	[ ] poll xinput along with dinput controllers
 	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37
+	[ ] reimplement force feedback for Xinput controllers
 [ ] pull kmath out of global-defines
 [ ] change `kassert` to be platform-specific code
 [ ] build: ensure all necessary environment variables are set
