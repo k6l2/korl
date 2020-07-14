@@ -174,14 +174,35 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 		return;
 	}
 	/* create a new direct input device and add it to the global array */
-	const HRESULT hResult = 
-		g_pIDInput->CreateDevice(lpddi->guidInstance, 
-		                         &g_dInputDevices[firstEmptyInputDevice], 
-		                         nullptr);
-	if(hResult != DI_OK)
 	{
-		KLOG(ERROR, "Failed to create direct input device! '%s':'%s'", 
-		     lpddi->tszProductName, lpddi->tszInstanceName);
+		const HRESULT hResult = 
+			g_pIDInput->CreateDevice(lpddi->guidInstance, 
+			                         &g_dInputDevices[firstEmptyInputDevice], 
+			                         nullptr);
+		if(hResult != DI_OK)
+		{
+			KLOG(ERROR, "Failed to create direct input device! '%s':'%s'", 
+			     lpddi->tszProductName, lpddi->tszInstanceName);
+			return;
+		}
+	}
+	/* set the cooperative level of the new device */
+	{
+		const HWND hwnd = GetActiveWindow();
+		if(!hwnd)
+		{
+			KLOG(ERROR, "Failed to get active window; "
+			            "cannot set cooperative level of directinput device!");
+			return;
+		}
+		const HRESULT hResult = g_dInputDevices[firstEmptyInputDevice]->
+			SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_EXCLUSIVE);
+		if(hResult != DI_OK)
+		{
+			KLOG(ERROR, "Failed to set direct input device cooperation level! "
+			     "'%s':'%s'", lpddi->tszProductName, lpddi->tszInstanceName);
+			return;
+		}
 	}
 }
 /**

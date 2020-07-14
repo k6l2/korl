@@ -2038,8 +2038,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		     GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
-	w32LoadDInput(hInstance);
-	w32LoadXInput();
 #if 0
 	w32ResizeDibSection(g_backBuffer, 1280, 720);
 #endif
@@ -2078,6 +2076,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		KLOG(ERROR, "Failed to create window! GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
+	w32LoadDInput(hInstance);
+	w32LoadXInput();
 	w32KrbOglInitialize(mainWindow);
 	w32KrbOglSetVSyncPreference(true);
 	///TODO: update the monitorRefreshHz and dependent variable realtime when 
