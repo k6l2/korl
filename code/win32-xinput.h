@@ -12,6 +12,5 @@ global_variable fnSig_XInputSetState* XInputSetState_;
 #define XInputGetState XInputGetState_
 #define XInputSetState XInputSetState_
 internal void w32LoadXInput();
-internal void w32XInputGetGamePadStates(u8* io_numGamePads,
-                                        GamePad* gamePadArrayCurrentFrame,
+internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame);

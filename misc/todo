@@ -399,7 +399,7 @@
 			GamePad structure
 		[~] report as an Xinput device so the game knows what the buttons should 
 			look like.
-	[ ] poll xinput along with dinput controllers
+	[x] poll xinput along with dinput controllers
 	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37
 	[ ] reimplement force feedback for Xinput controllers

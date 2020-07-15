@@ -2327,17 +2327,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				gamePadArrayPreviousFrame = gamePadArrayB;
 				gamePadArrayCurrentFrame  = gamePadArrayA;
 			}
-#if 1
 			/* read game pads from DirectInput & XInput */
 			w32DInputGetGamePadStates(gamePadArrayCurrentFrame  + 
 			                              XUSER_MAX_COUNT, 
 			                          gamePadArrayPreviousFrame + 
 			                              XUSER_MAX_COUNT);
-#else// !0
-			w32XInputGetGamePadStates(&numGamePads,
-			                          gamePadArrayCurrentFrame,
+			w32XInputGetGamePadStates(gamePadArrayCurrentFrame,
 			                          gamePadArrayPreviousFrame);
-#endif// 0
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();

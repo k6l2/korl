@@ -116,104 +116,102 @@ internal void w32ProcessXInputTrigger(BYTE padTrigger,
 			(255.f      - padTriggerDeadzone);
 	}
 }
-internal void w32XInputGetGamePadStates(u8* io_numGamePads,
-                                        GamePad* gamePadArrayCurrentFrame,
+internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame)
 {
-	*io_numGamePads = 0;
 	for(u32 ci = 0; ci < XUSER_MAX_COUNT; ci++)
 	{
 		XINPUT_STATE controllerState;
 		if( XInputGetState(ci, &controllerState) != ERROR_SUCCESS )
 		{
-			///TODO: handle controller not available
+			gamePadArrayCurrentFrame[ci].type = GamePadType::UNPLUGGED;
 			continue;
 		}
 		///TODO: investigate controllerState.dwPacketNumber for 
 		///      input polling performance
+		gamePadArrayCurrentFrame[ci].type = GamePadType::XINPUT;
 		const XINPUT_GAMEPAD& pad = controllerState.Gamepad;
 		w32ProcessXInputStick(
 			pad.sThumbLX, pad.sThumbLY,
 			XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2,
-			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedStickLeft.x,
-			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedStickLeft.y);
+			&gamePadArrayCurrentFrame[ci].normalizedStickLeft.x,
+			&gamePadArrayCurrentFrame[ci].normalizedStickLeft.y);
 		w32ProcessXInputStick(
 			pad.sThumbRX, pad.sThumbRY,
 			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
-			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedStickRight.x,
-			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedStickRight.y);
+			&gamePadArrayCurrentFrame[ci].normalizedStickRight.x,
+			&gamePadArrayCurrentFrame[ci].normalizedStickRight.y);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_UP,
-			gamePadArrayPreviousFrame[*io_numGamePads].dPadUp,
-			&gamePadArrayCurrentFrame[*io_numGamePads].dPadUp);
+			gamePadArrayPreviousFrame[ci].dPadUp,
+			&gamePadArrayCurrentFrame[ci].dPadUp);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN,
-			gamePadArrayPreviousFrame[*io_numGamePads].dPadDown,
-			&gamePadArrayCurrentFrame[*io_numGamePads].dPadDown);
+			gamePadArrayPreviousFrame[ci].dPadDown,
+			&gamePadArrayCurrentFrame[ci].dPadDown);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT,
-			gamePadArrayPreviousFrame[*io_numGamePads].dPadLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].dPadLeft);
+			gamePadArrayPreviousFrame[ci].dPadLeft,
+			&gamePadArrayCurrentFrame[ci].dPadLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT,
-			gamePadArrayPreviousFrame[*io_numGamePads].dPadRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].dPadRight);
+			gamePadArrayPreviousFrame[ci].dPadRight,
+			&gamePadArrayCurrentFrame[ci].dPadRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_START,
-			gamePadArrayPreviousFrame[*io_numGamePads].start,
-			&gamePadArrayCurrentFrame[*io_numGamePads].start);
+			gamePadArrayPreviousFrame[ci].start,
+			&gamePadArrayCurrentFrame[ci].start);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_BACK,
-			gamePadArrayPreviousFrame[*io_numGamePads].back,
-			&gamePadArrayCurrentFrame[*io_numGamePads].back);
+			gamePadArrayPreviousFrame[ci].back,
+			&gamePadArrayCurrentFrame[ci].back);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB,
-			gamePadArrayPreviousFrame[*io_numGamePads].stickClickLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].stickClickLeft);
+			gamePadArrayPreviousFrame[ci].stickClickLeft,
+			&gamePadArrayCurrentFrame[ci].stickClickLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB,
-			gamePadArrayPreviousFrame[*io_numGamePads].stickClickRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].stickClickRight);
+			gamePadArrayPreviousFrame[ci].stickClickRight,
+			&gamePadArrayCurrentFrame[ci].stickClickRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER,
-			gamePadArrayPreviousFrame[*io_numGamePads].shoulderLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].shoulderLeft);
+			gamePadArrayPreviousFrame[ci].shoulderLeft,
+			&gamePadArrayCurrentFrame[ci].shoulderLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER,
-			gamePadArrayPreviousFrame[*io_numGamePads].shoulderRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].shoulderRight);
+			gamePadArrayPreviousFrame[ci].shoulderRight,
+			&gamePadArrayCurrentFrame[ci].shoulderRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_A,
-			gamePadArrayPreviousFrame[*io_numGamePads].faceDown,
-			&gamePadArrayCurrentFrame[*io_numGamePads].faceDown);
+			gamePadArrayPreviousFrame[ci].faceDown,
+			&gamePadArrayCurrentFrame[ci].faceDown);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_B,
-			gamePadArrayPreviousFrame[*io_numGamePads].faceRight,
-			&gamePadArrayCurrentFrame[*io_numGamePads].faceRight);
+			gamePadArrayPreviousFrame[ci].faceRight,
+			&gamePadArrayCurrentFrame[ci].faceRight);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_X,
-			gamePadArrayPreviousFrame[*io_numGamePads].faceLeft,
-			&gamePadArrayCurrentFrame[*io_numGamePads].faceLeft);
+			gamePadArrayPreviousFrame[ci].faceLeft,
+			&gamePadArrayCurrentFrame[ci].faceLeft);
 		w32ProcessXInputButton(
 			pad.wButtons & XINPUT_GAMEPAD_Y,
-			gamePadArrayPreviousFrame[*io_numGamePads].faceUp,
-			&gamePadArrayCurrentFrame[*io_numGamePads].faceUp);
+			gamePadArrayPreviousFrame[ci].faceUp,
+			&gamePadArrayCurrentFrame[ci].faceUp);
 		w32ProcessXInputTrigger(
 			pad.bLeftTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
-			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedTriggerLeft);
+			&gamePadArrayCurrentFrame[ci].normalizedTriggerLeft);
 		w32ProcessXInputTrigger(
 			pad.bRightTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
-			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedTriggerRight);
+			&gamePadArrayCurrentFrame[ci].normalizedTriggerRight);
 #if INTERNAL_BUILD && 0
 		///TODO: delete this test pls, future me.
-		if(gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceUp == 
+		if(gamePadArrayCurrentFrame[ci].buttons.faceUp == 
 			ButtonState::PRESSED)
 		{
 			RaiseException(0xc0000374, 0, 0, NULL);// RUH ROH...
 		}
 #endif
-		(*io_numGamePads)++;
 	}
 }
