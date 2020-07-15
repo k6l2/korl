@@ -132,6 +132,7 @@ LCleanup:
 	return bIsXinputDevice;
 }
 #endif // SHITTY_MICROSOFT_CHECK_IF_DINPUT_DEVICE_IS_XINPUT_COMPATIBLE_CODE
+#define DINPUT_BUTTON_PRESSED(button) ((button & 0b10000000) != 0)
 BOOL DIEnumDeviceAbsoluteAxes(LPCDIDEVICEOBJECTINSTANCE lpddoi, 
                               LPVOID pvDI8Device)
 {
@@ -144,8 +145,8 @@ BOOL DIEnumDeviceAbsoluteAxes(LPCDIDEVICEOBJECTINSTANCE lpddoi,
 		gameControllerRange.diph.dwHeaderSize = sizeof(DIPROPHEADER);
 		gameControllerRange.diph.dwHow        = DIPH_BYID;
 		gameControllerRange.diph.dwObj        = lpddoi->dwType;
-		gameControllerRange.lMin = -0xFFFF;
-		gameControllerRange.lMax =  0xFFFF;
+		gameControllerRange.lMin = -0x7FFF;
+		gameControllerRange.lMax =  0x7FFF;
 		const HRESULT hResult = 
 			di8Device->SetProperty(DIPROP_RANGE, &gameControllerRange.diph);
 		if(hResult == DI_PROPNOEFFECT)
@@ -236,15 +237,8 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 	}
 	/* set the cooperative level of the new device */
 	{
-		const HWND hwnd = GetActiveWindow();
-		if(!hwnd)
-		{
-			KLOG(ERROR, "Failed to get active window; "
-			            "cannot set cooperative level of directinput device!");
-			return;
-		}
 		const HRESULT hResult = g_dInputDevices[firstEmptyInputDevice]->
-			SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_EXCLUSIVE);
+			SetCooperativeLevel(g_mainWindow, DISCL_BACKGROUND | DISCL_EXCLUSIVE);
 		if(hResult != DI_OK)
 		{
 			KLOG(ERROR, "Failed to set direct input device cooperation level! "
@@ -254,10 +248,10 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 	}
 	/* set the data format of the new device.  Setting the data format to 
 		c_dfDIJoystick2 will allow us to fetch data into the pre-defined 
-		directinput struct DIJOYSTATE2 */
+		directinput struct DIJOYSTATE */
 	{
 		const HRESULT hResult = g_dInputDevices[firstEmptyInputDevice]->
-			SetDataFormat(&c_dfDIJoystick2);
+			SetDataFormat(&c_dfDIJoystick);
 		if(hResult != DI_OK)
 		{
 			KLOG(ERROR, "Failed to set direct input device data format! "
@@ -267,6 +261,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 	}
 	/* query the device for capabilities and set device properties */
 	{
+#if 0
 		DIDEVCAPS capabilities;
 		capabilities.dwSize = sizeof(DIDEVCAPS);
 		const HRESULT hResultGetCaps = 
@@ -278,6 +273,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 			     "'%s':'%s'", lpddi->tszProductName, lpddi->tszInstanceName);
 			return;
 		}
+#endif // 0
 		const HRESULT hResultEnumAbsAxes = 
 			g_dInputDevices[firstEmptyInputDevice]->
 				EnumObjects(DIEnumDeviceAbsoluteAxes, 
@@ -317,7 +313,6 @@ internal BOOL DIEnumAttachedGameControllers(LPCDIDEVICEINSTANCE lpddi,
 	}
 	KLOG(INFO, "DInput device detected! '%s'", lpddi->tszProductName);
 	w32DInputAddDevice(lpddi);
-//	if(IsEqualGUID(lpddi->guidInstance, ))
 	return DIENUM_CONTINUE;
 }
 internal void w32LoadDInput(HINSTANCE hInst)
@@ -328,37 +323,7 @@ internal void w32LoadDInput(HINSTANCE hInst)
 		KLOG(WARNING, "Failed to load dinput8.dll! GetLastError=i", 
 		     GetLastError());
 	}
-//	fnSig_dInputCreate* DirectInput8Create = nullptr;
-	if(LibDInput)
-	{
-//		DirectInput8Create = reinterpret_cast<fnSig_dInputCreate*>( 
-//			GetProcAddress(LibDInput, "DirectInput8Create") );
-//		if(!DirectInput8Create)
-//		{
-//			KLOG(ERROR, "Failed to get DirectInput8Create! GetLastError=i", 
-//			     GetLastError());
-//			return;
-//		}
-#if 0
-		XInputGetState = 
-			(fnSig_XInputGetState*)GetProcAddress(LibXInput, "XInputGetState");
-		if(!XInputGetState)
-		{
-			XInputGetState_ = XInputGetStateStub;
-			KLOG(WARNING, "Failed to get XInputGetState! GetLastError=i", 
-			     GetLastError());
-		}
-		XInputSetState = 
-			(fnSig_XInputSetState*)GetProcAddress(LibXInput, "XInputSetState");
-		if(!XInputSetState)
-		{
-			XInputSetState_ = XInputSetStateStub;
-			KLOG(WARNING, "Failed to get XInputSetState! GetLastError=i", 
-			     GetLastError());
-		}
-#endif// 0
-	}
-	else
+	if(!LibDInput)
 	{
 		KLOG(ERROR, "Failed to load DirectInput!");
 	}
@@ -384,5 +349,186 @@ internal void w32LoadDInput(HINSTANCE hInst)
 			KLOG(ERROR, "Failed to enumerate DirectInput devices! "
 			     "hResult=%li", hResult);
 		}
+	}
+}
+internal void w32ProcessDInputStick(LONG xiThumbX, LONG xiThumbY, 
+                                    u16 circularDeadzoneMagnitude, 
+                                    f32 *o_normalizedStickX, 
+                                    f32 *o_normalizedStickY)
+{
+	if(xiThumbX < -0x7FFF) xiThumbX = -0x7FFF;
+	if(xiThumbY < -0x7FFF) xiThumbY = -0x7FFF;
+	local_persist const f32 MAX_THUMB_MAG = static_cast<f32>(0x7FFF);
+	f32 thumbMag = 
+		sqrtf(static_cast<f32>(xiThumbX)*xiThumbX + xiThumbY*xiThumbY);
+	const f32 thumbNormX = 
+		!kmath::isNearlyZero(thumbMag) ? xiThumbX / thumbMag : 0.f;
+	const f32 thumbNormY = 
+		!kmath::isNearlyZero(thumbMag) ? xiThumbY / thumbMag : 0.f;
+	if(thumbMag <= circularDeadzoneMagnitude)
+	{
+		*o_normalizedStickX = 0.f;
+		*o_normalizedStickY = 0.f;
+		return;
+	}
+	if(thumbMag > MAX_THUMB_MAG) 
+	{
+		thumbMag = MAX_THUMB_MAG;
+	}
+	const f32 thumbMagNorm = (thumbMag - circularDeadzoneMagnitude) / 
+	                    (MAX_THUMB_MAG - circularDeadzoneMagnitude);
+	*o_normalizedStickX = thumbNormX * thumbMagNorm;
+	*o_normalizedStickY = thumbNormY * thumbMagNorm;
+}
+internal void w32ProcessDInputButton(bool buttonPressed, 
+                                     ButtonState buttonStatePrevious,
+                                     ButtonState* o_buttonStateCurrent)
+{
+	if(buttonPressed)
+	{
+		if(buttonStatePrevious == ButtonState::NOT_PRESSED)
+		{
+			*o_buttonStateCurrent = ButtonState::PRESSED;
+		}
+		else
+		{
+			*o_buttonStateCurrent = ButtonState::HELD;
+		}
+	}
+	else
+	{
+		*o_buttonStateCurrent = ButtonState::NOT_PRESSED;
+	}
+}
+internal void w32ProcessDInputTrigger(bool buttonPressed, 
+                                      f32 *o_normalizedTrigger)
+{
+	*o_normalizedTrigger = buttonPressed ? 1.f : 0.f;
+}
+internal void w32ProcessDInputPovButton(DWORD povCentiDegreesCwFromNorth, 
+                                        DWORD buttonCentiDegreesCwFromNorth, 
+                                        ButtonState buttonStatePrevious, 
+                                        ButtonState* o_buttonStateCurrent)
+{
+	/* taken directly from microsoft documentation */
+	const BOOL povIsCentered = (LOWORD(povCentiDegreesCwFromNorth) == 0xFFFF);
+	if(povIsCentered)
+	{
+		*o_buttonStateCurrent = ButtonState::NOT_PRESSED;
+		return;
+	}
+	/* transform the stupid CentiDegrees measurements into vectors so we can 
+		compare directions */
+	const f32 radiansPov    = (povCentiDegreesCwFromNorth   /1000.f)*PI32/180;
+	const f32 radiansButton = (buttonCentiDegreesCwFromNorth/1000.f)*PI32/180;
+	const v2f32 v2dPov    = kmath::rotate({0,1}, radiansPov);
+	const v2f32 v2dButton = kmath::rotate({0,1}, radiansButton);
+	/* we can now simply treat this as a standard button press using dot product 
+		to test the direction of the button's vector and the POV's vector */
+	const bool buttonPressed = v2dPov.dot(v2dButton) >= 0;
+	w32ProcessDInputButton(buttonPressed, buttonStatePrevious, 
+	                       o_buttonStateCurrent);
+}
+internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
+                                        GamePad* gpArrPrevFrame)
+{
+	for(size_t d = 0; d < CARRAY_COUNT(g_dInputDevices); d++)
+	{
+		if(!g_dInputDevices[d])
+		{
+			gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
+			continue;
+		}
+		const HRESULT hResultPoll = g_dInputDevices[d]->Poll();
+		if(!(hResultPoll == DI_OK || hResultPoll == DI_NOEFFECT))
+		/* poll failed means the device is no longer acquired, attempt to 
+			re-acquire */
+		{
+			const HRESULT hResultAcquire = g_dInputDevices[d]->Acquire();
+			if(hResultAcquire == DIERR_OTHERAPPHASPRIO)
+			{
+				gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
+				continue;
+			}
+			if(hResultAcquire != DI_OK)
+			{
+				KLOG(ERROR, "Failed to re-acquire device!");
+				g_dInputDevices[d]->Unacquire();
+				g_dInputDevices[d]->Release();
+				g_dInputDevices[d] = nullptr;
+				gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
+				continue;
+			}
+		}
+		DIJOYSTATE joyState;
+		ZeroMemory(&joyState, sizeof(joyState));
+		/* get the state of the controller */
+		const HRESULT hResultGetState = 
+			g_dInputDevices[d]->GetDeviceState(sizeof(joyState), &joyState);
+		if(hResultGetState != DI_OK)
+		{
+			KLOG(ERROR, "Failed to get device state!");
+			gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
+			continue;
+		}
+		gpArrCurrFrame[d].type = GamePadType::DINPUT_GENERIC;
+		w32ProcessDInputStick(
+			joyState.lX, -joyState.lY,
+			///TODO: use the DirectInput device deadzone here probably??
+			XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2,
+			&gpArrCurrFrame[d].normalizedStickLeft.x,
+			&gpArrCurrFrame[d].normalizedStickLeft.y);
+		w32ProcessDInputStick(
+			joyState.lZ, -joyState.lRz,
+			///TODO: use the DirectInput device deadzone here probably??
+			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
+			&gpArrCurrFrame[d].normalizedStickRight.x,
+			&gpArrCurrFrame[d].normalizedStickRight.y);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[0]),
+		                       gpArrPrevFrame[d].faceLeft,
+		                       &gpArrCurrFrame[d].faceLeft);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[1]),
+		                       gpArrPrevFrame[d].faceDown,
+		                       &gpArrCurrFrame[d].faceDown);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[2]),
+		                       gpArrPrevFrame[d].faceRight,
+		                       &gpArrCurrFrame[d].faceRight);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[3]),
+		                       gpArrPrevFrame[d].faceUp,
+		                       &gpArrCurrFrame[d].faceUp);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[4]),
+		                       gpArrPrevFrame[d].shoulderLeft,
+		                       &gpArrCurrFrame[d].shoulderLeft);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[5]),
+		                       gpArrPrevFrame[d].shoulderRight,
+		                       &gpArrCurrFrame[d].shoulderRight);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[8]),
+		                       gpArrPrevFrame[d].back,
+		                       &gpArrCurrFrame[d].back);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[9]),
+		                       gpArrPrevFrame[d].start,
+		                       &gpArrCurrFrame[d].start);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[10]),
+		                       gpArrPrevFrame[d].stickClickLeft,
+		                       &gpArrCurrFrame[d].stickClickLeft);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[11]),
+		                       gpArrPrevFrame[d].stickClickRight,
+		                       &gpArrCurrFrame[d].stickClickRight);
+		w32ProcessDInputTrigger(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[6]),
+		                        &gpArrCurrFrame[d].normalizedTriggerLeft);
+		w32ProcessDInputTrigger(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[7]),
+		                        &gpArrCurrFrame[d].normalizedTriggerRight);
+		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 0, 
+		                          gpArrPrevFrame[d].dPadUp, 
+		                          &gpArrCurrFrame[d].dPadUp);
+		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 9000, 
+		                          gpArrPrevFrame[d].dPadRight, 
+		                          &gpArrCurrFrame[d].dPadRight);
+		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 18000, 
+		                          gpArrPrevFrame[d].dPadDown, 
+		                          &gpArrCurrFrame[d].dPadDown);
+		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 27000, 
+		                          gpArrPrevFrame[d].dPadLeft, 
+		                          &gpArrCurrFrame[d].dPadLeft);
 	}
 }

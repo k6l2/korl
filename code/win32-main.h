@@ -35,3 +35,4 @@ struct GameCode
 internal PLATFORM_LOG(platformLog);
 internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile);
 internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory);
+global_variable HWND g_mainWindow;

@@ -392,7 +392,13 @@
 	https://bell0bytes.eu/directinput/
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
 	[x] ignore Xinput devices, because Xinput gives more functionality
+	[x] poll Dinput devices
+	[ ] re-enumerate Dinput devices when DBT_DEVNODES_CHANGED event occurs!
 	[ ] Logitech F310 support
+		[x] translate the DirectInput buttons as closely as possible to the 
+			GamePad structure
+		[ ] report as an Xinput device so the game knows what the buttons should 
+			look like.
 	[ ] poll xinput along with dinput controllers
 	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37

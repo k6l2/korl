@@ -300,6 +300,14 @@ namespace kmath
 	{
 		return min + ratio*(max - min);
 	}
+	internal inline v2f32 rotate(const v2f32& v, f32 radians)
+	{
+		v2f32 result = 
+			{ .x = cosf(radians)*v.x - sinf(radians)*v.y
+			, .y = sinf(radians)*v.x + cosf(radians)*v.y
+		};
+		return result;
+	}
 	internal inline Quaternion quat(v3f32 axis, f32 radians, 
 	                                bool axisIsNormalized = false)
 	{

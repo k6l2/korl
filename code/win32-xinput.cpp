@@ -105,15 +105,15 @@ internal void w32ProcessXInputTrigger(BYTE padTrigger,
                                       BYTE padTriggerDeadzone,
                                       f32* o_gamePadNormalizedTrigger)
 {
-	if(padTrigger <= XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+	if(padTrigger <= padTriggerDeadzone)
 	{
 		*o_gamePadNormalizedTrigger = 0.f;
 	}
 	else
 	{
 		*o_gamePadNormalizedTrigger = 
-			(padTrigger - XINPUT_GAMEPAD_TRIGGER_THRESHOLD) / 
-			(255.f      - XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
+			(padTrigger - padTriggerDeadzone) / 
+			(255.f      - padTriggerDeadzone);
 	}
 }
 internal void w32XInputGetGamePadStates(u8* io_numGamePads,
@@ -206,8 +206,6 @@ internal void w32XInputGetGamePadStates(u8* io_numGamePads,
 			pad.bRightTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
 			&gamePadArrayCurrentFrame[*io_numGamePads].normalizedTriggerRight);
-		gamePadArrayCurrentFrame[*io_numGamePads].
-			normalizedTriggerRight = pad.bRightTrigger/255.f;
 #if INTERNAL_BUILD && 0
 		///TODO: delete this test pls, future me.
 		if(gamePadArrayCurrentFrame[*io_numGamePads].buttons.faceUp == 

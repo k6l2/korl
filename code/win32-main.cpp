@@ -10,6 +10,7 @@
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <ShlObj.h>
+#include <Dbt.h>
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
@@ -76,13 +77,7 @@ struct W32ThreadInfo
 ///      appropriately using w32 prefix like everything else!
 internal PLATFORM_IS_FULLSCREEN(platformIsFullscreen)
 {
-	const HWND hwnd = GetActiveWindow();
-	if(!hwnd)
-	{
-		KLOG(WARNING, "Failed to get active window.");
-		return false;
-	}
-	const DWORD windowStyle = GetWindowLong(hwnd, GWL_STYLE);
+	const DWORD windowStyle = GetWindowLong(g_mainWindow, GWL_STYLE);
 	if(windowStyle == 0)
 	{
 		KLOG(ERROR, "Failed to get window style!");
@@ -92,14 +87,7 @@ internal PLATFORM_IS_FULLSCREEN(platformIsFullscreen)
 }
 internal PLATFORM_SET_FULLSCREEN(platformSetFullscreen)
 {
-	const HWND hwnd = GetActiveWindow();
-	if(!hwnd)
-	{
-		KLOG(WARNING, "Failed to get active window.  "
-		              "Ignoring fullscreen change request.");
-		return;
-	}
-	const DWORD windowStyle = GetWindowLong(hwnd, GWL_STYLE);
+	const DWORD windowStyle = GetWindowLong(g_mainWindow, GWL_STYLE);
 	if(windowStyle == 0)
 	{
 		KLOG(ERROR, "Failed to get window style!");
@@ -115,11 +103,11 @@ internal PLATFORM_SET_FULLSCREEN(platformSetFullscreen)
 		}
 		MONITORINFO monitorInfo = { sizeof(monitorInfo) };
 		const HMONITOR monitor = 
-			MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
-		if( GetWindowPlacement(hwnd, &g_lastKnownWindowedPlacement) &&
+			MonitorFromWindow(g_mainWindow, MONITOR_DEFAULTTOPRIMARY);
+		if( GetWindowPlacement(g_mainWindow, &g_lastKnownWindowedPlacement) &&
 			GetMonitorInfo(monitor, &monitorInfo) )
 		{
-			if(!SetWindowLong(hwnd, GWL_STYLE, 
+			if(!SetWindowLong(g_mainWindow, GWL_STYLE, 
 			                  windowStyle & ~WS_OVERLAPPEDWINDOW))
 			{
 				KLOG(ERROR, "Failed to set window style! getlasterror=%i", 
@@ -130,7 +118,7 @@ internal PLATFORM_SET_FULLSCREEN(platformSetFullscreen)
 				monitorInfo.rcMonitor.right  - monitorInfo.rcMonitor.left;
 			const int windowSizeY = 
 				monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
-			if(!SetWindowPos(hwnd, HWND_TOP, 
+			if(!SetWindowPos(g_mainWindow, HWND_TOP, 
 			                 monitorInfo.rcMonitor.left,
 			                 monitorInfo.rcMonitor.top,
 			                 windowSizeX, windowSizeY, 
@@ -153,19 +141,20 @@ internal PLATFORM_SET_FULLSCREEN(platformSetFullscreen)
 			              "Ignoring fullscreen change request.");
 			return;
 		}
-		if(!SetWindowLong(hwnd, GWL_STYLE, windowStyle | WS_OVERLAPPEDWINDOW))
+		if(!SetWindowLong(g_mainWindow, GWL_STYLE, 
+		                  windowStyle | WS_OVERLAPPEDWINDOW))
 		{
 			KLOG(ERROR, "Failed to set window style! getlasterror=%i", 
 			     GetLastError());
 			return;
 		}
-		if(!SetWindowPlacement(hwnd, &g_lastKnownWindowedPlacement))
+		if(!SetWindowPlacement(g_mainWindow, &g_lastKnownWindowedPlacement))
 		{
 			KLOG(ERROR, "Failed to set window placement! getlasterror=%i", 
 			     GetLastError());
 			return;
 		}
-		if(!SetWindowPos(hwnd, NULL, 0, 0, 0, 0, 
+		if(!SetWindowPos(g_mainWindow, NULL, 0, 0, 0, 0, 
 		                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
 		                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED))
 		{
@@ -1496,6 +1485,18 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 			EndPaint(hwnd, &paintStruct);
 		} break;
 #endif
+		case WM_DEVICECHANGE:
+		{
+			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
+			switch(wParam)
+			{
+				case DBT_DEVNODES_CHANGED:
+				{
+					KLOG(INFO, "\tA device has been added or removed!");
+				} break;
+			}
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
 		default:
 		{
 #if 0
@@ -2063,7 +2064,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		     GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
-	const HWND mainWindow = CreateWindowExA(
+	g_mainWindow = CreateWindowExA(
 		0,
 		wndClass.lpszClassName,
 		APPLICATION_NAME,
@@ -2071,18 +2072,18 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		NULL, NULL, hInstance, NULL );
-	if(!mainWindow)
+	if(!g_mainWindow)
 	{
 		KLOG(ERROR, "Failed to create window! GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 	w32LoadDInput(hInstance);
 	w32LoadXInput();
-	w32KrbOglInitialize(mainWindow);
+	w32KrbOglInitialize(g_mainWindow);
 	w32KrbOglSetVSyncPreference(true);
 	///TODO: update the monitorRefreshHz and dependent variable realtime when 
 	///      the window gets moved around to another monitor.
-	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(mainWindow);
+	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(g_mainWindow);
 	f32 targetSecondsElapsedPerFrame = 1.f / monitorRefreshHz;
 	GameKeyboard gameKeyboardA = {};
 	GameKeyboard gameKeyboardB = {};
@@ -2131,7 +2132,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			KLOG(ERROR, "ImGui_ImplOpenGL2_Init failure!");
 			return RETURN_CODE_FAILURE;
 		}
-		if(!ImGui_ImplWin32_Init(mainWindow))
+		if(!ImGui_ImplWin32_Init(g_mainWindow))
 		{
 			KLOG(ERROR, "ImGui_ImplWin32_Init failure!");
 			return RETURN_CODE_FAILURE;
@@ -2186,9 +2187,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.imguiAllocUserData  = g_genAllocImgui;
 	game.onReloadCode(gameMemory);
 	game.initialize(gameMemory);
-	w32InitDSound(mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
+	w32InitDSound(g_mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, cursorWritePrev);
-	const HDC hdc = GetDC(mainWindow);
+	const HDC hdc = GetDC(g_mainWindow);
 	if(!hdc)
 	{
 		KLOG(ERROR, "Failed to get main window device context!");
@@ -2318,8 +2319,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 #if 1
 			/* read game pads from DirectInput & XInput */
-			{
-			}
+			w32DInputGetGamePadStates(gamePadArrayCurrentFrame  + 
+			                              XUSER_MAX_COUNT, 
+			                          gamePadArrayPreviousFrame + 
+			                              XUSER_MAX_COUNT);
 #else// !0
 			w32XInputGetGamePadStates(&numGamePads,
 			                          gamePadArrayCurrentFrame,
@@ -2329,7 +2332,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 			const W32Dimension2d windowDims = 
-				w32GetWindowDimensions(mainWindow);
+				w32GetWindowDimensions(g_mainWindow);
 			if(!game.isValid)
 			// display a "loading" message while we wait for cl.exe to 
 			//	relinquish control of the game binary //
