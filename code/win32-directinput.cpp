@@ -1,5 +1,13 @@
 #include "win32-directinput.h"
 #include "win32-main.h"
+/* easy printing of GUIDs 
+	Source: https://stackoverflow.com/a/26644772 */
+#define GUID_FORMAT "%08lX-%04hX-%04hX-%02hhX%02hhX-"\
+                    "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX"
+#define GUID_ARG(guid) guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], \
+                       guid.Data4[1], guid.Data4[2], guid.Data4[3], \
+                       guid.Data4[4], guid.Data4[5], guid.Data4[6], \
+                       guid.Data4[7]
 /* The following block of code is near-copypasta from microsoft documentation in 
 	order to detect whether or not a DirectInput device is actually Xinput 
 	compatible.  It looks like garbage because it is, and shouldn't exist in the 
@@ -211,8 +219,11 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 			continue;
 		}
 		if(IsEqualGUID(lpddi->guidInstance, deviceInstance.guidInstance))
+		/* the device already existed in the global array of DirectInput 
+			devices */
 		{
 			firstEmptyInputDevice = CARRAY_COUNT(g_dInputDevices);
+			g_dInputDeviceJustAcquiredFlags[d] = true;
 			break;
 		}
 	}
@@ -296,6 +307,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 			     lpddi->tszProductName, lpddi->tszInstanceName);
 			return;
 		}
+		g_dInputDeviceJustAcquiredFlags[firstEmptyInputDevice] = true;
 	}
 }
 /**
@@ -311,9 +323,47 @@ internal BOOL DIEnumAttachedGameControllers(LPCDIDEVICEINSTANCE lpddi,
 		     lpddi->tszProductName);
 		return DIENUM_CONTINUE;
 	}
-	KLOG(INFO, "DInput device detected! '%s'", lpddi->tszProductName);
+	/* Log the product name & GUID */
+	{
+		const char*const logFormat = 
+			"DInput device detected! '%s' {" GUID_FORMAT "}";
+		KLOG(INFO, logFormat, lpddi->tszProductName, 
+		     GUID_ARG(lpddi->guidProduct));
+	}
 	w32DInputAddDevice(lpddi);
 	return DIENUM_CONTINUE;
+}
+internal void w32DInputEnumerateDevices()
+{
+	static_assert(CARRAY_COUNT(g_dInputDevices) == 
+	              CARRAY_COUNT(g_dInputDeviceJustAcquiredFlags));
+	/* clear the flags which determine if a device was found during 
+		EnumDevices */
+	for(size_t a = 0; a < CARRAY_COUNT(g_dInputDevices); a++)
+	{
+		g_dInputDeviceJustAcquiredFlags[a] = false;
+	}
+	const HRESULT hResult = 
+		g_pIDInput->EnumDevices(DI8DEVCLASS_GAMECTRL, 
+		                        DIEnumAttachedGameControllers, 
+		                        nullptr, DIEDFL_ATTACHEDONLY);
+	if(hResult != DI_OK)
+	{
+		KLOG(ERROR, "Failed to enumerate DirectInput devices! "
+		     "hResult=%li", hResult);
+	}
+	/* because we have flags for which devices were in fact found during the 
+		call to EnumDevices, we can unacquire & release devices that were 
+		not! */
+	for(size_t a = 0; a < CARRAY_COUNT(g_dInputDevices); a++)
+	{
+		if(g_dInputDevices[a] && !g_dInputDeviceJustAcquiredFlags)
+		{
+			g_dInputDevices[a]->Unacquire();
+			g_dInputDevices[a]->Release();
+			g_dInputDevices[a] = nullptr;
+		}
+	}
 }
 internal void w32LoadDInput(HINSTANCE hInst)
 {
@@ -338,18 +388,7 @@ internal void w32LoadDInput(HINSTANCE hInst)
 			     "hResult=%li", hResult);
 		}
 	}
-	/* enumerate DirectInput compatible devices */
-	{
-		const HRESULT hResult = 
-			g_pIDInput->EnumDevices(DI8DEVCLASS_GAMECTRL, 
-			                        DIEnumAttachedGameControllers, 
-			                        nullptr, DIEDFL_ATTACHEDONLY);
-		if(hResult != DI_OK)
-		{
-			KLOG(ERROR, "Failed to enumerate DirectInput devices! "
-			     "hResult=%li", hResult);
-		}
-	}
+	w32DInputEnumerateDevices();
 }
 internal void w32ProcessDInputStick(LONG xiThumbX, LONG xiThumbY, 
                                     u16 circularDeadzoneMagnitude, 
@@ -419,8 +458,8 @@ internal void w32ProcessDInputPovButton(DWORD povCentiDegreesCwFromNorth,
 	}
 	/* transform the stupid CentiDegrees measurements into vectors so we can 
 		compare directions */
-	const f32 radiansPov    = (povCentiDegreesCwFromNorth   /1000.f)*PI32/180;
-	const f32 radiansButton = (buttonCentiDegreesCwFromNorth/1000.f)*PI32/180;
+	const f32 radiansPov    = (povCentiDegreesCwFromNorth   /100.f)*PI32/180;
+	const f32 radiansButton = (buttonCentiDegreesCwFromNorth/100.f)*PI32/180;
 	const v2f32 v2dPov    = kmath::rotate({0,1}, radiansPov);
 	const v2f32 v2dButton = kmath::rotate({0,1}, radiansButton);
 	/* we can now simply treat this as a standard button press using dot product 
@@ -452,7 +491,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 			}
 			if(hResultAcquire != DI_OK)
 			{
-				KLOG(ERROR, "Failed to re-acquire device!");
+				KLOG(WARNING, "Failed to re-acquire device! Unacquiring...");
 				g_dInputDevices[d]->Unacquire();
 				g_dInputDevices[d]->Release();
 				g_dInputDevices[d] = nullptr;
@@ -467,7 +506,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 			g_dInputDevices[d]->GetDeviceState(sizeof(joyState), &joyState);
 		if(hResultGetState != DI_OK)
 		{
-			KLOG(ERROR, "Failed to get device state!");
+			KLOG(WARNING, "Failed to get device state!");
 			gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
 			continue;
 		}

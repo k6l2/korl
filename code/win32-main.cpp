@@ -33,6 +33,10 @@ global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KML_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_displayCursor;
 global_variable bool g_isFocused;
+/* this variable exists because mysterious COM incantations require us to check 
+	whether or not a DirectInput device is Xinput compatible OUTSIDE of the 
+	windows message loop */
+global_variable bool g_deviceChangeDetected;
 global_variable HCURSOR g_cursorArrow;
 global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
@@ -1493,6 +1497,7 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 				case DBT_DEVNODES_CHANGED:
 				{
 					KLOG(INFO, "\tA device has been added or removed!");
+					g_deviceChangeDetected = true;
 				} break;
 			}
 			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -2290,6 +2295,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 						DispatchMessageA(&windowMessage);
 					} break;
 				}
+			}
+			if(g_deviceChangeDetected)
+			{
+				g_deviceChangeDetected = false;
+				w32DInputEnumerateDevices();
 			}
 			// Process gameKeyboard by comparing the keys to the previous 
 			//	frame's keys, because we cannot determine if a key has been 

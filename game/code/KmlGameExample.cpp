@@ -119,6 +119,30 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	ImGui::End();
+	/* TESTING GAME PAD ARRAY */
+	if(ImGui::Begin("TESTING GAME PAD PORTS"))
+	{
+		for(u8 c = 0; c < numGamePads; c++)
+		{
+			GamePad& gpad = gamePadArray[c];
+			switch(gpad.type)
+			{
+				case GamePadType::UNPLUGGED:
+				{
+					ImGui::Text("UNPLUGGED");
+				} break;
+				case GamePadType::XINPUT:
+				{
+					ImGui::Text("XINPUT");
+				} break;
+				case GamePadType::DINPUT_GENERIC:
+				{
+					ImGui::Text("DINPUT_GENERIC");
+				} break;
+			}
+		}
+	}
+	ImGui::End();
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||

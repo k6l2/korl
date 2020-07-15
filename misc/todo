@@ -393,11 +393,11 @@
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
 	[x] ignore Xinput devices, because Xinput gives more functionality
 	[x] poll Dinput devices
-	[ ] re-enumerate Dinput devices when DBT_DEVNODES_CHANGED event occurs!
-	[ ] Logitech F310 support
+	[x] re-enumerate Dinput devices when DBT_DEVNODES_CHANGED event occurs!
+	[~] Logitech F310 support
 		[x] translate the DirectInput buttons as closely as possible to the 
 			GamePad structure
-		[ ] report as an Xinput device so the game knows what the buttons should 
+		[~] report as an Xinput device so the game knows what the buttons should 
 			look like.
 	[ ] poll xinput along with dinput controllers
 	[ ] PS4 controller support
@@ -405,16 +405,20 @@
 	[ ] reimplement force feedback for Xinput controllers
 [ ] pull kmath out of global-defines
 [ ] change `kassert` to be platform-specific code
-[ ] build: ensure all necessary environment variables are set
-	https://stackoverflow.com/a/37073832
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] KML-platform: UDP networking API
 [ ] kcpp: bring back kcpp and repurpose it 
 	[ ] scan for a macro to generate reflection code on data declarations
 		[ ] generate string arrays for enumerations
+[ ] Allow the game's build command to pass it's own .rc file to replace the one 
+	provided by default from KML to allow the game to customize the application 
+	icon
+	[ ] Add a `Deployment Procedures` section to README to document this process
+[ ] build: ensure all necessary environment variables are set
+	https://stackoverflow.com/a/37073832
 [ ] build: check for errors output from preprocessing pipelines 
 	(kasset, kcpp, etc...)
-[ ] cleanup build script by using windows batch functions (if possible)
+[ ] build: cleanup using windows batch functions (if possible)
 [ ] vscode: create my own extension 
 	https://code.visualstudio.com/api/get-started/your-first-extension
 	[ ] automatically place a semicolon at the end of a line
@@ -423,12 +427,9 @@
 		definition
 [ ] Do not poll async keyboard state if the window is not currently active 
 	(optionally?)
-[ ] Allow the game's build command to pass it's own .rc file to replace the one 
-	provided by default from KML to allow the game to customize the application 
-	icon
-	[ ] Add a `Deployment Procedures` section to README to document this process
 [ ] KRB: send vertex colors to draw functions.
 	[ ] Maybe generalize KRB functions to take a pre-defined `Vertex` struct?..
+	[ ] allow API to take vertex properties using STRIDE?
 [ ] KRB-opengl: Figure out why GL_UNSIGNED_INT_8_8_8_8 is undefined
 	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
