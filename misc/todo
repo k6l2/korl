@@ -400,8 +400,15 @@
 		[~] report as an Xinput device so the game knows what the buttons should 
 			look like.
 	[x] poll xinput along with dinput controllers
+	[ ] create internal KML API to facilitate the creation of button maps for 
+		DirectInput controllers
+		[x] poll for the index of a button that is being held down
+		[ ] poll for the index of an axis that is being "held down"
+		[ ] poll for the controller's product GUID
+		[ ] poll for the controller's product name
 	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37
+	[ ] fix DirectInput deadzone
 	[ ] reimplement force feedback for Xinput controllers
 [ ] pull kmath out of global-defines
 [ ] change `kassert` to be platform-specific code
@@ -414,6 +421,8 @@
 	provided by default from KML to allow the game to customize the application 
 	icon
 	[ ] Add a `Deployment Procedures` section to README to document this process
+[ ] DInput: move device enumeration into a separate thread so the main thread 
+	doesn't hang every time a device is hot-swapped
 [ ] build: ensure all necessary environment variables are set
 	https://stackoverflow.com/a/37073832
 [ ] build: check for errors output from preprocessing pipelines 

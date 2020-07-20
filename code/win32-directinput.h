@@ -9,3 +9,4 @@ internal void w32LoadDInput(HINSTANCE hinst);
 internal void w32DInputEnumerateDevices();
 internal void w32DInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame);
+internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton);

@@ -114,7 +114,19 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
                                                   FileWriteTime lastWriteTime)
 #define PLATFORM_IS_ASSET_AVAILABLE(name) bool name(const char* assetFileName)
 #define PLATFORM_IS_FULLSCREEN(name) bool name()
+global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
 #define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
+/** Don't use this API for anything related to game development!!!  The only 
+ * reason this exists is to discover hardware-specific controller input maps. 
+ * @return INVALID_PLATFORM_BUTTON_INDEX if there is no active button
+ */
+#define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) u16 name(u8 gamePadIndex)
+global_variable const u16 INVALID_PLATFORM_AXIS_INDEX = u16(~0);
+/** Don't use this API for anything related to game development!!!  The only 
+ * reason this exists is to discover hardware-specific controller input maps. 
+ * @return INVALID_PLATFORM_AXIS_INDEX if there is no active axis
+ */
+#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) u16 name(u8 gamePadIndex)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_LOG(fnSig_platformLog);
@@ -131,6 +143,9 @@ typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
 typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
 typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
 typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
+typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
+	                                      fnSig_platformGetGamePadActiveButton);
+typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
 struct PlatformDebugReadFileResult
 {
 	u32 dataBytes;
@@ -162,6 +177,8 @@ struct KmlPlatformApi
 	fnSig_platformIsAssetAvailable* isAssetAvailable;
 	fnSig_platformIsFullscreen* isFullscreen;
 	fnSig_platformSetFullscreen* setFullscreen;
+	fnSig_platformGetGamePadActiveButton* getGamePadActiveButton;
+	fnSig_platformGetGamePadActiveAxis* getGamePadActiveAxis;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;
 	fnSig_PlatformFreeFileMemory* freeFileMemory;

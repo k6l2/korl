@@ -116,6 +116,22 @@ internal void w32ProcessXInputTrigger(BYTE padTrigger,
 			(255.f      - padTriggerDeadzone);
 	}
 }
+global_variable const WORD XINPUT_BUTTONS[] =
+	{ XINPUT_GAMEPAD_Y
+	, XINPUT_GAMEPAD_A
+	, XINPUT_GAMEPAD_X
+	, XINPUT_GAMEPAD_B
+	, XINPUT_GAMEPAD_START
+	, XINPUT_GAMEPAD_BACK
+	, XINPUT_GAMEPAD_DPAD_UP
+	, XINPUT_GAMEPAD_DPAD_DOWN
+	, XINPUT_GAMEPAD_DPAD_LEFT
+	, XINPUT_GAMEPAD_DPAD_RIGHT
+	, XINPUT_GAMEPAD_LEFT_SHOULDER
+	, XINPUT_GAMEPAD_RIGHT_SHOULDER
+	, XINPUT_GAMEPAD_LEFT_THUMB
+	, XINPUT_GAMEPAD_RIGHT_THUMB
+};
 internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame)
 {
@@ -141,62 +157,13 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
 			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
 			&gamePadArrayCurrentFrame[ci].normalizedStickRight.x,
 			&gamePadArrayCurrentFrame[ci].normalizedStickRight.y);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_DPAD_UP,
-			gamePadArrayPreviousFrame[ci].dPadUp,
-			&gamePadArrayCurrentFrame[ci].dPadUp);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN,
-			gamePadArrayPreviousFrame[ci].dPadDown,
-			&gamePadArrayCurrentFrame[ci].dPadDown);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT,
-			gamePadArrayPreviousFrame[ci].dPadLeft,
-			&gamePadArrayCurrentFrame[ci].dPadLeft);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT,
-			gamePadArrayPreviousFrame[ci].dPadRight,
-			&gamePadArrayCurrentFrame[ci].dPadRight);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_START,
-			gamePadArrayPreviousFrame[ci].start,
-			&gamePadArrayCurrentFrame[ci].start);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_BACK,
-			gamePadArrayPreviousFrame[ci].back,
-			&gamePadArrayCurrentFrame[ci].back);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB,
-			gamePadArrayPreviousFrame[ci].stickClickLeft,
-			&gamePadArrayCurrentFrame[ci].stickClickLeft);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB,
-			gamePadArrayPreviousFrame[ci].stickClickRight,
-			&gamePadArrayCurrentFrame[ci].stickClickRight);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER,
-			gamePadArrayPreviousFrame[ci].shoulderLeft,
-			&gamePadArrayCurrentFrame[ci].shoulderLeft);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER,
-			gamePadArrayPreviousFrame[ci].shoulderRight,
-			&gamePadArrayCurrentFrame[ci].shoulderRight);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_A,
-			gamePadArrayPreviousFrame[ci].faceDown,
-			&gamePadArrayCurrentFrame[ci].faceDown);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_B,
-			gamePadArrayPreviousFrame[ci].faceRight,
-			&gamePadArrayCurrentFrame[ci].faceRight);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_X,
-			gamePadArrayPreviousFrame[ci].faceLeft,
-			&gamePadArrayCurrentFrame[ci].faceLeft);
-		w32ProcessXInputButton(
-			pad.wButtons & XINPUT_GAMEPAD_Y,
-			gamePadArrayPreviousFrame[ci].faceUp,
-			&gamePadArrayCurrentFrame[ci].faceUp);
+		for(u16 b = 0; b < CARRAY_COUNT(XINPUT_BUTTONS); b++)
+		{
+			w32ProcessXInputButton(
+				pad.wButtons & XINPUT_BUTTONS[b],
+				gamePadArrayPreviousFrame[ci].buttons[b],
+				&gamePadArrayCurrentFrame[ci].buttons[b]);
+		}
 		w32ProcessXInputTrigger(
 			pad.bLeftTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
@@ -214,4 +181,22 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
 		}
 #endif
 	}
+}
+internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton)
+{
+	kassert(gamePadIndex < XUSER_MAX_COUNT);
+	if(gamePadIndex >= XUSER_MAX_COUNT)
+		return INVALID_PLATFORM_BUTTON_INDEX;
+	XINPUT_STATE controllerState;
+	if( XInputGetState(gamePadIndex, &controllerState) != ERROR_SUCCESS )
+		return INVALID_PLATFORM_BUTTON_INDEX;
+	const XINPUT_GAMEPAD& pad = controllerState.Gamepad;
+	for(u16 b = 0; b < CARRAY_COUNT(XINPUT_BUTTONS); b++)
+	{
+		if(pad.wButtons & XINPUT_BUTTONS[b])
+		{
+			return b;
+		}
+	}
+	return INVALID_PLATFORM_BUTTON_INDEX;
 }

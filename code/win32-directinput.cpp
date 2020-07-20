@@ -325,10 +325,9 @@ internal BOOL DIEnumAttachedGameControllers(LPCDIDEVICEINSTANCE lpddi,
 	}
 	/* Log the product name & GUID */
 	{
-		const char*const logFormat = 
-			"DInput device detected! '%s' {" GUID_FORMAT "}";
-		KLOG(INFO, logFormat, lpddi->tszProductName, 
-		     GUID_ARG(lpddi->guidProduct));
+		KLOG(INFO, "DInput device detected! '%s' guidProduct{" GUID_FORMAT "} "
+		     "guidInstance{" GUID_FORMAT "}", lpddi->tszProductName, 
+		     GUID_ARG(lpddi->guidProduct), GUID_ARG(lpddi->guidInstance));
 	}
 	w32DInputAddDevice(lpddi);
 	return DIENUM_CONTINUE;
@@ -570,4 +569,69 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 		                          gpArrPrevFrame[d].dPadLeft, 
 		                          &gpArrCurrFrame[d].dPadLeft);
 	}
+}
+internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
+{
+	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+		return INVALID_PLATFORM_BUTTON_INDEX;
+	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
+	if(!dInput8Device)
+		return INVALID_PLATFORM_BUTTON_INDEX;
+	/* poll the device for current input state */
+	const HRESULT hResultPoll = dInput8Device->Poll();
+	if(!(hResultPoll == DI_OK || hResultPoll == DI_NOEFFECT))
+	/* poll failed means the device is no longer acquired, attempt to 
+		re-acquire */
+	{
+		const HRESULT hResultAcquire = dInput8Device->Acquire();
+		if(hResultAcquire == DIERR_OTHERAPPHASPRIO)
+		{
+			return INVALID_PLATFORM_BUTTON_INDEX;
+		}
+		if(hResultAcquire != DI_OK)
+		{
+			KLOG(WARNING, "Failed to re-acquire device! Unacquiring...");
+			g_dInputDevices[gamePadIndex]->Unacquire();
+			g_dInputDevices[gamePadIndex]->Release();
+			g_dInputDevices[gamePadIndex] = nullptr;
+			return INVALID_PLATFORM_BUTTON_INDEX;
+		}
+	}
+	DIJOYSTATE joyState;
+	ZeroMemory(&joyState, sizeof(joyState));
+	/* get the state of the controller */
+	const HRESULT hResultGetState = 
+		dInput8Device->GetDeviceState(sizeof(joyState), &joyState);
+	if(hResultGetState != DI_OK)
+	{
+		KLOG(WARNING, "Failed to get device state!");
+		return INVALID_PLATFORM_BUTTON_INDEX;
+	}
+	/* at this point, we should have the state of the controller and we can 
+		actually check to see what is being pressed/moved: */
+	for(u16 b = 0; b < CARRAY_COUNT(joyState.rgbButtons); b++)
+	{
+		if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[b]))
+			return b;
+	}
+	/* interpret the POV switch directions as buttons for all POV switches */
+	for(size_t pov = 0; pov < CARRAY_COUNT(joyState.rgdwPOV); pov++)
+	{
+		for(u8 povDirection = 0; povDirection < 4; povDirection++)
+		{
+			DWORD povCentiDegreesCwFromNorth = povDirection*9000;
+			ButtonState buttonState;
+			w32ProcessDInputPovButton(joyState.rgdwPOV[pov], 
+			                          povCentiDegreesCwFromNorth, 
+			                          ButtonState::NOT_PRESSED, 
+			                          &buttonState);
+			if(buttonState > ButtonState::NOT_PRESSED)
+			{
+				return kmath::safeTruncateU16(
+					CARRAY_COUNT(joyState.rgbButtons) + pov*4 + povDirection);
+			}
+		}
+	}
+	return INVALID_PLATFORM_BUTTON_INDEX;
 }

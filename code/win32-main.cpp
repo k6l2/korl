@@ -72,6 +72,12 @@ global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 global_variable JobQueue g_jobQueue;
 global_variable WINDOWPLACEMENT g_lastKnownWindowedPlacement;
+global_variable GamePad g_gamePadArrayA[XUSER_MAX_COUNT + 
+                                            CARRAY_COUNT(g_dInputDevices)] = {};
+global_variable GamePad g_gamePadArrayB[XUSER_MAX_COUNT + 
+                                            CARRAY_COUNT(g_dInputDevices)] = {};
+global_variable GamePad* g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
+global_variable GamePad* g_gamePadArrayPreviousFrame = g_gamePadArrayB;
 struct W32ThreadInfo
 {
 	u32 index;
@@ -1088,6 +1094,33 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 	}
 	return result;
 }
+PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
+{
+	if(gamePadIndex < XUSER_MAX_COUNT)
+	/* the gamepad is an Xinput controller */
+	{
+		return w32XInputGetGamePadActiveButton(gamePadIndex);
+	}
+	else
+	/* gamepad is DirectInput */
+	{
+		return w32DInputGetGamePadActiveButton(gamePadIndex - XUSER_MAX_COUNT);
+	}
+}
+PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
+{
+	return INVALID_PLATFORM_AXIS_INDEX;
+#if 0
+	if(gamePadIndex < XUSER_MAX_COUNT)
+	/* the gamepad is an Xinput controller */
+	{
+	}
+	else
+	/* gamepad is DirectInput */
+	{
+	}
+#endif// 0
+}
 GAME_INITIALIZE(gameInitializeStub)
 {
 }
@@ -2101,16 +2134,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	                             &gameKeyboardA.vKeys[0]) ==
 	         CARRAY_COUNT(gameKeyboardA.vKeys) );
 #endif
-	GamePad gamePadArrayA[XUSER_MAX_COUNT + CARRAY_COUNT(g_dInputDevices)] = {};
-	GamePad gamePadArrayB[XUSER_MAX_COUNT + CARRAY_COUNT(g_dInputDevices)] = {};
-	GamePad* gamePadArrayCurrentFrame  = gamePadArrayA;
-	GamePad* gamePadArrayPreviousFrame = gamePadArrayB;
 #if INTERNAL_BUILD
 	// ensure that the size of the gamepad's button array matches the size of
 	//	the anonymous struct which defines the names of all the buttons //
-	kassert( static_cast<size_t>(&gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
-	                             &gamePadArrayA[0].buttons[0]) ==
-	         CARRAY_COUNT(gamePadArrayA[0].buttons) );
+	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
+	                             &g_gamePadArrayA[0].buttons[0]) ==
+	         CARRAY_COUNT(g_gamePadArrayA[0].buttons) );
 #endif
 	local_persist const u8 SOUND_CHANNELS = 2;
 	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
@@ -2166,20 +2195,22 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.transientMemory = 
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
-	gameMemory.kpl.postJob           = platformPostJob;
-	gameMemory.kpl.jobDone           = platformJobDone;
-	gameMemory.kpl.log               = platformLog;
-	gameMemory.kpl.decodeZ85Png      = platformDecodeZ85Png;
-	gameMemory.kpl.decodeZ85Wav      = platformDecodeZ85Wav;
-	gameMemory.kpl.loadWav           = platformLoadWav;
-	gameMemory.kpl.loadOgg           = platformLoadOgg;
-	gameMemory.kpl.loadPng           = platformLoadPng;
-	gameMemory.kpl.loadFlipbookMeta  = platformLoadFlipbookMeta;
-	gameMemory.kpl.getAssetWriteTime = platformGetAssetWriteTime;
-	gameMemory.kpl.isAssetChanged    = platformIsAssetChanged;
-	gameMemory.kpl.isAssetAvailable  = platformIsAssetAvailable;
-	gameMemory.kpl.isFullscreen      = platformIsFullscreen;
-	gameMemory.kpl.setFullscreen     = platformSetFullscreen;
+	gameMemory.kpl.postJob                = platformPostJob;
+	gameMemory.kpl.jobDone                = platformJobDone;
+	gameMemory.kpl.log                    = platformLog;
+	gameMemory.kpl.decodeZ85Png           = platformDecodeZ85Png;
+	gameMemory.kpl.decodeZ85Wav           = platformDecodeZ85Wav;
+	gameMemory.kpl.loadWav                = platformLoadWav;
+	gameMemory.kpl.loadOgg                = platformLoadOgg;
+	gameMemory.kpl.loadPng                = platformLoadPng;
+	gameMemory.kpl.loadFlipbookMeta       = platformLoadFlipbookMeta;
+	gameMemory.kpl.getAssetWriteTime      = platformGetAssetWriteTime;
+	gameMemory.kpl.isAssetChanged         = platformIsAssetChanged;
+	gameMemory.kpl.isAssetAvailable       = platformIsAssetAvailable;
+	gameMemory.kpl.isFullscreen           = platformIsFullscreen;
+	gameMemory.kpl.setFullscreen          = platformSetFullscreen;
+	gameMemory.kpl.getGamePadActiveButton = w32GetGamePadActiveButton;
+	gameMemory.kpl.getGamePadActiveAxis   = w32GetGamePadActiveAxis;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;
@@ -2317,23 +2348,23 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			w32GetKeyboardKeyStates(gameKeyboardCurrentFrame, 
 			                        gameKeyboardPreviousFrame);
 			// swap game pad arrays & update the current frame //
-			if(gamePadArrayCurrentFrame == gamePadArrayA)
+			if(g_gamePadArrayCurrentFrame == g_gamePadArrayA)
 			{
-				gamePadArrayPreviousFrame = gamePadArrayA;
-				gamePadArrayCurrentFrame  = gamePadArrayB;
+				g_gamePadArrayPreviousFrame = g_gamePadArrayA;
+				g_gamePadArrayCurrentFrame  = g_gamePadArrayB;
 			}
 			else
 			{
-				gamePadArrayPreviousFrame = gamePadArrayB;
-				gamePadArrayCurrentFrame  = gamePadArrayA;
+				g_gamePadArrayPreviousFrame = g_gamePadArrayB;
+				g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 			}
 			/* read game pads from DirectInput & XInput */
-			w32DInputGetGamePadStates(gamePadArrayCurrentFrame  + 
+			w32DInputGetGamePadStates(g_gamePadArrayCurrentFrame  + 
 			                              XUSER_MAX_COUNT, 
-			                          gamePadArrayPreviousFrame + 
+			                          g_gamePadArrayPreviousFrame + 
 			                              XUSER_MAX_COUNT);
-			w32XInputGetGamePadStates(gamePadArrayCurrentFrame,
-			                          gamePadArrayPreviousFrame);
+			w32XInputGetGamePadStates(g_gamePadArrayCurrentFrame,
+			                          g_gamePadArrayPreviousFrame);
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
@@ -2365,8 +2396,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			if(!game.updateAndDraw(deltaSeconds,
 			                       {windowDims.width, windowDims.height}, 
 			                       *gameKeyboardCurrentFrame,
-			                       gamePadArrayCurrentFrame, 
-			                       CARRAY_COUNT(gamePadArrayA), 
+			                       g_gamePadArrayCurrentFrame, 
+			                       CARRAY_COUNT(g_gamePadArrayA), 
 			                       g_isFocused))
 			{
 				g_running = false;

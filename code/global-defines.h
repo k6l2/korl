@@ -248,6 +248,12 @@ namespace kmath
 		kassert(value < MAX_U16);
 		return static_cast<u16>(value);
 	}
+	internal inline u16 safeTruncateU16(u64 value)
+	{
+		local_persist const u16 MAX_U16 = static_cast<u16>(~u16(0));
+		kassert(value < MAX_U16);
+		return static_cast<u16>(value);
+	}
 	internal inline f32 v2Radians(const v2f32& v)
 	{
 		if(isNearlyZero(v.x) && isNearlyZero(v.y))
