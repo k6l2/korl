@@ -1094,8 +1094,9 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 	}
 	return result;
 }
-PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
+internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
 {
+	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* the gamepad is an Xinput controller */
 	{
@@ -1107,8 +1108,9 @@ PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
 		return w32DInputGetGamePadActiveButton(gamePadIndex - XUSER_MAX_COUNT);
 	}
 }
-PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
+internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
 {
+	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
 	return INVALID_PLATFORM_AXIS_INDEX;
 #if 0
 	if(gamePadIndex < XUSER_MAX_COUNT)
@@ -1120,6 +1122,36 @@ PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
 	{
 	}
 #endif// 0
+}
+internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32GetGamePadProductName)
+{
+	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
+	if(gamePadIndex < XUSER_MAX_COUNT)
+	/* Xinput controller */
+	{
+		StringCchPrintf(o_buffer, bufferSize, TEXT("XInput Controller"));
+	}
+	/* DirectInput controller */
+	else
+	{
+		w32DInputGetGamePadProductName(gamePadIndex - XUSER_MAX_COUNT, o_buffer, 
+		                               bufferSize);
+	}
+}
+internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32GetGamePadProductGuid)
+{
+	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
+	if(gamePadIndex < XUSER_MAX_COUNT)
+	/* Xinput controller */
+	{
+		StringCchPrintf(o_buffer, bufferSize, TEXT("N/A"));
+	}
+	/* DirectInput controller */
+	else
+	{
+		w32DInputGetGamePadProductGuid(gamePadIndex - XUSER_MAX_COUNT, o_buffer, 
+		                               bufferSize);
+	}
 }
 GAME_INITIALIZE(gameInitializeStub)
 {
@@ -2211,6 +2243,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.setFullscreen          = platformSetFullscreen;
 	gameMemory.kpl.getGamePadActiveButton = w32GetGamePadActiveButton;
 	gameMemory.kpl.getGamePadActiveAxis   = w32GetGamePadActiveAxis;
+	gameMemory.kpl.getGamePadProductName  = w32GetGamePadProductName;
+	gameMemory.kpl.getGamePadProductGuid  = w32GetGamePadProductGuid;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;

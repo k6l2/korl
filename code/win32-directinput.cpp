@@ -462,8 +462,12 @@ internal void w32ProcessDInputPovButton(DWORD povCentiDegreesCwFromNorth,
 	const v2f32 v2dPov    = kmath::rotate({0,1}, radiansPov);
 	const v2f32 v2dButton = kmath::rotate({0,1}, radiansButton);
 	/* we can now simply treat this as a standard button press using dot product 
-		to test the direction of the button's vector and the POV's vector */
-	const bool buttonPressed = v2dPov.dot(v2dButton) >= 0;
+		to test the direction of the button's vector and the POV's vector.  The 
+		dot product is compared to a value in the range of (0, 0.5) to activate 
+		buttons if an adjacent diagonal angle is being pressed, and prevent 
+		buttons from being considered active if they are >= 90 degrees from the 
+		pov switch position */
+	const bool buttonPressed = v2dPov.dot(v2dButton) >= 0.1;
 	w32ProcessDInputButton(buttonPressed, buttonStatePrevious, 
 	                       o_buttonStateCurrent);
 }
@@ -610,10 +614,20 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 	}
 	/* at this point, we should have the state of the controller and we can 
 		actually check to see what is being pressed/moved: */
+	u16 result = INVALID_PLATFORM_BUTTON_INDEX;
 	for(u16 b = 0; b < CARRAY_COUNT(joyState.rgbButtons); b++)
 	{
 		if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[b]))
-			return b;
+		{
+			if(result == INVALID_PLATFORM_BUTTON_INDEX)
+			{
+				result = b;
+			}
+			else
+			{
+				return INVALID_PLATFORM_BUTTON_INDEX;
+			}
+		}
 	}
 	/* interpret the POV switch directions as buttons for all POV switches */
 	for(size_t pov = 0; pov < CARRAY_COUNT(joyState.rgdwPOV); pov++)
@@ -628,10 +642,74 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 			                          &buttonState);
 			if(buttonState > ButtonState::NOT_PRESSED)
 			{
-				return kmath::safeTruncateU16(
-					CARRAY_COUNT(joyState.rgbButtons) + pov*4 + povDirection);
+				if(result == INVALID_PLATFORM_BUTTON_INDEX)
+				{
+					result = kmath::safeTruncateU16(
+						CARRAY_COUNT(joyState.rgbButtons) + pov*4 + 
+						povDirection);
+				}
+				else
+				{
+					return INVALID_PLATFORM_BUTTON_INDEX;
+				}
 			}
 		}
 	}
-	return INVALID_PLATFORM_BUTTON_INDEX;
+	return result;
+}
+internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32DInputGetGamePadProductName)
+{
+	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+	{
+		StringCchPrintf(o_buffer, bufferSize, 
+		                TEXT("DInput pad [%i] out of bounds!"), gamePadIndex);
+		return;
+	}
+	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
+	kassert(dInput8Device);
+	if(!dInput8Device)
+	{
+		StringCchPrintf(o_buffer, bufferSize, 
+		                TEXT("DInput pad doesn't exist!"));
+		return;
+	}
+	DIDEVICEINSTANCE deviceInstance;
+	deviceInstance.dwSize = sizeof(deviceInstance);
+	const HRESULT hResult = dInput8Device->GetDeviceInfo(&deviceInstance);
+	if(hResult != DI_OK)
+	{
+		StringCchPrintf(o_buffer, bufferSize, TEXT("GetDeviceInfo FAILED!"));
+		return;
+	}
+	StringCchPrintf(o_buffer, bufferSize, TEXT("%s"), 
+	                deviceInstance.tszProductName);
+}
+internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32DInputGetGamePadProductGuid)
+{
+	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+	{
+		StringCchPrintf(o_buffer, bufferSize, 
+		                TEXT("DInput pad [%i] out of bounds!"), gamePadIndex);
+		return;
+	}
+	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
+	kassert(dInput8Device);
+	if(!dInput8Device)
+	{
+		StringCchPrintf(o_buffer, bufferSize, 
+		                TEXT("DInput pad doesn't exist!"));
+		return;
+	}
+	DIDEVICEINSTANCE deviceInstance;
+	deviceInstance.dwSize = sizeof(deviceInstance);
+	const HRESULT hResult = dInput8Device->GetDeviceInfo(&deviceInstance);
+	if(hResult != DI_OK)
+	{
+		StringCchPrintf(o_buffer, bufferSize, TEXT("GetDeviceInfo FAILED!"));
+		return;
+	}
+	StringCchPrintf(o_buffer, bufferSize, TEXT(GUID_FORMAT), 
+	                GUID_ARG(deviceInstance.guidProduct));
 }

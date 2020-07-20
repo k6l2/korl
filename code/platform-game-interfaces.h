@@ -118,15 +118,29 @@ global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
 #define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
- * @return INVALID_PLATFORM_BUTTON_INDEX if there is no active button
+ * @return INVALID_PLATFORM_BUTTON_INDEX if there is no active button OR if 
+ *         there are more than one buttons active!
  */
 #define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) u16 name(u8 gamePadIndex)
 global_variable const u16 INVALID_PLATFORM_AXIS_INDEX = u16(~0);
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
- * @return INVALID_PLATFORM_AXIS_INDEX if there is no active axis
+ * @return INVALID_PLATFORM_AXIS_INDEX if there is no active axis OR if there 
+ *         are more than one axes active!
  */
 #define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) u16 name(u8 gamePadIndex)
+/** Don't use this API for anything related to game development!!!  The only 
+ * reason this exists is to discover hardware-specific controller input maps. 
+ */
+#define PLATFORM_GET_GAME_PAD_PRODUCT_NAME(name) void name(u8 gamePadIndex, \
+                                                           char* o_buffer, \
+                                                           size_t bufferSize)
+/** Don't use this API for anything related to game development!!!  The only 
+ * reason this exists is to discover hardware-specific controller input maps. 
+ */
+#define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) void name(u8 gamePadIndex, \
+                                                           char* o_buffer, \
+                                                           size_t bufferSize)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_LOG(fnSig_platformLog);
@@ -146,6 +160,8 @@ typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
 	                                      fnSig_platformGetGamePadActiveButton);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
+typedef PLATFORM_GET_GAME_PAD_PRODUCT_NAME(fnSig_platformGetGamePadProductName);
+typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
 struct PlatformDebugReadFileResult
 {
 	u32 dataBytes;
@@ -179,6 +195,8 @@ struct KmlPlatformApi
 	fnSig_platformSetFullscreen* setFullscreen;
 	fnSig_platformGetGamePadActiveButton* getGamePadActiveButton;
 	fnSig_platformGetGamePadActiveAxis* getGamePadActiveAxis;
+	fnSig_platformGetGamePadProductName* getGamePadProductName;
+	fnSig_platformGetGamePadProductGuid* getGamePadProductGuid;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;
 	fnSig_PlatformFreeFileMemory* freeFileMemory;
@@ -332,6 +350,10 @@ struct GameKeyboard
 		};
 	};
 };
+/** the GamePadType serves two purposes: 
+ * - determining whether or not the controller is plugged in
+ * - determining what type of controller it is 
+ */
 enum class GamePadType : u8
 	{ UNPLUGGED
 	, XINPUT
@@ -339,10 +361,6 @@ enum class GamePadType : u8
 };
 struct GamePad
 {
-	/** the GamePadType serves two purposes: 
-	 * - determining whether or not the controller is plugged in
-	 * - determining what type of controller it is 
-	 */
 	GamePadType type;
 	v2f32 normalizedStickLeft;
 	v2f32 normalizedStickRight;

@@ -404,8 +404,8 @@
 		DirectInput controllers
 		[x] poll for the index of a button that is being held down
 		[ ] poll for the index of an axis that is being "held down"
-		[ ] poll for the controller's product GUID
-		[ ] poll for the controller's product name
+		[x] poll for the controller's product GUID
+		[x] poll for the controller's product name
 	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37
 	[ ] fix DirectInput deadzone

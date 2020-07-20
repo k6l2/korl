@@ -191,12 +191,20 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton)
 	if( XInputGetState(gamePadIndex, &controllerState) != ERROR_SUCCESS )
 		return INVALID_PLATFORM_BUTTON_INDEX;
 	const XINPUT_GAMEPAD& pad = controllerState.Gamepad;
+	u16 result = INVALID_PLATFORM_BUTTON_INDEX;
 	for(u16 b = 0; b < CARRAY_COUNT(XINPUT_BUTTONS); b++)
 	{
 		if(pad.wButtons & XINPUT_BUTTONS[b])
 		{
-			return b;
+			if(result == INVALID_PLATFORM_BUTTON_INDEX)
+			{
+				result = b;
+			}
+			else
+			{
+				return INVALID_PLATFORM_BUTTON_INDEX;
+			}
 		}
 	}
-	return INVALID_PLATFORM_BUTTON_INDEX;
+	return result;
 }
