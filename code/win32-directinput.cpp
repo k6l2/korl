@@ -418,6 +418,21 @@ internal void w32ProcessDInputStick(LONG xiThumbX, LONG xiThumbY,
 	*o_normalizedStickX = thumbNormX * thumbMagNorm;
 	*o_normalizedStickY = thumbNormY * thumbMagNorm;
 }
+/**
+ * @return normalized dIAxis value
+ */
+internal f32 w32ProcessDInputAxis(LONG dIAxis, u16 deadzoneMagnitude)
+{
+	if(dIAxis < -0x7FFF) dIAxis = -0x7FFF;
+	if(dIAxis < -0x7FFF) dIAxis = -0x7FFF;
+	if(abs(dIAxis) <= deadzoneMagnitude)
+		return 0.f;
+	const f32 axisNorm = dIAxis / fabsf(static_cast<f32>(dIAxis));
+	local_persist const f32 MAX_AXIS_MAG = static_cast<f32>(0x7FFF);
+	const f32 axisMag = (fabsf(static_cast<f32>(dIAxis)) - deadzoneMagnitude) /
+	                    (MAX_AXIS_MAG - deadzoneMagnitude);
+	return axisNorm*axisMag;
+}
 internal void w32ProcessDInputButton(bool buttonPressed, 
                                      ButtonState buttonStatePrevious,
                                      ButtonState* o_buttonStateCurrent)
@@ -652,6 +667,76 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 				{
 					return INVALID_PLATFORM_BUTTON_INDEX;
 				}
+			}
+		}
+	}
+	return result;
+}
+internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
+{
+	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+		return {INVALID_PLATFORM_AXIS_INDEX};
+	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
+	if(!dInput8Device)
+		return {INVALID_PLATFORM_AXIS_INDEX};
+	/* poll the device for current input state */
+	const HRESULT hResultPoll = dInput8Device->Poll();
+	if(!(hResultPoll == DI_OK || hResultPoll == DI_NOEFFECT))
+	/* poll failed means the device is no longer acquired, attempt to 
+		re-acquire */
+	{
+		const HRESULT hResultAcquire = dInput8Device->Acquire();
+		if(hResultAcquire == DIERR_OTHERAPPHASPRIO)
+		{
+			return {INVALID_PLATFORM_AXIS_INDEX};
+		}
+		if(hResultAcquire != DI_OK)
+		{
+			KLOG(WARNING, "Failed to re-acquire device! Unacquiring...");
+			g_dInputDevices[gamePadIndex]->Unacquire();
+			g_dInputDevices[gamePadIndex]->Release();
+			g_dInputDevices[gamePadIndex] = nullptr;
+			return {INVALID_PLATFORM_AXIS_INDEX};
+		}
+	}
+	DIJOYSTATE joyState;
+	ZeroMemory(&joyState, sizeof(joyState));
+	/* get the state of the controller */
+	const HRESULT hResultGetState = 
+		dInput8Device->GetDeviceState(sizeof(joyState), &joyState);
+	if(hResultGetState != DI_OK)
+	{
+		KLOG(WARNING, "Failed to get device state!");
+		return {INVALID_PLATFORM_AXIS_INDEX};
+	}
+	/* at this point, we should have the state of the controller and we can 
+		actually check to see what is being pressed/moved: */
+	f32 axes[8];
+	///TODO: use DirectInput-specific deadzone here???
+	local_persist const u16 DEADZONE_MAG = 
+		XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2;
+	axes[0] = w32ProcessDInputAxis(joyState.lX          , DEADZONE_MAG);
+	axes[1] = w32ProcessDInputAxis(joyState.lY          , DEADZONE_MAG);
+	axes[2] = w32ProcessDInputAxis(joyState.lZ          , DEADZONE_MAG);
+	axes[3] = w32ProcessDInputAxis(joyState.lRx         , DEADZONE_MAG);
+	axes[4] = w32ProcessDInputAxis(joyState.lRy         , DEADZONE_MAG);
+	axes[5] = w32ProcessDInputAxis(joyState.lRz         , DEADZONE_MAG);
+	axes[6] = w32ProcessDInputAxis(joyState.rglSlider[0], DEADZONE_MAG);
+	axes[7] = w32ProcessDInputAxis(joyState.rglSlider[1], DEADZONE_MAG);
+	PlatformGamePadActiveAxis result = {INVALID_PLATFORM_AXIS_INDEX};
+	for(u16 a = 0; a < CARRAY_COUNT(axes); a++)
+	{
+		if(fabsf(axes[a]) > 0.9)
+		{
+			if(result.index == INVALID_PLATFORM_AXIS_INDEX)
+			{
+				result.index    = a;
+				result.positive = axes[a] >= 0;
+			}
+			else
+			{
+				return {INVALID_PLATFORM_AXIS_INDEX};
 			}
 		}
 	}

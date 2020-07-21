@@ -123,12 +123,18 @@ global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
  */
 #define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) u16 name(u8 gamePadIndex)
 global_variable const u16 INVALID_PLATFORM_AXIS_INDEX = u16(~0);
+struct PlatformGamePadActiveAxis
+{
+	u16 index;
+	bool positive;
+};
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  * @return INVALID_PLATFORM_AXIS_INDEX if there is no active axis OR if there 
  *         are more than one axes active!
  */
-#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) u16 name(u8 gamePadIndex)
+#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) PlatformGamePadActiveAxis \
+    name(u8 gamePadIndex)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  */

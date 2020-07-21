@@ -1111,17 +1111,16 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
 {
 	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
-	return INVALID_PLATFORM_AXIS_INDEX;
-#if 0
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* the gamepad is an Xinput controller */
 	{
+		return w32XInputGetGamePadActiveAxis(gamePadIndex);
 	}
 	else
 	/* gamepad is DirectInput */
 	{
+		return w32DInputGetGamePadActiveAxis(gamePadIndex - XUSER_MAX_COUNT);
 	}
-#endif// 0
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32GetGamePadProductName)
 {

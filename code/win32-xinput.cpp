@@ -208,3 +208,41 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton)
 	}
 	return result;
 }
+internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32XInputGetGamePadActiveAxis)
+{
+	kassert(gamePadIndex < XUSER_MAX_COUNT);
+	if(gamePadIndex >= XUSER_MAX_COUNT)
+		return {INVALID_PLATFORM_AXIS_INDEX};
+	XINPUT_STATE controllerState;
+	if( XInputGetState(gamePadIndex, &controllerState) != ERROR_SUCCESS )
+		return {INVALID_PLATFORM_AXIS_INDEX};
+	const XINPUT_GAMEPAD& pad = controllerState.Gamepad;
+	f32 axes[6];
+	w32ProcessXInputStick(pad.sThumbLX, pad.sThumbLY,
+	                      XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2,
+	                      &axes[0], &axes[1]);
+	w32ProcessXInputStick(pad.sThumbRX, pad.sThumbRY,
+	                      XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
+	                      &axes[2], &axes[3]);
+	w32ProcessXInputTrigger(pad.bLeftTrigger,
+	                        XINPUT_GAMEPAD_TRIGGER_THRESHOLD, &axes[4]);
+	w32ProcessXInputTrigger(pad.bRightTrigger,
+	                        XINPUT_GAMEPAD_TRIGGER_THRESHOLD, &axes[5]);
+	PlatformGamePadActiveAxis result = {INVALID_PLATFORM_AXIS_INDEX};
+	for(u16 a = 0; a < CARRAY_COUNT(axes); a++)
+	{
+		if(fabsf(axes[a]) > 0.9)
+		{
+			if(result.index == INVALID_PLATFORM_AXIS_INDEX)
+			{
+				result.index    = a;
+				result.positive = axes[a] >= 0;
+			}
+			else
+			{
+				return {INVALID_PLATFORM_AXIS_INDEX};
+			}
+		}
+	}
+	return result;
+}

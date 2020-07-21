@@ -15,3 +15,4 @@ internal void w32LoadXInput();
 internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame);
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton);
+internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32XInputGetGamePadActiveAxis);
