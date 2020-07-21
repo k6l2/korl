@@ -2164,14 +2164,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	kassert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
 	                             &gameKeyboardA.vKeys[0]) ==
 	         CARRAY_COUNT(gameKeyboardA.vKeys) );
-#endif
-#if INTERNAL_BUILD
+	// ensure that the size of the gamepad's axis array matches the size of
+	//	the anonymous struct which defines the names of all the axes //
+	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_AXIS - 
+	                             &g_gamePadArrayA[0].axes[0]) ==
+	         CARRAY_COUNT(g_gamePadArrayA[0].axes) );
 	// ensure that the size of the gamepad's button array matches the size of
 	//	the anonymous struct which defines the names of all the buttons //
 	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
 	                             &g_gamePadArrayA[0].buttons[0]) ==
 	         CARRAY_COUNT(g_gamePadArrayA[0].buttons) );
-#endif
+#endif// INTERNAL_BUILD
 	local_persist const u8 SOUND_CHANNELS = 2;
 	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
 	local_persist const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;

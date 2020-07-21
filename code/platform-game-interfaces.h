@@ -368,11 +368,27 @@ enum class GamePadType : u8
 struct GamePad
 {
 	GamePadType type;
-	v2f32 normalizedStickLeft;
-	v2f32 normalizedStickRight;
 	union
 	{
-		ButtonState buttons[14];
+		/* all axes have a value in the range [-1,1] */
+		f32 axes[6];
+		struct
+		{
+			v2f32 stickLeft;
+			v2f32 stickRight;
+			f32 triggerLeft;
+			f32 triggerRight;
+	#if INTERNAL_BUILD
+			/** KEEP THIS THE LAST VAR IN THE STRUCT ! ! ! 
+			 * See similar struct in GameKeyboard for additional info.
+			*/
+			f32 DUMMY_LAST_AXIS;
+	#endif // INTERNAL_BUILD
+		};
+	};
+	union
+	{
+		ButtonState buttons[16];
 		struct
 		{
 			ButtonState faceUp;
@@ -387,6 +403,8 @@ struct GamePad
 			ButtonState dPadRight;
 			ButtonState shoulderLeft;
 			ButtonState shoulderRight;
+			ButtonState shoulderLeft2;
+			ButtonState shoulderRight2;
 			ButtonState stickClickLeft;
 			ButtonState stickClickRight;
 	#if INTERNAL_BUILD
@@ -402,8 +420,6 @@ struct GamePad
 		i8 buttons_PADDING[2];
 	#endif // INTERNAL_BUILD
 	};
-	float normalizedTriggerLeft;
-	float normalizedTriggerRight;
 	float normalizedMotorSpeedLeft;
 	float normalizedMotorSpeedRight;
 };

@@ -533,14 +533,14 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 			joyState.lX, -joyState.lY,
 			///TODO: use the DirectInput device deadzone here probably??
 			XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2,
-			&gpArrCurrFrame[d].normalizedStickLeft.x,
-			&gpArrCurrFrame[d].normalizedStickLeft.y);
+			&gpArrCurrFrame[d].stickLeft.x,
+			&gpArrCurrFrame[d].stickLeft.y);
 		w32ProcessDInputStick(
 			joyState.lZ, -joyState.lRz,
 			///TODO: use the DirectInput device deadzone here probably??
 			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
-			&gpArrCurrFrame[d].normalizedStickRight.x,
-			&gpArrCurrFrame[d].normalizedStickRight.y);
+			&gpArrCurrFrame[d].stickRight.x,
+			&gpArrCurrFrame[d].stickRight.y);
 		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[0]),
 		                       gpArrPrevFrame[d].faceLeft,
 		                       &gpArrCurrFrame[d].faceLeft);
@@ -559,6 +559,12 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[5]),
 		                       gpArrPrevFrame[d].shoulderRight,
 		                       &gpArrCurrFrame[d].shoulderRight);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[6]),
+		                       gpArrPrevFrame[d].shoulderLeft2,
+		                       &gpArrCurrFrame[d].shoulderLeft2);
+		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[7]),
+		                       gpArrPrevFrame[d].shoulderRight2,
+		                       &gpArrCurrFrame[d].shoulderRight2);
 		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[8]),
 		                       gpArrPrevFrame[d].back,
 		                       &gpArrCurrFrame[d].back);
@@ -571,10 +577,18 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[11]),
 		                       gpArrPrevFrame[d].stickClickRight,
 		                       &gpArrCurrFrame[d].stickClickRight);
-		w32ProcessDInputTrigger(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[6]),
-		                        &gpArrCurrFrame[d].normalizedTriggerLeft);
-		w32ProcessDInputTrigger(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[7]),
-		                        &gpArrCurrFrame[d].normalizedTriggerRight);
+		/* this simulation of the trigger states should only ever happen if the 
+			controller has L2/R2 buttons and NOT analog buttons */
+		{
+			if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[6]))
+				gpArrCurrFrame[d].triggerLeft = 1.f;
+			else
+				gpArrCurrFrame[d].triggerLeft = 0.f;
+			if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[7]))
+				gpArrCurrFrame[d].triggerRight = 1.f;
+			else
+				gpArrCurrFrame[d].triggerRight = 0.f;
+		}
 		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 0, 
 		                          gpArrPrevFrame[d].dPadUp, 
 		                          &gpArrCurrFrame[d].dPadUp);

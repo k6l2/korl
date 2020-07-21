@@ -168,12 +168,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		GamePad& gpad = gamePadArray[c];
 		if(gpad.type == GamePadType::UNPLUGGED)
 			continue;
-		if(gpad.shoulderLeft == ButtonState::PRESSED)
+		if(gpad.shoulderLeft2 == ButtonState::PRESSED)
 		{
 			kauPlaySound(g_gs->kAudioMixer, 
 			             KAssetIndex::sfx_joesteroids_hit_wav);
 		}
-		if(gpad.shoulderRight >= ButtonState::PRESSED)
+		if(gpad.shoulderRight2 >= ButtonState::PRESSED)
 		{
 			if(gpad.faceLeft >= ButtonState::PRESSED)
 			{
@@ -186,22 +186,22 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				             KAssetIndex::sfx_joesteroids_shoot_modified_wav);
 			}
 		}
-		g_gs->shipWorldPosition.x += 10*gpad.normalizedStickLeft.x;
-		g_gs->shipWorldPosition.y += 10*gpad.normalizedStickLeft.y;
-		if(!kmath::isNearlyZero(gpad.normalizedStickLeft.x) ||
-		   !kmath::isNearlyZero(gpad.normalizedStickLeft.y))
+		g_gs->shipWorldPosition.x += 10*gpad.stickLeft.x;
+		g_gs->shipWorldPosition.y += 10*gpad.stickLeft.y;
+		if(!kmath::isNearlyZero(gpad.stickLeft.x) ||
+		   !kmath::isNearlyZero(gpad.stickLeft.y))
 		{
 			const f32 stickRadians = 
-				kmath::v2Radians(gpad.normalizedStickLeft);
+				kmath::v2Radians(gpad.stickLeft);
 			g_gs->shipWorldOrientation = 
 				kmath::quat({0,0,1}, stickRadians - PI32/2);
 		}
 		const f32 controlVolumeRatio = 
-			(gpad.normalizedStickRight.y/2) + 0.5f;
+			(gpad.stickRight.y/2) + 0.5f;
 		kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 
 		             controlVolumeRatio);
-		gpad.normalizedMotorSpeedLeft  = gpad.normalizedTriggerLeft;
-		gpad.normalizedMotorSpeedRight = gpad.normalizedTriggerRight;
+		gpad.normalizedMotorSpeedLeft  = gpad.triggerLeft;
+		gpad.normalizedMotorSpeedRight = gpad.triggerRight;
 		if (gpad.back  == ButtonState::HELD &&
 		    gpad.start == ButtonState::PRESSED)
 		{

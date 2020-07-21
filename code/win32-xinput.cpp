@@ -132,9 +132,16 @@ global_variable const WORD XINPUT_BUTTONS[] =
 	, XINPUT_GAMEPAD_LEFT_THUMB
 	, XINPUT_GAMEPAD_RIGHT_THUMB
 };
+global_variable const size_t KML_GAMEPAD_BUTTONS[] =
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+	/* skip 12 & 13 because those are the L2 & R2 buttons */
+	, 14, 15
+};
 internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame)
 {
+	static_assert(CARRAY_COUNT(XINPUT_BUTTONS) == 
+	              CARRAY_COUNT(KML_GAMEPAD_BUTTONS));
 	for(u32 ci = 0; ci < XUSER_MAX_COUNT; ci++)
 	{
 		XINPUT_STATE controllerState;
@@ -150,28 +157,41 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
 		w32ProcessXInputStick(
 			pad.sThumbLX, pad.sThumbLY,
 			XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2,
-			&gamePadArrayCurrentFrame[ci].normalizedStickLeft.x,
-			&gamePadArrayCurrentFrame[ci].normalizedStickLeft.y);
+			&gamePadArrayCurrentFrame[ci].stickLeft.x,
+			&gamePadArrayCurrentFrame[ci].stickLeft.y);
 		w32ProcessXInputStick(
 			pad.sThumbRX, pad.sThumbRY,
 			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
-			&gamePadArrayCurrentFrame[ci].normalizedStickRight.x,
-			&gamePadArrayCurrentFrame[ci].normalizedStickRight.y);
+			&gamePadArrayCurrentFrame[ci].stickRight.x,
+			&gamePadArrayCurrentFrame[ci].stickRight.y);
 		for(u16 b = 0; b < CARRAY_COUNT(XINPUT_BUTTONS); b++)
 		{
 			w32ProcessXInputButton(
 				pad.wButtons & XINPUT_BUTTONS[b],
-				gamePadArrayPreviousFrame[ci].buttons[b],
-				&gamePadArrayCurrentFrame[ci].buttons[b]);
+				gamePadArrayPreviousFrame[ci].buttons[KML_GAMEPAD_BUTTONS[b]],
+				&gamePadArrayCurrentFrame[ci].buttons[KML_GAMEPAD_BUTTONS[b]]);
 		}
 		w32ProcessXInputTrigger(
 			pad.bLeftTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
-			&gamePadArrayCurrentFrame[ci].normalizedTriggerLeft);
+			&gamePadArrayCurrentFrame[ci].triggerLeft);
 		w32ProcessXInputTrigger(
 			pad.bRightTrigger,
 			XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
-			&gamePadArrayCurrentFrame[ci].normalizedTriggerRight);
+			&gamePadArrayCurrentFrame[ci].triggerRight);
+		/* simulate L2/R2 button press state by checking if the xbox 
+			controller's triggers are pressed to a certain amount */
+		local_persist const f32 XINPUT_TRIGGER_SHOULDER2_THRESHOLD = 0.9f;
+		w32ProcessXInputButton(
+			gamePadArrayCurrentFrame[ci].triggerLeft >= 
+				XINPUT_TRIGGER_SHOULDER2_THRESHOLD,
+			gamePadArrayPreviousFrame[ci].shoulderLeft2,
+			&gamePadArrayCurrentFrame[ci].shoulderLeft2);
+		w32ProcessXInputButton(
+			gamePadArrayCurrentFrame[ci].triggerRight >= 
+				XINPUT_TRIGGER_SHOULDER2_THRESHOLD,
+			gamePadArrayPreviousFrame[ci].shoulderRight2,
+			&gamePadArrayCurrentFrame[ci].shoulderRight2);
 #if INTERNAL_BUILD && 0
 		///TODO: delete this test pls, future me.
 		if(gamePadArrayCurrentFrame[ci].buttons.faceUp == 
