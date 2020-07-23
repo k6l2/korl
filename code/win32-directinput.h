@@ -5,6 +5,7 @@
 global_variable IDirectInput8* g_pIDInput;
 global_variable LPDIRECTINPUTDEVICE8 g_dInputDevices[8];
 global_variable bool g_dInputDeviceJustAcquiredFlags[8];
+global_variable size_t g_dInputDeviceGamePadMapIndices[8];
 internal void w32LoadDInput(HINSTANCE hinst);
 internal void w32DInputEnumerateDevices();
 internal void w32DInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,

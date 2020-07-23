@@ -1,5 +1,10 @@
 #include "win32-directinput.h"
 #include "win32-main.h"
+global_variable const char* DIRECT_INPUT_TO_GAMEPAD_MAPS[] =
+	{ "Logitech Dual Action{C216046D-0000-0000-0000-504944564944}b3:0,b1:1,"
+		"b0:2,b2:3,b9:4,b8:5,b32:6,b34:7,b35:8,b33:9,b4:10,b5:11,b6:12,b7:13,"
+		"b10:14,b11:15,+0:0,-1:1,+2:2,-5:3"
+};
 /* easy printing of GUIDs 
 	Source: https://stackoverflow.com/a/26644772 */
 #define GUID_FORMAT "%08lX-%04hX-%04hX-%02hhX%02hhX-"\
@@ -233,6 +238,125 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 	{
 		return;
 	}
+	/* locate the device in the DInput=>GamePad database by comparing the 
+		product GUID of the lpddi to all of the GUIDs of the input map 
+		strings */
+	g_dInputDeviceGamePadMapIndices[firstEmptyInputDevice] = 
+		CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS);
+	for(size_t gpm = 0; gpm < CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS); gpm++)
+	{
+		/* parse the product GUID of the DInput=>GamePad input map */
+		const char* cStrMapGuid = 
+			strchr(DIRECT_INPUT_TO_GAMEPAD_MAPS[gpm], '{');
+		const char* cStrMapGuidEnd = 
+			strrchr(DIRECT_INPUT_TO_GAMEPAD_MAPS[gpm], '}');
+		if(!cStrMapGuid || !cStrMapGuidEnd || cStrMapGuidEnd <= cStrMapGuid)
+		{
+			KLOG(ERROR, "Invalid DirectInput=>GamePad map string! '%s'",
+			     DIRECT_INPUT_TO_GAMEPAD_MAPS[gpm]);
+			continue;
+		}
+		cStrMapGuid++;// skip the '{' character to get straight into the GUID
+		GUID guidInputMap;
+		char parseGuidBuffer[9];
+		for(u8 currentGuidDataParsing = 0; currentGuidDataParsing < 4; 
+			currentGuidDataParsing++)
+		{
+			switch(currentGuidDataParsing)
+			{
+				case 0:// Guid::Data1 is a u32 (8 hex characters)
+				{
+					for(u8 c = 0; c < 8; c++)
+					{
+						parseGuidBuffer[c] = *cStrMapGuid++;
+					}
+					parseGuidBuffer[8] = '\0';
+					if(*cStrMapGuid == '-')
+						cStrMapGuid++;// skip over the '-' separator
+					kassert(errno == 0);
+					guidInputMap.Data1 = static_cast<u32>(
+						strtoll(parseGuidBuffer, nullptr, 16));
+					if (errno == ERANGE)
+					{
+						KLOG(ERROR, "strtoll range error!");
+						errno = 0;
+					}
+				}break;
+				case 1:// Guid::Data2/3 are u16 (4 hex characters)
+				case 2:
+				{
+					for(u8 c = 0; c < 4; c++)
+					{
+						parseGuidBuffer[c] = *cStrMapGuid++;
+					}
+					parseGuidBuffer[4] = '\0';
+					if(*cStrMapGuid == '-')
+						cStrMapGuid++;// skip over the '-' separator
+					kassert(errno == 0);
+					guidInputMap.Data2 = static_cast<u16>(
+						strtol(parseGuidBuffer, nullptr, 16));
+					if (errno == ERANGE)
+					{
+						KLOG(ERROR, "strtoll range error!");
+						errno = 0;
+					}
+					currentGuidDataParsing++;// we can just handle Data3 now
+					for(u8 c = 0; c < 4; c++)
+					{
+						parseGuidBuffer[c] = *cStrMapGuid++;
+					}
+					parseGuidBuffer[4] = '\0';
+					if(*cStrMapGuid == '-')
+						cStrMapGuid++;// skip over the '-' separator
+					kassert(errno == 0);
+					guidInputMap.Data3 = static_cast<u16>(
+						strtol(parseGuidBuffer, nullptr, 16));
+					if (errno == ERANGE)
+					{
+						KLOG(ERROR, "strtoll range error!");
+						errno = 0;
+					}
+				}break;
+				case 3:// Guid::Data4 is an array[8] of u8 (2 hex chars each)
+				{
+					parseGuidBuffer[2] = '\0';
+					for(u8 c = 0; c < 8; c++)
+					{
+						if(*cStrMapGuid == '-')
+							cStrMapGuid++;// skip over any '-' separators
+						parseGuidBuffer[0] = *cStrMapGuid++;
+						parseGuidBuffer[1] = *cStrMapGuid++;
+						kassert(errno == 0);
+						guidInputMap.Data4[c] = static_cast<u8>(
+							strtol(parseGuidBuffer, nullptr, 16));
+						if (errno == ERANGE)
+						{
+							KLOG(ERROR, "strtoll range error!");
+							errno = 0;
+						}
+					}
+				}break;
+			}
+		}
+		if(cStrMapGuid != cStrMapGuidEnd)
+		{
+			KLOG(ERROR, "Error parsing DirectInput=>GamePad map string! '%s'",
+			     DIRECT_INPUT_TO_GAMEPAD_MAPS[gpm]);
+			continue;
+		}
+		/* compare lpddi's product GUID to the gamepad map's product GUID */
+		if(IsEqualGUID(guidInputMap, lpddi->guidProduct))
+		{
+			g_dInputDeviceGamePadMapIndices[firstEmptyInputDevice] = gpm;
+			break;
+		}
+	}
+	if(g_dInputDeviceGamePadMapIndices[firstEmptyInputDevice] == 
+		CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS))
+	{
+		KLOG(WARNING, "Failed to locate an appropriate DirectInput=>GamePad "
+		     "map!  GamePad for this device's slot will not be plugged in.");
+	}
 	/* create a new direct input device and add it to the global array */
 	{
 		const HRESULT hResult = 
@@ -389,35 +513,6 @@ internal void w32LoadDInput(HINSTANCE hInst)
 	}
 	w32DInputEnumerateDevices();
 }
-internal void w32ProcessDInputStick(LONG xiThumbX, LONG xiThumbY, 
-                                    u16 circularDeadzoneMagnitude, 
-                                    f32 *o_normalizedStickX, 
-                                    f32 *o_normalizedStickY)
-{
-	if(xiThumbX < -0x7FFF) xiThumbX = -0x7FFF;
-	if(xiThumbY < -0x7FFF) xiThumbY = -0x7FFF;
-	local_persist const f32 MAX_THUMB_MAG = static_cast<f32>(0x7FFF);
-	f32 thumbMag = 
-		sqrtf(static_cast<f32>(xiThumbX)*xiThumbX + xiThumbY*xiThumbY);
-	const f32 thumbNormX = 
-		!kmath::isNearlyZero(thumbMag) ? xiThumbX / thumbMag : 0.f;
-	const f32 thumbNormY = 
-		!kmath::isNearlyZero(thumbMag) ? xiThumbY / thumbMag : 0.f;
-	if(thumbMag <= circularDeadzoneMagnitude)
-	{
-		*o_normalizedStickX = 0.f;
-		*o_normalizedStickY = 0.f;
-		return;
-	}
-	if(thumbMag > MAX_THUMB_MAG) 
-	{
-		thumbMag = MAX_THUMB_MAG;
-	}
-	const f32 thumbMagNorm = (thumbMag - circularDeadzoneMagnitude) / 
-	                    (MAX_THUMB_MAG - circularDeadzoneMagnitude);
-	*o_normalizedStickX = thumbNormX * thumbMagNorm;
-	*o_normalizedStickY = thumbNormY * thumbMagNorm;
-}
 /**
  * @return normalized dIAxis value
  */
@@ -486,12 +581,48 @@ internal void w32ProcessDInputPovButton(DWORD povCentiDegreesCwFromNorth,
 	w32ProcessDInputButton(buttonPressed, buttonStatePrevious, 
 	                       o_buttonStateCurrent);
 }
+enum class DirectInputPadInputType
+	{ NO_MAPPED_INPUT
+	, BUTTON
+	, AXIS
+	, POV_HAT
+};
+struct DirectInputButton
+{
+	DirectInputPadInputType inputType;
+	u16 buttonIndex;
+};
+struct DirectInputAxis
+{
+	DirectInputPadInputType inputType;
+	u16 axisIndex;
+	bool invertAxis;
+};
+struct DirectInputPovHat
+{
+	DirectInputPadInputType inputType;
+	u16 povHatIndex;
+	DWORD buttonCentiDegreesCwFromNorth;
+};
+union DirectInputPadInput
+{
+	DirectInputPadInputType inputType;
+	DirectInputButton button;
+	DirectInputAxis axis;
+	DirectInputPovHat povHat;
+};
 internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
                                         GamePad* gpArrPrevFrame)
 {
 	for(size_t d = 0; d < CARRAY_COUNT(g_dInputDevices); d++)
 	{
 		if(!g_dInputDevices[d])
+		{
+			gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
+			continue;
+		}
+		if(g_dInputDeviceGamePadMapIndices[d] == 
+			CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS))
 		{
 			gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
 			continue;
@@ -517,9 +648,155 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 				continue;
 			}
 		}
+		/* parse the DIRECT_INPUT_TO_GAMEPAD_MAPS entry for this device */
+		/* @optimization: store this mapping globally ONCE when the map for this 
+			device is discovered instead of parsing every frame */
+		const size_t gamePadMapIndex = g_dInputDeviceGamePadMapIndices[d];
+		const char* nextGamePadMapChar = 
+			strrchr(DIRECT_INPUT_TO_GAMEPAD_MAPS[gamePadMapIndex], '}');
+		kassert(nextGamePadMapChar);
+		nextGamePadMapChar++;// skip the '}' character 
+		DirectInputPadInput 
+			diJoyStateGamePadButtonInputs[CARRAY_COUNT(GamePad::buttons)];
+		DirectInputPadInput 
+			diJoyStateGamePadAxisInputs[CARRAY_COUNT(GamePad::axes)];
+		for(size_t b = 0; b < CARRAY_COUNT(GamePad::buttons); b++)
+		{
+			diJoyStateGamePadButtonInputs[b].inputType = 
+				DirectInputPadInputType::NO_MAPPED_INPUT;
+		}
+		for(size_t a = 0; a < CARRAY_COUNT(GamePad::axes); a++)
+		{
+			diJoyStateGamePadAxisInputs[a].inputType = 
+				DirectInputPadInputType::NO_MAPPED_INPUT;
+		}
+		while(*nextGamePadMapChar)
+		{
+			/* determine where the end of the current entry is so we can update 
+				the nextGamePadMapChar to this location for the next entry */
+			const char* cStrEntryEnd = strchr(nextGamePadMapChar, ',');
+			if(!cStrEntryEnd)
+				cStrEntryEnd = nextGamePadMapChar + strlen(nextGamePadMapChar);
+			switch(*nextGamePadMapChar)
+			{
+				case 'b':// DInputButton=>GamePadButton map entry
+				/* entry format: 
+					b<DInput button index>:<GamePad button index> */
+				{
+					nextGamePadMapChar++;// skip over the 'b' character
+					char intBuffer[16];
+					/* extract the DInput button index */
+					intBuffer[CARRAY_COUNT(intBuffer) - 1] = '\0';
+					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					{
+						intBuffer[c] = *nextGamePadMapChar++;
+						if(*nextGamePadMapChar == ':')
+						{
+							nextGamePadMapChar++;
+							intBuffer[c + 1] = '\0';
+							break;
+						}
+					}
+					const u16 buttonIndexDInput = 
+						kmath::safeTruncateU16(atoi(intBuffer));
+					/* extract the GamePad button index */
+					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					{
+						intBuffer[c] = *nextGamePadMapChar++;
+						if(*nextGamePadMapChar == ',' 
+							|| *nextGamePadMapChar == '\0')
+						{
+							if(*nextGamePadMapChar == ',')
+								nextGamePadMapChar++;
+							intBuffer[c + 1] = '\0';
+							break;
+						}
+					}
+					const u16 buttonIndexGamePad = 
+						kmath::safeTruncateU16(atoi(intBuffer));
+					/* populate the button map list */
+					if(buttonIndexDInput < CARRAY_COUNT(DIJOYSTATE::rgbButtons))
+					/* the DInput button index refers to a rgbButtons index */
+					{
+						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
+							.inputType = DirectInputPadInputType::BUTTON;
+						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
+							.button.buttonIndex = buttonIndexDInput;
+					}
+					else
+					/* the DInput button index refers to a pov hat switch 
+						direction */
+					{
+						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
+							.inputType = DirectInputPadInputType::POV_HAT;
+						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
+							.povHat.povHatIndex = (buttonIndexDInput - 
+								CARRAY_COUNT(DIJOYSTATE::rgbButtons)) / 4;
+						const u16 povCwDirectionIndex = (buttonIndexDInput - 
+							CARRAY_COUNT(DIJOYSTATE::rgbButtons)) % 4;
+						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
+							.povHat.buttonCentiDegreesCwFromNorth = 
+								povCwDirectionIndex*9000;
+					}
+				}break;
+				case '+':// DInputAxis=>GamePadAxis map entry
+				case '-':
+				/* entry format:
+					[+-]<DInput axis index>:<GamePad axis index> */
+				{
+					const bool positiveDInputAxis = *nextGamePadMapChar == '+';
+					*nextGamePadMapChar++;// skip over the '+' or '-' character
+					char intBuffer[16];
+					/* extract the DInput axis index */
+					intBuffer[CARRAY_COUNT(intBuffer) - 1] = '\0';
+					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					{
+						intBuffer[c] = *nextGamePadMapChar++;
+						if(*nextGamePadMapChar == ':')
+						{
+							nextGamePadMapChar++;
+							intBuffer[c + 1] = '\0';
+							break;
+						}
+					}
+					const u16 axisIndexDInput = 
+						kmath::safeTruncateU16(atoi(intBuffer));
+					/* extract the GamePad axis index */
+					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					{
+						intBuffer[c] = *nextGamePadMapChar++;
+						if(*nextGamePadMapChar == ',' 
+							|| *nextGamePadMapChar == '\0')
+						{
+							if(*nextGamePadMapChar == ',')
+								nextGamePadMapChar++;
+							intBuffer[c + 1] = '\0';
+							break;
+						}
+					}
+					const u16 axisIndexGamePad = 
+						kmath::safeTruncateU16(atoi(intBuffer));
+					/* populate the list of address offsets */
+					diJoyStateGamePadAxisInputs[axisIndexGamePad]
+						.inputType = DirectInputPadInputType::AXIS;
+					diJoyStateGamePadAxisInputs[axisIndexGamePad]
+						.axis.axisIndex = axisIndexDInput;
+					diJoyStateGamePadAxisInputs[axisIndexGamePad]
+						.axis.invertAxis = !positiveDInputAxis;
+				}break;
+				default:
+				{
+					KLOG(ERROR, "Invalid DInput=>GamePad map entry!");
+				}break;
+			}
+			nextGamePadMapChar = cStrEntryEnd;
+			// skip the next entry separator if it exists
+			if(*nextGamePadMapChar == ',')
+				nextGamePadMapChar++;
+		}
+		/* get the state of the controller */
 		DIJOYSTATE joyState;
 		ZeroMemory(&joyState, sizeof(joyState));
-		/* get the state of the controller */
 		const HRESULT hResultGetState = 
 			g_dInputDevices[d]->GetDeviceState(sizeof(joyState), &joyState);
 		if(hResultGetState != DI_OK)
@@ -529,78 +806,98 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 			continue;
 		}
 		gpArrCurrFrame[d].type = GamePadType::DINPUT_GENERIC;
-		w32ProcessDInputStick(
-			joyState.lX, -joyState.lY,
-			///TODO: use the DirectInput device deadzone here probably??
-			XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2,
-			&gpArrCurrFrame[d].stickLeft.x,
-			&gpArrCurrFrame[d].stickLeft.y);
-		w32ProcessDInputStick(
-			joyState.lZ, -joyState.lRz,
-			///TODO: use the DirectInput device deadzone here probably??
-			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
-			&gpArrCurrFrame[d].stickRight.x,
-			&gpArrCurrFrame[d].stickRight.y);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[0]),
-		                       gpArrPrevFrame[d].faceLeft,
-		                       &gpArrCurrFrame[d].faceLeft);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[1]),
-		                       gpArrPrevFrame[d].faceDown,
-		                       &gpArrCurrFrame[d].faceDown);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[2]),
-		                       gpArrPrevFrame[d].faceRight,
-		                       &gpArrCurrFrame[d].faceRight);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[3]),
-		                       gpArrPrevFrame[d].faceUp,
-		                       &gpArrCurrFrame[d].faceUp);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[4]),
-		                       gpArrPrevFrame[d].shoulderLeft,
-		                       &gpArrCurrFrame[d].shoulderLeft);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[5]),
-		                       gpArrPrevFrame[d].shoulderRight,
-		                       &gpArrCurrFrame[d].shoulderRight);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[6]),
-		                       gpArrPrevFrame[d].shoulderLeft2,
-		                       &gpArrCurrFrame[d].shoulderLeft2);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[7]),
-		                       gpArrPrevFrame[d].shoulderRight2,
-		                       &gpArrCurrFrame[d].shoulderRight2);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[8]),
-		                       gpArrPrevFrame[d].back,
-		                       &gpArrCurrFrame[d].back);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[9]),
-		                       gpArrPrevFrame[d].start,
-		                       &gpArrCurrFrame[d].start);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[10]),
-		                       gpArrPrevFrame[d].stickClickLeft,
-		                       &gpArrCurrFrame[d].stickClickLeft);
-		w32ProcessDInputButton(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[11]),
-		                       gpArrPrevFrame[d].stickClickRight,
-		                       &gpArrCurrFrame[d].stickClickRight);
+		/* use the DInput=>GamePad map to populate the GamePad with appropriate 
+			state  */
+		for(u8 b = 0; b < CARRAY_COUNT(GamePad::buttons); b++)
+		{
+			switch(diJoyStateGamePadButtonInputs[b].inputType)
+			{
+				case DirectInputPadInputType::BUTTON:
+				{
+					const u16 dInputButtonIndex = 
+						diJoyStateGamePadButtonInputs[b].button.buttonIndex;
+					const bool dInputButtonPressed = DINPUT_BUTTON_PRESSED(
+						joyState.rgbButtons[dInputButtonIndex]);
+					w32ProcessDInputButton(dInputButtonPressed, 
+					                       gpArrPrevFrame[d].buttons[b], 
+					                       &gpArrCurrFrame[d].buttons[b]);
+				}break;
+				case DirectInputPadInputType::POV_HAT:
+				{
+					w32ProcessDInputPovButton(
+						joyState.rgdwPOV[diJoyStateGamePadButtonInputs[b]
+							.povHat.povHatIndex], 
+						diJoyStateGamePadButtonInputs[b].povHat
+							.buttonCentiDegreesCwFromNorth, 
+						gpArrPrevFrame[d].buttons[b], 
+						&gpArrCurrFrame[d].buttons[b]);
+				}break;
+				case DirectInputPadInputType::NO_MAPPED_INPUT:
+				{
+					// just skip this input if it isn't mapped
+				}break;
+				default:
+				{
+					KLOG(ERROR, "DirectInputPadInputType(%i) not implemented "
+					     "for buttons!", 
+					     diJoyStateGamePadButtonInputs[b].inputType);
+				}break;
+			}
+		}
+		for(u8 a = 0; a < CARRAY_COUNT(GamePad::axes); a++)
+		{
+			switch(diJoyStateGamePadAxisInputs[a].inputType)
+			{
+				case DirectInputPadInputType::AXIS:
+				{
+					local_persist const u16 DEADZONE = 
+						XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2;
+					/* because all of the DIJOYSTATE axes are contiguous in 
+						memory, we can just refer to them using a single index, 
+						treating the DIJOYSTATE as an array of LONGs */
+					LONG* pDiAxis = reinterpret_cast<LONG*>(&joyState) + 
+						diJoyStateGamePadAxisInputs[a].axis.axisIndex;
+					gpArrCurrFrame[d].axes[a] = 
+						w32ProcessDInputAxis(*pDiAxis, DEADZONE);
+					if(diJoyStateGamePadAxisInputs[a].axis.invertAxis)
+						gpArrCurrFrame[d].axes[a] *= -1;
+				}break;
+				case DirectInputPadInputType::NO_MAPPED_INPUT:
+				{
+					// just skip this input if it isn't mapped
+				}break;
+				default:
+				{
+					KLOG(ERROR, "DirectInputPadInputType(%i) not implemented "
+					     "for axes!", 
+					     diJoyStateGamePadAxisInputs[a].inputType);
+				}break;
+			}
+		}
 		/* this simulation of the trigger states should only ever happen if the 
 			controller has L2/R2 buttons and NOT analog buttons */
+		const size_t axisIndexTriggerLeft = 
+			static_cast<size_t>(&gpArrCurrFrame[d].triggerLeft - 
+			                    &gpArrCurrFrame[d].axes[0]);
+		const size_t axisIndexTriggerRight = 
+			static_cast<size_t>(&gpArrCurrFrame[d].triggerRight - 
+			                    &gpArrCurrFrame[d].axes[0]);
+		if(diJoyStateGamePadAxisInputs[axisIndexTriggerLeft].inputType == 
+			DirectInputPadInputType::NO_MAPPED_INPUT)
 		{
-			if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[6]))
+			if(gpArrCurrFrame[d].shoulderLeft2 > ButtonState::NOT_PRESSED)
 				gpArrCurrFrame[d].triggerLeft = 1.f;
 			else
 				gpArrCurrFrame[d].triggerLeft = 0.f;
-			if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[7]))
+		}
+		if(diJoyStateGamePadAxisInputs[axisIndexTriggerRight].inputType == 
+			DirectInputPadInputType::NO_MAPPED_INPUT)
+		{
+			if(gpArrCurrFrame[d].shoulderRight2 > ButtonState::NOT_PRESSED)
 				gpArrCurrFrame[d].triggerRight = 1.f;
 			else
 				gpArrCurrFrame[d].triggerRight = 0.f;
 		}
-		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 0, 
-		                          gpArrPrevFrame[d].dPadUp, 
-		                          &gpArrCurrFrame[d].dPadUp);
-		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 9000, 
-		                          gpArrPrevFrame[d].dPadRight, 
-		                          &gpArrCurrFrame[d].dPadRight);
-		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 18000, 
-		                          gpArrPrevFrame[d].dPadDown, 
-		                          &gpArrCurrFrame[d].dPadDown);
-		w32ProcessDInputPovButton(joyState.rgdwPOV[0], 27000, 
-		                          gpArrPrevFrame[d].dPadLeft, 
-		                          &gpArrCurrFrame[d].dPadLeft);
 	}
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
