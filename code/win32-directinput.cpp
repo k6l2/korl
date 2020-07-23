@@ -179,7 +179,8 @@ BOOL DIEnumDeviceAbsoluteAxes(LPCDIDEVICEOBJECTINSTANCE lpddoi,
 		gameControllerDeadZone.diph.dwHow        = DIPH_BYID;
 		gameControllerDeadZone.diph.dwObj        = lpddoi->dwType;
 		/* the deadzone data is measured in centi-percents [0,10000] */
-		gameControllerDeadZone.dwData = 100;
+		gameControllerDeadZone.dwData = static_cast<DWORD>(10000*
+			(XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / static_cast<f32>(0x7FFF)));
 		const HRESULT hResult = 
 			di8Device->SetProperty(DIPROP_DEADZONE, 
 			                       &gameControllerDeadZone.diph);
@@ -850,13 +851,17 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 			{
 				case DirectInputPadInputType::AXIS:
 				{
-					local_persist const u16 DEADZONE = 
-						XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE / 2;
+					local_persist const u16 DEADZONE = 0;
 					/* because all of the DIJOYSTATE axes are contiguous in 
 						memory, we can just refer to them using a single index, 
 						treating the DIJOYSTATE as an array of LONGs */
 					LONG* pDiAxis = reinterpret_cast<LONG*>(&joyState) + 
 						diJoyStateGamePadAxisInputs[a].axis.axisIndex;
+#if 0
+					KLOG(INFO, "diAxis[%i]=%li", 
+					     diJoyStateGamePadAxisInputs[a].axis.axisIndex, 
+					     *pDiAxis);
+#endif// 0
 					gpArrCurrFrame[d].axes[a] = 
 						w32ProcessDInputAxis(*pDiAxis, DEADZONE);
 					if(diJoyStateGamePadAxisInputs[a].axis.invertAxis)
@@ -1024,9 +1029,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
 	/* at this point, we should have the state of the controller and we can 
 		actually check to see what is being pressed/moved: */
 	f32 axes[8];
-	///TODO: use DirectInput-specific deadzone here???
-	local_persist const u16 DEADZONE_MAG = 
-		XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2;
+	local_persist const u16 DEADZONE_MAG = 0;
 	axes[0] = w32ProcessDInputAxis(joyState.lX          , DEADZONE_MAG);
 	axes[1] = w32ProcessDInputAxis(joyState.lY          , DEADZONE_MAG);
 	axes[2] = w32ProcessDInputAxis(joyState.lZ          , DEADZONE_MAG);
