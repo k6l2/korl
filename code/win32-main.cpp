@@ -1815,6 +1815,104 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 	}
 	return 0;
 }
+#include <hidsdi.h>
+internal bool w32RawInputEnumerateDevices()
+{
+	RAWINPUTDEVICELIST rawInputDeviceList[64];
+	UINT rawInputDeviceBufferSize = CARRAY_COUNT(rawInputDeviceList);
+	const UINT numDevices = 
+		GetRawInputDeviceList(rawInputDeviceList, 
+		                      &rawInputDeviceBufferSize, 
+		                      sizeof(rawInputDeviceList[0]));
+	if(numDevices == (UINT)-1)
+	{
+		KLOG(ERROR, "Failed to get RawInput device list! getlasterror=%i",
+		     GetLastError());
+		return false;
+	}
+	for(UINT rid = 0; rid < numDevices; rid++)
+	{
+		/* get the raw input device's registry address */
+		TCHAR deviceNameBuffer[256];
+		UINT deviceNameBufferSize = CARRAY_COUNT(deviceNameBuffer);
+		const UINT deviceNameCharacterCount = 
+			GetRawInputDeviceInfo(rawInputDeviceList[rid].hDevice,
+			                      RIDI_DEVICENAME, deviceNameBuffer, 
+			                      &deviceNameBufferSize);
+		if(deviceNameCharacterCount < 0)
+		{
+			KLOG(ERROR, "Failed to get RawInput device name! getlasterror=%i", 
+			     GetLastError());
+			return false;
+		}
+		/* get the raw input device's info */
+		RID_DEVICE_INFO rawInputDeviceInfo = {};
+		rawInputDeviceInfo.cbSize = sizeof(rawInputDeviceInfo);
+		UINT deviceInfoSize       = sizeof(rawInputDeviceInfo);
+		const UINT deviceInfoByteCount = 
+			GetRawInputDeviceInfo(rawInputDeviceList[rid].hDevice,
+			                      RIDI_DEVICEINFO, &rawInputDeviceInfo, 
+			                      &deviceInfoSize);
+		if(deviceInfoByteCount != sizeof(rawInputDeviceInfo))
+		{
+			KLOG(ERROR, "Failed to get RawInput device info! getlasterror=%i", 
+			     GetLastError());
+			return false;
+		}
+		switch(rawInputDeviceInfo.dwType)
+		{
+			case RIM_TYPEMOUSE:
+			case RIM_TYPEKEYBOARD:
+			{
+				/* if this is a mouse/keyboard, just ignore it */
+				continue;
+			}break;
+			case RIM_TYPEHID:
+			{
+				/* only certain types of devices can be opened with shared 
+					access mode.  If a device can't be opened with shared 
+					access, then there isn't really a point in continuing since 
+					we can't even query the device's product name.  For info on 
+					what devices can be opened in shared access, see:
+					https://docs.microsoft.com/en-us/windows-hardware/drivers/hid/hid-clients-supported-in-windows */
+				if(!(rawInputDeviceInfo.hid.usUsagePage == 0x1
+					&& (rawInputDeviceInfo.hid.usUsage == 0x4
+						|| rawInputDeviceInfo.hid.usUsage == 0x5)))
+				// if it's anything that isn't a game controller
+				{
+					/* just skip it because it's likely not allowed to be opened 
+						in shared mode anyways */
+					continue;
+				}
+				/* get the product name of the HID */
+				HANDLE hHid = CreateFile(deviceNameBuffer, 
+				                         GENERIC_READ | GENERIC_WRITE, 
+				                         FILE_SHARE_READ | FILE_SHARE_WRITE, 
+				                         NULL, OPEN_EXISTING, NULL, NULL);
+				if(hHid == INVALID_HANDLE_VALUE)
+				{
+					KLOG(ERROR, "Failed to open handle to HID! getlasterror=%i", 
+					     GetLastError());
+					return false;
+				}
+				defer(CloseHandle(hHid));
+				WCHAR deviceProductNameBuffer[256];
+				if(!HidD_GetProductString(hHid, deviceProductNameBuffer, 
+				                          sizeof(deviceProductNameBuffer)))
+				{
+					KLOG(ERROR, "Failed to get HID product string! "
+					     "getlasterror=%i", GetLastError());
+					return false;
+				}
+				KLOG(INFO, "--- RawInput device [%i] (Game Controller) ---", 
+				     rid);
+				KLOG(INFO, "\tdeviceName='%s'", deviceNameBuffer);
+				KLOG(INFO, "\tproductString='%ws'", deviceProductNameBuffer);
+			}break;
+		}
+	}
+	return true;
+}
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                            PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
@@ -1865,6 +1963,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	defer(w32WriteLogToFile());
 	KLOG(INFO, "START!");
+	if(!w32RawInputEnumerateDevices())
+	{
+		KLOG(ERROR, "Failed to enumerate raw input devices!");
+		return RETURN_CODE_FAILURE;
+	}
 	// parse command line arguments //
 	WCHAR relativeAssetDir[MAX_PATH];
 	relativeAssetDir[0] = '\0';

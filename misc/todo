@@ -423,10 +423,12 @@
 	https://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
 	[ ] poll OS for RawInput devices and expose this to the game code for 
 		testing purposes
-		[ ] obtain product GUID
+		[x] obtain product GUID
 			https://www.codeguru.com/cpp/misc/misc/keyboard/article.php/c15957/Raw-Input-Device-informations.htm
-		[ ] obtain product name string
+		[x] obtain product name string
 			https://stackoverflow.com/q/12656236
+		[ ] ignore XInput controllers (just scan device name for "IG_")
+		[ ] accumulate a list of RawInput game controllers like with DirectInput
 	[ ] PS4 controller support
 		[ ] force feedback & lightbar control
 			https://stackoverflow.com/a/27437973

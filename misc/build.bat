@@ -153,6 +153,7 @@ rem dinput8.lib  - DirectInput8 support.
 rem dxguid.lib   - DirectInput8 support.
 rem ole32.lib    - DirectInput8 support.
 rem oleaut32.lib - DirectInput8 support.
+rem Hid.lib      - RawInput support (indirectly; support features)
 set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 ^
 	/Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
 set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
@@ -244,7 +245,7 @@ cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	/DKML_MINIMUM_FRAME_RATE=%kmlMinimumFrameRate% ^
 	/W4 %CommonCompilerFlagsChosen% /link %Win32LinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib ^
-	dinput8.lib dxguid.lib ole32.lib oleaut32.lib
+	dinput8.lib dxguid.lib ole32.lib oleaut32.lib Hid.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE_KML
