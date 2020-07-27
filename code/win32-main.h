@@ -1,11 +1,5 @@
 #pragma once
 #include "global-defines.h"
-#if defined(KLOG)
-	#undef KLOG
-	#define KLOG(platformLogCategory, formattedString, ...) platformLog(\
-	    __FILENAME__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
-	    formattedString, ##__VA_ARGS__)
-#endif
 #include "platform-game-interfaces.h"
 #include <windows.h>
 struct W32OffscreenBuffer

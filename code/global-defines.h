@@ -4,14 +4,6 @@
 #define global_variable static
 #define class_namespace static
 #define CARRAY_COUNT(array) (sizeof(array)/sizeof(array[0]))
-// Obtain the file name excluding the path //
-//	Source: https://stackoverflow.com/a/8488201
-#include <cstring>
-#define __FILENAME__ ( strrchr(__FILE__, '\\') \
-	? (strrchr(__FILE__, '\\') + 1) \
-	: ( (strrchr(__FILE__, '/' ) \
-		? strrchr(__FILE__, '/' ) + 1 \
-		: __FILE__) ) )
 // Defer statement for C++11   //
 //	Source: https://www.gingerbill.org/article/2015/08/19/defer-in-cpp/
 template <typename F>
@@ -41,8 +33,9 @@ privDefer<F> defer_func(F f) {
 #else
 	#define kassert(expression) do {}while(0)
 #endif
-// These must be re-defined in the appropriate compilation units //
-#define KLOG(platformLogCategory, formattedString, ...)
+#define KLOG(platformLogCategory, formattedString, ...) platformLog(\
+             __FILE__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
+             formattedString, ##__VA_ARGS__)
 #include <stdint.h>
 using u8  = uint8_t;
 using u16 = uint16_t;
@@ -55,3 +48,7 @@ using i64 = int64_t;
 using f32 = float;
 using f64 = double;
 using SoundSample = i16;
+namespace kutil
+{
+	const char* fileName(const char* filePath);
+}

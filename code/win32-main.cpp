@@ -674,7 +674,7 @@ internal PLATFORM_LOG(platformLog)
 	const int logLineMetaCharsWritten = 
 		_snprintf_s(logLineBuffer, MAX_LOG_LINE_SIZE, _TRUNCATE, 
 		            "[%-7.7s|%s|%-15.15s:%-5i] ", strCategory, timeBuffer, 
-		            sourceFileName, sourceFileLineNumber);
+		            kutil::fileName(sourceFileName), sourceFileLineNumber);
 	if(!g_hasReceivedException)
 	{
 		kassert(logLineMetaCharsWritten > 0);
@@ -696,7 +696,7 @@ internal PLATFORM_LOG(platformLog)
 		{
 			///TODO: handle overflow case for max characters per log line limit?
 			fprintf_s(stderr, "[WARNING|%s:%i] LOG LINE OVERFLOW!\n",
-			          __FILENAME__, __LINE__);
+			          __FILE__, __LINE__);
 		}
 	}
 	// Now that we know what needs to be added to the log, we need to dump this
@@ -2681,3 +2681,4 @@ internal void stbiFree(void* allocatedAddress)
 #include "stb/stb_vorbis.c"
 #pragma warning( pop )
 #include "kmath.cpp"
+#include "global-defines.cpp"

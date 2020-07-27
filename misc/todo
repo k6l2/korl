@@ -446,6 +446,7 @@
 		https://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
 [x] pull kmath out of global-defines
 	[x] separate Quaternion from the rest of kmath API
+[x] remove the requirement to undefine & redefine KLOG macro in game module
 [ ] change `kassert` to be platform-specific code
 [ ] KML-platform: UDP networking API
 [ ] KAU: master volume control, default to like ~80% or something...

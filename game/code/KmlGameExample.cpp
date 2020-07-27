@@ -8,6 +8,7 @@
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	g_kpl = &memory.kpl;
+	platformLog = memory.kpl.log;
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 	g_krb = &memory.krb;
@@ -293,3 +294,4 @@ internal void kStbDsFree(void* allocatedAddress)
 	#include "stb/stb_ds.h"
 #pragma warning( pop )
 #include "kmath.cpp"
+#include "global-defines.cpp"

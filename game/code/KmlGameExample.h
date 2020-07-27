@@ -1,11 +1,5 @@
 #pragma once
 #include "global-defines.h"
-#if defined(KLOG)
-	#undef KLOG
-	#define KLOG(platformLogCategory, formattedString, ...) g_kpl->log(\
-	    __FILENAME__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
-	    formattedString, ##__VA_ARGS__)
-#endif
 #include "platform-game-interfaces.h"
 #include "krb-interface.h"
 #include "kGeneralAllocator.h"
@@ -33,6 +27,7 @@ struct GameState
 };
 global_variable GameState* g_gs;
 global_variable KmlPlatformApi* g_kpl;
+global_variable fnSig_platformLog* platformLog;
 global_variable KrbApi* g_krb;
 internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize);
 internal void  kStbDsFree(void* allocatedAddress);

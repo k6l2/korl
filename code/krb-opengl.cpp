@@ -16,12 +16,13 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 		errorCode = glGetError();
 		if(errorCode != GL_NO_ERROR)
 		{
-			KLOG(ERROR, "[%s|%i] OpenGL ERROR=%i", file, line, errorCode);
+			KLOG(ERROR, "[%s|%i] OpenGL ERROR=%i", kutil::fileName(file), line, 
+			     errorCode);
 		}
 	} while (errorCode != GL_NO_ERROR);
 	return errorCode;
 }
-#define GL_CHECK_ERROR() krbOglCheckErrors(__FILENAME__, __LINE__)
+#define GL_CHECK_ERROR() krbOglCheckErrors(__FILE__, __LINE__)
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
