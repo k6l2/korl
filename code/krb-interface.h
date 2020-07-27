@@ -1,13 +1,11 @@
 // Kyle's Renderer Backend interface //
 #pragma once
 #include "global-defines.h"
+#include "kmath.h"
 using KrbTextureHandle = u32;
 struct Color4f32
 {
-	f32 r;
-	f32 g;
-	f32 b;
-	f32 a;
+	f32 r, g, b, a;
 };
 internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratioLerp)
 {
@@ -67,10 +65,10 @@ namespace krb
 										u16 vertexCount)
 #define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
 #define KRB_SET_MODEL_XFORM(name) void name(const v3f32& translation, \
-                                         const kmath::Quaternion& orientation, \
+                                         const kQuaternion& orientation, \
                                          const v3f32& scale)
 #define KRB_SET_MODEL_XFORM_2D(name) void name(const v2f32& translation, \
-                                         const kmath::Quaternion& orientation, \
+                                         const kQuaternion& orientation, \
                                          const v2f32& scale)
 #define KRB_LOAD_IMAGE(name) KrbTextureHandle name(u32 imageSizeX, \
                                                    u32 imageSizeY, \

@@ -2680,3 +2680,4 @@ internal void stbiFree(void* allocatedAddress)
 #pragma warning( disable : 4701 )
 #include "stb/stb_vorbis.c"
 #pragma warning( pop )
+#include "kmath.cpp"

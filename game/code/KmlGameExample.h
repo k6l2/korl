@@ -25,7 +25,7 @@ struct GameState
 	KalHandle hKalFrame;
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
-	kmath::Quaternion shipWorldOrientation = kmath::quat({0,0,1}, 0);
+	kQuaternion shipWorldOrientation = kQuaternion({0,0,1}, 0);
 	KTapeHandle tapeBgmBattleTheme;
 	KFlipBook kFbShip;
 	KFlipBook kFbShipExhaust;

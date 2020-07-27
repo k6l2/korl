@@ -23,12 +23,12 @@ GAME_INITIALIZE(gameInitialize)
 	{
 		v3f32 vec = {0,0,-992.727295f};
 		vec.normalize();
-		kmath::quatTransform(kmath::quat({0,0,-992.727295f}, PI32/2), {25,0});
-		kmath::quatTransform(kmath::quat({0,0,1}, PI32/4), {25,0});
-		kmath::quatTransform(kmath::quat({0,0,-1}, PI32/2), {25,0});
-		kmath::quatTransform(kmath::quat({0,0,1}, PI32/2), {25,0}, true);
-		kmath::quatTransform(kmath::quat({0,0,1}, PI32/4), {25,0}, true);
-		kmath::quatTransform(kmath::quat({0,0,-1}, PI32/2), {25,0}, true);
+		kQuaternion({0,0,-992.727295f}, PI32/2).transform({25,0});
+		kQuaternion({0,0,1}, PI32/4).transform({25,0});
+		kQuaternion({0,0,-1}, PI32/2).transform({25,0});
+		kQuaternion({0,0,1}, PI32/2).transform({25,0}, true);
+		kQuaternion({0,0,1}, PI32/4).transform({25,0}, true);
+		kQuaternion({0,0,-1}, PI32/2).transform({25,0}, true);
 		v2f32 v0 = { 348.525726f, 1.85656059f };
 		v2f32 v1 = {0.999985814f, 0.00533986418f };
 		kmath::radiansBetween(v0, v1);
@@ -194,7 +194,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			const f32 stickRadians = 
 				kmath::v2Radians(gpad.stickLeft);
 			g_gs->shipWorldOrientation = 
-				kmath::quat({0,0,1}, stickRadians - PI32/2);
+				kQuaternion({0,0,1}, stickRadians - PI32/2);
 		}
 		const f32 controlVolumeRatio = 
 			(gpad.stickRight.y/2) + 0.5f;
@@ -292,3 +292,4 @@ internal void kStbDsFree(void* allocatedAddress)
 	#pragma warning( disable : 4456 )
 	#include "stb/stb_ds.h"
 #pragma warning( pop )
+#include "kmath.cpp"

@@ -2,6 +2,7 @@
 #include "global-defines.h"
 #include "krb-interface.h"
 #include "kGeneralAllocator.h"
+#include "kmath.h"
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
 enum class PlatformLogCategory : u8
