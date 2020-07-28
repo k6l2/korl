@@ -79,6 +79,7 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
                                      u32 sourceFileLineNumber, \
                                      PlatformLogCategory logCategory, \
                                      const char* formattedString, ...)
+#define PLATFORM_ASSERT(name) void name(bool expression)
 #define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
 #define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
 #define PLATFORM_DECODE_Z85_PNG(name) RawImage name(const u8* z85PngData, \
@@ -151,6 +152,7 @@ struct PlatformGamePadActiveAxis
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_LOG(fnSig_platformLog);
+typedef PLATFORM_ASSERT(fnSig_platformAssert);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
@@ -189,6 +191,7 @@ struct KmlPlatformApi
 	fnSig_platformPostJob* postJob;
 	fnSig_platformJobDone* jobDone;
 	fnSig_platformLog* log;
+	fnSig_platformAssert* assert;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
 	fnSig_platformLoadWav* loadWav;

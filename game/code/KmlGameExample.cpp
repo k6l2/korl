@@ -9,6 +9,7 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	g_kpl = &memory.kpl;
 	platformLog = memory.kpl.log;
+	platformAssert = memory.kpl.assert;
 	kassert(sizeof(GameState) <= memory.permanentMemoryBytes);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 	g_krb = &memory.krb;

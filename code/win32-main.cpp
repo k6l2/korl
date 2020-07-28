@@ -829,6 +829,17 @@ internal PLATFORM_LOG(platformLog)
 		g_logCircularBufferRunningTotal += totalLogLineSize + 1;
 	}
 }
+internal PLATFORM_ASSERT(platformAssert)
+{
+	if(expression)
+		return;
+	if(IsDebuggerPresent())
+	{
+		DebugBreak();
+	}
+	else
+		*(int*)0 = 0;
+}
 internal void w32WriteLogToFile()
 {
 	local_persist const TCHAR fileNameLog[] = TEXT("log.txt");
@@ -2335,6 +2346,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.postJob                = platformPostJob;
 	gameMemory.kpl.jobDone                = platformJobDone;
 	gameMemory.kpl.log                    = platformLog;
+	gameMemory.kpl.assert                 = platformAssert;
 	gameMemory.kpl.decodeZ85Png           = platformDecodeZ85Png;
 	gameMemory.kpl.decodeZ85Wav           = platformDecodeZ85Wav;
 	gameMemory.kpl.loadWav                = platformLoadWav;

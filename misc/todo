@@ -447,7 +447,9 @@
 [x] pull kmath out of global-defines
 	[x] separate Quaternion from the rest of kmath API
 [x] remove the requirement to undefine & redefine KLOG macro in game module
-[ ] change `kassert` to be platform-specific code
+[x] change `kassert` to be platform-specific code
+[ ] kassert: generate a memory dump & a dialog box with the option to continue 
+	execution
 [ ] KML-platform: UDP networking API
 [ ] KAU: master volume control, default to like ~80% or something...
 [ ] kcpp: bring back kcpp and repurpose it 
