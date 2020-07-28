@@ -203,15 +203,15 @@ BOOL DIEnumDeviceAbsoluteAxes(LPCDIDEVICEOBJECTINSTANCE lpddoi,
  */
 internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 {
-	size_t firstEmptyInputDevice = CARRAY_COUNT(g_dInputDevices);
-	for(size_t d = 0; d < CARRAY_COUNT(g_dInputDevices); d++)
+	size_t firstEmptyInputDevice = CARRAY_SIZE(g_dInputDevices);
+	for(size_t d = 0; d < CARRAY_SIZE(g_dInputDevices); d++)
 	/* iterate over all existing input devices and check if this device instance 
 		has already been created, and determine if there is an empty slot we can 
 		add a new device to simultaneously */
 	{
 		if(!g_dInputDevices[d])
 		{
-			if(firstEmptyInputDevice == CARRAY_COUNT(g_dInputDevices))
+			if(firstEmptyInputDevice == CARRAY_SIZE(g_dInputDevices))
 				firstEmptyInputDevice = d;
 			continue;
 		}
@@ -228,12 +228,12 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 		/* the device already existed in the global array of DirectInput 
 			devices */
 		{
-			firstEmptyInputDevice = CARRAY_COUNT(g_dInputDevices);
+			firstEmptyInputDevice = CARRAY_SIZE(g_dInputDevices);
 			g_dInputDeviceJustAcquiredFlags[d] = true;
 			break;
 		}
 	}
-	if(firstEmptyInputDevice == CARRAY_COUNT(g_dInputDevices))
+	if(firstEmptyInputDevice == CARRAY_SIZE(g_dInputDevices))
 	/* do nothing if we have too many devices, or if the device is already added
 		to the g_dInputDevices */
 	{
@@ -243,8 +243,8 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 		product GUID of the lpddi to all of the GUIDs of the input map 
 		strings */
 	g_dInputDeviceGamePadMapIndices[firstEmptyInputDevice] = 
-		CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS);
-	for(size_t gpm = 0; gpm < CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS); gpm++)
+		CARRAY_SIZE(DIRECT_INPUT_TO_GAMEPAD_MAPS);
+	for(size_t gpm = 0; gpm < CARRAY_SIZE(DIRECT_INPUT_TO_GAMEPAD_MAPS); gpm++)
 	{
 		/* parse the product GUID of the DInput=>GamePad input map */
 		const char* cStrMapGuid = 
@@ -353,7 +353,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 		}
 	}
 	if(g_dInputDeviceGamePadMapIndices[firstEmptyInputDevice] == 
-		CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS))
+		CARRAY_SIZE(DIRECT_INPUT_TO_GAMEPAD_MAPS))
 	{
 		KLOG(WARNING, "Failed to locate an appropriate DirectInput=>GamePad "
 		     "map!  GamePad for this device's slot will not be plugged in.");
@@ -459,11 +459,11 @@ internal BOOL DIEnumAttachedGameControllers(LPCDIDEVICEINSTANCE lpddi,
 }
 internal void w32DInputEnumerateDevices()
 {
-	static_assert(CARRAY_COUNT(g_dInputDevices) == 
-	              CARRAY_COUNT(g_dInputDeviceJustAcquiredFlags));
+	static_assert(CARRAY_SIZE(g_dInputDevices) == 
+	              CARRAY_SIZE(g_dInputDeviceJustAcquiredFlags));
 	/* clear the flags which determine if a device was found during 
 		EnumDevices */
-	for(size_t a = 0; a < CARRAY_COUNT(g_dInputDevices); a++)
+	for(size_t a = 0; a < CARRAY_SIZE(g_dInputDevices); a++)
 	{
 		g_dInputDeviceJustAcquiredFlags[a] = false;
 	}
@@ -479,7 +479,7 @@ internal void w32DInputEnumerateDevices()
 	/* because we have flags for which devices were in fact found during the 
 		call to EnumDevices, we can unacquire & release devices that were 
 		not! */
-	for(size_t a = 0; a < CARRAY_COUNT(g_dInputDevices); a++)
+	for(size_t a = 0; a < CARRAY_SIZE(g_dInputDevices); a++)
 	{
 		if(g_dInputDevices[a] && !g_dInputDeviceJustAcquiredFlags)
 		{
@@ -615,7 +615,7 @@ union DirectInputPadInput
 internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
                                         GamePad* gpArrPrevFrame)
 {
-	for(size_t d = 0; d < CARRAY_COUNT(g_dInputDevices); d++)
+	for(size_t d = 0; d < CARRAY_SIZE(g_dInputDevices); d++)
 	{
 		if(!g_dInputDevices[d])
 		{
@@ -623,7 +623,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 			continue;
 		}
 		if(g_dInputDeviceGamePadMapIndices[d] == 
-			CARRAY_COUNT(DIRECT_INPUT_TO_GAMEPAD_MAPS))
+			CARRAY_SIZE(DIRECT_INPUT_TO_GAMEPAD_MAPS))
 		{
 			gpArrCurrFrame[d].type = GamePadType::UNPLUGGED;
 			continue;
@@ -658,15 +658,15 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 		kassert(nextGamePadMapChar);
 		nextGamePadMapChar++;// skip the '}' character 
 		DirectInputPadInput 
-			diJoyStateGamePadButtonInputs[CARRAY_COUNT(GamePad::buttons)];
+			diJoyStateGamePadButtonInputs[CARRAY_SIZE(GamePad::buttons)];
 		DirectInputPadInput 
-			diJoyStateGamePadAxisInputs[CARRAY_COUNT(GamePad::axes)];
-		for(size_t b = 0; b < CARRAY_COUNT(GamePad::buttons); b++)
+			diJoyStateGamePadAxisInputs[CARRAY_SIZE(GamePad::axes)];
+		for(size_t b = 0; b < CARRAY_SIZE(GamePad::buttons); b++)
 		{
 			diJoyStateGamePadButtonInputs[b].inputType = 
 				DirectInputPadInputType::NO_MAPPED_INPUT;
 		}
-		for(size_t a = 0; a < CARRAY_COUNT(GamePad::axes); a++)
+		for(size_t a = 0; a < CARRAY_SIZE(GamePad::axes); a++)
 		{
 			diJoyStateGamePadAxisInputs[a].inputType = 
 				DirectInputPadInputType::NO_MAPPED_INPUT;
@@ -687,8 +687,8 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 					nextGamePadMapChar++;// skip over the 'b' character
 					char intBuffer[16];
 					/* extract the DInput button index */
-					intBuffer[CARRAY_COUNT(intBuffer) - 1] = '\0';
-					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					intBuffer[CARRAY_SIZE(intBuffer) - 1] = '\0';
+					for(u8 c = 0; c < CARRAY_SIZE(intBuffer) - 1; c++)
 					{
 						intBuffer[c] = *nextGamePadMapChar++;
 						if(*nextGamePadMapChar == ':')
@@ -701,7 +701,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 					const u16 buttonIndexDInput = 
 						kmath::safeTruncateU16(atoi(intBuffer));
 					/* extract the GamePad button index */
-					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					for(u8 c = 0; c < CARRAY_SIZE(intBuffer) - 1; c++)
 					{
 						intBuffer[c] = *nextGamePadMapChar++;
 						if(*nextGamePadMapChar == ',' 
@@ -716,7 +716,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 					const u16 buttonIndexGamePad = 
 						kmath::safeTruncateU16(atoi(intBuffer));
 					/* populate the button map list */
-					if(buttonIndexDInput < CARRAY_COUNT(DIJOYSTATE::rgbButtons))
+					if(buttonIndexDInput < CARRAY_SIZE(DIJOYSTATE::rgbButtons))
 					/* the DInput button index refers to a rgbButtons index */
 					{
 						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
@@ -732,9 +732,9 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 							.inputType = DirectInputPadInputType::POV_HAT;
 						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
 							.povHat.povHatIndex = (buttonIndexDInput - 
-								CARRAY_COUNT(DIJOYSTATE::rgbButtons)) / 4;
+								CARRAY_SIZE(DIJOYSTATE::rgbButtons)) / 4;
 						const u16 povCwDirectionIndex = (buttonIndexDInput - 
-							CARRAY_COUNT(DIJOYSTATE::rgbButtons)) % 4;
+							CARRAY_SIZE(DIJOYSTATE::rgbButtons)) % 4;
 						diJoyStateGamePadButtonInputs[buttonIndexGamePad]
 							.povHat.buttonCentiDegreesCwFromNorth = 
 								povCwDirectionIndex*9000;
@@ -749,8 +749,8 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 					*nextGamePadMapChar++;// skip over the '+' or '-' character
 					char intBuffer[16];
 					/* extract the DInput axis index */
-					intBuffer[CARRAY_COUNT(intBuffer) - 1] = '\0';
-					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					intBuffer[CARRAY_SIZE(intBuffer) - 1] = '\0';
+					for(u8 c = 0; c < CARRAY_SIZE(intBuffer) - 1; c++)
 					{
 						intBuffer[c] = *nextGamePadMapChar++;
 						if(*nextGamePadMapChar == ':')
@@ -763,7 +763,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 					const u16 axisIndexDInput = 
 						kmath::safeTruncateU16(atoi(intBuffer));
 					/* extract the GamePad axis index */
-					for(u8 c = 0; c < CARRAY_COUNT(intBuffer) - 1; c++)
+					for(u8 c = 0; c < CARRAY_SIZE(intBuffer) - 1; c++)
 					{
 						intBuffer[c] = *nextGamePadMapChar++;
 						if(*nextGamePadMapChar == ',' 
@@ -809,7 +809,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 		gpArrCurrFrame[d].type = GamePadType::DINPUT_GENERIC;
 		/* use the DInput=>GamePad map to populate the GamePad with appropriate 
 			state  */
-		for(u8 b = 0; b < CARRAY_COUNT(GamePad::buttons); b++)
+		for(u8 b = 0; b < CARRAY_SIZE(GamePad::buttons); b++)
 		{
 			switch(diJoyStateGamePadButtonInputs[b].inputType)
 			{
@@ -845,7 +845,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 				}break;
 			}
 		}
-		for(u8 a = 0; a < CARRAY_COUNT(GamePad::axes); a++)
+		for(u8 a = 0; a < CARRAY_SIZE(GamePad::axes); a++)
 		{
 			switch(diJoyStateGamePadAxisInputs[a].inputType)
 			{
@@ -907,8 +907,8 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
-	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 		return INVALID_PLATFORM_BUTTON_INDEX;
 	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
 	if(!dInput8Device)
@@ -946,7 +946,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 	/* at this point, we should have the state of the controller and we can 
 		actually check to see what is being pressed/moved: */
 	u16 result = INVALID_PLATFORM_BUTTON_INDEX;
-	for(u16 b = 0; b < CARRAY_COUNT(joyState.rgbButtons); b++)
+	for(u16 b = 0; b < CARRAY_SIZE(joyState.rgbButtons); b++)
 	{
 		if(DINPUT_BUTTON_PRESSED(joyState.rgbButtons[b]))
 		{
@@ -961,7 +961,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 		}
 	}
 	/* interpret the POV switch directions as buttons for all POV switches */
-	for(size_t pov = 0; pov < CARRAY_COUNT(joyState.rgdwPOV); pov++)
+	for(size_t pov = 0; pov < CARRAY_SIZE(joyState.rgdwPOV); pov++)
 	{
 		for(u8 povDirection = 0; povDirection < 4; povDirection++)
 		{
@@ -976,7 +976,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 				if(result == INVALID_PLATFORM_BUTTON_INDEX)
 				{
 					result = kmath::safeTruncateU16(
-						CARRAY_COUNT(joyState.rgbButtons) + pov*4 + 
+						CARRAY_SIZE(joyState.rgbButtons) + pov*4 + 
 						povDirection);
 				}
 				else
@@ -990,8 +990,8 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
-	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 		return {INVALID_PLATFORM_AXIS_INDEX};
 	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
 	if(!dInput8Device)
@@ -1039,7 +1039,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
 	axes[6] = w32ProcessDInputAxis(joyState.rglSlider[0], DEADZONE_MAG);
 	axes[7] = w32ProcessDInputAxis(joyState.rglSlider[1], DEADZONE_MAG);
 	PlatformGamePadActiveAxis result = {INVALID_PLATFORM_AXIS_INDEX};
-	for(u16 a = 0; a < CARRAY_COUNT(axes); a++)
+	for(u16 a = 0; a < CARRAY_SIZE(axes); a++)
 	{
 		if(fabsf(axes[a]) > 0.9)
 		{
@@ -1058,8 +1058,8 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32DInputGetGamePadProductName)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
-	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 	{
 		StringCchPrintf(o_buffer, bufferSize, 
 		                TEXT("DInput pad [%i] out of bounds!"), gamePadIndex);
@@ -1086,8 +1086,8 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32DInputGetGamePadProductName)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32DInputGetGamePadProductGuid)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_dInputDevices));
-	if(gamePadIndex >= CARRAY_COUNT(g_dInputDevices))
+	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 	{
 		StringCchPrintf(o_buffer, bufferSize, 
 		                TEXT("DInput pad [%i] out of bounds!"), gamePadIndex);

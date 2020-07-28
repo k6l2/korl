@@ -5,7 +5,7 @@
 #define global_variable static
 #define class_namespace static
 /* Utility macro for getting the size of a C array */
-#define CARRAY_COUNT(array) (sizeof(array)/sizeof(array[0]))
+#define CARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 /* Defer statement for C++11
 	Source: https://www.gingerbill.org/article/2015/08/19/defer-in-cpp/ */
 template <typename F>

@@ -140,8 +140,8 @@ global_variable const size_t KML_GAMEPAD_BUTTONS[] =
 internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame)
 {
-	static_assert(CARRAY_COUNT(XINPUT_BUTTONS) == 
-	              CARRAY_COUNT(KML_GAMEPAD_BUTTONS));
+	static_assert(CARRAY_SIZE(XINPUT_BUTTONS) == 
+	              CARRAY_SIZE(KML_GAMEPAD_BUTTONS));
 	for(u32 ci = 0; ci < XUSER_MAX_COUNT; ci++)
 	{
 		XINPUT_STATE controllerState;
@@ -164,7 +164,7 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
 			XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE / 2,
 			&gamePadArrayCurrentFrame[ci].stickRight.x,
 			&gamePadArrayCurrentFrame[ci].stickRight.y);
-		for(u16 b = 0; b < CARRAY_COUNT(XINPUT_BUTTONS); b++)
+		for(u16 b = 0; b < CARRAY_SIZE(XINPUT_BUTTONS); b++)
 		{
 			w32ProcessXInputButton(
 				pad.wButtons & XINPUT_BUTTONS[b],
@@ -212,7 +212,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton)
 		return INVALID_PLATFORM_BUTTON_INDEX;
 	const XINPUT_GAMEPAD& pad = controllerState.Gamepad;
 	u16 result = INVALID_PLATFORM_BUTTON_INDEX;
-	for(u16 b = 0; b < CARRAY_COUNT(XINPUT_BUTTONS); b++)
+	for(u16 b = 0; b < CARRAY_SIZE(XINPUT_BUTTONS); b++)
 	{
 		if(pad.wButtons & XINPUT_BUTTONS[b])
 		{
@@ -249,7 +249,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32XInputGetGamePadActiveAxis)
 	w32ProcessXInputTrigger(pad.bRightTrigger,
 	                        XINPUT_GAMEPAD_TRIGGER_THRESHOLD, &axes[5]);
 	PlatformGamePadActiveAxis result = {INVALID_PLATFORM_AXIS_INDEX};
-	for(u16 a = 0; a < CARRAY_COUNT(axes); a++)
+	for(u16 a = 0; a < CARRAY_SIZE(axes); a++)
 	{
 		if(fabsf(axes[a]) > 0.9)
 		{

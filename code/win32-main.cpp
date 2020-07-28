@@ -73,9 +73,9 @@ global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 global_variable JobQueue g_jobQueue;
 global_variable WINDOWPLACEMENT g_lastKnownWindowedPlacement;
 global_variable GamePad g_gamePadArrayA[XUSER_MAX_COUNT + 
-                                            CARRAY_COUNT(g_dInputDevices)] = {};
+                                            CARRAY_SIZE(g_dInputDevices)] = {};
 global_variable GamePad g_gamePadArrayB[XUSER_MAX_COUNT + 
-                                            CARRAY_COUNT(g_dInputDevices)] = {};
+                                            CARRAY_SIZE(g_dInputDevices)] = {};
 global_variable GamePad* g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 global_variable GamePad* g_gamePadArrayPreviousFrame = g_gamePadArrayB;
 struct W32ThreadInfo
@@ -648,7 +648,7 @@ internal PLATFORM_LOG(platformLog)
 	SYSTEMTIME stLocalTime;
 	GetLocalTime( &stLocalTime );
 	TCHAR timeBuffer[80];
-	StringCchPrintf(timeBuffer, CARRAY_COUNT(timeBuffer), 
+	StringCchPrintf(timeBuffer, CARRAY_SIZE(timeBuffer), 
 #if INTERNAL_BUILD
 	                TEXT("%02d,%03d"), 
 	                stLocalTime.wSecond, stLocalTime.wMilliseconds );
@@ -1107,7 +1107,7 @@ PLATFORM_WRITE_ENTIRE_FILE(platformWriteEntireFile)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
+	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* the gamepad is an Xinput controller */
 	{
@@ -1121,7 +1121,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32GetGamePadActiveButton)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
+	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* the gamepad is an Xinput controller */
 	{
@@ -1135,7 +1135,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32GetGamePadActiveAxis)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32GetGamePadProductName)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
+	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* Xinput controller */
 	{
@@ -1150,7 +1150,7 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32GetGamePadProductName)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32GetGamePadProductGuid)
 {
-	kassert(gamePadIndex < CARRAY_COUNT(g_gamePadArrayA));
+	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* Xinput controller */
 	{
@@ -1830,7 +1830,7 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 internal bool w32RawInputEnumerateDevices()
 {
 	RAWINPUTDEVICELIST rawInputDeviceList[64];
-	UINT rawInputDeviceBufferSize = CARRAY_COUNT(rawInputDeviceList);
+	UINT rawInputDeviceBufferSize = CARRAY_SIZE(rawInputDeviceList);
 	const UINT numDevices = 
 		GetRawInputDeviceList(rawInputDeviceList, 
 		                      &rawInputDeviceBufferSize, 
@@ -1845,7 +1845,7 @@ internal bool w32RawInputEnumerateDevices()
 	{
 		/* get the raw input device's registry address */
 		TCHAR deviceNameBuffer[256];
-		UINT deviceNameBufferSize = CARRAY_COUNT(deviceNameBuffer);
+		UINT deviceNameBufferSize = CARRAY_SIZE(deviceNameBuffer);
 		const UINT deviceNameCharacterCount = 
 			GetRawInputDeviceInfo(rawInputDeviceList[rid].hDevice,
 			                      RIDI_DEVICENAME, deviceNameBuffer, 
@@ -2277,17 +2277,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	//	the anonymous struct which defines the names of all the game keys //
 	kassert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
 	                             &gameKeyboardA.vKeys[0]) ==
-	         CARRAY_COUNT(gameKeyboardA.vKeys) );
+	         CARRAY_SIZE(gameKeyboardA.vKeys) );
 	// ensure that the size of the gamepad's axis array matches the size of
 	//	the anonymous struct which defines the names of all the axes //
 	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_AXIS - 
 	                             &g_gamePadArrayA[0].axes[0]) ==
-	         CARRAY_COUNT(g_gamePadArrayA[0].axes) );
+	         CARRAY_SIZE(g_gamePadArrayA[0].axes) );
 	// ensure that the size of the gamepad's button array matches the size of
 	//	the anonymous struct which defines the names of all the buttons //
 	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
 	                             &g_gamePadArrayA[0].buttons[0]) ==
-	         CARRAY_COUNT(g_gamePadArrayA[0].buttons) );
+	         CARRAY_SIZE(g_gamePadArrayA[0].buttons) );
 #endif// INTERNAL_BUILD
 	local_persist const u8 SOUND_CHANNELS = 2;
 	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
@@ -2548,7 +2548,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			                       {windowDims.width, windowDims.height}, 
 			                       *gameKeyboardCurrentFrame,
 			                       g_gamePadArrayCurrentFrame, 
-			                       CARRAY_COUNT(g_gamePadArrayA), 
+			                       CARRAY_SIZE(g_gamePadArrayA), 
 			                       g_isFocused))
 			{
 				g_running = false;

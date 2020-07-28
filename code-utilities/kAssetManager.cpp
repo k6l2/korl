@@ -68,7 +68,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		defaultAssetImage.type = KAssetType::RAW_IMAGE;
 		defaultAssetImage.assetData.image.rawImage = 
 			kpl->decodeZ85Png(z85_png_default, 
-			                  CARRAY_COUNT(z85_png_default) - 1,
+			                  CARRAY_SIZE(z85_png_default) - 1,
 			                  assetDataAllocator);
 		defaultAssetImage.assetData.image.krbTextureHandle = krb->loadImage(
 			defaultAssetImage.assetData.image.rawImage.sizeX,
@@ -78,7 +78,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		defaultAssetSound.type = KAssetType::RAW_SOUND;
 		defaultAssetSound.assetData.sound =
 			kpl->decodeZ85Wav(z85_wav_default, 
-			                  CARRAY_COUNT(z85_wav_default) - 1,
+			                  CARRAY_SIZE(z85_wav_default) - 1,
 			                  assetDataAllocator);
 		KAsset defaultAssetFlipbook;
 		defaultAssetFlipbook.type = KAssetType::FLIPBOOK_META;
@@ -86,7 +86,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		defaultAssetFlipbook.assetData.flipbook.metaData.textureKAssetIndex = 
 			KASSET_COUNT;
 		strcpy_s(defaultAssetFlipbook.assetData.flipbook.textureAssetFileName, 
-			CARRAY_COUNT(
+			CARRAY_SIZE(
 				defaultAssetFlipbook.assetData.flipbook.textureAssetFileName),
 			"flipbook-default");
 		*result = 
@@ -397,7 +397,7 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 		          kAssetFileNames[kAssetId], 
 		          &asset->assetData.flipbook.metaData,
 		          asset->assetData.flipbook.textureAssetFileName,
-		          CARRAY_COUNT(asset->assetData.flipbook.textureAssetFileName));
+		          CARRAY_SIZE(asset->assetData.flipbook.textureAssetFileName));
 	kassert(loadFbmSuccess);
 }
 // @optimization (minor): just bake this info using `kasset`

@@ -4,10 +4,10 @@ global_variable const JobQueueTicket JOB_QUEUE_INVALID_TICKET =
                                                        JOB_QUEUE_INVALID_JOB_ID;
 internal bool jobQueueInit(JobQueue* jobQueue)
 {
-	static_assert(CARRAY_COUNT(jobQueue->jobs) < JOB_QUEUE_INVALID_JOB_ID);
+	static_assert(CARRAY_SIZE(jobQueue->jobs) < JOB_QUEUE_INVALID_JOB_ID);
 	InitializeCriticalSection(&jobQueue->lock);
 	jobQueue->hSemaphore = 
-		CreateSemaphore(nullptr, 0, CARRAY_COUNT(jobQueue->jobs), nullptr);
+		CreateSemaphore(nullptr, 0, CARRAY_SIZE(jobQueue->jobs), nullptr);
 	if(!jobQueue->hSemaphore)
 	{
 		KLOG(ERROR, "Failed to create job queue semaphore! getlasterror=%i",
@@ -25,7 +25,7 @@ internal void jobQueueDestroy(JobQueue* jobQueue)
 internal JobQueueTicket jobQueuePrintTicket(JobQueue* jobQueue, 
                                             size_t jobIndex)
 {
-	kassert(jobIndex < CARRAY_COUNT(jobQueue->jobs));
+	kassert(jobIndex < CARRAY_SIZE(jobQueue->jobs));
 	return (static_cast<u32>(jobQueue->jobs[jobIndex].salt)<<16) | 
 		static_cast<u32>(jobIndex);
 }
@@ -35,13 +35,13 @@ internal JobQueueTicket jobQueuePostJob(JobQueue* jobQueue,
 {
 	EnterCriticalSection(&jobQueue->lock);
 	defer(LeaveCriticalSection(&jobQueue->lock));
-	if(jobQueue->availableJobCount >= CARRAY_COUNT(jobQueue->jobs))
+	if(jobQueue->availableJobCount >= CARRAY_SIZE(jobQueue->jobs))
 	{
 		return JOB_QUEUE_INVALID_TICKET;
 	}
 	const size_t newJobIndex = 
 		(jobQueue->nextJobIndex + jobQueue->availableJobCount) % 
-		CARRAY_COUNT(jobQueue->jobs);
+		CARRAY_SIZE(jobQueue->jobs);
 	if(jobQueue->jobs[newJobIndex].taken)
 	{
 		return JOB_QUEUE_INVALID_TICKET;
@@ -63,7 +63,7 @@ internal bool jobQueueTicketIsValid(JobQueue* jobQueue, JobQueueTicket* ticket)
 {
 	const size_t ticketJobId = (*ticket) & JOB_QUEUE_INVALID_JOB_ID;
 	if(ticketJobId == JOB_QUEUE_INVALID_JOB_ID || 
-		ticketJobId >= CARRAY_COUNT(jobQueue->jobs))
+		ticketJobId >= CARRAY_SIZE(jobQueue->jobs))
 	{
 		*ticket = JOB_QUEUE_INVALID_TICKET;
 		return false;
@@ -82,7 +82,7 @@ internal bool jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket)
 {
 	const size_t ticketJobId = (*ticket) & JOB_QUEUE_INVALID_JOB_ID;
 	if(ticketJobId == JOB_QUEUE_INVALID_JOB_ID || 
-		ticketJobId >= CARRAY_COUNT(jobQueue->jobs))
+		ticketJobId >= CARRAY_SIZE(jobQueue->jobs))
 	{
 		*ticket = JOB_QUEUE_INVALID_TICKET;
 		return false;
@@ -119,7 +119,7 @@ internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)
 		{
 			JobQueueJob* job = &jobQueue->jobs[jobQueue->nextJobIndex];
 			jobQueue->nextJobIndex = 
-				(jobQueue->nextJobIndex + 1) % CARRAY_COUNT(jobQueue->jobs);
+				(jobQueue->nextJobIndex + 1) % CARRAY_SIZE(jobQueue->jobs);
 			jobQueue->availableJobCount--;
 			job->taken = true;
 			return job;
