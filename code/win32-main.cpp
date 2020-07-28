@@ -2693,4 +2693,4 @@ internal void stbiFree(void* allocatedAddress)
 #include "stb/stb_vorbis.c"
 #pragma warning( pop )
 #include "kmath.cpp"
-#include "global-defines.cpp"
+#include "kutil.cpp"

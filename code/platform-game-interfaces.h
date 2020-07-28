@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 #include "krb-interface.h"
 #include "kGeneralAllocator.h"
 #include "kmath.h"

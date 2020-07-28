@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 #include <Xinput.h>
 #define XINPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, \
                                                  XINPUT_STATE* pState)

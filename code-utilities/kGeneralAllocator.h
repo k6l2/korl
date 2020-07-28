@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 /** Kyle's General Allocator */
 using KgaHandle = void*;
 internal KgaHandle kgaInit(void* allocatorMemoryLocation, 

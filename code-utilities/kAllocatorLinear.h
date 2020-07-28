@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 using KalHandle = void*;
 internal KalHandle kalInit(void* allocatorMemoryStart, 
                            size_t allocatorByteCount);

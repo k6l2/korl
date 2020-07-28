@@ -295,4 +295,4 @@ internal void kStbDsFree(void* allocatedAddress)
 	#include "stb/stb_ds.h"
 #pragma warning( pop )
 #include "kmath.cpp"
-#include "global-defines.cpp"
+#include "kutil.cpp"

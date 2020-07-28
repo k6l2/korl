@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 global_variable IDirectInput8* g_pIDInput;

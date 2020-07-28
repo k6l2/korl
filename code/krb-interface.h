@@ -1,6 +1,6 @@
 // Kyle's Renderer Backend interface //
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 #include "kmath.h"
 using KrbTextureHandle = u32;
 struct Color4f32

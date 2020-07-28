@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 #include "kGeneralAllocator.h"
 #include "kAssetManager.h"
 #include "platform-game-interfaces.h"

@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 /*
 	Z85 converts binary data to ascii data, in a format which can be saved as a 
 		const char* const variable in source code.

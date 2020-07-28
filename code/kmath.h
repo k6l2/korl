@@ -1,5 +1,5 @@
 #pragma once
-#include "global-defines.h"
+#include "kutil.h"
 const f32 PI32 = 3.14159f;
 // crt math operations
 #include <math.h>
