@@ -606,6 +606,8 @@ internal PLATFORM_DECODE_Z85_PNG(platformDecodeZ85Png)
 	///TODO: use a separate allocator for Z85 decoding functionality
 	const i32 tempFileBytes = kmath::safeTruncateI32(
 		z85::decodedFileSizeBytes(z85PngNumBytes));
+	EnterCriticalSection(&g_stbiAllocationCsLock);
+	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
 	i8*const tempFileData = reinterpret_cast<i8*>(
 		kgaAlloc(g_genAllocStbImage, tempFileBytes));
 	if(!tempFileData)
@@ -629,6 +631,8 @@ internal PLATFORM_DECODE_Z85_WAV(platformDecodeZ85Wav)
 	///TODO: use a separate allocator for Z85 decoding functionality
 	const i32 tempFileBytes = kmath::safeTruncateI32(
 		z85::decodedFileSizeBytes(z85WavNumBytes));
+	EnterCriticalSection(&g_stbiAllocationCsLock);
+	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
 	i8*const tempFileData = reinterpret_cast<i8*>(
 		kgaAlloc(g_genAllocStbImage, tempFileBytes));
 	if(!tempFileData)
@@ -1181,6 +1185,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDrawStub)
 	// continue running the application to keep attempting to reload game code!
 	return true;
 }
+GAME_ON_PRE_UNLOAD(gameOnPreUnloadStub)
+{
+}
 internal FILETIME w32GetLastWriteTime(const char* fileName)
 {
 	FILETIME result = {};
@@ -1244,6 +1251,7 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	result.onReloadCode     = gameOnReloadCodeStub;
 	result.renderAudio      = gameRenderAudioStub;
 	result.updateAndDraw    = gameUpdateAndDrawStub;
+	result.onPreUnload      = gameOnPreUnloadStub;
 	result.dllLastWriteTime = w32GetLastWriteTime(fileNameDll);
 	if(result.dllLastWriteTime.dwHighDateTime == 0 &&
 		result.dllLastWriteTime.dwLowDateTime == 0)
@@ -1284,6 +1292,17 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 			KLOG(WARNING, "Failed to get proc address 'gameOnReloadCode'! "
 			     "GetLastError=%i", GetLastError());
 		}
+		result.onPreUnload = reinterpret_cast<fnSig_gameOnPreUnload*>(
+			GetProcAddress(result.hLib, "gameOnPreUnload"));
+		if(!result.onPreUnload)
+		{
+			// This is only a warning because the game can optionally just not
+			//	implement the hot-reload callback. //
+			///TODO: detect if `GameCode` has the ability to hot-reload and 
+			///      don't perform hot-reloading if this is not the case.
+			KLOG(WARNING, "Failed to get proc address 'gameOnPreUnload'! "
+			     "GetLastError=%i", GetLastError());
+		}
 		result.renderAudio = reinterpret_cast<fnSig_gameRenderAudio*>(
 			GetProcAddress(result.hLib, "gameRenderAudio"));
 		if(!result.renderAudio)
@@ -1308,6 +1327,7 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 		result.onReloadCode  = gameOnReloadCodeStub;
 		result.renderAudio   = gameRenderAudioStub;
 		result.updateAndDraw = gameUpdateAndDrawStub;
+		result.onPreUnload   = gameOnPreUnloadStub;
 	}
 	return result;
 }
@@ -2377,7 +2397,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.platformImguiAlloc  = platformImguiAlloc;
 	gameMemory.platformImguiFree   = platformImguiFree;
 	gameMemory.imguiAllocUserData  = g_genAllocImgui;
-	game.onReloadCode(gameMemory);
+	game.onReloadCode(gameMemory, false);
 	game.initialize(gameMemory);
 	w32InitDSound(g_mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, cursorWritePrev);
@@ -2452,10 +2472,12 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				//	probably in the process of getting recompiled!
 				{
 					game.isValid = false;
+					game.onPreUnload();
 				}
-				if( CompareFileTime(&gameCodeLastWriteTime, 
-				                    &game.dllLastWriteTime) ||
-				    !game.isValid )
+				if((CompareFileTime(&gameCodeLastWriteTime, 
+				                    &game.dllLastWriteTime) 
+				    || !game.isValid) 
+				    && !jobQueueHasIncompleteJobs(&g_jobQueue))
 				{
 					w32UnloadGameCode(game);
 					game = w32LoadGameCode(fullPathToGameDll, 
@@ -2463,7 +2485,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					if(game.isValid)
 					{
 						KLOG(INFO, "Game code hot-reload complete!");
-						game.onReloadCode(gameMemory);
+						game.onReloadCode(gameMemory, true);
 					}
 				}
 			}
@@ -2543,8 +2565,16 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				             ImGuiWindowFlags_AlwaysAutoResize |
 				             ImGuiWindowFlags_NoSavedSettings |
 				             ImGuiWindowFlags_NoMouseInputs );
-				ImGui::Text("Loading Game Code...%c", 
-				            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
+				if(jobQueueHasIncompleteJobs(&g_jobQueue))
+				{
+					ImGui::Text("Waiting for job queue to finish...%c", 
+					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
+				}
+				else
+				{
+					ImGui::Text("Loading Game Code...%c", 
+					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
+				}
 				ImGui::End();
 			}
 			const f32 deltaSeconds = 

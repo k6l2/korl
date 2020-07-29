@@ -4,6 +4,15 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 {
 	KLOG(INFO, "Server job START!");
 	ServerState* ss = reinterpret_cast<ServerState*>(data);
+	while(ss->running)
+	{
+		kalReset(ss->hKalFrame);
+	}
+	KLOG(INFO, "Server job END!");
+}
+internal JobQueueTicket serverStart(ServerState* ss)
+{
+	kassert(!ss->running);
 	// initialize dynamic allocators //
 	ss->hKgaPermanent = 
 		kgaInit(reinterpret_cast<u8*>(ss->permanentMemory), 
@@ -23,15 +32,7 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		                server doesn't try to load any assets onto the GPU, 
 		                since there's no point. */
 		             ss->hKgaTransient, g_kpl, nullptr);
-	while(ss->running)
-	{
-		kalReset(ss->hKalFrame);
-	}
-	KLOG(INFO, "Server job END!");
-}
-internal JobQueueTicket serverStart(ServerState* ss)
-{
-	kassert(!ss->running);
+	/* post the server's job to be run on another thread */
 	ss->running = true;
 	return g_kpl->postJob(serverUpdate, ss);
 }

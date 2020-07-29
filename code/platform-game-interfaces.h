@@ -443,7 +443,8 @@ struct GamePad
  * OPTIONAL.  Guaranteed to be called every time the game code is reloaded.
  * Guaranteed to be called BEFORE GAME_INITIALIZE.
  */
-#define GAME_ON_RELOAD_CODE(name) void name(GameMemory& memory)
+#define GAME_ON_RELOAD_CODE(name) void name(GameMemory& memory, \
+                                            bool gameMemoryIsInitialized)
 #define GAME_RENDER_AUDIO(name) void name(GameAudioBuffer& audioBuffer, \
                                           u32 sampleBlocksConsumed)
 /** 
@@ -455,12 +456,13 @@ struct GamePad
                                              GamePad* gamePadArray, \
                                              u8 numGamePads, \
                                              bool windowIsFocused)
+/** 
+ * OPTIONAL.  Called IMMEDIATELY before the game code is unloaded from memory.
+*/
+#define GAME_ON_PRE_UNLOAD(name) void name()
 typedef GAME_INITIALIZE(fnSig_gameInitialize);
 typedef GAME_ON_RELOAD_CODE(fnSig_gameOnReloadCode);
 typedef GAME_RENDER_AUDIO(fnSig_gameRenderAudio);
 typedef GAME_UPDATE_AND_DRAW(fnSig_gameUpdateAndDraw);
-extern "C" GAME_INITIALIZE(gameInitialize);
-extern "C" GAME_ON_RELOAD_CODE(gameOnReloadCode);
-extern "C" GAME_RENDER_AUDIO(gameRenderAudio);
-extern "C" GAME_UPDATE_AND_DRAW(gameUpdateAndDraw);
+typedef GAME_ON_PRE_UNLOAD(fnSig_gameOnPreUnload);
 /********************************************************* END GAME INTERFACE */

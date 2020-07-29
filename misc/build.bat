@@ -209,7 +209,7 @@ cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/link %CommonLinkerFlags% ^
 	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
-	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw 
+	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw /EXPORT:gameOnPreUnload
 IF %ERRORLEVEL% NEQ 0 (
 	echo %kmlGameDllFileName% build failed!
 	GOTO :ON_FAILURE_GAME

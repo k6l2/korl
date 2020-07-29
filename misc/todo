@@ -453,13 +453,29 @@
 		finished by the time a new job needs to be posted in that slot
 		[x] test to make sure this works by running a server thread while 
 			hot-reloading assets
-	[ ] game code hot reload: freeze all job threads while reloading code
+	[x] is it possible for game code to be reloaded while server is running?
+		- this will cause the server's job thread function to become invalid
+		- server job thread needs to be suspended while code is reloading
+		- during reload (while job threads are suspended) the game code needs to 
+			tell the platform the new address of the server's thread function
+		- actually, ALL job threads need to be completed with their jobs before 
+			the code gets unloaded.  Server job needs to be shut down; game code 
+			needs an interface API which gets called when game code is about to 
+			be reloaded!
+		- once code is reloaded, job threads can resume & a new Server job is 
+			submitted without re-initializing the Server's state
+	[-] game code hot reload: freeze all job threads while reloading code
+		https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-suspendthread
+	[x] game code hot reload: pre-unload API
+	[x] re-submit Server job to platform when the game code is reloaded
 	[ ] kpl: get current time API
 	[ ] kpl: sleep thread API
 	[ ] kpl: request socket API
-[ ] win32: add locks during asset loading/decoding functions because KGA is not 
+[x] win32: add locks during asset loading/decoding functions because KGA is not 
 	thread-safe!  Crashes can be produced by constantly calling 
 	`kamUnloadAllAssets` every frame.
+	- looks like I did this earlier, but for some reason I forgot to add locks 
+		to the Z85 decoding routines
 [ ] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution

@@ -22,6 +22,7 @@ struct GameCode
 	fnSig_gameOnReloadCode* onReloadCode;
 	fnSig_gameRenderAudio* renderAudio;
 	fnSig_gameUpdateAndDraw* updateAndDraw;
+	fnSig_gameOnPreUnload* onPreUnload;
 	HMODULE hLib;
 	FILETIME dllLastWriteTime;
 	bool isValid;

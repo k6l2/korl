@@ -20,6 +20,7 @@ struct GameState
 	KalHandle hKalFrame;
 	JobQueueTicket serverJobTicket;
 	ServerState serverState;
+	bool onGameReloadStartServer;
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kQuaternion shipWorldOrientation = kQuaternion({0,0,1}, 0);

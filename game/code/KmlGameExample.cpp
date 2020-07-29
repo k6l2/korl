@@ -18,6 +18,15 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 	ImGui::SetAllocatorFunctions(memory.platformImguiAlloc, 
 	                             memory.platformImguiFree, 
 	                             memory.imguiAllocUserData);
+	if(gameMemoryIsInitialized)
+	{
+		if(g_gs->onGameReloadStartServer)
+		{
+			KLOG(INFO, "Restarting server job...");
+			g_gs->serverJobTicket = serverStart(&g_gs->serverState);
+		}
+		g_gs->onGameReloadStartServer = false;
+	}
 }
 GAME_INITIALIZE(gameInitialize)
 {
@@ -292,6 +301,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);
 	g_krb->drawCircle(50, 10, {1,0,0,0.5f}, {1,0,0,1}, 16);
 	return true;
+}
+GAME_ON_PRE_UNLOAD(gameOnPreUnload)
+{
+	if(g_kpl->jobValid(&g_gs->serverJobTicket))
+	{
+		KLOG(INFO, "gameOnPreUnload: temporarily stopping server...");
+		g_gs->serverState.running = false;
+		g_gs->onGameReloadStartServer = true;
+	}
 }
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"
