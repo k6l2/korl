@@ -71,9 +71,14 @@ using FileWriteTime = u64;
 using JobQueueTicket = u32;
 #define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
 typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
+/** 
+ * @return the job ticket which uses `function`.  If `function` is nullptr, the 
+ *         return value is guaranteed to be an INVALID ticket.
+*/
 #define PLATFORM_POST_JOB(name) JobQueueTicket name(\
                                              fnSig_jobQueueFunction* function, \
                                              void* data)
+#define PLATFORM_JOB_VALID(name) bool name(JobQueueTicket* ticket)
 #define PLATFORM_JOB_DONE(name) bool name(JobQueueTicket* ticket)
 #define PLATFORM_LOG(name) void name(const char* sourceFileName, \
                                      u32 sourceFileLineNumber, \
@@ -150,6 +155,7 @@ struct PlatformGamePadActiveAxis
                                                            char* o_buffer, \
                                                            size_t bufferSize)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
+typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef PLATFORM_ASSERT(fnSig_platformAssert);
@@ -189,6 +195,7 @@ typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
+	fnSig_platformJobValid* jobValid;
 	fnSig_platformJobDone* jobDone;
 	fnSig_platformLog* log;
 	fnSig_platformAssert* assert;

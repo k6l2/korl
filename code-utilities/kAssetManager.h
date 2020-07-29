@@ -24,7 +24,8 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetIndex assetIndex);
 internal bool kamIsLoadingImages(KAssetManager* kam);
 internal bool kamIsLoadingSounds(KAssetManager* kam);
 /**
- * @return # of assets that were unloaded
+ * @return the # of assets that were unloaded
  */
 internal u32 kamUnloadChangedAssets(KAssetManager* kam);
+internal void kamUnloadAllAssets(KAssetManager* kam);
 internal void kamPushAllKAssets(KAssetManager* kam);

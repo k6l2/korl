@@ -44,6 +44,14 @@ GAME_INITIALIZE(gameInitialize)
 		        memory.permanentMemoryBytes - sizeof(GameState));
 	g_gs->hKgaTransient = kgaInit(memory.transientMemory, 
 	                              memory.transientMemoryBytes);
+	/* allocate memory for the server */
+	g_gs->serverState.permanentMemoryBytes = kmath::megabytes(5);
+	g_gs->serverState.transientMemoryBytes = kmath::megabytes(5);
+	g_gs->serverState.permanentMemory = 
+		kgaAlloc(g_gs->hKgaPermanent, g_gs->serverState.permanentMemoryBytes);
+	g_gs->serverState.transientMemory = 
+		kgaAlloc(g_gs->hKgaPermanent, g_gs->serverState.transientMemoryBytes);
+	g_gs->serverJobTicket = g_kpl->postJob(nullptr, nullptr);
 	// construct a linear frame allocator //
 	{
 		const size_t kalFrameSize = kmath::megabytes(5);
@@ -145,6 +153,32 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	ImGui::End();
+	/* TESTING SERVER EXAMPLE */
+	if(ImGui::Begin("TESTING SERVER EXAMPLE"))
+	{
+		if(g_kpl->jobValid(&g_gs->serverJobTicket))
+		{
+			if(g_gs->serverState.running)
+			{
+				if(ImGui::Button("Stop Server"))
+				{
+					g_gs->serverState.running = false;
+				}
+			}
+			else
+			{
+				ImGui::Text("Stopping server...");
+			}
+		}
+		else
+		{
+			if(ImGui::Button("Start Server"))
+			{
+				g_gs->serverJobTicket = serverStart(&g_gs->serverState);
+			}
+		}
+	}
+	ImGui::End();
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
@@ -222,6 +256,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			*(int*)0 = 0;
 		}
+		if(gpad.faceRight > ButtonState::NOT_PRESSED)
+		{
+			kamUnloadAllAssets(g_gs->assetManager);
+		}
 #endif //1
 	}
 	g_gs->viewOffset2d = g_gs->shipWorldPosition;
@@ -296,3 +334,4 @@ internal void kStbDsFree(void* allocatedAddress)
 #pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
+#include "serverExample.cpp"

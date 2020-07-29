@@ -449,6 +449,17 @@
 [x] remove the requirement to undefine & redefine KLOG macro in game module
 [x] change `kassert` to be platform-specific code
 [ ] KML-platform: UDP networking API
+	[x] jobQueue: support persistent jobs; don't require jobs to have been 
+		finished by the time a new job needs to be posted in that slot
+		[x] test to make sure this works by running a server thread while 
+			hot-reloading assets
+	[ ] game code hot reload: freeze all job threads while reloading code
+	[ ] kpl: get current time API
+	[ ] kpl: sleep thread API
+	[ ] kpl: request socket API
+[ ] win32: add locks during asset loading/decoding functions because KGA is not 
+	thread-safe!  Crashes can be produced by constantly calling 
+	`kamUnloadAllAssets` every frame.
 [ ] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution

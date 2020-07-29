@@ -13,9 +13,9 @@ struct JobQueueJob
 };
 struct JobQueue
 {
-	// Setting a jobs array size >= 0xFFFF will require a bunch of code changes 
-	//	elsewhere due to the size of JobQueueTicket!
-	JobQueueJob jobs[256];
+	/* @config: Setting a jobs array size >= 0xFFFF will require a bunch of code 
+		changes elsewhere due to the size of JobQueueTicket! */
+	JobQueueJob jobs[16];
 	size_t nextJobIndex;
 	size_t availableJobCount;
 	size_t incompleteJobCount;
@@ -25,7 +25,7 @@ struct JobQueue
 internal bool jobQueueInit(JobQueue* jobQueue);
 /** 
  * @return Invalid JobQueueTicket if the job could not be added to the queue 
- *         (queue too full).
+ *         (queue too full), or if `function` is nullptr.
  * */
 internal JobQueueTicket jobQueuePostJob(JobQueue* jobQueue, 
                                         fnSig_jobQueueFunction* function, 

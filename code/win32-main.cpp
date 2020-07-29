@@ -181,6 +181,10 @@ internal PLATFORM_JOB_DONE(platformJobDone)
 {
 	return jobQueueJobIsDone(&g_jobQueue, ticket);
 }
+internal PLATFORM_JOB_VALID(platformJobValid)
+{
+	return jobQueueTicketIsValid(&g_jobQueue, ticket);
+}
 internal bool decodeFlipbookMeta(const PlatformDebugReadFileResult& file, 
                                  FlipbookMetaData* o_fbMeta, 
                                  char* o_texAssetFileName, 
@@ -2344,6 +2348,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
 		gameMemory.permanentMemoryBytes;
 	gameMemory.kpl.postJob                = platformPostJob;
+	gameMemory.kpl.jobValid               = platformJobValid;
 	gameMemory.kpl.jobDone                = platformJobDone;
 	gameMemory.kpl.log                    = platformLog;
 	gameMemory.kpl.assert                 = platformAssert;

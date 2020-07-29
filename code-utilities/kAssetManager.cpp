@@ -50,7 +50,7 @@ struct KAssetManager
 };
 internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
                                      KgaHandle assetDataAllocator,
-                                     KmlPlatformApi* kpl, KrbApi* krb)
+                                     KmlPlatformApi* kpl, KrbApi* krbApi)
 {
 	if(maxAssetHandles >= INVALID_KASSET_HANDLE)
 	{
@@ -70,10 +70,12 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 			kpl->decodeZ85Png(z85_png_default, 
 			                  CARRAY_SIZE(z85_png_default) - 1,
 			                  assetDataAllocator);
-		defaultAssetImage.assetData.image.krbTextureHandle = krb->loadImage(
-			defaultAssetImage.assetData.image.rawImage.sizeX,
-			defaultAssetImage.assetData.image.rawImage.sizeY,
-			defaultAssetImage.assetData.image.rawImage.pixelData);
+		defaultAssetImage.assetData.image.krbTextureHandle = krbApi
+			? krbApi->loadImage(
+				defaultAssetImage.assetData.image.rawImage.sizeX,
+				defaultAssetImage.assetData.image.rawImage.sizeY,
+				defaultAssetImage.assetData.image.rawImage.pixelData)
+			: krb::INVALID_TEXTURE_HANDLE;
 		KAsset defaultAssetSound;
 		defaultAssetSound.type = KAssetType::RAW_SOUND;
 		defaultAssetSound.assetData.sound =
@@ -98,7 +100,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 			, .defaultAssetFlipbookMetaData = defaultAssetFlipbook
 			, .assetDataAllocator           = assetDataAllocator
 			, .kpl = kpl
-			, .krb = krb };
+			, .krb = krbApi };
 	}
 	return result;
 }
@@ -107,7 +109,11 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
 	kassert(assetHandle < kam->maxAssetHandles);
 	KAsset*const asset = assets + assetHandle;
-	kassert(asset->loaded);
+	if(!asset->loaded)
+	{
+		KLOG(WARNING, "KAsset[%i] is already free!", assetHandle);
+		return;
+	}
 	switch(asset->type)
 	{
 		case KAssetType::RAW_IMAGE:
@@ -531,6 +537,19 @@ internal u32 kamUnloadChangedAssets(KAssetManager* kam)
 		}
 	}
 	return unloadedAssetCount;
+}
+internal void kamUnloadAllAssets(KAssetManager* kam)
+{
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	for(KAssetHandle kah = 0; kah < kam->maxAssetHandles; kah++)
+	{
+		KAsset*const asset = assets + kah;
+		if(asset->type != KAssetType::UNUSED && asset->loaded)
+		{
+			KLOG(INFO, "Unloading asset '%s'...", kAssetFileNames[kah]);
+			kamFreeAsset(kam, kah);
+		}
+	}
 }
 internal void kamPushAllKAssets(KAssetManager* kam)
 {

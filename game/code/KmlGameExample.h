@@ -10,6 +10,7 @@
 #define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size)
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr)
 #include "stb/stb_ds.h"
+#include "serverExample.h"
 struct GameState
 {
 	KAssetManager* assetManager;
@@ -17,6 +18,8 @@ struct GameState
 	KgaHandle hKgaPermanent;
 	KgaHandle hKgaTransient;
 	KalHandle hKalFrame;
+	JobQueueTicket serverJobTicket;
+	ServerState serverState;
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kQuaternion shipWorldOrientation = kQuaternion({0,0,1}, 0);
