@@ -1,11 +1,13 @@
 #include "serverExample.h"
 #include "KmlGameExample.h"
-internal void serverInitialize(ServerState* ss, KgaHandle hKgaPermanent, 
+internal void serverInitialize(ServerState* ss, f32 secondsPerFrame, 
+                               KgaHandle hKgaPermanent, 
                                KgaHandle hKgaTransient, 
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes)
 {
 	kassert(!ss->running);
+	ss->secondsPerFrame = secondsPerFrame;
 	ss->serverJobTicket = g_kpl->postJob(nullptr, nullptr);
 	/* allocate memory for the server */
 	ss->permanentMemoryBytes = permanentMemoryBytes;
@@ -38,7 +40,9 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 	ServerState* ss = reinterpret_cast<ServerState*>(data);
 	while(ss->running)
 	{
+		PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();
 		kalReset(ss->hKalFrame);
+		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);
 	}
 	KLOG(INFO, "Server job END!");
 }

@@ -21,7 +21,8 @@ enum class ServerOperatingState : u8
 	, STOPPING
 	, STOPPED
 };
-internal void serverInitialize(ServerState* ss, KgaHandle hKgaPermanent, 
+internal void serverInitialize(ServerState* ss, f32 secondsPerFrame, 
+                               KgaHandle hKgaPermanent, 
                                KgaHandle hKgaTransient, 
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes);

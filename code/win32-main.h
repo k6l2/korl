@@ -31,4 +31,5 @@ internal PLATFORM_LOG(platformLog);
 internal PLATFORM_ASSERT(platformAssert);
 internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile);
 internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory);
+internal LARGE_INTEGER w32QueryPerformanceCounter();
 global_variable HWND g_mainWindow;

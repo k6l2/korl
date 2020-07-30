@@ -68,6 +68,7 @@ struct FlipbookMetaData
 	f32 defaultAnchorRatioY;
 };
 using FileWriteTime = u64;
+using PlatformTimeStamp = u64;
 using JobQueueTicket = u32;
 #define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
 typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
@@ -154,6 +155,9 @@ struct PlatformGamePadActiveAxis
 #define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) void name(u8 gamePadIndex, \
                                                            char* o_buffer, \
                                                            size_t bufferSize)
+#define PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name()
+#define PLATFORM_SLEEP_FROM_TIMESTAMP(name) void name(PlatformTimeStamp pts, \
+                                                      f32 desiredDeltaSeconds)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -192,6 +196,8 @@ struct PlatformDebugReadFileResult
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
 typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
+typedef PLATFORM_GET_TIMESTAMP(fnSig_PlatformGetTimeStamp);
+typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_PlatformSleepFromTimestamp);
 struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -214,6 +220,8 @@ struct KmlPlatformApi
 	fnSig_platformGetGamePadActiveAxis* getGamePadActiveAxis;
 	fnSig_platformGetGamePadProductName* getGamePadProductName;
 	fnSig_platformGetGamePadProductGuid* getGamePadProductGuid;
+	fnSig_PlatformGetTimeStamp* getTimeStamp;
+	fnSig_PlatformSleepFromTimestamp* sleepFromTimeStamp;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;
 	fnSig_PlatformFreeFileMemory* freeFileMemory;

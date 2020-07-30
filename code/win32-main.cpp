@@ -1243,6 +1243,40 @@ internal PLATFORM_IS_ASSET_AVAILABLE(platformIsAssetAvailable)
 	}
 	return false;
 }
+union PlatformTimeStampUnion
+{
+	static_assert(sizeof(PlatformTimeStamp) <= sizeof(LARGE_INTEGER));
+	LARGE_INTEGER largeInt;
+	PlatformTimeStamp timeStamp;
+};
+PLATFORM_GET_TIMESTAMP(w32GetTimeStamp)
+{
+	PlatformTimeStampUnion platformTimeStampUnion;
+	platformTimeStampUnion.largeInt = w32QueryPerformanceCounter();
+	return platformTimeStampUnion.timeStamp;
+}
+PLATFORM_SLEEP_FROM_TIMESTAMP(w32SleepFromTimeStamp)
+{
+	PlatformTimeStampUnion platformTimeStampUnionPrevious;
+	platformTimeStampUnionPrevious.timeStamp = pts;
+	PlatformTimeStampUnion platformTimeStampUnion;
+	platformTimeStampUnion.largeInt = w32QueryPerformanceCounter();
+	/* calculate the # of seconds between the previous timestamp and the current 
+		timestamp */
+	kassert(platformTimeStampUnion.largeInt.QuadPart >= 
+	        platformTimeStampUnionPrevious.largeInt.QuadPart);
+	const LONGLONG perfCountDiff = 
+		platformTimeStampUnion.largeInt.QuadPart - 
+		platformTimeStampUnionPrevious.largeInt.QuadPart;
+	const f32 elapsedSeconds = 
+		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
+	/* conditionally sleep depending on the # of elapsed seconds */
+	if(elapsedSeconds >= desiredDeltaSeconds)
+		return;
+	const DWORD sleepMilliseconds = 
+		static_cast<DWORD>(1000 * (desiredDeltaSeconds - elapsedSeconds));
+	Sleep(sleepMilliseconds);
+}
 internal GameCode w32LoadGameCode(const char* fileNameDll, 
                                   const char* fileNameDllTemp)
 {
@@ -2242,8 +2276,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	kassert(game.isValid);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
-		KLOG(ERROR, "Failed to query for performance frequency! GetLastError=%i", 
-		     GetLastError());
+		KLOG(ERROR, "Failed to query for performance frequency! "
+		     "GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
 #if 0
@@ -2387,6 +2421,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getGamePadActiveAxis   = w32GetGamePadActiveAxis;
 	gameMemory.kpl.getGamePadProductName  = w32GetGamePadProductName;
 	gameMemory.kpl.getGamePadProductGuid  = w32GetGamePadProductGuid;
+	gameMemory.kpl.getTimeStamp           = w32GetTimeStamp;
+	gameMemory.kpl.sleepFromTimeStamp     = w32SleepFromTimeStamp;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;

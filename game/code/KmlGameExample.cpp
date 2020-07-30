@@ -49,7 +49,7 @@ GAME_INITIALIZE(gameInitialize)
 	g_gs->hKgaTransient = kgaInit(memory.transientMemory, 
 	                              memory.transientMemoryBytes);
 	/* initialize server state */
-	serverInitialize(&g_gs->serverState, 
+	serverInitialize(&g_gs->serverState, 1.f/60, 
 	                 g_gs->hKgaPermanent, g_gs->hKgaTransient, 
 	                 kmath::megabytes(5), kmath::megabytes(5));
 	// construct a linear frame allocator //
