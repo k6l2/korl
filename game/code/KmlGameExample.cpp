@@ -20,12 +20,7 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 	                             memory.imguiAllocUserData);
 	if(gameMemoryIsInitialized)
 	{
-		if(g_gs->onGameReloadStartServer)
-		{
-			KLOG(INFO, "Restarting server job...");
-			g_gs->serverJobTicket = serverStart(&g_gs->serverState);
-		}
-		g_gs->onGameReloadStartServer = false;
+		serverOnReload(&g_gs->serverState);
 	}
 }
 GAME_INITIALIZE(gameInitialize)
@@ -53,14 +48,10 @@ GAME_INITIALIZE(gameInitialize)
 		        memory.permanentMemoryBytes - sizeof(GameState));
 	g_gs->hKgaTransient = kgaInit(memory.transientMemory, 
 	                              memory.transientMemoryBytes);
-	/* allocate memory for the server */
-	g_gs->serverState.permanentMemoryBytes = kmath::megabytes(5);
-	g_gs->serverState.transientMemoryBytes = kmath::megabytes(5);
-	g_gs->serverState.permanentMemory = 
-		kgaAlloc(g_gs->hKgaPermanent, g_gs->serverState.permanentMemoryBytes);
-	g_gs->serverState.transientMemory = 
-		kgaAlloc(g_gs->hKgaPermanent, g_gs->serverState.transientMemoryBytes);
-	g_gs->serverJobTicket = g_kpl->postJob(nullptr, nullptr);
+	/* initialize server state */
+	serverInitialize(&g_gs->serverState, 
+	                 g_gs->hKgaPermanent, g_gs->hKgaTransient, 
+	                 kmath::megabytes(5), kmath::megabytes(5));
 	// construct a linear frame allocator //
 	{
 		const size_t kalFrameSize = kmath::megabytes(5);
@@ -165,26 +156,26 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	/* TESTING SERVER EXAMPLE */
 	if(ImGui::Begin("TESTING SERVER EXAMPLE"))
 	{
-		if(g_kpl->jobValid(&g_gs->serverJobTicket))
+		switch(serverOpState(&g_gs->serverState))
 		{
-			if(g_gs->serverState.running)
+			case ServerOperatingState::RUNNING:
 			{
 				if(ImGui::Button("Stop Server"))
 				{
-					g_gs->serverState.running = false;
+					serverStop(&g_gs->serverState);
 				}
-			}
-			else
+			}break;
+			case ServerOperatingState::STOPPING:
 			{
 				ImGui::Text("Stopping server...");
-			}
-		}
-		else
-		{
-			if(ImGui::Button("Start Server"))
+			}break;
+			case ServerOperatingState::STOPPED:
 			{
-				g_gs->serverJobTicket = serverStart(&g_gs->serverState);
-			}
+				if(ImGui::Button("Start Server"))
+				{
+					serverStart(&g_gs->serverState);
+				}
+			}break;
 		}
 	}
 	ImGui::End();
@@ -304,12 +295,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
-	if(g_kpl->jobValid(&g_gs->serverJobTicket))
-	{
-		KLOG(INFO, "gameOnPreUnload: temporarily stopping server...");
-		g_gs->serverState.running = false;
-		g_gs->onGameReloadStartServer = true;
-	}
+	serverOnPreUnload(&g_gs->serverState);
 }
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"

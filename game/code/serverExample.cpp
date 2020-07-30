@@ -1,18 +1,17 @@
 #include "serverExample.h"
 #include "KmlGameExample.h"
-internal JOB_QUEUE_FUNCTION(serverUpdate)
-{
-	KLOG(INFO, "Server job START!");
-	ServerState* ss = reinterpret_cast<ServerState*>(data);
-	while(ss->running)
-	{
-		kalReset(ss->hKalFrame);
-	}
-	KLOG(INFO, "Server job END!");
-}
-internal JobQueueTicket serverStart(ServerState* ss)
+internal void serverInitialize(ServerState* ss, KgaHandle hKgaPermanent, 
+                               KgaHandle hKgaTransient, 
+                               u64 permanentMemoryBytes, 
+                               u64 transientMemoryBytes)
 {
 	kassert(!ss->running);
+	ss->serverJobTicket = g_kpl->postJob(nullptr, nullptr);
+	/* allocate memory for the server */
+	ss->permanentMemoryBytes = permanentMemoryBytes;
+	ss->transientMemoryBytes = transientMemoryBytes;
+	ss->permanentMemory = kgaAlloc(hKgaPermanent, ss->permanentMemoryBytes);
+	ss->transientMemory = kgaAlloc(hKgaPermanent, ss->transientMemoryBytes);
 	// initialize dynamic allocators //
 	ss->hKgaPermanent = 
 		kgaInit(reinterpret_cast<u8*>(ss->permanentMemory), 
@@ -32,7 +31,62 @@ internal JobQueueTicket serverStart(ServerState* ss)
 		                server doesn't try to load any assets onto the GPU, 
 		                since there's no point. */
 		             ss->hKgaTransient, g_kpl, nullptr);
-	/* post the server's job to be run on another thread */
+}
+internal JOB_QUEUE_FUNCTION(serverUpdate)
+{
+	KLOG(INFO, "Server job START!");
+	ServerState* ss = reinterpret_cast<ServerState*>(data);
+	while(ss->running)
+	{
+		kalReset(ss->hKalFrame);
+	}
+	KLOG(INFO, "Server job END!");
+}
+internal ServerOperatingState serverOpState(ServerState* ss)
+{
+	if(g_kpl->jobValid(&ss->serverJobTicket))
+	{
+		if(ss->running)
+			return ServerOperatingState::RUNNING;
+		else
+			return ServerOperatingState::STOPPING;
+	}
+	return ServerOperatingState::STOPPED;
+}
+internal void serverStart(ServerState* ss)
+{
+	if(ss->running || g_kpl->jobValid(&ss->serverJobTicket))
+	{
+		KLOG(WARNING, "Server already running or is stopping!");
+		return;
+	}
 	ss->running = true;
-	return g_kpl->postJob(serverUpdate, ss);
+	ss->serverJobTicket = g_kpl->postJob(serverUpdate, ss);
+}
+internal void serverStop(ServerState* ss)
+{
+	if(!ss->running)
+	{
+		KLOG(WARNING, "Server already stopped!");
+		return;
+	}
+	ss->running = false;
+}
+internal void serverOnPreUnload(ServerState* ss)
+{
+	if(g_kpl->jobValid(&ss->serverJobTicket))
+	{
+		KLOG(INFO, "serverOnPreUnload: temporarily stopping server...");
+		ss->running = false;
+		ss->onGameReloadStartServer = true;
+	}
+}
+internal void serverOnReload(ServerState* ss)
+{
+	if(ss->onGameReloadStartServer)
+	{
+		KLOG(INFO, "Restarting server job...");
+		serverStart(ss);
+	}
+	ss->onGameReloadStartServer = false;
 }

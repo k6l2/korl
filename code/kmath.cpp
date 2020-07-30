@@ -191,22 +191,18 @@ internal inline bool kmath::isNearlyZero(f32 f, f32 epsilon)
 {
 	return isNearlyEqual(f, 0.f, epsilon);
 }
-/** @return # of bytes which represent `k` kilobytes */
 internal inline u64 kmath::kilobytes(u64 k)
 {
 	return k*1024;
 }
-/** @return # of bytes which represent `m` megabytes */
 internal inline u64 kmath::megabytes(u64 m)
 {
 	return kilobytes(m)*1024;
 }
-/** @return # of bytes which represent `g` gigabytes */
 internal inline u64 kmath::gigabytes(u64 g)
 {
 	return megabytes(g)*1024;
 }
-/** @return # of bytes which represent `t` terabytes */
 internal inline u64 kmath::terabytes(u64 t)
 {
 	return gigabytes(t)*1024;

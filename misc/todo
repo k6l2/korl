@@ -448,7 +448,7 @@
 	[x] separate Quaternion from the rest of kmath API
 [x] remove the requirement to undefine & redefine KLOG macro in game module
 [x] change `kassert` to be platform-specific code
-[ ] KML-platform: UDP networking API
+[ ] KML-platform: support running a "server" program on a separate thread
 	[x] jobQueue: support persistent jobs; don't require jobs to have been 
 		finished by the time a new job needs to be posted in that slot
 		[x] test to make sure this works by running a server thread while 
@@ -470,7 +470,9 @@
 	[x] re-submit Server job to platform when the game code is reloaded
 	[ ] kpl: get current time API
 	[ ] kpl: sleep thread API
-	[ ] kpl: request socket API
+[ ] KML-platform: UDP networking API
+	[ ] request socket API
+		- allow only a maximum # of sockets (maybe like 32-ish?)
 [x] win32: add locks during asset loading/decoding functions because KGA is not 
 	thread-safe!  Crashes can be produced by constantly calling 
 	`kamUnloadAllAssets` every frame.

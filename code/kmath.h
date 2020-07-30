@@ -87,13 +87,13 @@ namespace kmath
 		https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ */
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
 	internal inline bool isNearlyZero(f32 f, f32 epsilon = 1e-5f);
-	/** @return # of bytes which represent `k` kilobytes */
+	/** @return the # of bytes which represent `k` kilobytes */
 	internal inline u64 kilobytes(u64 k);
-	/** @return # of bytes which represent `m` megabytes */
+	/** @return the # of bytes which represent `m` megabytes */
 	internal inline u64 megabytes(u64 m);
-	/** @return # of bytes which represent `g` gigabytes */
+	/** @return the # of bytes which represent `g` gigabytes */
 	internal inline u64 gigabytes(u64 g);
-	/** @return # of bytes which represent `t` terabytes */
+	/** @return the # of bytes which represent `t` terabytes */
 	internal inline u64 terabytes(u64 t);
 	internal inline u32 safeTruncateU32(u64 value);
 	internal inline u32 safeTruncateU32(i32 value);

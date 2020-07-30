@@ -15,12 +15,13 @@ struct GameState
 {
 	KAssetManager* assetManager;
 	KAudioMixer* kAudioMixer;
+	/* memory allocators */
 	KgaHandle hKgaPermanent;
 	KgaHandle hKgaTransient;
 	KalHandle hKalFrame;
-	JobQueueTicket serverJobTicket;
+	/* sample server state management */
 	ServerState serverState;
-	bool onGameReloadStartServer;
+	/* sample media testing state */
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kQuaternion shipWorldOrientation = kQuaternion({0,0,1}, 0);
