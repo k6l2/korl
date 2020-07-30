@@ -51,7 +51,7 @@ GAME_INITIALIZE(gameInitialize)
 	/* initialize server state */
 	serverInitialize(&g_gs->serverState, 1.f/60, 
 	                 g_gs->hKgaPermanent, g_gs->hKgaTransient, 
-	                 kmath::megabytes(5), kmath::megabytes(5));
+	                 kmath::megabytes(5), kmath::megabytes(5), 30942);
 	// construct a linear frame allocator //
 	{
 		const size_t kalFrameSize = kmath::megabytes(5);

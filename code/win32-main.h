@@ -1,6 +1,9 @@
 #pragma once
 #include "kutil.h"
 #include "platform-game-interfaces.h"
+/* prevent windows from including winsock which causes conflict in win32-network 
+	Source: https://stackoverflow.com/a/1372836 */
+#define _WINSOCKAPI_
 #include <windows.h>
 struct W32OffscreenBuffer
 {

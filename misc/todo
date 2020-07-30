@@ -471,8 +471,12 @@
 	[x] kpl: get current time API
 	[x] kpl: sleep thread API
 [ ] KML-platform: UDP networking API
-	[ ] request socket API
+	[x] initialize winsock
+	[x] open/close socket API
 		- allow only a maximum # of sockets (maybe like 32-ish?)
+	[ ] make socket API thread-safe
+	[ ] poll data from socket without blocking
+	[ ] push data to socket
 [x] win32: add locks during asset loading/decoding functions because KGA is not 
 	thread-safe!  Crashes can be produced by constantly calling 
 	`kamUnloadAllAssets` every frame.

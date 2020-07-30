@@ -4,9 +4,11 @@ internal void serverInitialize(ServerState* ss, f32 secondsPerFrame,
                                KgaHandle hKgaPermanent, 
                                KgaHandle hKgaTransient, 
                                u64 permanentMemoryBytes, 
-                               u64 transientMemoryBytes)
+                               u64 transientMemoryBytes, u16 port)
 {
 	kassert(!ss->running);
+	*ss = {};
+	ss->port = port;
 	ss->secondsPerFrame = secondsPerFrame;
 	ss->serverJobTicket = g_kpl->postJob(nullptr, nullptr);
 	/* allocate memory for the server */
@@ -38,6 +40,14 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 {
 	KLOG(INFO, "Server job START!");
 	ServerState* ss = reinterpret_cast<ServerState*>(data);
+	ss->socket = g_kpl->openSocketUdp(ss->port);
+	if(ss->socket == KPL_INVALID_SOCKET_INDEX)
+	{
+		KLOG(ERROR, "Failed to open a network socket on port %i!", ss->port);
+		ss->running = false;
+		return;
+	}
+	defer(g_kpl->closeSocket(ss->socket));
 	while(ss->running)
 	{
 		PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();

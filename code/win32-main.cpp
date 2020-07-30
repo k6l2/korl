@@ -4,6 +4,7 @@
 #include "win32-directinput.h"
 #include "win32-krb-opengl.h"
 #include "win32-jobQueue.h"
+#include "win32-network.h"
 #include "kGeneralAllocator.h"
 #include <cstdio>
 #include <ctime>
@@ -1171,6 +1172,14 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32GetGamePadProductGuid)
 		                               bufferSize);
 	}
 }
+PLATFORM_OPEN_SOCKET_UDP(w32OpenSocketUdp)
+{
+	return w32NetworkOpenSocketUdp(port);
+}
+PLATFORM_CLOSE_SOCKET(w32CloseSocket)
+{
+	w32NetworkCloseSocket(socketId);
+}
 GAME_INITIALIZE(gameInitializeStub)
 {
 }
@@ -2032,6 +2041,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	defer(w32WriteLogToFile());
 	KLOG(INFO, "START!");
+	if(!w32InitializeNetwork())
+	{
+		KLOG(ERROR, "Failed to initialize network!");
+	}
 	if(!w32RawInputEnumerateDevices())
 	{
 		KLOG(ERROR, "Failed to enumerate raw input devices!");
@@ -2423,6 +2436,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getGamePadProductGuid  = w32GetGamePadProductGuid;
 	gameMemory.kpl.getTimeStamp           = w32GetTimeStamp;
 	gameMemory.kpl.sleepFromTimeStamp     = w32SleepFromTimeStamp;
+	gameMemory.kpl.openSocketUdp          = w32OpenSocketUdp;
+	gameMemory.kpl.closeSocket            = w32CloseSocket;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;
@@ -2714,6 +2729,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "win32-directinput.cpp"
 #include "win32-krb-opengl.cpp"
 #include "win32-jobQueue.cpp"
+#include "win32-network.cpp"
 #include "krb-opengl.cpp"
 #include "z85.cpp"
 #define STB_IMAGE_IMPLEMENTATION
