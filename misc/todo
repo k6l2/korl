@@ -474,7 +474,7 @@
 	[x] initialize winsock
 	[x] open/close socket API
 		- allow only a maximum # of sockets (maybe like 32-ish?)
-	[ ] make socket API thread-safe
+	[x] make socket API thread-safe
 	[ ] poll data from socket without blocking
 	[ ] push data to socket
 [x] win32: add locks during asset loading/decoding functions because KGA is not 

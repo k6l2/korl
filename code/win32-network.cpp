@@ -5,9 +5,11 @@
 global_variable WSADATA g_wsa;
 global_variable SOCKET g_sockets[32];
 static_assert(CARRAY_SIZE(g_sockets) <= KPL_INVALID_SOCKET_INDEX);
+global_variable CRITICAL_SECTION g_csLockNetworking;
 internal bool w32InitializeNetwork()
 {
 	local_persist const WORD DESIRED_WINSOCK_VERSION = MAKEWORD(2,2);
+	InitializeCriticalSection(&g_csLockNetworking);
 	for(u8 s = 0; s < CARRAY_SIZE(g_sockets); s++)
 	{
 		g_sockets[s] = INVALID_SOCKET;
@@ -32,7 +34,8 @@ internal bool w32InitializeNetwork()
 }
 internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port)
 {
-	kassert(!"TODO: make this thread-safe!");
+	EnterCriticalSection(&g_csLockNetworking);
+	defer(LeaveCriticalSection(&g_csLockNetworking));
 	/* find the first available unused socket handle */
 	KplSocketIndex s = 0;
 	for(; s < CARRAY_SIZE(g_sockets); s++)
@@ -69,7 +72,8 @@ internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port)
 }
 internal void w32NetworkCloseSocket(KplSocketIndex socketIndex)
 {
-	kassert(!"TODO: make this thread-safe!");
+	EnterCriticalSection(&g_csLockNetworking);
+	defer(LeaveCriticalSection(&g_csLockNetworking));
 	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
 	const int resultCloseSocket = closesocket(g_sockets[socketIndex]);
 	if(resultCloseSocket != 0)
