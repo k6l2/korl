@@ -475,8 +475,14 @@
 	[x] open/close socket API
 		- allow only a maximum # of sockets (maybe like 32-ish?)
 	[x] make socket API thread-safe
+	[x] connect socket to host via hostname
+		https://stackoverflow.com/a/2152093
+		https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfo
+	[ ] push data to socket without blocking
 	[ ] poll data from socket without blocking
-	[ ] push data to socket
+		https://stackoverflow.com/a/15941974
+		https://www.winsocketdotnetworkprogramming.com/winsock2programming/winsock2advancediomethod5a.html
+		https://www.mkssoftware.com/docs/man3/select.3.asp
 [x] win32: add locks during asset loading/decoding functions because KGA is not 
 	thread-safe!  Crashes can be produced by constantly calling 
 	`kamUnloadAllAssets` every frame.

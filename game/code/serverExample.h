@@ -18,7 +18,6 @@ struct ServerState
 	KAssetManager* assetManager;
 	/* configuration */
 	f32 secondsPerFrame;
-	KplSocketIndex socket = KPL_INVALID_SOCKET_INDEX;
 	u16 port;
 };
 enum class ServerOperatingState : u8

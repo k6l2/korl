@@ -177,6 +177,39 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				}
 			}break;
 		}
+		ImGui::Separator();
+		if(g_gs->socketClient == KPL_INVALID_SOCKET_INDEX)
+		{
+			if(ImGui::Button("OPEN SOCKET"))
+			{
+				g_gs->socketClient = 
+					g_kpl->openSocketUdpAddress(0, g_gs->clientDataBuffer);
+			}
+			ImGui::InputText("socket address", g_gs->clientDataBuffer, 
+			                 CARRAY_SIZE(g_gs->clientDataBuffer));
+		}
+		else
+		{
+			if(ImGui::Button("CLOSE SOCKET"))
+			{
+				g_kpl->closeSocket(g_gs->socketClient);
+				g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
+			}
+			else
+			{
+				ImGui::InputText("send to server", g_gs->clientDataBuffer, 
+				                 CARRAY_SIZE(g_gs->clientDataBuffer));
+				if(ImGui::Button("SEND"))
+				{
+					kassert(!"TODO");
+#if 0
+					g_kpl->socketSend(g_gs->socketClient, 
+					                  g_gs->clientDataBuffer, 
+					                  strlen(g_gs->clientDataBuffer));
+#endif // 0
+				}
+			}
+		}
 	}
 	ImGui::End();
 #endif// INTERNAL_BUILD
@@ -296,6 +329,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 	serverOnPreUnload(&g_gs->serverState);
+	g_kpl->closeSocket(g_gs->socketClient);
+	g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
 }
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"

@@ -1174,7 +1174,11 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32GetGamePadProductGuid)
 }
 PLATFORM_OPEN_SOCKET_UDP(w32OpenSocketUdp)
 {
-	return w32NetworkOpenSocketUdp(port);
+	return w32NetworkOpenSocketUdp(port, nullptr);
+}
+PLATFORM_OPEN_SOCKET_UDP_ADDRESS(w32OpenSocketUdpAddress)
+{
+	return w32NetworkOpenSocketUdp(port, address);
 }
 PLATFORM_CLOSE_SOCKET(w32CloseSocket)
 {
@@ -2437,6 +2441,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getTimeStamp           = w32GetTimeStamp;
 	gameMemory.kpl.sleepFromTimeStamp     = w32SleepFromTimeStamp;
 	gameMemory.kpl.openSocketUdp          = w32OpenSocketUdp;
+	gameMemory.kpl.openSocketUdpAddress   = w32OpenSocketUdpAddress;
 	gameMemory.kpl.closeSocket            = w32CloseSocket;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;

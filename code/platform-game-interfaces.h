@@ -162,6 +162,8 @@ using KplSocketIndex = u8;
 const global_variable KplSocketIndex KPL_INVALID_SOCKET_INDEX = 
                                                              KplSocketIndex(~0);
 #define PLATFORM_OPEN_SOCKET_UDP(name) KplSocketIndex name(u16 port)
+#define PLATFORM_OPEN_SOCKET_UDP_ADDRESS(name) KplSocketIndex name(u16 port, \
+                                                            const char* address)
 #define PLATFORM_CLOSE_SOCKET(name) void name(KplSocketIndex socketId)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
@@ -204,6 +206,7 @@ typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_PlatformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_PlatformSleepFromTimestamp);
 typedef PLATFORM_OPEN_SOCKET_UDP(fnSig_PlatformOpenSocketUdp);
+typedef PLATFORM_OPEN_SOCKET_UDP_ADDRESS(fnSig_PlatformOpenSocketUdpAddress);
 typedef PLATFORM_CLOSE_SOCKET(fnSig_PlatformCloseSocket);
 struct KmlPlatformApi
 {
@@ -230,6 +233,7 @@ struct KmlPlatformApi
 	fnSig_PlatformGetTimeStamp* getTimeStamp;
 	fnSig_PlatformSleepFromTimestamp* sleepFromTimeStamp;
 	fnSig_PlatformOpenSocketUdp* openSocketUdp;
+	fnSig_PlatformOpenSocketUdpAddress* openSocketUdpAddress;
 	fnSig_PlatformCloseSocket* closeSocket;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;

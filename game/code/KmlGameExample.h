@@ -21,6 +21,8 @@ struct GameState
 	KalHandle hKalFrame;
 	/* sample server state management */
 	ServerState serverState;
+	KplSocketIndex socketClient = KPL_INVALID_SOCKET_INDEX;
+	char clientDataBuffer[1024];
 	/* sample media testing state */
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;

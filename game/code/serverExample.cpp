@@ -40,18 +40,34 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 {
 	KLOG(INFO, "Server job START!");
 	ServerState* ss = reinterpret_cast<ServerState*>(data);
-	ss->socket = g_kpl->openSocketUdp(ss->port);
-	if(ss->socket == KPL_INVALID_SOCKET_INDEX)
+	KplSocketIndex socket = g_kpl->openSocketUdp(ss->port);
+	if(socket == KPL_INVALID_SOCKET_INDEX)
 	{
 		KLOG(ERROR, "Failed to open a network socket on port %i!", ss->port);
 		ss->running = false;
 		return;
 	}
-	defer(g_kpl->closeSocket(ss->socket));
+	defer(g_kpl->closeSocket(socket));
 	while(ss->running)
 	{
 		PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();
 		kalReset(ss->hKalFrame);
+#if 0
+		/* check to see if we've gotten any data from the socket */
+		u8 netBuffer[1024*10];
+		const size_t dataReceived = 
+			g_kpl->socketGetData(socket, netBuffer, CARRAY_SIZE(netBuffer));
+		if(dataReceived > 0)
+		/* if we've gotten data from the socket, we need to parse the data into 
+			`NetPacket`s */
+		{
+#ifdef INTERNAL_BUILD
+			/* for debugging, just KLOG the netBuffer */
+			KLOG(INFO, "netBuffer=`%.*s`", dataReceived, 
+			     reinterpret_cast<char*>(netBuffer));
+#endif // INTERNAL_BUILD
+		}
+#endif //0
 		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);
 	}
 	KLOG(INFO, "Server job END!");
