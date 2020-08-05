@@ -1172,28 +1172,6 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32GetGamePadProductGuid)
 		                               bufferSize);
 	}
 }
-PLATFORM_NET_RESOLVE_ADDRESS(w32NetResolveAddress)
-{
-	return w32NetworkResolveAddress(ansiAddress);
-}
-PLATFORM_SOCKET_OPEN_UDP(w32SocketOpenUdp)
-{
-	return w32NetworkOpenSocketUdp(port);
-}
-PLATFORM_SOCKET_CLOSE(w32SocketClose)
-{
-	w32NetworkCloseSocket(socketId);
-}
-PLATFORM_SOCKET_SEND(w32SocketSend)
-{
-	w32NetworkSend(socketId, dataBuffer, dataBufferSize, netAddressReceiver, 
-	               netPortReceiver);
-}
-PLATFORM_SOCKET_RECEIVE(w32SocketReceive)
-{
-	return w32NetworkReceive(socketId, o_dataBuffer, dataBufferSize, 
-	                         o_netAddressSender, o_netPortSender);
-}
 GAME_INITIALIZE(gameInitializeStub)
 {
 }
@@ -2411,6 +2389,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #else
 	const LPVOID baseAddress = 0;
 #endif
+	/* @TODO: make these memory quantities configurable per-project */
 	gameMemory.permanentMemoryBytes = kmath::megabytes(16);
 	gameMemory.transientMemoryBytes = kmath::megabytes(128);
 	const u64 totalGameMemoryBytes = 
@@ -2450,11 +2429,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getGamePadProductGuid  = w32GetGamePadProductGuid;
 	gameMemory.kpl.getTimeStamp           = w32GetTimeStamp;
 	gameMemory.kpl.sleepFromTimeStamp     = w32SleepFromTimeStamp;
-	gameMemory.kpl.netResolveAddress      = w32NetResolveAddress;
-	gameMemory.kpl.socketOpenUdp          = w32SocketOpenUdp;
-	gameMemory.kpl.socketClose            = w32SocketClose;
-	gameMemory.kpl.socketSend             = w32SocketSend;
-	gameMemory.kpl.socketReceive          = w32SocketReceive;
+	gameMemory.kpl.netResolveAddress      = w32NetworkResolveAddress;
+	gameMemory.kpl.socketOpenUdp          = w32NetworkOpenSocketUdp;
+	gameMemory.kpl.socketClose            = w32NetworkCloseSocket;
+	gameMemory.kpl.socketSend             = w32NetworkSend;
+	gameMemory.kpl.socketReceive          = w32NetworkReceive;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;

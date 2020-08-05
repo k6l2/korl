@@ -470,7 +470,7 @@
 	[x] re-submit Server job to platform when the game code is reloaded
 	[x] kpl: get current time API
 	[x] kpl: sleep thread API
-[ ] KML-platform: UDP networking API
+[x] KML-platform: UDP networking API
 	[x] initialize winsock
 	[x] open/close socket API
 		- allow only a maximum # of sockets (maybe like 32-ish?)
@@ -483,8 +483,8 @@
 			of bytes whose size is >= platform-specific address type 
 		[-] method 1: add Platform API which allows game modules to allocate 
 			an address and receive a handle to it
-	[ ] push data to socket without blocking
-	[ ] poll data from socket without blocking
+	[x] push data to socket without blocking
+	[x] poll data from socket without blocking
 		https://stackoverflow.com/a/15941974
 		https://www.winsocketdotnetworkprogramming.com/winsock2programming/winsock2advancediomethod5a.html
 		https://www.mkssoftware.com/docs/man3/select.3.asp

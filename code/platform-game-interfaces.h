@@ -175,9 +175,19 @@ union KplNetAddress
 const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
 #define PLATFORM_NET_RESOLVE_ADDRESS(name) KplNetAddress name(\
                                                         const char* ansiAddress)
+/** 
+ * @param address if this is nullptr, the socket is bound to ANY address
+ * @return KPL_INVALID_SOCKET_INDEX if the socket could not be created for any 
+ *         reason
+*/
 #define PLATFORM_SOCKET_OPEN_UDP(name) KplSocketIndex name(u16 port)
-#define PLATFORM_SOCKET_CLOSE(name) void name(KplSocketIndex socketId)
-#define PLATFORM_SOCKET_SEND(name) void name(KplSocketIndex socketId, \
+#define PLATFORM_SOCKET_CLOSE(name) void name(KplSocketIndex socketIndex)
+/**
+ * @return the # of bytes sent.  If an error occurs, a value < 0 is returned.  
+ *         If the socket or underlying winsock system is not ready to send right 
+ *         now, 0 is returned (no errors occurred)
+ */
+#define PLATFORM_SOCKET_SEND(name) i32 name(KplSocketIndex socketIndex, \
                                       const u8* dataBuffer, \
                                       size_t dataBufferSize, \
                                       const KplNetAddress& netAddressReceiver, \
@@ -185,9 +195,10 @@ const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
 /** 
  * @return (1) the # of elements written to o_dataBuffer  (2) the received data 
  *         into `o_dataBuffer` (3) the network address from which the data was 
- *         sent into `o_netAddressSender`
+ *         sent into `o_netAddressSender`.  If an error occurs, a value < 0 is 
+ *         returned.
  */
-#define PLATFORM_SOCKET_RECEIVE(name) size_t name(KplSocketIndex socketId, \
+#define PLATFORM_SOCKET_RECEIVE(name) i32 name(KplSocketIndex socketIndex, \
                                             u8* o_dataBuffer, \
                                             size_t dataBufferSize, \
                                             KplNetAddress* o_netAddressSender, \

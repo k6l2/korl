@@ -59,18 +59,20 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		u8 netBuffer[KPL_MAX_DATAGRAM_SIZE];
 		KplNetAddress netAddressClient;
 		u16 netPortClient;
-		const size_t dataReceived = 
+		const i32 dataReceived = 
 			g_kpl->socketReceive(socket, netBuffer, CARRAY_SIZE(netBuffer), 
 			                     &netAddressClient, &netPortClient);
+		kassert(dataReceived >= 0);
 		if(dataReceived > 0)
 		/* if we've gotten data from the socket, we need to parse the data into 
 			`NetPacket`s */
 		{
 #ifdef INTERNAL_BUILD
 			/* for debugging, just KLOG the netBuffer */
-			KLOG(INFO, "netBuffer=`%.*s` from[%llx:%llx]::%i", dataReceived, 
-			     reinterpret_cast<char*>(netBuffer), netAddressClient.uLongs[0], 
-			     netAddressClient.uLongs[0], netPortClient);
+			KLOG(INFO, "netBuffer=`%.*s` from[%016llx:%016llx]::%i", 
+			     dataReceived, reinterpret_cast<char*>(netBuffer), 
+			     netAddressClient.uLongs[0], netAddressClient.uLongs[1], 
+			     netPortClient);
 #endif // INTERNAL_BUILD
 		}
 		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);

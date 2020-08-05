@@ -33,7 +33,7 @@ internal bool w32InitializeNetwork()
     }
 	return true;
 }
-internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port)
+internal PLATFORM_SOCKET_OPEN_UDP(w32NetworkOpenSocketUdp)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
@@ -71,10 +71,11 @@ internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port)
 	}
 	return s;
 }
-internal void w32NetworkCloseSocket(KplSocketIndex socketIndex)
+internal PLATFORM_SOCKET_CLOSE(w32NetworkCloseSocket)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
+	kassert(socketIndex < CARRAY_SIZE(g_sockets));
 	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
 	const int resultCloseSocket = closesocket(g_sockets[socketIndex]);
 	if(resultCloseSocket != 0)
@@ -106,20 +107,19 @@ internal int w32KplNetAddressToNative(const KplNetAddress& netAddress, u16 port,
 	o_winSockAddress->s4.sin_port        = htons(port);
 	return sizeof(o_winSockAddress->s4);
 }
-internal i32 w32NetworkSend(KplSocketIndex socketIndex, 
-                            const u8* dataBuffer, size_t dataBufferSize, 
-                            const KplNetAddress& netAddressReceiver, 
-                            u16 netPortReceiver)
+internal PLATFORM_SOCKET_SEND(w32NetworkSend)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
+	kassert(socketIndex < CARRAY_SIZE(g_sockets));
 	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
 	if(dataBufferSize > KPL_MAX_DATAGRAM_SIZE)
 	{
-		KLOG(ERROR, "Attempting to send %i bytes of data where the max is %i!", 
-		     dataBufferSize, KPL_MAX_DATAGRAM_SIZE);
-		return -1;
+		KLOG(WARNING, "Attempting to send %i bytes of data where the max is "
+		     "%i!", dataBufferSize, KPL_MAX_DATAGRAM_SIZE);
+		return 0;
 	}
+	/* select the socket with a timeout so we don't have to block the thread */
 	FD_SET socketSetWrite;
 	FD_ZERO(&socketSetWrite);
 	FD_SET(g_sockets[socketIndex], &socketSetWrite);
@@ -145,6 +145,7 @@ internal i32 w32NetworkSend(KplSocketIndex socketIndex,
 	}
 	kassert(resultSelect > 0);
 	kassert(FD_ISSET(g_sockets[socketIndex], &socketSetWrite));
+	/* send the data over the socket */
 	WinSockAddress winSockAddressReceiver;
 	const int winSockAddressLength = 
 		w32KplNetAddressToNative(netAddressReceiver, netPortReceiver, 
@@ -162,15 +163,62 @@ internal i32 w32NetworkSend(KplSocketIndex socketIndex,
 	}
 	return resultSendTo;
 }
-internal size_t w32NetworkReceive(KplSocketIndex socketIndex, 
-                                  u8* o_dataBuffer, size_t dataBufferSize, 
-                                  KplNetAddress* o_netAddressSource,
-                                  u16* o_netPortSource)
+internal PLATFORM_SOCKET_RECEIVE(w32NetworkReceive)
 {
-	kassert(!"TODO");
-	return 0;
+	EnterCriticalSection(&g_csLockNetworking);
+	defer(LeaveCriticalSection(&g_csLockNetworking));
+	kassert(socketIndex < CARRAY_SIZE(g_sockets));
+	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
+	/* select the socket with a timeout so we don't have to block the thread */
+	FD_SET socketSetRead;
+	FD_ZERO(&socketSetRead);
+	FD_SET(g_sockets[socketIndex], &socketSetRead);
+	local_persist const timeval SELECT_TIMEOUT = 
+		{ .tv_sec = 0
+		, .tv_usec = 10
+	};
+	const int resultSelect = 
+		select(0/*ignored*/, &socketSetRead, nullptr, nullptr, 
+		       &SELECT_TIMEOUT);
+	if(resultSelect == SOCKET_ERROR)
+	{
+		KLOG(ERROR, "Network receive select error! WSAGetLastError=%i", 
+		     WSAGetLastError());
+		return -1;
+	}
+	if(resultSelect == 0)
+	/* either the socket contains no data or winsock is not ready to receive 
+		data, so do nothing */
+	{
+//		KLOG(WARNING, "Socket[%i] read selection failed, no data will be "
+//		     "received.", socketIndex);
+		return 0;
+	}
+	kassert(resultSelect > 0);
+	kassert(FD_ISSET(g_sockets[socketIndex], &socketSetRead));
+	/* receive data from the socket */
+	WinSockAddress winSockAddressFrom = {};
+	int winSockAddressFromLength = sizeof(winSockAddressFrom);
+	const int resultReceiveFrom = 
+		recvfrom(g_sockets[socketIndex], reinterpret_cast<char*>(o_dataBuffer), 
+		         kmath::safeTruncateI32(dataBufferSize), 0/*flags*/, 
+		         &winSockAddressFrom.sa, &winSockAddressFromLength);
+	if(resultReceiveFrom == SOCKET_ERROR)
+	{
+		KLOG(ERROR, "Network receive error! WSAGetLastError=%i", 
+		     WSAGetLastError());
+		return -1;
+	}
+	/* since we actually received data, we can now populate o_netAddressSender & 
+		o_netPortSender with the proper address data */
+	/*	@robustness: create a 'ipv4_to_kpl' conversion function */
+	kassert(winSockAddressFromLength == sizeof(winSockAddressFrom.s4));
+	memset(o_netAddressSender, 0, sizeof(*o_netAddressSender));
+	o_netAddressSender->uInts[0] = ntohl(winSockAddressFrom.s4.sin_addr.s_addr);
+	*o_netPortSender = ntohs(winSockAddressFrom.s4.sin_port);
+	return resultReceiveFrom;
 }
-internal KplNetAddress w32NetworkResolveAddress(const char* ansiAddress)
+internal PLATFORM_NET_RESOLVE_ADDRESS(w32NetworkResolveAddress)
 {
 	addrinfo hints;
 	ZeroMemory(&hints, sizeof(hints));
@@ -297,6 +345,7 @@ internal KplNetAddress w32NetworkResolveAddress(const char* ansiAddress)
 		KLOG(ERROR, "Failed to resolve address! '%s'", ansiAddress);
 		return KPL_INVALID_ADDRESS;
 	}
+	/* @robustness: create a 'ipv4_to_kpl' conversion function */
 	KplNetAddress result = {};
 	result.uInts[0] = ntohl(socketAddressIpv4.sin_addr.s_addr);
 	return result;
