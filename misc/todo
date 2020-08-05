@@ -493,6 +493,12 @@
 	`kamUnloadAllAssets` every frame.
 	- looks like I did this earlier, but for some reason I forgot to add locks 
 		to the Z85 decoding routines
+[x] figure out why client socket becomes invalid when game code is reloaded
+	- Issue: GAME_ON_PRE_UNLOAD is firing multiple times during reload
+[ ] kutil: build host->net byte reordering API so we can safely transfer data 
+	types which are larger than 1 byte
+	https://developer.ibm.com/articles/au-endianc/
+[ ] establish usage code for transfering "packets" between client/server
 [ ] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution

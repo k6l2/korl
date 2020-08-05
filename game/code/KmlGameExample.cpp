@@ -193,6 +193,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			if(ImGui::Button("CLOSE SOCKET"))
 			{
+				KLOG(INFO, "invalidating g_gs->socketClient==%i", 
+				     g_gs->socketClient);
 				g_kpl->socketClose(g_gs->socketClient);
 				g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
 			}
@@ -329,8 +331,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 	serverOnPreUnload(&g_gs->serverState);
-	g_kpl->socketClose(g_gs->socketClient);
-	g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
+	if(g_gs->socketClient != KPL_INVALID_SOCKET_INDEX)
+	{
+		KLOG(INFO, "invalidating g_gs->socketClient==%i", g_gs->socketClient);
+		g_kpl->socketClose(g_gs->socketClient);
+		g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
+	}
 }
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"

@@ -232,7 +232,7 @@ internal PLATFORM_NET_RESOLVE_ADDRESS(w32NetworkResolveAddress)
 		getaddrinfo(ansiAddress, nullptr, &hints, &addrInfoData);
 	if(resultGetAddrInfo != 0)
 	{
-		KLOG(ERROR, "getaddrinfo failed! result=%i", resultGetAddrInfo);
+		KLOG(WARNING, "getaddrinfo failed! result=%i", resultGetAddrInfo);
 		return KPL_INVALID_ADDRESS;
 	}
 	defer(freeaddrinfo(addrInfoData));

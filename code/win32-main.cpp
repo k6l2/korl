@@ -2518,8 +2518,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				//	last write time of the dll, since it means the dll is 
 				//	probably in the process of getting recompiled!
 				{
+					if(game.isValid)
+						game.onPreUnload();
 					game.isValid = false;
-					game.onPreUnload();
 				}
 				if((CompareFileTime(&gameCodeLastWriteTime, 
 				                    &game.dllLastWriteTime) 
