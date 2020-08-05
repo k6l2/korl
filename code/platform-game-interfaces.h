@@ -158,13 +158,40 @@ struct PlatformGamePadActiveAxis
 #define PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name()
 #define PLATFORM_SLEEP_FROM_TIMESTAMP(name) void name(PlatformTimeStamp pts, \
                                                       f32 desiredDeltaSeconds)
+/* IPv4 UDP datagrams cannot be larger than this amount.  Source:
+https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
+const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;
 using KplSocketIndex = u8;
 const global_variable KplSocketIndex KPL_INVALID_SOCKET_INDEX = 
                                                              KplSocketIndex(~0);
-#define PLATFORM_OPEN_SOCKET_UDP(name) KplSocketIndex name(u16 port)
-#define PLATFORM_OPEN_SOCKET_UDP_ADDRESS(name) KplSocketIndex name(u16 port, \
-                                                            const char* address)
-#define PLATFORM_CLOSE_SOCKET(name) void name(KplSocketIndex socketId)
+union KplNetAddress
+{
+	/* 16 bytes is enough to store an IPv6 address.  IPv4 addresses only use 4 
+		bytes, but who cares?  Memory is free.™ */
+	u8 uBytes[16];
+	u32 uInts[4];
+	u64 uLongs[2];
+};
+const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
+#define PLATFORM_NET_RESOLVE_ADDRESS(name) KplNetAddress name(\
+                                                        const char* ansiAddress)
+#define PLATFORM_SOCKET_OPEN_UDP(name) KplSocketIndex name(u16 port)
+#define PLATFORM_SOCKET_CLOSE(name) void name(KplSocketIndex socketId)
+#define PLATFORM_SOCKET_SEND(name) void name(KplSocketIndex socketId, \
+                                      const u8* dataBuffer, \
+                                      size_t dataBufferSize, \
+                                      const KplNetAddress& netAddressReceiver, \
+                                      u16 netPortReceiver)
+/** 
+ * @return (1) the # of elements written to o_dataBuffer  (2) the received data 
+ *         into `o_dataBuffer` (3) the network address from which the data was 
+ *         sent into `o_netAddressSender`
+ */
+#define PLATFORM_SOCKET_RECEIVE(name) size_t name(KplSocketIndex socketId, \
+                                            u8* o_dataBuffer, \
+                                            size_t dataBufferSize, \
+                                            KplNetAddress* o_netAddressSender, \
+                                            u16* o_netPortSender)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -205,9 +232,11 @@ typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_PlatformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_PlatformSleepFromTimestamp);
-typedef PLATFORM_OPEN_SOCKET_UDP(fnSig_PlatformOpenSocketUdp);
-typedef PLATFORM_OPEN_SOCKET_UDP_ADDRESS(fnSig_PlatformOpenSocketUdpAddress);
-typedef PLATFORM_CLOSE_SOCKET(fnSig_PlatformCloseSocket);
+typedef PLATFORM_NET_RESOLVE_ADDRESS(fnSig_PlatformNetResolveAddress);
+typedef PLATFORM_SOCKET_OPEN_UDP(fnSig_PlatformSocketOpenUdp);
+typedef PLATFORM_SOCKET_CLOSE(fnSig_PlatformSocketClose);
+typedef PLATFORM_SOCKET_SEND(fnSig_PlatformSocketSend);
+typedef PLATFORM_SOCKET_RECEIVE(fnSig_PlatformSocketReceive);
 struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -232,9 +261,11 @@ struct KmlPlatformApi
 	fnSig_platformGetGamePadProductGuid* getGamePadProductGuid;
 	fnSig_PlatformGetTimeStamp* getTimeStamp;
 	fnSig_PlatformSleepFromTimestamp* sleepFromTimeStamp;
-	fnSig_PlatformOpenSocketUdp* openSocketUdp;
-	fnSig_PlatformOpenSocketUdpAddress* openSocketUdpAddress;
-	fnSig_PlatformCloseSocket* closeSocket;
+	fnSig_PlatformNetResolveAddress* netResolveAddress;
+	fnSig_PlatformSocketOpenUdp* socketOpenUdp;
+	fnSig_PlatformSocketClose* socketClose;
+	fnSig_PlatformSocketSend* socketSend;
+	fnSig_PlatformSocketReceive* socketReceive;
 #if INTERNAL_BUILD
 	fnSig_PlatformReadEntireFile* readEntireFile;
 	fnSig_PlatformFreeFileMemory* freeFileMemory;

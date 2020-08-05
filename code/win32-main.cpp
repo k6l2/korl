@@ -1172,17 +1172,27 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32GetGamePadProductGuid)
 		                               bufferSize);
 	}
 }
-PLATFORM_OPEN_SOCKET_UDP(w32OpenSocketUdp)
+PLATFORM_NET_RESOLVE_ADDRESS(w32NetResolveAddress)
 {
-	return w32NetworkOpenSocketUdp(port, nullptr);
+	return w32NetworkResolveAddress(ansiAddress);
 }
-PLATFORM_OPEN_SOCKET_UDP_ADDRESS(w32OpenSocketUdpAddress)
+PLATFORM_SOCKET_OPEN_UDP(w32SocketOpenUdp)
 {
-	return w32NetworkOpenSocketUdp(port, address);
+	return w32NetworkOpenSocketUdp(port);
 }
-PLATFORM_CLOSE_SOCKET(w32CloseSocket)
+PLATFORM_SOCKET_CLOSE(w32SocketClose)
 {
 	w32NetworkCloseSocket(socketId);
+}
+PLATFORM_SOCKET_SEND(w32SocketSend)
+{
+	w32NetworkSend(socketId, dataBuffer, dataBufferSize, netAddressReceiver, 
+	               netPortReceiver);
+}
+PLATFORM_SOCKET_RECEIVE(w32SocketReceive)
+{
+	return w32NetworkReceive(socketId, o_dataBuffer, dataBufferSize, 
+	                         o_netAddressSender, o_netPortSender);
 }
 GAME_INITIALIZE(gameInitializeStub)
 {
@@ -2440,9 +2450,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getGamePadProductGuid  = w32GetGamePadProductGuid;
 	gameMemory.kpl.getTimeStamp           = w32GetTimeStamp;
 	gameMemory.kpl.sleepFromTimeStamp     = w32SleepFromTimeStamp;
-	gameMemory.kpl.openSocketUdp          = w32OpenSocketUdp;
-	gameMemory.kpl.openSocketUdpAddress   = w32OpenSocketUdpAddress;
-	gameMemory.kpl.closeSocket            = w32CloseSocket;
+	gameMemory.kpl.netResolveAddress      = w32NetResolveAddress;
+	gameMemory.kpl.socketOpenUdp          = w32SocketOpenUdp;
+	gameMemory.kpl.socketClose            = w32SocketClose;
+	gameMemory.kpl.socketSend             = w32SocketSend;
+	gameMemory.kpl.socketReceive          = w32SocketReceive;
 #if INTERNAL_BUILD
 	gameMemory.kpl.readEntireFile    = platformReadEntireFile;
 	gameMemory.kpl.freeFileMemory    = platformFreeFileMemory;

@@ -33,7 +33,7 @@ internal bool w32InitializeNetwork()
     }
 	return true;
 }
-internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port, const char* address)
+internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
@@ -57,141 +57,8 @@ internal KplSocketIndex w32NetworkOpenSocketUdp(u16 port, const char* address)
 	/* bind the socket to ANY address */
 	sockaddr_in socketAddressIpv4;
 	socketAddressIpv4.sin_family      = AF_INET;
-	socketAddressIpv4.sin_addr.s_addr = INADDR_ANY;
+	socketAddressIpv4.sin_addr.s_addr = htonl(INADDR_ANY);
 	socketAddressIpv4.sin_port        = htons(port);
-	if(address)
-	/* if an address string was specified, we need to resolve the address using 
-		winsock's getaddrinfo function */
-	{
-		addrinfo hints;
-		ZeroMemory(&hints, sizeof(hints));
-		/* notice that the members of addrinfo here are essentially the same 
-			datum that are passed to the `socket` function! */
-		hints.ai_family   = AF_INET;
-		hints.ai_socktype = SOCK_DGRAM;
-		hints.ai_protocol = IPPROTO_UDP;
-		addrinfo* addrInfoData;
-		const INT resultGetAddrInfo = 
-			getaddrinfo(address, nullptr, &hints, &addrInfoData);
-		if(resultGetAddrInfo != 0)
-		{
-			KLOG(ERROR, "getaddrinfo failed! result=%i", resultGetAddrInfo);
-			w32NetworkCloseSocket(s);
-			return KPL_INVALID_SOCKET_INDEX;
-		}
-		defer(freeaddrinfo(addrInfoData));
-		u16 addrInfoDataIndex = 0;
-		/* iterate over all the address infos associated with this address query 
-			and select the first valid address we find (if it exists) */
-		for(addrinfo* addrIterator = addrInfoData; addrIterator; 
-			addrIterator = addrIterator->ai_next)
-		{
-			KLOG(INFO, "--- addrInfoData[%i] ---", addrInfoDataIndex++);
-			KLOG(INFO, "\tflags: 0x%x", addrIterator->ai_flags);
-			KLOG(INFO, "\tfamily:");
-			switch(addrIterator->ai_family)
-			{
-				case AF_UNSPEC: {
-					KLOG(INFO, "\t\tUnspecified");
-				}break;
-				case AF_INET: {
-					char cStrBufferIpAddress[16];
-					inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(
-						      addrIterator->ai_addr)->sin_addr, 
-						      cStrBufferIpAddress, 
-						      CARRAY_SIZE(cStrBufferIpAddress));
-					if(socketAddressIpv4.sin_addr.s_addr != INADDR_ANY)
-					/* if we've already found a valid address, just print it out 
-						for diagnostic purposes and keep going... */
-					{
-						KLOG(INFO, "\t\tIPv4='%s'", cStrBufferIpAddress);
-						break;
-					}
-					/* just select the first valid address we find */
-					socketAddressIpv4 = *reinterpret_cast<sockaddr_in*>(
-						addrIterator->ai_addr);
-					socketAddressIpv4.sin_port = htons(port);
-					KLOG(INFO, "\t\tFIRST IPv4='%s'", cStrBufferIpAddress);
-				}break;
-				case AF_INET6: {
-					WCHAR wcStrBufferIpAddress[46];
-					DWORD wcStrBufferIpAddressLength = 
-						CARRAY_SIZE(wcStrBufferIpAddress);
-					const INT resultAddressToString = 
-						WSAAddressToStringW(addrIterator->ai_addr, 
-						                    kmath::safeTruncateI32(
-						                        addrIterator->ai_addrlen), 
-						                    nullptr, wcStrBufferIpAddress, 
-						                    &wcStrBufferIpAddressLength);
-					if(resultAddressToString == 0)
-					{
-						KLOG(INFO, "\t\tIPv6='%ws'", wcStrBufferIpAddress);
-					}
-					else
-					{
-						KLOG(INFO, "\t\tIPv6; WSAAddressToString failed! "
-						     "result=%i", resultAddressToString);
-					}
-				}break;
-				case AF_NETBIOS: {
-					KLOG(INFO, "\t\tNetBIOS");
-				}break;
-				default: {
-					KLOG(INFO, "\t\tother (%i)", addrIterator->ai_family);
-				}break;
-			}
-			KLOG(INFO, "\tSocket type: ");
-			switch (addrIterator->ai_socktype) 
-			{
-				case 0:{
-					KLOG(INFO, "\t\tUnspecified");
-				}break;
-				case SOCK_STREAM:{
-					KLOG(INFO, "\t\tSOCK_STREAM (stream)");
-				}break;
-				case SOCK_DGRAM:{
-					KLOG(INFO, "\t\tSOCK_DGRAM (datagram) ");
-				}break;
-				case SOCK_RAW:{
-					KLOG(INFO, "\t\tSOCK_RAW (raw) ");
-				}break;
-				case SOCK_RDM:{
-					KLOG(INFO, "\t\tSOCK_RDM (reliable message datagram)");
-				}break;
-				case SOCK_SEQPACKET:{
-					KLOG(INFO, "\t\tSOCK_SEQPACKET (pseudo-stream packet)");
-				}break;
-				default:{
-					KLOG(INFO, "\t\tOther %i", addrIterator->ai_socktype);
-				}break;
-			}
-			KLOG(INFO, "\tProtocol: ");
-			switch (addrIterator->ai_protocol) 
-			{
-				case 0:{
-					KLOG(INFO, "\t\tUnspecified");
-				}break;
-				case IPPROTO_TCP:{
-					KLOG(INFO, "\t\tIPPROTO_TCP (TCP)");
-				}break;
-				case IPPROTO_UDP:{
-					KLOG(INFO, "\t\tIPPROTO_UDP (UDP) ");
-				}break;
-				default:{
-					KLOG(INFO, "\t\tOther %i", addrIterator->ai_protocol);
-				}break;
-			}
-			KLOG(INFO, "\tLength of this sockaddr: %ui", 
-			     addrIterator->ai_addrlen);
-			KLOG(INFO, "\tCanonical name: %s", addrIterator->ai_canonname);
-		}
-		if(socketAddressIpv4.sin_addr.s_addr == INADDR_ANY)
-		{
-			KLOG(ERROR, "Failed to translate address! '%s'", address);
-			w32NetworkCloseSocket(s);
-			return KPL_INVALID_SOCKET_INDEX;
-		}
-	}
 	const int resultBind = 
 		bind(g_sockets[s], reinterpret_cast<sockaddr*>(&socketAddressIpv4), 
 		     sizeof(socketAddressIpv4));
@@ -219,4 +86,218 @@ internal void w32NetworkCloseSocket(KplSocketIndex socketIndex)
 	{
 		g_sockets[socketIndex] = INVALID_SOCKET;
 	}
+}
+union WinSockAddress
+{
+	struct sockaddr         sa;
+	struct sockaddr_in      s4;
+	struct sockaddr_in6     s6;
+	struct sockaddr_storage ss;
+};
+/**
+ * @return the length of the winsock sockaddr structure
+ */
+internal int w32KplNetAddressToNative(const KplNetAddress& netAddress, u16 port, 
+                                      WinSockAddress* o_winSockAddress)
+{
+	memset(o_winSockAddress, 0, sizeof(*o_winSockAddress));
+	o_winSockAddress->s4.sin_family = AF_INET;
+	o_winSockAddress->s4.sin_addr.s_addr = htonl(netAddress.uInts[0]);
+	o_winSockAddress->s4.sin_port        = htons(port);
+	return sizeof(o_winSockAddress->s4);
+}
+internal i32 w32NetworkSend(KplSocketIndex socketIndex, 
+                            const u8* dataBuffer, size_t dataBufferSize, 
+                            const KplNetAddress& netAddressReceiver, 
+                            u16 netPortReceiver)
+{
+	EnterCriticalSection(&g_csLockNetworking);
+	defer(LeaveCriticalSection(&g_csLockNetworking));
+	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
+	if(dataBufferSize > KPL_MAX_DATAGRAM_SIZE)
+	{
+		KLOG(ERROR, "Attempting to send %i bytes of data where the max is %i!", 
+		     dataBufferSize, KPL_MAX_DATAGRAM_SIZE);
+		return -1;
+	}
+	FD_SET socketSetWrite;
+	FD_ZERO(&socketSetWrite);
+	FD_SET(g_sockets[socketIndex], &socketSetWrite);
+	local_persist const timeval SELECT_TIMEOUT = 
+		{ .tv_sec = 0
+		, .tv_usec = 10
+	};
+	const int resultSelect = 
+		select(0/*ignored*/, nullptr, &socketSetWrite, nullptr, 
+		       &SELECT_TIMEOUT);
+	if(resultSelect == SOCKET_ERROR)
+	{
+		KLOG(ERROR, "Network send select error! WSAGetLastError=%i", 
+		     WSAGetLastError());
+		return -1;
+	}
+	if(resultSelect == 0)
+	/* either the socket or winsock is not ready to send data, so do nothing */
+	{
+		KLOG(WARNING, "Socket[%i] write selection failed, no data will be "
+		     "sent.", socketIndex);
+		return 0;
+	}
+	kassert(resultSelect > 0);
+	kassert(FD_ISSET(g_sockets[socketIndex], &socketSetWrite));
+	WinSockAddress winSockAddressReceiver;
+	const int winSockAddressLength = 
+		w32KplNetAddressToNative(netAddressReceiver, netPortReceiver, 
+		                         &winSockAddressReceiver);
+	const int resultSendTo = 
+		sendto(g_sockets[socketIndex], 
+		       reinterpret_cast<const char*>(dataBuffer), 
+		       kmath::safeTruncateI32(dataBufferSize), 0/*flags*/, 
+		       &winSockAddressReceiver.sa, winSockAddressLength);
+	if(resultSendTo == SOCKET_ERROR)
+	{
+		KLOG(ERROR, "Network send error! WSAGetLastError=%i", 
+		     WSAGetLastError());
+		return -1;
+	}
+	return resultSendTo;
+}
+internal size_t w32NetworkReceive(KplSocketIndex socketIndex, 
+                                  u8* o_dataBuffer, size_t dataBufferSize, 
+                                  KplNetAddress* o_netAddressSource,
+                                  u16* o_netPortSource)
+{
+	kassert(!"TODO");
+	return 0;
+}
+internal KplNetAddress w32NetworkResolveAddress(const char* ansiAddress)
+{
+	addrinfo hints;
+	ZeroMemory(&hints, sizeof(hints));
+	/* notice that the members of addrinfo here are essentially the same 
+		datum that are passed to the `socket` function! */
+	hints.ai_family   = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	addrinfo* addrInfoData;
+	const INT resultGetAddrInfo = 
+		getaddrinfo(ansiAddress, nullptr, &hints, &addrInfoData);
+	if(resultGetAddrInfo != 0)
+	{
+		KLOG(ERROR, "getaddrinfo failed! result=%i", resultGetAddrInfo);
+		return KPL_INVALID_ADDRESS;
+	}
+	defer(freeaddrinfo(addrInfoData));
+	sockaddr_in socketAddressIpv4;
+	socketAddressIpv4.sin_addr.s_addr = htonl(INADDR_ANY);
+	u16 addrInfoDataIndex = 0;
+	/* iterate over all the address infos associated with this address query 
+		and select the first valid address we find (if it exists) */
+	for(addrinfo* addrIterator = addrInfoData; addrIterator; 
+		addrIterator = addrIterator->ai_next)
+	{
+		KLOG(INFO, "--- addrInfoData[%i] ---", addrInfoDataIndex++);
+		KLOG(INFO, "\tflags: 0x%x", addrIterator->ai_flags);
+		KLOG(INFO, "\tfamily:");
+		switch(addrIterator->ai_family)
+		{
+			case AF_UNSPEC: {
+				KLOG(INFO, "\t\tUnspecified");
+			}break;
+			case AF_INET: {
+				char cStrBufferIpAddress[16];
+				inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(
+					      addrIterator->ai_addr)->sin_addr, cStrBufferIpAddress, 
+					      CARRAY_SIZE(cStrBufferIpAddress));
+				if(socketAddressIpv4.sin_addr.s_addr != htonl(INADDR_ANY))
+				/* if we've already found a valid address, just print it out 
+					for diagnostic purposes and keep going... */
+				{
+					KLOG(INFO, "\t\tIPv4='%s'", cStrBufferIpAddress);
+					break;
+				}
+				/* just select the first valid address we find */
+				socketAddressIpv4 = *reinterpret_cast<sockaddr_in*>(
+					addrIterator->ai_addr);
+				KLOG(INFO, "\t\tFIRST IPv4='%s'", cStrBufferIpAddress);
+			}break;
+			case AF_INET6: {
+				WCHAR wcStrBufferIpAddress[46];
+				DWORD wcStrBufferIpAddressLength = 
+					CARRAY_SIZE(wcStrBufferIpAddress);
+				const INT resultAddressToString = 
+					WSAAddressToStringW(addrIterator->ai_addr, 
+					                    kmath::safeTruncateI32(
+					                        addrIterator->ai_addrlen), 
+					                    nullptr, wcStrBufferIpAddress, 
+					                    &wcStrBufferIpAddressLength);
+				if(resultAddressToString == 0)
+				{
+					KLOG(INFO, "\t\tIPv6='%ws'", wcStrBufferIpAddress);
+				}
+				else
+				{
+					KLOG(INFO, "\t\tIPv6; WSAAddressToString failed! result=%i", 
+					     resultAddressToString);
+				}
+			}break;
+			case AF_NETBIOS: {
+				KLOG(INFO, "\t\tNetBIOS");
+			}break;
+			default: {
+				KLOG(INFO, "\t\tother (%i)", addrIterator->ai_family);
+			}break;
+		}
+		KLOG(INFO, "\tSocket type: ");
+		switch (addrIterator->ai_socktype) 
+		{
+			case 0:{
+				KLOG(INFO, "\t\tUnspecified");
+			}break;
+			case SOCK_STREAM:{
+				KLOG(INFO, "\t\tSOCK_STREAM (stream)");
+			}break;
+			case SOCK_DGRAM:{
+				KLOG(INFO, "\t\tSOCK_DGRAM (datagram) ");
+			}break;
+			case SOCK_RAW:{
+				KLOG(INFO, "\t\tSOCK_RAW (raw) ");
+			}break;
+			case SOCK_RDM:{
+				KLOG(INFO, "\t\tSOCK_RDM (reliable message datagram)");
+			}break;
+			case SOCK_SEQPACKET:{
+				KLOG(INFO, "\t\tSOCK_SEQPACKET (pseudo-stream packet)");
+			}break;
+			default:{
+				KLOG(INFO, "\t\tOther %i", addrIterator->ai_socktype);
+			}break;
+		}
+		KLOG(INFO, "\tProtocol: ");
+		switch (addrIterator->ai_protocol) 
+		{
+			case 0:{
+				KLOG(INFO, "\t\tUnspecified");
+			}break;
+			case IPPROTO_TCP:{
+				KLOG(INFO, "\t\tIPPROTO_TCP (TCP)");
+			}break;
+			case IPPROTO_UDP:{
+				KLOG(INFO, "\t\tIPPROTO_UDP (UDP) ");
+			}break;
+			default:{
+				KLOG(INFO, "\t\tOther %i", addrIterator->ai_protocol);
+			}break;
+		}
+		KLOG(INFO, "\tLength of this sockaddr: %ui", addrIterator->ai_addrlen);
+		KLOG(INFO, "\tCanonical name: %s", addrIterator->ai_canonname);
+	}
+	if(socketAddressIpv4.sin_addr.s_addr == htonl(INADDR_ANY))
+	{
+		KLOG(ERROR, "Failed to resolve address! '%s'", ansiAddress);
+		return KPL_INVALID_ADDRESS;
+	}
+	KplNetAddress result = {};
+	result.uInts[0] = ntohl(socketAddressIpv4.sin_addr.s_addr);
+	return result;
 }

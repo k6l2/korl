@@ -478,6 +478,11 @@
 	[x] connect socket to host via hostname
 		https://stackoverflow.com/a/2152093
 		https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfo
+	[x] establish API for storing platform network addresses in the game code
+		[x] method 0: just define a type NetAddress which is just an array 
+			of bytes whose size is >= platform-specific address type 
+		[-] method 1: add Platform API which allows game modules to allocate 
+			an address and receive a handle to it
 	[ ] push data to socket without blocking
 	[ ] poll data from socket without blocking
 		https://stackoverflow.com/a/15941974

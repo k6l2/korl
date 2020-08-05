@@ -182,8 +182,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			if(ImGui::Button("OPEN SOCKET"))
 			{
-				g_gs->socketClient = 
-					g_kpl->openSocketUdpAddress(0, g_gs->clientDataBuffer);
+				g_gs->clientAddressToServer = 
+					g_kpl->netResolveAddress(g_gs->clientDataBuffer);
+				g_gs->socketClient = g_kpl->socketOpenUdp(0);
 			}
 			ImGui::InputText("socket address", g_gs->clientDataBuffer, 
 			                 CARRAY_SIZE(g_gs->clientDataBuffer));
@@ -192,7 +193,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			if(ImGui::Button("CLOSE SOCKET"))
 			{
-				g_kpl->closeSocket(g_gs->socketClient);
+				g_kpl->socketClose(g_gs->socketClient);
 				g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
 			}
 			else
@@ -201,12 +202,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				                 CARRAY_SIZE(g_gs->clientDataBuffer));
 				if(ImGui::Button("SEND"))
 				{
-					kassert(!"TODO");
-#if 0
 					g_kpl->socketSend(g_gs->socketClient, 
-					                  g_gs->clientDataBuffer, 
-					                  strlen(g_gs->clientDataBuffer));
-#endif // 0
+					                  reinterpret_cast<u8*>(
+					                      g_gs->clientDataBuffer), 
+					                  strlen(g_gs->clientDataBuffer), 
+					                  g_gs->clientAddressToServer, 30942);
 				}
 			}
 		}
@@ -329,7 +329,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 	serverOnPreUnload(&g_gs->serverState);
-	g_kpl->closeSocket(g_gs->socketClient);
+	g_kpl->socketClose(g_gs->socketClient);
 	g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
 }
 #include "kFlipBook.cpp"
