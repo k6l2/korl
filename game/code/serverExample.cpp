@@ -67,13 +67,21 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		/* if we've gotten data from the socket, we need to parse the data into 
 			`NetPacket`s */
 		{
-#ifdef INTERNAL_BUILD
-			/* for debugging, just KLOG the netBuffer */
-			KLOG(INFO, "netBuffer=`%.*s` from[%016llx:%016llx]::%i", 
-			     dataReceived, reinterpret_cast<char*>(netBuffer), 
-			     netAddressClient.uLongs[0], netAddressClient.uLongs[1], 
-			     netPortClient);
-#endif // INTERNAL_BUILD
+			local_persist const size_t TEST_PACKET_SIZE = 
+				sizeof(i32) + sizeof(i16);
+			kassert(dataReceived == TEST_PACKET_SIZE);
+			u8* packetBuffer = netBuffer;
+			i32 clientTestInt = 
+				kutil::netUnpackI32(&packetBuffer, netBuffer, 
+				                    kmath::safeTruncateU32(dataReceived));
+			i32 clientTestShort = 
+				kutil::netUnpackI16(&packetBuffer, netBuffer, 
+				                    kmath::safeTruncateU32(dataReceived));
+			kassert(packetBuffer - netBuffer == TEST_PACKET_SIZE);
+			/* as a diagnostic, log the contents of the packet we just 
+				received */
+			KLOG(INFO, "clientTestInt=%i", clientTestInt);
+			KLOG(INFO, "clientTestShort=%i", clientTestShort);
 		}
 		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);
 	}

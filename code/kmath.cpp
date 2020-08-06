@@ -1,4 +1,13 @@
 #include "kmath.h"
+#include <limits>
+/* no idea where these stupid macros are coming from, but I don't care since 
+	they are probably worthless anyway */
+#if defined(max)
+	#undef max
+#endif
+#if defined(min)
+	#undef min
+#endif
 inline v2f32 v2f32::operator-() const
 {
 	return {-x,-y};
@@ -207,52 +216,55 @@ internal inline u64 kmath::terabytes(u64 t)
 {
 	return gigabytes(t)*1024;
 }
+internal inline u64 kmath::safeTruncateU64(i64 value)
+{
+	kassert(value >= 0);
+	return static_cast<u64>(value);
+}
 internal inline u32 kmath::safeTruncateU32(u64 value)
 {
-	local_persist const u32 MAX_U32 = ~u32(0);
-	kassert(value < MAX_U32);
+	kassert(value <= std::numeric_limits<u32>::max());
 	return static_cast<u32>(value);
 }
 internal inline u32 kmath::safeTruncateU32(i32 value)
 {
-	local_persist const u32 MAX_U32 = ~u32(0);
-	kassert(value >= 0 && value < MAX_U32);
+	kassert(value >= 0);
 	return static_cast<u32>(value);
 }
 internal inline u32 kmath::safeTruncateU32(i64 value)
 {
-	local_persist const u32 MAX_U32 = ~u32(0);
-	kassert(value >= 0 && value < MAX_U32);
+	kassert(value >= 0 && value <= std::numeric_limits<u32>::max());
 	return static_cast<u32>(value);
 }
 internal inline i32 kmath::safeTruncateI32(u64 value)
 {
-	local_persist const i32 MAX_I32 = ~i32(1<<31);
-	kassert(value < MAX_I32);
+	kassert(value <= static_cast<u64>(std::numeric_limits<i32>::max()));
 	return static_cast<i32>(value);
 }
 internal inline u16 kmath::safeTruncateU16(i32 value)
 {
-	local_persist const u16 MAX_U16 = static_cast<u16>(~u16(0));
-	kassert(value >= 0 && value < MAX_U16);
+	kassert(value >= 0 && value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
 internal inline u16 kmath::safeTruncateU16(u32 value)
 {
-	local_persist const u16 MAX_U16 = static_cast<u16>(~u16(0));
-	kassert(value < MAX_U16);
+	kassert(value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
 internal inline u16 kmath::safeTruncateU16(u64 value)
 {
-	local_persist const u16 MAX_U16 = static_cast<u16>(~u16(0));
-	kassert(value < MAX_U16);
+	kassert(value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
+}
+internal inline i16 kmath::safeTruncateI16(i32 value)
+{
+	kassert(value <= std::numeric_limits<i16>::max() && 
+	        value >= std::numeric_limits<i16>::min());
+	return static_cast<i16>(value);
 }
 internal inline u8 kmath::safeTruncateU8(u64 value)
 {
-	local_persist const u8 MAX_U8 = static_cast<u8>(~u8(0));
-	kassert(value < MAX_U8);
+	kassert(value <= std::numeric_limits<u8>::max());
 	return static_cast<u8>(value);
 }
 internal inline f32 kmath::v2Radians(const v2f32& v)

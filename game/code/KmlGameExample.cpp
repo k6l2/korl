@@ -183,11 +183,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(ImGui::Button("OPEN SOCKET"))
 			{
 				g_gs->clientAddressToServer = 
-					g_kpl->netResolveAddress(g_gs->clientDataBuffer);
+					g_kpl->netResolveAddress(g_gs->clientAddressBuffer);
 				g_gs->socketClient = g_kpl->socketOpenUdp(0);
 			}
-			ImGui::InputText("socket address", g_gs->clientDataBuffer, 
-			                 CARRAY_SIZE(g_gs->clientDataBuffer));
+			ImGui::InputText("socket address", g_gs->clientAddressBuffer, 
+			                 CARRAY_SIZE(g_gs->clientAddressBuffer));
 		}
 		else
 		{
@@ -200,14 +200,46 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}
 			else
 			{
-				ImGui::InputText("send to server", g_gs->clientDataBuffer, 
-				                 CARRAY_SIZE(g_gs->clientDataBuffer));
+				i32 intInputBuffer;
+				ImGui::InputInt("i32", &g_gs->clientTestInt);
+				intInputBuffer = g_gs->clientTestShort;
+				if(ImGui::InputInt("i16", &intInputBuffer))
+					g_gs->clientTestShort = 
+						kmath::safeTruncateI16(intInputBuffer);
 				if(ImGui::Button("SEND"))
 				{
+					/* pack the test data into the clientPacketBuffer in network 
+						byte order */
+					u8* packetBuffer = g_gs->clientPacketBuffer;
+					kutil::netPack(g_gs->clientTestInt, &packetBuffer, 
+					               g_gs->clientPacketBuffer, 
+					               CARRAY_SIZE(g_gs->clientPacketBuffer));
+					kutil::netPack(g_gs->clientTestShort, &packetBuffer, 
+					               g_gs->clientPacketBuffer, 
+					               CARRAY_SIZE(g_gs->clientPacketBuffer));
+					kassert(packetBuffer > g_gs->clientPacketBuffer);
+					const size_t packetSize = 
+						static_cast<size_t>(packetBuffer - 
+						                    g_gs->clientPacketBuffer);
+					/* display the memory of the test int & the packet buffer to 
+						see if we're properly packing the data */
+					u8* testIntBytes = 
+						reinterpret_cast<u8*>(&g_gs->clientTestInt);
+					for(u8 b = 0; b < sizeof(g_gs->clientTestInt); b++)
+						KLOG(INFO, "g_gs->clientTestInt[%i]=0x%x", b, 
+						     testIntBytes[b]);
+					testIntBytes = 
+						reinterpret_cast<u8*>(&g_gs->clientTestShort);
+					for(u8 b = 0; b < sizeof(g_gs->clientTestShort); b++)
+						KLOG(INFO, "g_gs->clientTestShort[%i]=0x%x", b, 
+						     testIntBytes[b]);
+					for(u8 b = 0; b < packetSize; b++)
+						KLOG(INFO, "g_gs->clientPacketBuffer[%i]=0x%x", b, 
+						     g_gs->clientPacketBuffer[b]);
+					/* send packet data to server */
 					g_kpl->socketSend(g_gs->socketClient, 
-					                  reinterpret_cast<u8*>(
-					                      g_gs->clientDataBuffer), 
-					                  strlen(g_gs->clientDataBuffer), 
+					                  g_gs->clientPacketBuffer, 
+					                  packetSize, 
 					                  g_gs->clientAddressToServer, 30942);
 				}
 			}

@@ -95,6 +95,7 @@ namespace kmath
 	internal inline u64 gigabytes(u64 g);
 	/** @return the # of bytes which represent `t` terabytes */
 	internal inline u64 terabytes(u64 t);
+	internal inline u64 safeTruncateU64(i64 value);
 	internal inline u32 safeTruncateU32(u64 value);
 	internal inline u32 safeTruncateU32(i32 value);
 	internal inline u32 safeTruncateU32(i64 value);
@@ -102,6 +103,7 @@ namespace kmath
 	internal inline u16 safeTruncateU16(i32 value);
 	internal inline u16 safeTruncateU16(u32 value);
 	internal inline u16 safeTruncateU16(u64 value);
+	internal inline i16 safeTruncateI16(i32 value);
 	internal inline u8 safeTruncateU8(u64 value);
 	internal inline f32 v2Radians(const v2f32& v);
 	internal inline f32 radiansBetween(v2f32 v0, v2f32 v1, 

@@ -22,8 +22,11 @@ struct GameState
 	/* sample server state management */
 	ServerState serverState;
 	KplSocketIndex socketClient = KPL_INVALID_SOCKET_INDEX;
-	char clientDataBuffer[KPL_MAX_DATAGRAM_SIZE];
+	char clientAddressBuffer[256];
+	u8 clientPacketBuffer[KPL_MAX_DATAGRAM_SIZE];
 	KplNetAddress clientAddressToServer;
+	i32 clientTestInt;
+	i16 clientTestShort;
 	/* sample media testing state */
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
