@@ -1,6 +1,14 @@
 #pragma once
 #include "kAssetManager.h"
 #include "kAllocatorLinear.h"
+#include "network_common.h"
+struct ServerClientEntry
+{
+	KplNetAddress netAddress;
+	u16 netPort;
+	f32 timeSinceLastPacket;
+	network::ConnectionState connectionState;
+};
 struct ServerState
 {
 	/* KML interface */
@@ -19,6 +27,8 @@ struct ServerState
 	/* configuration */
 	f32 secondsPerFrame;
 	u16 port;
+	/* data */
+	ServerClientEntry clients[4];
 };
 enum class ServerOperatingState : u8
 	{ RUNNING

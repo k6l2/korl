@@ -67,6 +67,64 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		/* if we've gotten data from the socket, we need to parse the data into 
 			`NetPacket`s */
 		{
+			u8* packetBuffer = netBuffer;
+			network::PacketType packetType = 
+				network::PacketType(*(packetBuffer++));
+			switch(packetType)
+			{
+				case network::PacketType::CLIENT_CONNECT_REQUEST: {
+					KLOG(INFO, "SERVER: received CLIENT_CONNECT_REQUEST");
+					/* if this client is already connected, ignore this 
+						packet */
+					bool clientAlreadyConnected = false;
+					for(size_t c = 0; c < CARRAY_SIZE(ss->clients); c++)
+					{
+						if(ss->clients[c].netAddress == netAddressClient
+							&& ss->clients[c].netPort == netPortClient)
+						{
+							clientAlreadyConnected = true;
+							break;
+						}
+					}
+					if(clientAlreadyConnected)
+					{
+						break;
+					}
+					/* search for an unoccupied client slot on the server to 
+						place this new client */
+					size_t openClientIndex = 0;
+					for(; openClientIndex < CARRAY_SIZE(ss->clients); 
+						openClientIndex++)
+					{
+						if(ss->clients[openClientIndex].connectionState == 
+							network::ConnectionState::NOT_CONNECTED)
+						{
+							break;
+						}
+					}
+					if(openClientIndex >= CARRAY_SIZE(ss->clients))
+					/* send connection rejected packet */
+					{
+						kassert(!"TODO");
+					}
+					/* add this new client to the unoccupied client slot */
+					ss->clients[openClientIndex].netAddress = netAddressClient;
+					ss->clients[openClientIndex].netPort    = netPortClient;
+					ss->clients[openClientIndex].connectionState = 
+						network::ConnectionState::ACCEPTING;
+					ss->clients[openClientIndex].timeSinceLastPacket = 0;
+				}break;
+				case network::PacketType::CLIENT_STATE: {
+					KLOG(INFO, "SERVER: received CLIENT_STATE");
+				}break;
+				case network::PacketType::SERVER_ACCEPT_CONNECTION: 
+				case network::PacketType::SERVER_STATE: 
+				default:{
+					KLOG(ERROR, "SERVER: received invalid packet type (%i)!", 
+					     static_cast<i32>(packetType));
+				}break;
+			}
+#if 0
 			local_persist const size_t TEST_PACKET_SIZE = 
 				sizeof(i32) + sizeof(i16);
 			kassert(dataReceived == TEST_PACKET_SIZE);
@@ -82,6 +140,34 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 				received */
 			KLOG(INFO, "clientTestInt=%i", clientTestInt);
 			KLOG(INFO, "clientTestShort=%i", clientTestShort);
+#endif // 0
+		}
+		for(size_t c = 0; c < CARRAY_SIZE(ss->clients); c++)
+		/* process connected clients */
+		{
+			switch(ss->clients[c].connectionState)
+			{
+				case network::ConnectionState::NOT_CONNECTED:
+					continue;
+				case network::ConnectionState::ACCEPTING: {
+					netBuffer[0] = static_cast<u8>(
+						network::PacketType::SERVER_ACCEPT_CONNECTION);
+					const i32 bytesSent = 
+						g_kpl->socketSend(socket, netBuffer, 1, 
+						                  ss->clients[c].netAddress, 
+						                  ss->clients[c].netPort);
+					kassert(bytesSent >= 0);
+				}break;
+				case network::ConnectionState::CONNECTED: {
+					netBuffer[0] = static_cast<u8>(
+						network::PacketType::SERVER_STATE);
+					const i32 bytesSent = 
+						g_kpl->socketSend(socket, netBuffer, 1, 
+						                  ss->clients[c].netAddress, 
+						                  ss->clients[c].netPort);
+					kassert(bytesSent >= 0);
+				}break;
+			}
 		}
 		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);
 	}

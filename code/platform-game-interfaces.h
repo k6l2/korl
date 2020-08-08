@@ -172,6 +172,11 @@ union KplNetAddress
 	u32 uInts[4];
 	u64 uLongs[2];
 };
+internal inline bool operator==(const KplNetAddress& lhs, 
+                                const KplNetAddress& rhs)
+{
+	return lhs.uLongs[0] == rhs.uLongs[0] && lhs.uLongs[1] == rhs.uLongs[1];
+}
 const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
 #define PLATFORM_NET_RESOLVE_ADDRESS(name) KplNetAddress name(\
                                                         const char* ansiAddress)

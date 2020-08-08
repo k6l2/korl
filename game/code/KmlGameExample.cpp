@@ -180,15 +180,40 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		ImGui::Separator();
 		if(g_gs->socketClient == KPL_INVALID_SOCKET_INDEX)
 		{
-			if(ImGui::Button("OPEN SOCKET"))
+			if(ImGui::Button("Connect to Server"))
 			{
 				g_gs->clientAddressToServer = 
 					g_kpl->netResolveAddress(g_gs->clientAddressBuffer);
 				g_gs->socketClient = g_kpl->socketOpenUdp(0);
+				g_gs->clientConnectionState = 
+					network::ConnectionState::ACCEPTING;
+				g_gs->clientSecondsSinceLastServerPacket = 0;
 			}
-			ImGui::InputText("socket address", g_gs->clientAddressBuffer, 
+			ImGui::InputText("net address", g_gs->clientAddressBuffer, 
 			                 CARRAY_SIZE(g_gs->clientAddressBuffer));
 		}
+		else
+		{
+			switch(g_gs->clientConnectionState)
+			{
+				case network::ConnectionState::NOT_CONNECTED:{
+					ImGui::Text("Disconnecting...%c", 
+					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
+				}break;
+				case network::ConnectionState::ACCEPTING:{
+					ImGui::Text("Connecting...%c", 
+					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
+				}break;
+				case network::ConnectionState::CONNECTED:{
+					if(ImGui::Button("Disconnect"))
+					{
+						g_gs->clientConnectionState = 
+							network::ConnectionState::NOT_CONNECTED;
+					}
+				}break;
+			}
+		}
+#if 0
 		else
 		{
 			if(ImGui::Button("CLOSE SOCKET"))
@@ -200,12 +225,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}
 			else
 			{
-				i32 intInputBuffer;
-				ImGui::InputInt("i32", &g_gs->clientTestInt);
-				intInputBuffer = g_gs->clientTestShort;
-				if(ImGui::InputInt("i16", &intInputBuffer))
-					g_gs->clientTestShort = 
-						kmath::safeTruncateI16(intInputBuffer);
 				if(ImGui::Button("SEND"))
 				{
 					/* pack the test data into the clientPacketBuffer in network 
@@ -244,8 +263,56 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				}
 			}
 		}
+#endif// 0
 	}
 	ImGui::End();
+	/* Networking example Client logic */
+	if(g_gs->socketClient != KPL_INVALID_SOCKET_INDEX)
+	/* there's no need to perform any network logic if we don't have an open 
+		socket for the client */
+	{
+		/* process CLIENT => SERVER communication */
+		u8* packetBuffer = g_gs->clientPacketBuffer;
+		switch(g_gs->clientConnectionState)
+		{
+			case network::ConnectionState::NOT_CONNECTED:{
+				/* send disconnect packets to the server until we receive a 
+					disconnect aknowledgement from the server */
+			}break;
+			case network::ConnectionState::ACCEPTING:{
+				/* send connection requests until we receive server state */
+				*(packetBuffer++) = static_cast<u8>(
+					network::PacketType::CLIENT_CONNECT_REQUEST);
+			}break;
+			case network::ConnectionState::CONNECTED:{
+				/* send client state every frame */
+			}break;
+		}
+		kassert(packetBuffer > g_gs->clientPacketBuffer);
+		const size_t packetSize = 
+			static_cast<size_t>(packetBuffer - g_gs->clientPacketBuffer);
+		g_kpl->socketSend(g_gs->socketClient, 
+		                  g_gs->clientPacketBuffer, 
+		                  packetSize, 
+		                  g_gs->clientAddressToServer, 30942);
+		/* process CLIENT <= SERVER communication */
+		g_gs->clientSecondsSinceLastServerPacket += deltaSeconds;
+		if(g_gs->clientSecondsSinceLastServerPacket >= 
+			network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
+		{
+			KLOG(INFO, "CLIENT: server connection timed out!");
+			g_kpl->socketClose(g_gs->socketClient);
+			g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
+			g_gs->clientConnectionState = 
+				network::ConnectionState::NOT_CONNECTED;
+		}
+		else
+		/* if the virtual net connection is still live, look for packets being 
+			sent from the server & process them */
+		{
+//			kassert(!"TODO");
+		}
+	}
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
