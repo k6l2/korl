@@ -499,14 +499,16 @@
 	types which are larger than 1 byte
 	https://developer.ibm.com/articles/au-endianc/
 [ ] establish usage code for transfering "packets" between client/server
-	[ ] establish a virtual network connection
-		[ ] connection request + handshake
-		[ ] auto disconnect after some threshold of time since last packet
-		[ ] connection disconnect + handshake
+	[x] establish a virtual network connection
+		[x] connection request + handshake
+		[x] auto disconnect after some threshold of time since last packet
+		[x] connection disconnect + handshake
 	[ ] send server client state every frame
 		(player input I guess?)
 	[ ] send client server state every frame
 		(client positions, list of connected clients)
+	[ ] discard old/duplicate packets using a rolling packet index
+	[ ] calculate round-trip-time using platform timestamps
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

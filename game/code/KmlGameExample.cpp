@@ -209,6 +209,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					{
 						g_gs->clientConnectionState = 
 							network::ConnectionState::NOT_CONNECTED;
+						g_gs->clientSecondsSinceLastServerPacket = 0;
 					}
 				}break;
 			}
@@ -278,6 +279,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			case network::ConnectionState::NOT_CONNECTED:{
 				/* send disconnect packets to the server until we receive a 
 					disconnect aknowledgement from the server */
+				*(packetBuffer++) = static_cast<u8>(
+					network::PacketType::CLIENT_DISCONNECT_REQUEST);
 			}break;
 			case network::ConnectionState::ACCEPTING:{
 				/* send connection requests until we receive server state */
@@ -286,6 +289,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}break;
 			case network::ConnectionState::CONNECTED:{
 				/* send client state every frame */
+				*(packetBuffer++) = static_cast<u8>(
+					network::PacketType::CLIENT_STATE);
 			}break;
 		}
 		kassert(packetBuffer > g_gs->clientPacketBuffer);
@@ -310,7 +315,59 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		/* if the virtual net connection is still live, look for packets being 
 			sent from the server & process them */
 		{
-//			kassert(!"TODO");
+			KplNetAddress netAddress;
+			u16 netPort;
+			const i32 bytesReceived = 
+				g_kpl->socketReceive(g_gs->socketClient, 
+				                     g_gs->clientPacketBuffer, 
+				                     CARRAY_SIZE(g_gs->clientPacketBuffer), 
+				                     &netAddress, &netPort);
+			kassert(bytesReceived >= 0);
+			packetBuffer = g_gs->clientPacketBuffer;
+			if(netAddress == g_gs->clientAddressToServer && netPort == 30942)
+			{
+				const network::PacketType packetType = 
+					network::PacketType(*(packetBuffer++));
+				switch(packetType)
+				{
+					case network::PacketType::SERVER_ACCEPT_CONNECTION:{
+						if(g_gs->clientConnectionState != 
+							network::ConnectionState::ACCEPTING)
+						{
+							break;
+						}
+						g_gs->clientConnectionState = 
+							network::ConnectionState::CONNECTED;
+						g_gs->clientSecondsSinceLastServerPacket = 0;
+						KLOG(INFO, "CLIENT: connected!");
+					}break;
+					case network::PacketType::SERVER_REJECT_CONNECTION:{
+						KLOG(INFO, "CLIENT: rejected by server!");
+						g_kpl->socketClose(g_gs->socketClient);
+						g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
+					}break;
+					case network::PacketType::SERVER_STATE:{
+						if(g_gs->clientConnectionState != 
+							network::ConnectionState::CONNECTED)
+						{
+							break;
+						}
+//						KLOG(INFO, "CLIENT: got server state!");
+						g_gs->clientSecondsSinceLastServerPacket = 0;
+					}break;
+					case network::PacketType::SERVER_DISCONNECT:{
+						KLOG(INFO, "CLIENT: disconnected from server!");
+						g_kpl->socketClose(g_gs->socketClient);
+						g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
+					}break;
+					case network::PacketType::CLIENT_CONNECT_REQUEST:
+					case network::PacketType::CLIENT_STATE:
+					case network::PacketType::CLIENT_DISCONNECT_REQUEST:
+					default:{
+						KLOG(ERROR, "CLIENT: invalid packet!");
+					}break;
+				}
+			}
 		}
 	}
 #endif// INTERNAL_BUILD

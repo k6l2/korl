@@ -28,7 +28,7 @@ internal void serverInitialize(ServerState* ss, f32 secondsPerFrame,
 			kgaAlloc(ss->hKgaPermanent, kalFrameSize);
 		ss->hKalFrame = kalInit(kalFrameStartAddress, kalFrameSize);
 	}
-	// Contruct/Initialize the game's AssetManager //
+	// Contruct/Initialize the server's AssetManager //
 	ss->assetManager = 
 		kamConstruct(ss->hKgaPermanent, KASSET_COUNT,
 		             /* pass nullptr for the kRenderBackend to ensure that the 
@@ -67,8 +67,8 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		/* if we've gotten data from the socket, we need to parse the data into 
 			`NetPacket`s */
 		{
-			u8* packetBuffer = netBuffer;
-			network::PacketType packetType = 
+			const u8* packetBuffer = netBuffer;
+			const network::PacketType packetType = 
 				network::PacketType(*(packetBuffer++));
 			switch(packetType)
 			{
@@ -105,9 +105,16 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 					if(openClientIndex >= CARRAY_SIZE(ss->clients))
 					/* send connection rejected packet */
 					{
-						kassert(!"TODO");
+						netBuffer[0] = static_cast<u8>(
+							network::PacketType::SERVER_REJECT_CONNECTION);
+						const i32 bytesSent = 
+							g_kpl->socketSend(socket, netBuffer, 1, 
+							            ss->clients[openClientIndex].netAddress, 
+							            ss->clients[openClientIndex].netPort);
+						kassert(bytesSent >= 0);
 					}
 					/* add this new client to the unoccupied client slot */
+					KLOG(INFO, "SERVER: accepting new client...");
 					ss->clients[openClientIndex].netAddress = netAddressClient;
 					ss->clients[openClientIndex].netPort    = netPortClient;
 					ss->clients[openClientIndex].connectionState = 
@@ -115,40 +122,120 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 					ss->clients[openClientIndex].timeSinceLastPacket = 0;
 				}break;
 				case network::PacketType::CLIENT_STATE: {
-					KLOG(INFO, "SERVER: received CLIENT_STATE");
+//					KLOG(INFO, "SERVER: received CLIENT_STATE");
+					/* match the address::port in the list of clients */
+					size_t clientIndex = 0;
+					for(; clientIndex < CARRAY_SIZE(ss->clients); clientIndex++)
+					{
+						if(ss->clients[clientIndex].netAddress == 
+								netAddressClient
+							&& ss->clients[clientIndex].netPort == 
+								netPortClient)
+						{
+							break;
+						}
+					}
+					if(clientIndex >= CARRAY_SIZE(ss->clients))
+					{
+						break;
+					}
+					if(ss->clients[clientIndex].connectionState == 
+						network::ConnectionState::NOT_CONNECTED)
+					/* if a client is disconnecting, ignore this packet */
+					{
+						break;
+					}
+					if(ss->clients[clientIndex].connectionState ==
+						network::ConnectionState::ACCEPTING)
+					{
+						KLOG(INFO, "SERVER: new client connected!");
+						ss->clients[clientIndex].connectionState =
+							network::ConnectionState::CONNECTED;
+					}
+					/* if the client is connected, update server state based on 
+						this client's data */
+					ss->clients[clientIndex].timeSinceLastPacket = 0;
 				}break;
+				case network::PacketType::CLIENT_DISCONNECT_REQUEST: {
+					KLOG(INFO, "SERVER: received CLIENT_DISCONNECT_REQUEST");
+					/* match the address::port in the list of clients */
+					size_t clientIndex = 0;
+					for(; clientIndex < CARRAY_SIZE(ss->clients); clientIndex++)
+					{
+						if(ss->clients[clientIndex].netAddress == 
+								netAddressClient
+							&& ss->clients[clientIndex].netPort == 
+								netPortClient)
+						{
+							break;
+						}
+					}
+					if(clientIndex >= CARRAY_SIZE(ss->clients))
+					/* client isn't even connected; ignore. */
+					{
+						break;
+					}
+					/* mark client as `disconnecting` so we can send disconnect 
+						packets for a certain period of time */
+					if(ss->clients[clientIndex].connectionState != 
+						network::ConnectionState::NOT_CONNECTED)
+					{
+						ss->clients[clientIndex].connectionState = 
+							network::ConnectionState::NOT_CONNECTED;
+						ss->clients[clientIndex].timeSinceLastPacket = 0;
+					}
+				}break;
+				/* packets that are supposed to be sent FROM a server should 
+					NEVER be sent TO a server */
 				case network::PacketType::SERVER_ACCEPT_CONNECTION: 
+				case network::PacketType::SERVER_REJECT_CONNECTION: 
 				case network::PacketType::SERVER_STATE: 
+				case network::PacketType::SERVER_DISCONNECT: 
 				default:{
 					KLOG(ERROR, "SERVER: received invalid packet type (%i)!", 
 					     static_cast<i32>(packetType));
 				}break;
 			}
-#if 0
-			local_persist const size_t TEST_PACKET_SIZE = 
-				sizeof(i32) + sizeof(i16);
-			kassert(dataReceived == TEST_PACKET_SIZE);
-			u8* packetBuffer = netBuffer;
-			i32 clientTestInt = 
-				kutil::netUnpackI32(&packetBuffer, netBuffer, 
-				                    kmath::safeTruncateU32(dataReceived));
-			i32 clientTestShort = 
-				kutil::netUnpackI16(&packetBuffer, netBuffer, 
-				                    kmath::safeTruncateU32(dataReceived));
-			kassert(packetBuffer - netBuffer == TEST_PACKET_SIZE);
-			/* as a diagnostic, log the contents of the packet we just 
-				received */
-			KLOG(INFO, "clientTestInt=%i", clientTestInt);
-			KLOG(INFO, "clientTestShort=%i", clientTestShort);
-#endif // 0
 		}
 		for(size_t c = 0; c < CARRAY_SIZE(ss->clients); c++)
 		/* process connected clients */
 		{
+			if(ss->clients[c].netAddress == KPL_INVALID_ADDRESS)
+				continue;
+			if(ss->clients[c].timeSinceLastPacket >= 
+				network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
+			/* drop client if we haven't received any packets within the timeout 
+				threshold */
+			{
+				/* send a courtesy disconnect packet before dropping the 
+					client completely */
+				{
+					netBuffer[0] = static_cast<u8>(
+						network::PacketType::SERVER_DISCONNECT);
+					const i32 bytesSent = 
+						g_kpl->socketSend(socket, netBuffer, 1, 
+						                  ss->clients[c].netAddress, 
+						                  ss->clients[c].netPort);
+					kassert(bytesSent >= 0);
+				}
+				ss->clients[c].netAddress      = KPL_INVALID_ADDRESS;
+				ss->clients[c].netPort         = 0;
+				ss->clients[c].connectionState = 
+					network::ConnectionState::NOT_CONNECTED;
+				continue;
+			}
+			ss->clients[c].timeSinceLastPacket += ss->secondsPerFrame;
 			switch(ss->clients[c].connectionState)
 			{
-				case network::ConnectionState::NOT_CONNECTED:
-					continue;
+				case network::ConnectionState::NOT_CONNECTED: {
+					netBuffer[0] = static_cast<u8>(
+						network::PacketType::SERVER_DISCONNECT);
+					const i32 bytesSent = 
+						g_kpl->socketSend(socket, netBuffer, 1, 
+						                  ss->clients[c].netAddress, 
+						                  ss->clients[c].netPort);
+					kassert(bytesSent >= 0);
+				}break;
 				case network::ConnectionState::ACCEPTING: {
 					netBuffer[0] = static_cast<u8>(
 						network::PacketType::SERVER_ACCEPT_CONNECTION);

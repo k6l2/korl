@@ -205,8 +205,16 @@ internal PLATFORM_SOCKET_RECEIVE(w32NetworkReceive)
 		         &winSockAddressFrom.sa, &winSockAddressFromLength);
 	if(resultReceiveFrom == SOCKET_ERROR)
 	{
-		KLOG(ERROR, "Network receive error! WSAGetLastError=%i", 
-		     WSAGetLastError());
+		const int winsockError = WSAGetLastError();
+		switch(winsockError)
+		{
+			case WSAECONNRESET:{
+				/* On a UDP-datagram socket this error indicates a previous send 
+					operation resulted in an ICMP Port Unreachable message. */
+				return 0;
+			}break;
+		}
+		KLOG(ERROR, "Network receive error! WSAGetLastError=%i", winsockError);
 		return -1;
 	}
 	/* since we actually received data, we can now populate o_netAddressSender & 
