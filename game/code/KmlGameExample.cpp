@@ -25,20 +25,6 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 }
 GAME_INITIALIZE(gameInitialize)
 {
-	// TEST QUATERNION STUFF //
-	{
-		v3f32 vec = {0,0,-992.727295f};
-		vec.normalize();
-		kQuaternion({0,0,-992.727295f}, PI32/2).transform({25,0});
-		kQuaternion({0,0,1}, PI32/4).transform({25,0});
-		kQuaternion({0,0,-1}, PI32/2).transform({25,0});
-		kQuaternion({0,0,1}, PI32/2).transform({25,0}, true);
-		kQuaternion({0,0,1}, PI32/4).transform({25,0}, true);
-		kQuaternion({0,0,-1}, PI32/2).transform({25,0}, true);
-		v2f32 v0 = { 348.525726f, 1.85656059f };
-		v2f32 v1 = {0.999985814f, 0.00533986418f };
-		kmath::radiansBetween(v0, v1);
-	}
 	// GameState memory initialization //
 	*g_gs = {};
 	// initialize dynamic allocators //
@@ -265,18 +251,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
 	                                     300, 1.f);
 	g_krb->viewTranslate(-g_gs->viewOffset2d);
-#if INTERNAL_BUILD
-	// TESTING krbWorldToScreen //
-	if(ImGui::Begin("TESTING krbWorldToScreen"))
-	{
-		local_persist const v2f32 ORIGIN = {};
-		const v2f32 originScreenSpace = 
-			g_krb->worldToScreen(reinterpret_cast<const f32*>(&ORIGIN), 2);
-		ImGui::Text("origin in screen-space={%f, %f}", 
-		            originScreenSpace.x, originScreenSpace.y);
-	}
-	ImGui::End();
-#endif// INTERNAL_BUILD
 	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
 	                       {1,1});
 	kfbStep(&g_gs->kFbShip       , deltaSeconds);

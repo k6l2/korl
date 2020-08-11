@@ -704,10 +704,10 @@ template<class T> static T * stbds_shmode_func_wrapper(T *, size_t elemsize, int
 //
 
 #ifdef STB_DS_IMPLEMENTATION
-#include <assert.h>
 #include <string.h>
 
 #ifndef STBDS_ASSERT
+#include <assert.h>
 #define STBDS_ASSERT_WAS_UNDEFINED
 #define STBDS_ASSERT(x)   ((void) 0)
 #endif
@@ -1456,7 +1456,6 @@ void * stbds_hmdel_key(void *a, size_t elemsize, void *key, size_t keysize, size
         --table->used_count;
         ++table->tombstone_count;
         stbds_temp(raw_a) = 1;
-        STBDS_ASSERT(table->used_count >= 0);
         //STBDS_ASSERT(table->tombstone_count < table->slot_count/4);
         b->hash[i] = STBDS_HASH_DELETED;
         b->index[i] = STBDS_INDEX_DELETED;

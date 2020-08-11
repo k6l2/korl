@@ -11,6 +11,7 @@
 #include "serverExample.h"
 #define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size)
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr)
+#define STBDS_ASSERT(x)                 g_kpl->assert(x)
 #include "stb/stb_ds.h"
 struct GameState
 {
