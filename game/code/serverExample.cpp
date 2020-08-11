@@ -50,23 +50,25 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 	defer(g_kpl->socketClose(socket));
 	while(ss->running)
 	{
-		PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();
+		const PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();
 		kalReset(ss->hKalFrame);
-		///TODO: keep pulling data from the socket until we get no data, while 
-		///	simultaneously staying within ss->secondsPerFrame to prevent the 
-		/// server thread from stalling from too much data
-		/* check to see if we've gotten any data from the socket */
 		u8 netBuffer[KPL_MAX_DATAGRAM_SIZE];
-		KplNetAddress netAddressClient;
-		u16 netPortClient;
-		const i32 dataReceived = 
-			g_kpl->socketReceive(socket, netBuffer, CARRAY_SIZE(netBuffer), 
-			                     &netAddressClient, &netPortClient);
-		kassert(dataReceived >= 0);
-		if(dataReceived > 0)
-		/* if we've gotten data from the socket, we need to parse the data into 
-			`NetPacket`s */
+		do
+		/* attempt to receive a network datagram at LEAST once per frame */
 		{
+			/* check to see if we've gotten any data from the socket */
+			KplNetAddress netAddressClient;
+			u16 netPortClient;
+			const i32 dataReceived = 
+				g_kpl->socketReceive(socket, netBuffer, CARRAY_SIZE(netBuffer), 
+				                     &netAddressClient, &netPortClient);
+			kassert(dataReceived >= 0);
+			if(dataReceived == 0)
+				/* if the server socket has no more data on it, we're done with 
+					network data for this frame */
+				break;
+			/* since we've gotten data from the socket, we need to parse the 
+				data into `NetPacket`s */
 			const u8* packetBuffer = netBuffer;
 			const network::PacketType packetType = 
 				network::PacketType(*(packetBuffer++));
@@ -196,12 +198,14 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 					     static_cast<i32>(packetType));
 				}break;
 			}
-		}
+		}while(g_kpl->secondsSinceTimeStamp(timeStampFrameStart) < 
+		           ss->secondsPerFrame*0.1f);
 		for(size_t c = 0; c < CARRAY_SIZE(ss->clients); c++)
 		/* process connected clients */
 		{
 			if(ss->clients[c].netAddress == KPL_INVALID_ADDRESS)
 				continue;
+			ss->clients[c].timeSinceLastPacket += ss->secondsPerFrame;
 			if(ss->clients[c].timeSinceLastPacket >= 
 				network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
 			/* drop client if we haven't received any packets within the timeout 
@@ -225,7 +229,6 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 				KLOG(INFO, "SERVER: client[%i] dropped.", c);
 				continue;
 			}
-			ss->clients[c].timeSinceLastPacket += ss->secondsPerFrame;
 			switch(ss->clients[c].connectionState)
 			{
 				case network::ConnectionState::NOT_CONNECTED: {

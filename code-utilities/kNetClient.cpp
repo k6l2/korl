@@ -12,7 +12,8 @@ internal bool kNetClientIsDisconnected(const KNetClient* knc)
 {
 	return knc->socket == KPL_INVALID_SOCKET_INDEX;
 }
-internal void kNetClientConnect(KNetClient* knc, const char* cStrServerAddress)
+internal void kNetClientConnect(KNetClient* knc, 
+                                const char* cStrServerAddress)
 {
 	knc->addressServer = 
 		g_kpl->netResolveAddress(g_gs->clientAddressBuffer);

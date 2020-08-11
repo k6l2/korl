@@ -7,11 +7,11 @@
 #include "kAudioMixer.h"
 #include "kFlipBook.h"
 #include "kAllocatorLinear.h"
+#include "kNetClient.h"
+#include "serverExample.h"
 #define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size)
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr)
 #include "stb/stb_ds.h"
-#include "serverExample.h"
-#include "kNetClient.h"
 struct GameState
 {
 	KAssetManager* assetManager;

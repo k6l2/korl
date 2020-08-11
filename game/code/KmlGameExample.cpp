@@ -68,6 +68,7 @@ GAME_INITIALIZE(gameInitialize)
 	g_gs->tapeBgmBattleTheme = 
 		kauPlaySound(g_gs->kAudioMixer, 
 		             KAssetIndex::sfx_joesteroids_battle_theme_modified_ogg);
+	kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 0.25f);
 	kauSetRepeat(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, true);
 	// Tell the asset manager to load assets asynchronously! //
 	kamPushAllKAssets(g_gs->assetManager);

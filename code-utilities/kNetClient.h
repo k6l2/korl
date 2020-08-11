@@ -14,7 +14,8 @@ struct KNetClient
 };
 internal void kNetClientOnPreUnload(KNetClient* knc);
 internal bool kNetClientIsDisconnected(const KNetClient* knc);
-internal void kNetClientConnect(KNetClient* knc, const char* cStrServerAddress);
+internal void kNetClientConnect(KNetClient* knc, 
+                                const char* cStrServerAddress);
 internal void kNetClientBeginDisconnect(KNetClient* knc);
 internal void kNetClientDropConnection(KNetClient* knc);
 internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds, 
