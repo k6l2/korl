@@ -88,47 +88,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kalReset(g_gs->hKalFrame);
 #if INTERNAL_BUILD
-	// TESTING LINEAR ALLOCATOR //
-	{
-		if(gameKeyboard.tenkeyless_1 >= ButtonState::PRESSED)
-		{
-			kalAlloc(g_gs->hKalFrame, 1);
-		}
-		if(gameKeyboard.tenkeyless_2 >= ButtonState::PRESSED)
-		{
-			kalAlloc(g_gs->hKalFrame, 2);
-		}
-		if(gameKeyboard.tenkeyless_3 >= ButtonState::PRESSED)
-		{
-			kalAlloc(g_gs->hKalFrame, 3);
-		}
-		if(gameKeyboard.tenkeyless_4 >= ButtonState::PRESSED)
-		{
-			kalAlloc(g_gs->hKalFrame, 4);
-		}
-	}
-	// TESTING STB_DS //
-	if(ImGui::Begin("TESTING STB_DS"))
-	{
-		if(ImGui::Button("-") && arrlenu(g_gs->testStbDynArr))
-		{
-			arrpop(g_gs->testStbDynArr);
-		}
-		ImGui::SameLine();
-		if(ImGui::Button("+"))
-		{
-			arrput(g_gs->testStbDynArr, 0);
-		}
-		ImGui::Separator();
-		const size_t testStbDynArrLength = arrlenu(g_gs->testStbDynArr);
-		for(size_t i = 0; i < testStbDynArrLength; i++)
-		{
-			ImGui::PushID(static_cast<int>(i));
-			ImGui::SliderInt("slider",&g_gs->testStbDynArr[i],0,255);
-			ImGui::PopID();
-		}
-	}
-	ImGui::End();
 	/* TESTING GAME PAD ARRAY */
 	if(ImGui::Begin("TESTING GAME PAD PORTS"))
 	{
@@ -178,23 +137,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}break;
 		}
 		ImGui::Separator();
-		if(g_gs->socketClient == KPL_INVALID_SOCKET_INDEX)
+		if(kNetClientIsDisconnected(&g_gs->kNetClient))
 		{
 			if(ImGui::Button("Connect to Server"))
 			{
-				g_gs->clientAddressToServer = 
-					g_kpl->netResolveAddress(g_gs->clientAddressBuffer);
-				g_gs->socketClient = g_kpl->socketOpenUdp(0);
-				g_gs->clientConnectionState = 
-					network::ConnectionState::ACCEPTING;
-				g_gs->clientSecondsSinceLastServerPacket = 0;
+				kNetClientConnect(&g_gs->kNetClient, g_gs->clientAddressBuffer);
 			}
 			ImGui::InputText("net address", g_gs->clientAddressBuffer, 
 			                 CARRAY_SIZE(g_gs->clientAddressBuffer));
 		}
 		else
 		{
-			switch(g_gs->clientConnectionState)
+			switch(g_gs->kNetClient.connectionState)
 			{
 				case network::ConnectionState::NOT_CONNECTED:{
 					ImGui::Text("Disconnecting...%c", 
@@ -207,169 +161,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				case network::ConnectionState::CONNECTED:{
 					if(ImGui::Button("Disconnect"))
 					{
-						g_gs->clientConnectionState = 
-							network::ConnectionState::NOT_CONNECTED;
-						g_gs->clientSecondsSinceLastServerPacket = 0;
+						kNetClientBeginDisconnect(&g_gs->kNetClient);
+					}
+					if(ImGui::Button("Drop"))
+					{
+						kNetClientDropConnection(&g_gs->kNetClient);
 					}
 				}break;
 			}
 		}
-#if 0
-		else
-		{
-			if(ImGui::Button("CLOSE SOCKET"))
-			{
-				KLOG(INFO, "invalidating g_gs->socketClient==%i", 
-				     g_gs->socketClient);
-				g_kpl->socketClose(g_gs->socketClient);
-				g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
-			}
-			else
-			{
-				if(ImGui::Button("SEND"))
-				{
-					/* pack the test data into the clientPacketBuffer in network 
-						byte order */
-					u8* packetBuffer = g_gs->clientPacketBuffer;
-					kutil::netPack(g_gs->clientTestInt, &packetBuffer, 
-					               g_gs->clientPacketBuffer, 
-					               CARRAY_SIZE(g_gs->clientPacketBuffer));
-					kutil::netPack(g_gs->clientTestShort, &packetBuffer, 
-					               g_gs->clientPacketBuffer, 
-					               CARRAY_SIZE(g_gs->clientPacketBuffer));
-					kassert(packetBuffer > g_gs->clientPacketBuffer);
-					const size_t packetSize = 
-						static_cast<size_t>(packetBuffer - 
-						                    g_gs->clientPacketBuffer);
-					/* display the memory of the test int & the packet buffer to 
-						see if we're properly packing the data */
-					u8* testIntBytes = 
-						reinterpret_cast<u8*>(&g_gs->clientTestInt);
-					for(u8 b = 0; b < sizeof(g_gs->clientTestInt); b++)
-						KLOG(INFO, "g_gs->clientTestInt[%i]=0x%x", b, 
-						     testIntBytes[b]);
-					testIntBytes = 
-						reinterpret_cast<u8*>(&g_gs->clientTestShort);
-					for(u8 b = 0; b < sizeof(g_gs->clientTestShort); b++)
-						KLOG(INFO, "g_gs->clientTestShort[%i]=0x%x", b, 
-						     testIntBytes[b]);
-					for(u8 b = 0; b < packetSize; b++)
-						KLOG(INFO, "g_gs->clientPacketBuffer[%i]=0x%x", b, 
-						     g_gs->clientPacketBuffer[b]);
-					/* send packet data to server */
-					g_kpl->socketSend(g_gs->socketClient, 
-					                  g_gs->clientPacketBuffer, 
-					                  packetSize, 
-					                  g_gs->clientAddressToServer, 30942);
-				}
-			}
-		}
-#endif// 0
 	}
 	ImGui::End();
 	/* Networking example Client logic */
-	if(g_gs->socketClient != KPL_INVALID_SOCKET_INDEX)
-	/* there's no need to perform any network logic if we don't have an open 
-		socket for the client */
-	{
-		/* process CLIENT => SERVER communication */
-		u8* packetBuffer = g_gs->clientPacketBuffer;
-		switch(g_gs->clientConnectionState)
-		{
-			case network::ConnectionState::NOT_CONNECTED:{
-				/* send disconnect packets to the server until we receive a 
-					disconnect aknowledgement from the server */
-				*(packetBuffer++) = static_cast<u8>(
-					network::PacketType::CLIENT_DISCONNECT_REQUEST);
-			}break;
-			case network::ConnectionState::ACCEPTING:{
-				/* send connection requests until we receive server state */
-				*(packetBuffer++) = static_cast<u8>(
-					network::PacketType::CLIENT_CONNECT_REQUEST);
-			}break;
-			case network::ConnectionState::CONNECTED:{
-				/* send client state every frame */
-				*(packetBuffer++) = static_cast<u8>(
-					network::PacketType::CLIENT_STATE);
-			}break;
-		}
-		kassert(packetBuffer > g_gs->clientPacketBuffer);
-		const size_t packetSize = 
-			static_cast<size_t>(packetBuffer - g_gs->clientPacketBuffer);
-		g_kpl->socketSend(g_gs->socketClient, 
-		                  g_gs->clientPacketBuffer, 
-		                  packetSize, 
-		                  g_gs->clientAddressToServer, 30942);
-		/* process CLIENT <= SERVER communication */
-		g_gs->clientSecondsSinceLastServerPacket += deltaSeconds;
-		if(g_gs->clientSecondsSinceLastServerPacket >= 
-			network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
-		{
-			KLOG(INFO, "CLIENT: server connection timed out!");
-			g_kpl->socketClose(g_gs->socketClient);
-			g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
-			g_gs->clientConnectionState = 
-				network::ConnectionState::NOT_CONNECTED;
-		}
-		else
-		/* if the virtual net connection is still live, look for packets being 
-			sent from the server & process them */
-		{
-			KplNetAddress netAddress;
-			u16 netPort;
-			const i32 bytesReceived = 
-				g_kpl->socketReceive(g_gs->socketClient, 
-				                     g_gs->clientPacketBuffer, 
-				                     CARRAY_SIZE(g_gs->clientPacketBuffer), 
-				                     &netAddress, &netPort);
-			kassert(bytesReceived >= 0);
-			packetBuffer = g_gs->clientPacketBuffer;
-			if(netAddress == g_gs->clientAddressToServer && netPort == 30942)
-			{
-				const network::PacketType packetType = 
-					network::PacketType(*(packetBuffer++));
-				switch(packetType)
-				{
-					case network::PacketType::SERVER_ACCEPT_CONNECTION:{
-						if(g_gs->clientConnectionState != 
-							network::ConnectionState::ACCEPTING)
-						{
-							break;
-						}
-						g_gs->clientConnectionState = 
-							network::ConnectionState::CONNECTED;
-						g_gs->clientSecondsSinceLastServerPacket = 0;
-						KLOG(INFO, "CLIENT: connected!");
-					}break;
-					case network::PacketType::SERVER_REJECT_CONNECTION:{
-						KLOG(INFO, "CLIENT: rejected by server!");
-						g_kpl->socketClose(g_gs->socketClient);
-						g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
-					}break;
-					case network::PacketType::SERVER_STATE:{
-						if(g_gs->clientConnectionState != 
-							network::ConnectionState::CONNECTED)
-						{
-							break;
-						}
-//						KLOG(INFO, "CLIENT: got server state!");
-						g_gs->clientSecondsSinceLastServerPacket = 0;
-					}break;
-					case network::PacketType::SERVER_DISCONNECT:{
-						KLOG(INFO, "CLIENT: disconnected from server!");
-						g_kpl->socketClose(g_gs->socketClient);
-						g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
-					}break;
-					case network::PacketType::CLIENT_CONNECT_REQUEST:
-					case network::PacketType::CLIENT_STATE:
-					case network::PacketType::CLIENT_DISCONNECT_REQUEST:
-					default:{
-						KLOG(ERROR, "CLIENT: invalid packet!");
-					}break;
-				}
-			}
-		}
-	}
+	kNetClientStep(&g_gs->kNetClient, deltaSeconds, deltaSeconds*0.1f);
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
@@ -487,12 +291,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 	serverOnPreUnload(&g_gs->serverState);
-	if(g_gs->socketClient != KPL_INVALID_SOCKET_INDEX)
-	{
-		KLOG(INFO, "invalidating g_gs->socketClient==%i", g_gs->socketClient);
-		g_kpl->socketClose(g_gs->socketClient);
-		g_gs->socketClient = KPL_INVALID_SOCKET_INDEX;
-	}
+	kNetClientOnPreUnload(&g_gs->kNetClient);
 }
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"
@@ -536,3 +335,4 @@ internal void kStbDsFree(void* allocatedAddress)
 #include "kmath.cpp"
 #include "kutil.cpp"
 #include "serverExample.cpp"
+#include "kNetClient.cpp"

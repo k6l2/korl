@@ -222,6 +222,7 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 				ss->clients[c].netPort         = 0;
 				ss->clients[c].connectionState = 
 					network::ConnectionState::NOT_CONNECTED;
+				KLOG(INFO, "SERVER: client[%i] dropped.", c);
 				continue;
 			}
 			ss->clients[c].timeSinceLastPacket += ss->secondsPerFrame;

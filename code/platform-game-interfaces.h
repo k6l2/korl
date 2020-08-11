@@ -68,6 +68,8 @@ struct FlipbookMetaData
 	f32 defaultAnchorRatioY;
 };
 using FileWriteTime = u64;
+/** Do not use this value directly, since the meaning of this data is 
+ * platform-dependent.  Instead, use the platform APIs which uses this type. */
 using PlatformTimeStamp = u64;
 using JobQueueTicket = u32;
 #define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
@@ -158,6 +160,7 @@ struct PlatformGamePadActiveAxis
 #define PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name()
 #define PLATFORM_SLEEP_FROM_TIMESTAMP(name) void name(PlatformTimeStamp pts, \
                                                       f32 desiredDeltaSeconds)
+#define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
 const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;
@@ -181,11 +184,14 @@ const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
 #define PLATFORM_NET_RESOLVE_ADDRESS(name) KplNetAddress name(\
                                                         const char* ansiAddress)
 /** 
+ * @param listenPort If this is 0, the port which the socket listens on is 
+ *                   chosen by the platform automatically.  This value does not 
+ *                   prevent the user application from SENDING to other ports.
  * @param address if this is nullptr, the socket is bound to ANY address
  * @return KPL_INVALID_SOCKET_INDEX if the socket could not be created for any 
  *         reason
 */
-#define PLATFORM_SOCKET_OPEN_UDP(name) KplSocketIndex name(u16 port)
+#define PLATFORM_SOCKET_OPEN_UDP(name) KplSocketIndex name(u16 listenPort)
 #define PLATFORM_SOCKET_CLOSE(name) void name(KplSocketIndex socketIndex)
 /**
  * @return the # of bytes sent.  If an error occurs, a value < 0 is returned.  
@@ -248,6 +254,7 @@ typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_PlatformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_PlatformSleepFromTimestamp);
+typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_PlatformSecondsSinceTimestamp);
 typedef PLATFORM_NET_RESOLVE_ADDRESS(fnSig_PlatformNetResolveAddress);
 typedef PLATFORM_SOCKET_OPEN_UDP(fnSig_PlatformSocketOpenUdp);
 typedef PLATFORM_SOCKET_CLOSE(fnSig_PlatformSocketClose);
@@ -277,6 +284,7 @@ struct KmlPlatformApi
 	fnSig_platformGetGamePadProductGuid* getGamePadProductGuid;
 	fnSig_PlatformGetTimeStamp* getTimeStamp;
 	fnSig_PlatformSleepFromTimestamp* sleepFromTimeStamp;
+	fnSig_PlatformSecondsSinceTimestamp* secondsSinceTimeStamp;
 	fnSig_PlatformNetResolveAddress* netResolveAddress;
 	fnSig_PlatformSocketOpenUdp* socketOpenUdp;
 	fnSig_PlatformSocketClose* socketClose;

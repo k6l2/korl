@@ -1256,7 +1256,7 @@ PLATFORM_GET_TIMESTAMP(w32GetTimeStamp)
 	platformTimeStampUnion.largeInt = w32QueryPerformanceCounter();
 	return platformTimeStampUnion.timeStamp;
 }
-PLATFORM_SLEEP_FROM_TIMESTAMP(w32SleepFromTimeStamp)
+PLATFORM_SECONDS_SINCE_TIMESTAMP(w32SecondsSinceTimeStamp)
 {
 	PlatformTimeStampUnion platformTimeStampUnionPrevious;
 	platformTimeStampUnionPrevious.timeStamp = pts;
@@ -1271,6 +1271,11 @@ PLATFORM_SLEEP_FROM_TIMESTAMP(w32SleepFromTimeStamp)
 		platformTimeStampUnionPrevious.largeInt.QuadPart;
 	const f32 elapsedSeconds = 
 		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
+	return elapsedSeconds;
+}
+PLATFORM_SLEEP_FROM_TIMESTAMP(w32SleepFromTimeStamp)
+{
+	const f32 elapsedSeconds = w32SecondsSinceTimeStamp(pts);
 	/* conditionally sleep depending on the # of elapsed seconds */
 	if(elapsedSeconds >= desiredDeltaSeconds)
 		return;
@@ -2429,6 +2434,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	gameMemory.kpl.getGamePadProductGuid  = w32GetGamePadProductGuid;
 	gameMemory.kpl.getTimeStamp           = w32GetTimeStamp;
 	gameMemory.kpl.sleepFromTimeStamp     = w32SleepFromTimeStamp;
+	gameMemory.kpl.secondsSinceTimeStamp  = w32SecondsSinceTimeStamp;
 	gameMemory.kpl.netResolveAddress      = w32NetworkResolveAddress;
 	gameMemory.kpl.socketOpenUdp          = w32NetworkOpenSocketUdp;
 	gameMemory.kpl.socketClose            = w32NetworkCloseSocket;

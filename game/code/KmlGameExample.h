@@ -11,7 +11,7 @@
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr)
 #include "stb/stb_ds.h"
 #include "serverExample.h"
-#include "network_common.h"
+#include "kNetClient.h"
 struct GameState
 {
 	KAssetManager* assetManager;
@@ -22,12 +22,8 @@ struct GameState
 	KalHandle hKalFrame;
 	/* sample server state management */
 	ServerState serverState;
-	KplSocketIndex socketClient = KPL_INVALID_SOCKET_INDEX;
 	char clientAddressBuffer[256];
-	u8 clientPacketBuffer[KPL_MAX_DATAGRAM_SIZE];
-	KplNetAddress clientAddressToServer;
-	network::ConnectionState clientConnectionState;
-	f32 clientSecondsSinceLastServerPacket;
+	KNetClient kNetClient;
 	/* sample media testing state */
 	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;

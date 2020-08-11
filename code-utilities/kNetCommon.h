@@ -4,7 +4,7 @@ namespace network
 {
 	global_variable const f32 VIRTUAL_CONNECTION_TIMEOUT_SECONDS = 1.f;
 	enum class ConnectionState : u8
-		{ NOT_CONNECTED
+		{ NOT_CONNECTED///@TODO: rename to DISCONNECTING?
 		, ACCEPTING
 		, CONNECTED
 	};

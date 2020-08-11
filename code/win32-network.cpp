@@ -58,14 +58,14 @@ internal PLATFORM_SOCKET_OPEN_UDP(w32NetworkOpenSocketUdp)
 	sockaddr_in socketAddressIpv4;
 	socketAddressIpv4.sin_family      = AF_INET;
 	socketAddressIpv4.sin_addr.s_addr = htonl(INADDR_ANY);
-	socketAddressIpv4.sin_port        = htons(port);
+	socketAddressIpv4.sin_port        = htons(listenPort);
 	const int resultBind = 
 		bind(g_sockets[s], reinterpret_cast<sockaddr*>(&socketAddressIpv4), 
 		     sizeof(socketAddressIpv4));
 	if(resultBind == SOCKET_ERROR)
 	{
 		KLOG(ERROR, "Failed to bind UDP socket to port %i! WSAGetLastError=%i", 
-		     port, WSAGetLastError());
+		     listenPort, WSAGetLastError());
 		w32NetworkCloseSocket(s);
 		return KPL_INVALID_SOCKET_INDEX;
 	}

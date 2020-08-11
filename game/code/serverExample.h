@@ -1,7 +1,7 @@
 #pragma once
 #include "kAssetManager.h"
 #include "kAllocatorLinear.h"
-#include "network_common.h"
+#include "kNetCommon.h"
 struct ServerClientEntry
 {
 	KplNetAddress netAddress;
