@@ -9,9 +9,12 @@
 #include "kAllocatorLinear.h"
 #include "kNetClient.h"
 #include "serverExample.h"
-#define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size)
-#define STBDS_FREE(context,ptr)         kStbDsFree(ptr)
+#define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size,context)
+#define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
 #define STBDS_ASSERT(x)                 g_kpl->assert(x)
+#if INTERNAL_BUILD
+	#define STBDS_UNIT_TESTS
+#endif
 #include "stb/stb_ds.h"
 struct GameState
 {
@@ -39,5 +42,3 @@ global_variable KmlPlatformApi* g_kpl;
 global_variable fnSig_platformLog* platformLog;
 global_variable fnSig_platformAssert* platformAssert;
 global_variable KrbApi* g_krb;
-internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize);
-internal void  kStbDsFree(void* allocatedAddress);

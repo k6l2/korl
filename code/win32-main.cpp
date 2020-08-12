@@ -2395,7 +2395,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	const LPVOID baseAddress = 0;
 #endif
 	/* @TODO: make these memory quantities configurable per-project */
-	gameMemory.permanentMemoryBytes = kmath::megabytes(16);
+	gameMemory.permanentMemoryBytes = kmath::megabytes(64);
 	gameMemory.transientMemoryBytes = kmath::megabytes(128);
 	const u64 totalGameMemoryBytes = 
 		gameMemory.permanentMemoryBytes + gameMemory.transientMemoryBytes;

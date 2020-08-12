@@ -75,6 +75,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kalReset(g_gs->hKalFrame);
 #if INTERNAL_BUILD
+	/* TESTING STB_DS */
+	if(ImGui::Button("STB_DS unit test"))
+	{
+		stbds_unit_tests(g_gs->hKgaPermanent);
+	}
 	/* TESTING GAME PAD ARRAY */
 	if(ImGui::Begin("TESTING GAME PAD PORTS"))
 	{
@@ -292,13 +297,20 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 	#include "imgui/imgui.cpp"
 #pragma warning( pop )
 #define STB_DS_IMPLEMENTATION
-internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize)
+internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
+                             void* context)
 {
-	return kgaRealloc(g_gs->hKgaPermanent, allocatedAddress, newAllocationSize);
+	kassert(context);
+	KgaHandle hKga = reinterpret_cast<KgaHandle>(context);
+	void*const result = kgaRealloc(hKga, allocatedAddress, newAllocationSize);
+	kassert(result);
+	return result;
 }
-internal void kStbDsFree(void* allocatedAddress)
+internal void kStbDsFree(void* allocatedAddress, void* context)
 {
-	kgaFree(g_gs->hKgaPermanent, allocatedAddress);
+	kassert(context);
+	KgaHandle hKga = reinterpret_cast<KgaHandle>(context);
+	kgaFree(hKga, allocatedAddress);
 }
 #pragma warning( push )
 	// warning C4365: 'argument': conversion

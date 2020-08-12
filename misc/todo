@@ -498,6 +498,15 @@
 [x] kutil: build host->net byte reordering API so we can safely transfer data 
 	types which are larger than 1 byte
 	https://developer.ibm.com/articles/au-endianc/
+[ ] implement memory allocator context configuration in stb_ds.h
+	[x] move unit tests into implementation section
+	[ ] dynamic array impl
+		[x] method 0: constructor initialization
+		[ ] method 1: template-sensitive initialization
+			I might want to prefer this method after messing around w/ the 
+			hashmap API
+	[ ] hash map impl
+	[ ] string arena impl
 [ ] establish usage code for transfering "packets" between client/server
 	[x] establish a virtual network connection
 		[x] connection request + handshake
