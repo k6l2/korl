@@ -67,6 +67,18 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 				/* if the server socket has no more data on it, we're done with 
 					network data for this frame */
 				break;
+			/* match the address::port in the list of clients */
+			size_t clientIndex = 0;
+			for(; clientIndex < CARRAY_SIZE(ss->clients); clientIndex++)
+			{
+				if(ss->clients[clientIndex].netAddress == 
+						netAddressClient
+					&& ss->clients[clientIndex].netPort == 
+						netPortClient)
+				{
+					break;
+				}
+			}
 			/* since we've gotten data from the socket, we need to parse the 
 				data into `NetPacket`s */
 			const u8* packetBuffer = netBuffer;
@@ -78,16 +90,8 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 					KLOG(INFO, "SERVER: received CLIENT_CONNECT_REQUEST");
 					/* if this client is already connected, ignore this 
 						packet */
-					bool clientAlreadyConnected = false;
-					for(size_t c = 0; c < CARRAY_SIZE(ss->clients); c++)
-					{
-						if(ss->clients[c].netAddress == netAddressClient
-							&& ss->clients[c].netPort == netPortClient)
-						{
-							clientAlreadyConnected = true;
-							break;
-						}
-					}
+					const bool clientAlreadyConnected = 
+						clientIndex < CARRAY_SIZE(ss->clients);
 					if(clientAlreadyConnected)
 					{
 						break;
@@ -125,18 +129,6 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 				}break;
 				case network::PacketType::CLIENT_STATE: {
 //					KLOG(INFO, "SERVER: received CLIENT_STATE");
-					/* match the address::port in the list of clients */
-					size_t clientIndex = 0;
-					for(; clientIndex < CARRAY_SIZE(ss->clients); clientIndex++)
-					{
-						if(ss->clients[clientIndex].netAddress == 
-								netAddressClient
-							&& ss->clients[clientIndex].netPort == 
-								netPortClient)
-						{
-							break;
-						}
-					}
 					if(clientIndex >= CARRAY_SIZE(ss->clients))
 					{
 						break;
@@ -160,18 +152,6 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 				}break;
 				case network::PacketType::CLIENT_DISCONNECT_REQUEST: {
 					KLOG(INFO, "SERVER: received CLIENT_DISCONNECT_REQUEST");
-					/* match the address::port in the list of clients */
-					size_t clientIndex = 0;
-					for(; clientIndex < CARRAY_SIZE(ss->clients); clientIndex++)
-					{
-						if(ss->clients[clientIndex].netAddress == 
-								netAddressClient
-							&& ss->clients[clientIndex].netPort == 
-								netPortClient)
-						{
-							break;
-						}
-					}
 					if(clientIndex >= CARRAY_SIZE(ss->clients))
 					/* client isn't even connected; ignore. */
 					{

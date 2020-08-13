@@ -32,7 +32,8 @@ internal void kNetClientDropConnection(KNetClient* knc)
 	knc->socket = KPL_INVALID_SOCKET_INDEX;
 }
 internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds, 
-                             f32 netReceiveSeconds)
+                             f32 netReceiveSeconds, 
+                             fnSig_kNetClientWriteState* clientWriteState)
 {
 	if(kNetClientIsDisconnected(&g_gs->kNetClient))
 	/* there's no need to perform any network logic if the client isn't even 
@@ -42,6 +43,8 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 	}
 	/* process CLIENT => SERVER communication */
 	u8* packetBuffer = knc->packetBuffer;
+	const u8*const kncPacketBufferEnd = 
+		knc->packetBuffer + CARRAY_SIZE(knc->packetBuffer);
 	switch(knc->connectionState)
 	{
 		case network::ConnectionState::NOT_CONNECTED:{
@@ -59,6 +62,9 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 			/* send client state every frame */
 			*(packetBuffer++) = static_cast<u8>(
 				network::PacketType::CLIENT_STATE);
+			const size_t remainingPacketBufferSize = 
+				kmath::safeTruncateU64(kncPacketBufferEnd - packetBuffer);
+			clientWriteState(packetBuffer, remainingPacketBufferSize);
 		}break;
 	}
 	kassert(packetBuffer > knc->packetBuffer);

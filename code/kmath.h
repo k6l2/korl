@@ -5,11 +5,25 @@ const f32 PI32 = 3.14159f;
 #include <math.h>
 struct v2u32
 {
-	u32 x, y;
+	union 
+	{
+		u32 elements[2];
+		struct
+		{
+			u32 x, y;
+		};
+	};
 };
 struct v2f32
 {
-	f32 x, y;
+	union 
+	{
+		f32 elements[2];
+		struct
+		{
+			f32 x, y;
+		};
+	};
 public:
 	inline v2f32 operator-() const;
 	inline v2f32 operator*(f32 scalar) const;
@@ -27,7 +41,14 @@ public:
 };
 struct v3f32
 {
-	f32 x, y, z;
+	union 
+	{
+		f32 elements[3];
+		struct
+		{
+			f32 x, y, z;
+		};
+	};
 public:
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;

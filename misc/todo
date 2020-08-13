@@ -513,12 +513,14 @@
 		[x] connection request + handshake
 		[x] auto disconnect after some threshold of time since last packet
 		[x] connection disconnect + handshake
-	[ ] send server client state every frame
-		(player input I guess?)
+	[x] send server client state every frame
+		- position & orientation
 	[ ] send client server state every frame
-		(client positions, list of connected clients)
+		- list of clients
+			- position & orientation
 	[ ] discard old/duplicate packets using a rolling packet index
 	[ ] calculate round-trip-time using platform timestamps
+		[ ] send this data to each client via the client list
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

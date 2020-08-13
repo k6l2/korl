@@ -71,6 +71,16 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 		kauMix(g_gs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
 	}
 }
+internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState)
+{
+	u8* packet = packetBuffer;
+	for(size_t e = 0; e < CARRAY_SIZE(g_gs->shipWorldPosition.elements); e++)
+		kutil::netPack(g_gs->shipWorldPosition.elements[e], &packet, 
+		               packetBuffer, packetBufferSize);
+	for(size_t e = 0; e < CARRAY_SIZE(g_gs->shipWorldOrientation.elements); e++)
+		kutil::netPack(g_gs->shipWorldOrientation.elements[e], &packet, 
+		               packetBuffer, packetBufferSize);
+}
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kalReset(g_gs->hKalFrame);
@@ -160,7 +170,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	ImGui::End();
 	/* Networking example Client logic */
-	kNetClientStep(&g_gs->kNetClient, deltaSeconds, deltaSeconds*0.1f);
+	kNetClientStep(&g_gs->kNetClient, deltaSeconds, deltaSeconds*0.1f, 
+	               gameWriteClientState);
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
