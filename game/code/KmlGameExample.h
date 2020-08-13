@@ -12,9 +12,6 @@
 #define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size,context)
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
 #define STBDS_ASSERT(x)                 g_kpl->assert(x)
-#if INTERNAL_BUILD
-	#define STBDS_UNIT_TESTS
-#endif
 #include "stb/stb_ds.h"
 struct GameState
 {

@@ -75,11 +75,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kalReset(g_gs->hKalFrame);
 #if INTERNAL_BUILD
-	/* TESTING STB_DS */
-	if(ImGui::Button("STB_DS unit test"))
-	{
-		stbds_unit_tests(g_gs->hKgaPermanent);
-	}
 	/* TESTING GAME PAD ARRAY */
 	if(ImGui::Begin("TESTING GAME PAD PORTS"))
 	{
