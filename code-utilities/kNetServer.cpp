@@ -19,12 +19,14 @@ internal void kNetServerStop(KNetServer* kns)
 	kns->socket = KPL_INVALID_SOCKET_INDEX;
 	arrfree(kns->clientArray);
 }
-internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
-                             f32 netReceiveSeconds, 
-                             const PlatformTimeStamp& timeStampFrameStart, 
-                             fnSig_kNetServerReadClientState* fnReadClientState, 
-                             fnSig_kNetServerWriteState* fnWriteState, 
-                             void* userPointer)
+internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds, 
+                       f32 netReceiveSeconds, 
+                       const PlatformTimeStamp& timeStampFrameStart, 
+                       fnSig_kNetServerReadClientState* fnReadClientState, 
+                       fnSig_kNetServerWriteState* fnWriteState, 
+                       fnSig_kNetServerOnClientConnect* fnOnClientConnect, 
+                       fnSig_kNetServerOnClientDisconnect* fnOnClientDisconnect, 
+                       void* userPointer)
 {
 	u8 netBuffer[KPL_MAX_DATAGRAM_SIZE];
 	do
@@ -131,6 +133,8 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				{
 					kns->clientArray[clientIndex].connectionState =
 						network::ConnectionState::CONNECTED;
+					fnOnClientConnect(kns->clientArray[clientIndex].id, 
+					                  userPointer);
 					KLOG(INFO, "SERVER: new client connected! cid==%i", 
 					     kns->clientArray[clientIndex].id);
 				}
@@ -143,7 +147,6 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				kns->clientArray[clientIndex].timeSinceLastPacket = 0;
 			}break;
 			case network::PacketType::CLIENT_DISCONNECT_REQUEST: {
-				KLOG(INFO, "SERVER: received CLIENT_DISCONNECT_REQUEST");
 				if(clientIndex >= arrcap(kns->clientArray))
 				/* client isn't even connected; ignore. */
 				{
@@ -154,6 +157,10 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				if(kns->clientArray[clientIndex].connectionState != 
 					network::ConnectionState::NOT_CONNECTED)
 				{
+					KLOG(INFO, "SERVER: received CLIENT_DISCONNECT_REQUEST "
+					     "(cid=%i)", kns->clientArray[clientIndex].id);
+					fnOnClientDisconnect(kns->clientArray[clientIndex].id, 
+					                     userPointer);
 					kns->clientArray[clientIndex].connectionState = 
 						network::ConnectionState::NOT_CONNECTED;
 					kns->clientArray[clientIndex].timeSinceLastPacket = 0;
@@ -193,11 +200,22 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 					                  kns->clientArray[c].netPort);
 				kassert(bytesSent >= 0);
 			}
+			if(kns->clientArray[c].connectionState != 
+				network::ConnectionState::NOT_CONNECTED)
+			{
+				fnOnClientDisconnect(kns->clientArray[c].id, userPointer);
+				KLOG(INFO, "SERVER: client(cid=%i) dropped.", 
+				     kns->clientArray[c].id);
+			}
+			else
+			{
+				KLOG(INFO, "SERVER: ending disconnected client(cid=%i) comms.", 
+				     kns->clientArray[c].id);
+			}
 			kns->clientArray[c].netAddress      = KPL_INVALID_ADDRESS;
 			kns->clientArray[c].netPort         = 0;
 			kns->clientArray[c].connectionState = 
 				network::ConnectionState::NOT_CONNECTED;
-			KLOG(INFO, "SERVER: client[%i] dropped.", c);
 			continue;
 		}
 		switch(kns->clientArray[c].connectionState)

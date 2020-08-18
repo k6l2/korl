@@ -531,11 +531,11 @@
 	[x] remove ServerState::pemanent/transientMemory storage since it's 
 		completely unnecessary
 	[x] clear client actors when we disconnect from server
-	[ ] serverReadClient: move code that spawns a possessed client actor into 
+	[x] serverReadClient: move code that spawns a possessed client actor into 
 		another function (such as when a client connection is confirmed)
-		[ ] also, make sure the possessed actor is "deleted" on the server when 
+		[x] also, make sure the possessed actor is "deleted" on the server when 
 			the client disconnects
-	[ ] gameWriteClientState: send input instead of actor data
+	[-] gameWriteClientState: send input instead of actor data
 	[ ] discard old/duplicate packets using a rolling packet index
 	[ ] calculate round-trip-time using platform timestamps
 		[ ] send this data to each client via the client list

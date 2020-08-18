@@ -52,7 +52,8 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		kalReset(ss->hKalFrame);
 		kNetServerStep(&ss->kNetServer, ss->secondsPerFrame, 
 		               0.1f*ss->secondsPerFrame, timeStampFrameStart, 
-		               serverReadClient, serverWriteState, ss);
+		               serverReadClient, serverWriteState, 
+		               serverOnClientConnect, serverOnClientDisconnect, ss);
 		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);
 	}
 	KLOG(INFO, "Server job END!");

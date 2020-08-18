@@ -31,11 +31,19 @@ internal void kNetServerStop(KNetServer* kns);
  */
 #define K_NET_SERVER_WRITE_STATE(name) \
 	u32 name(u8* packetBuffer, u32 packetBufferSize, void* userPointer)
+#define K_NET_SERVER_ON_CLIENT_CONNECT(name) \
+	void name(KNetServerClientId clientId, void* userPointer)
+#define K_NET_SERVER_ON_CLIENT_DISCONNECT(name) \
+	void name(KNetServerClientId clientId, void* userPointer)
 typedef K_NET_SERVER_READ_CLIENT_STATE(fnSig_kNetServerReadClientState);
 typedef K_NET_SERVER_WRITE_STATE(fnSig_kNetServerWriteState);
+typedef K_NET_SERVER_ON_CLIENT_CONNECT(fnSig_kNetServerOnClientConnect);
+typedef K_NET_SERVER_ON_CLIENT_DISCONNECT(fnSig_kNetServerOnClientDisconnect);
 internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds, 
-                             f32 netReceiveSeconds, 
-                             const PlatformTimeStamp& timeStampFrameStart, 
-                             fnSig_kNetServerReadClientState* fnReadClientState, 
-                             fnSig_kNetServerWriteState* fnWriteState, 
-                             void* userPointer);
+                       f32 netReceiveSeconds, 
+                       const PlatformTimeStamp& timeStampFrameStart, 
+                       fnSig_kNetServerReadClientState* fnReadClientState, 
+                       fnSig_kNetServerWriteState* fnWriteState, 
+                       fnSig_kNetServerOnClientConnect* fnOnClientConnect, 
+                       fnSig_kNetServerOnClientDisconnect* fnOnClientDisconnect, 
+                       void* userPointer);

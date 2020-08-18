@@ -82,23 +82,7 @@ internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 			break;
 		}
 	}
-	if(clientActorIndex >= CARRAY_SIZE(ss->actors))
-	/* spawn the client's possessed actor if it hasn't already been spawned
-		@TODO: move this into code which executes as soon as the client 
-		       fully connects to the server & replace with an assert */
-	{
-		for(clientActorIndex = 0; clientActorIndex < CARRAY_SIZE(ss->actors); 
-			clientActorIndex++)
-		{
-			if(ss->actors[clientActorIndex].clientId == 
-				K_NET_SERVER_INVALID_CLIENT_ID)
-			{
-				break;
-			}
-		}
-		kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
-		ss->actors[clientActorIndex].clientId = clientId;
-	}
+	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
 	/* at this point, we know that clientActorIndex is the correct index of the 
 		actor possessed by clientId, so we can now populate this data with the 
 		packet data received by the client~ */
@@ -121,7 +105,7 @@ internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 			arrpush(arrayActorIndices, a);
 	}
 	/* pack all the active actors into the server state 
-		@TODO: optimize by only packing actors the player is within range of */
+		@optimization: only pack actors the player is within range of */
 	u8* packet = packetBuffer;
 	u32 bytesPacked = 0;
 	bytesPacked += kutil::netPack(arrlenu(arrayActorIndices), &packet, 
@@ -133,4 +117,37 @@ internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 			             packetBuffer, packetBufferSize);
 	}
 	return bytesPacked;
+}
+internal K_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
+{
+	/* spawn the client's possessed actor if it hasn't already been spawned */
+	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
+	size_t clientActorIndex = 0;
+	for(clientActorIndex = 0; clientActorIndex < CARRAY_SIZE(ss->actors); 
+		clientActorIndex++)
+	{
+		if(ss->actors[clientActorIndex].clientId == 
+			K_NET_SERVER_INVALID_CLIENT_ID)
+		{
+			break;
+		}
+	}
+	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
+	ss->actors[clientActorIndex].clientId = clientId;
+}
+internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
+{
+	/* "erase" the client's possessed actor */
+	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
+	size_t clientActorIndex = 0;
+	for(clientActorIndex = 0; clientActorIndex < CARRAY_SIZE(ss->actors); 
+		clientActorIndex++)
+	{
+		if(ss->actors[clientActorIndex].clientId == clientId)
+		{
+			break;
+		}
+	}
+	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
+	ss->actors[clientActorIndex].clientId = K_NET_SERVER_INVALID_CLIENT_ID;
 }
