@@ -84,8 +84,8 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				/* choose a unique id # to identify this client because the 
 					client array is dynamic, ergo we cannot reference clients 
 					via their clientArray index */
-				KNetServerClientId cid = 0;
-				for(; cid < K_NET_SERVER_INVALID_CLIENT_ID; cid++)
+				network::ServerClientId cid = 0;
+				for(; cid < network::SERVER_INVALID_CLIENT_ID; cid++)
 				/* this loop sucks, but should perform fine for low clientArray 
 					capacities so who cares? */
 				{
@@ -103,7 +103,7 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 						break;
 					}
 				}
-				kassert(cid < K_NET_SERVER_INVALID_CLIENT_ID);
+				kassert(cid < network::SERVER_INVALID_CLIENT_ID);
 				/* add this new client to the client array */
 				KLOG(INFO, "SERVER: accepting new client (cid==%i)...", cid);
 				const KNetServerClientEntry newClient = 
@@ -230,10 +230,16 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				kassert(bytesSent >= 0);
 			}break;
 			case network::ConnectionState::ACCEPTING: {
-				netBuffer[0] = static_cast<u8>(
-					network::PacketType::SERVER_ACCEPT_CONNECTION);
+				u8* packetBuffer = netBuffer;
+				kutil::netPack(static_cast<u8>(
+					network::PacketType::SERVER_ACCEPT_CONNECTION), 
+					&packetBuffer, netBuffer, CARRAY_SIZE(netBuffer));
+				kutil::netPack(kns->clientArray[c].id, &packetBuffer, netBuffer, 
+				               CARRAY_SIZE(netBuffer));
+				const size_t packetSize = kmath::safeTruncateU64(
+					packetBuffer - netBuffer);
 				const i32 bytesSent = 
-					g_kpl->socketSend(kns->socket, netBuffer, 1, 
+					g_kpl->socketSend(kns->socket, netBuffer, packetSize, 
 					                  kns->clientArray[c].netAddress, 
 					                  kns->clientArray[c].netPort);
 				kassert(bytesSent >= 0);
@@ -246,8 +252,7 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				packetBuffer += 
 					fnWriteState(packetBuffer, CARRAY_SIZE(netBuffer) - 1, 
 					             userPointer);
-				kassert(packetBuffer > netBuffer);
-				const size_t packetSize = static_cast<size_t>(
+				const size_t packetSize = kmath::safeTruncateU64(
 					packetBuffer - netBuffer);
 				const i32 bytesSent = 
 					g_kpl->socketSend(kns->socket, netBuffer, packetSize, 

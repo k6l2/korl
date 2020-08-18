@@ -535,12 +535,14 @@
 		another function (such as when a client connection is confirmed)
 		[x] also, make sure the possessed actor is "deleted" on the server when 
 			the client disconnects
-	[-] gameWriteClientState: send input instead of actor data
+	[x] gameWriteClientState: send input instead of actor data
 	[ ] discard old/duplicate packets using a rolling packet index
 	[ ] calculate round-trip-time using platform timestamps
 		[ ] send this data to each client via the client list
 	[ ] reliable data transfer protocol
-	[ ] optimize: serverWriteState: only send net-relevant actors
+		[ ] send client inputs as reliable data
+	[-] optimize: serverWriteState: only send net-relevant actors
+	[ ] ensure game code hot-reload maintains network virtual connections
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

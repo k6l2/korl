@@ -190,6 +190,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		platform layer (newer file write timestamp) */
 	if(kamUnloadChangedAssets(g_gs->assetManager))
 		kamPushAllKAssets(g_gs->assetManager);
+	g_gs->controlInput = {};
 	for(u8 c = 0; c < numGamePads; c++)
 	{
 		GamePad& gpad = gamePadArray[c];
@@ -213,16 +214,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				             KAssetIndex::sfx_joesteroids_shoot_modified_wav);
 			}
 		}
-		g_gs->shipWorldPosition.x += 10*gpad.stickLeft.x;
-		g_gs->shipWorldPosition.y += 10*gpad.stickLeft.y;
-		if(!kmath::isNearlyZero(gpad.stickLeft.x) ||
-		   !kmath::isNearlyZero(gpad.stickLeft.y))
-		{
-			const f32 stickRadians = 
-				kmath::v2Radians(gpad.stickLeft);
-			g_gs->shipWorldOrientation = 
-				kQuaternion({0,0,1}, stickRadians - PI32/2);
-		}
+		g_gs->controlInput.controlMoveVector = gpad.stickLeft;
 		const f32 controlVolumeRatio = 
 			(gpad.stickRight.y/2) + 0.5f;
 		kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 
@@ -236,7 +228,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		if(gpad.stickClickLeft == ButtonState::PRESSED)
 		{
-			g_gs->shipWorldPosition = {};
+			g_gs->controlInput.controlResetPosition = true;
 		}
 #if 1
 		if(gpad.faceDown == ButtonState::PRESSED)
@@ -254,7 +246,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		? 1 : static_cast<f32>(windowDimensions.x) / windowDimensions.y;
 	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
 	                                     300, 1.f);
-	g_krb->viewTranslate(-g_gs->shipWorldPosition);
+	
+	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
+	{
+		Actor& actor = g_gs->actors[a];
+		if(actor.clientId == g_gs->kNetClient.id)
+		{
+			g_krb->viewTranslate(-actor.shipWorldPosition);
+			break;
+		}
+	}
 	kfbStep(&g_gs->kFbShip       , deltaSeconds);
 	kfbStep(&g_gs->kFbShipExhaust, deltaSeconds);
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)

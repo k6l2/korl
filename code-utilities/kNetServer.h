@@ -2,12 +2,9 @@
 #include "kutil.h"
 #include "platform-game-interfaces.h"
 #include "kNetCommon.h"
-using KNetServerClientId = u16;
-global_variable const KNetServerClientId K_NET_SERVER_INVALID_CLIENT_ID = 
-                                                         KNetServerClientId(-1);
 struct KNetServerClientEntry
 {
-	KNetServerClientId id;
+	network::ServerClientId id;
 	KplNetAddress netAddress;
 	u16 netPort;
 	f32 timeSinceLastPacket;
@@ -24,7 +21,7 @@ struct KNetServer
 internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients);
 internal void kNetServerStop(KNetServer* kns);
 #define K_NET_SERVER_READ_CLIENT_STATE(name) \
-	void name(KNetServerClientId clientId, const u8* packetBuffer, \
+	void name(network::ServerClientId clientId, const u8* packetBuffer, \
 	          u32 packetBufferSize, void* userPointer)
 /**
  * @return the # of bytes written to `packetBuffer`
@@ -32,9 +29,9 @@ internal void kNetServerStop(KNetServer* kns);
 #define K_NET_SERVER_WRITE_STATE(name) \
 	u32 name(u8* packetBuffer, u32 packetBufferSize, void* userPointer)
 #define K_NET_SERVER_ON_CLIENT_CONNECT(name) \
-	void name(KNetServerClientId clientId, void* userPointer)
+	void name(network::ServerClientId clientId, void* userPointer)
 #define K_NET_SERVER_ON_CLIENT_DISCONNECT(name) \
-	void name(KNetServerClientId clientId, void* userPointer)
+	void name(network::ServerClientId clientId, void* userPointer)
 typedef K_NET_SERVER_READ_CLIENT_STATE(fnSig_kNetServerReadClientState);
 typedef K_NET_SERVER_WRITE_STATE(fnSig_kNetServerWriteState);
 typedef K_NET_SERVER_ON_CLIENT_CONNECT(fnSig_kNetServerOnClientConnect);

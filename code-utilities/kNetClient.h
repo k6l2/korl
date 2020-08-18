@@ -7,6 +7,7 @@ struct KNetClient
 	/** this value determines the state of the CLIENT<=>SERVER virtual 
 	 * connection */
 	network::ConnectionState connectionState;
+	network::ServerClientId id = network::SERVER_INVALID_CLIENT_ID;
 	KplSocketIndex socket = KPL_INVALID_SOCKET_INDEX;
 	u8 packetBuffer[KPL_MAX_DATAGRAM_SIZE];
 	KplNetAddress addressServer;

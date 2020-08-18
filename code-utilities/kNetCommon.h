@@ -2,6 +2,9 @@
 #include "kutil.h"
 namespace network
 {
+	using ServerClientId = u16;
+	global_variable const ServerClientId SERVER_INVALID_CLIENT_ID = 
+	                                                         ServerClientId(-1);
 	global_variable const f32 VIRTUAL_CONNECTION_TIMEOUT_SECONDS = 1.f;
 	enum class ConnectionState : u8
 		{ NOT_CONNECTED///@TODO: rename to DISCONNECTING?

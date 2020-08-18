@@ -4,7 +4,7 @@
 #include "kNetServer.h"
 struct Actor
 {
-	KNetServerClientId clientId = K_NET_SERVER_INVALID_CLIENT_ID;
+	network::ServerClientId clientId = network::SERVER_INVALID_CLIENT_ID;
 	v2f32 shipWorldPosition;
 	kQuaternion shipWorldOrientation;
 };

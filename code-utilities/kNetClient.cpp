@@ -43,39 +43,41 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 		return;
 	}
 	/* process CLIENT => SERVER communication */
-	u8* packetBuffer = knc->packetBuffer;
-	const u8*const kncPacketBufferEnd = 
-		knc->packetBuffer + CARRAY_SIZE(knc->packetBuffer);
-	switch(knc->connectionState)
 	{
-		case network::ConnectionState::NOT_CONNECTED:{
-			/* send disconnect packets to the server until we receive a 
-				disconnect aknowledgement from the server */
-			*(packetBuffer++) = static_cast<u8>(
-				network::PacketType::CLIENT_DISCONNECT_REQUEST);
-		}break;
-		case network::ConnectionState::ACCEPTING:{
-			/* send connection requests until we receive server state */
-			*(packetBuffer++) = static_cast<u8>(
-				network::PacketType::CLIENT_CONNECT_REQUEST);
-		}break;
-		case network::ConnectionState::CONNECTED:{
-			/* send client state every frame */
-			*(packetBuffer++) = static_cast<u8>(
-				network::PacketType::CLIENT_STATE);
-			const u32 remainingPacketBufferSize = 
-				kmath::safeTruncateU32(kncPacketBufferEnd - packetBuffer);
-			packetBuffer += 
-				clientWriteState(packetBuffer, remainingPacketBufferSize);
-		}break;
+		u8* packetBuffer = knc->packetBuffer;
+		const u8*const kncPacketBufferEnd = 
+			knc->packetBuffer + CARRAY_SIZE(knc->packetBuffer);
+		switch(knc->connectionState)
+		{
+			case network::ConnectionState::NOT_CONNECTED:{
+				/* send disconnect packets to the server until we receive a 
+					disconnect aknowledgement from the server */
+				*(packetBuffer++) = static_cast<u8>(
+					network::PacketType::CLIENT_DISCONNECT_REQUEST);
+			}break;
+			case network::ConnectionState::ACCEPTING:{
+				/* send connection requests until we receive server state */
+				*(packetBuffer++) = static_cast<u8>(
+					network::PacketType::CLIENT_CONNECT_REQUEST);
+			}break;
+			case network::ConnectionState::CONNECTED:{
+				/* send client state every frame */
+				*(packetBuffer++) = static_cast<u8>(
+					network::PacketType::CLIENT_STATE);
+				const u32 remainingPacketBufferSize = 
+					kmath::safeTruncateU32(kncPacketBufferEnd - packetBuffer);
+				packetBuffer += 
+					clientWriteState(packetBuffer, remainingPacketBufferSize);
+			}break;
+		}
+		kassert(packetBuffer > knc->packetBuffer);
+		const size_t packetSize = static_cast<size_t>(
+			packetBuffer - knc->packetBuffer);
+		const i32 bytesSent = 
+			g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
+			                  knc->addressServer, 30942);
+		kassert(bytesSent >= 0);
 	}
-	kassert(packetBuffer > knc->packetBuffer);
-	const size_t packetSize = static_cast<size_t>(
-		packetBuffer - knc->packetBuffer);
-	const i32 bytesSent = 
-		g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
-		                  knc->addressServer, 30942);
-	kassert(bytesSent >= 0);
 	/* process CLIENT <= SERVER communication */
 	knc->secondsSinceLastServerPacket += deltaSeconds;
 	if(knc->secondsSinceLastServerPacket >= 
@@ -109,7 +111,7 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 		{
 			break;
 		}
-		packetBuffer = knc->packetBuffer;
+		const u8* packetBuffer = knc->packetBuffer;
 		if(netAddress == knc->addressServer && netPort == 30942)
 		{
 			const network::PacketType packetType = 
@@ -122,6 +124,9 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 					{
 						break;
 					}
+					knc->id = 
+						kutil::netUnpackU16(&packetBuffer, knc->packetBuffer, 
+						                    CARRAY_SIZE(knc->packetBuffer));
 					knc->connectionState = 
 						network::ConnectionState::CONNECTED;
 					knc->secondsSinceLastServerPacket = 0;
@@ -157,6 +162,9 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 				}break;
 			}
 		}
+		/* @robustness: assert that the packetBuffer is at the exact position of 
+			knc->packetBuffer + bytesReceived to ensure that we completely read 
+			all the data */
 	}while(g_kpl->secondsSinceTimeStamp(timeStampNetReceive) < 
 	           netReceiveSeconds
 	       && !kNetClientIsDisconnected(&g_gs->kNetClient));
