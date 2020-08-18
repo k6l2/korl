@@ -72,56 +72,54 @@ using FileWriteTime = u64;
  * platform-dependent.  Instead, use the platform APIs which uses this type. */
 using PlatformTimeStamp = u64;
 using JobQueueTicket = u32;
-#define JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
+#define JOB_QUEUE_FUNCTION(name) \
+	void name(void* data, u32 threadId)
 typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 /** 
  * @return the job ticket which uses `function`.  If `function` is nullptr, the 
  *         return value is guaranteed to be an INVALID ticket.
 */
-#define PLATFORM_POST_JOB(name) JobQueueTicket name(\
-                                             fnSig_jobQueueFunction* function, \
-                                             void* data)
+#define PLATFORM_POST_JOB(name) \
+	JobQueueTicket name(fnSig_jobQueueFunction* function, void* data)
 #define PLATFORM_JOB_VALID(name) bool name(JobQueueTicket* ticket)
 #define PLATFORM_JOB_DONE(name) bool name(JobQueueTicket* ticket)
-#define PLATFORM_LOG(name) void name(const char* sourceFileName, \
-                                     u32 sourceFileLineNumber, \
-                                     PlatformLogCategory logCategory, \
-                                     const char* formattedString, ...)
+#define PLATFORM_LOG(name) \
+	void name(const char* sourceFileName, u32 sourceFileLineNumber, \
+	          PlatformLogCategory logCategory, const char* formattedString, ...)
 #define PLATFORM_ASSERT(name) void name(bool expression)
 #define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
 #define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
-#define PLATFORM_DECODE_Z85_PNG(name) RawImage name(const u8* z85PngData, \
-                                                   size_t z85PngNumBytes, \
-                                                   KgaHandle pixelDataAllocator)
-#define PLATFORM_DECODE_Z85_WAV(name) RawSound name(const u8* z85WavData, \
-                                                  size_t z85WavNumBytes, \
-                                                  KgaHandle sampleDataAllocator)
+#define PLATFORM_DECODE_Z85_PNG(name) \
+	RawImage name(const u8* z85PngData, size_t z85PngNumBytes, \
+	              KgaHandle pixelDataAllocator)
+#define PLATFORM_DECODE_Z85_WAV(name) \
+	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
+	              KgaHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
  */
-#define PLATFORM_LOAD_WAV(name) RawSound name(const char* fileName, \
-                                              KgaHandle sampleDataAllocator)
+#define PLATFORM_LOAD_WAV(name) \
+	RawSound name(const char* fileName, KgaHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
  */
-#define PLATFORM_LOAD_OGG(name) RawSound name(const char* fileName, \
-                                              KgaHandle sampleDataAllocator)
+#define PLATFORM_LOAD_OGG(name) \
+	RawSound name(const char* fileName, KgaHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawImage 
  *         containing pixelData==nullptr is returned.
  */
-#define PLATFORM_LOAD_PNG(name) RawImage name(const char* fileName, \
-                                              KgaHandle pixelDataAllocator)
-#define PLATFORM_LOAD_FLIPBOOK_META(name) bool name(const char* fileName, \
-                                              FlipbookMetaData* o_fbMeta, \
-                                              char* o_texAssetFileName, \
-                                              size_t texAssetFileNameBufferSize)
-#define PLATFORM_GET_ASSET_WRITE_TIME(name) FileWriteTime name(\
-                                                      const char* assetFileName)
-#define PLATFORM_IS_ASSET_CHANGED(name) bool name(const char* assetFileName, \
-                                                  FileWriteTime lastWriteTime)
+#define PLATFORM_LOAD_PNG(name) \
+	RawImage name(const char* fileName, KgaHandle pixelDataAllocator)
+#define PLATFORM_LOAD_FLIPBOOK_META(name) \
+	bool name(const char* fileName, FlipbookMetaData* o_fbMeta, \
+	          char* o_texAssetFileName, size_t texAssetFileNameBufferSize)
+#define PLATFORM_GET_ASSET_WRITE_TIME(name) \
+	FileWriteTime name(const char* assetFileName)
+#define PLATFORM_IS_ASSET_CHANGED(name) \
+	bool name(const char* assetFileName, FileWriteTime lastWriteTime)
 #define PLATFORM_IS_ASSET_AVAILABLE(name) bool name(const char* assetFileName)
 #define PLATFORM_IS_FULLSCREEN(name) bool name()
 global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
@@ -143,30 +141,28 @@ struct PlatformGamePadActiveAxis
  * @return INVALID_PLATFORM_AXIS_INDEX if there is no active axis OR if there 
  *         are more than one axes active!
  */
-#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) PlatformGamePadActiveAxis \
-    name(u8 gamePadIndex)
+#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) \
+	PlatformGamePadActiveAxis name(u8 gamePadIndex)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  */
-#define PLATFORM_GET_GAME_PAD_PRODUCT_NAME(name) void name(u8 gamePadIndex, \
-                                                           char* o_buffer, \
-                                                           size_t bufferSize)
+#define PLATFORM_GET_GAME_PAD_PRODUCT_NAME(name) \
+	void name(u8 gamePadIndex, char* o_buffer, size_t bufferSize)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  */
-#define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) void name(u8 gamePadIndex, \
-                                                           char* o_buffer, \
-                                                           size_t bufferSize)
+#define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) \
+	void name(u8 gamePadIndex, char* o_buffer, size_t bufferSize)
 #define PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name()
-#define PLATFORM_SLEEP_FROM_TIMESTAMP(name) void name(PlatformTimeStamp pts, \
-                                                      f32 desiredDeltaSeconds)
+#define PLATFORM_SLEEP_FROM_TIMESTAMP(name) \
+	void name(PlatformTimeStamp pts, f32 desiredDeltaSeconds)
 #define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
 const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;
 using KplSocketIndex = u8;
-const global_variable KplSocketIndex KPL_INVALID_SOCKET_INDEX = 
-                                                             KplSocketIndex(~0);
+const global_variable KplSocketIndex 
+	KPL_INVALID_SOCKET_INDEX = KplSocketIndex(~0);
 union KplNetAddress
 {
 	/* 16 bytes is enough to store an IPv6 address.  IPv4 addresses only use 4 
@@ -181,8 +177,8 @@ internal inline bool operator==(const KplNetAddress& lhs,
 	return lhs.uLongs[0] == rhs.uLongs[0] && lhs.uLongs[1] == rhs.uLongs[1];
 }
 const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
-#define PLATFORM_NET_RESOLVE_ADDRESS(name) KplNetAddress name(\
-                                                        const char* ansiAddress)
+#define PLATFORM_NET_RESOLVE_ADDRESS(name) \
+	KplNetAddress name(const char* ansiAddress)
 /** 
  * @param listenPort If this is 0, the port which the socket listens on is 
  *                   chosen by the platform automatically.  This value does not 
@@ -198,22 +194,20 @@ const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
  *         If the socket or underlying winsock system is not ready to send right 
  *         now, 0 is returned (no errors occurred)
  */
-#define PLATFORM_SOCKET_SEND(name) i32 name(KplSocketIndex socketIndex, \
-                                      const u8* dataBuffer, \
-                                      size_t dataBufferSize, \
-                                      const KplNetAddress& netAddressReceiver, \
-                                      u16 netPortReceiver)
+#define PLATFORM_SOCKET_SEND(name) \
+	i32 name(KplSocketIndex socketIndex, const u8* dataBuffer, \
+	         size_t dataBufferSize, const KplNetAddress& netAddressReceiver, \
+	         u16 netPortReceiver)
 /** 
  * @return (1) the # of elements written to o_dataBuffer  (2) the received data 
  *         into `o_dataBuffer` (3) the network address from which the data was 
  *         sent into `o_netAddressSender`.  If an error occurs, a value < 0 is 
  *         returned.
  */
-#define PLATFORM_SOCKET_RECEIVE(name) i32 name(KplSocketIndex socketIndex, \
-                                            u8* o_dataBuffer, \
-                                            size_t dataBufferSize, \
-                                            KplNetAddress* o_netAddressSender, \
-                                            u16* o_netPortSender)
+#define PLATFORM_SOCKET_RECEIVE(name) \
+	i32 name(KplSocketIndex socketIndex, u8* o_dataBuffer, \
+	         size_t dataBufferSize, KplNetAddress* o_netAddressSender, \
+	         u16* o_netPortSender)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -246,9 +240,10 @@ struct PlatformDebugReadFileResult
 /** @return a valid result (non-zero data & dataBytes) if successful */
 #define PLATFORM_READ_ENTIRE_FILE(name) \
 	PlatformDebugReadFileResult name(char* fileName)
-#define PLATFORM_FREE_FILE_MEMORY(name) void name(void* fileMemory)
-#define PLATFORM_WRITE_ENTIRE_FILE(name) bool name(char* fileName, \
-                                                   void* data, u32 dataBytes)
+#define PLATFORM_FREE_FILE_MEMORY(name) \
+	void name(void* fileMemory)
+#define PLATFORM_WRITE_ENTIRE_FILE(name) \
+	bool name(char* fileName, void* data, u32 dataBytes)
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
 typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
@@ -519,19 +514,17 @@ struct GamePad
  * OPTIONAL.  Guaranteed to be called every time the game code is reloaded.
  * Guaranteed to be called BEFORE GAME_INITIALIZE.
  */
-#define GAME_ON_RELOAD_CODE(name) void name(GameMemory& memory, \
-                                            bool gameMemoryIsInitialized)
-#define GAME_RENDER_AUDIO(name) void name(GameAudioBuffer& audioBuffer, \
-                                          u32 sampleBlocksConsumed)
+#define GAME_ON_RELOAD_CODE(name) \
+	void name(GameMemory& memory, bool gameMemoryIsInitialized)
+#define GAME_RENDER_AUDIO(name) \
+	void name(GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed)
 /** 
  * @return false if the platform should close the game application
  */
-#define GAME_UPDATE_AND_DRAW(name) bool name(f32 deltaSeconds, \
-                                             v2u32 windowDimensions, \
-                                             GameKeyboard& gameKeyboard, \
-                                             GamePad* gamePadArray, \
-                                             u8 numGamePads, \
-                                             bool windowIsFocused)
+#define GAME_UPDATE_AND_DRAW(name) \
+	bool name(f32 deltaSeconds, v2u32 windowDimensions, \
+	          GameKeyboard& gameKeyboard, GamePad* gamePadArray, \
+	          u8 numGamePads, bool windowIsFocused)
 /** 
  * OPTIONAL.  Called IMMEDIATELY before the game code is unloaded from memory.
 */

@@ -2,33 +2,24 @@
 #include "kAssetManager.h"
 #include "kAllocatorLinear.h"
 #include "kNetCommon.h"
-struct ServerClientEntry
-{
-	KplNetAddress netAddress;
-	u16 netPort;
-	f32 timeSinceLastPacket;
-	network::ConnectionState connectionState;
-};
+#include "kNetServer.h"
+#include "exampleGameNet.h"
 struct ServerState
 {
 	/* KML interface */
 	bool running;
 	JobQueueTicket serverJobTicket;
 	bool onGameReloadStartServer;
+	/* configuration */
+	f32 secondsPerFrame;
 	/* memory management */
-	void* permanentMemory;
-	u64   permanentMemoryBytes;
-	void* transientMemory;
-	u64   transientMemoryBytes;
 	KgaHandle hKgaPermanent;
 	KgaHandle hKgaTransient;
 	KalHandle hKalFrame;
 	KAssetManager* assetManager;
-	/* configuration */
-	f32 secondsPerFrame;
-	u16 port;
 	/* data */
-	ServerClientEntry clients[4];
+	KNetServer kNetServer;
+	Actor actors[4];
 };
 enum class ServerOperatingState : u8
 	{ RUNNING
@@ -36,8 +27,8 @@ enum class ServerOperatingState : u8
 	, STOPPED
 };
 internal void serverInitialize(ServerState* ss, f32 secondsPerFrame, 
-                               KgaHandle hKgaPermanent, 
-                               KgaHandle hKgaTransient, 
+                               KgaHandle hKgaPermanentParent, 
+                               KgaHandle hKgaTransientParent, 
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes, u16 port);
 internal ServerOperatingState serverOpState(ServerState* ss);

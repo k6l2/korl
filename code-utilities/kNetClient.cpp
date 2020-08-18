@@ -31,9 +31,10 @@ internal void kNetClientDropConnection(KNetClient* knc)
 	g_kpl->socketClose(knc->socket);
 	knc->socket = KPL_INVALID_SOCKET_INDEX;
 }
-internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds, 
-                             f32 netReceiveSeconds, 
-                             fnSig_kNetClientWriteState* clientWriteState)
+internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
+                         f32 netReceiveSeconds, 
+                         fnSig_kNetClientWriteState* clientWriteState,
+                         fnSig_kNetClientReadServerState* clientReadServerState)
 {
 	if(kNetClientIsDisconnected(&g_gs->kNetClient))
 	/* there's no need to perform any network logic if the client isn't even 
@@ -62,18 +63,17 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 			/* send client state every frame */
 			*(packetBuffer++) = static_cast<u8>(
 				network::PacketType::CLIENT_STATE);
-			const size_t remainingPacketBufferSize = 
-				kmath::safeTruncateU64(kncPacketBufferEnd - packetBuffer);
-			clientWriteState(packetBuffer, remainingPacketBufferSize);
+			const u32 remainingPacketBufferSize = 
+				kmath::safeTruncateU32(kncPacketBufferEnd - packetBuffer);
+			packetBuffer += 
+				clientWriteState(packetBuffer, remainingPacketBufferSize);
 		}break;
 	}
 	kassert(packetBuffer > knc->packetBuffer);
 	const size_t packetSize = static_cast<size_t>(
 		packetBuffer - knc->packetBuffer);
 	const i32 bytesSent = 
-		g_kpl->socketSend(knc->socket, 
-		                  knc->packetBuffer, 
-		                  packetSize, 
+		g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
 		                  knc->addressServer, 30942);
 	kassert(bytesSent >= 0);
 	/* process CLIENT <= SERVER communication */
@@ -139,6 +139,9 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 						break;
 					}
 //					KLOG(INFO, "CLIENT: got server state!");
+					const u32 packetBufferSize = 
+						kmath::safeTruncateU32(bytesReceived - 1);
+					clientReadServerState(packetBuffer, packetBufferSize);
 					knc->secondsSinceLastServerPacket = 0;
 				}break;
 				case network::PacketType::SERVER_DISCONNECT:{

@@ -5,6 +5,7 @@
 	#include "imgui/imgui.h"
 #pragma warning( pop )
 #include "gen_kassets.h"
+#include "exampleGameNet.h"
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	g_kpl = &memory.kpl;
@@ -63,6 +64,9 @@ GAME_INITIALIZE(gameInitialize)
 	        KAssetIndex::gfx_fighter_fbm);
 	kfbInit(&g_gs->kFbShipExhaust, g_gs->assetManager, g_krb, 
 	        KAssetIndex::gfx_fighter_exhaust_fbm);
+	// Initialize dynamic Actor array //
+	g_gs->actors = reinterpret_cast<Actor*>(
+		arrinit(sizeof(Actor), g_gs->hKgaPermanent, 4));
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
@@ -70,16 +74,6 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 	{
 		kauMix(g_gs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
 	}
-}
-internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState)
-{
-	u8* packet = packetBuffer;
-	for(size_t e = 0; e < CARRAY_SIZE(g_gs->shipWorldPosition.elements); e++)
-		kutil::netPack(g_gs->shipWorldPosition.elements[e], &packet, 
-		               packetBuffer, packetBufferSize);
-	for(size_t e = 0; e < CARRAY_SIZE(g_gs->shipWorldOrientation.elements); e++)
-		kutil::netPack(g_gs->shipWorldOrientation.elements[e], &packet, 
-		               packetBuffer, packetBufferSize);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -170,8 +164,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	ImGui::End();
 	/* Networking example Client logic */
-	kNetClientStep(&g_gs->kNetClient, deltaSeconds, deltaSeconds*0.1f, 
-	               gameWriteClientState);
+	kNetClientStep(&g_gs->kNetClient, deltaSeconds, 0.1f*deltaSeconds, 
+	               gameWriteClientState, gameClientReadServerState);
 #endif// INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
@@ -240,10 +234,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			g_gs->shipWorldPosition = {};
 		}
-		if(gpad.stickClickRight == ButtonState::PRESSED)
-		{
-			g_gs->viewOffset2d = {};
-		}
 #if 1
 		if(gpad.faceDown == ButtonState::PRESSED)
 		{
@@ -255,19 +245,22 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 #endif //1
 	}
-	g_gs->viewOffset2d = g_gs->shipWorldPosition;
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);
 	const f32 windowAspectRatio = windowDimensions.y == 0 
 		? 1 : static_cast<f32>(windowDimensions.x) / windowDimensions.y;
 	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
 	                                     300, 1.f);
-	g_krb->viewTranslate(-g_gs->viewOffset2d);
-	g_krb->setModelXform2d(g_gs->shipWorldPosition, g_gs->shipWorldOrientation, 
-	                       {1,1});
+	g_krb->viewTranslate(-g_gs->shipWorldPosition);
 	kfbStep(&g_gs->kFbShip       , deltaSeconds);
 	kfbStep(&g_gs->kFbShipExhaust, deltaSeconds);
-	kfbDraw(&g_gs->kFbShip, krb::WHITE);
-	kfbDraw(&g_gs->kFbShipExhaust, krb::WHITE);
+	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
+	{
+		Actor& actor = g_gs->actors[a];
+		g_krb->setModelXform2d(actor.shipWorldPosition, 
+		                       actor.shipWorldOrientation, {1,1});
+		kfbDraw(&g_gs->kFbShip       , krb::WHITE);
+		kfbDraw(&g_gs->kFbShipExhaust, krb::WHITE);
+	}
 	g_krb->setModelXform({0,0,0}, kmath::IDENTITY_QUATERNION, {1,1,1});
 	g_krb->drawLine({0,0}, {100,   0}, krb::RED);
 	g_krb->drawLine({0,0}, {  0, 100}, krb::GREEN);
@@ -329,3 +322,5 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kutil.cpp"
 #include "serverExample.cpp"
 #include "kNetClient.cpp"
+#include "kNetServer.cpp"
+#include "exampleGameNet.cpp"

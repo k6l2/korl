@@ -13,6 +13,9 @@
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
 #define STBDS_ASSERT(x)                 g_kpl->assert(x)
 #include "stb/stb_ds.h"
+internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
+                             void* context);
+internal void kStbDsFree(void* allocatedAddress, void* context);
 struct GameState
 {
 	KAssetManager* assetManager;
@@ -26,13 +29,12 @@ struct GameState
 	char clientAddressBuffer[256];
 	KNetClient kNetClient;
 	/* sample media testing state */
-	v2f32 viewOffset2d;
 	v2f32 shipWorldPosition;
 	kQuaternion shipWorldOrientation = kQuaternion({0,0,1}, 0);
 	KTapeHandle tapeBgmBattleTheme;
 	KFlipBook kFbShip;
 	KFlipBook kFbShipExhaust;
-	int* testStbDynArr;
+	Actor* actors;
 };
 global_variable GameState* g_gs;
 global_variable KmlPlatformApi* g_kpl;

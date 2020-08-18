@@ -18,9 +18,16 @@ internal void kNetClientConnect(KNetClient* knc,
                                 const char* cStrServerAddress);
 internal void kNetClientBeginDisconnect(KNetClient* knc);
 internal void kNetClientDropConnection(KNetClient* knc);
-#define K_NET_CLIENT_WRITE_STATE(name) void name(u8* packetBuffer, \
-                                                 size_t packetBufferSize)
+/**
+ * @return the # of bytes written to `packetBuffer`
+ */
+#define K_NET_CLIENT_WRITE_STATE(name) \
+	u32 name(u8* packetBuffer, u32 packetBufferSize)
+#define K_NET_CLIENT_READ_SERVER_STATE(name) \
+	void name(const u8* packetBuffer, u32 packetBufferSize)
 typedef K_NET_CLIENT_WRITE_STATE(fnSig_kNetClientWriteState);
+typedef K_NET_CLIENT_READ_SERVER_STATE(fnSig_kNetClientReadServerState);
 internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds, 
-                             f32 netReceiveSeconds, 
-                             fnSig_kNetClientWriteState* clientWriteState);
+                        f32 netReceiveSeconds, 
+                        fnSig_kNetClientWriteState* clientWriteState,
+                        fnSig_kNetClientReadServerState* clientReadServerState);

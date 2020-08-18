@@ -61,35 +61,44 @@ namespace kutil
 	 *                       within `dataBuffer`
 	 * @param dataBuffer the first element of the array to which 
 	 *                   `*ppPacketBuffer` is writing to
+	 * @param dataBufferSize it's fairly safe to assume we're never going to be 
+	 *                       working with >4GB data buffers, so u32 is just fine
+	 * @return the # of bytes packed into `dataBuffer`
 	 */
-	void netPack(u64 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(u64 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(u32 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(u32 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(u16 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(u16 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(i64 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(u8 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(i32 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(i64 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(i16 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(i32 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(f32 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(i16 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/** See above for documentation */
-	void netPack(f64 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize);
+	u32 netPack(i8 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
+	/** See above for documentation */
+	u32 netPack(f32 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
+	/** See above for documentation */
+	u32 netPack(f64 data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize);
 	/* this template prevents calls to netPack which don't precisely match the 
 		data parameter.  Source: https://stackoverflow.com/a/12877589 */
 	template<class T>
-	void netPack(T data, u8** ppPacketBuffer, u8* dataBuffer, 
-	             size_t dataBufferSize) = delete;
+	u32 netPack(T data, u8** ppPacketBuffer, u8* dataBuffer, 
+	            u32 dataBufferSize) = delete;
 	/**
 	 * upon execution, an `u64` variable is extracted from `dataBuffer` at the 
 	 * position currently pointed to by `*ppPacketBuffer`, and `*ppPacketBuffer` 
@@ -98,28 +107,36 @@ namespace kutil
 	 *                       within `dataBuffer`
 	 * @param dataBuffer the first element of the array to which 
 	 *                   `*ppPacketBuffer` is reading from
+	 * @param dataBufferSize it's fairly safe to assume we're never going to be 
+	 *                       working with >4GB data buffers, so u32 is just fine
 	 */
-	u64 netUnpackU64(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	u64 netUnpackU64(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 	/** See above for documentation */
-	u32 netUnpackU32(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	u32 netUnpackU32(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 	/** See above for documentation */
-	u16 netUnpackU16(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	u16 netUnpackU16(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 	/** See above for documentation */
-	i64 netUnpackI64(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	u8 netUnpackU8(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	               u32 dataBufferSize);
 	/** See above for documentation */
-	i32 netUnpackI32(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	i64 netUnpackI64(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 	/** See above for documentation */
-	i16 netUnpackI16(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	i32 netUnpackI32(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 	/** See above for documentation */
-	f32 netUnpackF32(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	i16 netUnpackI16(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 	/** See above for documentation */
-	f64 netUnpackF64(u8** ppPacketBuffer, u8* dataBuffer, 
-	                 size_t dataBufferSize);
+	i8 netUnpackI8(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	               u32 dataBufferSize);
+	/** See above for documentation */
+	f32 netUnpackF32(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
+	/** See above for documentation */
+	f64 netUnpackF64(const u8** ppPacketBuffer, const u8* dataBuffer, 
+	                 u32 dataBufferSize);
 }

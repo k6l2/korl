@@ -508,6 +508,9 @@
 	[x] hash map impl
 	[x] string arena impl
 	[x] fix malformed unit test code
+[x] fix stbds_arrinit not being extern delcared in declaration source
+[x] define function signiture macros using more optimal whitespace for better 
+	asthetic/readability
 [ ] establish usage code for transfering "packets" between client/server
 	[x] establish a virtual network connection
 		[x] connection request + handshake
@@ -515,12 +518,29 @@
 		[x] connection disconnect + handshake
 	[x] send server client state every frame
 		- position & orientation
-	[ ] send client server state every frame
+	[x] interpret client state data on the server
+	[x] send client server state every frame
 		- list of clients
 			- position & orientation
+	[x] interpret server state data on the clients
+	[x] pull UDP virtual connection code out of client/server as its own utility 
+		(kNetClient & kNetServer)
+	[x] add net(Un)Pack API for 8-bit variables for convenience/asthetic 
+	[x] update netPack API to return # of bytes packed
+	[x] pull sample-game-specific netcode into it's own module (exampleGameNet)
+	[x] remove ServerState::pemanent/transientMemory storage since it's 
+		completely unnecessary
+	[ ] clear client actors when we disconnect from server
+	[ ] serverReadClient: move code that spawns a possessed client actor into 
+		another function (such as when a client connection is confirmed)
+		[ ] also, make sure the possessed actor is "deleted" on the server when 
+			the client disconnects
+	[ ] gameWriteClientState: send input instead of actor data
 	[ ] discard old/duplicate packets using a rolling packet index
 	[ ] calculate round-trip-time using platform timestamps
 		[ ] send this data to each client via the client list
+	[ ] reliable data transfer protocol
+	[ ] optimize: serverWriteState: only send net-relevant actors
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects
