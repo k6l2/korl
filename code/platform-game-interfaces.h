@@ -81,14 +81,19 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 */
 #define PLATFORM_POST_JOB(name) \
 	JobQueueTicket name(fnSig_jobQueueFunction* function, void* data)
-#define PLATFORM_JOB_VALID(name) bool name(JobQueueTicket* ticket)
-#define PLATFORM_JOB_DONE(name) bool name(JobQueueTicket* ticket)
+#define PLATFORM_JOB_VALID(name) \
+	bool name(JobQueueTicket* ticket)
+#define PLATFORM_JOB_DONE(name) \
+	bool name(JobQueueTicket* ticket)
 #define PLATFORM_LOG(name) \
 	void name(const char* sourceFileName, u32 sourceFileLineNumber, \
 	          PlatformLogCategory logCategory, const char* formattedString, ...)
-#define PLATFORM_ASSERT(name) void name(bool expression)
-#define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
-#define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
+#define PLATFORM_ASSERT(name) \
+	void name(bool expression)
+#define PLATFORM_IMGUI_ALLOC(name) \
+	void* name(size_t sz, void* user_data)
+#define PLATFORM_IMGUI_FREE(name) \
+	void  name(void* ptr, void* user_data)
 #define PLATFORM_DECODE_Z85_PNG(name) \
 	RawImage name(const u8* z85PngData, size_t z85PngNumBytes, \
 	              KgaHandle pixelDataAllocator)
@@ -120,16 +125,20 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 	FileWriteTime name(const char* assetFileName)
 #define PLATFORM_IS_ASSET_CHANGED(name) \
 	bool name(const char* assetFileName, FileWriteTime lastWriteTime)
-#define PLATFORM_IS_ASSET_AVAILABLE(name) bool name(const char* assetFileName)
-#define PLATFORM_IS_FULLSCREEN(name) bool name()
+#define PLATFORM_IS_ASSET_AVAILABLE(name) \
+	bool name(const char* assetFileName)
+#define PLATFORM_IS_FULLSCREEN(name) \
+	bool name()
 global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
-#define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
+#define PLATFORM_SET_FULLSCREEN(name) \
+	void name(bool isFullscreenDesired)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  * @return INVALID_PLATFORM_BUTTON_INDEX if there is no active button OR if 
  *         there are more than one buttons active!
  */
-#define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) u16 name(u8 gamePadIndex)
+#define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) \
+	u16 name(u8 gamePadIndex)
 global_variable const u16 INVALID_PLATFORM_AXIS_INDEX = u16(~0);
 struct PlatformGamePadActiveAxis
 {
@@ -153,10 +162,12 @@ struct PlatformGamePadActiveAxis
  */
 #define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) \
 	void name(u8 gamePadIndex, char* o_buffer, size_t bufferSize)
-#define PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name()
+#define PLATFORM_GET_TIMESTAMP(name) \
+	PlatformTimeStamp name()
 #define PLATFORM_SLEEP_FROM_TIMESTAMP(name) \
 	void name(PlatformTimeStamp pts, f32 desiredDeltaSeconds)
-#define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
+#define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) \
+	f32 name(PlatformTimeStamp pts)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
 const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;

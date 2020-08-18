@@ -13,7 +13,9 @@ struct KNetClient
 	KplNetAddress addressServer;
 	f32 secondsSinceLastServerPacket;
 	u32 rollingUnreliableStateIndexServer;
+	PlatformTimeStamp latestServerTimestamp;
 	u32 rollingUnreliableStateIndex;
+	f32 serverReportedRoundTripTime;
 };
 internal void kNetClientOnPreUnload(KNetClient* knc);
 internal bool kNetClientIsDisconnected(const KNetClient* knc);

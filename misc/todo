@@ -537,12 +537,19 @@
 			the client disconnects
 	[x] gameWriteClientState: send input instead of actor data
 	[x] discard old/duplicate packets using a rolling packet index
-	[ ] calculate round-trip-time using platform timestamps
-		[ ] send this data to each client via the client list
+	[x] calculate round-trip-time using platform timestamps
+		[~] send this data to each client via the client list
+			- I'm just sending the pings back to individual clients for now 
+				because I don't really care about accumulating a list of server 
+				clients on each individual client
 	[ ] reliable data transfer protocol
 		[ ] send client inputs as reliable data
 	[-] optimize: serverWriteState: only send net-relevant actors
 	[ ] ensure game code hot-reload maintains network virtual connections
+	[ ] change kutil::netUnpack API to return the value in an overloaded 
+		parameter, and return the # of bytes unpacked.  This is better because 
+		back in the user code, we can accumulate the # of bytes unpacked and 
+		assert that the derived value matches some known value!
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

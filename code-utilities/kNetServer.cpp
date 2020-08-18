@@ -151,6 +151,25 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				}
 				kns->clientArray[clientIndex].rollingUnreliableStateIndex = 
 					rollingUnreliableStateIndex;
+				/* we can calculate the client's round-trip-time here using the 
+					client's last known server timestamp */
+				const PlatformTimeStamp clientLastKnownServerTimestamp = 
+					kutil::netUnpackU64(&packetBuffer, netBuffer, 
+					                    CARRAY_SIZE(netBuffer));
+				kns->clientArray[clientIndex].roundTripTime = 
+					g_kpl->secondsSinceTimeStamp(
+						clientLastKnownServerTimestamp);
+				if(kns->clientArray[clientIndex].roundTripTime > 
+					network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
+				/* there's no meaning in huge round trip times, since the client 
+					would technically be dropped from the connection anyways */
+				{
+					kns->clientArray[clientIndex].roundTripTime = 
+						network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS;
+				}
+//				KLOG(INFO, "SERVER: client (cid==%i) rtt=%fms", 
+//				     kns->clientArray[clientIndex].id, 
+//				     kns->clientArray[clientIndex].roundTripTime * 1000);
 				/* if the client is connected, update server state based on 
 					this client's data */
 				const u32 packetBufferSize = kmath::safeTruncateU32( 
@@ -263,6 +282,10 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 					static_cast<u8>(network::PacketType::SERVER_UNRELIABLE_STATE), 
 					&packetBuffer, netBuffer, CARRAY_SIZE(netBuffer));
 				kutil::netPack(kns->rollingUnreliableStateIndex, &packetBuffer, 
+				               netBuffer, CARRAY_SIZE(netBuffer));
+				kutil::netPack(g_kpl->getTimeStamp(), &packetBuffer, 
+				               netBuffer, CARRAY_SIZE(netBuffer));
+				kutil::netPack(kns->clientArray[c].roundTripTime, &packetBuffer, 
 				               netBuffer, CARRAY_SIZE(netBuffer));
 				packetBuffer += 
 					fnWriteState(packetBuffer, CARRAY_SIZE(netBuffer) - 1, 

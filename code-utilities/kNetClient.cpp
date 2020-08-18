@@ -70,6 +70,9 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 				               &packetBuffer, knc->packetBuffer, 
 				               CARRAY_SIZE(knc->packetBuffer));
 				knc->rollingUnreliableStateIndex++;
+				kutil::netPack(knc->latestServerTimestamp, 
+				               &packetBuffer, knc->packetBuffer, 
+				               CARRAY_SIZE(knc->packetBuffer));
 				const u32 remainingPacketBufferSize = 
 					kmath::safeTruncateU32(kncPacketBufferEnd - packetBuffer);
 				packetBuffer += 
@@ -159,6 +162,12 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 					}
 					knc->rollingUnreliableStateIndexServer = 
 						rollingUnreliableStateIndexServer;
+					knc->latestServerTimestamp = 
+						kutil::netUnpackU64(&packetBuffer, knc->packetBuffer, 
+						                    CARRAY_SIZE(knc->packetBuffer));
+					knc->serverReportedRoundTripTime = 
+						kutil::netUnpackF32(&packetBuffer, knc->packetBuffer, 
+						                    CARRAY_SIZE(knc->packetBuffer));
 //					KLOG(INFO, "CLIENT: got server state!");
 					const u32 packetBufferSize = 
 						kmath::safeTruncateU32(bytesReceived - 1);

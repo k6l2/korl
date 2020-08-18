@@ -10,6 +10,7 @@ struct KNetServerClientEntry
 	f32 timeSinceLastPacket;
 	network::ConnectionState connectionState;
 	u32 rollingUnreliableStateIndex;
+	f32 roundTripTime;
 };
 struct KNetServer
 {
