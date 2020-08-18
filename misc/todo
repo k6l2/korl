@@ -530,7 +530,7 @@
 	[x] pull sample-game-specific netcode into it's own module (exampleGameNet)
 	[x] remove ServerState::pemanent/transientMemory storage since it's 
 		completely unnecessary
-	[ ] clear client actors when we disconnect from server
+	[x] clear client actors when we disconnect from server
 	[ ] serverReadClient: move code that spawns a possessed client actor into 
 		another function (such as when a client connection is confirmed)
 		[ ] also, make sure the possessed actor is "deleted" on the server when 

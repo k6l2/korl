@@ -164,6 +164,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	ImGui::End();
 	/* Networking example Client logic */
+	if(g_gs->kNetClient.connectionState != network::ConnectionState::CONNECTED)
+	{
+		arrsetlen(g_gs->actors, 0);
+	}
 	kNetClientStep(&g_gs->kNetClient, deltaSeconds, 0.1f*deltaSeconds, 
 	               gameWriteClientState, gameClientReadServerState);
 #endif// INTERNAL_BUILD
