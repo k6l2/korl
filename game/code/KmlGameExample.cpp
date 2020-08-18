@@ -141,7 +141,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			switch(g_gs->kNetClient.connectionState)
 			{
-				case network::ConnectionState::NOT_CONNECTED:{
+				case network::ConnectionState::DISCONNECTING:{
 					ImGui::Text("Disconnecting...%c", 
 					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
 				}break;

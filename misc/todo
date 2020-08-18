@@ -536,7 +536,7 @@
 		[x] also, make sure the possessed actor is "deleted" on the server when 
 			the client disconnects
 	[x] gameWriteClientState: send input instead of actor data
-	[ ] discard old/duplicate packets using a rolling packet index
+	[x] discard old/duplicate packets using a rolling packet index
 	[ ] calculate round-trip-time using platform timestamps
 		[ ] send this data to each client via the client list
 	[ ] reliable data transfer protocol

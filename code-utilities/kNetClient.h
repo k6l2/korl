@@ -12,6 +12,8 @@ struct KNetClient
 	u8 packetBuffer[KPL_MAX_DATAGRAM_SIZE];
 	KplNetAddress addressServer;
 	f32 secondsSinceLastServerPacket;
+	u32 rollingUnreliableStateIndexServer;
+	u32 rollingUnreliableStateIndex;
 };
 internal void kNetClientOnPreUnload(KNetClient* knc);
 internal bool kNetClientIsDisconnected(const KNetClient* knc);

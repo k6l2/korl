@@ -23,7 +23,7 @@ internal void kNetClientConnect(KNetClient* knc,
 }
 internal void kNetClientBeginDisconnect(KNetClient* knc)
 {
-	knc->connectionState = network::ConnectionState::NOT_CONNECTED;
+	knc->connectionState = network::ConnectionState::DISCONNECTING;
 	knc->secondsSinceLastServerPacket = 0;
 }
 internal void kNetClientDropConnection(KNetClient* knc)
@@ -49,7 +49,7 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 			knc->packetBuffer + CARRAY_SIZE(knc->packetBuffer);
 		switch(knc->connectionState)
 		{
-			case network::ConnectionState::NOT_CONNECTED:{
+			case network::ConnectionState::DISCONNECTING:{
 				/* send disconnect packets to the server until we receive a 
 					disconnect aknowledgement from the server */
 				*(packetBuffer++) = static_cast<u8>(
@@ -62,16 +62,21 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 			}break;
 			case network::ConnectionState::CONNECTED:{
 				/* send client state every frame */
-				*(packetBuffer++) = static_cast<u8>(
-					network::PacketType::CLIENT_STATE);
+				kutil::netPack(static_cast<u8>(
+				               network::PacketType::CLIENT_UNRELIABLE_STATE), 
+				               &packetBuffer, knc->packetBuffer, 
+				               CARRAY_SIZE(knc->packetBuffer));
+				kutil::netPack(knc->rollingUnreliableStateIndex, 
+				               &packetBuffer, knc->packetBuffer, 
+				               CARRAY_SIZE(knc->packetBuffer));
+				knc->rollingUnreliableStateIndex++;
 				const u32 remainingPacketBufferSize = 
 					kmath::safeTruncateU32(kncPacketBufferEnd - packetBuffer);
 				packetBuffer += 
 					clientWriteState(packetBuffer, remainingPacketBufferSize);
 			}break;
 		}
-		kassert(packetBuffer > knc->packetBuffer);
-		const size_t packetSize = static_cast<size_t>(
+		const size_t packetSize = kmath::safeTruncateU64(
 			packetBuffer - knc->packetBuffer);
 		const i32 bytesSent = 
 			g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
@@ -89,7 +94,7 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 		g_kpl->socketClose(knc->socket);
 		knc->socket = KPL_INVALID_SOCKET_INDEX;
 		knc->connectionState = 
-			network::ConnectionState::NOT_CONNECTED;
+			network::ConnectionState::DISCONNECTING;
 		return;
 	}
 	/* since the virtual net connection is still live, look for packets being 
@@ -137,12 +142,23 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 					g_kpl->socketClose(knc->socket);
 					knc->socket = KPL_INVALID_SOCKET_INDEX;
 				}break;
-				case network::PacketType::SERVER_STATE:{
+				case network::PacketType::SERVER_UNRELIABLE_STATE:{
 					if(knc->connectionState != 
 						network::ConnectionState::CONNECTED)
 					{
 						break;
 					}
+					const u32 rollingUnreliableStateIndexServer = 
+						kutil::netUnpackU32(&packetBuffer, knc->packetBuffer, 
+						                    CARRAY_SIZE(knc->packetBuffer));
+					if(rollingUnreliableStateIndexServer <= 
+						knc->rollingUnreliableStateIndexServer)
+					/* drop/ignore old/duplicate server state packets! */
+					{
+						break;
+					}
+					knc->rollingUnreliableStateIndexServer = 
+						rollingUnreliableStateIndexServer;
 //					KLOG(INFO, "CLIENT: got server state!");
 					const u32 packetBufferSize = 
 						kmath::safeTruncateU32(bytesReceived - 1);
@@ -155,7 +171,7 @@ internal void kNetClientStep(KNetClient* knc, f32 deltaSeconds,
 					knc->socket = KPL_INVALID_SOCKET_INDEX;
 				}break;
 				case network::PacketType::CLIENT_CONNECT_REQUEST:
-				case network::PacketType::CLIENT_STATE:
+				case network::PacketType::CLIENT_UNRELIABLE_STATE:
 				case network::PacketType::CLIENT_DISCONNECT_REQUEST:
 				default:{
 					KLOG(ERROR, "CLIENT: invalid packet!");

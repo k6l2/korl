@@ -9,14 +9,20 @@ struct KNetServerClientEntry
 	u16 netPort;
 	f32 timeSinceLastPacket;
 	network::ConnectionState connectionState;
+	u32 rollingUnreliableStateIndex;
 };
 struct KNetServer
 {
 	KplSocketIndex socket = KPL_INVALID_SOCKET_INDEX;
 	u16 port;
 	/** `arrcap(clientArray)` is assumed to be equal to the `maxClients` 
-	 * parameter passed to `kNetServerStart` */
+	 * parameter passed to `kNetServerStart`.  KNetServer will never allow more 
+	 * than `maxClients` # of clients to connect to the server.  */
 	KNetServerClientEntry* clientArray;
+	/** assuming the client will drop server state indices below their latest 
+	 * index, a 32-bit var rolling 60 frames/second will become unstable if left 
+	 * running for several years non-stop - which is perfectly fine by me */
+	u32 rollingUnreliableStateIndex;
 };
 internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients);
 internal void kNetServerStop(KNetServer* kns);

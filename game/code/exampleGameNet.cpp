@@ -161,6 +161,7 @@ internal K_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
 		}
 	}
 	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
+	ss->actors[clientActorIndex] = {};
 	ss->actors[clientActorIndex].clientId = clientId;
 }
 internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
