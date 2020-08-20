@@ -163,6 +163,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			const i32 pingMilliseconds = static_cast<i32>(
 				g_gs->kNetClient.serverReportedRoundTripTime*1000);
 			ImGui::Text("ping: %ims", pingMilliseconds);
+			ImGui::InputText("", g_gs->clientReliableTextBuffer, 
+			                 CARRAY_SIZE(g_gs->clientReliableTextBuffer));
+			ImGui::SameLine();
+			if(ImGui::Button("SEND"))
+			{
+				const u16 reliableMessageBytes = 
+					reliableMessageAnsiTextPack(
+						g_gs->clientReliableTextBuffer, 
+						g_gs->reliableMessageBuffer, 
+						CARRAY_SIZE(g_gs->reliableMessageBuffer));
+				kNetClientQueueReliableMessage(&g_gs->kNetClient, 
+				                               g_gs->reliableMessageBuffer, 
+				                               reliableMessageBytes);
+			}
 		}
 	}
 	ImGui::End();

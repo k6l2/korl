@@ -33,9 +33,9 @@ privDefer<F> defer_func(F f) {
 		struct TestStruct
 		{
 			// ... some data declared in here
-		} FORCE_SYMBOL_EXPORT;*/
+		} FORCE_SYMBOL_EXPORT; */
 #define FORCE_SYMBOL_EXPORT \
-	CONCAT(*hack_force_symbol_export_DO_NOT_USE_,__COUNTER__)
+	CONCAT(hack_force_symbol_export_DO_NOT_USE_,__COUNTER__)
 /* Custom assert support. platform implementation required! */
 #define kassert(expression) do {\
 	platformAssert(static_cast<bool>(expression));\

@@ -19,14 +19,15 @@ internal void kNetServerStop(KNetServer* kns)
 	kns->socket = KPL_INVALID_SOCKET_INDEX;
 	arrfree(kns->clientArray);
 }
-internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds, 
-                       f32 netReceiveSeconds, 
-                       const PlatformTimeStamp& timeStampFrameStart, 
-                       fnSig_kNetServerReadClientState* fnReadClientState, 
-                       fnSig_kNetServerWriteState* fnWriteState, 
-                       fnSig_kNetServerOnClientConnect* fnOnClientConnect, 
-                       fnSig_kNetServerOnClientDisconnect* fnOnClientDisconnect, 
-                       void* userPointer)
+internal void kNetServerStep(
+	KNetServer* kns, f32 deltaSeconds, f32 netReceiveSeconds, 
+	const PlatformTimeStamp& timeStampFrameStart, 
+	fnSig_kNetServerReadClientState* fnReadClientState, 
+	fnSig_kNetServerWriteState* fnWriteState, 
+	fnSig_kNetServerOnClientConnect* fnOnClientConnect, 
+	fnSig_kNetServerOnClientDisconnect* fnOnClientDisconnect, 
+	fnSig_kNetServerReadReliableMessage* fnReadReliableMessage, 
+	void* userPointer)
 {
 	u8 netBuffer[KPL_MAX_DATAGRAM_SIZE];
 	do
@@ -178,6 +179,72 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				                  packetBuffer, packetBufferSize, userPointer);
 				kns->clientArray[clientIndex].timeSinceLastPacket = 0;
 			}break;
+			case network::PacketType::CLIENT_RELIABLE_MESSAGE_BUFFER: {
+				if(clientIndex >= arrcap(kns->clientArray))
+				/* client isn't even connected; ignore. */
+				{
+					break;
+				}
+				if(kns->clientArray[clientIndex].connectionState != 
+					network::ConnectionState::CONNECTED)
+				/* only handle reliable data for CONNECTED clients */
+				{
+					break;
+				}
+				/* extract range of reliable message rolling indices contained 
+					in the packet */
+				const u32 frontMessageRollingIndex = 
+					kutil::netUnpackU32(&packetBuffer, netBuffer, 
+					                    CARRAY_SIZE(netBuffer));
+				const u16 reliableMessageCount = 
+					kutil::netUnpackU16(&packetBuffer, netBuffer, 
+					                    CARRAY_SIZE(netBuffer));
+				/* using this information, we can determine if we need to:
+					- discard the packet
+					- read a subset of the messages
+					- read ALL the messages */
+				const u32 lastMessageRollingIndex = 
+					frontMessageRollingIndex + reliableMessageCount - 1;
+				if(lastMessageRollingIndex <= 
+						kns->clientArray[clientIndex]
+						.reliableDataBufferFrontMessageRollingIndex)
+				/* we have already read all these reliable messages, so we don't 
+					have to continue */
+				{
+					break;
+				}
+				/* at this point, we know that the server client's rolling index 
+					MUST lie in the range of [front - 1, last) if we've been 
+					reliably reading all the messages so far */
+				kassert(kns->clientArray[clientIndex]
+				        .reliableDataBufferFrontMessageRollingIndex >= 
+				            static_cast<i64>(frontMessageRollingIndex) - 1);
+				/* we must iterate over the reliable messages until we get to a 
+					rolling index greater than the server client's rolling 
+					index */
+				for(u32 rmi = frontMessageRollingIndex; 
+					rmi < reliableMessageCount; rmi++)
+				{
+					const u16 reliableMessageBytes = 
+						kutil::netUnpackU16(&packetBuffer, netBuffer, 
+						                    CARRAY_SIZE(netBuffer));
+					if(rmi <= kns->clientArray[clientIndex]
+				        .reliableDataBufferFrontMessageRollingIndex)
+					{
+						packetBuffer += reliableMessageBytes;
+						continue;
+					}
+					fnReadReliableMessage(kns->clientArray[clientIndex].id, 
+					                      packetBuffer, reliableMessageBytes, 
+					                      userPointer);
+					packetBuffer += reliableMessageBytes;
+				}
+				/* record the last reliable rolling index we have successfully 
+					received from the client */
+				kns->clientArray[clientIndex]
+					.reliableDataBufferFrontMessageRollingIndex = 
+						lastMessageRollingIndex;
+			}break;
 			case network::PacketType::CLIENT_DISCONNECT_REQUEST: {
 				if(clientIndex >= arrcap(kns->clientArray))
 				/* client isn't even connected; ignore. */
@@ -287,6 +354,9 @@ internal void kNetServerStep(KNetServer* kns, f32 deltaSeconds,
 				               netBuffer, CARRAY_SIZE(netBuffer));
 				kutil::netPack(kns->clientArray[c].roundTripTime, &packetBuffer, 
 				               netBuffer, CARRAY_SIZE(netBuffer));
+				kutil::netPack(kns->clientArray[c]
+					.reliableDataBufferFrontMessageRollingIndex,
+					&packetBuffer, netBuffer, CARRAY_SIZE(netBuffer));
 				packetBuffer += 
 					fnWriteState(packetBuffer, CARRAY_SIZE(netBuffer) - 1, 
 					             userPointer);

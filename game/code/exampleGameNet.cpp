@@ -2,6 +2,29 @@
 #include "serverExample.h"
 #include "KmlGameExample.h"
 #include "kNetCommon.h"
+internal u16 reliableMessageAnsiTextPack(const char* nullTerminatedAnsiText, 
+                                         u8 *dataBuffer, u32 dataBufferSize)
+{
+	u8* reliableMessageCursor = g_gs->reliableMessageBuffer;
+	u32 reliableMessageBytes = 
+		kutil::netPack(static_cast<u8>(ReliableMessageType::ANSI_TEXT_MESSAGE), 
+		               &reliableMessageCursor, dataBuffer, dataBufferSize);
+	const size_t ansiStringLength = strlen(nullTerminatedAnsiText);
+	reliableMessageBytes +=
+		kutil::netPack(ansiStringLength, &reliableMessageCursor, 
+		               dataBuffer, dataBufferSize);
+	kassert(reliableMessageCursor + ansiStringLength < 
+	        dataBuffer + dataBufferSize);
+	for(size_t c = 0; c < ansiStringLength; c++)
+	{
+		reliableMessageCursor[0] = *reinterpret_cast<const u8*>(
+			&nullTerminatedAnsiText[0]);
+		nullTerminatedAnsiText++;
+		reliableMessageCursor++;
+	}
+	reliableMessageBytes += kmath::safeTruncateU32(ansiStringLength);
+	return kmath::safeTruncateU16(reliableMessageBytes);
+}
 internal u32 actorNetPack(const Actor& a, u8 **ppPacketBuffer, 
                           u8 *dataBuffer, u32 dataBufferSize)
 {
@@ -179,4 +202,10 @@ internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
 	}
 	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
 	ss->actors[clientActorIndex].clientId = network::SERVER_INVALID_CLIENT_ID;
+}
+internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
+{
+	/* extract the `ReliableMessageType`, then read the data from it 
+		appropriately */
+	kassert(!"TODO");
 }

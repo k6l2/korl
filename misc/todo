@@ -543,6 +543,10 @@
 				because I don't really care about accumulating a list of server 
 				clients on each individual client
 	[ ] reliable data transfer protocol
+		[ ] client => server
+			[ ] send text message reliably to server
+		[ ] server => client
+			[ ] broadcast reliable text messages to all clients
 		[ ] send client inputs as reliable data
 	[-] optimize: serverWriteState: only send net-relevant actors
 	[ ] ensure game code hot-reload maintains network virtual connections
@@ -571,6 +575,7 @@
 [ ] DInput: move device enumeration into a separate thread so the main thread 
 	doesn't hang every time a device is hot-swapped
 [ ] DInput: force feedback
+[x] build: rebuild KML & game if the build scripts are changed
 [ ] build: ensure all necessary environment variables are set
 	https://stackoverflow.com/a/37073832
 [ ] build: check for errors output from preprocessing pipelines 

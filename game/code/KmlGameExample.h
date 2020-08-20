@@ -33,6 +33,8 @@ struct GameState
 	ServerState serverState;
 	char clientAddressBuffer[256];
 	KNetClient kNetClient;
+	char clientReliableTextBuffer[256];
+	u8 reliableMessageBuffer[KPL_MAX_DATAGRAM_SIZE];
 	/* sample media testing state */
 	KTapeHandle tapeBgmBattleTheme;
 	KFlipBook kFbShip;

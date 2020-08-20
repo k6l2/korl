@@ -58,6 +58,8 @@ for %%a in ("%KCPP_INCLUDE:;=" "%") do (
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt"
 rem --- Create a text tree of KML code to conditionally skip the .exe build ---
 call %KMD5_HOME%\build\kmd5.exe %KML_HOME%\code %project_root%\build %codeTreeFileNamePrefixKml%-current.txt
+rem append the build files (including this one) to the KML build dependency diff
+call %KMD5_HOME%\build\kmd5.exe %KML_HOME%\misc %project_root%\build %codeTreeFileNamePrefixKml%-current.txt --append
 echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixKml%-current.txt"
 pushd %project_root%\build
 rem --- Compile the win32 application's resource file in release mode ---
@@ -95,6 +97,8 @@ rem /W4 - warning level 4
 rem /Wall - use ALL warnings
 rem /WX - treat all warnings as errors
 rem /wd4100 - disable warning C4100 `unreferenced formal parameter`
+rem /wd4200 - disable warning C4200: nonstandard extension used: zero-sized 
+rem           array in struct/union
 rem /wd4201 - disable warning C4201 
 rem           `nonstandard extension used: nameless struct/union`
 rem /wd4505 - disable warning C4505 
@@ -155,7 +159,7 @@ rem ole32.lib    - DirectInput8 support.
 rem oleaut32.lib - DirectInput8 support.
 rem Hid.lib      - RawInput support (indirectly; support features)
 rem ws2_32.lib   - winsock (networking support)
-set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 ^
+set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 /wd4200 ^
 	/Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
 set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
 	/DINTERNAL_BUILD=0 /DSLOW_BUILD=0 
