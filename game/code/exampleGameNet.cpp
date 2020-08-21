@@ -3,19 +3,16 @@
 #include "KmlGameExample.h"
 #include "kNetCommon.h"
 internal u16 reliableMessageAnsiTextPack(
-	const char* nullTerminatedAnsiText, u8* dataBuffer, u32 dataBufferSize)
+	const char* nullTerminatedAnsiText, u8* dataBuffer, const u8* dataBufferEnd)
 {
 	u8* reliableMessageCursor = dataBuffer;
 	u32 reliableMessageBytes = 
-		kutil::netPack(static_cast<u8>(
-			ReliableMessageType::ANSI_TEXT_MESSAGE), 
-			&reliableMessageCursor, dataBuffer, dataBufferSize);
+		kutil::netPack(static_cast<u8>(ReliableMessageType::ANSI_TEXT_MESSAGE), 
+			           &reliableMessageCursor, dataBufferEnd);
 	const size_t ansiStringLength = strlen(nullTerminatedAnsiText);
 	reliableMessageBytes +=
-		kutil::netPack(ansiStringLength, &reliableMessageCursor, 
-		               dataBuffer, dataBufferSize);
-	kassert(reliableMessageCursor + ansiStringLength < 
-	        dataBuffer + dataBufferSize);
+		kutil::netPack(ansiStringLength, &reliableMessageCursor, dataBufferEnd);
+	kassert(reliableMessageCursor + ansiStringLength < dataBufferEnd);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
 		reliableMessageCursor[0] = 
@@ -27,19 +24,18 @@ internal u16 reliableMessageAnsiTextPack(
 }
 internal u32 reliableMessageAnsiTextUnpack(
 	char* o_nullTerminatedAnsiText, size_t nullTerminatedAnsiTextSize, 
-	const u8* dataBuffer, u32 dataBufferSize)
+	const u8* dataBuffer, const u8* dataBufferEnd)
 {
 	u32 unpackedBytes = 0;
 	const u8* dataBufferCursor = dataBuffer;
 	ReliableMessageType reliableMessageType;
 	unpackedBytes += 
 		kutil::netUnpack(reinterpret_cast<u8*>(&reliableMessageType), 
-		                 &dataBufferCursor, dataBuffer, dataBufferSize);
+		                 &dataBufferCursor, dataBufferEnd);
 	kassert(reliableMessageType == ReliableMessageType::ANSI_TEXT_MESSAGE);
 	size_t ansiStringLength;
 	unpackedBytes += 
-		kutil::netUnpack(&ansiStringLength, &dataBufferCursor, 
-		                 dataBuffer, dataBufferSize);
+		kutil::netUnpack(&ansiStringLength, &dataBufferCursor, dataBufferEnd);
 	kassert(nullTerminatedAnsiTextSize >= ansiStringLength + 1);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
@@ -51,99 +47,88 @@ internal u32 reliableMessageAnsiTextUnpack(
 	o_nullTerminatedAnsiText[ansiStringLength] = '\0';
 	return unpackedBytes;
 }
-internal u32 actorNetPack(const Actor& a, u8** ppPacketBuffer, 
-                          u8 *dataBuffer, u32 dataBufferSize)
+internal u32 actorNetPack(const Actor& a, u8** dataCursor, 
+                          const u8* dataCursorEnd)
 {
-	u32 bytesPacked = kutil::netPack(a.clientId, ppPacketBuffer, 
-	                                 dataBuffer, dataBufferSize);
+	u32 bytesPacked = 
+		kutil::netPack(a.clientId, dataCursor, dataCursorEnd);
 	for(size_t e = 0; e < CARRAY_SIZE(a.shipWorldPosition.elements); e++)
 	{
 		bytesPacked += 
-			kutil::netPack(a.shipWorldPosition.elements[e], ppPacketBuffer, 
-			               dataBuffer, dataBufferSize);
+			kutil::netPack(a.shipWorldPosition.elements[e], dataCursor, 
+			               dataCursorEnd);
 	}
 	for(size_t e = 0; e < CARRAY_SIZE(a.shipWorldOrientation.elements); e++)
 	{
 		bytesPacked += 
-			kutil::netPack(a.shipWorldOrientation.elements[e], ppPacketBuffer, 
-			               dataBuffer, dataBufferSize);
+			kutil::netPack(a.shipWorldOrientation.elements[e], dataCursor, 
+			               dataCursorEnd);
 	}
 	return bytesPacked;
 }
 internal u32 actorNetUnpack(Actor* a, const u8** dataCursor, 
-                            const u8 *dataBuffer, u32 dataBufferSize)
+                            const u8 *dataCursorEnd)
 {
 	u32 bytesUnpacked = 0;
 	bytesUnpacked += 
-		kutil::netUnpack(&a->clientId, dataCursor, dataBuffer, dataBufferSize);
+		kutil::netUnpack(&a->clientId, dataCursor, dataCursorEnd);
 	for(size_t e = 0; e < CARRAY_SIZE(a->shipWorldPosition.elements); e++)
 	{
 		bytesUnpacked += 
 			kutil::netUnpack(&a->shipWorldPosition.elements[e], 
-			                 dataCursor, dataBuffer, dataBufferSize);
+			                 dataCursor, dataCursorEnd);
 	}
 	for(size_t e = 0; e < CARRAY_SIZE(a->shipWorldOrientation.elements); e++)
 	{
 		bytesUnpacked += 
 			kutil::netUnpack(&a->shipWorldOrientation.elements[e], dataCursor, 
-			                 dataBuffer, dataBufferSize);
+			                 dataCursorEnd);
 	}
 	return bytesUnpacked;
 }
 internal u32 controlInputNetPack(const ClientControlInput& c, 
-                                 u8 **ppPacketBuffer, 
-                                 u8 *dataBuffer, u32 dataBufferSize)
+                                 u8** dataCursor, const u8* dataCursorEnd)
 {
 	u32 bytesPacked = 0;
-	bytesPacked += kutil::netPack(c.controlMoveVector.x, ppPacketBuffer, 
-	                              dataBuffer, dataBufferSize);
-	bytesPacked += kutil::netPack(c.controlMoveVector.y, ppPacketBuffer, 
-	                              dataBuffer, dataBufferSize);
+	bytesPacked += kutil::netPack(c.controlMoveVector.x, dataCursor, 
+	                              dataCursorEnd);
+	bytesPacked += kutil::netPack(c.controlMoveVector.y, dataCursor, 
+	                              dataCursorEnd);
 	bytesPacked += kutil::netPack(static_cast<u8>(c.controlResetPosition), 
-	                              ppPacketBuffer, dataBuffer, dataBufferSize);
+	                              dataCursor, dataCursorEnd);
 	return bytesPacked;
 }
-internal u32 controlInputNetUnpack(ClientControlInput* c, 
-                                   const u8 **ppPacketBuffer, 
-                                   const u8 *dataBuffer, u32 dataBufferSize)
+internal u32 controlInputNetUnpack(ClientControlInput* c, const u8** dataCursor, 
+                                   const u8* dataCursorEnd)
 {
 	u32 bytesUnpacked = 0;
 	bytesUnpacked += 
-		kutil::netUnpack(&c->controlMoveVector.x, ppPacketBuffer, 
-		                 dataBuffer, dataBufferSize);
+		kutil::netUnpack(&c->controlMoveVector.x, dataCursor, dataCursorEnd);
 	bytesUnpacked += 
-		kutil::netUnpack(&c->controlMoveVector.y, ppPacketBuffer, 
-		                 dataBuffer, dataBufferSize);
+		kutil::netUnpack(&c->controlMoveVector.y, dataCursor, dataCursorEnd);
 	bytesUnpacked += 
 		kutil::netUnpack(reinterpret_cast<u8*>(&c->controlResetPosition), 
-		                 ppPacketBuffer, dataBuffer, dataBufferSize);
+		                 dataCursor, dataCursorEnd);
 	return bytesUnpacked;
 }
 internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState)
 {
 	u32 bytesPacked = 0;
-	u8* packet = packetBuffer;
-	bytesPacked += controlInputNetPack(g_gs->controlInput, &packet, 
-	                                   packetBuffer, packetBufferSize);
+	bytesPacked += controlInputNetPack(g_gs->controlInput, &o_data, dataEnd);
 	return bytesPacked;
 }
 internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
 {
 	u32 bytesUnpacked = 0;
-	const u8* packetCursor = packetBuffer;
 	size_t netActorCount;
-	bytesUnpacked += 
-		kutil::netUnpack(&netActorCount, &packetCursor, 
-		                 packetBuffer, packetBufferSize);
+	bytesUnpacked += kutil::netUnpack(&netActorCount, &data, dataEnd);
 	arrsetlen(g_gs->actors, netActorCount);
 	for(size_t a = 0; a < netActorCount; a++)
 	{
 		Actor& actor = g_gs->actors[a];
-		bytesUnpacked += 
-			actorNetUnpack(&actor, &packetCursor, 
-			               packetBuffer, packetBufferSize);
+		bytesUnpacked += actorNetUnpack(&actor, &data, dataEnd);
 	}
-	kassert(bytesUnpacked == packetBufferSize);
+	kassert(data == dataEnd);
 }
 internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 {
@@ -163,11 +148,8 @@ internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 		actor possessed by clientId, so we can now populate this data with the 
 		packet data received by the client~ */
 	u32 bytesUnpacked = 0;
-	const u8* packetCursor = packetBuffer;
 	ClientControlInput clientControlInput;
-	bytesUnpacked += 
-		controlInputNetUnpack(&clientControlInput, &packetCursor, 
-		                      packetBuffer, packetBufferSize);
+	bytesUnpacked += controlInputNetUnpack(&clientControlInput, &data, dataEnd);
 	/* apply input to client's possessed actor on the server */
 	clientActor.shipWorldPosition.x += 
 		10*clientControlInput.controlMoveVector.x;
@@ -185,7 +167,7 @@ internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 	{
 		clientActor.shipWorldPosition = {};
 	}
-	kassert(bytesUnpacked == packetBufferSize);
+	kassert(data == dataEnd);
 }
 internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 {
@@ -201,15 +183,12 @@ internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 	}
 	/* pack all the active actors into the server state 
 		@optimization: only pack actors the player is within range of */
-	u8* packet = packetBuffer;
 	u32 bytesPacked = 0;
-	bytesPacked += kutil::netPack(arrlenu(arrayActorIndices), &packet, 
-	                              packetBuffer, packetBufferSize);
+	bytesPacked += kutil::netPack(arrlenu(arrayActorIndices), &data, dataEnd);
 	for(size_t aa = 0; aa < arrlenu(arrayActorIndices); aa++)
 	{
 		bytesPacked += 
-			actorNetPack(ss->actors[arrayActorIndices[aa]], &packet, 
-			             packetBuffer, packetBufferSize);
+			actorNetPack(ss->actors[arrayActorIndices[aa]], &data, dataEnd);
 	}
 	return bytesPacked;
 }
@@ -252,7 +231,7 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 	/* peek at the `ReliableMessageType`, then read the data from it 
 		appropriately */
 	const ReliableMessageType reliableMessageType = 
-		ReliableMessageType(netDataBuffer[0]);
+		ReliableMessageType(netData[0]);
 	u32 bytesUnpacked = 0;
 	switch(reliableMessageType)
 	{
@@ -260,8 +239,7 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 			char ansiBuffer[256];
 			bytesUnpacked += 
 				reliableMessageAnsiTextUnpack(
-					ansiBuffer, CARRAY_SIZE(ansiBuffer), netDataBuffer, 
-					netDataBufferSize);
+					ansiBuffer, CARRAY_SIZE(ansiBuffer), netData, netDataEnd);
 			KLOG(INFO, "SERVER: ANSI_TEXT_MESSAGE=\"%s\"", ansiBuffer);
 		}break;
 		default:{
@@ -269,6 +247,6 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 			     reliableMessageType);
 		}break;
 	}
-	kassert(bytesUnpacked == netDataBufferSize);
+	kassert(bytesUnpacked == (netDataEnd - netData));
 	return bytesUnpacked;
 }

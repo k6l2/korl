@@ -42,9 +42,9 @@ internal void kNetClientDropConnection(KNetClient* knc);
  * @return the # of bytes written to `packetBuffer`
  */
 #define K_NET_CLIENT_WRITE_STATE(name) \
-	u32 name(u8* packetBuffer, u32 packetBufferSize)
+	u32 name(u8* o_data, const u8* dataEnd)
 #define K_NET_CLIENT_READ_SERVER_STATE(name) \
-	void name(const u8* packetBuffer, u32 packetBufferSize)
+	void name(const u8* data, const u8* dataEnd)
 typedef K_NET_CLIENT_WRITE_STATE(fnSig_kNetClientWriteState);
 typedef K_NET_CLIENT_READ_SERVER_STATE(fnSig_kNetClientReadServerState);
 internal void kNetClientStep(

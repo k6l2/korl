@@ -67,97 +67,76 @@ namespace kutil
 	*/
 	const char* fileName(const char* filePath);
 	/**
-	 * upon execution, `data` will be stored in the array `dataBuffer` at the 
-	 * position currently pointed to by `*ppPacketBuffer`, and `*ppPacketBuffer` 
-	 * is incremented by `sizeof(data)`
+	 * upon execution, `data` will be stored in an array at the position 
+	 * currently pointed to by `*bufferCursor`, and `*bufferCursor` is 
+	 * incremented by `sizeof(data)`
 	 * @param data the variable to pack
-	 * @param ppPacketBuffer pointer to the address of the moving current byte 
-	 *                       within `dataBuffer`
-	 * @param dataBuffer the first element of the array to which 
-	 *                   `*ppPacketBuffer` is writing to
-	 * @param dataBufferSize it's fairly safe to assume we're never going to be 
-	 *                       working with >4GB data buffers, so u32 is just fine
-	 * @return the # of bytes packed into `dataBuffer`
+	 * @param bufferCursor pointer to the address of the moving current byte 
+	 *                     within an array
+	 * @param bufferEnd pointer to the address immediately following the last 
+	 *                  byte within the buffer which `*bufferCursor` is pointing 
+	 *                  to.  `*bufferEnd` should NEVER be modified, and netPack 
+	 *                  will fail if the call is about to violate this axiom.
+	 * @return the # of bytes packed into `*bufferCursor`
 	 */
-	u32 netPack(u64 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(u64 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(u32 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(u32 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(u16 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(u16 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(u8 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(u8 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(i64 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(i64 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(i32 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(i32 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(i16 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(i16 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(i8 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(i8 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(f32 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(f32 data, u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netPack(f64 data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize);
+	u32 netPack(f64 data, u8** bufferCursor, const u8* bufferEnd);
 	/* this template prevents calls to netPack which don't precisely match the 
 		data parameter.  Source: https://stackoverflow.com/a/12877589 */
 	template<class T>
-	u32 netPack(T data, u8** ppPacketBuffer, u8* dataBuffer, 
-	            u32 dataBufferSize) = delete;
+	u32 netPack(T data, u8** bufferCursor, const u8* bufferEnd) = delete;
 	/**
-	 * upon execution, a value is extracted from `dataBuffer` at the 
-	 * position currently pointed to by `*ppPacketBuffer`, and `*ppPacketBuffer` 
+	 * upon execution, a value is extracted from an array defined by the 
+	 * position currently pointed to by `*bufferCursor`, and `*bufferCursor` 
 	 * is incremented by `sizeof(*o_data)`
 	 * @param o_data the return value which receives the unpacked data
-	 * @param ppPacketBuffer pointer to the address of the moving current byte 
+	 * @param bufferCursor pointer to the address of the moving current byte 
 	 *                       within `dataBuffer`
-	 * @param dataBuffer the first element of the array to which 
-	 *                   `*ppPacketBuffer` is reading from
-	 * @param dataBufferSize it's fairly safe to assume we're never going to be 
-	 *                       working with >4GB data buffers, so u32 is just fine
-	 * @return the # of bytes unpacked from `dataBuffer`
+	 * @param bufferEnd pointer to the address immediately following the last 
+	 *                  byte within the buffer which `*bufferCursor` is pointing 
+	 *                  to.  `*bufferEnd` should NEVER be read, and netUnpack 
+	 *                  will fail if the call is about to violate this axiom.
+	 * @return the # of bytes unpacked from `*bufferCursor`
 	 */
-	u32 netUnpack(u64* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(u64* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(u32* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(u32* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(u16* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(u16* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(u8* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(u8* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(i64* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(i64* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(i32* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(i32* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(i16* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(i16* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(i8* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(i8* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(f32* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(f32* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/** See above for documentation */
-	u32 netUnpack(f64* o_data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize);
+	u32 netUnpack(f64* o_data, const u8** bufferCursor, const u8* bufferEnd);
 	/* this template prevents calls to netUnpack which don't precisely match the 
 		data parameter.  Source: https://stackoverflow.com/a/12877589 */
 	template<class T>
-	u32 netUnpack(T data, const u8** ppPacketBuffer, const u8* dataBuffer, 
-	              u32 dataBufferSize) = delete;
+	u32 netUnpack(T data, const u8** bufferCursor, const u8* bufferEnd) 
+		= delete;
 }

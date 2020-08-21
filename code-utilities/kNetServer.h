@@ -32,13 +32,13 @@ struct KNetServer
 internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients);
 internal void kNetServerStop(KNetServer* kns);
 #define K_NET_SERVER_READ_CLIENT_STATE(name) \
-	void name(network::ServerClientId clientId, const u8* packetBuffer, \
-	          u32 packetBufferSize, void* userPointer)
+	void name(network::ServerClientId clientId, const u8* data, \
+	          const u8* dataEnd, void* userPointer)
 /**
  * @return the # of bytes written to `packetBuffer`
  */
 #define K_NET_SERVER_WRITE_STATE(name) \
-	u32 name(u8* packetBuffer, u32 packetBufferSize, void* userPointer)
+	u32 name(u8* data, const u8* dataEnd, void* userPointer)
 #define K_NET_SERVER_ON_CLIENT_CONNECT(name) \
 	void name(network::ServerClientId clientId, void* userPointer)
 #define K_NET_SERVER_ON_CLIENT_DISCONNECT(name) \
@@ -47,8 +47,8 @@ internal void kNetServerStop(KNetServer* kns);
  * @return the # of bytes read/unpacked from `netDataBuffer`
  */
 #define K_NET_SERVER_READ_RELIABLE_MESSAGE(name) \
-	u32 name(network::ServerClientId clientId, const u8* netDataBuffer, \
-	          u32 netDataBufferSize, void* userPointer)
+	u32 name(network::ServerClientId clientId, const u8* netData, \
+	          const u8* netDataEnd, void* userPointer)
 typedef K_NET_SERVER_READ_CLIENT_STATE(fnSig_kNetServerReadClientState);
 typedef K_NET_SERVER_WRITE_STATE(fnSig_kNetServerWriteState);
 typedef K_NET_SERVER_ON_CLIENT_CONNECT(fnSig_kNetServerOnClientConnect);

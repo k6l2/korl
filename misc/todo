@@ -557,8 +557,8 @@
 		parameter, and return the # of bytes unpacked.  This is better because 
 		back in the user code, we can accumulate the # of bytes unpacked and 
 		assert that the derived value matches some known value!
-	[ ] consider changing kutil net (un)packing API to take a buffer end pointer 
-		instead of the buffer size
+	[x] consider changing kutil net (un)packing API to take a buffer end pointer 
+		instead of the buffer + buffer size
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

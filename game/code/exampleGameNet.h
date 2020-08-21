@@ -12,8 +12,9 @@ enum class ReliableMessageType : u8
 {
 	ANSI_TEXT_MESSAGE
 };
-internal u16 reliableMessageAnsiTextPack(const char* nullTerminatedAnsiText, 
-                                         u8 *dataBuffer, u32 dataBufferSize);
+internal u16 reliableMessageAnsiTextPack(
+	const char* nullTerminatedAnsiText, u8* dataBuffer, 
+	const u8* dataBufferEnd);
 internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState);
 internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState);
 internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient);

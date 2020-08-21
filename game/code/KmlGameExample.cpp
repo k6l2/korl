@@ -172,7 +172,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					reliableMessageAnsiTextPack(
 						g_gs->clientReliableTextBuffer, 
 						g_gs->reliableMessageBuffer, 
-						CARRAY_SIZE(g_gs->reliableMessageBuffer));
+						g_gs->reliableMessageBuffer + 
+							CARRAY_SIZE(g_gs->reliableMessageBuffer));
 				kNetClientQueueReliableMessage(&g_gs->kNetClient, 
 					g_gs->reliableMessageBuffer, reliableMessageBytes);
 			}
