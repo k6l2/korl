@@ -5,19 +5,18 @@
 internal u16 reliableMessageAnsiTextPack(
 	const char* nullTerminatedAnsiText, u8* dataBuffer, const u8* dataBufferEnd)
 {
-	u8* reliableMessageCursor = dataBuffer;
 	u32 reliableMessageBytes = 
 		kutil::netPack(static_cast<u8>(ReliableMessageType::ANSI_TEXT_MESSAGE), 
-			           &reliableMessageCursor, dataBufferEnd);
+			           &dataBuffer, dataBufferEnd);
 	const size_t ansiStringLength = strlen(nullTerminatedAnsiText);
 	reliableMessageBytes +=
-		kutil::netPack(ansiStringLength, &reliableMessageCursor, dataBufferEnd);
-	kassert(reliableMessageCursor + ansiStringLength < dataBufferEnd);
+		kutil::netPack(ansiStringLength, &dataBuffer, dataBufferEnd);
+	kassert(dataBuffer + ansiStringLength < dataBufferEnd);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
-		reliableMessageCursor[0] = 
-			*reinterpret_cast<const u8*>(&nullTerminatedAnsiText[c]);
-		reliableMessageCursor++;
+		dataBuffer[0] = *reinterpret_cast<const u8*>(
+			&nullTerminatedAnsiText[c]);
+		dataBuffer++;
 	}
 	reliableMessageBytes += kmath::safeTruncateU32(ansiStringLength);
 	return kmath::safeTruncateU16(reliableMessageBytes);
@@ -27,21 +26,20 @@ internal u32 reliableMessageAnsiTextUnpack(
 	const u8* dataBuffer, const u8* dataBufferEnd)
 {
 	u32 unpackedBytes = 0;
-	const u8* dataBufferCursor = dataBuffer;
 	ReliableMessageType reliableMessageType;
 	unpackedBytes += 
 		kutil::netUnpack(reinterpret_cast<u8*>(&reliableMessageType), 
-		                 &dataBufferCursor, dataBufferEnd);
+		                 &dataBuffer, dataBufferEnd);
 	kassert(reliableMessageType == ReliableMessageType::ANSI_TEXT_MESSAGE);
 	size_t ansiStringLength;
 	unpackedBytes += 
-		kutil::netUnpack(&ansiStringLength, &dataBufferCursor, dataBufferEnd);
+		kutil::netUnpack(&ansiStringLength, &dataBuffer, dataBufferEnd);
 	kassert(nullTerminatedAnsiTextSize >= ansiStringLength + 1);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
 		o_nullTerminatedAnsiText[c] = 
-			*reinterpret_cast<const char*>(&dataBufferCursor[0]);
-		dataBufferCursor++;
+			*reinterpret_cast<const char*>(&dataBuffer[0]);
+		dataBuffer++;
 	}
 	unpackedBytes += kmath::safeTruncateU32(ansiStringLength);
 	o_nullTerminatedAnsiText[ansiStringLength] = '\0';
@@ -111,11 +109,34 @@ internal u32 controlInputNetUnpack(ClientControlInput* c, const u8** dataCursor,
 		                 dataCursor, dataCursorEnd);
 	return bytesUnpacked;
 }
+internal u16 reliableMessageClientControlInputPack(
+	const ClientControlInput& cci, u8* o_data, const u8* dataEnd)
+{
+	u32 reliableMessageBytes = 
+		kutil::netPack(static_cast<u8>(ReliableMessageType::CLIENT_INPUT_STATE), 
+			           &o_data, dataEnd);
+	reliableMessageBytes += controlInputNetPack(cci, &o_data, dataEnd);
+	return kmath::safeTruncateU16(reliableMessageBytes);
+}
+internal u32 reliableMessageClientControlInputUnpack(
+	ClientControlInput* o_cci, const u8* data, const u8* dataEnd)
+{
+	u32 unpackedBytes = 0;
+	/* ensure that this is the correct type of reliable message! */
+	{
+		ReliableMessageType reliableMessageType;
+		unpackedBytes += 
+			kutil::netUnpack(reinterpret_cast<u8*>(&reliableMessageType), 
+			                 &data, dataEnd);
+		kassert(reliableMessageType == ReliableMessageType::CLIENT_INPUT_STATE);
+	}
+	unpackedBytes += controlInputNetUnpack(o_cci, &data, dataEnd);
+	return unpackedBytes;
+}
 internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState)
 {
-	u32 bytesPacked = 0;
-	bytesPacked += controlInputNetPack(g_gs->controlInput, &o_data, dataEnd);
-	return bytesPacked;
+	/* if client ever needs to send unreliable data, pack it up here! */
+	return 0;
 }
 internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
 {
@@ -132,42 +153,8 @@ internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
 }
 internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 {
-	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
-	/* search for the actor possessed by clientId in the ServerState */
-	size_t clientActorIndex = 0;
-	for(; clientActorIndex < CARRAY_SIZE(ss->actors); clientActorIndex++)
-	{
-		if(ss->actors[clientActorIndex].clientId == clientId)
-		{
-			break;
-		}
-	}
-	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
-	Actor& clientActor = ss->actors[clientActorIndex];
-	/* at this point, we know that clientActorIndex is the correct index of the 
-		actor possessed by clientId, so we can now populate this data with the 
-		packet data received by the client~ */
-	u32 bytesUnpacked = 0;
-	ClientControlInput clientControlInput;
-	bytesUnpacked += controlInputNetUnpack(&clientControlInput, &data, dataEnd);
-	/* apply input to client's possessed actor on the server */
-	clientActor.shipWorldPosition.x += 
-		10*clientControlInput.controlMoveVector.x;
-	clientActor.shipWorldPosition.y += 
-		10*clientControlInput.controlMoveVector.y;
-	if(!kmath::isNearlyZero(clientControlInput.controlMoveVector.x) 
-		|| !kmath::isNearlyZero(clientControlInput.controlMoveVector.y))
-	{
-		const f32 stickRadians =
-			kmath::v2Radians(clientControlInput.controlMoveVector);
-		clientActor.shipWorldOrientation =
-			kQuaternion({0,0,1}, stickRadians - PI32/2);
-	}
-	if(clientControlInput.controlResetPosition)
-	{
-		clientActor.shipWorldPosition = {};
-	}
-	kassert(data == dataEnd);
+	/* if client ever sends any unreliable data, unpack and interpret it 
+		here! */
 }
 internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 {
@@ -235,6 +222,44 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 	u32 bytesUnpacked = 0;
 	switch(reliableMessageType)
 	{
+		case ReliableMessageType::CLIENT_INPUT_STATE:{
+			/* unpack the client input from the reliable message payload */
+			ClientControlInput cci;
+			bytesUnpacked += reliableMessageClientControlInputUnpack(
+				&cci, netData, netDataEnd);
+			/* search for the actor possessed by clientId in the ServerState */
+			ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
+			size_t clientActorIndex = 0;
+			for(; clientActorIndex < CARRAY_SIZE(ss->actors); 
+				clientActorIndex++)
+			{
+				if(ss->actors[clientActorIndex].clientId == clientId)
+				{
+					break;
+				}
+			}
+			if(clientActorIndex >= CARRAY_SIZE(ss->actors))
+				break;
+			/* at this point, we know that clientActorIndex is the correct index 
+				of the actor possessed by clientId, so we can now populate this 
+				data with the packet data received by the client~ */
+			Actor& clientActor = ss->actors[clientActorIndex];
+			/* apply input to client's possessed actor on the server */
+			clientActor.shipWorldPosition.x += 10*cci.controlMoveVector.x;
+			clientActor.shipWorldPosition.y += 10*cci.controlMoveVector.y;
+			if(    !kmath::isNearlyZero(cci.controlMoveVector.x) 
+			    || !kmath::isNearlyZero(cci.controlMoveVector.y))
+			{
+				const f32 stickRadians =
+					kmath::v2Radians(cci.controlMoveVector);
+				clientActor.shipWorldOrientation =
+					kQuaternion({0,0,1}, stickRadians - PI32/2);
+			}
+			if(cci.controlResetPosition)
+			{
+				clientActor.shipWorldPosition = {};
+			}
+		}break;
 		case ReliableMessageType::ANSI_TEXT_MESSAGE:{
 			char ansiBuffer[256];
 			bytesUnpacked += 

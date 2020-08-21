@@ -10,11 +10,19 @@ struct Actor
 };
 enum class ReliableMessageType : u8
 {
+	CLIENT_INPUT_STATE,
 	ANSI_TEXT_MESSAGE
+};
+struct ClientControlInput
+{
+	v2f32 controlMoveVector;
+	bool controlResetPosition;
 };
 internal u16 reliableMessageAnsiTextPack(
 	const char* nullTerminatedAnsiText, u8* dataBuffer, 
 	const u8* dataBufferEnd);
+internal u16 reliableMessageClientControlInputPack(
+	const ClientControlInput& cci, u8* o_data, const u8* dataEnd);
 internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState);
 internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState);
 internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient);

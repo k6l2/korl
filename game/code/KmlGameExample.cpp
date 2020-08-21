@@ -207,7 +207,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		platform layer (newer file write timestamp) */
 	if(kamUnloadChangedAssets(g_gs->assetManager))
 		kamPushAllKAssets(g_gs->assetManager);
-	g_gs->controlInput = {};
 	for(u8 c = 0; c < numGamePads; c++)
 	{
 		GamePad& gpad = gamePadArray[c];
@@ -231,7 +230,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				             KAssetIndex::sfx_joesteroids_shoot_modified_wav);
 			}
 		}
-		g_gs->controlInput.controlMoveVector = gpad.stickLeft;
+		ClientControlInput controlInput = {};
+		controlInput.controlMoveVector = gpad.stickLeft;
 		const f32 controlVolumeRatio = 
 			(gpad.stickRight.y/2) + 0.5f;
 		kauSetVolume(g_gs->kAudioMixer, &g_gs->tapeBgmBattleTheme, 
@@ -245,7 +245,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		if(gpad.stickClickLeft == ButtonState::PRESSED)
 		{
-			g_gs->controlInput.controlResetPosition = true;
+			controlInput.controlResetPosition = true;
 		}
 #if 1
 		if(gpad.faceDown == ButtonState::PRESSED)
@@ -257,6 +257,17 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			kamUnloadAllAssets(g_gs->assetManager);
 		}
 #endif //1
+		/* send the client's controller input for this frame as a reliable 
+			message */
+		{
+			const u16 reliableMessageBytes = 
+				reliableMessageClientControlInputPack(
+					controlInput, g_gs->reliableMessageBuffer, 
+					g_gs->reliableMessageBuffer + 
+						CARRAY_SIZE(g_gs->reliableMessageBuffer));
+			kNetClientQueueReliableMessage(&g_gs->kNetClient, 
+				g_gs->reliableMessageBuffer, reliableMessageBytes);
+		}
 	}
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);
 	const f32 windowAspectRatio = windowDimensions.y == 0 

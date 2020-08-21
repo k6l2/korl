@@ -414,10 +414,15 @@
 		hard-coded
 	[x] fix DirectInput deadzone
 	[ ] reimplement force feedback for Xinput controllers
-	[-] PS4 controller support
+	[ ] PS4 controller support
 		https://gist.github.com/ocornut/d2d82bbb224c071d7d085e336cc92e37
 		UHHhhh, so PS4 controller isn't even DirectInput8 compatible... so all 
 		this was for nothing (for now...)
+		NO, actually it is being detected just fine !!!  Most likely the issue 
+		is that DInput is reporting several axes/buttons active when idle or 
+		something.
+		[ ] figure out how to solve the issue of PS4 reporting activity when 
+			nothing is being pressed
 [ ] win32: RawInput support
 	https://docs.microsoft.com/en-us/windows/win32/inputdev/about-raw-input
 	https://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
@@ -546,7 +551,7 @@
 		[x] client => server
 			[x] send text message reliably to server
 			[x] test by purposely dropping the reliable data a few times
-		[ ] send client inputs as reliable data
+		[x] send client inputs as reliable data
 			- at this point, the only unreliable client=>server data should just 
 				be connection telemetry
 		[ ] server => client
@@ -559,6 +564,10 @@
 		assert that the derived value matches some known value!
 	[x] consider changing kutil net (un)packing API to take a buffer end pointer 
 		instead of the buffer + buffer size
+[ ] win32: allow multiple instances of the program to be run on the same 
+	computer so that it is possible to debug client prediction on one machine
+	[ ] generate a unique `fullPathToGameDllTemp` each time the program is run 
+		[ ] erase the temp DLL when the program exits probably?
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

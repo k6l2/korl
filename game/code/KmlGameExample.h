@@ -16,11 +16,6 @@
 internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
                              void* context);
 internal void kStbDsFree(void* allocatedAddress, void* context);
-struct ClientControlInput
-{
-	v2f32 controlMoveVector;
-	bool controlResetPosition;
-};
 struct GameState
 {
 	KAssetManager* assetManager;
@@ -40,7 +35,6 @@ struct GameState
 	KFlipBook kFbShip;
 	KFlipBook kFbShipExhaust;
 	Actor* actors;
-	ClientControlInput controlInput;
 };
 global_variable GameState* g_gs;
 global_variable KmlPlatformApi* g_kpl;

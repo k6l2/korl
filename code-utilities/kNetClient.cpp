@@ -142,7 +142,7 @@ internal void kNetClientDequeueReliableMessages(
 			reliableDataCursor - knc->reliableDataBuffer);
 		knc->reliableDataBufferMessageCount--;
 		knc->reliableDataBufferFrontMessageRollingIndex++;
-		KLOG(INFO, "CLIENT: confirmed reliable message[%i]", rmi);
+//		KLOG(INFO, "CLIENT: confirmed reliable message[%i]", rmi);
 	}
 }
 internal void kNetClientStep(
