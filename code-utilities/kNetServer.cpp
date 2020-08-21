@@ -213,6 +213,17 @@ internal void kNetServerStep(
 				{
 					break;
 				}
+#if INTERNAL_BUILD && 0
+				if(kns->clientArray[clientIndex].debugTestDropReliableData)
+				/* test the reliable packet system a bit by purposely dropping 
+					reliable data */
+				{
+					kns->clientArray[clientIndex].debugTestDropReliableData--;
+					break;
+				}
+				kns->clientArray[clientIndex].debugTestDropReliableData = 1000;
+#endif// INTERNAL_BUILD
+				KLOG(INFO, "SERVER: new CLIENT_RELIABLE_MESSAGE_BUFFER");
 				/* at this point, we know that the server client's rolling index 
 					MUST lie in the range of [front - 1, last) if we've been 
 					reliably reading all the messages so far */
@@ -223,7 +234,8 @@ internal void kNetServerStep(
 					rolling index greater than the server client's rolling 
 					index */
 				for(u32 rmi = frontMessageRollingIndex; 
-					rmi < reliableMessageCount; rmi++)
+					rmi < frontMessageRollingIndex + reliableMessageCount; 
+					rmi++)
 				{
 					const u16 reliableMessageBytes = 
 						kutil::netUnpackU16(&packetBuffer, netBuffer, 

@@ -543,11 +543,14 @@
 				because I don't really care about accumulating a list of server 
 				clients on each individual client
 	[ ] reliable data transfer protocol
-		[ ] client => server
-			[ ] send text message reliably to server
+		[x] client => server
+			[x] send text message reliably to server
+			[x] test by purposely dropping the reliable data a few times
+		[ ] send client inputs as reliable data
+			- at this point, the only unreliable client=>server data should just 
+				be connection telemetry
 		[ ] server => client
 			[ ] broadcast reliable text messages to all clients
-		[ ] send client inputs as reliable data
 	[-] optimize: serverWriteState: only send net-relevant actors
 	[ ] ensure game code hot-reload maintains network virtual connections
 	[ ] change kutil::netUnpack API to return the value in an overloaded 

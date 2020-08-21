@@ -2,13 +2,14 @@
 #include "serverExample.h"
 #include "KmlGameExample.h"
 #include "kNetCommon.h"
-internal u16 reliableMessageAnsiTextPack(const char* nullTerminatedAnsiText, 
-                                         u8 *dataBuffer, u32 dataBufferSize)
+internal u16 reliableMessageAnsiTextPack(
+	const char* nullTerminatedAnsiText, u8* dataBuffer, u32 dataBufferSize)
 {
-	u8* reliableMessageCursor = g_gs->reliableMessageBuffer;
+	u8* reliableMessageCursor = dataBuffer;
 	u32 reliableMessageBytes = 
-		kutil::netPack(static_cast<u8>(ReliableMessageType::ANSI_TEXT_MESSAGE), 
-		               &reliableMessageCursor, dataBuffer, dataBufferSize);
+		kutil::netPack(static_cast<u8>(
+			ReliableMessageType::ANSI_TEXT_MESSAGE), 
+			&reliableMessageCursor, dataBuffer, dataBufferSize);
 	const size_t ansiStringLength = strlen(nullTerminatedAnsiText);
 	reliableMessageBytes +=
 		kutil::netPack(ansiStringLength, &reliableMessageCursor, 
@@ -17,13 +18,31 @@ internal u16 reliableMessageAnsiTextPack(const char* nullTerminatedAnsiText,
 	        dataBuffer + dataBufferSize);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
-		reliableMessageCursor[0] = *reinterpret_cast<const u8*>(
-			&nullTerminatedAnsiText[0]);
-		nullTerminatedAnsiText++;
+		reliableMessageCursor[0] = 
+			*reinterpret_cast<const u8*>(&nullTerminatedAnsiText[c]);
 		reliableMessageCursor++;
 	}
 	reliableMessageBytes += kmath::safeTruncateU32(ansiStringLength);
 	return kmath::safeTruncateU16(reliableMessageBytes);
+}
+internal void reliableMessageAnsiTextUnpack(
+	char* o_nullTerminatedAnsiText, size_t nullTerminatedAnsiTextSize, 
+	const u8* dataBuffer, u32 dataBufferSize)
+{
+	const u8* dataBufferCursor = dataBuffer;
+	const ReliableMessageType reliableMessageType = ReliableMessageType(
+		kutil::netUnpackU8(&dataBufferCursor, dataBuffer, dataBufferSize));
+	kassert(reliableMessageType == ReliableMessageType::ANSI_TEXT_MESSAGE);
+	const size_t ansiStringLength = 
+		kutil::netUnpackU64(&dataBufferCursor, dataBuffer, dataBufferSize);
+	kassert(nullTerminatedAnsiTextSize >= ansiStringLength + 1);
+	for(size_t c = 0; c < ansiStringLength; c++)
+	{
+		o_nullTerminatedAnsiText[c] = 
+			*reinterpret_cast<const char*>(&dataBufferCursor[0]);
+		dataBufferCursor++;
+	}
+	o_nullTerminatedAnsiText[ansiStringLength] = '\0';
 }
 internal u32 actorNetPack(const Actor& a, u8 **ppPacketBuffer, 
                           u8 *dataBuffer, u32 dataBufferSize)
@@ -205,7 +224,21 @@ internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
 }
 internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 {
-	/* extract the `ReliableMessageType`, then read the data from it 
+	/* peek at the `ReliableMessageType`, then read the data from it 
 		appropriately */
-	kassert(!"TODO");
+	const ReliableMessageType reliableMessageType = 
+		ReliableMessageType(netDataBuffer[0]);
+	switch(reliableMessageType)
+	{
+		case ReliableMessageType::ANSI_TEXT_MESSAGE:{
+			char ansiBuffer[256];
+			reliableMessageAnsiTextUnpack(ansiBuffer, CARRAY_SIZE(ansiBuffer), 
+				                          netDataBuffer, netDataBufferSize);
+			KLOG(INFO, "SERVER: ANSI_TEXT_MESSAGE=\"%s\"", ansiBuffer);
+		}break;
+		default:{
+			KLOG(ERROR, "Invalid reliable message type! (%i)", 
+			     reliableMessageType);
+		}break;
+	}
 }

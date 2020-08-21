@@ -67,8 +67,7 @@ internal u16 kNetClientGetReliableDataBufferUsedBytes(
 			message size to the total used byte count */
 		reliableDataBufferUsedBytes += 
 			sizeof(messageByteCount) + messageByteCount;
-		reliableDataBufferCursor += 
-			sizeof(messageByteCount) + messageByteCount;
+		reliableDataBufferCursor += messageByteCount;
 		if(reliableDataBufferCursor >= reliableDataBufferEnd)
 			reliableDataBufferCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
 		kassert(reliableDataBufferCursor >= knc->reliableDataBuffer);
@@ -91,10 +90,15 @@ internal void kNetClientDequeueReliableMessages(
 			serverReportedReliableMessageRollingIndex + 1;
 		return;
 	}
+	if(serverReportedReliableMessageRollingIndex < 
+		knc->reliableDataBufferFrontMessageRollingIndex)
+	/* the server has not confirmed receipt of our latest reliable messages, so 
+		there is nothing to dequeue */
+	{
+		return;
+	}
 	/* remove reliable messages that the server has reported to have obtained so 
 		that we stop sending copies to the server */
-	kassert(serverReportedReliableMessageRollingIndex >= 
-	        knc->reliableDataBufferFrontMessageRollingIndex);
 	kassert(serverReportedReliableMessageRollingIndex < 
 	        knc->reliableDataBufferFrontMessageRollingIndex + 
 	            knc->reliableDataBufferMessageCount);
@@ -105,17 +109,36 @@ internal void kNetClientDequeueReliableMessages(
 	for(u32 rmi = knc->reliableDataBufferFrontMessageRollingIndex; 
 		rmi <= serverReportedReliableMessageRollingIndex; rmi++)
 	{
+		/* we can't unpack the message size using netUnpack API because the 
+			reliableDataBuffer is circular, so the bytes can wrap around */
+		u8 netPackedMessageSizeBuffer[2];
+		for(size_t b = 0; b < CARRAY_SIZE(netPackedMessageSizeBuffer); b++)
+		{
+			netPackedMessageSizeBuffer[b] = reliableDataCursor[0];
+			reliableDataCursor++;
+			if(reliableDataCursor >= reliableDataBufferEnd)
+				reliableDataCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
+			kassert(reliableDataCursor >= knc->reliableDataBuffer);
+			kassert(reliableDataCursor < reliableDataBufferEnd);
+		}
+		const u8* netPackedMessageSizeBufferCursor = netPackedMessageSizeBuffer;
+		const u16 messageSize = 
+			kutil::netUnpackU16(&netPackedMessageSizeBufferCursor, 
+			                    netPackedMessageSizeBuffer, 
+			                    CARRAY_SIZE(netPackedMessageSizeBuffer));
+		/* now that we have the message size we can move the data cursor to the 
+			next message location */
 		reliableDataCursor += messageSize;
 		if(reliableDataCursor >= reliableDataBufferEnd)
 			reliableDataCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
 		kassert(reliableDataCursor >= knc->reliableDataBuffer);
 		kassert(reliableDataCursor < reliableDataBufferEnd);
-		knc->reliableDataBufferFrontMessageByteOffset = 
-			reliableDataCursor - knc->reliableDataBuffer;
+		knc->reliableDataBufferFrontMessageByteOffset = kmath::safeTruncateU16(
+			reliableDataCursor - knc->reliableDataBuffer);
 		knc->reliableDataBufferMessageCount--;
 		knc->reliableDataBufferFrontMessageRollingIndex++;
+		KLOG(INFO, "CLIENT: confirmed reliable message[%i]", rmi);
 	}
-	kassert(!"TODO");
 }
 internal void kNetClientStep(
 	KNetClient* knc, f32 deltaSeconds, f32 netReceiveSeconds, 

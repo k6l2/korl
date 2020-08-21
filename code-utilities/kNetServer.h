@@ -12,6 +12,9 @@ struct KNetServerClientEntry
 	u32 rollingUnreliableStateIndex;
 	f32 roundTripTime;
 	u32 reliableDataBufferFrontMessageRollingIndex;
+#if INTERNAL_BUILD
+	u32 debugTestDropReliableData = 1000;
+#endif// INTERNAL_BUILD
 };
 struct KNetServer
 {

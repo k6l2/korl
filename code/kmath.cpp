@@ -246,6 +246,11 @@ internal inline u16 kmath::safeTruncateU16(i32 value)
 	kassert(value >= 0 && value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
+internal inline u16 kmath::safeTruncateU16(i64 value)
+{
+	kassert(value >= 0 && value <= std::numeric_limits<u16>::max());
+	return static_cast<u16>(value);
+}
 internal inline u16 kmath::safeTruncateU16(u32 value)
 {
 	kassert(value <= std::numeric_limits<u16>::max());

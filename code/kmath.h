@@ -122,6 +122,7 @@ namespace kmath
 	internal inline u32 safeTruncateU32(i64 value);
 	internal inline i32 safeTruncateI32(u64 value);
 	internal inline u16 safeTruncateU16(i32 value);
+	internal inline u16 safeTruncateU16(i64 value);
 	internal inline u16 safeTruncateU16(u32 value);
 	internal inline u16 safeTruncateU16(u64 value);
 	internal inline i16 safeTruncateI16(i32 value);
