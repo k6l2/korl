@@ -107,9 +107,9 @@ u32 kutil::netPack(f64 data, u8** ppPacketBuffer, u8* dataBuffer,
 	return netPackCommon(reinterpret_cast<u8*>(&data), sizeof(data), 
 	                     ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-internal void netUnpackCommon(u8* resultBytes, size_t resultSize, 
-                              const u8** ppPacketBuffer, const u8* dataBuffer, 
-                              u32 dataBufferSize)
+internal u32 netUnpackCommon(u8* resultBytes, size_t resultSize, 
+                             const u8** ppPacketBuffer, const u8* dataBuffer, 
+                             u32 dataBufferSize)
 {
 	/* first, ensure that we aren't about to go out-of-bounds of the 
 		dataBuffer */
@@ -129,84 +129,65 @@ internal void netUnpackCommon(u8* resultBytes, size_t resultSize,
 			resultBytes[resultSize - 1 - b] = (*ppPacketBuffer)[b];
 	}
 	*ppPacketBuffer += resultSize;
+	return kmath::safeTruncateU32(resultSize);
 }
-u64 kutil::netUnpackU64(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(u64* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	u64 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-u32 kutil::netUnpackU32(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(u32* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	u32 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-u16 kutil::netUnpackU16(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(u16* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	u16 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-u8 kutil::netUnpackU8(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                      u32 dataBufferSize)
+u32 kutil::netUnpack(u8* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	u8 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-i64 kutil::netUnpackI64(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(i64* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	i64 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-i32 kutil::netUnpackI32(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(i32* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	i32 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-i16 kutil::netUnpackI16(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(i16* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	i16 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-i8 kutil::netUnpackI8(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                      u32 dataBufferSize)
+u32 kutil::netUnpack(i8* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	i8 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-f32 kutil::netUnpackF32(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(f32* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	f32 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }
-f64 kutil::netUnpackF64(const u8** ppPacketBuffer, const u8* dataBuffer, 
-                        u32 dataBufferSize)
+u32 kutil::netUnpack(f64* o_data, const u8** ppPacketBuffer, 
+                     const u8* dataBuffer, u32 dataBufferSize)
 {
-	f64 result = 0;
-	netUnpackCommon(reinterpret_cast<u8*>(&result), sizeof(result), 
-	                ppPacketBuffer, dataBuffer, dataBufferSize);
-	return result;
+	return netUnpackCommon(reinterpret_cast<u8*>(o_data), sizeof(*o_data), 
+		                   ppPacketBuffer, dataBuffer, dataBufferSize);
 }

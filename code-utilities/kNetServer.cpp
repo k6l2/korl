@@ -118,6 +118,7 @@ internal void kNetServerStep(
 				arrput(kns->clientArray, newClient);
 			}break;
 			case network::PacketType::CLIENT_UNRELIABLE_STATE: {
+				u32 bytesUnpacked = 0;
 //				KLOG(INFO, "SERVER: received CLIENT_UNRELIABLE_STATE");
 				if(clientIndex >= arrcap(kns->clientArray))
 				/* received client state for someone who isn't even connected */
@@ -142,9 +143,11 @@ internal void kNetServerStep(
 				}
 				/* check the unreliable packet index, and drop this packet if we 
 					find that it's old/duplicated data */
-				const u32 rollingUnreliableStateIndex = 
-					kutil::netUnpackU32(&packetBuffer, netBuffer, 
-					                    CARRAY_SIZE(netBuffer));
+				u32 rollingUnreliableStateIndex;
+				bytesUnpacked += 
+					kutil::netUnpack(&rollingUnreliableStateIndex, 
+					                 &packetBuffer, netBuffer, 
+					                 CARRAY_SIZE(netBuffer));
 				if(kns->clientArray[clientIndex].rollingUnreliableStateIndex >= 
 					rollingUnreliableStateIndex)
 				{
@@ -154,9 +157,11 @@ internal void kNetServerStep(
 					rollingUnreliableStateIndex;
 				/* we can calculate the client's round-trip-time here using the 
 					client's last known server timestamp */
-				const PlatformTimeStamp clientLastKnownServerTimestamp = 
-					kutil::netUnpackU64(&packetBuffer, netBuffer, 
-					                    CARRAY_SIZE(netBuffer));
+				PlatformTimeStamp clientLastKnownServerTimestamp;
+				bytesUnpacked += 
+					kutil::netUnpack(&clientLastKnownServerTimestamp, 
+					                 &packetBuffer, netBuffer, 
+					                 CARRAY_SIZE(netBuffer));
 				kns->clientArray[clientIndex].roundTripTime = 
 					g_kpl->secondsSinceTimeStamp(
 						clientLastKnownServerTimestamp);
@@ -173,13 +178,14 @@ internal void kNetServerStep(
 //				     kns->clientArray[clientIndex].roundTripTime * 1000);
 				/* if the client is connected, update server state based on 
 					this client's data */
-				const u32 packetBufferSize = kmath::safeTruncateU32( 
+				const u32 clientStateSize = kmath::safeTruncateU32( 
 					bytesReceived - (packetBuffer - netBuffer) );
 				fnReadClientState(kns->clientArray[clientIndex].id, 
-				                  packetBuffer, packetBufferSize, userPointer);
+				                  packetBuffer, clientStateSize, userPointer);
 				kns->clientArray[clientIndex].timeSinceLastPacket = 0;
 			}break;
 			case network::PacketType::CLIENT_RELIABLE_MESSAGE_BUFFER: {
+				u32 bytesUnpacked = 0;
 				if(clientIndex >= arrcap(kns->clientArray))
 				/* client isn't even connected; ignore. */
 				{
@@ -193,12 +199,14 @@ internal void kNetServerStep(
 				}
 				/* extract range of reliable message rolling indices contained 
 					in the packet */
-				const u32 frontMessageRollingIndex = 
-					kutil::netUnpackU32(&packetBuffer, netBuffer, 
-					                    CARRAY_SIZE(netBuffer));
-				const u16 reliableMessageCount = 
-					kutil::netUnpackU16(&packetBuffer, netBuffer, 
-					                    CARRAY_SIZE(netBuffer));
+				u32 frontMessageRollingIndex;
+				bytesUnpacked += 
+					kutil::netUnpack(&frontMessageRollingIndex, &packetBuffer, 
+					                 netBuffer, CARRAY_SIZE(netBuffer));
+				u16 reliableMessageCount;
+				bytesUnpacked += 
+					kutil::netUnpack(&reliableMessageCount, &packetBuffer, 
+					                 netBuffer, CARRAY_SIZE(netBuffer));
 				/* using this information, we can determine if we need to:
 					- discard the packet
 					- read a subset of the messages
@@ -237,18 +245,21 @@ internal void kNetServerStep(
 					rmi < frontMessageRollingIndex + reliableMessageCount; 
 					rmi++)
 				{
-					const u16 reliableMessageBytes = 
-						kutil::netUnpackU16(&packetBuffer, netBuffer, 
-						                    CARRAY_SIZE(netBuffer));
+					u16 reliableMessageBytes; 
+					const u32 reliableMessageBytesBytesUnpacked = 
+						kutil::netUnpack(&reliableMessageBytes, &packetBuffer, 
+						                 netBuffer, CARRAY_SIZE(netBuffer));
 					if(rmi <= kns->clientArray[clientIndex]
 				        .reliableDataBufferFrontMessageRollingIndex)
 					{
 						packetBuffer += reliableMessageBytes;
 						continue;
 					}
-					fnReadReliableMessage(kns->clientArray[clientIndex].id, 
-					                      packetBuffer, reliableMessageBytes, 
-					                      userPointer);
+					const u32 bytesRead = 
+						fnReadReliableMessage(
+							kns->clientArray[clientIndex].id, packetBuffer, 
+							reliableMessageBytes, userPointer);
+					kassert(bytesRead == reliableMessageBytes);
 					packetBuffer += reliableMessageBytes;
 				}
 				/* record the last reliable rolling index we have successfully 

@@ -60,9 +60,12 @@ internal u16 kNetClientGetReliableDataBufferUsedBytes(
 				reliableDataBufferCursor = knc->reliableDataBuffer;
 		}
 		const u8* messageBytesBufferCursor = messageBytesBuffer;
-		const u16 messageByteCount = 
-			kutil::netUnpackU16(&messageBytesBufferCursor, messageBytesBuffer, 
-			                    CARRAY_SIZE(messageBytesBuffer));
+		u16 messageByteCount;
+		const u32 bytesUnpacked = 
+			kutil::netUnpack(&messageByteCount, &messageBytesBufferCursor, 
+			                 messageBytesBuffer, 
+			                 CARRAY_SIZE(messageBytesBuffer));
+		kassert(bytesUnpacked == sizeof(messageByteCount));
 		/* move buffer cursor to next possible message location & add this 
 			message size to the total used byte count */
 		reliableDataBufferUsedBytes += 
@@ -122,10 +125,12 @@ internal void kNetClientDequeueReliableMessages(
 			kassert(reliableDataCursor < reliableDataBufferEnd);
 		}
 		const u8* netPackedMessageSizeBufferCursor = netPackedMessageSizeBuffer;
-		const u16 messageSize = 
-			kutil::netUnpackU16(&netPackedMessageSizeBufferCursor, 
-			                    netPackedMessageSizeBuffer, 
-			                    CARRAY_SIZE(netPackedMessageSizeBuffer));
+		u16 messageSize;
+		const u32 bytesUnpacked = 
+			kutil::netUnpack(&messageSize, &netPackedMessageSizeBufferCursor, 
+			                 netPackedMessageSizeBuffer, 
+			                 CARRAY_SIZE(netPackedMessageSizeBuffer));
+		kassert(bytesUnpacked == sizeof(messageSize));
 		/* now that we have the message size we can move the data cursor to the 
 			next message location */
 		reliableDataCursor += messageSize;
@@ -306,10 +311,12 @@ internal void kNetClientStep(
 			break;
 		}
 		const u8* packetBuffer = knc->packetBuffer;
+		u32 bytesUnpacked = 0;
 		if(netAddress == knc->addressServer && netPort == 30942)
 		{
 			const network::PacketType packetType = 
 				network::PacketType(*(packetBuffer++));
+			bytesUnpacked++;
 			switch(packetType)
 			{
 				case network::PacketType::SERVER_ACCEPT_CONNECTION:{
@@ -318,9 +325,10 @@ internal void kNetClientStep(
 					{
 						break;
 					}
-					knc->id = 
-						kutil::netUnpackU16(&packetBuffer, knc->packetBuffer, 
-						                    CARRAY_SIZE(knc->packetBuffer));
+					bytesUnpacked += 
+						kutil::netUnpack(&knc->id, &packetBuffer, 
+						                 knc->packetBuffer, 
+						                 CARRAY_SIZE(knc->packetBuffer));
 					knc->connectionState = 
 						network::ConnectionState::CONNECTED;
 					knc->secondsSinceLastServerPacket = 0;
@@ -337,9 +345,11 @@ internal void kNetClientStep(
 					{
 						break;
 					}
-					const u32 rollingUnreliableStateIndexServer = 
-						kutil::netUnpackU32(&packetBuffer, knc->packetBuffer, 
-						                    CARRAY_SIZE(knc->packetBuffer));
+					u32 rollingUnreliableStateIndexServer;
+					bytesUnpacked += 
+						kutil::netUnpack(&rollingUnreliableStateIndexServer, 
+						                 &packetBuffer, knc->packetBuffer, 
+						                 CARRAY_SIZE(knc->packetBuffer));
 					if(rollingUnreliableStateIndexServer <= 
 						knc->rollingUnreliableStateIndexServer)
 					/* drop/ignore old/duplicate server state packets! */
@@ -348,21 +358,26 @@ internal void kNetClientStep(
 					}
 					knc->rollingUnreliableStateIndexServer = 
 						rollingUnreliableStateIndexServer;
-					knc->latestServerTimestamp = 
-						kutil::netUnpackU64(&packetBuffer, knc->packetBuffer, 
-						                    CARRAY_SIZE(knc->packetBuffer));
-					knc->serverReportedRoundTripTime = 
-						kutil::netUnpackF32(&packetBuffer, knc->packetBuffer, 
-						                    CARRAY_SIZE(knc->packetBuffer));
-					const u32 serverReportedReliableMessageRollingIndex = 
-						kutil::netUnpackU32(&packetBuffer, knc->packetBuffer, 
-						                    CARRAY_SIZE(knc->packetBuffer));
+					bytesUnpacked += 
+						kutil::netUnpack(&knc->latestServerTimestamp, 
+						                 &packetBuffer, knc->packetBuffer, 
+						                 CARRAY_SIZE(knc->packetBuffer));
+					bytesUnpacked += 
+						kutil::netUnpack(&knc->serverReportedRoundTripTime, 
+						                 &packetBuffer, knc->packetBuffer, 
+						                 CARRAY_SIZE(knc->packetBuffer));
+					u32 serverReportedReliableMessageRollingIndex;
+					bytesUnpacked += 
+						kutil::netUnpack(
+							&serverReportedReliableMessageRollingIndex, 
+							&packetBuffer, knc->packetBuffer, 
+							CARRAY_SIZE(knc->packetBuffer));
 					kNetClientDequeueReliableMessages(
 						knc, serverReportedReliableMessageRollingIndex);
 //					KLOG(INFO, "CLIENT: got server state!");
-					const u32 packetBufferSize = 
-						kmath::safeTruncateU32(bytesReceived - 1);
-					clientReadServerState(packetBuffer, packetBufferSize);
+					const u32 serverStateSize = 
+						kmath::safeTruncateU32(bytesReceived) - bytesUnpacked;
+					clientReadServerState(packetBuffer, serverStateSize);
 					knc->secondsSinceLastServerPacket = 0;
 				}break;
 				case network::PacketType::SERVER_DISCONNECT:{

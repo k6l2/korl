@@ -43,8 +43,11 @@ internal void kNetServerStop(KNetServer* kns);
 	void name(network::ServerClientId clientId, void* userPointer)
 #define K_NET_SERVER_ON_CLIENT_DISCONNECT(name) \
 	void name(network::ServerClientId clientId, void* userPointer)
+/**
+ * @return the # of bytes read/unpacked from `netDataBuffer`
+ */
 #define K_NET_SERVER_READ_RELIABLE_MESSAGE(name) \
-	void name(network::ServerClientId clientId, const u8* netDataBuffer, \
+	u32 name(network::ServerClientId clientId, const u8* netDataBuffer, \
 	          u32 netDataBufferSize, void* userPointer)
 typedef K_NET_SERVER_READ_CLIENT_STATE(fnSig_kNetServerReadClientState);
 typedef K_NET_SERVER_WRITE_STATE(fnSig_kNetServerWriteState);
