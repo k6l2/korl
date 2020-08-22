@@ -274,7 +274,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 					parseGuidBuffer[8] = '\0';
 					if(*cStrMapGuid == '-')
 						cStrMapGuid++;// skip over the '-' separator
-					kassert(errno == 0);
+					errno = 0;
 					guidInputMap.Data1 = static_cast<u32>(
 						strtoll(parseGuidBuffer, nullptr, 16));
 					if (errno == ERANGE)
@@ -293,7 +293,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 					parseGuidBuffer[4] = '\0';
 					if(*cStrMapGuid == '-')
 						cStrMapGuid++;// skip over the '-' separator
-					kassert(errno == 0);
+					errno = 0;
 					guidInputMap.Data2 = static_cast<u16>(
 						strtol(parseGuidBuffer, nullptr, 16));
 					if (errno == ERANGE)
@@ -309,7 +309,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 					parseGuidBuffer[4] = '\0';
 					if(*cStrMapGuid == '-')
 						cStrMapGuid++;// skip over the '-' separator
-					kassert(errno == 0);
+					errno = 0;
 					guidInputMap.Data3 = static_cast<u16>(
 						strtol(parseGuidBuffer, nullptr, 16));
 					if (errno == ERANGE)
@@ -327,7 +327,7 @@ internal void w32DInputAddDevice(LPCDIDEVICEINSTANCE lpddi)
 							cStrMapGuid++;// skip over any '-' separators
 						parseGuidBuffer[0] = *cStrMapGuid++;
 						parseGuidBuffer[1] = *cStrMapGuid++;
-						kassert(errno == 0);
+						errno = 0;
 						guidInputMap.Data4[c] = static_cast<u8>(
 							strtol(parseGuidBuffer, nullptr, 16));
 						if (errno == ERANGE)

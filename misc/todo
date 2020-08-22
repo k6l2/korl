@@ -564,6 +564,7 @@
 		assert that the derived value matches some known value!
 	[x] consider changing kutil net (un)packing API to take a buffer end pointer 
 		instead of the buffer + buffer size
+[x] do not assert that errno == 0 in win32-directinput
 [ ] win32: allow multiple instances of the program to be run on the same 
 	computer so that it is possible to debug client prediction on one machine
 	[ ] generate a unique `fullPathToGameDllTemp` each time the program is run 
