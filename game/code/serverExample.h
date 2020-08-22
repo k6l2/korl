@@ -7,9 +7,12 @@
 struct ServerState
 {
 	/* KML interface */
-	bool running;
+	enum class RunState : u8
+		{ STOP
+		, RUN
+		, RESTART
+	} runState;
 	JobQueueTicket serverJobTicket;
-	bool onGameReloadStartServer;
 	/* configuration */
 	f32 secondsPerFrame;
 	/* memory management */
@@ -19,6 +22,7 @@ struct ServerState
 	KAssetManager* assetManager;
 	/* data */
 	KNetServer kNetServer;
+	bool serverStartCausedByRestart;
 	Actor actors[4];
 };
 enum class ServerOperatingState : u8

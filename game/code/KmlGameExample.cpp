@@ -259,6 +259,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 #endif //1
 		/* send the client's controller input for this frame as a reliable 
 			message */
+		if(!kNetClientIsDisconnected(&g_gs->kNetClient))
 		{
 			const u16 reliableMessageBytes = 
 				reliableMessageClientControlInputPack(
@@ -303,7 +304,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 	serverOnPreUnload(&g_gs->serverState);
-	kNetClientOnPreUnload(&g_gs->kNetClient);
 }
 #include "kFlipBook.cpp"
 #include "kAudioMixer.cpp"

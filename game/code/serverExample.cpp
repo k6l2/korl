@@ -6,7 +6,7 @@ internal void serverInitialize(ServerState* ss, f32 secondsPerFrame,
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes, u16 port)
 {
-	kassert(!ss->running);
+	kassert(ss->runState == ServerState::RunState::STOP);
 	*ss = {};
 	ss->kNetServer.port = port;
 	ss->secondsPerFrame = secondsPerFrame;
@@ -39,14 +39,25 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 {
 	KLOG(INFO, "Server job START!");
 	ServerState* ss = reinterpret_cast<ServerState*>(data);
-	if(!kNetServerStart(&ss->kNetServer, ss->hKgaPermanent, 4))
+	if(!ss->serverStartCausedByRestart)
 	{
-		KLOG(ERROR, "Failed to start server on port %i!", ss->kNetServer.port);
-		ss->running = false;
-		return;
+		if(!kNetServerStart(&ss->kNetServer, ss->hKgaPermanent, 4))
+		{
+			KLOG(ERROR, "Failed to start server on port %i!", 
+			     ss->kNetServer.port);
+			ss->runState = ServerState::RunState::STOP;
+			return;
+		}
+		for(size_t a = 0; a < CARRAY_SIZE(ss->actors); a++)
+		{
+			ss->actors[a].clientId = network::SERVER_INVALID_CLIENT_ID;
+		}
 	}
-	defer(kNetServerStop(&ss->kNetServer));
-	while(ss->running)
+	defer(
+		if(ss->runState != ServerState::RunState::RESTART)
+			kNetServerStop(&ss->kNetServer)
+	);
+	while(ss->runState == ServerState::RunState::RUN)
 	{
 		const PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();
 		kalReset(ss->hKalFrame);
@@ -63,7 +74,7 @@ internal ServerOperatingState serverOpState(ServerState* ss)
 {
 	if(g_kpl->jobValid(&ss->serverJobTicket))
 	{
-		if(ss->running)
+		if(ss->runState == ServerState::RunState::RUN)
 			return ServerOperatingState::RUNNING;
 		else
 			return ServerOperatingState::STOPPING;
@@ -72,38 +83,39 @@ internal ServerOperatingState serverOpState(ServerState* ss)
 }
 internal void serverStart(ServerState* ss)
 {
-	if(ss->running || g_kpl->jobValid(&ss->serverJobTicket))
+	if(ss->runState == ServerState::RunState::RUN 
+		|| g_kpl->jobValid(&ss->serverJobTicket))
 	{
 		KLOG(WARNING, "Server already running or is stopping!");
 		return;
 	}
-	ss->running = true;
+	ss->serverStartCausedByRestart = 
+		(ss->runState == ServerState::RunState::RESTART);
+	ss->runState = ServerState::RunState::RUN;
 	ss->serverJobTicket = g_kpl->postJob(serverUpdate, ss);
 }
 internal void serverStop(ServerState* ss)
 {
-	if(!ss->running)
+	if(ss->runState == ServerState::RunState::STOP)
 	{
 		KLOG(WARNING, "Server already stopped!");
 		return;
 	}
-	ss->running = false;
+	ss->runState = ServerState::RunState::STOP;
 }
 internal void serverOnPreUnload(ServerState* ss)
 {
 	if(g_kpl->jobValid(&ss->serverJobTicket))
 	{
 		KLOG(INFO, "serverOnPreUnload: temporarily stopping server...");
-		ss->running = false;
-		ss->onGameReloadStartServer = true;
+		ss->runState = ServerState::RunState::RESTART;
 	}
 }
 internal void serverOnReload(ServerState* ss)
 {
-	if(ss->onGameReloadStartServer)
+	if(ss->runState == ServerState::RunState::RESTART)
 	{
 		KLOG(INFO, "Restarting server job...");
 		serverStart(ss);
 	}
-	ss->onGameReloadStartServer = false;
 }

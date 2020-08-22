@@ -32,7 +32,6 @@ struct KNetClient
 	 * server we start at 0 */
 	u32 reliableDataBufferFrontMessageRollingIndex = 1;
 } FORCE_SYMBOL_EXPORT;
-internal void kNetClientOnPreUnload(KNetClient* knc);
 internal bool kNetClientIsDisconnected(const KNetClient* knc);
 internal void kNetClientConnect(KNetClient* knc, 
                                 const char* cStrServerAddress);

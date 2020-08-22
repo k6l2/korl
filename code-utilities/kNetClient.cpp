@@ -1,13 +1,4 @@
 #include "kNetClient.h"
-internal void kNetClientOnPreUnload(KNetClient* knc)
-{
-	if(knc->socket != KPL_INVALID_SOCKET_INDEX)
-	{
-		KLOG(INFO, "invalidating socketClient==%i", knc->socket);
-		g_kpl->socketClose(knc->socket);
-		knc->socket = KPL_INVALID_SOCKET_INDEX;
-	}
-}
 internal bool kNetClientIsDisconnected(const KNetClient* knc)
 {
 	return knc->socket == KPL_INVALID_SOCKET_INDEX;
@@ -326,6 +317,7 @@ internal void kNetClientStep(
 					knc->connectionState = 
 						network::ConnectionState::CONNECTED;
 					knc->secondsSinceLastServerPacket = 0;
+					knc->reliableDataBufferFrontMessageRollingIndex = 1;
 					KLOG(INFO, "CLIENT: connected!");
 				}break;
 				case network::PacketType::SERVER_REJECT_CONNECTION:{

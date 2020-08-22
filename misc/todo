@@ -557,7 +557,7 @@
 		[ ] server => client
 			[ ] broadcast reliable text messages to all clients
 	[-] optimize: serverWriteState: only send net-relevant actors
-	[ ] ensure game code hot-reload maintains network virtual connections
+	[x] ensure game code hot-reload maintains network virtual connections
 	[x] change kutil::netUnpack API to return the value in an overloaded 
 		parameter, and return the # of bytes unpacked.  This is better because 
 		back in the user code, we can accumulate the # of bytes unpacked and 
