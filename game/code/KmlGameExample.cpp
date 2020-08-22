@@ -78,7 +78,6 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	kalReset(g_gs->hKalFrame);
-#if INTERNAL_BUILD
 	/* TESTING GAME PAD ARRAY */
 	if(ImGui::Begin("TESTING GAME PAD PORTS"))
 	{
@@ -187,8 +186,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	kNetClientStep(&g_gs->kNetClient, deltaSeconds, 0.1f*deltaSeconds, 
 	               gameWriteClientState, gameClientReadServerState);
-#endif// INTERNAL_BUILD
+#if INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
+#endif// INTERNAL_BUILD
 	if(gameKeyboard.escape == ButtonState::PRESSED ||
 	   (gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
 	{

@@ -2293,9 +2293,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #if 0
 	w32ResizeDibSection(g_backBuffer, 1280, 720);
 #endif
-#if INTERNAL_BUILD
+	/* @TODO: make this configurable somehow??? */
 	g_displayCursor = true;
-#endif
 	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
 	g_cursorSizeHorizontal = LoadCursorA(NULL, IDC_SIZEWE);
 	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);

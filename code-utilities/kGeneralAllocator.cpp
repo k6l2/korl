@@ -192,10 +192,8 @@ internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress,
 	}
 	if(allocatedAddress)
 	{
-#if INTERNAL_BUILD || SLOW_BUILD
 		KGeneralAllocator*const kga = 
 			reinterpret_cast<KGeneralAllocator*>(kgaHandle);
-#endif// INTERNAL_BUILD || SLOW_BUILD
 		KGeneralAllocatorChunk* allocatedChunk = 
 			reinterpret_cast<KGeneralAllocatorChunk*>(
 				reinterpret_cast<u8*>(allocatedAddress) - 
