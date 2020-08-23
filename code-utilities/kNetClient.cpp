@@ -29,15 +29,13 @@ internal void kNetClientDropConnection(KNetClient* knc)
  *        safe to start storing the next reliable message at this location.  If 
  *        this value == `nullptr`, then it is unused.
  */
-internal u16 kNetClientGetReliableDataBufferUsedBytes(
-	KNetClient* knc, u8** o_reliableDataBufferCursor)
+internal u16 kNetReliableDataBufferUsedBytes(
+	KNetReliableDataBuffer* rdb, u8** o_reliableDataBufferCursor)
 {
-	u16 reliableDataBufferUsedBytes = 0;
-	u8* reliableDataBufferCursor = 
-		knc->reliableDataBuffer + knc->reliableDataBufferFrontMessageByteOffset;
-	const u8*const reliableDataBufferEnd = 
-		knc->reliableDataBuffer + CARRAY_SIZE(knc->reliableDataBuffer);
-	for(u16 r = 0; r < knc->reliableDataBufferMessageCount; r++)
+	u16 usedBytes = 0;
+	u8* dataCursor = rdb->data + rdb->frontMessageByteOffset;
+	const u8*const dataEnd = rdb->data + CARRAY_SIZE(rdb->data);
+	for(u16 r = 0; r < rdb->messageCount; r++)
 	/* for each reliable message, extract its byte length and move the buffer 
 		cursor to the next contiguous message location */
 	{
@@ -45,10 +43,10 @@ internal u16 kNetClientGetReliableDataBufferUsedBytes(
 		u8 messageBytesBuffer[2];
 		for(size_t b = 0; b < CARRAY_SIZE(messageBytesBuffer); b++)
 		{
-			messageBytesBuffer[b] = reliableDataBufferCursor[0];
-			reliableDataBufferCursor++;
-			if(reliableDataBufferCursor >= reliableDataBufferEnd)
-				reliableDataBufferCursor = knc->reliableDataBuffer;
+			messageBytesBuffer[b] = dataCursor[0];
+			dataCursor++;
+			if(dataCursor >= dataEnd)
+				dataCursor = rdb->data;
 		}
 		const u8* messageBytesBufferCursor = messageBytesBuffer;
 		u16 messageByteCount;
@@ -59,33 +57,32 @@ internal u16 kNetClientGetReliableDataBufferUsedBytes(
 		kassert(bytesUnpacked == sizeof(messageByteCount));
 		/* move buffer cursor to next possible message location & add this 
 			message size to the total used byte count */
-		reliableDataBufferUsedBytes += 
+		usedBytes += 
 			sizeof(messageByteCount) + messageByteCount;
-		reliableDataBufferCursor += messageByteCount;
-		if(reliableDataBufferCursor >= reliableDataBufferEnd)
-			reliableDataBufferCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
-		kassert(reliableDataBufferCursor >= knc->reliableDataBuffer);
-		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
+		dataCursor += messageByteCount;
+		if(dataCursor >= dataEnd)
+			dataCursor -= CARRAY_SIZE(rdb->data);
+		kassert(dataCursor >= rdb->data);
+		kassert(dataCursor < dataEnd);
 	}
-	kassert(reliableDataBufferUsedBytes <= 
-	            CARRAY_SIZE(knc->reliableDataBuffer));
+	kassert(usedBytes <= CARRAY_SIZE(rdb->data));
 	if(o_reliableDataBufferCursor)
-		*o_reliableDataBufferCursor = reliableDataBufferCursor;
-	return reliableDataBufferUsedBytes;
+		*o_reliableDataBufferCursor = dataCursor;
+	return usedBytes;
 }
-internal void kNetClientDequeueReliableMessages(
-	KNetClient* knc, u32 serverReportedReliableMessageRollingIndex)
+internal void kNetReliableDataBufferDequeue(
+	KNetReliableDataBuffer* rdb, u32 remoteReportedReliableMessageRollingIndex)
 {
-	if(knc->reliableDataBufferMessageCount == 0)
+	if(rdb->messageCount == 0)
 	/* ensure that the next reliable message sent to server will have a newer 
 		rolling index than what the server is reporting */
 	{
-		knc->reliableDataBufferFrontMessageRollingIndex = 
-			serverReportedReliableMessageRollingIndex + 1;
+		rdb->frontMessageRollingIndex = 
+			remoteReportedReliableMessageRollingIndex + 1;
 		return;
 	}
-	if(serverReportedReliableMessageRollingIndex < 
-		knc->reliableDataBufferFrontMessageRollingIndex)
+	if(remoteReportedReliableMessageRollingIndex < 
+		rdb->frontMessageRollingIndex)
 	/* the server has not confirmed receipt of our latest reliable messages, so 
 		there is nothing to dequeue */
 	{
@@ -93,27 +90,24 @@ internal void kNetClientDequeueReliableMessages(
 	}
 	/* remove reliable messages that the server has reported to have obtained so 
 		that we stop sending copies to the server */
-	kassert(serverReportedReliableMessageRollingIndex < 
-	        knc->reliableDataBufferFrontMessageRollingIndex + 
-	            knc->reliableDataBufferMessageCount);
-	const u8* reliableDataCursor = knc->reliableDataBuffer + 
-		knc->reliableDataBufferFrontMessageByteOffset;
-	const u8*const reliableDataBufferEnd = 
-		knc->reliableDataBuffer + CARRAY_SIZE(knc->reliableDataBuffer);
-	for(u32 rmi = knc->reliableDataBufferFrontMessageRollingIndex; 
-		rmi <= serverReportedReliableMessageRollingIndex; rmi++)
+	kassert(remoteReportedReliableMessageRollingIndex < 
+	            rdb->frontMessageRollingIndex + rdb->messageCount);
+	const u8*      dataCursor = rdb->data + rdb->frontMessageByteOffset;
+	const u8*const dataEnd    = rdb->data + CARRAY_SIZE(rdb->data);
+	for(u32 rmi = rdb->frontMessageRollingIndex; 
+		rmi <= remoteReportedReliableMessageRollingIndex; rmi++)
 	{
 		/* we can't unpack the message size using netUnpack API because the 
 			reliableDataBuffer is circular, so the bytes can wrap around */
 		u8 netPackedMessageSizeBuffer[2];
 		for(size_t b = 0; b < CARRAY_SIZE(netPackedMessageSizeBuffer); b++)
 		{
-			netPackedMessageSizeBuffer[b] = reliableDataCursor[0];
-			reliableDataCursor++;
-			if(reliableDataCursor >= reliableDataBufferEnd)
-				reliableDataCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
-			kassert(reliableDataCursor >= knc->reliableDataBuffer);
-			kassert(reliableDataCursor < reliableDataBufferEnd);
+			netPackedMessageSizeBuffer[b] = dataCursor[0];
+			dataCursor++;
+			if(dataCursor >= dataEnd)
+				dataCursor -= CARRAY_SIZE(rdb->data);
+			kassert(dataCursor >= rdb->data);
+			kassert(dataCursor < dataEnd);
 		}
 		const u8* netPackedMessageSizeBufferCursor = netPackedMessageSizeBuffer;
 		u16 messageSize;
@@ -124,17 +118,115 @@ internal void kNetClientDequeueReliableMessages(
 		kassert(bytesUnpacked == sizeof(messageSize));
 		/* now that we have the message size we can move the data cursor to the 
 			next message location */
-		reliableDataCursor += messageSize;
-		if(reliableDataCursor >= reliableDataBufferEnd)
-			reliableDataCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
-		kassert(reliableDataCursor >= knc->reliableDataBuffer);
-		kassert(reliableDataCursor < reliableDataBufferEnd);
-		knc->reliableDataBufferFrontMessageByteOffset = kmath::safeTruncateU16(
-			reliableDataCursor - knc->reliableDataBuffer);
-		knc->reliableDataBufferMessageCount--;
-		knc->reliableDataBufferFrontMessageRollingIndex++;
-//		KLOG(INFO, "CLIENT: confirmed reliable message[%i]", rmi);
+		dataCursor += messageSize;
+		if(dataCursor >= dataEnd)
+			dataCursor -= CARRAY_SIZE(rdb->data);
+		kassert(dataCursor >= rdb->data);
+		kassert(dataCursor < dataEnd);
+		rdb->frontMessageByteOffset = 
+			kmath::safeTruncateU16(dataCursor - rdb->data);
+		rdb->messageCount--;
+		rdb->frontMessageRollingIndex++;
+//		KLOG(INFO, "confirmed reliable message[%i]", rmi);
 	}
+}
+internal u32 kNetReliableDataBufferNetPack(
+	KNetReliableDataBuffer* rdb, u8** dataCursor, const u8* dataEnd)
+{
+	u32 bytesPacked = 0;
+	/* first, pack the datagram header & the # of reliable messages we're about 
+		to send */
+	bytesPacked += 
+		kutil::netPack(rdb->frontMessageRollingIndex, dataCursor, dataEnd);
+	bytesPacked += 
+		kutil::netPack(rdb->messageCount, dataCursor, dataEnd);
+	/* copy the reliable messages into the dataCursor */
+	/* because reliable message buffer is circular, we need to handle two cases: 
+		- reliableDataBufferFront <  reliableDataBufferCursor => one memcpy
+		- reliableDataBufferFront >= reliableDataBufferCursor => two memcpys */
+	u8* reliableDataBufferCursor = nullptr;
+	const u16 reliableDataBufferUsedBytes = 
+		kNetReliableDataBufferUsedBytes(rdb, &reliableDataBufferCursor);
+	const u8* reliableDataBufferFront = rdb->data + rdb->frontMessageByteOffset;
+	const u8*const reliableDataBufferEnd = rdb->data + CARRAY_SIZE(rdb->data);
+	if(reliableDataBufferFront < reliableDataBufferCursor)
+	{
+		const u32 reliableBufferCopyBytes = kmath::safeTruncateU32(
+			reliableDataBufferCursor - reliableDataBufferFront);
+		memcpy(*dataCursor, reliableDataBufferFront, 
+		       reliableBufferCopyBytes);
+		*dataCursor  += reliableBufferCopyBytes;
+		bytesPacked += reliableBufferCopyBytes;
+	}
+	else
+	{
+		const u32 reliableBufferCopyBytesA = kmath::safeTruncateU32(
+			reliableDataBufferEnd - reliableDataBufferFront);
+		const u32 reliableBufferCopyBytesB = kmath::safeTruncateU32(
+			reliableDataBufferCursor - rdb->data);
+		kassert(reliableBufferCopyBytesA + reliableBufferCopyBytesB == 
+		        reliableDataBufferUsedBytes);
+		memcpy(*dataCursor, reliableDataBufferFront, reliableBufferCopyBytesA);
+		*dataCursor  += reliableBufferCopyBytesA;
+		bytesPacked += reliableBufferCopyBytesA;
+		memcpy(*dataCursor, rdb->data, reliableBufferCopyBytesB);
+		*dataCursor  += reliableBufferCopyBytesB;
+		bytesPacked += reliableBufferCopyBytesB;
+	}
+	return bytesPacked;
+}
+internal void kNetReliableDataBufferQueueMessage(
+	KNetReliableDataBuffer* rdb, const u8* netPackedData, 
+	u16 netPackedDataBytes)
+{
+	/* make sure that we have enough room in the circular buffer queue for 
+		`dataBytes` + sizeof(dataBytes) worth of bytes */
+	const u8*const reliableDataBufferEnd = rdb->data + CARRAY_SIZE(rdb->data);
+	u8* reliableDataBufferCursor = nullptr;
+	u16 reliableDataBufferUsedBytes = 
+		kNetReliableDataBufferUsedBytes(rdb, &reliableDataBufferCursor);
+	if(CARRAY_SIZE(rdb->data) - reliableDataBufferUsedBytes <
+		(netPackedDataBytes + sizeof(netPackedDataBytes)))
+	{
+		KLOG(ERROR, "Reliable data buffer {%i/%i} overflow! "
+		     "Cannot fit message size=%i!", reliableDataBufferUsedBytes, 
+		     CARRAY_SIZE(rdb->data), 
+		     netPackedDataBytes + sizeof(netPackedDataBytes));
+	}
+	/* each reliable message begins with a number representing the length of the 
+		message */
+	u8 netPackedDataBytesBuffer[2];
+	u8* netPackedDataBytesBufferCursor = netPackedDataBytesBuffer;
+	const u32 packedDataBytesBytes = 
+		kutil::netPack(netPackedDataBytes, &netPackedDataBytesBufferCursor, 
+		               netPackedDataBytesBuffer + 
+		                   CARRAY_SIZE(netPackedDataBytesBuffer));
+	kassert(packedDataBytesBytes == 2);
+	/* now that we have `dataBytes` in network-byte-order, we can add them all 
+		to the circular buffer queue */
+	for(size_t c = 0; c < CARRAY_SIZE(netPackedDataBytesBuffer); c++)
+	{
+		reliableDataBufferCursor[0] = netPackedDataBytesBuffer[c];
+		reliableDataBufferCursor++;
+		if(reliableDataBufferCursor >= reliableDataBufferEnd)
+			reliableDataBufferCursor -= CARRAY_SIZE(rdb->data);
+		kassert(reliableDataBufferCursor >= rdb->data);
+		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
+	}
+	for(u16 b = 0; b < netPackedDataBytes; b++)
+	{
+		reliableDataBufferCursor[0] = netPackedData[b];
+		reliableDataBufferCursor++;
+		if(reliableDataBufferCursor >= reliableDataBufferEnd)
+			reliableDataBufferCursor -= CARRAY_SIZE(rdb->data);
+		kassert(reliableDataBufferCursor >= rdb->data);
+		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
+	}
+	/* finally, update the rest of the KNetClient's reliable message queue state 
+		to reflect our newly added message.  For now, all we have to do is 
+		increment the message count, since the other information is all 
+		calculated on the fly.  */
+	rdb->messageCount++;
 }
 internal void kNetClientStep(
 	KNetClient* knc, f32 deltaSeconds, f32 netReceiveSeconds, 
@@ -195,66 +287,17 @@ internal void kNetClientStep(
 			attempt to send everything in our queue of reliable messages to the 
 			server */
 		if(knc->connectionState == network::ConnectionState::CONNECTED
-			&& knc->reliableDataBufferMessageCount > 0)
+			&& knc->reliableDataBuffer.messageCount > 0)
 		{
 			dataCursor = knc->packetBuffer;
-			u32 bytesPacked = 0;
-			/* first, pack the datagram header & the # of reliable messages 
-				we're about to send */
-			bytesPacked += 
+			u32 packetSize = 
 				kutil::netPack(static_cast<u8>(network::PacketType
 				                   ::CLIENT_RELIABLE_MESSAGE_BUFFER), 
 				               &dataCursor, kncPacketBufferEnd);
-			bytesPacked += 
-				kutil::netPack(knc->reliableDataBufferFrontMessageRollingIndex,
-				               &dataCursor, kncPacketBufferEnd);
-			bytesPacked += 
-				kutil::netPack(knc->reliableDataBufferMessageCount,
-				               &dataCursor, kncPacketBufferEnd);
-			/* copy the reliable messages into the knc->packetBuffer */
-			/* because reliable message buffer is circular, we need to handle 
-				two cases:
-				- reliableDataBufferFront < reliableDataBufferCursor 
-					=> one memcpy
-				- reliableDataBufferFront >= reliableDataBufferCursor
-					=> two memcpys */
-			u8* reliableDataBufferCursor = nullptr;
-			u16 reliableDataBufferUsedBytes = 
-				kNetClientGetReliableDataBufferUsedBytes(
-					knc, &reliableDataBufferCursor);
-			const u8* reliableDataBufferFront = knc->reliableDataBuffer + 
-				knc->reliableDataBufferFrontMessageByteOffset;
-			const u8*const reliableDataBufferEnd = 
-				knc->reliableDataBuffer + CARRAY_SIZE(knc->reliableDataBuffer);
-			if(reliableDataBufferFront < reliableDataBufferCursor)
-			{
-				const u32 reliableBufferCopyBytes = kmath::safeTruncateU32(
-					reliableDataBufferCursor - reliableDataBufferFront);
-				memcpy(dataCursor, reliableDataBufferFront, 
-				       reliableBufferCopyBytes);
-				dataCursor += reliableBufferCopyBytes;
-				bytesPacked += reliableBufferCopyBytes;
-			}
-			else
-			{
-				const u32 reliableBufferCopyBytesA = kmath::safeTruncateU32(
-					reliableDataBufferEnd - reliableDataBufferFront);
-				const u32 reliableBufferCopyBytesB = kmath::safeTruncateU32(
-					reliableDataBufferCursor - knc->reliableDataBuffer);
-				kassert(reliableBufferCopyBytesA + reliableBufferCopyBytesB == 
-				        reliableDataBufferUsedBytes);
-				memcpy(dataCursor, reliableDataBufferFront, 
-				       reliableBufferCopyBytesA);
-				dataCursor += reliableBufferCopyBytesA;
-				bytesPacked += reliableBufferCopyBytesA;
-				memcpy(dataCursor, knc->reliableDataBuffer, 
-				       reliableBufferCopyBytesB);
-				dataCursor += reliableBufferCopyBytesB;
-				bytesPacked += reliableBufferCopyBytesB;
-			}
+			packetSize += 
+				kNetReliableDataBufferNetPack(
+					&knc->reliableDataBuffer, &dataCursor, kncPacketBufferEnd);
 			/* send the packetBuffer which now contains the reliable messages */
-			const size_t packetSize = kmath::safeTruncateU64(
-				dataCursor - knc->packetBuffer);
 			kassert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
 			const i32 bytesSent = 
 				g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
@@ -317,7 +360,7 @@ internal void kNetClientStep(
 					knc->connectionState = 
 						network::ConnectionState::CONNECTED;
 					knc->secondsSinceLastServerPacket = 0;
-					knc->reliableDataBufferFrontMessageRollingIndex = 1;
+					knc->reliableDataBuffer.frontMessageRollingIndex = 1;
 					KLOG(INFO, "CLIENT: connected!");
 				}break;
 				case network::PacketType::SERVER_REJECT_CONNECTION:{
@@ -354,8 +397,9 @@ internal void kNetClientStep(
 						kutil::netUnpack(
 							&serverReportedReliableMessageRollingIndex, 
 							&packetBuffer, packetBufferEnd);
-					kNetClientDequeueReliableMessages(
-						knc, serverReportedReliableMessageRollingIndex);
+					kNetReliableDataBufferDequeue(
+						&knc->reliableDataBuffer, 
+						serverReportedReliableMessageRollingIndex);
 //					KLOG(INFO, "CLIENT: got server state!");
 					const u32 serverStateSize = 
 						kmath::safeTruncateU32(bytesReceived) - bytesUnpacked;
@@ -386,54 +430,6 @@ internal void kNetClientStep(
 internal void kNetClientQueueReliableMessage(
 	KNetClient* knc, const u8* netPackedData, u16 netPackedDataBytes)
 {
-	/* make sure that we have enough room in the circular buffer queue for 
-		`dataBytes` + sizeof(dataBytes) worth of bytes */
-	const u8*const reliableDataBufferEnd = 
-		knc->reliableDataBuffer + CARRAY_SIZE(knc->reliableDataBuffer);
-	u8* reliableDataBufferCursor = nullptr;
-	u16 reliableDataBufferUsedBytes = 
-		kNetClientGetReliableDataBufferUsedBytes(
-			knc, &reliableDataBufferCursor);
-	if(CARRAY_SIZE(knc->reliableDataBuffer) - reliableDataBufferUsedBytes <
-		(netPackedDataBytes + sizeof(netPackedDataBytes)))
-	{
-		KLOG(ERROR, "Reliable data buffer {%i/%i} overflow! "
-		     "Cannot fit message size=%i!", reliableDataBufferUsedBytes, 
-		     CARRAY_SIZE(knc->reliableDataBuffer), 
-		     netPackedDataBytes + sizeof(netPackedDataBytes));
-	}
-	/* each reliable message begins with a number representing the length of the 
-		message */
-	u8 netPackedDataBytesBuffer[2];
-	u8* netPackedDataBytesBufferCursor = netPackedDataBytesBuffer;
-	const u32 packedDataBytesBytes = 
-		kutil::netPack(netPackedDataBytes, &netPackedDataBytesBufferCursor, 
-		               netPackedDataBytesBuffer + 
-		                   CARRAY_SIZE(netPackedDataBytesBuffer));
-	kassert(packedDataBytesBytes == 2);
-	/* now that we have `dataBytes` in network-byte-order, we can add them all 
-		to the circular buffer queue */
-	for(size_t c = 0; c < CARRAY_SIZE(netPackedDataBytesBuffer); c++)
-	{
-		reliableDataBufferCursor[0] = netPackedDataBytesBuffer[c];
-		reliableDataBufferCursor++;
-		if(reliableDataBufferCursor >= reliableDataBufferEnd)
-			reliableDataBufferCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
-		kassert(reliableDataBufferCursor >= knc->reliableDataBuffer);
-		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
-	}
-	for(u16 b = 0; b < netPackedDataBytes; b++)
-	{
-		reliableDataBufferCursor[0] = netPackedData[b];
-		reliableDataBufferCursor++;
-		if(reliableDataBufferCursor >= reliableDataBufferEnd)
-			reliableDataBufferCursor -= CARRAY_SIZE(knc->reliableDataBuffer);
-		kassert(reliableDataBufferCursor >= knc->reliableDataBuffer);
-		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
-	}
-	/* finally, update the rest of the KNetClient's reliable message queue state 
-		to reflect our newly added message.  For now, all we have to do is 
-		increment the message count, since the other information is all 
-		calculated on the fly.  */
-	knc->reliableDataBufferMessageCount++;
+	kNetReliableDataBufferQueueMessage(&knc->reliableDataBuffer, netPackedData, 
+	                                   netPackedDataBytes);
 }

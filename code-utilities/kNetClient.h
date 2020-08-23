@@ -2,6 +2,24 @@
 #include "kutil.h"
 #include "platform-game-interfaces.h"
 #include "kNetCommon.h"
+struct KNetReliableDataBuffer
+{
+	/** treated as a circular buffer queue of network::ReliableMessage.  
+	 * We subtract the sizes of 
+	 * - `messageCount`
+	 * - `frontMessageRollingIndex`
+	 * - the size of a PacketType 
+	 * for the reliable packet header to ensure that 
+	 * the entire buffer will fit in a single datagram.  */
+	u8 data[KPL_MAX_DATAGRAM_SIZE - sizeof(u16) - sizeof(u32) - 
+	        sizeof(network::PacketType)];
+	u16 messageCount;
+	u16 frontMessageByteOffset;
+	/** start at an index if 1 to ensure that the server's client rolling index 
+	 * is out of date for the first reliable message we send, since on the 
+	 * server we start at 0 */
+	u32 frontMessageRollingIndex = 1;
+};
 struct KNetClient
 {
 	/** this value determines the state of the CLIENT<=>SERVER virtual 
@@ -16,21 +34,7 @@ struct KNetClient
 	PlatformTimeStamp latestServerTimestamp;
 	u32 rollingUnreliableStateIndex;
 	f32 serverReportedRoundTripTime;
-	/** treated as a circular buffer queue of network::ReliableMessage.  
-	 * We subtract the sizes of 
-	 * - `reliableDataBufferMessageCount`
-	 * - `reliableDataBufferFrontMessageRollingIndex`
-	 * - the size of a PacketType 
-	 * for the reliable packet header to ensure that 
-	 * the entire buffer will fit in a single datagram.  */
-	u8 reliableDataBuffer[KPL_MAX_DATAGRAM_SIZE - sizeof(u16) - sizeof(u32) - 
-	                      sizeof(network::PacketType)];
-	u16 reliableDataBufferMessageCount;
-	u16 reliableDataBufferFrontMessageByteOffset;
-	/** start at an index if 1 to ensure that the server's client rolling index 
-	 * is out of date for the first reliable message we send, since on the 
-	 * server we start at 0 */
-	u32 reliableDataBufferFrontMessageRollingIndex = 1;
+	KNetReliableDataBuffer reliableDataBuffer;
 } FORCE_SYMBOL_EXPORT;
 internal bool kNetClientIsDisconnected(const KNetClient* knc);
 internal void kNetClientConnect(KNetClient* knc, 

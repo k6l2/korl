@@ -246,6 +246,11 @@ internal void kNetServerStep(
 					const u32 reliableMessageBytesBytesUnpacked = 
 						kutil::netUnpack(&reliableMessageBytes, &packetBuffer, 
 						                 packetBufferEnd);
+					if(reliableMessageBytes == 0)
+					{
+						KLOG(ERROR, "SERVER: empty reliable message received!  "
+						     "This should probably never happen...");
+					}
 					if(rmi <= kns->clientArray[clientIndex]
 				        .reliableDataBufferFrontMessageRollingIndex)
 					{

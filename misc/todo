@@ -555,6 +555,8 @@
 			- at this point, the only unreliable client=>server data should just 
 				be connection telemetry
 		[ ] server => client
+			[x] attempt to pull reliable data buffer logic out of KNetClient so 
+				that we can reuse it on each server-side client
 			[ ] broadcast reliable text messages to all clients
 	[-] optimize: serverWriteState: only send net-relevant actors
 	[x] ensure game code hot-reload maintains network virtual connections
