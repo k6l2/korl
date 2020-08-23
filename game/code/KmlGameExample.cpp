@@ -356,4 +356,5 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "serverExample.cpp"
 #include "kNetClient.cpp"
 #include "kNetServer.cpp"
+#include "KNetReliableDataBuffer.cpp"
 #include "exampleGameNet.cpp"
