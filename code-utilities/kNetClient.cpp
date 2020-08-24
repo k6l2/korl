@@ -11,6 +11,10 @@ internal void kNetClientConnect(KNetClient* knc,
 	knc->socket = g_kpl->socketOpenUdp(0);
 	knc->connectionState = network::ConnectionState::ACCEPTING;
 	knc->secondsSinceLastServerPacket = 0;
+	/* when the client connects to the server, initially there are ZERO reliable 
+		messages queued to be sent to us, so we can safely set this value to 
+		zero */
+	knc->latestReceivedReliableMessageIndex = 0;
 }
 internal void kNetClientBeginDisconnect(KNetClient* knc)
 {
@@ -24,8 +28,9 @@ internal void kNetClientDropConnection(KNetClient* knc)
 }
 internal void kNetClientStep(
 	KNetClient* knc, f32 deltaSeconds, f32 netReceiveSeconds, 
-	fnSig_kNetClientWriteState* clientWriteState,
-	fnSig_kNetClientReadServerState* clientReadServerState)
+	fnSig_kNetClientWriteState* fnWriteState,
+	fnSig_kNetClientReadServerState* fnReadServerState, 
+	fnSig_kNetClientReadReliableMessage* fnReadReliableMessage)
 {
 	if(kNetClientIsDisconnected(&g_gs->kNetClient))
 	/* there's no need to perform any network logic if the client isn't even 
@@ -61,10 +66,12 @@ internal void kNetClientStep(
 				knc->rollingUnreliableStateIndex++;
 				kutil::netPack(knc->latestServerTimestamp, 
 				               &dataCursor, kncPacketBufferEnd);
+				kutil::netPack(knc->latestReceivedReliableMessageIndex, 
+				               &dataCursor, kncPacketBufferEnd);
 				const u32 remainingPacketBufferSize = 
 					kmath::safeTruncateU32(kncPacketBufferEnd - dataCursor);
 				dataCursor += 
-					clientWriteState(dataCursor, kncPacketBufferEnd);
+					fnWriteState(dataCursor, kncPacketBufferEnd);
 			}break;
 		}
 		/* attempt to send the unreliable packet */
@@ -195,10 +202,74 @@ internal void kNetClientStep(
 						&knc->reliableDataBuffer, 
 						serverReportedReliableMessageRollingIndex);
 //					KLOG(INFO, "CLIENT: got server state!");
-					const u32 serverStateSize = 
-						kmath::safeTruncateU32(bytesReceived) - bytesUnpacked;
-					clientReadServerState(packetBuffer, packetBufferEnd);
+					fnReadServerState(packetBuffer, packetBufferEnd);
 					knc->secondsSinceLastServerPacket = 0;
+				}break;
+				case network::PacketType::SERVER_RELIABLE_MESSAGE_BUFFER:{
+					if(knc->connectionState != 
+						network::ConnectionState::CONNECTED)
+					/* we aren't even connected; ignore. */
+					{
+						break;
+					}
+					u32 frontMessageRollingIndex;
+					u16 reliableMessageCount;
+					bytesUnpacked += 
+						kNetReliableDataBufferUnpackMeta(
+							&packetBuffer, packetBufferEnd, 
+							&frontMessageRollingIndex, &reliableMessageCount);
+					/* using this information, we can determine if we need to:
+						- discard the packet
+						- read a subset of the messages
+						- read ALL the messages */
+					const u32 lastMessageRollingIndex = 
+						frontMessageRollingIndex + reliableMessageCount - 1;
+					if(lastMessageRollingIndex <= 
+						knc->latestReceivedReliableMessageIndex)
+					/* we have already read all these reliable messages, so we 
+						don't have to continue */
+					{
+						break;
+					}
+//					KLOG(INFO, "CLIENT: new SERVER_RELIABLE_MESSAGE_BUFFER");
+					/* at this point, we know that the client's server rolling 
+						index MUST lie in the range of [front - 1, last) if 
+						we've been reliably reading all the messages so far */
+					kassert(knc->latestReceivedReliableMessageIndex >= 
+					            static_cast<i64>(frontMessageRollingIndex) - 1);
+					/* we must iterate over the reliable messages until we get 
+						to a rolling index greater than the client's server 
+						rolling index */
+					for(u32 rmi = frontMessageRollingIndex; 
+						rmi < frontMessageRollingIndex + reliableMessageCount; 
+						rmi++)
+					{
+						u16 reliableMessageBytes; 
+						const u32 reliableMessageBytesBytesUnpacked = 
+							kutil::netUnpack(&reliableMessageBytes, 
+							                 &packetBuffer, packetBufferEnd);
+						if(reliableMessageBytes == 0)
+						{
+							KLOG(ERROR, "CLIENT: empty reliable message "
+							     "received!  This should probably never "
+							     "happen...");
+						}
+						if(rmi <= knc->latestReceivedReliableMessageIndex)
+						{
+							packetBuffer += reliableMessageBytes;
+							continue;
+						}
+						const u32 bytesRead = 
+							fnReadReliableMessage(
+								packetBuffer, 
+								packetBuffer + reliableMessageBytes);
+						kassert(bytesRead == reliableMessageBytes);
+						packetBuffer += reliableMessageBytes;
+					}
+					/* record the last reliable rolling index we have 
+						successfully received from the server */
+					knc->latestReceivedReliableMessageIndex = 
+						lastMessageRollingIndex;
 				}break;
 				case network::PacketType::SERVER_DISCONNECT:{
 					KLOG(INFO, "CLIENT: disconnected from server!");

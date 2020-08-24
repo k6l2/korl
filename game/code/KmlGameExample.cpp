@@ -185,7 +185,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		arrsetlen(g_gs->actors, 0);
 	}
 	kNetClientStep(&g_gs->kNetClient, deltaSeconds, 0.1f*deltaSeconds, 
-	               gameWriteClientState, gameClientReadServerState);
+	               gameWriteClientState, gameClientReadServerState, 
+	               gameClientReadReliableMessage);
 #if INTERNAL_BUILD
 	ImGui::ShowDemoWindow();
 #endif// INTERNAL_BUILD

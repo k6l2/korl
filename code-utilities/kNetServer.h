@@ -2,6 +2,7 @@
 #include "kutil.h"
 #include "platform-game-interfaces.h"
 #include "kNetCommon.h"
+#include "KNetReliableDataBuffer.h"
 struct KNetServerClientEntry
 {
 	network::ServerClientId id;
@@ -11,10 +12,9 @@ struct KNetServerClientEntry
 	network::ConnectionState connectionState;
 	u32 rollingUnreliableStateIndex;
 	f32 roundTripTime;
-	u32 reliableDataBufferFrontMessageRollingIndex;
-#if INTERNAL_BUILD
-	u32 debugTestDropReliableData = 1000;
-#endif// INTERNAL_BUILD
+	/** the last received CLIENT=>SERVER reliable message index */
+	u32 latestReceivedReliableMessageIndex;
+	KNetReliableDataBuffer reliableDataBuffer;
 };
 struct KNetServer
 {
@@ -44,7 +44,7 @@ internal void kNetServerStop(KNetServer* kns);
 #define K_NET_SERVER_ON_CLIENT_DISCONNECT(name) \
 	void name(network::ServerClientId clientId, void* userPointer)
 /**
- * @return the # of bytes read/unpacked from `netDataBuffer`
+ * @return the # of bytes read/unpacked from `netData`
  */
 #define K_NET_SERVER_READ_RELIABLE_MESSAGE(name) \
 	u32 name(network::ServerClientId clientId, const u8* netData, \
@@ -63,3 +63,13 @@ internal void kNetServerStep(
 	fnSig_kNetServerOnClientDisconnect* fnOnClientDisconnect, 
 	fnSig_kNetServerReadReliableMessage* fnReadReliableMessage, 
 	void* userPointer);
+/**
+ * @param ignoreClientId 
+ *     If this value is not `network::SERVER_INVALID_CLIENT_ID`, then the client 
+ *     with this Id will not receive the `netPackedData`.  Otherwise, 
+ *     `netPackedData` is queued to be sent reliably to all currently connected 
+ *     clients.
+ */
+internal void kNetServerQueueReliableMessage(
+	KNetServer* kns, const u8* netPackedData, u16 netPackedDataBytes, 
+	network::ServerClientId ignoreClientId);

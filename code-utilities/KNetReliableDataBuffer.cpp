@@ -146,6 +146,19 @@ internal u32 kNetReliableDataBufferNetPack(
 	}
 	return bytesPacked;
 }
+internal u32 kNetReliableDataBufferUnpackMeta(
+	const u8** dataCursor, const u8* dataEnd, u32* o_frontMessageRollingIndex, 
+	u16* o_reliableMessageCount)
+{
+	u32 bytesUnpacked = 0;
+	/* extract range of reliable message rolling indices contained 
+		in the packet */
+	bytesUnpacked += 
+		kutil::netUnpack(o_frontMessageRollingIndex, dataCursor, dataEnd);
+	bytesUnpacked += 
+		kutil::netUnpack(o_reliableMessageCount, dataCursor, dataEnd);
+	return bytesUnpacked;
+}
 internal void kNetReliableDataBufferQueueMessage(
 	KNetReliableDataBuffer* rdb, const u8* netPackedData, 
 	u16 netPackedDataBytes)

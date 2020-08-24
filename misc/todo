@@ -423,29 +423,33 @@
 		something.
 		[ ] figure out how to solve the issue of PS4 reporting activity when 
 			nothing is being pressed
-[ ] win32: RawInput support
+[~] win32: RawInput support
 	https://docs.microsoft.com/en-us/windows/win32/inputdev/about-raw-input
 	https://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
 	https://chromium.googlesource.com/experimental/chromium/src/+/refs/wip/bajones/webvr/device/gamepad/raw_input_data_fetcher_win.cc
-	[ ] poll OS for RawInput devices and expose this to the game code for 
+	I'm currently marking these checklist items as `~` because I believe it 
+		might actually be possible to support PS4 controllers via DirectInput 
+		after all, and the reason why it wasn't working before is because I'm an 
+		idiot as usual.
+	[~] poll OS for RawInput devices and expose this to the game code for 
 		testing purposes
 		[x] obtain product GUID
 			https://www.codeguru.com/cpp/misc/misc/keyboard/article.php/c15957/Raw-Input-Device-informations.htm
 			I can just use PID/VID for product GUID
 		[x] obtain product name string
 			https://stackoverflow.com/q/12656236
-		[ ] obtain an instance GUID
-			[ ] method 1: compute a hash of the RawInput device name
-			[ ] method 2: store persistent state of the device in an object 
+		[~] obtain an instance GUID
+			[~] method 1: compute a hash of the RawInput device name
+			[~] method 2: store persistent state of the device in an object 
 				somewhere, and use that memory address as the instance ID
 				- this would mess up if we unplugged a controller and another 
 					controller takes its place in memory
-		[ ] ignore XInput controllers (just scan device name for "IG_")
-		[ ] accumulate a list of RawInput game controllers like with DirectInput
-	[ ] PS4 controller support
-		[ ] force feedback & lightbar control
+		[~] ignore XInput controllers (just scan device name for "IG_")
+		[~] accumulate a list of RawInput game controllers like with DirectInput
+	[~] PS4 controller support
+		[~] force feedback & lightbar control
 			https://stackoverflow.com/a/27437973
-	[ ] REMOVE DirectInput from the code base??? according to this source, 
+	[~] REMOVE DirectInput from the code base??? according to this source, 
 		RawInput does everything DirectInput does & more.  Is this ACTUALLY 
 		true?
 		https://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
@@ -516,7 +520,7 @@
 [x] fix stbds_arrinit not being extern delcared in declaration source
 [x] define function signiture macros using more optimal whitespace for better 
 	asthetic/readability
-[ ] establish usage code for transfering "packets" between client/server
+[x] establish usage code for transfering "packets" between client/server
 	[x] establish a virtual network connection
 		[x] connection request + handshake
 		[x] auto disconnect after some threshold of time since last packet
@@ -547,17 +551,17 @@
 			- I'm just sending the pings back to individual clients for now 
 				because I don't really care about accumulating a list of server 
 				clients on each individual client
-	[ ] reliable data transfer protocol
+	[x] reliable data transfer protocol
 		[x] client => server
 			[x] send text message reliably to server
 			[x] test by purposely dropping the reliable data a few times
 		[x] send client inputs as reliable data
 			- at this point, the only unreliable client=>server data should just 
 				be connection telemetry
-		[ ] server => client
+		[x] server => client
 			[x] attempt to pull reliable data buffer logic out of KNetClient so 
 				that we can reuse it on each server-side client
-			[ ] broadcast reliable text messages to all clients
+			[x] broadcast reliable text messages to all clients
 	[-] optimize: serverWriteState: only send net-relevant actors
 	[x] ensure game code hot-reload maintains network virtual connections
 	[x] change kutil::netUnpack API to return the value in an overloaded 
@@ -571,6 +575,7 @@
 	computer so that it is possible to debug client prediction on one machine
 	[ ] generate a unique `fullPathToGameDllTemp` each time the program is run 
 		[ ] erase the temp DLL when the program exits probably?
+[ ] investigate crash on sehar's computer when DInput controller is plugged in
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[ ] MINIMAL TEMPLATE, for easier creation of game projects

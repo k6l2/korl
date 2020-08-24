@@ -215,6 +215,7 @@ internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
 }
 internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 {
+	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
 	/* peek at the `ReliableMessageType`, then read the data from it 
 		appropriately */
 	const ReliableMessageType reliableMessageType = 
@@ -228,7 +229,6 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 			bytesUnpacked += reliableMessageClientControlInputUnpack(
 				&cci, netData, netDataEnd);
 			/* search for the actor possessed by clientId in the ServerState */
-			ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
 			size_t clientActorIndex = 0;
 			for(; clientActorIndex < CARRAY_SIZE(ss->actors); 
 				clientActorIndex++)
@@ -261,11 +261,19 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 			}
 		}break;
 		case ReliableMessageType::ANSI_TEXT_MESSAGE:{
+#if 0
 			char ansiBuffer[256];
 			bytesUnpacked += 
 				reliableMessageAnsiTextUnpack(
 					ansiBuffer, CARRAY_SIZE(ansiBuffer), netData, netDataEnd);
 			KLOG(INFO, "SERVER: ANSI_TEXT_MESSAGE=\"%s\"", ansiBuffer);
+#endif// 0
+			/* simply broadcast the text message back to all other clients~ */
+			const u16 netDataBytes = 
+				kmath::safeTruncateU16(netDataEnd - netData);
+			kNetServerQueueReliableMessage(&ss->kNetServer, netData, 
+			                               netDataBytes, clientId);
+			bytesUnpacked += netDataBytes;
 		}break;
 		default:{
 			KLOG(ERROR, "Invalid reliable message type! (%i)", 
@@ -273,5 +281,30 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 		}break;
 	}
 	kassert(bytesUnpacked == (netDataEnd - netData));
+	return bytesUnpacked;
+}
+internal K_NET_CLIENT_READ_RELIABLE_MESSAGE(gameClientReadReliableMessage)
+{
+	/* peek at the `ReliableMessageType`, then read the data from it 
+		appropriately */
+	const ReliableMessageType reliableMessageType = 
+		ReliableMessageType(data[0]);
+	u32 bytesUnpacked = 0;
+	switch(reliableMessageType)
+	{
+		case ReliableMessageType::ANSI_TEXT_MESSAGE:
+		{
+			char ansiBuffer[256];
+			bytesUnpacked += 
+				reliableMessageAnsiTextUnpack(
+					ansiBuffer, CARRAY_SIZE(ansiBuffer), data, dataEnd);
+			KLOG(INFO, "CLIENT: ANSI_TEXT_MESSAGE=\"%s\"", ansiBuffer);
+		}break;
+		case ReliableMessageType::CLIENT_INPUT_STATE:
+		default:
+		{
+			KLOG(ERROR, "Invalid SERVER=>CLIENT reliable message!");
+		}break;
+	}
 	return bytesUnpacked;
 }

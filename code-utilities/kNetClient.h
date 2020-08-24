@@ -18,6 +18,8 @@ struct KNetClient
 	u32 rollingUnreliableStateIndex;
 	f32 serverReportedRoundTripTime;
 	KNetReliableDataBuffer reliableDataBuffer;
+	/** the last received SERVER=>CLIENT reliable message index */
+	u32 latestReceivedReliableMessageIndex;
 } FORCE_SYMBOL_EXPORT;
 internal bool kNetClientIsDisconnected(const KNetClient* knc);
 internal void kNetClientConnect(KNetClient* knc, 
@@ -31,11 +33,18 @@ internal void kNetClientDropConnection(KNetClient* knc);
 	u32 name(u8* o_data, const u8* dataEnd)
 #define K_NET_CLIENT_READ_SERVER_STATE(name) \
 	void name(const u8* data, const u8* dataEnd)
+/** 
+ * @return the # of bytes read/unpacked from `data`
+ */
+#define K_NET_CLIENT_READ_RELIABLE_MESSAGE(name) \
+	u32 name(const u8* data, const u8* dataEnd)
 typedef K_NET_CLIENT_WRITE_STATE(fnSig_kNetClientWriteState);
 typedef K_NET_CLIENT_READ_SERVER_STATE(fnSig_kNetClientReadServerState);
+typedef K_NET_CLIENT_READ_RELIABLE_MESSAGE(fnSig_kNetClientReadReliableMessage);
 internal void kNetClientStep(
 	KNetClient* knc, f32 deltaSeconds, f32 netReceiveSeconds, 
-	fnSig_kNetClientWriteState* clientWriteState,
-	fnSig_kNetClientReadServerState* clientReadServerState);
+	fnSig_kNetClientWriteState* fnWriteState,
+	fnSig_kNetClientReadServerState* fnReadServerState, 
+	fnSig_kNetClientReadReliableMessage* fnReadReliableMessage);
 internal void kNetClientQueueReliableMessage(
 	KNetClient* knc, const u8* netPackedData, u16 netPackedDataBytes);

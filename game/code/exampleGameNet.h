@@ -30,3 +30,4 @@ internal K_NET_SERVER_WRITE_STATE(serverWriteState);
 internal K_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect);
 internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect);
 internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage);
+internal K_NET_CLIENT_READ_RELIABLE_MESSAGE(gameClientReadReliableMessage);

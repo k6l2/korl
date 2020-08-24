@@ -114,7 +114,9 @@ internal void kNetServerStep(
 					, .netPort             = netPortClient
 					, .timeSinceLastPacket = 0
 					, .connectionState     = network::ConnectionState::ACCEPTING
-					, .rollingUnreliableStateIndex = 0
+					, .rollingUnreliableStateIndex        = 0
+					, .roundTripTime                      = 0
+					, .latestReceivedReliableMessageIndex = 0
 				};
 				arrput(kns->clientArray, newClient);
 			}break;
@@ -175,6 +177,16 @@ internal void kNetServerStep(
 //				KLOG(INFO, "SERVER: client (cid==%i) rtt=%fms", 
 //				     kns->clientArray[clientIndex].id, 
 //				     kns->clientArray[clientIndex].roundTripTime * 1000);
+				/* dequeue reliable messages based on the reliable message index 
+					reported to have been received by the client */
+				u32 clientReportedReliableMessageRollingIndex;
+				bytesUnpacked += 
+					kutil::netUnpack(
+						&clientReportedReliableMessageRollingIndex, 
+						&packetBuffer, packetBufferEnd);
+				kNetReliableDataBufferDequeue(
+					&(kns->clientArray[clientIndex].reliableDataBuffer), 
+					clientReportedReliableMessageRollingIndex);
 				/* if the client is connected, update server state based on 
 					this client's data */
 				fnReadClientState(kns->clientArray[clientIndex].id, 
@@ -182,7 +194,6 @@ internal void kNetServerStep(
 				kns->clientArray[clientIndex].timeSinceLastPacket = 0;
 			}break;
 			case network::PacketType::CLIENT_RELIABLE_MESSAGE_BUFFER: {
-				u32 bytesUnpacked = 0;
 				if(clientIndex >= arrcap(kns->clientArray))
 				/* client isn't even connected; ignore. */
 				{
@@ -194,16 +205,12 @@ internal void kNetServerStep(
 				{
 					break;
 				}
-				/* extract range of reliable message rolling indices contained 
-					in the packet */
 				u32 frontMessageRollingIndex;
-				bytesUnpacked += 
-					kutil::netUnpack(&frontMessageRollingIndex, &packetBuffer, 
-					                 packetBufferEnd);
 				u16 reliableMessageCount;
-				bytesUnpacked += 
-					kutil::netUnpack(&reliableMessageCount, &packetBuffer, 
-					                 packetBufferEnd);
+				const u32 bytesUnpacked = 
+					kNetReliableDataBufferUnpackMeta(
+						&packetBuffer, packetBufferEnd, 
+						&frontMessageRollingIndex, &reliableMessageCount);
 				/* using this information, we can determine if we need to:
 					- discard the packet
 					- read a subset of the messages
@@ -212,7 +219,7 @@ internal void kNetServerStep(
 					frontMessageRollingIndex + reliableMessageCount - 1;
 				if(lastMessageRollingIndex <= 
 						kns->clientArray[clientIndex]
-						.reliableDataBufferFrontMessageRollingIndex)
+							.latestReceivedReliableMessageIndex)
 				/* we have already read all these reliable messages, so we don't 
 					have to continue */
 				{
@@ -233,7 +240,7 @@ internal void kNetServerStep(
 					MUST lie in the range of [front - 1, last) if we've been 
 					reliably reading all the messages so far */
 				kassert(kns->clientArray[clientIndex]
-				        .reliableDataBufferFrontMessageRollingIndex >= 
+				        .latestReceivedReliableMessageIndex >= 
 				            static_cast<i64>(frontMessageRollingIndex) - 1);
 				/* we must iterate over the reliable messages until we get to a 
 					rolling index greater than the server client's rolling 
@@ -252,7 +259,7 @@ internal void kNetServerStep(
 						     "This should probably never happen...");
 					}
 					if(rmi <= kns->clientArray[clientIndex]
-				        .reliableDataBufferFrontMessageRollingIndex)
+				                  .latestReceivedReliableMessageIndex)
 					{
 						packetBuffer += reliableMessageBytes;
 						continue;
@@ -267,7 +274,7 @@ internal void kNetServerStep(
 				/* record the last reliable rolling index we have successfully 
 					received from the client */
 				kns->clientArray[clientIndex]
-					.reliableDataBufferFrontMessageRollingIndex = 
+					.latestReceivedReliableMessageIndex = 
 						lastMessageRollingIndex;
 			}break;
 			case network::PacketType::CLIENT_DISCONNECT_REQUEST: {
@@ -295,6 +302,7 @@ internal void kNetServerStep(
 			case network::PacketType::SERVER_ACCEPT_CONNECTION: 
 			case network::PacketType::SERVER_REJECT_CONNECTION: 
 			case network::PacketType::SERVER_UNRELIABLE_STATE: 
+			case network::PacketType::SERVER_RELIABLE_MESSAGE_BUFFER: 
 			case network::PacketType::SERVER_DISCONNECT: 
 			default:{
 				KLOG(ERROR, "SERVER: received invalid packet type (%i)!", 
@@ -371,11 +379,12 @@ internal void kNetServerStep(
 				kassert(bytesSent >= 0);
 			}break;
 			case network::ConnectionState::CONNECTED: {
+				/* send the server's unreliable state each frame */
 				u8*            packetBuffer    = netBuffer;
 				const u8*const packetBufferEnd = 
 					netBuffer + CARRAY_SIZE(netBuffer);
-				kutil::netPack(
-					static_cast<u8>(network::PacketType::SERVER_UNRELIABLE_STATE), 
+				kutil::netPack(static_cast<u8>(
+					network::PacketType::SERVER_UNRELIABLE_STATE), 
 					&packetBuffer, packetBufferEnd);
 				kutil::netPack(kns->rollingUnreliableStateIndex, &packetBuffer, 
 				               packetBufferEnd);
@@ -384,7 +393,7 @@ internal void kNetServerStep(
 				kutil::netPack(kns->clientArray[c].roundTripTime, &packetBuffer, 
 				               packetBufferEnd);
 				kutil::netPack(kns->clientArray[c]
-					.reliableDataBufferFrontMessageRollingIndex,
+					.latestReceivedReliableMessageIndex,
 					&packetBuffer, packetBufferEnd);
 				packetBuffer += 
 					fnWriteState(packetBuffer, packetBufferEnd, userPointer);
@@ -395,6 +404,29 @@ internal void kNetServerStep(
 					                  kns->clientArray[c].netAddress, 
 					                  kns->clientArray[c].netPort);
 				kassert(bytesSent >= 0);
+				/* if this client has reliable messages queued up, then we need 
+					to attempt to send a reliable datagram */
+				if(kns->clientArray[c].reliableDataBuffer.messageCount > 0)
+				{
+					packetBuffer = netBuffer;
+					u32 reliablePacketSize = 
+						kutil::netPack(static_cast<u8>(network::PacketType
+						                   ::SERVER_RELIABLE_MESSAGE_BUFFER), 
+						               &packetBuffer, packetBufferEnd);
+					reliablePacketSize += 
+						kNetReliableDataBufferNetPack(
+							&kns->clientArray[c].reliableDataBuffer, 
+							&packetBuffer, packetBufferEnd);
+					/* send the packetBuffer which now contains the reliable 
+						messages */
+					kassert(reliablePacketSize <= CARRAY_SIZE(netBuffer));
+					const i32 reliableBytesSent = 
+						g_kpl->socketSend(kns->socket, netBuffer, 
+						                  reliablePacketSize, 
+						                  kns->clientArray[c].netAddress, 
+						                  kns->clientArray[c].netPort);
+					kassert(reliableBytesSent >= 0);
+				}
 			}break;
 		}
 	}
@@ -406,5 +438,21 @@ internal void kNetServerStep(
 	{
 		if(kns->clientArray[c].netAddress == KPL_INVALID_ADDRESS)
 			arrdel(kns->clientArray, c);
+	}
+}
+internal void kNetServerQueueReliableMessage(
+	KNetServer* kns, const u8* netPackedData, u16 netPackedDataBytes, 
+	network::ServerClientId ignoreClientId)
+{
+	for(size_t c = 0; c < arrlenu(kns->clientArray); c++)
+	{
+		if(kns->clientArray[c].id == ignoreClientId)
+			continue;
+		if(kns->clientArray[c].connectionState != 
+				network::ConnectionState::CONNECTED)
+			continue;
+		kNetReliableDataBufferQueueMessage(
+			&kns->clientArray[c].reliableDataBuffer, netPackedData, 
+			netPackedDataBytes);
 	}
 }

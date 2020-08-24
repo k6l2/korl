@@ -15,9 +15,9 @@ struct KNetReliableDataBuffer
 	        sizeof(network::PacketType)];
 	u16 messageCount;
 	u16 frontMessageByteOffset;
-	/** start at an index if 1 to ensure that the server's client rolling index 
-	 * is out of date for the first reliable message we send, since on the 
-	 * server we start at 0 */
+	/** start at an index if 1 to ensure that the remote's rolling index is out 
+	 * of date for the first reliable message we send, since on remote we start 
+	 * at 0 */
 	u32 frontMessageRollingIndex = 1;
 };
 /**
@@ -33,6 +33,9 @@ internal void kNetReliableDataBufferDequeue(
 	KNetReliableDataBuffer* rdb, u32 remoteReportedReliableMessageRollingIndex);
 internal u32 kNetReliableDataBufferNetPack(
 	KNetReliableDataBuffer* rdb, u8** dataCursor, const u8* dataEnd);
+internal u32 kNetReliableDataBufferUnpackMeta(
+	const u8** dataCursor, const u8* dataEnd, u32* o_frontMessageRollingIndex, 
+	u16* o_reliableMessageCount);
 internal void kNetReliableDataBufferQueueMessage(
 	KNetReliableDataBuffer* rdb, const u8* netPackedData, 
 	u16 netPackedDataBytes);
