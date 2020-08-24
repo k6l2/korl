@@ -1988,6 +1988,170 @@ internal bool w32RawInputEnumerateDevices()
 	}
 	return true;
 }
+internal u32 w32FindUnusedTempGameDllPostfix()
+{
+	TCHAR fileQueryString[MAX_PATH];
+	StringCchPrintf(fileQueryString, MAX_PATH, TEXT("%s\\*.dll"), g_pathTemp);
+	/* Attempt to delete all the DLLs in the `g_pathTemp` directory.  If another 
+		game is currently running, the attempt to delete the file should fail 
+		gracefully */
+	WIN32_FIND_DATA findFileData;
+	HANDLE findHandleTempGameDll = 
+		FindFirstFile(fileQueryString, &findFileData);
+	if(findHandleTempGameDll == INVALID_HANDLE_VALUE)
+	{
+		if(GetLastError() != ERROR_FILE_NOT_FOUND)
+		/* ERROR CASE */
+		{
+			KLOG(ERROR, "Failed to begin search for '%s'!  GetLastError=%i",
+			     fileQueryString, GetLastError());
+			return 0;
+		}
+		/* otherwise, there are just no files to delete, so do nothing */
+	}
+	else
+	{
+		for(;;)
+		{
+			/* attempt to delete this file */
+			TCHAR deleteFilePath[MAX_PATH];
+			StringCchPrintf(deleteFilePath, MAX_PATH, TEXT("%s\\%s"), 
+			                g_pathTemp, findFileData.cFileName);
+			DeleteFile(deleteFilePath);
+			/* go to the next file */
+			const BOOL findNextFileResult = 
+				FindNextFile(findHandleTempGameDll, &findFileData);
+			if(!findNextFileResult)
+			{
+				if(GetLastError() == ERROR_NO_MORE_FILES)
+				{
+					break;
+				}
+				else
+				{
+					KLOG(ERROR, "Failed to find next for '%s'!  "
+					     "GetLastError=%i", fileQueryString, GetLastError());
+					return 0;
+				}
+			}
+		}
+		if(!FindClose(findHandleTempGameDll))
+		{
+			KLOG(ERROR, "Failed to close search for '%s'!  GetLastError=%i",
+			     fileQueryString, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+	}
+	/* count the # of game DLLs in the `g_pathTemp` directory */
+	u32 tempGameDllCount = 1;
+	findHandleTempGameDll = FindFirstFile(fileQueryString, &findFileData);
+	if(findHandleTempGameDll == INVALID_HANDLE_VALUE)
+	{
+		if(GetLastError() == ERROR_FILE_NOT_FOUND)
+		/* if there are no existing temp game DLLs, then we can just use 0 as the 
+			first unused postfix */
+		{
+			return 0;
+		}
+		KLOG(ERROR, "Failed to begin search for '%s'!  GetLastError=%i",
+		     fileQueryString, GetLastError());
+		return 0;
+	}
+	for(;;)
+	{
+		const BOOL findNextFileResult = 
+			FindNextFile(findHandleTempGameDll, &findFileData);
+		if(!findNextFileResult)
+		{
+			if(GetLastError() == ERROR_NO_MORE_FILES)
+			{
+				break;
+			}
+			else
+			{
+				KLOG(ERROR, "Failed to find next for '%s'!  GetLastError=%i",
+				     fileQueryString, GetLastError());
+				return 0;
+			}
+		}
+		tempGameDllCount++;
+	}
+	if(!FindClose(findHandleTempGameDll))
+	{
+		KLOG(ERROR, "Failed to close search for '%s'!  GetLastError=%i",
+		     fileQueryString, GetLastError());
+		return EXCEPTION_EXECUTE_HANDLER;
+	}
+	/* find the lowest unused postfix within the range [0, tempGameDllCount] */
+	u32 lowestUnusedPostfix = 0;
+	for(; lowestUnusedPostfix <= tempGameDllCount; lowestUnusedPostfix++)
+	{
+		bool postfixInUse = false;
+		findHandleTempGameDll = FindFirstFile(fileQueryString, &findFileData);
+		if(findHandleTempGameDll == INVALID_HANDLE_VALUE)
+		{
+			KLOG(ERROR, "Failed to begin search for '%s'!  GetLastError=%i",
+			     fileQueryString, GetLastError());
+			return 0;
+		}
+		for(;;)
+		{
+			/* extract the postfix from the file's name and check to see if it 
+				== lowestUnusedPostfix, indicating the postfix is in use */
+			const char* cStrPostfix = 
+				strstr(findFileData.cFileName, "_temp_");
+			const char*const cStrDll = 
+				strstr(findFileData.cFileName, ".dll");
+			kassert(cStrPostfix && cStrDll);
+			cStrPostfix += 6;
+			char cStrUlBuffer[32];
+			const size_t filePostfixCharCount = 
+				((cStrDll - cStrPostfix) / sizeof(cStrPostfix[0]));
+			kassert(CARRAY_SIZE(cStrUlBuffer) >= filePostfixCharCount + 1);
+			for(size_t c = 0; c < filePostfixCharCount; c++)
+			{
+				cStrUlBuffer[c] = cStrPostfix[c];
+			}
+			cStrUlBuffer[filePostfixCharCount] = '\0';
+			errno = 0;
+			const u32 extractedPostfix = strtoul(cStrUlBuffer, nullptr, 10);
+			if(errno == ERANGE)
+			{
+				KLOG(ERROR, "Error reading cStrUlBuffer==\"%s\"", cStrUlBuffer);
+			}
+			if(extractedPostfix == lowestUnusedPostfix)
+			{
+				postfixInUse = true;
+				break;
+			}
+			const BOOL findNextFileResult = 
+				FindNextFile(findHandleTempGameDll, &findFileData);
+			if(!findNextFileResult)
+			{
+				if(GetLastError() == ERROR_NO_MORE_FILES)
+				{
+					break;
+				}
+				else
+				{
+					KLOG(ERROR, "Failed to find next for '%s'!  "
+					            "GetLastError=%i",
+					            fileQueryString, GetLastError());
+					return 0;
+				}
+			}
+		}
+		if(!FindClose(findHandleTempGameDll))
+		{
+			KLOG(ERROR, "Failed to close search for '%s'!  GetLastError=%i",
+			     fileQueryString, GetLastError());
+			return EXCEPTION_EXECUTE_HANDLER;
+		}
+		if(!postfixInUse)
+			break;
+	}
+	return lowestUnusedPostfix;
+}
 extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
                            PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
@@ -2042,11 +2206,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	{
 		KLOG(ERROR, "Failed to initialize network!");
 	}
+#if 0
 	if(!w32RawInputEnumerateDevices())
 	{
 		KLOG(ERROR, "Failed to enumerate raw input devices!");
 		return RETURN_CODE_FAILURE;
 	}
+#endif// 0
 	// parse command line arguments //
 	WCHAR relativeAssetDir[MAX_PATH];
 	relativeAssetDir[0] = '\0';
@@ -2225,9 +2391,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			     g_pathToExe, FILE_NAME_GAME_DLL);
 			return RETURN_CODE_FAILURE;
 		}
+		const u32 unusedTempGameDllPostfix = w32FindUnusedTempGameDllPostfix();
 		if(FAILED(StringCchPrintf(fullPathToGameDllTemp, MAX_PATH, 
-		                          TEXT("%s\\%s_temp.dll"), g_pathTemp, 
-		                          FILE_NAME_GAME_DLL)))
+		                          TEXT("%s\\%s_temp_%i.dll"), g_pathTemp, 
+		                          FILE_NAME_GAME_DLL, 
+		                          unusedTempGameDllPostfix)))
 		{
 			KLOG(ERROR, "Failed to build fullPathToGameDllTemp!  "
 			     "g_pathTemp='%s' FILE_NAME_GAME_DLL='%s'", 

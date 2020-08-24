@@ -571,10 +571,18 @@
 	[x] consider changing kutil net (un)packing API to take a buffer end pointer 
 		instead of the buffer + buffer size
 [x] do not assert that errno == 0 in win32-directinput
-[ ] win32: allow multiple instances of the program to be run on the same 
+[x] win32: allow multiple instances of the program to be run on the same 
 	computer so that it is possible to debug client prediction on one machine
-	[ ] generate a unique `fullPathToGameDllTemp` each time the program is run 
-		[ ] erase the temp DLL when the program exits probably?
+	[x] generate a unique `fullPathToGameDllTemp` each time the program is run 
+		[x] iterate over the files in the `g_pathTemp` and count the # of 
+			*_temp*.dll files in this directory
+		[x] for each # between 0-#TempDLLs, iterate over the files in 
+			`g_pathTemp` and see if there is a temp dll with that # appended to 
+			the filename
+		[x] choose a temp dll filename with an unused postfix #
+	[x] erase the temp DLL when the program exits probably?
+		Na.. just attempt to erase all DLL files in the temp directory when a 
+		KML executable begins
 [ ] investigate crash on sehar's computer when DInput controller is plugged in
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
