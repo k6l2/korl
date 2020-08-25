@@ -588,9 +588,10 @@
 	specific KML workflows/features
 	[x] MINIMAL TEMPLATE, for easier creation of game projects
 	[x] drawing primitives
-	[ ] keyboard input
+	[x] keyboard input
 	[ ] dynamic memory management
 	[ ] drawing texture assets
+	[ ] drawing flipbook animations
 	[ ] gamepad input
 	[ ] playing music & sound assets
 	[ ] client/server
