@@ -68,39 +68,67 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	        halfDepth, -halfDepth);
 	GL_CHECK_ERROR();
 }
-internal KRB_DRAW_LINE(krbDrawLine)
+internal KRB_DRAW_LINES(krbDrawLines)
 {
+	kassert(vertexCount % 2 == 0);
+	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
+	kassert(vertexAttribOffsets.texCoord_2f32 >= vertexStride);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_TEXTURE_2D);
-	glColor4f(color.r, color.g, color.b, color.a);
+	if(vertexAttribOffsets.color_4f32 >= vertexStride)
+		glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
 	glBegin(GL_LINES);
-	glVertex2f(p0.x, p0.y);
-	glVertex2f(p1.x, p1.y);
+	for(size_t v = 0; v < vertexCount; v++)
+	{
+		const void* vertex = 
+			reinterpret_cast<const u8*>(vertices) + (v*vertexStride);
+		const f32* v3f32_position = reinterpret_cast<const f32*>(
+			reinterpret_cast<const u8*>(vertex) + 
+				vertexAttribOffsets.position_3f32);
+		const f32* v4f32_color = reinterpret_cast<const f32*>(
+			reinterpret_cast<const u8*>(vertex) + 
+				vertexAttribOffsets.color_4f32);
+		if(vertexAttribOffsets.color_4f32 < vertexStride)
+			glColor4fv(v4f32_color);
+		glVertex3fv(v3f32_position);
+	}
 	glEnd();
 	GL_CHECK_ERROR();
 }
-internal KRB_DRAW_TRI(krbDrawTri)
+internal KRB_DRAW_TRIS(krbDrawTris)
 {
+	kassert(vertexCount % 3 == 0);
+	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_TEXTURE_2D);
-	glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
+	if(vertexAttribOffsets.color_4f32 >= vertexStride)
+		glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
 	glBegin(GL_TRIANGLES);
-	glVertex2f(p0.x, p0.y);
-	glVertex2f(p1.x, p1.y);
-	glVertex2f(p2.x, p2.y);
-	glEnd();
-	GL_CHECK_ERROR();
-}
-internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured)
-{
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
-	glEnable(GL_TEXTURE_2D);
-	glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
-	glBegin(GL_TRIANGLES);
-	glTexCoord2f(t0.x, t0.y); glVertex2f(p0.x, p0.y);
-	glTexCoord2f(t1.x, t1.y); glVertex2f(p1.x, p1.y);
-	glTexCoord2f(t2.x, t2.y); glVertex2f(p2.x, p2.y);
+	for(size_t v = 0; v < vertexCount; v++)
+	{
+		const void* vertex = 
+			reinterpret_cast<const u8*>(vertices) + (v*vertexStride);
+		const f32* v3f32_position = reinterpret_cast<const f32*>(
+			reinterpret_cast<const u8*>(vertex) + 
+				vertexAttribOffsets.position_3f32);
+		if(vertexAttribOffsets.color_4f32 < vertexStride)
+		{
+			const f32* v4f32_color = reinterpret_cast<const f32*>(
+				reinterpret_cast<const u8*>(vertex) + 
+					vertexAttribOffsets.color_4f32);
+			glColor4fv(v4f32_color);
+		}
+		if(vertexAttribOffsets.texCoord_2f32 < vertexStride)
+		{
+			const f32* v2f32_texCoord = reinterpret_cast<const f32*>(
+				reinterpret_cast<const u8*>(vertex) + 
+					vertexAttribOffsets.texCoord_2f32);
+			glTexCoord2fv(v2f32_texCoord);
+		}
+		glVertex3fv(v3f32_position);
+	}
 	glEnd();
 	GL_CHECK_ERROR();
 }

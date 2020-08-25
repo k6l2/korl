@@ -587,10 +587,13 @@
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[x] MINIMAL TEMPLATE, for easier creation of game projects
+	[x] drawing primitives
+	[ ] keyboard input
+	[ ] dynamic memory management
+	[ ] drawing texture assets
+	[ ] gamepad input
+	[ ] playing music & sound assets
 	[ ] client/server
-	[ ] drawing stuff
-	[ ] playing music & sound
-	[ ] asset management
 [ ] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution

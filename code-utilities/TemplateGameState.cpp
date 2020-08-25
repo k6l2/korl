@@ -1,10 +1,4 @@
 #include "TemplateGameState.h"
-#pragma warning( push )
-	// warning C4820: bytes padding added after data member
-	#pragma warning( disable : 4820 )
-	#include "imgui/imgui.h"
-#pragma warning( pop )
-#include "gen_kassets.h"
 internal void templateGameState_onReloadCode(GameMemory& memory)
 {
 	g_kpl          = &memory.kpl;

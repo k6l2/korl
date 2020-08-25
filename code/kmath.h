@@ -100,6 +100,9 @@ struct kQuaternion : public v4f32
 	/* transform is not `const` because it can potentially auto-normalize the 
 		quaternion! */
 	inline v2f32 transform(const v2f32& v2d, bool quatIsNormalized = false);
+	/* transform is not `const` because it can potentially auto-normalize the 
+		quaternion! */
+	inline v3f32 transform(const v3f32& v3d, bool quatIsNormalized = false);
 };
 namespace kmath
 {

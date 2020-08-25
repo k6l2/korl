@@ -29,6 +29,11 @@ global_variable KrbApi* g_krb;
 /* platform function addresses required to exist by kutil macros */
 global_variable fnSig_platformLog* platformLog;
 global_variable fnSig_platformAssert* platformAssert;
+#pragma warning( push )
+	// warning C4820: bytes padding added after data member
+	#pragma warning( disable : 4820 )
+	#include "imgui/imgui.h"
+#pragma warning( pop )
 /* template game state API */
 internal void templateGameState_onReloadCode(GameMemory& memory);
 /** 

@@ -1196,6 +1196,11 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
 	                         &fileAttributeData))
 	{
+		if(GetLastError() == ERROR_FILE_NOT_FOUND)
+		/* if the file can't be found, just silently return a zero FILETIME */
+		{
+			return result;
+		}
 		KLOG(WARNING, "Failed to get last write time of file '%s'! "
 		     "GetLastError=%i", fileName, GetLastError());
 		return result;
@@ -1300,8 +1305,14 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
 	{
-		KLOG(WARNING, "Failed to copy file '%s' to '%s'! GetLastError=%i", 
-		     fileNameDll, fileNameDllTemp, GetLastError());
+		if(GetLastError() == ERROR_SHARING_VIOLATION)
+		{
+			/* if the file is being used by another program, just silently do 
+				nothing since it's very likely the other program is cl.exe */
+		}
+		else
+			KLOG(WARNING, "Failed to copy file '%s' to '%s'! GetLastError=%i", 
+			     fileNameDll, fileNameDllTemp, GetLastError());
 	}
 	else
 	{
@@ -1362,7 +1373,7 @@ internal GameCode w32LoadGameCode(const char* fileNameDll,
 	}
 	if(!result.isValid)
 	{
-		KLOG(WARNING, "Game code is invalid!");
+//		KLOG(WARNING, "Game code is invalid!");
 		result.initialize    = gameInitializeStub;
 		result.onReloadCode  = gameOnReloadCodeStub;
 		result.renderAudio   = gameRenderAudioStub;
@@ -2692,7 +2703,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				//	probably in the process of getting recompiled!
 				{
 					if(game.isValid)
+					{
+						KLOG(INFO, "Unloading game code...");
 						game.onPreUnload();
+					}
 					game.isValid = false;
 				}
 				if((CompareFileTime(&gameCodeLastWriteTime, 

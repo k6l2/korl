@@ -188,6 +188,16 @@ inline v2f32 kQuaternion::transform(const v2f32& v2d, bool quatIsNormalized)
 		hamilton(hamilton(*this, {0, v2d.x, v2d.y, 0}), conjugate());
 	return {result.x, result.y};
 }
+inline v3f32 kQuaternion::transform(const v3f32& v3d, bool quatIsNormalized)
+{
+	if(!quatIsNormalized)
+	{
+		normalize();
+	}
+	const kQuaternion result = 
+		hamilton(hamilton(*this, {0, v3d.x, v3d.y, v3d.z}), conjugate());
+	return {result.x, result.y, result.z};
+}
 internal inline bool kmath::isNearlyEqual(f32 fA, f32 fB, f32 epsilon)
 {
 	const f32 diff = fabsf(fA - fB);

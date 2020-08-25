@@ -7,13 +7,13 @@ struct Color4f32
 {
 	f32 r, g, b, a;
 };
-internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratioLerp)
+internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratio)
 {
 	Color4f32 result;
-	result.r = a.r + (b.r - a.r)*ratioLerp;
-	result.g = a.g + (b.g - a.g)*ratioLerp;
-	result.b = a.b + (b.b - a.b)*ratioLerp;
-	result.a = a.a + (b.a - a.a)*ratioLerp;
+	result.r = a.r + ratio*(b.r - a.r);
+	result.g = a.g + ratio*(b.g - a.g);
+	result.b = a.b + ratio*(b.b - a.b);
+	result.a = a.a + ratio*(b.a - a.a);
 	return result;
 }
 namespace krb
@@ -25,26 +25,31 @@ namespace krb
 	global_variable const Color4f32 BLUE   = {0,0,1,1};
 	global_variable const Color4f32 YELLOW = {1,1,0,1};
 }
-#define KRB_BEGIN_FRAME(name) void name(f32 clamped0_1_red, \
-                                        f32 clamped0_1_green, \
-                                        f32 clamped0_1_blue)
+#define KRB_BEGIN_FRAME(name) \
+	void name(f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue)
 /** Setup a right-handed axis where +Y is UP. */
-#define KRB_SET_PROJECTION_ORTHO(name) void name(u32 windowSizeX, \
-                                                 u32 windowSizeY, \
-                                                 f32 halfDepth)
+#define KRB_SET_PROJECTION_ORTHO(name) \
+	void name(u32 windowSizeX, u32 windowSizeY, f32 halfDepth)
 /** Setup a right-handed axis where +Y is UP. */
-#define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) void name(u32 windowSizeX, \
-                                                              u32 windowSizeY, \
-                                                              u32 fixedHeight, \
-                                                              f32 halfDepth)
-///TODO: use separate colors per vertex
-#define KRB_DRAW_LINE(name) void name(const v2f32& p0, const v2f32& p1, \
-                                      const Color4f32& color)
-#define KRB_DRAW_TRI(name) void name(const v2f32& p0, const v2f32& p1, \
-                                     const v2f32& p2)
-#define KRB_DRAW_TRI_TEXTURED(name) void name(const v2f32& p0, const v2f32& p1,\
-                                              const v2f32& p2, const v2f32& t0,\
-                                              const v2f32& t1, const v2f32& t2)
+#define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) \
+	void name(u32 windowSizeX, u32 windowSizeY, u32 fixedHeight, f32 halfDepth)
+/**
+ * If one of these values is >= `vertexStride` in the below API, that means the 
+ * vertex data does not possess the given attribute, so it should be supplied 
+ * with some sort of default value.
+ */
+struct KrbVertexAttributeOffsets
+{
+	size_t position_3f32;
+	size_t color_4f32;
+	size_t texCoord_2f32;
+};
+#define KRB_DRAW_LINES(name) \
+	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
+	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
+#define KRB_DRAW_TRIS(name) \
+	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
+	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
 /** 
  * @param ratioAnchor is relative to the top-left (-X, Y) most point of the quad 
  *                    mesh.  Positive values point in the {X,-Y} direction in 
@@ -55,40 +60,39 @@ namespace krb
  * @param texCoords [up-left, down-left, down-right, up-right]
  * @param colors [up-left, down-left, down-right, up-right]
 */
-#define KRB_DRAW_QUAD_TEXTURED(name) void name(const v2f32& size, \
-                                               const v2f32& ratioAnchor, \
-                                               const v2f32 texCoords[4], \
-											   const Color4f32 colors[4])
-#define KRB_DRAW_CIRCLE(name) void name(f32 radius, f32 outlineThickness, \
-                                        const Color4f32& colorFill, \
-                                        const Color4f32& colorOutline, \
-										u16 vertexCount)
-#define KRB_VIEW_TRANSLATE(name) void name(const v2f32& offset)
-#define KRB_SET_MODEL_XFORM(name) void name(const v3f32& translation, \
-                                         const kQuaternion& orientation, \
-                                         const v3f32& scale)
-#define KRB_SET_MODEL_XFORM_2D(name) void name(const v2f32& translation, \
-                                         const kQuaternion& orientation, \
-                                         const v2f32& scale)
-#define KRB_LOAD_IMAGE(name) KrbTextureHandle name(u32 imageSizeX, \
-                                                   u32 imageSizeY, \
-                                                   u8* imageDataRGBA)
-#define KRB_DELETE_TEXTURE(name) void name(KrbTextureHandle krbTextureHandle)
-#define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
+#define KRB_DRAW_QUAD_TEXTURED(name) \
+	void name(const v2f32& size, const v2f32& ratioAnchor, \
+	          const v2f32 texCoords[4], const Color4f32 colors[4])
+#define KRB_DRAW_CIRCLE(name) \
+	void name(f32 radius, f32 outlineThickness, const Color4f32& colorFill, \
+	          const Color4f32& colorOutline, u16 vertexCount)
+#define KRB_VIEW_TRANSLATE(name) \
+	void name(const v2f32& offset)
+#define KRB_SET_MODEL_XFORM(name) \
+	void name(const v3f32& translation, const kQuaternion& orientation, \
+	          const v3f32& scale)
+#define KRB_SET_MODEL_XFORM_2D(name) \
+	void name(const v2f32& translation, const kQuaternion& orientation, \
+	          const v2f32& scale)
+#define KRB_LOAD_IMAGE(name) \
+	KrbTextureHandle name(u32 imageSizeX, u32 imageSizeY, u8* imageDataRGBA)
+#define KRB_DELETE_TEXTURE(name) \
+	void name(KrbTextureHandle krbTextureHandle)
+#define KRB_USE_TEXTURE(name) \
+	void name(KrbTextureHandle kth)
 /** 
  * @return {NAN,NAN} if the provided world position is not contained within the 
  *         camera's clip space.  This does NOT mean that non-{NAN,NAN} values 
  *         are on the screen!
 */
-#define KRB_WORLD_TO_SCREEN(name) v2f32 name(const f32* pWorldPosition, \
-                                             u8 worldPositionDimension)
+#define KRB_WORLD_TO_SCREEN(name) \
+	v2f32 name(const f32* pWorldPosition, u8 worldPositionDimension)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	fnSig_krbSetProjectionOrthoFixedHeight);
-typedef KRB_DRAW_LINE(fnSig_krbDrawLine);
-typedef KRB_DRAW_TRI(fnSig_krbDrawTri);
-typedef KRB_DRAW_TRI_TEXTURED(fnSig_krbDrawTriTextured);
+typedef KRB_DRAW_LINES(fnSig_krbDrawLines);
+typedef KRB_DRAW_TRIS(fnSig_krbDrawTris);
 typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
 typedef KRB_DRAW_CIRCLE(fnSig_krbDrawCircle);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
@@ -102,9 +106,8 @@ internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	krbSetProjectionOrthoFixedHeight);
-internal KRB_DRAW_LINE(krbDrawLine);
-internal KRB_DRAW_TRI(krbDrawTri);
-internal KRB_DRAW_TRI_TEXTURED(krbDrawTriTextured);
+internal KRB_DRAW_LINES(krbDrawLines);
+internal KRB_DRAW_TRIS(krbDrawTris);
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
 internal KRB_DRAW_CIRCLE(krbDrawCircle);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
@@ -118,11 +121,10 @@ struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
-	fnSig_krbSetProjectionOrthoFixedHeight* setProjectionOrthoFixedHeight = 
-	                                           krbSetProjectionOrthoFixedHeight;
-	fnSig_krbDrawLine*           drawLine           = krbDrawLine;
-	fnSig_krbDrawTri*            drawTri            = krbDrawTri;
-	fnSig_krbDrawTriTextured*    drawTriTextured    = krbDrawTriTextured;
+	fnSig_krbSetProjectionOrthoFixedHeight* 
+		setProjectionOrthoFixedHeight        = krbSetProjectionOrthoFixedHeight;
+	fnSig_krbDrawLines*          drawLines          = krbDrawLines;
+	fnSig_krbDrawTris*           drawTris           = krbDrawTris;
 	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;
 	fnSig_krbDrawCircle*         drawCircle         = krbDrawCircle;
 	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
