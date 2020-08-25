@@ -6,8 +6,7 @@ internal bool kNetClientIsDisconnected(const KNetClient* knc)
 internal void kNetClientConnect(KNetClient* knc, 
                                 const char* cStrServerAddress)
 {
-	knc->addressServer = 
-		g_kpl->netResolveAddress(g_gs->clientAddressBuffer);
+	knc->addressServer = g_kpl->netResolveAddress(cStrServerAddress);
 	knc->socket = g_kpl->socketOpenUdp(0);
 	knc->connectionState = network::ConnectionState::ACCEPTING;
 	knc->secondsSinceLastServerPacket = 0;
@@ -32,7 +31,7 @@ internal void kNetClientStep(
 	fnSig_kNetClientReadServerState* fnReadServerState, 
 	fnSig_kNetClientReadReliableMessage* fnReadReliableMessage)
 {
-	if(kNetClientIsDisconnected(&g_gs->kNetClient))
+	if(kNetClientIsDisconnected(knc))
 	/* there's no need to perform any network logic if the client isn't even 
 		virtually connected to the server */
 	{
@@ -290,7 +289,7 @@ internal void kNetClientStep(
 			all the data */
 	}while(g_kpl->secondsSinceTimeStamp(timeStampNetReceive) < 
 	           netReceiveSeconds
-	       && !kNetClientIsDisconnected(&g_gs->kNetClient));
+	       && !kNetClientIsDisconnected(knc));
 }
 internal void kNetClientQueueReliableMessage(
 	KNetClient* knc, const u8* netPackedData, u16 netPackedDataBytes)

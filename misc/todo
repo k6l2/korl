@@ -586,7 +586,7 @@
 [ ] investigate crash on sehar's computer when DInput controller is plugged in
 [ ] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
-	[ ] MINIMAL TEMPLATE, for easier creation of game projects
+	[x] MINIMAL TEMPLATE, for easier creation of game projects
 	[ ] client/server
 	[ ] drawing stuff
 	[ ] playing music & sound
