@@ -1,5 +1,6 @@
 #include "win32-krb-opengl.h"
 #include <GL/GL.h>
+#include "krb-opengl-extensions.h"
 #define WGL_GET_EXTENSIONS_STRING_ARB(name) const char* WINAPI name(HDC hdc)
 #define WGL_SWAP_INTERVAL(name) BOOL WINAPI name(int interval)
 #define WGL_GET_SWAP_INTERVAL(name) int WINAPI name(void)
@@ -96,6 +97,14 @@ internal void w32KrbOglInitialize(HWND hwnd)
 	{
 		KLOG(WARNING, "System does not contain 'WGL_EXT_swap_control'; the "
 		     "application will not have vertical-sync capabilities!");
+	}
+	glLoadTransposeMatrixf = 
+		reinterpret_cast<PFNGLLOADTRANSPOSEMATRIXFPROC>(
+			wglGetProcAddress("glLoadTransposeMatrixf"));
+	if(!glLoadTransposeMatrixf)
+	{
+		KLOG(ERROR, "Failed to get glLoadTransposeMatrixf! "
+		     "GetLastError=%i", GetLastError());
 	}
 }
 internal void w32KrbOglSetVSyncPreference(bool value)

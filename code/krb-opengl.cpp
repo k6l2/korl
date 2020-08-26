@@ -2,12 +2,13 @@
  * the Kyle's Renderer Backend interface.  
 */
 #include "krb-interface.h"
-///TODO: maybe figure out a more platform-independent way of getting OpenGL 
-///      function definitions.
+///@TODO: maybe figure out a more platform-independent way of getting OpenGL
+///       function definitions.
 #ifdef _WIN32
-	#include "win32-main.h"
-	#include <GL/GL.h>
+       #include "win32-main.h"
+       #include <GL/GL.h>
 #endif
+#include "krb-opengl-extensions.h"
 internal GLenum krbOglCheckErrors(const char* file, int line)
 {
 	GLenum errorCode;
@@ -26,7 +27,7 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
 	// empty the modelview stack //
 	{
@@ -40,6 +41,24 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	GL_CHECK_ERROR();
+}
+internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
+{
+	if(enable)
+		glEnable(GL_DEPTH_TEST);
+	else
+		glDisable(GL_DEPTH_TEST);
+	GL_CHECK_ERROR();
+}
+internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling)
+{
+	if(enable)
+		glEnable(GL_CULL_FACE);
+	else
+		glDisable(GL_CULL_FACE);
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
@@ -66,6 +85,53 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	         static_cast<f32>(viewportWidth)/2, 
 	        -static_cast<f32>(fixedHeight)/2, static_cast<f32>(fixedHeight)/2, 
 	        halfDepth, -halfDepth);
+	GL_CHECK_ERROR();
+}
+internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
+{
+	// https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
+	const v2u32* windowDimensions = reinterpret_cast<const v2u32*>(windowSize);
+	glViewport(0, 0, windowDimensions->x, windowDimensions->y);
+	const f32 aspectRatio = 
+		static_cast<f32>(windowDimensions->x)/windowDimensions->y;
+	kassert(!kmath::isNearlyZero(aspectRatio));
+	kassert(!kmath::isNearlyEqual(clipNear, clipFar) && clipFar > clipNear);
+	const f32 horizonFovRadians = horizonFovDegrees*PI32/180;
+	const f32 tanHalfFov = tanf(horizonFovRadians / 2);
+	m4x4f32 projectionMatrix = {};
+	projectionMatrix.r0c0 = 1.f / (aspectRatio * tanHalfFov);
+	projectionMatrix.r1c1 = 1.f / tanHalfFov;
+	projectionMatrix.r2c2 = -(clipFar + clipNear) / (clipFar - clipNear);
+	projectionMatrix.r3c2 = -1;
+	projectionMatrix.r2c3 = -(2*clipFar*clipNear) / (clipFar - clipNear);
+	glMatrixMode(GL_PROJECTION);
+	glLoadTransposeMatrixf(projectionMatrix.elements);
+	GL_CHECK_ERROR();
+}
+internal KRB_LOOK_AT(krbLookAt)
+{
+	const v3f32*const eye = reinterpret_cast<const v3f32*>(v3f32_eye);
+	const v3f32 eyeWorldToTarget = kmath::normal(
+		*reinterpret_cast<const v3f32*>(v3f32_target) - *eye);
+	const v3f32 eyeWorldRight = kmath::normal(
+		eyeWorldToTarget.cross(*reinterpret_cast<const v3f32*>(v3f32_worldUp)));
+	const v3f32 eyeWorldUp = eyeWorldRight.cross(eyeWorldToTarget);
+	m4x4f32 viewMatrix = m4x4f32::IDENTITY;
+	viewMatrix.r0c0 = eyeWorldRight.x;
+	viewMatrix.r0c1 = eyeWorldRight.y;
+	viewMatrix.r0c2 = eyeWorldRight.z;
+	viewMatrix.r0c3 = - eyeWorldRight   .dot(*eye);
+	viewMatrix.r1c0 = eyeWorldUp.x;
+	viewMatrix.r1c1 = eyeWorldUp.y;
+	viewMatrix.r1c2 = eyeWorldUp.z;
+	viewMatrix.r1c3 = - eyeWorldUp      .dot(*eye);
+	viewMatrix.r2c0 = -eyeWorldToTarget.x;
+	viewMatrix.r2c1 = -eyeWorldToTarget.y;
+	viewMatrix.r2c2 = -eyeWorldToTarget.z;
+	viewMatrix.r2c3 =   eyeWorldToTarget.dot(*eye);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadTransposeMatrixf(viewMatrix.elements);
+	glPushMatrix();
 	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_LINES(krbDrawLines)
@@ -291,7 +357,7 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageSizeX, imageSizeY, 0, 
-	             GL_RGBA, GL_UNSIGNED_BYTE, imageDataRGBA);
+	             GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, imageDataRGBA);
 	GL_CHECK_ERROR();
 	return texName;
 }
@@ -348,17 +414,17 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 	/* calculate normalized-device-coordinate-space 
 		y is inverted here because screen-space y axis is flipped! */
 	const v3f32 ndcSpacePoint = 
-		{ .x = clipSpacePoint.elements[0] / clipSpacePoint.elements[3]
-		, .y = clipSpacePoint.elements[1] / clipSpacePoint.elements[3] * -1
-		, .z = clipSpacePoint.elements[2] / clipSpacePoint.elements[3]
+		{ clipSpacePoint.elements[0] / clipSpacePoint.elements[3]
+		, clipSpacePoint.elements[1] / clipSpacePoint.elements[3] * -1
+		, clipSpacePoint.elements[2] / clipSpacePoint.elements[3]
 	};
 	/* calculate screen-space.  glsl formula = 
 	   ((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
 	const v2f32 result = 
-		{ .x = ((ndcSpacePoint.x + 1.f) / 2.f) * viewportValues[2] + 
-		       viewportValues[0]
-		, .y = ((ndcSpacePoint.y + 1.f) / 2.f) * viewportValues[3] + 
-		       viewportValues[1]
+		{ ((ndcSpacePoint.x + 1.f) / 2.f) * viewportValues[2] + 
+			viewportValues[0]
+		, ((ndcSpacePoint.y + 1.f) / 2.f) * viewportValues[3] + 
+			viewportValues[1]
 	};
 	return result;
 }

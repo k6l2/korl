@@ -8,6 +8,14 @@
 #if defined(min)
 	#undef min
 #endif
+const v2f32 v2f32::ZERO = {0,0};
+const v3f32 v3f32::ZERO = {0,0,0};
+const v4f32 v4f32::ZERO = {0,0,0,0};
+const kQuaternion kQuaternion::IDENTITY = {1,0,0,0};
+const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,
+                                   0,1,0,0,
+                                   0,0,1,0,
+                                   0,0,0,1};
 inline v2f32 v2f32::operator-() const
 {
 	return {-x,-y};
@@ -76,6 +84,16 @@ inline v2f32 operator*(f32 lhs, const v2f32& rhs)
 {
 	return {lhs*rhs.x, lhs*rhs.y};
 }
+inline v3f32 v3f32::operator-(const v3f32& other) const
+{
+	return {x - other.x, y - other.y, z - other.z};
+}
+inline v3f32 v3f32::cross(const v3f32& other) const
+{
+	return { y*other.z - z*other.y
+	       , z*other.x - x*other.z
+	       , x*other.y - y*other.x };
+}
 inline f32 v3f32::magnitude() const
 {
 	return sqrtf(powf(x,2) + powf(y,2) + powf(z,2));
@@ -95,6 +113,10 @@ inline f32 v3f32::normalize()
 	y /= mag;
 	z /= mag;
 	return mag;
+}
+inline f32 v3f32::dot(const v3f32& other) const
+{
+	return x*other.x + y*other.y + z*other.z;
 }
 inline f32 v4f32::magnitude() const
 {
@@ -117,6 +139,10 @@ inline f32 v4f32::normalize()
 	z /= mag;
 	return mag;
 }
+inline f32 v4f32::dot(const v4f32& other) const
+{
+	return w*other.w + x*other.x + y*other.y + z*other.z;
+}
 m4x4f32 m4x4f32::transpose(const f32* elements)
 {
 	m4x4f32 result = {};
@@ -125,6 +151,23 @@ m4x4f32 m4x4f32::transpose(const f32* elements)
 		for(u8 c = 0; c < 4; c++)
 		{
 			result.elements[4*r + c] = elements[4*c + r];
+		}
+	}
+	return result;
+}
+inline m4x4f32 m4x4f32::operator*(const m4x4f32& other) const
+{
+	const m4x4f32 otherTranspose = transpose(other.elements);
+	m4x4f32 result = {};
+	for(u8 thisRow = 0; thisRow < 4; thisRow++)
+	{
+		for(u8 otherCol = 0; otherCol < 4; otherCol++)
+		{
+			const v4f32* row = reinterpret_cast<const v4f32*>(
+				elements + 4*thisRow);
+			const v4f32* col = reinterpret_cast<const v4f32*>(
+				otherTranspose.elements + 4*otherCol);
+			result.elements[thisRow*4 + otherCol] = row->dot(*col);
 		}
 	}
 	return result;
@@ -290,9 +333,38 @@ internal inline f32 kmath::v2Radians(const v2f32& v)
 	}
 	return atan2f(v.y, v.x);
 }
-internal inline f32 kmath::radiansBetween(v2f32 v0, v2f32 v1, 
-                                          bool v0IsNormalized, 
-                                          bool v1IsNormalized)
+internal inline f32 kmath::radiansBetween(
+	v2f32 v0, v2f32 v1, bool v0IsNormalized, bool v1IsNormalized)
+{
+	if(!v0IsNormalized)
+	{
+		v0.normalize();
+	}
+	if(!v1IsNormalized)
+	{
+		v1.normalize();
+	}
+	f32 dot = v0.dot(v1);
+	// It should be mathematically impossible for the dot product to be 
+	//	outside the range of [-1,1] since the vectors are normalized, but I 
+	//	have to account for weird floating-point error shenanigans here.
+	// I also have to handle the case where the caller claimed that a 
+	//	vector was normalized, when actually it wasn't, which would cause us 
+	//	to go far beyond this range!
+	if(dot < -1)
+	{
+		kassert(isNearlyEqual(dot, -1));
+		dot = -1;
+	}
+	if(dot > 1)
+	{
+		kassert(isNearlyEqual(dot, 1));
+		dot = 1;
+	}
+	return acosf(dot);
+}
+internal inline f32 kmath::radiansBetween(
+	v3f32 v0, v3f32 v1, bool v0IsNormalized, bool v1IsNormalized)
 {
 	if(!v0IsNormalized)
 	{
@@ -330,6 +402,11 @@ internal inline v2f32 kmath::normal(v2f32 v)
 	v.normalize();
 	return v;
 }
+internal inline v3f32 kmath::normal(v3f32 v)
+{
+	v.normalize();
+	return v;
+}
 internal inline f32 kmath::lerp(f32 min, f32 max, f32 ratio)
 {
 	return min + ratio*(max - min);
@@ -337,8 +414,8 @@ internal inline f32 kmath::lerp(f32 min, f32 max, f32 ratio)
 internal inline v2f32 kmath::rotate(const v2f32& v, f32 radians)
 {
 	v2f32 result = 
-		{ .x = cosf(radians)*v.x - sinf(radians)*v.y
-		, .y = sinf(radians)*v.x + cosf(radians)*v.y
+		{ cosf(radians)*v.x - sinf(radians)*v.y
+		, sinf(radians)*v.x + cosf(radians)*v.y
 	};
 	return result;
 }

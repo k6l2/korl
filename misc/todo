@@ -589,7 +589,7 @@
 	[x] MINIMAL TEMPLATE, for easier creation of game projects
 	[x] drawing primitives
 	[x] keyboard input
-	[ ] dynamic memory management
+	[x] dynamic memory management
 	[ ] drawing texture assets
 	[ ] drawing flipbook animations
 	[ ] gamepad input
@@ -623,10 +623,10 @@
 		definition
 [ ] Do not poll async keyboard state if the window is not currently active 
 	(optionally?)
-[ ] KRB: send vertex colors to draw functions.
-	[ ] Maybe generalize KRB functions to take a pre-defined `Vertex` struct?..
-	[ ] allow API to take vertex properties using STRIDE?
-[ ] KRB-opengl: Figure out why GL_UNSIGNED_INT_8_8_8_8 is undefined
+[x] KRB: send vertex colors to draw functions.
+	[x] Maybe generalize KRB functions to take a pre-defined `Vertex` struct?..
+	[x] allow API to take vertex properties using STRIDE?
+[x] KRB-opengl: Figure out why GL_UNSIGNED_INT_8_8_8_8 is undefined
 	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.

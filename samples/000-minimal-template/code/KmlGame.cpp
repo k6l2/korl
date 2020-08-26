@@ -4,7 +4,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
 	                                    windowIsFocused))
 		return false;
-	ImGui::Text("Hello KML!");
+	ImGui::Text("Hello KML!", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)

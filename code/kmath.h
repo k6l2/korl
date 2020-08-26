@@ -24,6 +24,7 @@ struct v2f32
 			f32 x, y;
 		};
 	};
+	global_variable const v2f32 ZERO;
 public:
 	inline v2f32 operator-() const;
 	inline v2f32 operator*(f32 scalar) const;
@@ -49,11 +50,15 @@ struct v3f32
 			f32 x, y, z;
 		};
 	};
+	global_variable const v3f32 ZERO;
 public:
+	inline v3f32 operator-(const v3f32& other) const;
+	inline v3f32 cross(const v3f32& other) const;
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
+	inline f32 dot(const v3f32& other) const;
 };
 struct v4f32
 {
@@ -65,11 +70,13 @@ struct v4f32
 			f32 w, x, y, z;
 		};
 	};
+	global_variable const v4f32 ZERO;
 public:
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
+	inline f32 dot(const v4f32& other) const;
 };
 struct m4x4f32
 {
@@ -85,10 +92,13 @@ struct m4x4f32
 		};
 	};
 public:
+	global_variable const m4x4f32 IDENTITY;
 	class_namespace m4x4f32 transpose(const f32* elements);
+	inline m4x4f32 operator*(const m4x4f32& other) const;
 };
 struct kQuaternion : public v4f32
 {
+	class_namespace const kQuaternion IDENTITY;
 	// Source: https://en.wikipedia.org/wiki/Quaternion#Hamilton_product
 	class_namespace inline kQuaternion hamilton(const kQuaternion& q0, 
 	                                            const kQuaternion& q1);
@@ -106,7 +116,6 @@ struct kQuaternion : public v4f32
 };
 namespace kmath
 {
-	global_variable const kQuaternion IDENTITY_QUATERNION = {1,0,0,0};
 	/* Thanks, Bruce Dawson!  Source: 
 		https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ */
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
@@ -134,8 +143,12 @@ namespace kmath
 	internal inline f32 radiansBetween(v2f32 v0, v2f32 v1, 
 	                                   bool v0IsNormalized = false, 
 	                                   bool v1IsNormalized = false);
+	internal inline f32 radiansBetween(v3f32 v0, v3f32 v1, 
+	                                   bool v0IsNormalized = false, 
+	                                   bool v1IsNormalized = false);
 	internal inline v3f32 cross(const v2f32& lhs, const v2f32& rhs);
 	internal inline v2f32 normal(v2f32 v);
+	internal inline v3f32 normal(v3f32 v);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
 }

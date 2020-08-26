@@ -5,7 +5,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                                    windowIsFocused))
 		return false;
 	/* display GUI window containing sample instructions */
-	ImGui::Begin("Controls");
+	ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::Text("[E,S,D,F] - move");
 	ImGui::Text("[R] - reset");
 	ImGui::End();
@@ -43,7 +43,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                                     100, 1.f);
 	/* draw a simple 2D origin */
 	{
-		g_krb->setModelXform2d({0,0}, kmath::IDENTITY_QUATERNION, {10,10});
+		g_krb->setModelXform2d({0,0}, kQuaternion::IDENTITY, {10,10});
 		const local_persist VertexNoTexture meshOrigin[] = 
 			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
 			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN} };

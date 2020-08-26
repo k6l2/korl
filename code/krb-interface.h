@@ -27,12 +27,22 @@ namespace krb
 }
 #define KRB_BEGIN_FRAME(name) \
 	void name(f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue)
+#define KRB_SET_DEPTH_TESTING(name) \
+	void name(bool enable)
+#define KRB_SET_BACKFACE_CULLING(name) \
+	void name(bool enable)
 /** Setup a right-handed axis where +Y is UP. */
 #define KRB_SET_PROJECTION_ORTHO(name) \
 	void name(u32 windowSizeX, u32 windowSizeY, f32 halfDepth)
 /** Setup a right-handed axis where +Y is UP. */
 #define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) \
 	void name(u32 windowSizeX, u32 windowSizeY, u32 fixedHeight, f32 halfDepth)
+#define KRB_SET_PROJECTION_FOV(name) \
+	void name(f32 horizonFovDegrees, const u32* windowSize, \
+	          f32 clipNear, f32 clipFar)
+#define KRB_LOOK_AT(name) \
+	void name(const f32* v3f32_eye, const f32* v3f32_target, \
+	          const f32* v3f32_worldUp)
 /**
  * If one of these values is >= `vertexStride` in the below API, that means the 
  * vertex data does not possess the given attribute, so it should be supplied 
@@ -88,9 +98,13 @@ struct KrbVertexAttributeOffsets
 #define KRB_WORLD_TO_SCREEN(name) \
 	v2f32 name(const f32* pWorldPosition, u8 worldPositionDimension)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
+typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
+typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	fnSig_krbSetProjectionOrthoFixedHeight);
+typedef KRB_SET_PROJECTION_FOV(fnSig_krbSetProjectionFov);
+typedef KRB_LOOK_AT(fnSig_krbLookAt);
 typedef KRB_DRAW_LINES(fnSig_krbDrawLines);
 typedef KRB_DRAW_TRIS(fnSig_krbDrawTris);
 typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
@@ -103,9 +117,13 @@ typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
 typedef KRB_WORLD_TO_SCREEN(fnSig_krbWorldToScreen);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
+internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
+internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	krbSetProjectionOrthoFixedHeight);
+internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov);
+internal KRB_LOOK_AT(krbLookAt);
 internal KRB_DRAW_LINES(krbDrawLines);
 internal KRB_DRAW_TRIS(krbDrawTris);
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
@@ -120,9 +138,13 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen);
 struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
+	fnSig_krbSetDepthTesting*    setDepthTesting    = krbSetDepthTesting;
+	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
 	fnSig_krbSetProjectionOrthoFixedHeight* 
 		setProjectionOrthoFixedHeight        = krbSetProjectionOrthoFixedHeight;
+	fnSig_krbSetProjectionFov*   setProjectionFov   = krbSetProjectionFov;
+	fnSig_krbLookAt*             lookAt             = krbLookAt;
 	fnSig_krbDrawLines*          drawLines          = krbDrawLines;
 	fnSig_krbDrawTris*           drawTris           = krbDrawTris;
 	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;
