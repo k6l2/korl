@@ -41,8 +41,8 @@ namespace krb
 	void name(f32 horizonFovDegrees, const u32* windowSize, \
 	          f32 clipNear, f32 clipFar)
 #define KRB_LOOK_AT(name) \
-	void name(const f32* v3f32_eye, const f32* v3f32_target, \
-	          const f32* v3f32_worldUp)
+	void name(const f32 v3f32_eye[3], const f32 v3f32_target[3], \
+	          const f32 v3f32_worldUp[3])
 /**
  * If one of these values is >= `vertexStride` in the below API, that means the 
  * vertex data does not possess the given attribute, so it should be supplied 
@@ -84,6 +84,8 @@ struct KrbVertexAttributeOffsets
 #define KRB_SET_MODEL_XFORM_2D(name) \
 	void name(const v2f32& translation, const kQuaternion& orientation, \
 	          const v2f32& scale)
+#define KRB_SET_MODEL_XFORM_BILLBOARD(name) \
+	void name(bool lockX, bool lockY, bool lockZ)
 #define KRB_LOAD_IMAGE(name) \
 	KrbTextureHandle name(u32 imageSizeX, u32 imageSizeY, u8* imageDataRGBA)
 #define KRB_DELETE_TEXTURE(name) \
@@ -112,6 +114,7 @@ typedef KRB_DRAW_CIRCLE(fnSig_krbDrawCircle);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_SET_MODEL_XFORM_2D(fnSig_krbSetModelXform2d);
+typedef KRB_SET_MODEL_XFORM_BILLBOARD(fnSig_krbSetModelXformBillboard);
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
 typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
@@ -131,6 +134,7 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d);
+internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard);
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_DELETE_TEXTURE(krbDeleteTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
@@ -142,7 +146,7 @@ struct KrbApi
 	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
 	fnSig_krbSetProjectionOrthoFixedHeight* 
-		setProjectionOrthoFixedHeight        = krbSetProjectionOrthoFixedHeight;
+		setProjectionOrthoFixedHeight = krbSetProjectionOrthoFixedHeight;
 	fnSig_krbSetProjectionFov*   setProjectionFov   = krbSetProjectionFov;
 	fnSig_krbLookAt*             lookAt             = krbLookAt;
 	fnSig_krbDrawLines*          drawLines          = krbDrawLines;
@@ -152,6 +156,8 @@ struct KrbApi
 	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
 	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
 	fnSig_krbSetModelXform2d*    setModelXform2d    = krbSetModelXform2d;
+	fnSig_krbSetModelXformBillboard* 
+		setModelXformBillboard = krbSetModelXformBillboard;
 	fnSig_krbLoadImage*          loadImage          = krbLoadImage;
 	fnSig_krbDeleteTexture*      deleteTexture      = krbDeleteTexture;
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;

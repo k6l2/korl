@@ -590,7 +590,7 @@
 	[x] drawing primitives
 	[x] keyboard input
 	[x] dynamic memory management
-	[ ] drawing texture assets
+	[x] drawing texture assets
 	[ ] drawing flipbook animations
 	[ ] gamepad input
 	[ ] playing music & sound assets

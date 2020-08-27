@@ -51,6 +51,9 @@ struct v3f32
 		};
 	};
 	global_variable const v3f32 ZERO;
+	global_variable const v3f32 X;
+	global_variable const v3f32 Y;
+	global_variable const v3f32 Z;
 public:
 	inline v3f32 operator-(const v3f32& other) const;
 	inline v3f32 cross(const v3f32& other) const;

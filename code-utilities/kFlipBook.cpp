@@ -50,7 +50,7 @@ internal void kfbGetPageProperties(KFlipBook* kfb,
 	*o_pageCount = kfb->cachedMetaData.frameCount;
 	const KAssetIndex kAssetIdTex = 
 		KAssetIndex(kfb->cachedMetaData.textureKAssetIndex);
-	const v2u32 texSize = kamGetTextureSize(kfb->kam, kAssetIdTex);
+	const v2u32 texSize = kamGetImageSize(kfb->kam, kAssetIdTex);
 	if(*o_pageSizeX == 0)
 	{
 		*o_pageSizeX = texSize.x;

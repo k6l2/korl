@@ -288,8 +288,7 @@ internal KrbTextureHandle kamGetTexture(KAssetManager* kam,
 		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
 	}
 }
-internal v2u32 kamGetTextureSize(KAssetManager* kam, 
-                                 KAssetIndex assetIndex)
+internal v2u32 kamGetImageSize(KAssetManager* kam, KAssetIndex assetIndex)
 {
 	if(assetIndex >= KAssetIndex::ENUM_SIZE)
 	{

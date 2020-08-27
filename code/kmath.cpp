@@ -10,6 +10,9 @@
 #endif
 const v2f32 v2f32::ZERO = {0,0};
 const v3f32 v3f32::ZERO = {0,0,0};
+const v3f32 v3f32::X = {1,0,0};
+const v3f32 v3f32::Y = {0,1,0};
+const v3f32 v3f32::Z = {0,0,1};
 const v4f32 v4f32::ZERO = {0,0,0,0};
 const kQuaternion kQuaternion::IDENTITY = {1,0,0,0};
 const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,

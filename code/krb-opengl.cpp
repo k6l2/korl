@@ -138,10 +138,12 @@ internal KRB_DRAW_LINES(krbDrawLines)
 {
 	kassert(vertexCount % 2 == 0);
 	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
-	kassert(vertexAttribOffsets.texCoord_2f32 >= vertexStride);
+	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
+		glDisable(GL_TEXTURE_2D);
+	else
+		glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_TEXTURE_2D);
 	if(vertexAttribOffsets.color_4f32 >= vertexStride)
 		glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
 	glBegin(GL_LINES);
@@ -166,9 +168,12 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 {
 	kassert(vertexCount % 3 == 0);
 	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
+	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
+		glDisable(GL_TEXTURE_2D);
+	else
+		glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_TEXTURE_2D);
 	if(vertexAttribOffsets.color_4f32 >= vertexStride)
 		glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
 	glBegin(GL_TRIANGLES);
@@ -349,6 +354,32 @@ internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 	glScalef(scale.x, scale.y, 1.f);
 	GL_CHECK_ERROR();
 }
+internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard)
+{
+	m4x4f32 modelView;
+	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, modelView.elements);
+	if(lockX)
+	{
+		modelView.r0c0 = 1;
+		modelView.r1c0 = 0;
+		modelView.r2c0 = 0;
+	}
+	if(lockY)
+	{
+		modelView.r0c1 = 0;
+		modelView.r1c1 = 1;
+		modelView.r2c1 = 0;
+	}
+	if(lockZ)
+	{
+		modelView.r0c2 = 0;
+		modelView.r1c2 = 0;
+		modelView.r2c2 = 1;
+	}
+	glMatrixMode(GL_MODELVIEW);
+	glLoadTransposeMatrixf(modelView.elements);
+	GL_CHECK_ERROR();
+}
 internal KRB_LOAD_IMAGE(krbLoadImage)
 {
 	GLuint texName;
@@ -357,7 +388,7 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageSizeX, imageSizeY, 0, 
-	             GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, imageDataRGBA);
+	             GL_RGBA, GL_UNSIGNED_BYTE, imageDataRGBA);
 	GL_CHECK_ERROR();
 	return texName;
 }

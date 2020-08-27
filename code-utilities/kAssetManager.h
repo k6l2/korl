@@ -14,10 +14,7 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetIndex assetIndex);
 internal RawSound kamGetRawSound(KAssetManager* kam, KAssetIndex assetIndex);
 internal KrbTextureHandle kamGetTexture(KAssetManager* kam, 
                                         KAssetIndex assetIndex);
-///TODO: maybe rename this to kamGetImageSize, since texture & image can have 
-///	very different implications...
-internal v2u32 kamGetTextureSize(KAssetManager* kam, 
-                                 KAssetIndex assetIndex);
+internal v2u32 kamGetImageSize(KAssetManager* kam, KAssetIndex assetIndex);
 internal FlipbookMetaData kamGetFlipbookMetaData(KAssetManager* kam, 
                                                  KAssetIndex assetIndex);
 internal KAssetHandle kamPushAsset(KAssetManager* kam, KAssetIndex assetIndex);
