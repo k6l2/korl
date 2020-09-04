@@ -5,11 +5,14 @@
 struct KAssetManager;
 /* 
 FlipbookMetaData asset files are just text.  They must contain ONE of EACH 
-	property of the struct.  Each property must be contained on a new line.
-	The property identifier (left side) MUST match exactly to the example below.  
-	The identifier & value (right side) are separated by a ':' character.  Any 
-	whitespace aside from '\n' characters are allowed at any time.  The file 
-	extention MUST be ".fbm".
+	property of the struct (with one exception, see below).  Each property must 
+	be contained on a new line.  The property identifier (left side) MUST match 
+	exactly to the example below.  The identifier & value (right side) are 
+	separated by a ':' character.  Any whitespace aside from '\n' characters are 
+	allowed at any time.  The file extention MUST be ".fbm".
+If `texture-asset-file-name` is not present in the FlipbookMetaData asset file, 
+	it is assumed that the texture asset file is equivilant to the 
+	FlipbookMetaData asset file, except with a ".png" file extension instead.
 A `frame-count` of 0 means the texture asset is "fully saturated" with flipbook 
 	pages.  This means the true frame count is equivilant to: 
 	`flipbookPageRows*flipbookPageCols` where 
@@ -56,6 +59,7 @@ struct KFlipBook
 	bool flipH;
 };
 internal bool kfbDecodeMeta(void* fileData, u32 fileBytes, 
+                            const char* cStrAnsiAssetName, 
                             FlipbookMetaData* o_fbMeta, 
                             char* o_texAssetFileName, 
                             size_t texAssetFileNameBufferSize);

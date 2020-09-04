@@ -410,11 +410,11 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 	{
 		KLOG(INFO, "Waiting for asset '%s'...", kAssetFileNames[kAssetId]);
 	}
-	const i32 fileByteSize = 
-		asset->kam->kpl->getFileByteSize(kAssetFileNames[kAssetId]);
-	if(fileByteSize < 0)
+	const i32 assetByteSize = 
+		asset->kam->kpl->getAssetByteSize(kAssetFileNames[kAssetId]);
+	if(assetByteSize < 0)
 	{
-		KLOG(ERROR, "Failed to get file byte size of \"%s\"", 
+		KLOG(ERROR, "Failed to get asset byte size of \"%s\"", 
 		     kAssetFileNames[kAssetId]);
 		return;
 	}
@@ -424,7 +424,7 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 	asset->kam->kpl->lock(asset->kam->hLockAssetDataAllocator);
 	void*const rawFileMemory = 
 		kgaAlloc(asset->kam->hKgaRawFiles, 
-		         kmath::safeTruncateU32(fileByteSize));
+		         kmath::safeTruncateU32(assetByteSize));
 	kassert(rawFileMemory);
 	asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* defer cleanup of the raw file memory until after we utilize it */
@@ -434,20 +434,20 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 		asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	});
 	/* load the entire raw file into a `fileByteSize` chunk */
-	const bool fileReadSuccess = 
-		asset->kam->kpl->readEntireFile(
+	const bool assetReadSuccess = 
+		asset->kam->kpl->readEntireAsset(
 			kAssetFileNames[kAssetId], rawFileMemory, 
-			kmath::safeTruncateU32(fileByteSize));
-	if(!fileReadSuccess)
+			kmath::safeTruncateU32(assetByteSize));
+	if(!assetReadSuccess)
 	{
-		KLOG(ERROR, "Failed to read file \"%s\"!", kAssetFileNames[kAssetId]);
+		KLOG(ERROR, "Failed to read asset \"%s\"!", kAssetFileNames[kAssetId]);
 		return;
 	}
 	/* decode the file data into a struct we can use */
 	const bool flipbookMetaDecodeSuccess = 
 		kfbDecodeMeta(
-			rawFileMemory, kmath::safeTruncateU32(fileByteSize), 
-			&asset->assetData.flipbook.metaData, 
+			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
+			kAssetFileNames[kAssetId], &asset->assetData.flipbook.metaData, 
 			asset->assetData.flipbook.textureAssetFileName, 
 			CARRAY_SIZE(asset->assetData.flipbook.textureAssetFileName));
 	if(!flipbookMetaDecodeSuccess)

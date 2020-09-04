@@ -48,8 +48,8 @@ internal PLATFORM_DECODE_Z85_PNG(w32PlatformDecodeZ85Png);
 internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav);
 internal PLATFORM_LOG(w32PlatformLog);
 internal PLATFORM_ASSERT(w32PlatformAssert);
-internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize);
-internal PLATFORM_READ_ENTIRE_FILE(w32PlatformReadEntireFile);
+internal PLATFORM_GET_ASSET_BYTE_SIZE(w32PlatformGetAssetByteSize);
+internal PLATFORM_READ_ENTIRE_ASSET(w32PlatformReadEntireAsset);
 internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile);
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton);
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32PlatformGetGamePadActiveAxis);
@@ -72,8 +72,8 @@ const global_variable KmlPlatformApi KML_PLATFORM_API_WIN32 =
 	, .assert                 = w32PlatformAssert
 	, .decodeZ85Png           = w32PlatformDecodeZ85Png
 	, .decodeZ85Wav           = w32PlatformDecodeZ85Wav
-	, .getFileByteSize        = w32PlatformGetFileByteSize
-	, .readEntireFile         = w32PlatformReadEntireFile
+	, .getAssetByteSize       = w32PlatformGetAssetByteSize
+	, .readEntireAsset        = w32PlatformReadEntireAsset
 	, .loadWav                = w32PlatformLoadWav
 	, .loadOgg                = w32PlatformLoadOgg
 	, .loadPng                = w32PlatformLoadPng

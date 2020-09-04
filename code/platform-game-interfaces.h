@@ -52,10 +52,10 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
 	              KgaHandle sampleDataAllocator)
 /** @return a value < 0 if an error occurs */
-#define PLATFORM_GET_FILE_BYTE_SIZE(name) \
-	i32 name(const char* ansiFileName)
-#define PLATFORM_READ_ENTIRE_FILE(name) \
-	bool name(const char* ansiFileName, void* o_data, u32 dataBytes)
+#define PLATFORM_GET_ASSET_BYTE_SIZE(name) \
+	i32 name(const char* ansiAssetName)
+#define PLATFORM_READ_ENTIRE_ASSET(name) \
+	bool name(const char* ansiAssetName, void* o_data, u32 dataBytes)
 #define PLATFORM_WRITE_ENTIRE_FILE(name) \
 	bool name(const char* ansiFileName, void* data, u32 dataBytes)
 /**
@@ -204,8 +204,8 @@ typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_NAME(fnSig_platformGetGamePadProductName);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
-typedef PLATFORM_GET_FILE_BYTE_SIZE(fnSig_platformGetFileByteSize);
-typedef PLATFORM_READ_ENTIRE_FILE(fnSig_platformReadEntireFile);
+typedef PLATFORM_GET_ASSET_BYTE_SIZE(fnSig_platformGetAssetByteSize);
+typedef PLATFORM_READ_ENTIRE_ASSET(fnSig_platformReadEntireAsset);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_platformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
@@ -227,8 +227,8 @@ struct KmlPlatformApi
 	fnSig_platformAssert* assert;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
-	fnSig_platformGetFileByteSize* getFileByteSize;
-	fnSig_platformReadEntireFile* readEntireFile;
+	fnSig_platformGetAssetByteSize* getAssetByteSize;
+	fnSig_platformReadEntireAsset* readEntireAsset;
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;

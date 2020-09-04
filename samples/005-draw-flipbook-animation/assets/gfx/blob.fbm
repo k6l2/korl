@@ -1,0 +1,8 @@
+frame-size-x              : 32
+frame-size-y              : 0
+frame-count               : 0
+default-repeat            : 1
+default-reverse           : 0
+default-seconds-per-frame : 0.15
+default-anchor-ratio-x    : 0.5
+default-anchor-ratio-y    : 0.5

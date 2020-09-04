@@ -3,14 +3,27 @@
 #include <cstring>
 #include <cstdlib>
 #include <cctype>
+enum KFlipbookMetaEntries : u32
+	{ KFB_META_DECODE_FRAME_SIZE_X
+	, KFB_META_DECODE_FRAME_SIZE_Y
+	, KFB_META_DECODE_FRAME_COUNT
+	, KFB_META_DECODE_TEX_ASSET_NAME
+	, KFB_META_DECODE_DEFAULT_REPEAT
+	, KFB_META_DECODE_DEFAULT_REVERSE
+	, KFB_META_DECODE_DEFAULT_SEC_PER_FRAME
+	, KFB_META_DECODE_DEFAULT_ANCHOR_X
+	, KFB_META_DECODE_DEFAULT_ANCHOR_Y
+	, KFB_META_DECODE_ENTRY_COUNT
+};
 internal bool kfbDecodeMeta(void* fileData, u32 fileBytes, 
+                            const char* cStrAnsiAssetName, 
                             FlipbookMetaData* o_fbMeta, 
                             char* o_texAssetFileName, 
                             size_t texAssetFileNameBufferSize)
 {
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(fileData);
-	u16 fbPropertiesFoundBitflags = 0;
+	u32 fbPropertiesFoundBitflags = 0;
 	u8 fbPropertiesFoundCount = 0;
 	// destructively read the file line by line //
 	// source: https://stackoverflow.com/a/17983619
@@ -30,28 +43,28 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 			idValueSeparator++;
 			if(strstr(currLine, "frame-size-x"))
 			{
-				fbPropertiesFoundBitflags |= 1<<0;
+				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_FRAME_SIZE_X;
 				fbPropertiesFoundCount++;
 				o_fbMeta->frameSizeX = kmath::safeTruncateU32(
 					atoi(idValueSeparator));
 			}
 			else if(strstr(currLine, "frame-size-y"))
 			{
-				fbPropertiesFoundBitflags |= 1<<1;
+				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_FRAME_SIZE_Y;
 				fbPropertiesFoundCount++;
 				o_fbMeta->frameSizeY = kmath::safeTruncateU32(
 					atoi(idValueSeparator));
 			}
 			else if(strstr(currLine, "frame-count"))
 			{
-				fbPropertiesFoundBitflags |= 1<<2;
+				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_FRAME_COUNT;
 				fbPropertiesFoundCount++;
 				o_fbMeta->frameCount = 
 					kmath::safeTruncateU16(atoi(idValueSeparator));
 			}
 			else if(strstr(currLine, "texture-asset-file-name"))
 			{
-				fbPropertiesFoundBitflags |= 1<<3;
+				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_TEX_ASSET_NAME;
 				fbPropertiesFoundCount++;
 				while(*idValueSeparator && isspace(*idValueSeparator))
 				{
@@ -76,33 +89,36 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 			}
 			else if(strstr(currLine, "default-repeat"))
 			{
-				fbPropertiesFoundBitflags |= 1<<4;
+				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_DEFAULT_REPEAT;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultRepeat = atoi(idValueSeparator) != 0;
 			}
 			else if(strstr(currLine, "default-reverse"))
 			{
-				fbPropertiesFoundBitflags |= 1<<5;
+				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_DEFAULT_REVERSE;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultReverse = atoi(idValueSeparator) != 0;
 			}
 			else if(strstr(currLine, "default-seconds-per-frame"))
 			{
-				fbPropertiesFoundBitflags |= 1<<6;
+				fbPropertiesFoundBitflags |= 
+					1<<KFB_META_DECODE_DEFAULT_SEC_PER_FRAME;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultSecondsPerFrame = 
 					static_cast<f32>(atof(idValueSeparator));
 			}
 			else if(strstr(currLine, "default-anchor-ratio-x"))
 			{
-				fbPropertiesFoundBitflags |= 1<<7;
+				fbPropertiesFoundBitflags |= 
+					1<<KFB_META_DECODE_DEFAULT_ANCHOR_X;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultAnchorRatioX = 
 					static_cast<f32>(atof(idValueSeparator));
 			}
 			else if(strstr(currLine, "default-anchor-ratio-y"))
 			{
-				fbPropertiesFoundBitflags |= 1<<8;
+				fbPropertiesFoundBitflags |= 
+					1<<KFB_META_DECODE_DEFAULT_ANCHOR_Y;
 				fbPropertiesFoundCount++;
 				o_fbMeta->defaultAnchorRatioY = 
 					static_cast<f32>(atof(idValueSeparator));
@@ -111,8 +127,40 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 		if(nextLine) *nextLine = '\n';
 		currLine = nextLine ? (nextLine + 1) : nullptr;
 	}
+	if(!(fbPropertiesFoundBitflags & 1<<KFB_META_DECODE_TEX_ASSET_NAME))
+	/* if the meta data file didn't contain an entry for texture asset file 
+		name, then we assume that the texture asset file name matches the 
+		flipbook meta asset file name with a png file extension */
+	{
+		strcpy_s(o_texAssetFileName, texAssetFileNameBufferSize, 
+		         cStrAnsiAssetName);
+		char* pFileExtension = strchr(o_texAssetFileName, '.');
+		if(!pFileExtension)
+		{
+			KLOG(ERROR, "Flipbook meta data asset file name '%s' contains no "
+			     "file extension!", cStrAnsiAssetName);
+			return false;
+		}
+		const char textureFileExtension[] = "png";
+		const char*const texAssetFileNameBufferEnd = 
+			o_texAssetFileName + texAssetFileNameBufferSize;
+		if(pFileExtension + CARRAY_SIZE(textureFileExtension) >= 
+		        texAssetFileNameBufferEnd)
+		{
+			KLOG(ERROR, "texAssetFileNameBufferSize==%i can't contain implicit "
+			     "texture asset file name for flipbook meta data asset '%s'!", 
+			     texAssetFileNameBufferSize, cStrAnsiAssetName);
+			return false;
+		}
+		for(size_t c = 0; c < CARRAY_SIZE(textureFileExtension); c++)
+		{
+			pFileExtension[1 + c] = textureFileExtension[c];
+		}
+		fbPropertiesFoundCount++;
+		fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_TEX_ASSET_NAME;
+	}
 	return (fbPropertiesFoundCount == 9) && 
-		(fbPropertiesFoundBitflags == (1<<fbPropertiesFoundCount) - 1);
+		(fbPropertiesFoundBitflags == (1<<KFB_META_DECODE_ENTRY_COUNT) - 1);
 }
 internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
                       KrbApi* krb, KAssetIndex assetIndex)

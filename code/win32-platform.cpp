@@ -139,21 +139,18 @@ internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
 }
 internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 {
-	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, fileName);
-	const i32 rawFileBytes = w32PlatformGetFileByteSize(szFileFullPath);
-	if(rawFileBytes < 0)
+	const i32 rawAssetBytes = w32PlatformGetAssetByteSize(fileName);
+	if(rawAssetBytes < 0)
 	{
-		KLOG(ERROR, "Failed to get file byte size '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to get asset byte size '%s'!", fileName);
 		return {};
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawFileBytes);
+	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawAssetBytes);
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawFileBytes);
+		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawAssetBytes);
 		return {};
 	}
 	defer({
@@ -161,34 +158,31 @@ internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 		kgaFree(g_hKgaRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
-	const bool fileReadResult = 
-		w32PlatformReadEntireFile(szFileFullPath, rawFileMemory, rawFileBytes);
-	if(!fileReadResult)
+	const bool assetReadResult = 
+		w32PlatformReadEntireAsset(fileName, rawFileMemory, rawAssetBytes);
+	if(!assetReadResult)
 	{
-		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to read entire asset '%s'!", fileName);
 		return {};
 	}
-	return w32DecodePng(rawFileMemory, rawFileBytes, pixelDataAllocator);
+	return w32DecodePng(rawFileMemory, rawAssetBytes, pixelDataAllocator);
 }
 internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 {
 	// Load the entire OGG file into memory //
 	RawSound result = {};
-	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, fileName);
-	const i32 rawFileBytes = w32PlatformGetFileByteSize(szFileFullPath);
-	if(rawFileBytes < 0)
+	const i32 rawAssetBytes = w32PlatformGetAssetByteSize(fileName);
+	if(rawAssetBytes < 0)
 	{
-		KLOG(ERROR, "Failed to get file byte size '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to get file byte size '%s'!", fileName);
 		return result;
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawFileBytes);
+	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawAssetBytes);
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawFileBytes);
+		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawAssetBytes);
 		return result;
 	}
 	defer({
@@ -196,11 +190,11 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 		kgaFree(g_hKgaRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
-	const bool fileReadResult = 
-		w32PlatformReadEntireFile(szFileFullPath, rawFileMemory, rawFileBytes);
-	if(!fileReadResult)
+	const bool assetReadResult = 
+		w32PlatformReadEntireAsset(fileName, rawFileMemory, rawAssetBytes);
+	if(!assetReadResult)
 	{
-		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to read entire asset '%s'!", fileName);
 		return result;
 	}
 	// Decode the OGG file into a RawSound //
@@ -208,7 +202,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	EnterCriticalSection(&g_vorbisAllocationCsLock);
 	stb_vorbis*const vorbis = 
 		stb_vorbis_open_memory(reinterpret_cast<u8*>(rawFileMemory), 
-		                       rawFileBytes, &vorbisError, &g_oggVorbisAlloc);
+		                       rawAssetBytes, &vorbisError, &g_oggVorbisAlloc);
 	if(vorbisError != VORBIS__no_error)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
@@ -220,14 +214,14 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "vorbisInfo.channels==%i invalid/unsupported for '%s'!",
-		     vorbisInfo.channels, szFileFullPath);
+		     vorbisInfo.channels, fileName);
 		return result;
 	}
 	if(vorbisInfo.sample_rate != 44100)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "vorbisInfo.sample_rate==%i invalid/unsupported for '%s'!", 
-		     vorbisInfo.sample_rate, szFileFullPath);
+		     vorbisInfo.sample_rate, fileName);
 		return result;
 	}
 	const i32 vorbisSampleLength = stb_vorbis_stream_length_in_samples(vorbis);
@@ -253,7 +247,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	LeaveCriticalSection(&g_vorbisAllocationCsLock);
 	if(samplesDecoded != vorbisSampleLength)
 	{
-		KLOG(ERROR, "Failed to get samples for '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to get samples for '%s'!", fileName);
 		EnterCriticalSection(&g_assetAllocationCsLock);
 		kgaFree(sampleDataAllocator, sampleData);
 		LeaveCriticalSection(&g_assetAllocationCsLock);
@@ -417,21 +411,18 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
 {
 	// Load the entire WAV file into memory //
-	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, fileName);
-	const i32 rawFileBytes = w32PlatformGetFileByteSize(szFileFullPath);
-	if(rawFileBytes < 0)
+	const i32 rawAssetBytes = w32PlatformGetAssetByteSize(fileName);
+	if(rawAssetBytes < 0)
 	{
-		KLOG(ERROR, "Failed to get file byte size '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to get asset byte size '%s'!", fileName);
 		return {};
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawFileBytes);
+	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawAssetBytes);
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawFileBytes);
+		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawAssetBytes);
 		return {};
 	}
 	defer({
@@ -439,15 +430,15 @@ internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
 		kgaFree(g_hKgaRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
-	const bool fileReadResult = 
-		w32PlatformReadEntireFile(szFileFullPath, rawFileMemory, rawFileBytes);
-	if(!fileReadResult)
+	const bool assetReadResult = 
+		w32PlatformReadEntireAsset(fileName, rawFileMemory, rawAssetBytes);
+	if(!assetReadResult)
 	{
-		KLOG(ERROR, "Failed to read entire file '%s'!", szFileFullPath);
+		KLOG(ERROR, "Failed to read entire asset '%s'!", fileName);
 		return {};
 	}
-	return w32DecodeWav(rawFileMemory, rawFileBytes, 
-	                    sampleDataAllocator, szFileFullPath);
+	return w32DecodeWav(rawFileMemory, rawAssetBytes, 
+	                    sampleDataAllocator, fileName);
 }
 internal PLATFORM_IMGUI_ALLOC(w32PlatformImguiAlloc)
 {
@@ -719,11 +710,14 @@ internal PLATFORM_ASSERT(w32PlatformAssert)
 	else
 		*(int*)0 = 0;
 }
-internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize)
+internal PLATFORM_GET_ASSET_BYTE_SIZE(w32PlatformGetAssetByteSize)
 {
 	i32 resultFileByteSize = 0;
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, ansiAssetName);
 	const HANDLE fileHandle = 
-		CreateFileA(ansiFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, 
+		CreateFileA(szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
 		            OPEN_EXISTING, 
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
@@ -754,13 +748,16 @@ internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize)
 	}
 	return resultFileByteSize;
 }
-internal PLATFORM_READ_ENTIRE_FILE(w32PlatformReadEntireFile)
+internal PLATFORM_READ_ENTIRE_ASSET(w32PlatformReadEntireAsset)
 {
 	/* use a variable for the return value so we can update it in defer 
 		statements if needed */
 	bool deferredResult = true;
+	char szFileFullPath[MAX_PATH];
+	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
+	                 g_pathToAssets, ansiAssetName);
 	const HANDLE fileHandle = 
-		CreateFileA(ansiFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, 
+		CreateFileA(szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
 		            OPEN_EXISTING, 
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
