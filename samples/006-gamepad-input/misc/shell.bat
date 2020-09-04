@@ -1,7 +1,7 @@
 @rem prerequisites: KML_HOME environment variable set
 @rem simply launch a command prompt with the proper environment variables 
 @rem necessary to build the project
-set kmlApplicationName=KmlSample_003_DynamicMemory
+set kmlApplicationName=KmlSample_006_GamepadInput
 set kmlApplicationVersion=r0
 set kmlGameDllFileName=KmlApplication
 @rem To prevent simulation from becoming unstable at low frame rates due to lag 

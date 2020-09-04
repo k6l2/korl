@@ -19,11 +19,12 @@ internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratio)
 namespace krb
 {
 	global_variable const KrbTextureHandle INVALID_TEXTURE_HANDLE = 0;
-	global_variable const Color4f32 WHITE  = {1,1,1,1};
-	global_variable const Color4f32 RED    = {1,0,0,1};
-	global_variable const Color4f32 GREEN  = {0,1,0,1};
-	global_variable const Color4f32 BLUE   = {0,0,1,1};
-	global_variable const Color4f32 YELLOW = {1,1,0,1};
+	global_variable const Color4f32 TRANSPARENT = {0,0,0,0};
+	global_variable const Color4f32 WHITE       = {1,1,1,1};
+	global_variable const Color4f32 RED         = {1,0,0,1};
+	global_variable const Color4f32 GREEN       = {0,1,0,1};
+	global_variable const Color4f32 BLUE        = {0,0,1,1};
+	global_variable const Color4f32 YELLOW      = {1,1,0,1};
 }
 #define KRB_BEGIN_FRAME(name) \
 	void name(f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue)

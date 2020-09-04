@@ -3,7 +3,7 @@
 @rem necessary to build the project
 set kmlApplicationName=KmlSample_002_KeyboardInput
 set kmlApplicationVersion=r0
-set kmlGameDllFileName=KmlGame
+set kmlGameDllFileName=KmlApplication
 @rem To prevent simulation from becoming unstable at low frame rates due to lag 
 @rem	etc, `kmlMinimumFrameRate` will ensure that the platform layer never 
 @rem	sends game code a deltaSeconds value less than 1/%kmlMinimumFrameRate%!

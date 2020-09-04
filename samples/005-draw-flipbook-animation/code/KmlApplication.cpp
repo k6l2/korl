@@ -1,4 +1,4 @@
-#include "KmlGame.h"
+#include "KmlApplication.h"
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template

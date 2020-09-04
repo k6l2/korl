@@ -1,4 +1,4 @@
-#include "KmlGame.h"
+#include "KmlApplication.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 

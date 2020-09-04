@@ -600,7 +600,7 @@
 			[x] add thread locking API to KPL because the game's job threads 
 				need async access to the asset memory allocation
 			[x] pull win32 platform API implementation out of win32-main
-	[ ] gamepad input
+	[x] gamepad input
 	[ ] playing music & sound assets
 	[ ] client/server
 [x] KFB: if the `texture-asset-file-name` is not present, assume that the 
