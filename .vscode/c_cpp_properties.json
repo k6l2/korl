@@ -4,9 +4,7 @@
 		{
 			"name": "C++",
 			"defines": 
-				[ "INTERNAL_BUILD=1"
-				, "SLOW_BUILD=1"
-				, "KML_MINIMUM_FRAME_RATE"
+				[ "INTERNAL_BUILD=1;SLOW_BUILD=1;KML_MINIMUM_FRAME_RATE=30"
 			],
 			"cppStandard": "c++20",
 			"includePath": 

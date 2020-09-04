@@ -37,13 +37,15 @@ privDefer<F> defer_func(F f) {
 #define FORCE_SYMBOL_EXPORT \
 	CONCAT(hack_force_symbol_export_DO_NOT_USE_,__COUNTER__)
 /* Custom assert support. platform implementation required! */
-#define kassert(expression) do {\
-	platformAssert(static_cast<bool>(expression));\
-}while(0)
+#define kassert(expression) \
+	do {\
+		platformAssert(static_cast<bool>(expression));\
+	}while(0)
 /* Logging support.  platform implementation required! */
-#define KLOG(platformLogCategory, formattedString, ...) platformLog(\
-             __FILE__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
-             formattedString, ##__VA_ARGS__)
+#define KLOG(platformLogCategory, formattedString, ...) \
+	platformLog(__FILE__, __LINE__, \
+	            PlatformLogCategory::K_##platformLogCategory, formattedString, \
+	            ##__VA_ARGS__)
 /* Universal primitive definitions with reasonable keystroke counts. */
 #include <stdint.h>
 using u8  = uint8_t;  static_assert(sizeof(u8)  == 1);
@@ -56,6 +58,23 @@ using i32 = int32_t;  static_assert(sizeof(i32) == 4);
 using i64 = int64_t;  static_assert(sizeof(i64) == 8);
 using f32 = float;    static_assert(sizeof(f32) == 4);
 using f64 = double;   static_assert(sizeof(f64) == 8);
+/* platform function addresses required to exist by kutil macros */
+enum class PlatformLogCategory : u8
+	{ K_INFO
+	, K_WARNING
+	, K_ERROR
+};
+#define PLATFORM_LOG(name) \
+	void name(const char* sourceFileName, u32 sourceFileLineNumber, \
+	          PlatformLogCategory logCategory, const char* formattedString, ...)
+#define PLATFORM_ASSERT(name) \
+	void name(bool expression)
+typedef PLATFORM_LOG(fnSig_platformLog);
+typedef PLATFORM_ASSERT(fnSig_platformAssert);
+/* these function pointers are declared at a global scope to allow all code the 
+	ability to log & assert */
+global_variable fnSig_platformLog* platformLog;
+global_variable fnSig_platformAssert* platformAssert;
 /* @TODO: allow the game to define the SoundSample size in the build script? */
 using SoundSample = i16;
 namespace kutil

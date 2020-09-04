@@ -3,6 +3,7 @@
 #include "kGeneralAllocator.h"
 #include "platform-game-interfaces.h"
 #include "gen_kassets.h"
+#include "kFlipBook.h"
 using KAssetHandle = u32;
 global_variable const KAssetHandle INVALID_KASSET_HANDLE = ~KAssetHandle(0);
 struct KAssetManager;

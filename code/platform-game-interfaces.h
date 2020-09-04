@@ -5,12 +5,6 @@
 #include "kmath.h"
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
-enum class PlatformLogCategory : u8
-{
-	K_INFO,
-	K_WARNING,
-	K_ERROR
-};
 struct RawImage
 {
 	u32 sizeX;
@@ -28,44 +22,6 @@ struct RawSound
 	// A sample block is a contiguous collection of all samples from all 
 	//	channels.  Sample data is stored in blocks.
 	SoundSample* sampleData;
-};
-/* 
-FlipbookMetaData asset files are just text.  They must contain ONE of EACH 
-	property of the struct.  Each property must be contained on a new line.
-	The property identifier (left side) MUST match exactly to the example below.  
-	The identifier & value (right side) are separated by a ':' character.  Any 
-	whitespace aside from '\n' characters are allowed at any time.  The file 
-	extention MUST be ".fbm".
-A `frame-count` of 0 means the texture asset is "fully saturated" with flipbook 
-	pages.  This means the true frame count is equivilant to: 
-	`flipbookPageRows*flipbookPageCols` where 
-		`flipbookPageRows` == textureAsset.sizeY / `frame-size-y` and
-		`flipbookPageCols` == textureAsset.sizeX / `frame-size-x`
-A `frame-size-x/y` of {0,0} means the entire texture asset is a single frame.
-`default-anchor-ratio-x/y` is relative to the upper-left corner of the texture 
-	asset.
------ Example of a flipbook meta data asset text file: -----
-frame-size-x              : 48
-frame-size-y              : 48
-frame-count               : 6
-texture-asset-file-name   : fighter-exhaust.png
-default-repeat            : 1
-default-reverse           : 0
-default-seconds-per-frame : 0.05
-default-anchor-ratio-x    : 0.5
-default-anchor-ratio-y    : 0.5
-*/
-struct FlipbookMetaData
-{
-	u32 frameSizeX;
-	u32 frameSizeY;
-	u16 frameCount;
-	bool defaultRepeat;
-	bool defaultReverse;
-	f32 defaultSecondsPerFrame;
-	size_t textureKAssetIndex;
-	f32 defaultAnchorRatioX;
-	f32 defaultAnchorRatioY;
 };
 using FileWriteTime = u64;
 /** Do not use this value directly, since the meaning of this data is 
@@ -85,11 +41,6 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 	bool name(JobQueueTicket* ticket)
 #define PLATFORM_JOB_DONE(name) \
 	bool name(JobQueueTicket* ticket)
-#define PLATFORM_LOG(name) \
-	void name(const char* sourceFileName, u32 sourceFileLineNumber, \
-	          PlatformLogCategory logCategory, const char* formattedString, ...)
-#define PLATFORM_ASSERT(name) \
-	void name(bool expression)
 #define PLATFORM_IMGUI_ALLOC(name) \
 	void* name(size_t sz, void* user_data)
 #define PLATFORM_IMGUI_FREE(name) \
@@ -100,6 +51,13 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 #define PLATFORM_DECODE_Z85_WAV(name) \
 	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
 	              KgaHandle sampleDataAllocator)
+/** @return a value < 0 if an error occurs */
+#define PLATFORM_GET_FILE_BYTE_SIZE(name) \
+	i32 name(const char* ansiFileName)
+#define PLATFORM_READ_ENTIRE_FILE(name) \
+	bool name(const char* ansiFileName, void* o_data, u32 dataBytes)
+#define PLATFORM_WRITE_ENTIRE_FILE(name) \
+	bool name(const char* ansiFileName, void* data, u32 dataBytes)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
@@ -118,9 +76,6 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
  */
 #define PLATFORM_LOAD_PNG(name) \
 	RawImage name(const char* fileName, KgaHandle pixelDataAllocator)
-#define PLATFORM_LOAD_FLIPBOOK_META(name) \
-	bool name(const char* fileName, FlipbookMetaData* o_fbMeta, \
-	          char* o_texAssetFileName, size_t texAssetFileNameBufferSize)
 #define PLATFORM_GET_ASSET_WRITE_TIME(name) \
 	FileWriteTime name(const char* assetFileName)
 #define PLATFORM_IS_ASSET_CHANGED(name) \
@@ -219,11 +174,19 @@ const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
 	i32 name(KplSocketIndex socketIndex, u8* o_dataBuffer, \
 	         size_t dataBufferSize, KplNetAddress* o_netAddressSender, \
 	         u16* o_netPortSender)
+using KplLockHandle = u8;
+/**
+ * @return a handle == `0` if the request wasn't able to complete
+ */
+#define PLATFORM_RESERVE_LOCK(name) \
+	KplLockHandle name()
+#define PLATFORM_LOCK(name) \
+	void name(KplLockHandle hLock)
+#define PLATFORM_UNLOCK(name) \
+	void name(KplLockHandle hLock)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
-typedef PLATFORM_LOG(fnSig_platformLog);
-typedef PLATFORM_ASSERT(fnSig_platformAssert);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
@@ -231,7 +194,6 @@ typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
-typedef PLATFORM_LOAD_FLIPBOOK_META(fnSig_platformLoadFlipbookMeta);
 typedef PLATFORM_GET_ASSET_WRITE_TIME(fnSig_platformGetAssetWriteTime);
 typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
 typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
@@ -242,30 +204,20 @@ typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_NAME(fnSig_platformGetGamePadProductName);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
-struct PlatformDebugReadFileResult
-{
-	u32 dataBytes;
-	u32 dataBytes_PADDING;
-	void* data;
-};
-/** @return a valid result (non-zero data & dataBytes) if successful */
-#define PLATFORM_READ_ENTIRE_FILE(name) \
-	PlatformDebugReadFileResult name(char* fileName)
-#define PLATFORM_FREE_FILE_MEMORY(name) \
-	void name(void* fileMemory)
-#define PLATFORM_WRITE_ENTIRE_FILE(name) \
-	bool name(char* fileName, void* data, u32 dataBytes)
-typedef PLATFORM_READ_ENTIRE_FILE(fnSig_PlatformReadEntireFile);
-typedef PLATFORM_FREE_FILE_MEMORY(fnSig_PlatformFreeFileMemory);
-typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_PlatformWriteEntireFile);
-typedef PLATFORM_GET_TIMESTAMP(fnSig_PlatformGetTimeStamp);
-typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_PlatformSleepFromTimestamp);
-typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_PlatformSecondsSinceTimestamp);
-typedef PLATFORM_NET_RESOLVE_ADDRESS(fnSig_PlatformNetResolveAddress);
-typedef PLATFORM_SOCKET_OPEN_UDP(fnSig_PlatformSocketOpenUdp);
-typedef PLATFORM_SOCKET_CLOSE(fnSig_PlatformSocketClose);
-typedef PLATFORM_SOCKET_SEND(fnSig_PlatformSocketSend);
-typedef PLATFORM_SOCKET_RECEIVE(fnSig_PlatformSocketReceive);
+typedef PLATFORM_GET_FILE_BYTE_SIZE(fnSig_platformGetFileByteSize);
+typedef PLATFORM_READ_ENTIRE_FILE(fnSig_platformReadEntireFile);
+typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
+typedef PLATFORM_GET_TIMESTAMP(fnSig_platformGetTimeStamp);
+typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
+typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_platformSecondsSinceTimestamp);
+typedef PLATFORM_NET_RESOLVE_ADDRESS(fnSig_platformNetResolveAddress);
+typedef PLATFORM_SOCKET_OPEN_UDP(fnSig_platformSocketOpenUdp);
+typedef PLATFORM_SOCKET_CLOSE(fnSig_platformSocketClose);
+typedef PLATFORM_SOCKET_SEND(fnSig_platformSocketSend);
+typedef PLATFORM_SOCKET_RECEIVE(fnSig_platformSocketReceive);
+typedef PLATFORM_RESERVE_LOCK(fnSig_platformReserveLock);
+typedef PLATFORM_LOCK(fnSig_platformLock);
+typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
 struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -275,10 +227,11 @@ struct KmlPlatformApi
 	fnSig_platformAssert* assert;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
+	fnSig_platformGetFileByteSize* getFileByteSize;
+	fnSig_platformReadEntireFile* readEntireFile;
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;
-	fnSig_platformLoadFlipbookMeta* loadFlipbookMeta;
 	fnSig_platformGetAssetWriteTime* getAssetWriteTime;
 	fnSig_platformIsAssetChanged* isAssetChanged;
 	fnSig_platformIsAssetAvailable* isAssetAvailable;
@@ -288,19 +241,17 @@ struct KmlPlatformApi
 	fnSig_platformGetGamePadActiveAxis* getGamePadActiveAxis;
 	fnSig_platformGetGamePadProductName* getGamePadProductName;
 	fnSig_platformGetGamePadProductGuid* getGamePadProductGuid;
-	fnSig_PlatformGetTimeStamp* getTimeStamp;
-	fnSig_PlatformSleepFromTimestamp* sleepFromTimeStamp;
-	fnSig_PlatformSecondsSinceTimestamp* secondsSinceTimeStamp;
-	fnSig_PlatformNetResolveAddress* netResolveAddress;
-	fnSig_PlatformSocketOpenUdp* socketOpenUdp;
-	fnSig_PlatformSocketClose* socketClose;
-	fnSig_PlatformSocketSend* socketSend;
-	fnSig_PlatformSocketReceive* socketReceive;
-#if INTERNAL_BUILD
-	fnSig_PlatformReadEntireFile* readEntireFile;
-	fnSig_PlatformFreeFileMemory* freeFileMemory;
-	fnSig_PlatformWriteEntireFile* writeEntireFile;
-#endif// INTERNAL_BUILD
+	fnSig_platformGetTimeStamp* getTimeStamp;
+	fnSig_platformSleepFromTimestamp* sleepFromTimeStamp;
+	fnSig_platformSecondsSinceTimestamp* secondsSinceTimeStamp;
+	fnSig_platformNetResolveAddress* netResolveAddress;
+	fnSig_platformSocketOpenUdp* socketOpenUdp;
+	fnSig_platformSocketClose* socketClose;
+	fnSig_platformSocketSend* socketSend;
+	fnSig_platformSocketReceive* socketReceive;
+	fnSig_platformReserveLock* reserveLock;
+	fnSig_platformLock* lock;
+	fnSig_platformUnlock* unlock;
 };
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory

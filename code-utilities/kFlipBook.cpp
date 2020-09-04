@@ -1,5 +1,119 @@
 #include "kFlipBook.h"
 #include "kAssetManager.h"
+#include <cstring>
+#include <cstdlib>
+#include <cctype>
+internal bool kfbDecodeMeta(void* fileData, u32 fileBytes, 
+                            FlipbookMetaData* o_fbMeta, 
+                            char* o_texAssetFileName, 
+                            size_t texAssetFileNameBufferSize)
+{
+	*o_fbMeta = {};
+	char*const fileCStr = reinterpret_cast<char*>(fileData);
+	u16 fbPropertiesFoundBitflags = 0;
+	u8 fbPropertiesFoundCount = 0;
+	// destructively read the file line by line //
+	// source: https://stackoverflow.com/a/17983619
+	char* currLine = fileCStr;
+	while(currLine)
+	{
+		char* nextLine = strchr(currLine, '\n');
+		if(nextLine) *nextLine = '\0';
+		// parse `currLine` for flipbook meta data //
+		{
+			char* idValueSeparator = strchr(currLine, ':');
+			if(!idValueSeparator)
+			{
+				return false;
+			}
+			*idValueSeparator = '\0';
+			idValueSeparator++;
+			if(strstr(currLine, "frame-size-x"))
+			{
+				fbPropertiesFoundBitflags |= 1<<0;
+				fbPropertiesFoundCount++;
+				o_fbMeta->frameSizeX = kmath::safeTruncateU32(
+					atoi(idValueSeparator));
+			}
+			else if(strstr(currLine, "frame-size-y"))
+			{
+				fbPropertiesFoundBitflags |= 1<<1;
+				fbPropertiesFoundCount++;
+				o_fbMeta->frameSizeY = kmath::safeTruncateU32(
+					atoi(idValueSeparator));
+			}
+			else if(strstr(currLine, "frame-count"))
+			{
+				fbPropertiesFoundBitflags |= 1<<2;
+				fbPropertiesFoundCount++;
+				o_fbMeta->frameCount = 
+					kmath::safeTruncateU16(atoi(idValueSeparator));
+			}
+			else if(strstr(currLine, "texture-asset-file-name"))
+			{
+				fbPropertiesFoundBitflags |= 1<<3;
+				fbPropertiesFoundCount++;
+				while(*idValueSeparator && isspace(*idValueSeparator))
+				{
+					idValueSeparator++;
+				}
+				for(char* spaceSearchChar = idValueSeparator + 1; 
+					*spaceSearchChar; spaceSearchChar++)
+				{
+					if(isspace(*spaceSearchChar))
+					{
+						*spaceSearchChar = '\0';
+						break;
+					}
+				}
+				const size_t valueStrLength = strlen(idValueSeparator);
+				if(valueStrLength >= texAssetFileNameBufferSize - 1)
+				{
+					return false;
+				}
+				strcpy_s(o_texAssetFileName, texAssetFileNameBufferSize,
+				         idValueSeparator);
+			}
+			else if(strstr(currLine, "default-repeat"))
+			{
+				fbPropertiesFoundBitflags |= 1<<4;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultRepeat = atoi(idValueSeparator) != 0;
+			}
+			else if(strstr(currLine, "default-reverse"))
+			{
+				fbPropertiesFoundBitflags |= 1<<5;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultReverse = atoi(idValueSeparator) != 0;
+			}
+			else if(strstr(currLine, "default-seconds-per-frame"))
+			{
+				fbPropertiesFoundBitflags |= 1<<6;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultSecondsPerFrame = 
+					static_cast<f32>(atof(idValueSeparator));
+			}
+			else if(strstr(currLine, "default-anchor-ratio-x"))
+			{
+				fbPropertiesFoundBitflags |= 1<<7;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultAnchorRatioX = 
+					static_cast<f32>(atof(idValueSeparator));
+			}
+			else if(strstr(currLine, "default-anchor-ratio-y"))
+			{
+				fbPropertiesFoundBitflags |= 1<<8;
+				fbPropertiesFoundCount++;
+				o_fbMeta->defaultAnchorRatioY = 
+					static_cast<f32>(atof(idValueSeparator));
+			}
+		}
+		if(nextLine) *nextLine = '\n';
+		currLine = nextLine ? (nextLine + 1) : nullptr;
+	}
+	return (fbPropertiesFoundCount == 9) && 
+		(fbPropertiesFoundBitflags == (1<<fbPropertiesFoundCount) - 1);
+}
 internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
                       KrbApi* krb, KAssetIndex assetIndex)
 {

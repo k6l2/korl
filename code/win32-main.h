@@ -30,9 +30,7 @@ struct GameCode
 	FILETIME dllLastWriteTime;
 	bool isValid;
 };
-internal PLATFORM_LOG(platformLog);
-internal PLATFORM_ASSERT(platformAssert);
 internal PLATFORM_READ_ENTIRE_FILE(platformReadEntireFile);
-internal PLATFORM_FREE_FILE_MEMORY(platformFreeFileMemory);
 internal LARGE_INTEGER w32QueryPerformanceCounter();
+internal FILETIME w32GetLastWriteTime(const char* fileName);
 global_variable HWND g_mainWindow;

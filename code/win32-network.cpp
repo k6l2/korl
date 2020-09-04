@@ -33,7 +33,7 @@ internal bool w32InitializeNetwork()
     }
 	return true;
 }
-internal PLATFORM_SOCKET_OPEN_UDP(w32NetworkOpenSocketUdp)
+internal PLATFORM_SOCKET_OPEN_UDP(w32PlatformNetworkOpenSocketUdp)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
@@ -66,12 +66,12 @@ internal PLATFORM_SOCKET_OPEN_UDP(w32NetworkOpenSocketUdp)
 	{
 		KLOG(ERROR, "Failed to bind UDP socket to port %i! WSAGetLastError=%i", 
 		     listenPort, WSAGetLastError());
-		w32NetworkCloseSocket(s);
+		w32PlatformNetworkCloseSocket(s);
 		return KPL_INVALID_SOCKET_INDEX;
 	}
 	return s;
 }
-internal PLATFORM_SOCKET_CLOSE(w32NetworkCloseSocket)
+internal PLATFORM_SOCKET_CLOSE(w32PlatformNetworkCloseSocket)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
@@ -107,7 +107,7 @@ internal int w32KplNetAddressToNative(const KplNetAddress& netAddress, u16 port,
 	o_winSockAddress->s4.sin_port        = htons(port);
 	return sizeof(o_winSockAddress->s4);
 }
-internal PLATFORM_SOCKET_SEND(w32NetworkSend)
+internal PLATFORM_SOCKET_SEND(w32PlatformNetworkSend)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
@@ -163,7 +163,7 @@ internal PLATFORM_SOCKET_SEND(w32NetworkSend)
 	}
 	return resultSendTo;
 }
-internal PLATFORM_SOCKET_RECEIVE(w32NetworkReceive)
+internal PLATFORM_SOCKET_RECEIVE(w32PlatformNetworkReceive)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
@@ -226,7 +226,7 @@ internal PLATFORM_SOCKET_RECEIVE(w32NetworkReceive)
 	*o_netPortSender = ntohs(winSockAddressFrom.s4.sin_port);
 	return resultReceiveFrom;
 }
-internal PLATFORM_NET_RESOLVE_ADDRESS(w32NetworkResolveAddress)
+internal PLATFORM_NET_RESOLVE_ADDRESS(w32PlatformNetworkResolveAddress)
 {
 	addrinfo hints;
 	ZeroMemory(&hints, sizeof(hints));

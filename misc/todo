@@ -592,10 +592,29 @@
 	[x] dynamic memory management
 	[x] drawing texture assets
 	[ ] drawing flipbook animations
+		[x] allow the game module to load raw files and decode them itself, 
+			since not all files are complicated enough to warrant 
+			platform-dependant implementations (such as FlipbookMetaData)
+			[x] move FlipbookMetaData out of platform-game-interface
+			[x] add 'load entire file' API
+			[x] add thread locking API to KPL because the game's job threads 
+				need async access to the asset memory allocation
+			[x] pull win32 platform API implementation out of win32-main
 	[ ] gamepad input
 	[ ] playing music & sound assets
 	[ ] client/server
-[ ] win32: pull KML platform interface out of win32-main
+[ ] combine all win32 virtualalloc calls into a single memory allocation
+[ ] vscode: set defines in c_cpp_properties.json using environment variables so 
+	that they can be set per project dynamically
+[ ] network: change sockets to non-blocking by enabling FIONBIO, then we can 
+	just get rid of the whole socket selection within a certain period of time 
+	nonsense
+	https://www.codersblock.org/blog/multiplayer-fps-part-3
+[ ] refactor handle collections to interpret the handle value == `0` to mean the 
+	handle is invalid, eliminating the need to define an `INVALID_HANDLE` value 
+	[ ] KAssetHandle
+	[ ] INVALID_PLATFORM_AXIS_INDEX
+[x] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution
 [ ] KAU: master volume control, default to like ~80% or something...

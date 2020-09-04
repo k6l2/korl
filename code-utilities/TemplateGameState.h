@@ -6,6 +6,11 @@
 #include "kAssetManager.h"
 #include "kAudioMixer.h"
 #include "kAllocatorLinear.h"
+#pragma warning( push )
+	// warning C4820: bytes padding added after data member
+	#pragma warning( disable : 4820 )
+	#include "imgui/imgui.h"
+#pragma warning( pop )
 #define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size,context)
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
 #define STBDS_ASSERT(x)                 g_kpl->assert(x)
@@ -26,14 +31,6 @@ struct KmlTemplateGameState
 /* useful global variables */
 global_variable KmlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;
-/* platform function addresses required to exist by kutil macros */
-global_variable fnSig_platformLog* platformLog;
-global_variable fnSig_platformAssert* platformAssert;
-#pragma warning( push )
-	// warning C4820: bytes padding added after data member
-	#pragma warning( disable : 4820 )
-	#include "imgui/imgui.h"
-#pragma warning( pop )
 /* template game state API */
 internal void templateGameState_onReloadCode(GameMemory& memory);
 /** 
