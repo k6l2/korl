@@ -1,17 +1,44 @@
-#include "KmlApplication.h"
+#include "KmlDynApp.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
 	                                    windowIsFocused))
 		return false;
-	g_gs->seconds += deltaSeconds;// animate the sample scene
-	/* Initialize backend renderer for drawing.   This must occur before ANY 
-		drawing operations take place!  */
+	/* display GUI window containing sample instructions */
+	ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Text("[E,S,D,F] - move");
+	ImGui::Text("[R] - reset");
+	ImGui::End();
+	/* handle keyboard input & update the sample player's state */
+	v2f32 controlDirection = {};
+	if(windowIsFocused)
+	{
+		if(gameKeyboard.e >= ButtonState::HELD)
+		{
+			controlDirection.y += 1;
+		}
+		if(gameKeyboard.d >= ButtonState::HELD)
+		{
+			controlDirection.y -= 1;
+		}
+		if(gameKeyboard.s >= ButtonState::HELD)
+		{
+			controlDirection.x -= 1;
+		}
+		if(gameKeyboard.f >= ButtonState::HELD)
+		{
+			controlDirection.x += 1;
+		}
+		if(gameKeyboard.r == ButtonState::PRESSED)
+			g_gs->samplePlayer = {};
+	}
+	const f32 controlMag = controlDirection.normalize();
+	g_gs->samplePlayer.position += 100.f * deltaSeconds * controlDirection;
+	if(!kmath::isNearlyZero(controlMag))
+		g_gs->samplePlayer.orientation = 
+			kQuaternion({0,0,1}, kmath::v2Radians(controlDirection) - PI32/2);
+	/* draw the sample */
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);
-	/* Setup an orthographic projection transform such that the y-axis always 
-		represents 100 `units` in world-space, regardless of window size.  
-		The `view` transform is right-handed & automatically centered on the 
-		origin by default. */
 	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
 	                                     100, 1.f);
 	/* draw a simple 2D origin */
@@ -24,16 +51,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	/* if you can draw a triangle, you can draw ANYTHING~ */
 	{
-		const kQuaternion quatModel = kQuaternion({0,0,1}, g_gs->seconds);
-		const f32 distanceFromOrigin = 
-			kmath::lerp(10, 40, SINEF_0_1(3*g_gs->seconds));
-		const v2f32 positionModel = kQuaternion({0,0,-1}, g_gs->seconds)
-			.transform(v2f32{distanceFromOrigin,0});
-		g_krb->setModelXform2d(positionModel, quatModel, {1,1});
+		g_krb->setModelXform2d(g_gs->samplePlayer.position, 
+		                       g_gs->samplePlayer.orientation, {1,1});
 		const local_persist VertexNoTexture meshTri[] = 
-			{ {{  0, 30,0}, {1,0,0,0.5f}}
-			, {{ 30,-20,0}, {0,1,0,0.5f}}
-			, {{-30,-20,0}, {0,0,1,0.5f}} };
+			{ {{  0, 5,0}, krb::RED  }
+			, {{ 3, -5,0}, krb::GREEN}
+			, {{-3, -5,0}, krb::BLUE } };
 		DRAW_TRIS(meshTri, VERTEX_NO_TEXTURE_ATTRIBS);
 	}
 	return true;

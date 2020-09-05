@@ -1,4 +1,4 @@
-#include "KmlApplication.h"
+#include "KmlDynApp.h"
 #include <algorithm>
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {

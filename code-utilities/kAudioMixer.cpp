@@ -5,7 +5,7 @@ struct AudioTrack
 	u32 currentSampleBlock;
 	u16 idSalt;
 	bool repeat;
-	u8 repeat_PADDING;
+	bool pause;
 	f32 volumeRatio = 1.f;
 };
 struct KAudioMixer
@@ -67,7 +67,8 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 		}
 		const RawSound tRawSound = 
 			kamGetRawSound(audioMixer->assetManager, tracks[t].soundKAssetId);
-		tracks[t].currentSampleBlock += sampleBlocksConsumed;
+		if(!tracks[t].pause)
+			tracks[t].currentSampleBlock += sampleBlocksConsumed;
 		if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
 		{
 			if(tracks[t].repeat)
@@ -100,7 +101,8 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 		}
 		for(u16 t = 0; t < audioMixer->trackCount; t++)
 		{
-			if(tracks[t].soundKAssetId == KAssetIndex::ENUM_SIZE)
+			if(tracks[t].soundKAssetId == KAssetIndex::ENUM_SIZE
+				|| tracks[t].pause)
 			{
 				continue;
 			}
@@ -169,45 +171,62 @@ internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer,
 	tracks[trackIndexFirstAvailable].idSalt        = nextTapeSalt;
 	return kauHashTrack(audioMixer, trackIndexFirstAvailable);
 }
+internal bool kauIsTapeHandleValid(KAudioMixer* audioMixer, KTapeHandle* kth)
+{
+	const u16 trackIndex = kauSoundHandleTrackIndex(*kth);
+	if(trackIndex >= audioMixer->trackCount)
+	/* If the tape handle's trackIndex is out of bounds, it should always be 
+		invalid no matter what.
+		@assumption: audioMixer->trackCount is immutable once constructed */
+	{
+		return false;
+	}
+	const KTapeHandle currHandle = kauHashTrack(audioMixer, trackIndex);
+	if(*kth != currHandle)
+	/* the salt of `*kth` doesn't match the current tape handle of this track 
+		index, which indicates `*kth` was once valid, but is no longer.  We 
+		should invalidate the caller's sound handle since the tape no longer 
+		exists in the mixer to prevent it from accidentally becoming valid in 
+		the future if the salt rolls around to the same value! */
+	{
+		*kth = kauHashTrack(audioMixer, audioMixer->trackCount);
+	}
+	return trackIndex < audioMixer->trackCount;
+}
+#define K_AUDIO_MIXER_DECODE_TAPE_HANDLE(...) \
+	if(!kauIsTapeHandleValid(audioMixer, tapeHandle))\
+	/* Silently ignore the request to modify the track if the handle is \
+		invalid */\
+	{\
+		return __VA_ARGS__;\
+	}\
+	const u16 trackIndex = kauSoundHandleTrackIndex(*tapeHandle);\
+	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
+internal void kauStopSound(KAudioMixer* audioMixer, KTapeHandle* tapeHandle)
+{
+	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
+	tracks[trackIndex].soundKAssetId = KAssetIndex::ENUM_SIZE;
+}
 internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
                            bool value)
 {
-	const u16 trackIndex = kauSoundHandleTrackIndex(*tapeHandle);
-	if(trackIndex >= audioMixer->trackCount)
-	// Silently ignore the request to modify the track if the handle is invalid
-	{
-		return;
-	}
-	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
-	const KTapeHandle currHandle = kauHashTrack(audioMixer, trackIndex);
-	if(*tapeHandle != currHandle)
-	// if the requested sound handle's identification doesn't match the current
-	//	sound handle at the same track index, then we should invalidate the 
-	//	caller's sound handle since the tape no longer exists in the mixer!
-	{
-		*tapeHandle = kauHashTrack(audioMixer, audioMixer->trackCount);
-		return;
-	}
+	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
 	tracks[trackIndex].repeat = value;
+}
+internal void kauSetPause(
+	KAudioMixer* audioMixer, KTapeHandle* tapeHandle, bool value)
+{
+	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
+	tracks[trackIndex].pause = value;
 }
 internal void kauSetVolume(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
                            f32 volumeRatio)
 {
-	const u16 trackIndex = kauSoundHandleTrackIndex(*tapeHandle);
-	if(trackIndex >= audioMixer->trackCount)
-	// Silently ignore the request to modify the track if the handle is invalid
-	{
-		return;
-	}
-	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
-	const KTapeHandle currHandle = kauHashTrack(audioMixer, trackIndex);
-	if(*tapeHandle != currHandle)
-	// if the requested sound handle's identification doesn't match the current
-	//	sound handle at the same track index, then we should invalidate the 
-	//	caller's sound handle since the tape no longer exists in the mixer!
-	{
-		*tapeHandle = kauHashTrack(audioMixer, audioMixer->trackCount);
-		return;
-	}
+	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
 	tracks[trackIndex].volumeRatio = volumeRatio;
+}
+internal bool kauGetPause(KAudioMixer* audioMixer, KTapeHandle* tapeHandle)
+{
+	K_AUDIO_MIXER_DECODE_TAPE_HANDLE(false);
+	return tracks[trackIndex].pause;
 }

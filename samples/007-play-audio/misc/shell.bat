@@ -1,7 +1,7 @@
 @rem prerequisites: KML_HOME environment variable set
 @rem simply launch a command prompt with the proper environment variables 
 @rem necessary to build the project
-set kmlApplicationName=KmlSample_005_DrawFlipbookAnimation
+set kmlApplicationName=KmlSample_007_PlayAudio
 set kmlApplicationVersion=r0
 set kmlGameDllFileName=KmlDynApp
 @rem To prevent simulation from becoming unstable at low frame rates due to lag 

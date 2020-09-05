@@ -601,7 +601,7 @@
 				need async access to the asset memory allocation
 			[x] pull win32 platform API implementation out of win32-main
 	[x] gamepad input
-	[ ] playing music & sound assets
+	[x] playing music & sound assets
 	[ ] client/server
 [x] KFB: if the `texture-asset-file-name` is not present, assume that the 
 	texture asset is in the same directory with the same name only with a `.png` 
@@ -698,6 +698,19 @@
 [ ] Figure out if there is a good way to detect if an application was force-quit
 	by the user, like in situations such as an infinite loop, or the application
 	just generally taking too long to do something.
+[ ] separate code-utilities into two types: kpl-dll-shared & dll-only 
+	- the only platform-shared utility seems to be KGeneralAllocator right now
+[ ] relieve the strict requirement to recompile the KML DLL if KML ever needs to 
+	be recompiled; the DLL should only need to be recompiled if the following 
+	sources change:
+		- krb-interface.h             (move to code-utilities/kpl-dll-shared ?)
+		- kutil.h/cpp                 (move to code-utilities/kpl-dll-shared ?)
+		- platform-game-interfaces.h  (move to code-utilities/kpl-dll-shared ?)
+		- kmath.h/cpp                 (move to code-utilities/kpl-dll-shared ?)
+		- ImGui
+		- stb_ds.h
+		- ~any code utilities~
+		- ~any KML DLL code~
 [ ] Automatically delete older minidumps once enough accumulate.
 [ ] Give log files rolling file names like minidumps.
 [ ] Automatically delete older log files once enough accumulate.
