@@ -3,10 +3,11 @@ internal bool kNetClientIsDisconnected(const KNetClient* knc)
 {
 	return knc->socket == KPL_INVALID_SOCKET_INDEX;
 }
-internal void kNetClientConnect(KNetClient* knc, 
-                                const char* cStrServerAddress)
+internal void kNetClientConnect(
+	KNetClient* knc, const char* cStrServerAddress, u16 serverListenPort)
 {
 	knc->addressServer = g_kpl->netResolveAddress(cStrServerAddress);
+	knc->serverListenPort = serverListenPort;
 	knc->socket = g_kpl->socketOpenUdp(0);
 	knc->connectionState = network::ConnectionState::ACCEPTING;
 	knc->secondsSinceLastServerPacket = 0;
@@ -80,7 +81,7 @@ internal void kNetClientStep(
 			kassert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
 			const i32 bytesSent = 
 				g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
-				                  knc->addressServer, 30942);
+				                  knc->addressServer, knc->serverListenPort);
 			kassert(bytesSent >= 0);
 		}
 		/* if we're connected to the server & we have reliable messages to send, 
@@ -101,7 +102,7 @@ internal void kNetClientStep(
 			kassert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
 			const i32 bytesSent = 
 				g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
-				                  knc->addressServer, 30942);
+				                  knc->addressServer, knc->serverListenPort);
 			kassert(bytesSent >= 0);
 		}
 	}
@@ -141,7 +142,7 @@ internal void kNetClientStep(
 		const u8*      packetBuffer    = knc->packetBuffer;
 		const u8*const packetBufferEnd = knc->packetBuffer + bytesReceived;
 		u32 bytesUnpacked = 0;
-		if(netAddress == knc->addressServer && netPort == 30942)
+		if(netAddress == knc->addressServer && netPort == knc->serverListenPort)
 		{
 			const network::PacketType packetType = 
 				network::PacketType(*(packetBuffer++));

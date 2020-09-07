@@ -584,7 +584,7 @@
 		Na.. just attempt to erase all DLL files in the temp directory when a 
 		KML executable begins
 [ ] investigate crash on sehar's computer when DInput controller is plugged in
-[ ] create a `samples` folder with individual game projects demonstrating 
+[x] create a `samples` folder with individual game projects demonstrating 
 	specific KML workflows/features
 	[x] MINIMAL TEMPLATE, for easier creation of game projects
 	[x] drawing primitives
@@ -602,26 +602,29 @@
 			[x] pull win32 platform API implementation out of win32-main
 	[x] gamepad input
 	[x] playing music & sound assets
-	[ ] client/server
+	[x] client/server
+		[x] KNetClient: configurable server port
+[x] KAM: fix DIABOLICAL bug where I accidentally request the raw file allocator 
+	be initialized in unallocated memory!!!
+[x] KFB: fix bug in kfbDecodeMeta where we read past the end of the file and 
+	crash sometimes
 [x] KFB: if the `texture-asset-file-name` is not present, assume that the 
 	texture asset is in the same directory with the same name only with a `.png` 
 	file extension
-[ ] combine all win32 virtualalloc calls into a single memory allocation
-[ ] vscode: set defines in c_cpp_properties.json using environment variables so 
-	that they can be set per project dynamically
 [ ] network: change sockets to non-blocking by enabling FIONBIO, then we can 
 	just get rid of the whole socket selection within a certain period of time 
 	nonsense
 	https://www.codersblock.org/blog/multiplayer-fps-part-3
 	https://docs.microsoft.com/en-us/windows/win32/winsock/winsock-ioctls
-[ ] refactor handle collections to interpret the handle value == `0` to mean the 
-	handle is invalid, eliminating the need to define an `INVALID_HANDLE` value 
-	[ ] KAssetHandle
-	[ ] INVALID_PLATFORM_AXIS_INDEX
+[ ] stb_ds: simplify arrinit to be a macro which just takes 
+	(type,memory_context) for significantly less verbose user code
+[ ] combine all win32 virtualalloc calls into a single memory allocation
 [x] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution
-[ ] KAU: master volume control, default to like ~80% or something...
+[ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
+	Wichmann–Hill for the memes since it was apparently used in Windwaker.
+	https://en.wikipedia.org/wiki/List_of_random_number_generators
 [ ] kcpp: bring back kcpp and repurpose it 
 	[ ] scan for a macro to generate reflection code on data declarations
 		[ ] generate string arrays for enumerations
@@ -629,9 +632,25 @@
 	provided by default from KML to allow the game to customize the application 
 	icon
 	[ ] Add a `Deployment Procedures` section to README to document this process
+[ ] create a script which attempts to build all the KML samples and reports if 
+	any of them fail to build
 [ ] DInput: move device enumeration into a separate thread so the main thread 
 	doesn't hang every time a device is hot-swapped
 [ ] DInput: force feedback
+[ ] it sure would be nice to be able to have an easy way of visualizing memory 
+	allocations for debugging... 🙃
+	[ ] save the file + line# of each dynamic allocation
+	[ ] dump the contents of memory allocators into a text format
+	[ ] create a KML program which reads a memory allocation dump and displays 
+		it graphically
+[ ] vscode: set defines in c_cpp_properties.json using environment variables so 
+	that they can be set per project dynamically
+[ ] refactor handle collections to interpret the handle value == `0` to mean the 
+	handle is invalid, eliminating the need to define an `INVALID_HANDLE` value 
+	[ ] KAssetHandle
+	[ ] INVALID_PLATFORM_AXIS_INDEX
+[ ] Pay TODO debt.
+[ ] KAU: master volume control, default to like ~80% or something...
 [x] build: rebuild KML & game if the build scripts are changed
 [ ] build: ensure all necessary environment variables are set
 	https://stackoverflow.com/a/37073832
@@ -644,23 +663,20 @@
 		[ ] work correctly with multiple cursors
 	[ ] automatically place a semicolon at the end of a struct/enum/class 
 		definition
-[ ] Do not poll async keyboard state if the window is not currently active 
+[x] Do not poll async keyboard state if the window is not currently active 
 	(optionally?)
 [x] KRB: send vertex colors to draw functions.
 	[x] Maybe generalize KRB functions to take a pre-defined `Vertex` struct?..
 	[x] allow API to take vertex properties using STRIDE?
 [x] KRB-opengl: Figure out why GL_UNSIGNED_INT_8_8_8_8 is undefined
 	https://community.khronos.org/t/gl-unsigned-int-8-8-8-8-is-undefined/65686
-[ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
-	Wichmann–Hill for the memes since it was apparently used in Windwaker.
-	https://en.wikipedia.org/wiki/List_of_random_number_generators
 [ ] display debug frame metrics
 	[ ] Can I just use Optick?..  I really liked Optick..
 	[ ] allow the game code to probe the platform for cycle counts for timing.
 	[ ] Investigate big ~10-frame lag spike that seems to happen every time the 
 		application runs for ~30seconds after startup...
-[ ] pause audio output when window goes out of focus probably.
-[ ] Pay TODO debt.
+[~] pause audio output when window goes out of focus probably.
+	- this is already being done in DirectSound right now
 [ ] Make asset streaming implementation more robust
 	[ ] When attempting to load an asset and we're unable to allocate memory for 
 		it...

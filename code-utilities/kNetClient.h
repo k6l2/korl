@@ -12,6 +12,7 @@ struct KNetClient
 	KplSocketIndex socket = KPL_INVALID_SOCKET_INDEX;
 	u8 packetBuffer[KPL_MAX_DATAGRAM_SIZE];
 	KplNetAddress addressServer;
+	u16 serverListenPort;
 	f32 secondsSinceLastServerPacket;
 	u32 rollingUnreliableStateIndexServer;
 	PlatformTimeStamp latestServerTimestamp;
@@ -22,8 +23,8 @@ struct KNetClient
 	u32 latestReceivedReliableMessageIndex;
 } FORCE_SYMBOL_EXPORT;
 internal bool kNetClientIsDisconnected(const KNetClient* knc);
-internal void kNetClientConnect(KNetClient* knc, 
-                                const char* cStrServerAddress);
+internal void kNetClientConnect(
+	KNetClient* knc, const char* cStrServerAddress, u16 serverListenPort);
 internal void kNetClientBeginDisconnect(KNetClient* knc);
 internal void kNetClientDropConnection(KNetClient* knc);
 /**

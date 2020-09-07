@@ -69,9 +69,10 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		KLOG(ERROR, "Failed to allocate memory for KAssetManager!");
 		return result;
 	}
-	KgaHandle hKgaRawFiles = 
-		kgaInit(result + sizeof(KAssetManager) + sizeof(KAsset)*maxAssetHandles, 
-		        rawFilePoolBytes);
+	void*const rawFileAllocatorAddress = 
+		reinterpret_cast<u8*>(result) + sizeof(KAssetManager) + 
+		sizeof(KAsset)*maxAssetHandles;
+	KgaHandle hKgaRawFiles = kgaInit(rawFileAllocatorAddress, rawFilePoolBytes);
 	// Quickly load very tiny default assets which can be immediately used
 	//	in place of any asset handle which has not yet been loaded from the
 	//	platform and decoded into useful data for us yet! //

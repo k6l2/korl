@@ -1,5 +1,5 @@
 #include "serverExample.h"
-#include "KmlGameExample.h"
+#include "KmlDynApp.h"
 internal void serverInitialize(ServerState* ss, f32 secondsPerFrame, 
                                KgaHandle hKgaPermanentParent, 
                                KgaHandle hKgaTransientParent, 

@@ -1,12 +1,4 @@
 #include "KmlDynApp.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui/imgui_internal.h"
-#define IMGUI_DISABLE_WIDGETS_BEGIN() \
-	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);\
-	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha*0.5f);
-#define IMGUI_DISABLE_WIDGETS_END() \
-	ImGui::PopItemFlag();\
-	ImGui::PopStyleVar();
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 

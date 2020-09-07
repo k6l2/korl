@@ -31,12 +31,17 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 	while(currLine)
 	{
 		char* nextLine = strchr(currLine, '\n');
-		if(nextLine) *nextLine = '\0';
+		if(nextLine >= fileCStr + fileBytes)
+			nextLine = nullptr;
+		if(nextLine) 
+			*nextLine = '\0';
 		// parse `currLine` for flipbook meta data //
 		{
 			char* idValueSeparator = strchr(currLine, ':');
 			if(!idValueSeparator)
 			{
+				KLOG(ERROR, "Failed to find idValueSeparator for "
+				     "currLine=='%s'!", currLine);
 				return false;
 			}
 			*idValueSeparator = '\0';
@@ -82,6 +87,9 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 				const size_t valueStrLength = strlen(idValueSeparator);
 				if(valueStrLength >= texAssetFileNameBufferSize - 1)
 				{
+					KLOG(ERROR, "Texture asset file name length==%i is too "
+					     "long for asset file name buffer==%i!",
+					     valueStrLength, texAssetFileNameBufferSize);
 					return false;
 				}
 				strcpy_s(o_texAssetFileName, texAssetFileNameBufferSize,
@@ -159,8 +167,13 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 		fbPropertiesFoundCount++;
 		fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_TEX_ASSET_NAME;
 	}
-	return (fbPropertiesFoundCount == 9) && 
+	const bool success = (fbPropertiesFoundCount == 9) && 
 		(fbPropertiesFoundBitflags == (1<<KFB_META_DECODE_ENTRY_COUNT) - 1);
+	if(!success)
+	{
+		KLOG(ERROR, "Failed to pass safety check for '%s'!", cStrAnsiAssetName);
+	}
+	return success;
 }
 internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
                       KrbApi* krb, KAssetIndex assetIndex)

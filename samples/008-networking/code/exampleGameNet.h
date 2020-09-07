@@ -2,6 +2,7 @@
 #include "kutil.h"
 #include "kNetClient.h"
 #include "kNetServer.h"
+global_variable const u16 GAME_NET_SERVER_LISTEN_PORT = 30942;
 struct Actor
 {
 	network::ServerClientId clientId = network::SERVER_INVALID_CLIENT_ID;
