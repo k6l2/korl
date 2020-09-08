@@ -3,7 +3,7 @@ Currently, only the Windows platform is a thing.
 
 ## Installation Procedures
 - Install Visual Studio w/ C++ to get all the required build tools.
-- Clone repository somewhere.
+- Clone this repository somewhere.
 - [Clone the `kasset` repository somewhere.](https://github.com/k6l2/kasset)
 - [Clone the `kmd5` repository somewhere.](https://github.com/k6l2/kmd5)
 - Set the `VISUAL_C_BUILD_SCRIPTS_HOME` environment variable to point to the
@@ -43,5 +43,5 @@ Currently, only the Windows platform is a thing.
 	such as drawing things to the window, playing sounds/music, networking & 
 	more!
 - Optionally, follow `Optional Editor` for this new directory using `.` instead 
-	of `..`.
+	of `%KML_HOME%`.
 - We gucci, fam'.

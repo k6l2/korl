@@ -50,15 +50,20 @@ internal bool templateGameState_updateAndDraw(
 	bool windowIsFocused)
 {
 	kalReset(tgs->hKalFrame);
-	/* Esc & Alt+F4 shortcuts to quickly exit the program */
-	if(gameKeyboard.escape == ButtonState::PRESSED ||
-	   (gameKeyboard.f4 == ButtonState::PRESSED && gameKeyboard.modifiers.alt))
+	/* Esc, Ctrl+W & Alt+F4 shortcuts to quickly exit the program */
+	if(gameKeyboard.escape == ButtonState::PRESSED 
+		|| (gameKeyboard.f4 == ButtonState::PRESSED 
+			&& gameKeyboard.modifiers.alt)
+		|| (gameKeyboard.w == ButtonState::PRESSED 
+			&& gameKeyboard.modifiers.control))
 	{
 		if(windowIsFocused)
 			return false;
 	}
-	/* easy Alt+Enter fullscreen shortcut */
-	if(gameKeyboard.enter == ButtonState::PRESSED && gameKeyboard.modifiers.alt)
+	/* easy fullscreen shortcuts */
+	if(gameKeyboard.f11 == ButtonState::PRESSED 
+		|| (gameKeyboard.enter == ButtonState::PRESSED 
+			&& gameKeyboard.modifiers.alt))
 	{
 		g_kpl->setFullscreen(!g_kpl->isFullscreen());
 	}
