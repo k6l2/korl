@@ -611,7 +611,7 @@
 [x] KFB: if the `texture-asset-file-name` is not present, assume that the 
 	texture asset is in the same directory with the same name only with a `.png` 
 	file extension
-[ ] network: change sockets to non-blocking by enabling FIONBIO, then we can 
+[x] network: change sockets to non-blocking by enabling FIONBIO, then we can 
 	just get rid of the whole socket selection within a certain period of time 
 	nonsense
 	https://www.codersblock.org/blog/multiplayer-fps-part-3

@@ -148,7 +148,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			kamUnloadAllAssets(g_gs->templateGameState.assetManager);
 		}
-#endif //1
+#endif //@TODO: @simplification; delete this code
 		/* send the client's controller input for this frame as a reliable 
 			message */
 		if(!kNetClientIsDisconnected(&g_gs->kNetClient))

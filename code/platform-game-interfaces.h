@@ -151,14 +151,16 @@ const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
  *                   prevent the user application from SENDING to other ports.
  * @param address if this is nullptr, the socket is bound to ANY address
  * @return KPL_INVALID_SOCKET_INDEX if the socket could not be created for any 
- *         reason
+ *         reason.  On success, an opaque index to a unique resource 
+ *         representing a non-blocking UDP socket bound to `listenPort` is 
+ *         returned.
 */
 #define PLATFORM_SOCKET_OPEN_UDP(name) KplSocketIndex name(u16 listenPort)
 #define PLATFORM_SOCKET_CLOSE(name) void name(KplSocketIndex socketIndex)
 /**
  * @return the # of bytes sent.  If an error occurs, a value < 0 is returned.  
- *         If the socket or underlying winsock system is not ready to send right 
- *         now, 0 is returned (no errors occurred)
+ *         If the socket or the underlying platform networking implementation is 
+ *         not ready to send right now, 0 is returned (no errors occurred)
  */
 #define PLATFORM_SOCKET_SEND(name) \
 	i32 name(KplSocketIndex socketIndex, const u8* dataBuffer, \

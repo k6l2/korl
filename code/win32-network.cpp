@@ -21,16 +21,16 @@ internal bool w32InitializeNetwork()
 		KLOG(ERROR, "Failed to start WinSock!");
 		return false;
 	}
-	if (LOBYTE(g_wsa.wVersion) != LOBYTE(DESIRED_WINSOCK_VERSION) 
-		|| HIBYTE(g_wsa.wVersion) != HIBYTE(DESIRED_WINSOCK_VERSION))
+	if(   LOBYTE(g_wsa.wVersion) != LOBYTE(DESIRED_WINSOCK_VERSION) 
+	   || HIBYTE(g_wsa.wVersion) != HIBYTE(DESIRED_WINSOCK_VERSION))
 	{
-        KLOG(ERROR, "Could not find winsock v%i.%i compatible DLL!", 
+		KLOG(ERROR, "Could not find winsock v%i.%i compatible DLL!", 
 		     HIBYTE(DESIRED_WINSOCK_VERSION), LOBYTE(DESIRED_WINSOCK_VERSION));
-        WSACleanup();
+		WSACleanup();
 		/* @TODO: figure out if I ever need to call WSACleanup anywhere else in 
 			the program (probably not?..) */
-        return false;
-    }
+		return false;
+	}
 	return true;
 }
 internal PLATFORM_SOCKET_OPEN_UDP(w32PlatformNetworkOpenSocketUdp)
@@ -69,6 +69,20 @@ internal PLATFORM_SOCKET_OPEN_UDP(w32PlatformNetworkOpenSocketUdp)
 		w32PlatformNetworkCloseSocket(s);
 		return KPL_INVALID_SOCKET_INDEX;
 	}
+	/* configure the socket to be NON-BLOCKING mode - 
+		1 == enabled, 0 == disabled*/
+	{
+		u_long nonBlockingEnabled = 1;
+		const int resultSetNonBlocking = 
+			ioctlsocket(g_sockets[s], FIONBIO, &nonBlockingEnabled);
+		if(resultSetNonBlocking != 0)
+		{
+			KLOG(ERROR, "Failed to enable socket non-blocking mode! "
+			     "WSAGetLastError=%i", WSAGetLastError());
+			w32PlatformNetworkCloseSocket(s);
+			return KPL_INVALID_SOCKET_INDEX;
+		}
+	}
 	return s;
 }
 internal PLATFORM_SOCKET_CLOSE(w32PlatformNetworkCloseSocket)
@@ -102,7 +116,7 @@ internal int w32KplNetAddressToNative(const KplNetAddress& netAddress, u16 port,
                                       WinSockAddress* o_winSockAddress)
 {
 	memset(o_winSockAddress, 0, sizeof(*o_winSockAddress));
-	o_winSockAddress->s4.sin_family = AF_INET;
+	o_winSockAddress->s4.sin_family      = AF_INET;
 	o_winSockAddress->s4.sin_addr.s_addr = htonl(netAddress.uInts[0]);
 	o_winSockAddress->s4.sin_port        = htons(port);
 	return sizeof(o_winSockAddress->s4);
@@ -119,32 +133,6 @@ internal PLATFORM_SOCKET_SEND(w32PlatformNetworkSend)
 		     "%i!", dataBufferSize, KPL_MAX_DATAGRAM_SIZE);
 		return 0;
 	}
-	/* select the socket with a timeout so we don't have to block the thread */
-	FD_SET socketSetWrite;
-	FD_ZERO(&socketSetWrite);
-	FD_SET(g_sockets[socketIndex], &socketSetWrite);
-	local_persist const timeval SELECT_TIMEOUT = 
-		{ .tv_sec = 0
-		, .tv_usec = 10
-	};
-	const int resultSelect = 
-		select(0/*ignored*/, nullptr, &socketSetWrite, nullptr, 
-		       &SELECT_TIMEOUT);
-	if(resultSelect == SOCKET_ERROR)
-	{
-		KLOG(ERROR, "Network send select error! WSAGetLastError=%i", 
-		     WSAGetLastError());
-		return -1;
-	}
-	if(resultSelect == 0)
-	/* either the socket or winsock is not ready to send data, so do nothing */
-	{
-		KLOG(WARNING, "Socket[%i] write selection failed, no data will be "
-		     "sent.", socketIndex);
-		return 0;
-	}
-	kassert(resultSelect > 0);
-	kassert(FD_ISSET(g_sockets[socketIndex], &socketSetWrite));
 	/* send the data over the socket */
 	WinSockAddress winSockAddressReceiver;
 	const int winSockAddressLength = 
@@ -169,33 +157,6 @@ internal PLATFORM_SOCKET_RECEIVE(w32PlatformNetworkReceive)
 	defer(LeaveCriticalSection(&g_csLockNetworking));
 	kassert(socketIndex < CARRAY_SIZE(g_sockets));
 	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
-	/* select the socket with a timeout so we don't have to block the thread */
-	FD_SET socketSetRead;
-	FD_ZERO(&socketSetRead);
-	FD_SET(g_sockets[socketIndex], &socketSetRead);
-	local_persist const timeval SELECT_TIMEOUT = 
-		{ .tv_sec = 0
-		, .tv_usec = 10
-	};
-	const int resultSelect = 
-		select(0/*ignored*/, &socketSetRead, nullptr, nullptr, 
-		       &SELECT_TIMEOUT);
-	if(resultSelect == SOCKET_ERROR)
-	{
-		KLOG(ERROR, "Network receive select error! WSAGetLastError=%i", 
-		     WSAGetLastError());
-		return -1;
-	}
-	if(resultSelect == 0)
-	/* either the socket contains no data or winsock is not ready to receive 
-		data, so do nothing */
-	{
-//		KLOG(WARNING, "Socket[%i] read selection failed, no data will be "
-//		     "received.", socketIndex);
-		return 0;
-	}
-	kassert(resultSelect > 0);
-	kassert(FD_ISSET(g_sockets[socketIndex], &socketSetRead));
 	/* receive data from the socket */
 	WinSockAddress winSockAddressFrom = {};
 	int winSockAddressFromLength = sizeof(winSockAddressFrom);
@@ -208,6 +169,9 @@ internal PLATFORM_SOCKET_RECEIVE(w32PlatformNetworkReceive)
 		const int winsockError = WSAGetLastError();
 		switch(winsockError)
 		{
+			case WSAEWOULDBLOCK:{
+				return 0;
+			}break;
 			case WSAECONNRESET:{
 				/* On a UDP-datagram socket this error indicates a previous send 
 					operation resulted in an ICMP Port Unreachable message. */
