@@ -55,6 +55,31 @@ global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 global_variable GamePad* g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 global_variable GamePad* g_gamePadArrayPreviousFrame = g_gamePadArrayB;
+global_variable const u8 SOUND_CHANNELS = 2;
+global_variable const u32 SOUND_SAMPLE_HZ = 44100;
+global_variable const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
+global_variable const u32 SOUND_BUFFER_BYTES = 
+                                     SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
+/* @TODO: make these memory quantities configurable per-project */
+global_variable const size_t STATIC_MEMORY_ALLOC_SIZES[] = 
+	{ kmath::megabytes(64)
+	, SOUND_BUFFER_BYTES
+	, kmath::megabytes(128)
+	, kmath::megabytes(1)
+	, kmath::megabytes(1)
+	, kmath::megabytes(1)
+	, kmath::megabytes(16)
+};
+enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
+	{ GAME_PERMANENT
+	, GAME_SOUND
+	, GAME_TRANSIENT
+	, STB_IMAGE
+	, STB_VORBIS
+	, IMGUI
+	, RAW_FILES
+	, ENUM_SIZE// obviously, this value does not have a matching allocation size
+};
 struct W32ThreadInfo
 {
 	u32 index;
@@ -1381,64 +1406,90 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 	}
-	// allocate a dynamic memory arena for STB_IMAGE //
+	/* allocate a single large chunk of memory - this is the MINIMUM required 
+		memory for the entire KML application to run!!! */
+	VOID* minimumApplicationMemory = nullptr;
+	size_t staticMemoryAllocOffsets[
+		static_cast<u8>(StaticMemoryAllocationIndex::ENUM_SIZE)];
 	{
-		local_persist const SIZE_T STB_IMAGE_MEMORY_BYTES = kmath::megabytes(1);
-		VOID*const stbImageMemory = 
-			VirtualAlloc(NULL, STB_IMAGE_MEMORY_BYTES, MEM_RESERVE | MEM_COMMIT, 
-		                 PAGE_READWRITE);
-		if(!stbImageMemory)
+		/* calculate the total # of bytes required for all our static memory 
+			allocation chunks */
+		size_t minimumRequiredMemoryBytes = 0;
+		for(u8 a = 0; 
+			a < static_cast<u8>(StaticMemoryAllocationIndex::ENUM_SIZE); a++)
 		{
-			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for STB_IMAGE! "
-			     "GetLastError=%i", STB_IMAGE_MEMORY_BYTES, GetLastError());
+			/* while we're at it, calculate the byte offsets of each static 
+				allocation chunk */
+			if(a == 0)
+				staticMemoryAllocOffsets[a] = 0;
+			else
+				staticMemoryAllocOffsets[a] = staticMemoryAllocOffsets[a - 1] + 
+					STATIC_MEMORY_ALLOC_SIZES[a - 1];
+			minimumRequiredMemoryBytes += STATIC_MEMORY_ALLOC_SIZES[a];
+		}
+		KLOG(INFO, "Minimum required application memory == %i bytes", 
+		     minimumRequiredMemoryBytes);
+#if INTERNAL_BUILD
+		const LPVOID baseAddress = 
+			reinterpret_cast<LPVOID>(kmath::terabytes(1));
+#else
+		/* setting a baseAddress to 0 allows the OS to put the memory anywhere, 
+			which should be more secure I suppose */
+		const LPVOID baseAddress = 0;
+#endif
+		minimumApplicationMemory = 
+			VirtualAlloc(baseAddress, minimumRequiredMemoryBytes, 
+			             MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		if(!minimumApplicationMemory)
+		{
+			KLOG(ERROR, "Failed to VirtualAlloc %i bytes!  GetLastError=%i", 
+			     minimumRequiredMemoryBytes, GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
-		g_genAllocStbImage = kgaInit(stbImageMemory, STB_IMAGE_MEMORY_BYTES);
 	}
-	// allocate a dynamic memory arena for ImGui //
+	/* assign a pre-allocated dynamic memory arena for STB_IMAGE */
 	{
-		local_persist const SIZE_T IMGUI_MEMORY_BYTES = kmath::megabytes(1);
-		VOID*const imguiMemory = 
-			VirtualAlloc(NULL, IMGUI_MEMORY_BYTES, MEM_RESERVE | MEM_COMMIT, 
-		                 PAGE_READWRITE);
-		if(!imguiMemory)
-		{
-			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for ImGui! "
-			     "GetLastError=%i", IMGUI_MEMORY_BYTES, GetLastError());
-			return RETURN_CODE_FAILURE;
-		}
-		g_genAllocImgui = kgaInit(imguiMemory, IMGUI_MEMORY_BYTES);
+		const u8 allocId = static_cast<u8>(
+			StaticMemoryAllocationIndex::STB_IMAGE);
+		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
+		void*const memoryAddressStart = 
+			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
+		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
+		g_genAllocStbImage = kgaInit(memoryAddressStart, memoryBytes);
 	}
-	/* allocate a chunk of memory for loading files into memory - note: this 
-		memory definitely needs to be thread-safe */
+	/* assign a pre-allocated dynamic memory arena for ImGui */
 	{
-		local_persist const SIZE_T FILE_MEMORY_BYTES = kmath::megabytes(16);
-		VOID*const fileMemory = 
-			VirtualAlloc(NULL, FILE_MEMORY_BYTES, MEM_RESERVE | MEM_COMMIT, 
-		                 PAGE_READWRITE);
-		if(!fileMemory)
-		{
-			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for ImGui! "
-			     "GetLastError=%i", FILE_MEMORY_BYTES, GetLastError());
-			return RETURN_CODE_FAILURE;
-		}
-		g_hKgaRawFiles = kgaInit(fileMemory, FILE_MEMORY_BYTES);
+		const u8 allocId = static_cast<u8>(
+			StaticMemoryAllocationIndex::IMGUI);
+		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
+		void*const memoryAddressStart = 
+			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
+		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
+		g_genAllocImgui = kgaInit(memoryAddressStart, memoryBytes);
 	}
-	// allocate a chunk of memory for loading OGG files //
+	/* assign a pre-allocated dynamic memory arena for loading files into memory 
+		note: this memory definitely needs to be thread-safe */
 	{
-		g_oggVorbisAlloc.alloc_buffer_length_in_bytes =
-			kmath::safeTruncateI32(kmath::megabytes(1));
+		const u8 allocId = static_cast<u8>(
+			StaticMemoryAllocationIndex::RAW_FILES);
+		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
+		void*const memoryAddressStart = 
+			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
+		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
+		g_hKgaRawFiles = kgaInit(memoryAddressStart, memoryBytes);
+	}
+	/* assign a pre-allocated dynamic memory arena for decoding vorbis data */
+	{
+		const u8 allocId = static_cast<u8>(
+			StaticMemoryAllocationIndex::STB_VORBIS);
+		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
+		void*const memoryAddressStart = 
+			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
+		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
+		g_oggVorbisAlloc.alloc_buffer_length_in_bytes = 
+			kmath::safeTruncateI32(memoryBytes);
 		g_oggVorbisAlloc.alloc_buffer = reinterpret_cast<char*>(
-			VirtualAlloc(NULL, g_oggVorbisAlloc.alloc_buffer_length_in_bytes, 
-			             MEM_RESERVE | MEM_COMMIT, 
-			             PAGE_READWRITE) );
-		if(!g_oggVorbisAlloc.alloc_buffer)
-		{
-			KLOG(ERROR, "Failed to VirtualAlloc %i bytes for OGG decoding! "
-			     "GetLastError=%i", 
-			     g_oggVorbisAlloc.alloc_buffer_length_in_bytes, GetLastError());
-			return RETURN_CODE_FAILURE;
-		}
+			memoryAddressStart);
 	}
 	GameCode game = w32LoadGameCode(fullPathToGameDll, 
 	                                fullPathToGameDllTemp);
@@ -1498,7 +1549,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	GameKeyboard gameKeyboardB = {};
 	GameKeyboard* gameKeyboardCurrentFrame  = &gameKeyboardA;
 	GameKeyboard* gameKeyboardPreviousFrame = &gameKeyboardB;
-#if INTERNAL_BUILD
 	// ensure that the size of the keyboard's vKeys array matches the size of
 	//	the anonymous struct which defines the names of all the game keys //
 	kassert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
@@ -1514,21 +1564,16 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
 	                             &g_gamePadArrayA[0].buttons[0]) ==
 	         CARRAY_SIZE(g_gamePadArrayA[0].buttons) );
-#endif// INTERNAL_BUILD
-	local_persist const u8 SOUND_CHANNELS = 2;
-	local_persist const u32 SOUND_SAMPLE_HZ = 44100;
-	local_persist const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
-	local_persist const u32 SOUND_BUFFER_BYTES = 
-		SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
 	DWORD cursorWritePrev;
-	VOID*const gameSoundMemory = VirtualAlloc(NULL, SOUND_BUFFER_BYTES, 
-	                                          MEM_RESERVE | MEM_COMMIT, 
-	                                          PAGE_READWRITE);
-	if(!gameSoundMemory)
+	/* assign a pre-allocated memory arena for the game sound buffer */
+	VOID* gameSoundMemory = nullptr;
 	{
-		KLOG(ERROR, "Failed to VirtualAlloc %i bytes for sound memory! "
-		     "GetLastError=%i", SOUND_BUFFER_BYTES, GetLastError());
-		return RETURN_CODE_FAILURE;
+		const u8 allocId = static_cast<u8>(
+			StaticMemoryAllocationIndex::GAME_SOUND);
+		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
+		void*const memoryAddressStart = 
+			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
+		gameSoundMemory = memoryAddressStart;
 	}
 	// Initialize ImGui~~~ //
 	{
@@ -1547,35 +1592,25 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 	}
 	GameMemory gameMemory = {};
-#if INTERNAL_BUILD
-	const LPVOID baseAddress = reinterpret_cast<LPVOID>(kmath::terabytes(1));
-#else
-	const LPVOID baseAddress = 0;
-#endif
-	/* @TODO: make these memory quantities configurable per-project */
-	gameMemory.permanentMemoryBytes = kmath::megabytes(64);
-	gameMemory.transientMemoryBytes = kmath::megabytes(128);
-	const u64 totalGameMemoryBytes = 
-		gameMemory.permanentMemoryBytes + gameMemory.transientMemoryBytes;
-	gameMemory.permanentMemory = VirtualAlloc(baseAddress, 
-	                                          totalGameMemoryBytes, 
-	                                          MEM_RESERVE | MEM_COMMIT, 
-	                                          PAGE_READWRITE);
-	if(!gameMemory.permanentMemory)
+	/* initialize GameMemory */
 	{
-		KLOG(ERROR, "Failed to VirtualAlloc %i bytes for game memory! "
-		     "GetLastError=%i", totalGameMemoryBytes, GetLastError());
-		return RETURN_CODE_FAILURE;
+		gameMemory.permanentMemoryBytes = STATIC_MEMORY_ALLOC_SIZES[
+			static_cast<u8>(StaticMemoryAllocationIndex::GAME_PERMANENT)];
+		gameMemory.transientMemoryBytes = STATIC_MEMORY_ALLOC_SIZES[
+			static_cast<u8>(StaticMemoryAllocationIndex::GAME_TRANSIENT)];
+		gameMemory.permanentMemory = reinterpret_cast<u8*>(
+			minimumApplicationMemory) + staticMemoryAllocOffsets[
+				static_cast<u8>(StaticMemoryAllocationIndex::GAME_PERMANENT)];
+		gameMemory.transientMemory = reinterpret_cast<u8*>(
+			minimumApplicationMemory) + staticMemoryAllocOffsets[
+				static_cast<u8>(StaticMemoryAllocationIndex::GAME_TRANSIENT)];
+		gameMemory.kpl                 = KML_PLATFORM_API_WIN32;
+		gameMemory.krb                 = {};
+		gameMemory.imguiContext        = ImGui::GetCurrentContext();
+		gameMemory.platformImguiAlloc  = w32PlatformImguiAlloc;
+		gameMemory.platformImguiFree   = w32PlatformImguiFree;
+		gameMemory.imguiAllocUserData  = g_genAllocImgui;
 	}
-	gameMemory.transientMemory = 
-		reinterpret_cast<u8*>(gameMemory.permanentMemory) + 
-		gameMemory.permanentMemoryBytes;
-	gameMemory.kpl                 = KML_PLATFORM_API_WIN32;
-	gameMemory.krb                 = {};
-	gameMemory.imguiContext        = ImGui::GetCurrentContext();
-	gameMemory.platformImguiAlloc  = w32PlatformImguiAlloc;
-	gameMemory.platformImguiFree   = w32PlatformImguiFree;
-	gameMemory.imguiAllocUserData  = g_genAllocImgui;
 	game.onReloadCode(gameMemory, false);
 	game.initialize(gameMemory);
 	w32InitDSound(g_mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 

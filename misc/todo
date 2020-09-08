@@ -618,7 +618,7 @@
 	https://docs.microsoft.com/en-us/windows/win32/winsock/winsock-ioctls
 [x] stb_ds: simplify arrinit to be a macro which just takes 
 	(type,memory_context) for significantly less verbose user code
-[ ] combine all win32 virtualalloc calls into a single memory allocation
+[x] combine all win32 virtualalloc calls into a single memory allocation
 [x] win32: pull KML platform interface out of win32-main
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution
