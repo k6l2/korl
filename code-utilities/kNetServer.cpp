@@ -8,8 +8,8 @@ internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients)
 		KLOG(ERROR, "Failed to open a network socket on port %i!", kns->port);
 		return false;
 	}
-	kns->clientArray = reinterpret_cast<KNetServerClientEntry*>(
-		arrinit(sizeof(KNetServerClientEntry), hKga, maxClients));
+	kns->clientArray = arrinit(KNetServerClientEntry, hKga);
+	arrsetcap(kns->clientArray, maxClients);
 	return true;
 }
 internal void kNetServerStop(KNetServer* kns)

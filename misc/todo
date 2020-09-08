@@ -616,7 +616,7 @@
 	nonsense
 	https://www.codersblock.org/blog/multiplayer-fps-part-3
 	https://docs.microsoft.com/en-us/windows/win32/winsock/winsock-ioctls
-[ ] stb_ds: simplify arrinit to be a macro which just takes 
+[x] stb_ds: simplify arrinit to be a macro which just takes 
 	(type,memory_context) for significantly less verbose user code
 [ ] combine all win32 virtualalloc calls into a single memory allocation
 [x] win32: pull KML platform interface out of win32-main

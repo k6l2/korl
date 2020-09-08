@@ -113,8 +113,8 @@ GAME_INITIALIZE(gameInitialize)
 	templateGameState_initialize(&g_gs->templateGameState, memory, 
 	                             sizeof(GameState));
 	/* initialize a dynamic array of actor positions using STB_DS */
-	g_gs->dynamicArrayActorPositions = reinterpret_cast<v3f32*>(
-		arrinit(sizeof(v3f32), g_gs->templateGameState.hKgaPermanent, 4));
+	g_gs->dynamicArrayActorPositions = 
+		arrinit(v3f32, g_gs->templateGameState.hKgaPermanent);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {

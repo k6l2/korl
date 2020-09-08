@@ -78,9 +78,9 @@ DOCUMENTATION
     Functions (actually macros)
 
       arrinit:
-        void* arrinit(size_t elemsize, void* ctx, size_t capacity)
-          Initialize an empty dynamic array which has a reference to 
-		  the memory context `ctx`.  `elemsize` must equal sizeof(T).
+        void* arrinit(T, void* ctx)
+          Initialize an empty dynamic array of type T which has a reference to 
+		  the memory context `ctx`.
 
       arrfree:
         void arrfree(T*);
@@ -495,7 +495,7 @@ extern void stbds_unit_tests(void* memory_context = NULL);
 // Everything below here is implementation details
 //
 
-extern void * stbds_arrinit(size_t elemsize, void *memory_context, size_t min_cap);
+extern void * stbds_arrinit_func(size_t elemsize, void *memory_context, size_t min_cap);
 extern void * stbds_arrgrowf(void *a, size_t elemsize, size_t addlen, size_t min_cap);
 extern void   stbds_hmfree_func(void *p, size_t elemsize);
 extern void * stbds_hmget_key(void *a, size_t elemsize, void *key, size_t keysize, int mode);
@@ -539,6 +539,7 @@ extern void * stbds_shmode_func(size_t elemsize, int mode, void *memory_context)
 #define stbds_temp(t)    stbds_header(t)->temp
 #define stbds_temp_key(t) (*(char **) stbds_header(t)->hash_table)
 
+#define stbds_arrinit(t,ctx)  ((t*)stbds_arrinit_func(sizeof(t), ctx, 4))
 #define stbds_arrsetcap(a,n)  (stbds_arrgrow(a,0,n))
 #define stbds_arrsetlen(a,n)  (stbds_arrsetcap((a),(size_t)(n)), (a) ? stbds_header(a)->length = (size_t) (n) : 0)
 #define stbds_arrcap(a)       ((a) ? stbds_header(a)->capacity : 0)
@@ -806,7 +807,7 @@ void *stbds_arrgrowf(void *a, size_t elemsize, size_t addlen, size_t min_cap)
   return b;
 }
 
-void *stbds_arrinit(size_t elemsize, void *memory_context, size_t min_cap)
+void *stbds_arrinit_func(size_t elemsize, void *memory_context, size_t min_cap)
 {
   void *result = STBDS_REALLOC(memory_context, 0, elemsize * min_cap + sizeof(stbds_array_header));
   result = (char *) result + sizeof(stbds_array_header);
@@ -1235,7 +1236,7 @@ void *stbds_hminit_ctx(void *a, size_t elemsize, void *memory_context)
     return a;
   }
   // initialize an empty dynamic array with 1 element of capacity using the `memory_context`
-  a = stbds_arrinit(elemsize, memory_context, 1);
+  a = stbds_arrinit_func(elemsize, memory_context, 1);
   // add an zeroed-out element to the array as the default element
   stbds_header(a)->length += 1;
   memset(a, 0, elemsize);
@@ -1490,7 +1491,7 @@ void *stbds_hmput_key(void *a, size_t elemsize, void *key, size_t keysize, int m
 
 void * stbds_shmode_func(size_t elemsize, int mode, void *memory_context)
 {
-  void *a = arrinit(elemsize, memory_context, 1);
+  void *a = stbds_arrinit_func(elemsize, memory_context, 1);
   stbds_hash_index *h;
   memset(a, 0, elemsize);
   stbds_header(a)->length = 1;
@@ -1680,7 +1681,7 @@ void stbds_unit_tests(void* memory_context)
 #else
   const int testsize = 100000;
   const int testsize2 = testsize/20;
-  int *arr = memory_context ? (int*)arrinit(sizeof(int), memory_context, 4) : NULL;
+  int *arr = memory_context ? arrinit(int, memory_context) : NULL;
   struct { int   key;        int value; }  *intmap  = NULL;
   struct { char *key;        int value; }  *strmap  = NULL, s;
   struct { stbds_struct key; int value; }  *map     = NULL;
@@ -1698,18 +1699,18 @@ void stbds_unit_tests(void* memory_context)
     for (j=0; j < i; ++j)
       arrpush(arr,j);
     arrfree(arr);
-    if(memory_context) arr = (int*)arrinit(sizeof(int), memory_context, 4);
+    if(memory_context) arr = arrinit(int, memory_context);
   }
 
   for (i=0; i < 4; ++i) {
     arrpush(arr,1); arrpush(arr,2); arrpush(arr,3); arrpush(arr,4);
     arrdel(arr,i);
     arrfree(arr);
-    if(memory_context) arr = (int*)arrinit(sizeof(int), memory_context, 4);
+    if(memory_context) arr = arrinit(int, memory_context);
     arrpush(arr,1); arrpush(arr,2); arrpush(arr,3); arrpush(arr,4);
     arrdelswap(arr,i);
     arrfree(arr);
-    if(memory_context) arr = (int*)arrinit(sizeof(int), memory_context, 4);
+    if(memory_context) arr = arrinit(int, memory_context);
   }
 
   for (i=0; i < 5; ++i) {
@@ -1719,7 +1720,7 @@ void stbds_unit_tests(void* memory_context)
     if (i < 4)
       STBDS_ASSERT(arr[4] == 4);
     arrfree(arr);
-    if(memory_context) arr = (int*)arrinit(sizeof(int), memory_context, 4);
+    if(memory_context) arr = arrinit(int, memory_context);
   }
   if(memory_context) arrfree(arr);
 

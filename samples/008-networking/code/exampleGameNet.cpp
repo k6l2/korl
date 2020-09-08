@@ -159,9 +159,9 @@ internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 {
 	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
-	size_t* arrayActorIndices = reinterpret_cast<size_t*>(
-		arrinit(sizeof(size_t), ss->hKgaPermanent, CARRAY_SIZE(ss->actors)));
+	size_t* arrayActorIndices = arrinit(size_t, ss->hKgaPermanent);
 	defer(arrfree(arrayActorIndices));
+	arrsetcap(arrayActorIndices, CARRAY_SIZE(ss->actors));
 	for(size_t a = 0; a < CARRAY_SIZE(ss->actors); a++)
 	/* accumulate a list of active actors */
 	{

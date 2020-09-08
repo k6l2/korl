@@ -26,8 +26,7 @@ GAME_INITIALIZE(gameInitialize)
 	kfbInit(&g_gs->kFbShipExhaust, g_gs->templateGameState.assetManager, g_krb, 
 	        KAssetIndex::gfx_fighter_exhaust_fbm);
 	// Initialize dynamic Actor array //
-	g_gs->actors = reinterpret_cast<Actor*>(
-		arrinit(sizeof(Actor), g_gs->templateGameState.hKgaPermanent, 4));
+	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKgaPermanent);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
