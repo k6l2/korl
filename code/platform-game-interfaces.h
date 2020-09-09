@@ -284,6 +284,36 @@ enum class ButtonState : u8
 	, PRESSED
 	, HELD
 };
+struct GameMouse
+{
+	/** 
+	 * - relative to the upper-left corner of the window
+	 * - signed because it should be possible for this value to lie outside of 
+	 *   the window, so this should be checked for!  the cursor is inside the 
+	 *   window IFF it falls in the region: 
+	 *       v2i32{ [0, windowDimensions.x), [0, windowDimensions.y) }
+	 */
+	v2i32 windowPosition;
+	union
+	{
+		ButtonState vKeys[5];
+		struct 
+		{
+			ButtonState left;
+			ButtonState right;
+			ButtonState middle;
+			ButtonState forward;
+			ButtonState back;
+#if INTERNAL_BUILD
+			/** KEEP THIS THE LAST VAR IN THE STRUCT ! ! ! 
+			 * This is used to make sure the size of the vKeys array matches the
+			 * # of buttons in this anonymous struct.
+			*/
+			ButtonState DUMMY_LAST_BUTTON_STATE;
+#endif
+		};
+	};
+};
 struct GameKeyboard
 {
 	struct Modifiers
@@ -487,8 +517,8 @@ struct GamePad
  */
 #define GAME_UPDATE_AND_DRAW(name) \
 	bool name(f32 deltaSeconds, v2u32 windowDimensions, \
-	          GameKeyboard& gameKeyboard, GamePad* gamePadArray, \
-	          u8 numGamePads, bool windowIsFocused)
+	          const GameMouse& gameMouse, const GameKeyboard& gameKeyboard, \
+	          GamePad* gamePadArray, u8 numGamePads, bool windowIsFocused)
 /** 
  * OPTIONAL.  Called IMMEDIATELY before the game code is unloaded from memory.
 */

@@ -42,7 +42,6 @@ global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
 global_variable HCURSOR g_cursorSizeNeSw;
 global_variable HCURSOR g_cursorSizeNwSe;
-global_variable W32OffscreenBuffer g_backBuffer;
 global_variable KgaHandle g_genAllocStbImage;
 global_variable KgaHandle g_genAllocImgui;
 global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
@@ -380,21 +379,36 @@ internal void w32UnloadGameCode(GameCode& gameCode)
 	gameCode.renderAudio   = gameRenderAudioStub;
 	gameCode.updateAndDraw = gameUpdateAndDrawStub;
 }
-internal W32Dimension2d w32GetWindowDimensions(HWND hwnd)
+internal v2u32 w32GetWindowDimensions(HWND hwnd)
 {
 	RECT clientRect;
 	if(GetClientRect(hwnd, &clientRect))
 	{
 		const u32 w = clientRect.right  - clientRect.left;
 		const u32 h = clientRect.bottom - clientRect.top;
-		return W32Dimension2d{.width=w, .height=h};
+		return {w, h};
 	}
 	else
 	{
 		KLOG(ERROR, "Failed to get window dimensions! GetLastError=%i", 
 		     GetLastError());
-		return W32Dimension2d{.width=0, .height=0};
+		return {0, 0};
 	}
+}
+internal ButtonState* w32DecodeVirtualKey(GameMouse* gm, WPARAM vKeyCode)
+{
+	ButtonState* buttonState = nullptr;
+	// Virtual-Key Codes: 
+	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+	switch(vKeyCode)
+	{
+		case VK_LBUTTON:  buttonState = &gm->left; break;
+		case VK_RBUTTON:  buttonState = &gm->right; break;
+		case VK_MBUTTON:  buttonState = &gm->middle; break;
+		case VK_XBUTTON1: buttonState = &gm->forward; break;
+		case VK_XBUTTON2: buttonState = &gm->back; break;
+	}
+	return buttonState;
 }
 internal ButtonState* w32DecodeVirtualKey(GameKeyboard* gk, WPARAM vKeyCode)
 {
@@ -462,27 +476,26 @@ internal ButtonState* w32DecodeVirtualKey(GameKeyboard* gk, WPARAM vKeyCode)
 	}
 	return buttonState;
 }
-internal void w32GetKeyboardKeyStates(GameKeyboard* gkCurrFrame, 
-                                      GameKeyboard* gkPrevFrame)
+internal void w32GetKeyboardKeyStates(
+	GameKeyboard* gkCurrFrame, GameKeyboard* gkPrevFrame)
 {
 	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
 	{
 		ButtonState* buttonState = w32DecodeVirtualKey(gkCurrFrame, vKeyCode);
-		if(buttonState)
-		{
-			const SHORT asyncKeyState = 
-				GetAsyncKeyState(static_cast<int>(vKeyCode));
-			// do NOT use the least-significant bit to determine key state!
-			//	Why? See documentation on the GetAsyncKeyState function:
-			// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
-			const bool keyDown = (asyncKeyState & ~1) != 0;
-			const size_t buttonIndex = buttonState - gkCurrFrame->vKeys;
-			*buttonState = keyDown
-				? (gkPrevFrame->vKeys[buttonIndex] >= ButtonState::PRESSED
-					? ButtonState::HELD
-					: ButtonState::PRESSED)
-				: ButtonState::NOT_PRESSED;
-		}
+		if(!buttonState)
+		continue;
+		const SHORT asyncKeyState = 
+			GetAsyncKeyState(static_cast<int>(vKeyCode));
+		// do NOT use the least-significant bit to determine key state!
+		//	Why? See documentation on the GetAsyncKeyState function:
+		// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+		const bool keyDown = (asyncKeyState & ~1) != 0;
+		const size_t buttonIndex = buttonState - gkCurrFrame->vKeys;
+		*buttonState = keyDown
+			? (gkPrevFrame->vKeys[buttonIndex] >= ButtonState::PRESSED
+				? ButtonState::HELD
+				: ButtonState::PRESSED)
+			: ButtonState::NOT_PRESSED;
 	}
 	// update the game keyboard modifier states //
 	gkCurrFrame->modifiers.shift =
@@ -494,6 +507,47 @@ internal void w32GetKeyboardKeyStates(GameKeyboard* gkCurrFrame,
 	gkCurrFrame->modifiers.alt =
 		(gkCurrFrame->altLeft  > ButtonState::NOT_PRESSED ||
 		 gkCurrFrame->altRight > ButtonState::NOT_PRESSED);
+}
+internal void w32GetMouseStates(GameMouse* gmCurrent, GameMouse* gmPrevious)
+{
+	/* get the mouse cursor position in window-space */
+	{
+		POINT pointMouseCursor;
+		/* first, get the mouse cursor position in screen-space */
+		if(!GetCursorPos(&pointMouseCursor))
+		{
+			KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
+			     GetLastError());
+		}
+		/* convert mouse position screen-space => window-space */
+		if(!ScreenToClient(g_mainWindow, &pointMouseCursor))
+		{
+			/* for whatever reason, MSDN doesn't say there is any kind of error 
+				code obtainable for this failure condition... ¯\_(ツ)_/¯ */
+			KLOG(ERROR, "ScreenToClient failure!");
+		}
+		gmCurrent->windowPosition.x = pointMouseCursor.x;
+		gmCurrent->windowPosition.y = pointMouseCursor.y;
+	}
+	/* get async mouse button states */
+	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
+	{
+		ButtonState* buttonState = w32DecodeVirtualKey(gmCurrent, vKeyCode);
+		if(!buttonState)
+			continue;
+		const SHORT asyncKeyState = 
+			GetAsyncKeyState(static_cast<int>(vKeyCode));
+		// do NOT use the least-significant bit to determine key state!
+		//	Why? See documentation on the GetAsyncKeyState function:
+		// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+		const bool keyDown = (asyncKeyState & ~1) != 0;
+		const size_t buttonIndex = buttonState - gmCurrent->vKeys;
+		*buttonState = keyDown
+			? (gmPrevious->vKeys[buttonIndex] >= ButtonState::PRESSED
+				? ButtonState::HELD
+				: ButtonState::PRESSED)
+			: ButtonState::NOT_PRESSED;
+	}
 }
 internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 {
@@ -604,24 +658,6 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
 			     (wParam ? "TRUE" : "FALSE"), lParam);
 		} break;
-#if 0
-		case WM_PAINT:
-		{
-			PAINTSTRUCT paintStruct;
-			const HDC hdc = BeginPaint(hwnd, &paintStruct);
-			if(hdc)
-			{
-				const int w = 
-					paintStruct.rcPaint.right  - paintStruct.rcPaint.left;
-				const int h = 
-					paintStruct.rcPaint.bottom - paintStruct.rcPaint.top;
-				const W32Dimension2d winDims = w32GetWindowDimensions(hwnd);
-				w32UpdateWindow(g_backBuffer, hdc, 
-				                winDims.width, winDims.height);
-			}
-			EndPaint(hwnd, &paintStruct);
-		} break;
-#endif
 		case WM_DEVICECHANGE:
 		{
 			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
@@ -1500,9 +1536,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		     "GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
-#if 0
-	w32ResizeDibSection(g_backBuffer, 1280, 720);
-#endif
 	/* @TODO: make this configurable somehow??? */
 	g_displayCursor = true;
 	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
@@ -1545,10 +1578,20 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///      the window gets moved around to another monitor.
 	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(g_mainWindow);
 	f32 targetSecondsElapsedPerFrame = 1.f / monitorRefreshHz;
+	GameMouse gameMouseA = {};
+	GameMouse gameMouseB = {};
+	GameMouse* gameMouseFrameCurrent  = &gameMouseA;
+	GameMouse* gameMouseFramePrevious = &gameMouseB;
 	GameKeyboard gameKeyboardA = {};
 	GameKeyboard gameKeyboardB = {};
 	GameKeyboard* gameKeyboardCurrentFrame  = &gameKeyboardA;
 	GameKeyboard* gameKeyboardPreviousFrame = &gameKeyboardB;
+#if INTERNAL_BUILD
+	// ensure that the size of the mouse's vKeys array matches the size of
+	//	the anonymous struct which defines the names of all the game keys //
+	kassert( static_cast<size_t>(&gameMouseA.DUMMY_LAST_BUTTON_STATE - 
+	                             &gameMouseA.vKeys[0]) ==
+	         CARRAY_SIZE(gameMouseA.vKeys) );
 	// ensure that the size of the keyboard's vKeys array matches the size of
 	//	the anonymous struct which defines the names of all the game keys //
 	kassert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
@@ -1564,7 +1607,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
 	                             &g_gamePadArrayA[0].buttons[0]) ==
 	         CARRAY_SIZE(g_gamePadArrayA[0].buttons) );
-	DWORD cursorWritePrev;
+#endif// INTERNAL_BUILD
+	DWORD gameSoundCursorWritePrev;
 	/* assign a pre-allocated memory arena for the game sound buffer */
 	VOID* gameSoundMemory = nullptr;
 	{
@@ -1614,7 +1658,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	game.onReloadCode(gameMemory, false);
 	game.initialize(gameMemory);
 	w32InitDSound(g_mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
-	              SOUND_CHANNELS, cursorWritePrev);
+	              SOUND_CHANNELS, gameSoundCursorWritePrev);
 	const HDC hdc = GetDC(g_mainWindow);
 	if(!hdc)
 	{
@@ -1728,6 +1772,18 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				g_deviceChangeDetected = false;
 				w32DInputEnumerateDevices();
 			}
+			/* mouse input: swap mouse input frame states */
+			if(gameMouseFrameCurrent == &gameMouseA)
+			{
+				gameMouseFrameCurrent  = &gameMouseB;
+				gameMouseFramePrevious = &gameMouseA;
+			}
+			else
+			{
+				gameMouseFrameCurrent  = &gameMouseA;
+				gameMouseFramePrevious = &gameMouseB;
+			}
+			w32GetMouseStates(gameMouseFrameCurrent, gameMouseFramePrevious);
 			// Process gameKeyboard by comparing the keys to the previous 
 			//	frame's keys, because we cannot determine if a key has been 
 			//	newly pressed this frame just from the windows message loop data
@@ -1764,14 +1820,13 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
-			const W32Dimension2d windowDims = 
-				w32GetWindowDimensions(g_mainWindow);
+			const v2u32 windowDims = w32GetWindowDimensions(g_mainWindow);
 			if(!game.isValid)
 			// display a "loading" message while we wait for cl.exe to 
 			//	relinquish control of the game binary //
 			{
 				const ImVec2 displayCenter(
-					windowDims.width*0.5f, windowDims.height*0.5f);
+					windowDims.x*0.5f, windowDims.y*0.5f);
 				ImGui::SetNextWindowPos(displayCenter, ImGuiCond_Always, 
 				                        ImVec2(0.5f, 0.5f));
 				ImGui::Begin("Reloading Game Code", nullptr, 
@@ -1797,18 +1852,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 			const f32 deltaSeconds = 
 				min(MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
-			if(!game.updateAndDraw(deltaSeconds,
-			                       {windowDims.width, windowDims.height}, 
-			                       *gameKeyboardCurrentFrame,
-			                       g_gamePadArrayCurrentFrame, 
-			                       CARRAY_SIZE(g_gamePadArrayA), 
-			                       g_isFocused))
+			if(!game.updateAndDraw(
+					deltaSeconds, windowDims, 
+					*gameMouseFrameCurrent, *gameKeyboardCurrentFrame,
+					g_gamePadArrayCurrentFrame, CARRAY_SIZE(g_gamePadArrayA), 
+					g_isFocused))
 			{
 				g_running = false;
 			}
 			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
 			                    SOUND_CHANNELS, gameSoundMemory, 
-			                    cursorWritePrev, game);
+			                    gameSoundCursorWritePrev, game);
 #if 0
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)

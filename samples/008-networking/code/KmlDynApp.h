@@ -16,6 +16,7 @@ struct GameState
 	KFlipBook kFbShipExhaust;
 	Actor* actors;
 };
+global_variable GameState* g_gs;
 /* graphics system vertex data customization */
 struct VertexNoTexture
 {
@@ -30,4 +31,3 @@ const global_variable KrbVertexAttributeOffsets
 /* convenience macros for our application */
 #define DRAW_LINES(mesh, vertexAttribs) \
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-global_variable GameState* g_gs;

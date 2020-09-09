@@ -46,7 +46,7 @@ internal void templateGameState_renderAudio(
 	kauMix(tgs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
 }
 internal bool templateGameState_updateAndDraw(
-	KmlTemplateGameState* tgs, GameKeyboard& gameKeyboard, 
+	KmlTemplateGameState* tgs, const GameKeyboard& gameKeyboard, 
 	bool windowIsFocused)
 {
 	kalReset(tgs->hKalFrame);

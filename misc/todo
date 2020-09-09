@@ -620,6 +620,44 @@
 	(type,memory_context) for significantly less verbose user code
 [x] combine all win32 virtualalloc calls into a single memory allocation
 [x] win32: pull KML platform interface out of win32-main
+[ ] samples: mouse input
+	[x] absolute cursor position (window-space)
+	[x] buttons
+	[ ] KRB: screen=>world
+		- pick circles in 3D space based on mouse position + click
+	[ ] relative wheel position
+		- scroll to move camera?
+	[ ] set cursor hidden state
+		- hide cursor if idle for longer than X seconds
+	[~] set mouse capture state?
+	[~] relative mouse position (using DirectInput?)
+[ ] samples: 3D collision detection & resolution capabilities
+	[ ] utility: Aabb3d broadphase collision detection
+	[ ] utility: dynamic bounding volume tree
+	[ ] utility: Gilbert-Johnson-Keerthi (GJK) collision detection
+		https://www.youtube.com/watch?v=Qupqu1xe7Io
+		https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
+	[ ] utility: Expanding Polytope Algorithm (EPA)
+		https://youtu.be/6rgiPrzqt9w
+		http://www.dtecta.com/papers/gdc2001depth.pdf
+		http://www.dyn4j.org/2010/05/epa-expanding-polytope-algorithm/
+	[ ] create arbitrary convex shapes
+		[ ] utility: NewtonAppleWrapper
+			http://www.newtonapples.net/NewtonAppleWrapper.html
+		[ ] utility: QuickHull
+			http://algolist.ru/maths/geom/convhull/qhull3d.php
+		[ ] or maybe just use someone's QuickHull code?
+			https://github.com/karimnaaji/3d-quickhull
+[ ] samples: networking: run kNetClientConnect on a separate thread to prevent 
+	the game from chunking when the address can't be resolved
+[ ] samples: voxel manipulation
+	[ ] utility: dual contouring 
+		https://www.boristhebrave.com/2018/04/15/dual-contouring-tutorial/
+	[ ] utility: heirarchical approximate convex decomposition
+		http://khaledmammou.com/hacd.html
+[ ] samples: render TTF
+	[ ] integrate stb_truetype
+	[ ] utility: font cache dynamic asset
 [ ] kassert: generate a memory dump & a dialog box with the option to continue 
 	execution
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 

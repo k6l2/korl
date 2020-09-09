@@ -45,5 +45,5 @@ internal void templateGameState_renderAudio(
 /** @return true to request the platform continues to run, false to request the 
  *          platform closes the application */
 internal bool templateGameState_updateAndDraw(
-	KmlTemplateGameState* tgs, GameKeyboard& gameKeyboard, 
+	KmlTemplateGameState* tgs, const GameKeyboard& gameKeyboard, 
 	bool windowIsFocused);

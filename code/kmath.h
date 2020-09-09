@@ -14,6 +14,17 @@ struct v2u32
 		};
 	};
 };
+struct v2i32
+{
+	union 
+	{
+		i32 elements[2];
+		struct
+		{
+			i32 x, y;
+		};
+	};
+};
 struct v2f32
 {
 	union 
