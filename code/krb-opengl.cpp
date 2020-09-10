@@ -314,14 +314,14 @@ internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 	glPushMatrix();
 	glTranslatef(translation.x, translation.y, translation.z);
 	{
-		const f32 orientationRadians = 2 * acosf(orientation.w);
+		const f32 orientationRadians = 2 * acosf(orientation.qw);
 		const f32 axisDivisor = 
-			kmath::isNearlyZero(1 - orientation.w*orientation.w)
+			kmath::isNearlyZero(1 - orientation.qw*orientation.qw)
 				? 1
-				: sqrtf(1 - orientation.w*orientation.w);
-		const f32 orientationAxisX = orientation.x / axisDivisor;
-		const f32 orientationAxisY = orientation.y / axisDivisor;
-		const f32 orientationAxisZ = orientation.z / axisDivisor;
+				: sqrtf(1 - orientation.qw*orientation.qw);
+		const f32 orientationAxisX = orientation.qx / axisDivisor;
+		const f32 orientationAxisY = orientation.qy / axisDivisor;
+		const f32 orientationAxisZ = orientation.qz / axisDivisor;
 		glRotatef(orientationRadians*180/PI32, 
 		          orientationAxisX, orientationAxisY, orientationAxisZ);
 	}
@@ -340,14 +340,14 @@ internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 	glPushMatrix();
 	glTranslatef(translation.x, translation.y, 0.f);
 	{
-		const f32 orientationRadians = 2 * acosf(orientation.w);
+		const f32 orientationRadians = 2 * acosf(orientation.qw);
 		const f32 axisDivisor = 
-			kmath::isNearlyZero(1 - orientation.w*orientation.w)
+			kmath::isNearlyZero(1 - orientation.qw*orientation.qw)
 				? 1
-				: sqrtf(1 - orientation.w*orientation.w);
-		const f32 orientationAxisX = orientation.x / axisDivisor;
-		const f32 orientationAxisY = orientation.y / axisDivisor;
-		const f32 orientationAxisZ = orientation.z / axisDivisor;
+				: sqrtf(1 - orientation.qw*orientation.qw);
+		const f32 orientationAxisX = orientation.qx / axisDivisor;
+		const f32 orientationAxisY = orientation.qy / axisDivisor;
+		const f32 orientationAxisZ = orientation.qz / axisDivisor;
 		glRotatef(orientationRadians*180/PI32, 
 		          orientationAxisX, orientationAxisY, orientationAxisZ);
 	}
@@ -414,15 +414,11 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 		glPopMatrix();
 		modelViewStackDepth--;
 	}
-	GLfloat gl_matrixView[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, gl_matrixView);
+	m4x4f32 mView;
+	m4x4f32 mProjection;
+	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, mView.elements);
 	glMatrixMode(GL_PROJECTION);
-	GLfloat gl_matrixProjection[16];
-	glGetFloatv(GL_PROJECTION_MATRIX, gl_matrixProjection);
-	/* @optimization: apparently you can just pass GL_TRANSPOSE_MODELVIEW_MATRIX 
-		to glGet* functions, so I don't need to transpose my matrices? */
-	const m4x4f32 mView       = m4x4f32::transpose(gl_matrixView);
-	const m4x4f32 mProjection = m4x4f32::transpose(gl_matrixProjection);
+	glGetFloatv(GL_TRANSPOSE_PROJECTION_MATRIX, mProjection.elements);
 	GL_CHECK_ERROR();
 	/* obtain viewport size & viewport offset from driver */
 	GLint viewportValues[4];// [x,y, width,height]
@@ -458,4 +454,65 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 			viewportValues[1]
 	};
 	return result;
+}
+internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
+{
+	/* obtain VP matrix from opengl driver */
+	glMatrixMode(GL_MODELVIEW);
+	GLint modelViewStackDepth;
+	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+	while(modelViewStackDepth > 1)
+	{
+		glPopMatrix();
+		modelViewStackDepth--;
+	}
+	m4x4f32 mView;
+	m4x4f32 mProjection;
+	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, mView.elements);
+	glMatrixMode(GL_PROJECTION);
+	glGetFloatv(GL_TRANSPOSE_PROJECTION_MATRIX, mProjection.elements);
+	GL_CHECK_ERROR();
+	/* at this point, we have everything we need from the GL to calculate the 
+		eye ray: */
+	m4x4f32 mInverseView;
+	m4x4f32 mInverseProjection;
+	if(!m4x4f32::invert(mView.elements, mInverseView.elements))
+	{
+		KLOG(WARNING, "Failed to invert the view matrix!");
+		return false;
+	}
+	if(!m4x4f32::invert(mProjection.elements, mInverseProjection.elements))
+	{
+		KLOG(WARNING, "Failed to invert the projection matrix!");
+		return false;
+	}
+	const v2i32& v2i32WindowPos = 
+		*reinterpret_cast<const v2i32*>(windowPosition);
+	const v2f32 v2f32WindowPos = 
+		{ static_cast<f32>(v2i32WindowPos.x)
+		, static_cast<f32>(v2i32WindowPos.y) };
+	const v2u32& v2u32WindowSize = 
+		*reinterpret_cast<const v2u32*>(windowSize);
+	/* viewport-space          => normalized-device-space */
+	const v2f32 eyeRayNds = 
+		{  2*v2f32WindowPos.x / v2u32WindowSize.x - 1
+		, -2*v2f32WindowPos.y / v2u32WindowSize.y + 1 };
+	/* normalized-device-space => homogeneous-clip-space */
+	const v4f32 eyeRayPositionHcs  = {eyeRayNds.x, eyeRayNds.y,  0, 1};
+	const v4f32 eyeRayDirectionHcs = {eyeRayNds.x, eyeRayNds.y, -1, 1};
+	/* homogeneous-clip-space  => eye-space */
+	const v4f32 eyeRayPositionEs  = mInverseProjection*eyeRayPositionHcs;
+	const v4f32 eyeRayDirectionEs = mInverseProjection*eyeRayDirectionHcs;
+	/* eye-space               => world-space */
+	const v4f32 eyeRayPositionWs  = mInverseView*eyeRayPositionEs;
+	const v4f32 eyeRayDirectionWs = mInverseView*eyeRayDirectionEs;
+	v3f32& resultPosition  = *reinterpret_cast<v3f32*>(o_worldEyeRayPosition);
+	v3f32& resultDirection = *reinterpret_cast<v3f32*>(o_worldEyeRayDirection);
+	resultPosition  = 
+		{eyeRayPositionWs.vx, eyeRayPositionWs.vy, eyeRayPositionWs.vz};
+	resultDirection = 
+		kmath::normal( v3f32{eyeRayDirectionWs.vx, 
+		                     eyeRayDirectionWs.vy, 
+		                     eyeRayDirectionWs.vz} - resultPosition );
+	return true;
 }

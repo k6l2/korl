@@ -123,28 +123,28 @@ inline f32 v3f32::dot(const v3f32& other) const
 }
 inline f32 v4f32::magnitude() const
 {
-	return sqrtf(powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2));
+	return sqrtf(powf(vw,2) + powf(vx,2) + powf(vy,2) + powf(vz,2));
 }
 inline f32 v4f32::magnitudeSquared() const
 {
-	return powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2);
+	return powf(vw,2) + powf(vx,2) + powf(vy,2) + powf(vz,2);
 }
 inline f32 v4f32::normalize()
 {
 	const f32 mag = magnitude();
 	if(kmath::isNearlyZero(mag))
 	{
-		return w = x = y = z = 0;
+		return vw = vx = vy = vz = 0;
 	}
-	w /= mag;
-	x /= mag;
-	y /= mag;
-	z /= mag;
+	vw /= mag;
+	vx /= mag;
+	vy /= mag;
+	vz /= mag;
 	return mag;
 }
 inline f32 v4f32::dot(const v4f32& other) const
 {
-	return w*other.w + x*other.x + y*other.y + z*other.z;
+	return vw*other.vw + vx*other.vx + vy*other.vy + vz*other.vz;
 }
 m4x4f32 m4x4f32::transpose(const f32* elements)
 {
@@ -157,6 +157,118 @@ m4x4f32 m4x4f32::transpose(const f32* elements)
 		}
 	}
 	return result;
+}
+bool m4x4f32::invert(const f32 elements[16], f32 o_elements[16])
+{
+	/* implementation derived from MESA's GLU lib: 
+		https://stackoverflow.com/a/1148405/4526664 
+		@TODO: investigate MESA's license, or maybe just roll my own code here? 
+		*/
+	f32 inv[16];
+	inv[0] = elements[5]  * elements[10] * elements[15] - 
+	         elements[5]  * elements[11] * elements[14] - 
+	         elements[9]  * elements[6]  * elements[15] + 
+	         elements[9]  * elements[7]  * elements[14] +
+	         elements[13] * elements[6]  * elements[11] - 
+	         elements[13] * elements[7]  * elements[10];
+	inv[4] = -elements[4]  * elements[10] * elements[15] + 
+	          elements[4]  * elements[11] * elements[14] + 
+	          elements[8]  * elements[6]  * elements[15] - 
+	          elements[8]  * elements[7]  * elements[14] - 
+	          elements[12] * elements[6]  * elements[11] + 
+	          elements[12] * elements[7]  * elements[10];
+	inv[8] = elements[4]  * elements[9] * elements[15] - 
+	         elements[4]  * elements[11] * elements[13] - 
+	         elements[8]  * elements[5] * elements[15] + 
+	         elements[8]  * elements[7] * elements[13] + 
+	         elements[12] * elements[5] * elements[11] - 
+	         elements[12] * elements[7] * elements[9];
+	inv[12] = -elements[4]  * elements[9] * elements[14] + 
+	           elements[4]  * elements[10] * elements[13] +
+	           elements[8]  * elements[5] * elements[14] - 
+	           elements[8]  * elements[6] * elements[13] - 
+	           elements[12] * elements[5] * elements[10] + 
+	           elements[12] * elements[6] * elements[9];
+	inv[1] = -elements[1]  * elements[10] * elements[15] + 
+	          elements[1]  * elements[11] * elements[14] + 
+	          elements[9]  * elements[2] * elements[15] - 
+	          elements[9]  * elements[3] * elements[14] - 
+	          elements[13] * elements[2] * elements[11] + 
+	          elements[13] * elements[3] * elements[10];
+	inv[5] = elements[0]  * elements[10] * elements[15] - 
+	         elements[0]  * elements[11] * elements[14] - 
+	         elements[8]  * elements[2] * elements[15] + 
+	         elements[8]  * elements[3] * elements[14] + 
+	         elements[12] * elements[2] * elements[11] - 
+	         elements[12] * elements[3] * elements[10];
+	inv[9] = -elements[0]  * elements[9] * elements[15] + 
+	          elements[0]  * elements[11] * elements[13] + 
+	          elements[8]  * elements[1] * elements[15] - 
+	          elements[8]  * elements[3] * elements[13] - 
+	          elements[12] * elements[1] * elements[11] + 
+	          elements[12] * elements[3] * elements[9];
+	inv[13] = elements[0]  * elements[9] * elements[14] - 
+	          elements[0]  * elements[10] * elements[13] - 
+	          elements[8]  * elements[1] * elements[14] + 
+	          elements[8]  * elements[2] * elements[13] + 
+	          elements[12] * elements[1] * elements[10] - 
+	          elements[12] * elements[2] * elements[9];
+	inv[2] = elements[1]  * elements[6] * elements[15] - 
+	         elements[1]  * elements[7] * elements[14] - 
+	         elements[5]  * elements[2] * elements[15] + 
+	         elements[5]  * elements[3] * elements[14] + 
+	         elements[13] * elements[2] * elements[7] - 
+	         elements[13] * elements[3] * elements[6];
+	inv[6] = -elements[0]  * elements[6] * elements[15] + 
+	          elements[0]  * elements[7] * elements[14] + 
+	          elements[4]  * elements[2] * elements[15] - 
+	          elements[4]  * elements[3] * elements[14] - 
+	          elements[12] * elements[2] * elements[7] + 
+	          elements[12] * elements[3] * elements[6];
+	inv[10] = elements[0]  * elements[5] * elements[15] - 
+	          elements[0]  * elements[7] * elements[13] - 
+	          elements[4]  * elements[1] * elements[15] + 
+	          elements[4]  * elements[3] * elements[13] + 
+	          elements[12] * elements[1] * elements[7] - 
+	          elements[12] * elements[3] * elements[5];
+	inv[14] = -elements[0]  * elements[5] * elements[14] + 
+	           elements[0]  * elements[6] * elements[13] + 
+	           elements[4]  * elements[1] * elements[14] - 
+	           elements[4]  * elements[2] * elements[13] - 
+	           elements[12] * elements[1] * elements[6] + 
+	           elements[12] * elements[2] * elements[5];
+	inv[3] = -elements[1] * elements[6] * elements[11] + 
+	          elements[1] * elements[7] * elements[10] + 
+	          elements[5] * elements[2] * elements[11] - 
+	          elements[5] * elements[3] * elements[10] - 
+	          elements[9] * elements[2] * elements[7] + 
+	          elements[9] * elements[3] * elements[6];
+	inv[7] = elements[0] * elements[6] * elements[11] - 
+	         elements[0] * elements[7] * elements[10] - 
+	         elements[4] * elements[2] * elements[11] + 
+	         elements[4] * elements[3] * elements[10] + 
+	         elements[8] * elements[2] * elements[7] - 
+	         elements[8] * elements[3] * elements[6];
+	inv[11] = -elements[0] * elements[5] * elements[11] + 
+	           elements[0] * elements[7] * elements[9] + 
+	           elements[4] * elements[1] * elements[11] - 
+	           elements[4] * elements[3] * elements[9] - 
+	           elements[8] * elements[1] * elements[7] + 
+	           elements[8] * elements[3] * elements[5];
+	inv[15] = elements[0] * elements[5] * elements[10] - 
+	          elements[0] * elements[6] * elements[9] - 
+	          elements[4] * elements[1] * elements[10] + 
+	          elements[4] * elements[2] * elements[9] + 
+	          elements[8] * elements[1] * elements[6] - 
+	          elements[8] * elements[2] * elements[5];
+	f32 det = elements[0] * inv[0] + elements[1] * inv[4] + 
+	          elements[2] * inv[8] + elements[3] * inv[12];
+	if (det == 0)
+		return false;
+	det = 1.0f / det;
+	for (u8 i = 0; i < 16; i++)
+		o_elements[i] = inv[i] * det;
+	return true;
 }
 inline m4x4f32 m4x4f32::operator*(const m4x4f32& other) const
 {
@@ -196,17 +308,17 @@ internal inline kQuaternion operator*(const kQuaternion& lhs,
 inline kQuaternion kQuaternion::hamilton(const kQuaternion& q0, 
                                          const kQuaternion& q1)
 {
-	return { q0.w*q1.w - q0.x*q1.x - q0.y*q1.y - q0.z*q1.z, 
-	         q0.w*q1.x + q0.x*q1.w + q0.y*q1.z - q0.z*q1.y,
-	         q0.w*q1.y - q0.x*q1.z + q0.y*q1.w + q0.z*q1.x,
-	         q0.w*q1.z + q0.x*q1.y - q0.y*q1.x + q0.z*q1.w };
+	return { q0.qw*q1.qw - q0.qx*q1.qx - q0.qy*q1.qy - q0.qz*q1.qz, 
+	         q0.qw*q1.qx + q0.qx*q1.qw + q0.qy*q1.qz - q0.qz*q1.qy,
+	         q0.qw*q1.qy - q0.qx*q1.qz + q0.qy*q1.qw + q0.qz*q1.qx,
+	         q0.qw*q1.qz + q0.qx*q1.qy - q0.qy*q1.qx + q0.qz*q1.qw };
 }
 inline kQuaternion::kQuaternion(f32 w, f32 x, f32 y, f32 z)
 {
-	this->w = w;
-	this->x = x;
-	this->y = y;
-	this->z = z;
+	this->qw = w;
+	this->qx = x;
+	this->qy = y;
+	this->qz = z;
 }
 inline kQuaternion::kQuaternion(v3f32 axis, f32 radians, bool axisIsNormalized)
 {
@@ -215,14 +327,14 @@ inline kQuaternion::kQuaternion(v3f32 axis, f32 radians, bool axisIsNormalized)
 		axis.normalize();
 	}
 	const f32 sine = sinf(radians/2);
-	w = cosf(radians/2);
-	x = sine * axis.x;
-	y = sine * axis.y;
-	z = sine * axis.z;
+	qw = cosf(radians/2);
+	qx = sine * axis.x;
+	qy = sine * axis.y;
+	qz = sine * axis.z;
 }
 inline kQuaternion kQuaternion::conjugate() const
 {
-	return {w, -x, -y, -z};
+	return {qw, -qx, -qy, -qz};
 }
 inline v2f32 kQuaternion::transform(const v2f32& v2d, bool quatIsNormalized)
 {
@@ -232,7 +344,7 @@ inline v2f32 kQuaternion::transform(const v2f32& v2d, bool quatIsNormalized)
 	}
 	const kQuaternion result = 
 		hamilton(hamilton(*this, {0, v2d.x, v2d.y, 0}), conjugate());
-	return {result.x, result.y};
+	return {result.qx, result.qy};
 }
 inline v3f32 kQuaternion::transform(const v3f32& v3d, bool quatIsNormalized)
 {
@@ -242,7 +354,7 @@ inline v3f32 kQuaternion::transform(const v3f32& v3d, bool quatIsNormalized)
 	}
 	const kQuaternion result = 
 		hamilton(hamilton(*this, {0, v3d.x, v3d.y, v3d.z}), conjugate());
-	return {result.x, result.y, result.z};
+	return {result.qx, result.qy, result.qz};
 }
 internal inline bool kmath::isNearlyEqual(f32 fA, f32 fB, f32 epsilon)
 {

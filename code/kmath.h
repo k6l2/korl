@@ -81,7 +81,15 @@ struct v4f32
 		f32 elements[4];
 		struct
 		{
-			f32 w, x, y, z;
+			f32 qw, qx, qy, qz;
+		};
+		struct
+		{
+			f32 vx, vy, vz, vw;
+		};
+		struct
+		{
+			f32 r, g, b, a;
 		};
 	};
 	global_variable const v4f32 ZERO;
@@ -108,6 +116,7 @@ struct m4x4f32
 public:
 	global_variable const m4x4f32 IDENTITY;
 	class_namespace m4x4f32 transpose(const f32* elements);
+	class_namespace bool invert(const f32 elements[16], f32 o_elements[16]);
 	inline m4x4f32 operator*(const m4x4f32& other) const;
 };
 struct kQuaternion : public v4f32

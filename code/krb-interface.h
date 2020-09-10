@@ -100,6 +100,15 @@ struct KrbVertexAttributeOffsets
 */
 #define KRB_WORLD_TO_SCREEN(name) \
 	v2f32 name(const f32* pWorldPosition, u8 worldPositionDimension)
+/**
+ * @return false if the ray could not be computed.  Reasons for this function 
+ *         failing include:
+ *          - view matrix not being invertable
+ *          - projection matrix not being invertable
+ */
+#define KRB_SCREEN_TO_WORLD(name) \
+	bool name(const i32 windowPosition[2], const u32 windowSize[2], \
+	          f32 o_worldEyeRayPosition[3], f32 o_worldEyeRayDirection[3])
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
@@ -120,6 +129,7 @@ typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
 typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
 typedef KRB_WORLD_TO_SCREEN(fnSig_krbWorldToScreen);
+typedef KRB_SCREEN_TO_WORLD(fnSig_krbScreenToWorld);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
@@ -140,6 +150,7 @@ internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_DELETE_TEXTURE(krbDeleteTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen);
+internal KRB_SCREEN_TO_WORLD(krbScreenToWorld);
 struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
@@ -163,4 +174,5 @@ struct KrbApi
 	fnSig_krbDeleteTexture*      deleteTexture      = krbDeleteTexture;
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;
 	fnSig_krbWorldToScreen*      worldToScreen      = krbWorldToScreen;
+	fnSig_krbScreenToWorld*      screenToWorld      = krbScreenToWorld;
 };
