@@ -1,8 +1,10 @@
 #pragma once
 #include "kutil.h"
-const f32 PI32 = 3.14159f;
-// crt math operations
+global_variable const f32 PI32 = 3.14159f;
+#include <limits>
+global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
+global_variable const f32 NAN32 = nanf("");
 struct v2u32
 {
 	union 
@@ -66,13 +68,16 @@ struct v3f32
 	global_variable const v3f32 Y;
 	global_variable const v3f32 Z;
 public:
+	inline v3f32 operator+(const v3f32& other) const;
 	inline v3f32 operator-(const v3f32& other) const;
+	inline v3f32 operator*(f32 scalar) const;
 	inline v3f32 cross(const v3f32& other) const;
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
 	inline f32 dot(const v3f32& other) const;
+	inline v3f32 projectOnto(v3f32 other, bool otherIsNormalized = false) const;
 };
 struct v4f32
 {
@@ -174,8 +179,20 @@ namespace kmath
 	internal inline v3f32 normal(v3f32 v);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
+	/**
+	 * @return (1) NAN32 if the ray does not collide with the plane.  
+	 *         (2) INFINITY32 if the ray is co-planar with the plane.  
+	 *         (3) Otherwise, a float representing how far from `rayOrigin` in 
+	 *             the direction of `rayNormal` the intersection is.
+	 *         In case (3), the return value will ALWAYS be positive.
+	 */
+	internal inline f32 collideRayPlane(
+		const v3f32& rayOrigin, const v3f32& rayNormal, 
+		const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
+		bool cullPlaneBackFace);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
+internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
 internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
 internal inline kQuaternion operator*(const kQuaternion& lhs, 
                                       const kQuaternion& rhs);

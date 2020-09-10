@@ -623,20 +623,25 @@
 [ ] samples: mouse input
 	[x] absolute cursor position (window-space)
 	[x] buttons
-	[ ] KRB: screen=>world
-		https://antongerdelan.net/opengl/raycasting.html
-		https://community.khronos.org/t/mouse-picking-with-opengl/76055
+	[x] KRB: screen=>world
 		[x] convert mouse coordinates to a world-space ray (position + 
 			direction)
-		[ ] ray-plane intersection test on the XY plane
-		[ ] draw an X on the XY-plane location where the ray intersects
-		[ ] pick circles in 3D space based on mouse position + click
+			https://antongerdelan.net/opengl/raycasting.html
+			https://community.khronos.org/t/mouse-picking-with-opengl/76055
+	[x] ray-plane intersection test on the XY plane
+		https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-plane-and-ray-disk-intersection
+	[x] draw an X on the XY-plane location where the ray intersects
+	[ ] pick circles in 3D space based on mouse position + click
+	[ ] middle click to swap between (orthographic | perspective) projections
 	[ ] relative wheel position
-		- scroll to move camera?
+		- scroll to change ortho height size OR perspective distance from origin
 	[ ] set cursor hidden state
-		- hide cursor if idle for longer than X seconds
-	[~] set mouse capture state?
-	[~] relative mouse position (using DirectInput?)
+		- right click to hide mouse
+		- release right button to reveal & return to last un-hidden position
+	[ ] set mouse capture state?
+		- capture mouse when it is hidden
+	[ ] relative mouse position (using DirectInput?)
+		- move the camera around when mouse is captured & hidden
 [ ] samples: 3D collision detection & resolution capabilities
 	[ ] utility: Aabb3d broadphase collision detection
 	[ ] utility: dynamic bounding volume tree

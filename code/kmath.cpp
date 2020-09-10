@@ -83,13 +83,25 @@ inline v2f32 v2f32::projectOnto(v2f32 other, bool otherIsNormalized) const
 	const f32 scalarProjection = dot(other);
 	return scalarProjection*other;
 }
-inline v2f32 operator*(f32 lhs, const v2f32& rhs)
+internal inline v2f32 operator*(f32 lhs, const v2f32& rhs)
 {
 	return {lhs*rhs.x, lhs*rhs.y};
+}
+internal inline v3f32 operator*(f32 lhs, const v3f32& rhs)
+{
+	return {lhs*rhs.x, lhs*rhs.y, lhs*rhs.z};
+}
+inline v3f32 v3f32::operator+(const v3f32& other) const
+{
+	return {x + other.x, y + other.y, z + other.z};
 }
 inline v3f32 v3f32::operator-(const v3f32& other) const
 {
 	return {x - other.x, y - other.y, z - other.z};
+}
+inline v3f32 v3f32::operator*(f32 scalar) const
+{
+	return {scalar*x, scalar*y, scalar*z};
 }
 inline v3f32 v3f32::cross(const v3f32& other) const
 {
@@ -120,6 +132,15 @@ inline f32 v3f32::normalize()
 inline f32 v3f32::dot(const v3f32& other) const
 {
 	return x*other.x + y*other.y + z*other.z;
+}
+inline v3f32 v3f32::projectOnto(v3f32 other, bool otherIsNormalized) const
+{
+	if(!otherIsNormalized)
+	{
+		other.normalize();
+	}
+	const f32 scalarProjection = dot(other);
+	return scalarProjection*other;
 }
 inline f32 v4f32::magnitude() const
 {
@@ -532,5 +553,44 @@ internal inline v2f32 kmath::rotate(const v2f32& v, f32 radians)
 		{ cosf(radians)*v.x - sinf(radians)*v.y
 		, sinf(radians)*v.x + cosf(radians)*v.y
 	};
+	return result;
+}
+internal inline f32 kmath::collideRayPlane(
+	const v3f32& rayOrigin, const v3f32& rayNormal, 
+	const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
+	bool cullPlaneBackFace)
+{
+#if INTERNAL_BUILD
+	kassert(isNearlyEqual(rayNormal  .magnitudeSquared(), 1));
+	kassert(isNearlyEqual(planeNormal.magnitudeSquared(), 1));
+#endif// INTERNAL_BUILD
+	const v3f32 planeOrigin = planeDistanceFromOrigin*planeNormal;
+	const f32 denominator   = rayNormal.dot(planeNormal);
+	if(isNearlyZero(denominator))
+	/* the ray is PERPENDICULAR to the plane; no real solution */
+	{
+		/* test if the ray is co-planar with the plane */
+		const v3f32 rayOriginOntoPlane = rayOrigin.projectOnto(planeOrigin);
+		if(    isNearlyEqual(rayOriginOntoPlane.x, rayOrigin.x)
+		    && isNearlyEqual(rayOriginOntoPlane.y, rayOrigin.y)
+		    && isNearlyEqual(rayOriginOntoPlane.z, rayOrigin.z))
+		{
+			return INFINITY32;
+		}
+		/* otherwise, they will never intersect */
+		return NAN32;
+	}
+	if(cullPlaneBackFace && rayNormal.dot(planeNormal) >= 0)
+	/* if we're colliding with the BACK of the plane (opposite side that the 
+		normal is facing) and the caller doesn't want these collisions, then the 
+		collision fails here */
+	{
+		return NAN32;
+	}
+	const f32 result = (planeOrigin - rayOrigin).dot(planeNormal) / denominator;
+	/* if the result is negative, then we are colliding with the ray's line, NOT 
+		the ray itself! */
+	if(result < 0)
+		return NAN32;
 	return result;
 }
