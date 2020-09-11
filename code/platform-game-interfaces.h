@@ -186,6 +186,10 @@ using KplLockHandle = u8;
 	void name(KplLockHandle hLock)
 #define PLATFORM_UNLOCK(name) \
 	void name(KplLockHandle hLock)
+#define PLATFORM_MOUSE_SET_HIDDEN(name) \
+	void name(bool value)
+#define PLATFORM_MOUSE_SET_CAPTURED(name) \
+	void name(bool value)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -220,6 +224,8 @@ typedef PLATFORM_SOCKET_RECEIVE(fnSig_platformSocketReceive);
 typedef PLATFORM_RESERVE_LOCK(fnSig_platformReserveLock);
 typedef PLATFORM_LOCK(fnSig_platformLock);
 typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
+typedef PLATFORM_MOUSE_SET_HIDDEN(fnSig_platformMouseSetHidden);
+typedef PLATFORM_MOUSE_SET_CAPTURED(fnSig_platformMouseSetCaptured);
 struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -254,6 +260,8 @@ struct KmlPlatformApi
 	fnSig_platformReserveLock* reserveLock;
 	fnSig_platformLock* lock;
 	fnSig_platformUnlock* unlock;
+	fnSig_platformMouseSetHidden* mouseSetHidden;
+	fnSig_platformMouseSetCaptured* mouseSetCaptured;
 };
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory
@@ -294,6 +302,8 @@ struct GameMouse
 	 *       v2i32{ [0, windowDimensions.x), [0, windowDimensions.y) }
 	 */
 	v2i32 windowPosition;
+	v2i32 deltaPosition;
+	i32 deltaWheel;
 	union
 	{
 		ButtonState vKeys[5];

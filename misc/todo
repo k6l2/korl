@@ -633,15 +633,27 @@
 	[x] draw an X on the XY-plane location where the ray intersects
 	[x] place geometry in 3D space based on mouse position + click
 	[x] middle click to swap between (orthographic | perspective) projections
-	[ ] set cursor hidden state
+	[x] set cursor hidden state
 		- right click to hide mouse
-		- release right button to reveal & return to last un-hidden position
-	[ ] set mouse capture state?
+		- release right button to reveal
+	[-] set mouse capture state?
 		- capture mouse when it is hidden
-	[ ] relative mouse position (using DirectInput?)
-		- move the camera around when mouse is captured & hidden
-	[ ] relative wheel position
-		- scroll to change click circle radius
+		- it turns out, the win32 "CaptureMouse" API doesn't really do what I 
+			want it to do
+	[ ] kpl: mouse relative mode
+		- when this mode is activated:
+			- hide the mouse cursor
+			- record the mouse cursor absolute position
+		- report GameMouse windowPosition as the last known value before 
+			relative mode activation
+		- when this mode is deactivated:
+			- show the mouse cursor
+			- set the mouse cursor absolute position to the cached value prior 
+				to relative mode activation
+	[x] relative mouse position (using DirectInput)
+	[ ] move the camera around when mouse is captured & hidden
+	[x] relative wheel position
+	[ ] scroll to change click circle radius
 [ ] samples: 3D collision detection & resolution capabilities
 	[ ] utility: Aabb3d broadphase collision detection
 	[ ] utility: dynamic bounding volume tree

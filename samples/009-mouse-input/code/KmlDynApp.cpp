@@ -32,6 +32,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		ImGui::Text("[mouse left  ] - raycast mouse onto XY plane");
 		ImGui::Text("[mouse middle] - toggle orthographic view");
+		ImGui::Text("[mouse right ] - hold to control camera");
 		ImGui::Separator();
 		ImGui::Text("Mouse Window Position={%i,%i}", 
 		            gameMouse.windowPosition.x, gameMouse.windowPosition.y);
@@ -43,6 +44,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		            mouseEyeRayDirection.z);
 	}
 	ImGui::End();
+	bool lockedMouse = false;
 	if(windowIsFocused)
 	{
 		if(gameMouse.middle == ButtonState::PRESSED)
@@ -59,6 +61,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					1000*mouseEyeRayDirection;
 			}
 		}
+		lockedMouse = gameMouse.right > ButtonState::NOT_PRESSED;
 #if DEBUG_DELETE_LATER
 		if(gameKeyboard.s > ButtonState::NOT_PRESSED)
 		{
@@ -74,6 +77,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 #endif//DEBUG_DELETE_LATER
 	}
+#if DEBUG_DELETE_LATER
+	KLOG(INFO, "mouse delta={%i, %i, %i}", gameMouse.deltaPosition.x, 
+	     gameMouse.deltaPosition.y, gameMouse.deltaWheel);
+#endif//DEBUG_DELETE_LATER
+	g_kpl->mouseSetHidden(lockedMouse);
+	g_kpl->mouseSetCaptured(lockedMouse);
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
 	if(g_gs->orthographicView)
@@ -143,7 +152,6 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	g_gs->orthographicView = true;
 	templateGameState_initialize(&g_gs->templateGameState, memory, 
 	                             sizeof(GameState));
 }

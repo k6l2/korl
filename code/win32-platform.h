@@ -3,6 +3,7 @@
 #include "platform-game-interfaces.h"
 #include "win32-network.h"
 #include "win32-jobQueue.h"
+#include "win32-xinput.h"
 #include "stb/stb_vorbis.h"
 global_variable stb_vorbis_alloc g_oggVorbisAlloc;
 global_variable TCHAR g_pathToAssets[MAX_PATH];
@@ -13,6 +14,8 @@ global_variable CRITICAL_SECTION g_assetAllocationCsLock;
 global_variable CRITICAL_SECTION g_vorbisAllocationCsLock;
 global_variable CRITICAL_SECTION g_logCsLock;
 global_variable bool g_hasReceivedException;
+global_variable bool g_displayCursor = true;
+global_variable bool g_captureMouse;
 global_variable LARGE_INTEGER g_perfCounterHz;
 // Remember, there are two log buffers: one beginning & a circular buffer.  So,
 //	the total # of characters used for logging is 2*MAX_LOG_BUFFER_SIZE.
@@ -64,6 +67,8 @@ internal PLATFORM_SLEEP_FROM_TIMESTAMP(w32PlatformSleepFromTimeStamp);
 internal PLATFORM_RESERVE_LOCK(w32PlatformReserveLock);
 internal PLATFORM_LOCK(w32PlatformLock);
 internal PLATFORM_UNLOCK(w32PlatformUnlock);
+internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden);
+internal PLATFORM_MOUSE_SET_CAPTURED(w32PlatformMouseSetCaptured);
 const global_variable KmlPlatformApi KML_PLATFORM_API_WIN32 = 
 	{ .postJob                = w32PlatformPostJob
 	, .jobValid               = w32PlatformJobValid
@@ -97,4 +102,6 @@ const global_variable KmlPlatformApi KML_PLATFORM_API_WIN32 =
 	, .reserveLock            = w32PlatformReserveLock
 	, .lock                   = w32PlatformLock
 	, .unlock                 = w32PlatformUnlock
+	, .mouseSetHidden         = w32PlatformMouseSetHidden
+	, .mouseSetCaptured       = w32PlatformMouseSetCaptured
 };

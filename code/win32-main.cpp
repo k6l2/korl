@@ -31,7 +31,6 @@ global_variable const TCHAR FILE_NAME_GAME_DLL[] =
                                     TEXT(DEFINE_TO_CSTR(KML_GAME_DLL_FILENAME));
 global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KML_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
-global_variable bool g_displayCursor;
 global_variable bool g_isFocused;
 /* this variable exists because mysterious COM incantations require us to check 
 	whether or not a DirectInput device is Xinput compatible OUTSIDE of the 
@@ -625,10 +624,6 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 					cursor = g_cursorSizeNwSe;
 				break;
 				case HTCLIENT:
-					if(!g_displayCursor)
-					{
-						break;
-					}
 				default:
 					cursor = g_cursorArrow;
 				break;
@@ -1536,8 +1531,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		     "GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
-	/* @TODO: make this configurable somehow??? */
-	g_displayCursor = true;
 	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
 	g_cursorSizeHorizontal = LoadCursorA(NULL, IDC_SIZEWE);
 	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);
@@ -1772,7 +1765,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				g_deviceChangeDetected = false;
 				w32DInputEnumerateDevices();
 			}
-			/* mouse input: swap mouse input frame states */
+			/* mouse input: swap mouse input frame states, including pure 
+				relative movement from DirectInput */
 			if(gameMouseFrameCurrent == &gameMouseA)
 			{
 				gameMouseFrameCurrent  = &gameMouseB;
@@ -1784,6 +1778,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				gameMouseFramePrevious = &gameMouseB;
 			}
 			w32GetMouseStates(gameMouseFrameCurrent, gameMouseFramePrevious);
+			w32DInputGetMouseStates(gameMouseFrameCurrent);
 			// Process gameKeyboard by comparing the keys to the previous 
 			//	frame's keys, because we cannot determine if a key has been 
 			//	newly pressed this frame just from the windows message loop data

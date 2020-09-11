@@ -5,6 +5,7 @@ global_variable const char* DIRECT_INPUT_TO_GAMEPAD_MAPS[] =
 		"b0:2,b2:3,b9:4,b8:5,b32:6,b34:7,b35:8,b33:9,b4:10,b5:11,b6:12,b7:13,"
 		"b10:14,b11:15,+0:0,-1:1,+2:2,-5:3"
 };
+global_variable LPDIRECTINPUTDEVICE8 g_diMouse;
 /* easy printing of GUIDs 
 	Source: https://stackoverflow.com/a/26644772 */
 #define GUID_FORMAT "%08lX-%04hX-%04hX-%02hhX%02hhX-"\
@@ -488,6 +489,42 @@ internal void w32DInputEnumerateDevices()
 			g_dInputDevices[a] = nullptr;
 		}
 	}
+	/* get the system mouse device so we can get relative mouse motion data */
+	if(!g_diMouse)
+	{
+		const HRESULT resultCreateDeviceMouse = 
+			g_pIDInput->CreateDevice(GUID_SysMouse, &g_diMouse, nullptr);
+		if(resultCreateDeviceMouse != DI_OK)
+		{
+			KLOG(ERROR, "Failed to create DirectInput mouse device! result=%li", 
+			     resultCreateDeviceMouse);
+		}
+		const HRESULT resultSetMouseDataFormat = 
+			g_diMouse->SetDataFormat(&c_dfDIMouse2);
+		if(resultSetMouseDataFormat != DI_OK)
+		{
+			KLOG(ERROR, "Failed to set mouse data format! result=%li", 
+			     resultSetMouseDataFormat);
+		}
+		const HRESULT resultSetMouseCoopLevel = 
+			g_diMouse->SetCooperativeLevel(
+				g_mainWindow, DISCL_NONEXCLUSIVE | DISCL_FOREGROUND);
+		if(resultSetMouseCoopLevel != DI_OK)
+		{
+			KLOG(ERROR, "Failed to set mouse cooperative level! result=%li", 
+			     resultSetMouseCoopLevel);
+		}
+		/* according to MSDN documentation, the mouse DirectInput device 
+			supplies RELATIVE axis data by default, which is exactly what we 
+			want.  Cool, less code to write!  See:
+			https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ee418272(v=vs.85) */
+		const HRESULT resultMouseAcquire = g_diMouse->Acquire();
+		if(resultMouseAcquire != DI_OK)
+		{
+			KLOG(ERROR, "Failed to acquire mouse! result=%li", 
+			     resultMouseAcquire);
+		}
+	}
 }
 internal void w32LoadDInput(HINSTANCE hInst)
 {
@@ -904,6 +941,53 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 				gpArrCurrFrame[d].triggerRight = 0.f;
 		}
 	}
+}
+internal void w32DInputGetMouseStates(GameMouse* gameMouseFrameCurrent)
+{
+	DIMOUSESTATE2 diMouseState;
+	ZeroMemory(&diMouseState, sizeof(diMouseState));
+	const HRESULT resultGetMouseState = 
+		g_diMouse->GetDeviceState(sizeof(diMouseState), &diMouseState);
+	if(resultGetMouseState != DI_OK)
+	{
+		const char* cStrError = nullptr;
+		switch(resultGetMouseState)
+		{
+			case DIERR_NOTACQUIRED:
+			case DIERR_INPUTLOST:{
+				/* if the input has been lost, such as window losing focus, just 
+					attempt to re-acquire the device this frame */
+				const HRESULT resultAcquireMouse = g_diMouse->Acquire();
+				if(resultAcquireMouse != DI_OK
+					&& resultAcquireMouse != DIERR_OTHERAPPHASPRIO)
+				{
+					KLOG(ERROR, "Reacquisition of mouse failure! result=%li", 
+					     resultAcquireMouse);
+					return;
+				}
+			} break;
+			case DIERR_INVALIDPARAM:{
+				cStrError = "DIERR_INVALIDPARAM";
+			} break;
+			case DIERR_NOTINITIALIZED:{
+				cStrError = "DIERR_NOTINITIALIZED";
+			} break;
+			case E_PENDING:{
+				cStrError = "E_PENDING";
+			} break;
+			default:{
+				cStrError = "UNKNOWN";
+			} break;
+		}
+		if(cStrError)
+		{
+			KLOG(ERROR, "Failed to get mouse state! result=%s", cStrError);
+			return;
+		}
+	}
+	gameMouseFrameCurrent->deltaPosition.x = diMouseState.lX;
+	gameMouseFrameCurrent->deltaPosition.y = diMouseState.lY;
+	gameMouseFrameCurrent->deltaWheel      = diMouseState.lZ;
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 {

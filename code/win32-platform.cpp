@@ -1012,3 +1012,40 @@ internal PLATFORM_UNLOCK(w32PlatformUnlock)
 	kassert(g_platformExposedLocks[hLock - 1].allocated);
 	LeaveCriticalSection(&g_platformExposedLocks[hLock - 1].csLock);
 }
+internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden)
+{
+	const bool displayCursor = !value;
+	/* there seem to be multiple ways to "hide" the mouse cursor with pros & 
+		cons for each, so I'm not quite sure what the best solution is yet */
+#if 0
+	if(g_displayCursor != displayCursor)
+	{
+		const LRESULT resultSetCursor = 
+			w32MainWindowCallback(g_mainWindow, WM_SETCURSOR, 
+			                      0, MAKEWORD(HTCLIENT,0));
+		kassert(resultSetCursor == 0);
+	}
+#else
+	if(g_displayCursor != displayCursor)
+	{
+		//KLOG(INFO, "ShowCursor(%s)", displayCursor?"true":"false");
+		ShowCursor(displayCursor);
+	}
+#endif//if 0 else
+	g_displayCursor = displayCursor;
+}
+internal PLATFORM_MOUSE_SET_CAPTURED(w32PlatformMouseSetCaptured)
+{
+	if(g_captureMouse != value)
+	{
+		if(g_captureMouse)
+			SetCapture(g_mainWindow);
+		else
+			if(!ReleaseCapture())
+			{
+				KLOG(ERROR, "Failed to release mouse capture! GetLastError=%i", 
+				     GetLastError());
+			}
+	}
+	g_captureMouse = value;
+}
