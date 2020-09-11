@@ -65,9 +65,21 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
 	glMatrixMode(GL_PROJECTION);
 	glViewport(0, 0, windowSizeX, windowSizeY);
-	glOrtho(-static_cast<f32>(windowSizeX)/2, static_cast<f32>(windowSizeX)/2, 
-	        -static_cast<f32>(windowSizeY)/2, static_cast<f32>(windowSizeY)/2, 
-	        halfDepth, -halfDepth);
+	const f32 left  = -static_cast<f32>(windowSizeX)/2;
+	const f32 right =  static_cast<f32>(windowSizeX)/2;
+	const f32 bottom = -static_cast<f32>(windowSizeY)/2;
+	const f32 top    =  static_cast<f32>(windowSizeY)/2;
+	const f32 zNear =  halfDepth;
+	const f32 zFar  = -halfDepth;
+	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
+	m4x4f32 projectionMatrix = m4x4f32::IDENTITY;
+	projectionMatrix.r0c0 = 2 / (right - left);
+	projectionMatrix.r0c3 = -(right + left) / (right - left);
+	projectionMatrix.r1c1 = 2 / (top - bottom);
+	projectionMatrix.r1c3 = -(top + bottom) / (top - bottom);
+	projectionMatrix.r2c2 = -2 / (zFar - zNear);
+	projectionMatrix.r2c3 = -(zFar + zNear) / (zFar - zNear);
+	glLoadTransposeMatrixf(projectionMatrix.elements);
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
@@ -79,17 +91,27 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 		? 1.f : static_cast<f32>(windowSizeX) / windowSizeY;
 	const GLsizei viewportWidth = 
 		static_cast<GLsizei>(windowAspectRatio * fixedHeight);
-	glMatrixMode(GL_PROJECTION);
+	const f32 left  = -static_cast<f32>(viewportWidth)/2;
+	const f32 right =  static_cast<f32>(viewportWidth)/2;
+	const f32 bottom = -static_cast<f32>(fixedHeight)/2;
+	const f32 top    =  static_cast<f32>(fixedHeight)/2;
+	const f32 zNear =  halfDepth;
+	const f32 zFar  = -halfDepth;
 	glViewport(0, 0, windowSizeX, windowSizeY);
-	glOrtho(-static_cast<f32>(viewportWidth)/2, 
-	         static_cast<f32>(viewportWidth)/2, 
-	        -static_cast<f32>(fixedHeight)/2, static_cast<f32>(fixedHeight)/2, 
-	        halfDepth, -halfDepth);
+	glMatrixMode(GL_PROJECTION);
+	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
+	m4x4f32 projectionMatrix = m4x4f32::IDENTITY;
+	projectionMatrix.r0c0 = 2 / (right - left);
+	projectionMatrix.r0c3 = -(right + left) / (right - left);
+	projectionMatrix.r1c1 = 2 / (top - bottom);
+	projectionMatrix.r1c3 = -(top + bottom) / (top - bottom);
+	projectionMatrix.r2c2 = -2 / (zFar - zNear);
+	projectionMatrix.r2c3 = -(zFar + zNear) / (zFar - zNear);
+	glLoadTransposeMatrixf(projectionMatrix.elements);
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 {
-	// https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
 	const v2u32* windowDimensions = reinterpret_cast<const v2u32*>(windowSize);
 	glViewport(0, 0, windowDimensions->x, windowDimensions->y);
 	const f32 aspectRatio = 
@@ -99,11 +121,14 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 	const f32 horizonFovRadians = horizonFovDegrees*PI32/180;
 	const f32 tanHalfFov = tanf(horizonFovRadians / 2);
 	m4x4f32 projectionMatrix = {};
-	projectionMatrix.r0c0 = 1.f / (aspectRatio * tanHalfFov);
-	projectionMatrix.r1c1 = 1.f / tanHalfFov;
-	projectionMatrix.r2c2 = -(clipFar + clipNear) / (clipFar - clipNear);
+	// http://ogldev.org/www/tutorial12/tutorial12.html
+	// http://www.songho.ca/opengl/gl_projectionmatrix.html
+	projectionMatrix.r0c0 = 1 / (aspectRatio * tanHalfFov);
+	projectionMatrix.r1c1 = 1 / tanHalfFov;
+	/* I negate the Z row calculation to maintain RIGHT-HANDED coordinates! */
+	projectionMatrix.r2c2 = (clipFar + clipNear) / (clipFar - clipNear);
+	projectionMatrix.r2c3 = 2*clipFar*clipNear   / (clipFar - clipNear);
 	projectionMatrix.r3c2 = -1;
-	projectionMatrix.r2c3 = -(2*clipFar*clipNear) / (clipFar - clipNear);
 	glMatrixMode(GL_PROJECTION);
 	glLoadTransposeMatrixf(projectionMatrix.elements);
 	GL_CHECK_ERROR();
@@ -111,26 +136,23 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 internal KRB_LOOK_AT(krbLookAt)
 {
 	const v3f32*const eye = reinterpret_cast<const v3f32*>(v3f32_eye);
-	const v3f32 eyeWorldToTarget = kmath::normal(
-		*reinterpret_cast<const v3f32*>(v3f32_target) - *eye);
-	const v3f32 eyeWorldRight = kmath::normal(
-		eyeWorldToTarget.cross(*reinterpret_cast<const v3f32*>(v3f32_worldUp)));
-	const v3f32 eyeWorldUp = eyeWorldRight.cross(eyeWorldToTarget);
-	m4x4f32 viewMatrix = m4x4f32::IDENTITY;
-	viewMatrix.r0c0 = eyeWorldRight.x;
-	viewMatrix.r0c1 = eyeWorldRight.y;
-	viewMatrix.r0c2 = eyeWorldRight.z;
-	viewMatrix.r0c3 = - eyeWorldRight   .dot(*eye);
-	viewMatrix.r1c0 = eyeWorldUp.x;
-	viewMatrix.r1c1 = eyeWorldUp.y;
-	viewMatrix.r1c2 = eyeWorldUp.z;
-	viewMatrix.r1c3 = - eyeWorldUp      .dot(*eye);
-	viewMatrix.r2c0 = -eyeWorldToTarget.x;
-	viewMatrix.r2c1 = -eyeWorldToTarget.y;
-	viewMatrix.r2c2 = -eyeWorldToTarget.z;
-	viewMatrix.r2c3 =   eyeWorldToTarget.dot(*eye);
+	// https://www.3dgep.com/understanding-the-view-matrix/
+	/* camera Z-axis points AWAY from the target to maintain RIGHT-HANDED 
+		coordinates! */
+	const v3f32 camAxisZ = kmath::normal(
+		*eye - *reinterpret_cast<const v3f32*>(v3f32_target));
+	const v3f32 camAxisX = kmath::normal(
+		reinterpret_cast<const v3f32*>(v3f32_worldUp)->cross(camAxisZ));
+	const v3f32 camAxisY = camAxisZ.cross(camAxisX);
+	m4x4f32 mView = m4x4f32::IDENTITY;
+	mView.r0c0 = camAxisX.x; mView.r0c1 = camAxisX.y; mView.r0c2 = camAxisX.z;
+	mView.r1c0 = camAxisY.x; mView.r1c1 = camAxisY.y; mView.r1c2 = camAxisY.z;
+	mView.r2c0 = camAxisZ.x; mView.r2c1 = camAxisZ.y; mView.r2c2 = camAxisZ.z;
+	mView.r0c3 = -camAxisX.dot(*eye);
+	mView.r1c3 = -camAxisY.dot(*eye);
+	mView.r2c3 = -camAxisZ.dot(*eye);
 	glMatrixMode(GL_MODELVIEW);
-	glLoadTransposeMatrixf(viewMatrix.elements);
+	glLoadTransposeMatrixf(mView.elements);
 	glPushMatrix();
 	GL_CHECK_ERROR();
 }
@@ -493,26 +515,51 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		, static_cast<f32>(v2i32WindowPos.y) };
 	const v2u32& v2u32WindowSize = 
 		*reinterpret_cast<const v2u32*>(windowSize);
+	/* We can determine if a projection matrix is orthographic or frustum based 
+		on the last element of the W row.  See: 
+		http://www.songho.ca/opengl/gl_projectionmatrix.html */
+	kassert(mProjection.r3c3 == 1 || mProjection.r3c3 == 0);
+	const bool isOrthographic = mProjection.r3c3 == 1;
 	/* viewport-space          => normalized-device-space */
 	const v2f32 eyeRayNds = 
 		{  2*v2f32WindowPos.x / v2u32WindowSize.x - 1
 		, -2*v2f32WindowPos.y / v2u32WindowSize.y + 1 };
 	/* normalized-device-space => homogeneous-clip-space */
-	const v4f32 eyeRayPositionHcs  = {eyeRayNds.x, eyeRayNds.y,  0, 1};
+	/* arbitrarily set the eye ray direction vector as far to the "back" of the 
+		homogeneous clip space box, which means setting the Z coordinate to a 
+		value of -1, since coordinates are right-handed */
 	const v4f32 eyeRayDirectionHcs = {eyeRayNds.x, eyeRayNds.y, -1, 1};
 	/* homogeneous-clip-space  => eye-space */
-	const v4f32 eyeRayPositionEs  = mInverseProjection*eyeRayPositionHcs;
 	const v4f32 eyeRayDirectionEs = mInverseProjection*eyeRayDirectionHcs;
 	/* eye-space               => world-space */
-	const v4f32 eyeRayPositionWs  = mInverseView*eyeRayPositionEs;
 	const v4f32 eyeRayDirectionWs = mInverseView*eyeRayDirectionEs;
 	v3f32& resultPosition  = *reinterpret_cast<v3f32*>(o_worldEyeRayPosition);
 	v3f32& resultDirection = *reinterpret_cast<v3f32*>(o_worldEyeRayDirection);
-	resultPosition  = 
-		{eyeRayPositionWs.vx, eyeRayPositionWs.vy, eyeRayPositionWs.vz};
-	resultDirection = 
-		kmath::normal( v3f32{eyeRayDirectionWs.vx, 
-		                     eyeRayDirectionWs.vy, 
-		                     eyeRayDirectionWs.vz} - resultPosition );
+	if(isOrthographic)
+	{
+		/* the orthographic eye position should be as far to the "front" of the 
+			homogenous clip space box, which means setting the Z coordinate to a 
+			value of 1 */
+		const v4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y,  1, 1};
+		const v4f32 eyeRayPositionEs  = mInverseProjection*eyeRayPositionHcs;
+		const v4f32 eyeRayPositionWs  = mInverseView*eyeRayPositionEs;
+		resultPosition  = 
+			{eyeRayPositionWs.vx, eyeRayPositionWs.vy, eyeRayPositionWs.vz};
+		resultDirection = 
+			kmath::normal( v3f32{eyeRayDirectionWs.vx, 
+			                     eyeRayDirectionWs.vy, 
+			                     eyeRayDirectionWs.vz} - resultPosition );
+	}
+	else
+	{
+		/* camera's eye position can be easily derived from the inverse view 
+			matrix: https://stackoverflow.com/a/39281556/4526664 */
+		resultPosition = 
+			{mInverseView.r0c3, mInverseView.r1c3, mInverseView.r2c3};
+		resultDirection = 
+			kmath::normal( v3f32{eyeRayDirectionWs.vx, 
+			                     eyeRayDirectionWs.vy, 
+			                     eyeRayDirectionWs.vz} );
+	}
 	return true;
 }

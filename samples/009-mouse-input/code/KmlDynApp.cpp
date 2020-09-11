@@ -4,6 +4,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
 	                                    windowIsFocused))
 		return false;
+	if(gameMouse.middle == ButtonState::PRESSED)
+	{
+		g_gs->orthographicView = !g_gs->orthographicView;
+	}
 	v3f32 mouseEyeRayPosition  = {};
 	v3f32 mouseEyeRayDirection = {};
 	f32 resultEyeRayCollidePlaneXY = NAN32;
@@ -29,15 +33,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	ImGui::Text("Mouse Eye World Direction={%f,%f,%f}", mouseEyeRayDirection.x, 
 	            mouseEyeRayDirection.y, mouseEyeRayDirection.z);
 	g_krb->beginFrame(0.2f, 0, 0.2f);
-	g_krb->setProjectionOrthoFixedHeight(
-		windowDimensions.x, windowDimensions.y, 250, 1);
-	if(resultEyeRayCollidePlaneXY != NAN32)
+	if(g_gs->orthographicView)
+		g_krb->setProjectionOrthoFixedHeight(
+			windowDimensions.x, windowDimensions.y, 100, 1000);
+	else
+		g_krb->setProjectionFov(90.f, windowDimensions.elements, 1, 1000);
+	g_krb->lookAt(v3f32{10,11,12}.elements, v3f32::ZERO.elements, 
+	              v3f32::Z.elements);
+	if(!isnan(resultEyeRayCollidePlaneXY))
 	/* draw a crosshair where the mouse intersects with the XY world plane */
 	{
 		const v3f32 eyeRayCollidePlaneXY = mouseEyeRayPosition + 
 			resultEyeRayCollidePlaneXY*mouseEyeRayDirection;
 		g_krb->setModelXform(
-			eyeRayCollidePlaneXY, kQuaternion::IDENTITY, {10,10,10});
+			eyeRayCollidePlaneXY, kQuaternion::IDENTITY, {5,5,5});
 		local_persist const VertexNoTexture MESH[] = 
 			{ {{-1, 0,0}, krb::WHITE}, {{1,0,0}, krb::WHITE}
 			, {{ 0,-1,0}, krb::WHITE}, {{0,1,0}, krb::WHITE} };
@@ -45,10 +54,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	/* draw origin */
 	{
-		g_krb->setModelXform2d({0,0}, kQuaternion::IDENTITY, {100,100});
+		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
 		local_persist const VertexNoTexture MESH[] = 
-			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED}
-			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN} };
+			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
+			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN}
+			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	return true;
@@ -66,6 +76,7 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
+	g_gs->orthographicView = true;
 	templateGameState_initialize(&g_gs->templateGameState, memory, 
 	                             sizeof(GameState));
 }

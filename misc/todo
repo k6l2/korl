@@ -632,7 +632,7 @@
 		https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-plane-and-ray-disk-intersection
 	[x] draw an X on the XY-plane location where the ray intersects
 	[ ] pick circles in 3D space based on mouse position + click
-	[ ] middle click to swap between (orthographic | perspective) projections
+	[x] middle click to swap between (orthographic | perspective) projections
 	[ ] relative wheel position
 		- scroll to change ortho height size OR perspective distance from origin
 	[ ] set cursor hidden state

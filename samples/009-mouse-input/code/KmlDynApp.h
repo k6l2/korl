@@ -3,6 +3,7 @@
 struct GameState
 {
 	KmlTemplateGameState templateGameState;
+	bool orthographicView;
 };
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */
