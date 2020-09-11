@@ -4,13 +4,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
 	                                    windowIsFocused))
 		return false;
-	if(gameMouse.middle == ButtonState::PRESSED)
-	{
-		g_gs->orthographicView = !g_gs->orthographicView;
-	}
 	v3f32 mouseEyeRayPosition  = {};
 	v3f32 mouseEyeRayDirection = {};
 	f32 resultEyeRayCollidePlaneXY = NAN32;
+	v3f32 eyeRayCollidePlaneXY = {};
 	if(gameMouse.windowPosition.x >= 0 
 		&& gameMouse.windowPosition.x < static_cast<i64>(windowDimensions.x)
 		&& gameMouse.windowPosition.y >= 0 
@@ -25,26 +22,76 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		resultEyeRayCollidePlaneXY = 
 			kmath::collideRayPlane(mouseEyeRayPosition, mouseEyeRayDirection,
 			                       v3f32::Z, 0, false);
+		if(!isnan(resultEyeRayCollidePlaneXY))
+		{
+			eyeRayCollidePlaneXY = mouseEyeRayPosition + 
+				resultEyeRayCollidePlaneXY*mouseEyeRayDirection;
+		}
 	}
-	ImGui::Text("Mouse Window Position={%i,%i}", 
-	            gameMouse.windowPosition.x, gameMouse.windowPosition.y);
-	ImGui::Text("Mouse Eye World Position={%f,%f,%f}", mouseEyeRayPosition.x, 
-	            mouseEyeRayPosition.y, mouseEyeRayPosition.z);
-	ImGui::Text("Mouse Eye World Direction={%f,%f,%f}", mouseEyeRayDirection.x, 
-	            mouseEyeRayDirection.y, mouseEyeRayDirection.z);
+	if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text("[mouse left  ] - raycast mouse onto XY plane");
+		ImGui::Text("[mouse middle] - toggle orthographic view");
+		ImGui::Separator();
+		ImGui::Text("Mouse Window Position={%i,%i}", 
+		            gameMouse.windowPosition.x, gameMouse.windowPosition.y);
+		ImGui::Text("Mouse Eye World Position={%f,%f,%f}", 
+		            mouseEyeRayPosition.x, mouseEyeRayPosition.y, 
+		            mouseEyeRayPosition.z);
+		ImGui::Text("Mouse Eye World Direction={%f,%f,%f}", 
+		            mouseEyeRayDirection.x, mouseEyeRayDirection.y, 
+		            mouseEyeRayDirection.z);
+	}
+	ImGui::End();
+	if(windowIsFocused)
+	{
+		if(gameMouse.middle == ButtonState::PRESSED)
+		{
+			g_gs->orthographicView = !g_gs->orthographicView;
+		}
+		if(gameMouse.left == ButtonState::PRESSED)
+		{
+			if(!isnan(resultEyeRayCollidePlaneXY))
+			{
+				g_gs->clickLocation = eyeRayCollidePlaneXY;
+				g_gs->lastEyeRay[0] = mouseEyeRayPosition;
+				g_gs->lastEyeRay[1] = mouseEyeRayPosition + 
+					1000*mouseEyeRayDirection;
+			}
+		}
+#if DEBUG_DELETE_LATER
+		if(gameKeyboard.s > ButtonState::NOT_PRESSED)
+		{
+			g_gs->cameraPosition = 
+				kQuaternion(v3f32::Z, -deltaSeconds*2.5f)
+					.transform(g_gs->cameraPosition);
+		}
+		if(gameKeyboard.f > ButtonState::NOT_PRESSED)
+		{
+			g_gs->cameraPosition = 
+				kQuaternion(v3f32::Z, deltaSeconds*2.5f)
+					.transform(g_gs->cameraPosition);
+		}
+#endif//DEBUG_DELETE_LATER
+	}
 	g_krb->beginFrame(0.2f, 0, 0.2f);
+	g_krb->setDepthTesting(true);
 	if(g_gs->orthographicView)
 		g_krb->setProjectionOrthoFixedHeight(
 			windowDimensions.x, windowDimensions.y, 100, 1000);
 	else
 		g_krb->setProjectionFov(90.f, windowDimensions.elements, 1, 1000);
-	g_krb->lookAt(v3f32{10,11,12}.elements, v3f32::ZERO.elements, 
+	g_krb->lookAt(g_gs->cameraPosition.elements, v3f32::ZERO.elements, 
 	              v3f32::Z.elements);
+	/* draw something at the click location */
+	{
+		g_krb->setModelXform(
+			g_gs->clickLocation, kQuaternion::IDENTITY, {1,1,1});
+		g_krb->drawCircle(5, 0, {.25f,.75f,.75f,1}, krb::TRANSPARENT, 32);
+	}
 	if(!isnan(resultEyeRayCollidePlaneXY))
 	/* draw a crosshair where the mouse intersects with the XY world plane */
 	{
-		const v3f32 eyeRayCollidePlaneXY = mouseEyeRayPosition + 
-			resultEyeRayCollidePlaneXY*mouseEyeRayDirection;
 		g_krb->setModelXform(
 			eyeRayCollidePlaneXY, kQuaternion::IDENTITY, {5,5,5});
 		local_persist const VertexNoTexture MESH[] = 
@@ -61,6 +108,26 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
+#if DEBUG_DELETE_LATER
+	/* @NoCommit: debug draw the mouse ray */
+	{
+		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
+		const VertexNoTexture mesh[] = 
+			{ {g_gs->lastEyeRay[0], krb::YELLOW}
+			, {g_gs->lastEyeRay[1], krb::YELLOW}};
+		DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
+	}
+	/* @NoCommit: draw a crosshair at the debug draw the mouse ray */
+	{
+		g_krb->setDepthTesting(false);
+		g_krb->setModelXform(
+			g_gs->clickLocation, kQuaternion::IDENTITY, {5,5,5});
+		local_persist const VertexNoTexture MESH[] = 
+			{ {{-1, 0,0}, krb::WHITE}, {{1,0,0}, krb::WHITE}
+			, {{ 0,-1,0}, krb::WHITE}, {{0,1,0}, krb::WHITE} };
+		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
+	}
+#endif//DEBUG_DELETE_LATER
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)

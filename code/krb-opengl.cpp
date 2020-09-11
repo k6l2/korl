@@ -27,6 +27,10 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
+	/* I use right-handed homogeneous clip space, so depth buffer values 
+		farthest away from the camera are -1, instead of the default OpenGL 
+		value of 1 */
+	glClearDepth(-1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
 	// empty the modelview stack //
@@ -48,7 +52,13 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
 	if(enable)
+	{
 		glEnable(GL_DEPTH_TEST);
+		/* default OpenGL uses a left-handed homogeneous clip space, whereas I 
+			use right-handed, so I have to invert the depth function from the 
+			default of GL_LESS */
+		glDepthFunc(GL_GREATER);
+	}
 	else
 		glDisable(GL_DEPTH_TEST);
 	GL_CHECK_ERROR();
