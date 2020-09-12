@@ -1,6 +1,5 @@
 #pragma once
 #include "TemplateGameState.h"
-#define DEBUG_DELETE_LATER 1
 struct GameState
 {
 	KmlTemplateGameState templateGameState;
@@ -9,9 +8,7 @@ struct GameState
 	f32 cameraRadiansYaw = PI32*3/4;
 	f32 cameraRadiansPitch = -PI32/4;
 	v3f32 clickLocation;
-#if DEBUG_DELETE_LATER
-	v3f32 lastEyeRay[2] = {{0,0,1000}, {}};
-#endif//DEBUG_DELETE_LATER
+	f32 clickCircleSize = 5;
 };
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */

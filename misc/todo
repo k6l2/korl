@@ -620,7 +620,7 @@
 	(type,memory_context) for significantly less verbose user code
 [x] combine all win32 virtualalloc calls into a single memory allocation
 [x] win32: pull KML platform interface out of win32-main
-[ ] samples: mouse input
+[x] samples: mouse input
 	[x] absolute cursor position (window-space)
 	[x] buttons
 	[x] KRB: screen=>world
@@ -654,7 +654,7 @@
 	[x] relative mouse position (using DirectInput)
 	[x] move the camera around when mouse is captured & hidden
 	[x] relative wheel position
-	[ ] scroll to change click circle radius
+	[x] scroll to change click circle radius
 [ ] samples: 3D collision detection & resolution capabilities
 	[ ] utility: Aabb3d broadphase collision detection
 	[ ] utility: dynamic bounding volume tree

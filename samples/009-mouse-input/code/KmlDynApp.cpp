@@ -49,9 +49,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(!isnan(resultEyeRayCollidePlaneXY))
 			{
 				g_gs->clickLocation = eyeRayCollidePlaneXY;
-				g_gs->lastEyeRay[0] = mouseEyeRayPosition;
-				g_gs->lastEyeRay[1] = mouseEyeRayPosition + 
-					1000*mouseEyeRayDirection;
 			}
 		}
 		local_persist const f32 CAMERA_SPEED = 25;
@@ -85,6 +82,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(gameMouse.back > ButtonState::NOT_PRESSED)
 				g_gs->cameraPosition -= deltaSeconds * CAMERA_SPEED * v3f32::Z;
 		}
+		g_gs->clickCircleSize += 0.01f*gameMouse.deltaWheel;
+		if(g_gs->clickCircleSize < 1.f)
+			g_gs->clickCircleSize = 1.f;
+		if(g_gs->clickCircleSize > 10.f)
+			g_gs->clickCircleSize = 10.f;
 	}
 	/* display HUD GUI for sample controls */
 	if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -107,18 +109,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			ImGui::Text("[mouse back   ] - camera down");
 			ImGui::Text("[mouse forward] - camera up");
 		}
-		ImGui::Separator();
-		ImGui::Text("Mouse Window Position={%i,%i}", 
-		            gameMouse.windowPosition.x, gameMouse.windowPosition.y);
-		ImGui::Text("Mouse Eye World Position={%f,%f,%f}", 
-		            mouseEyeRayPosition.x, mouseEyeRayPosition.y, 
-		            mouseEyeRayPosition.z);
-		ImGui::Text("Mouse Eye World Direction={%f,%f,%f}", 
-		            mouseEyeRayDirection.x, mouseEyeRayDirection.y, 
-		            mouseEyeRayDirection.z);
-		ImGui::Text("Camera Yaw=%f degrees", g_gs->cameraRadiansYaw*180/PI32);
-		ImGui::Text("Camera Pitch=%f degrees", 
-		            g_gs->cameraRadiansPitch*180/PI32);
+		ImGui::Text("[mouse wheel  ] - mouse cursor size");
 	}
 	ImGui::End();
 	/* mouse "relative mode" effectively disable the mouse cursor and use the 
@@ -139,13 +130,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		g_krb->setModelXform(
 			g_gs->clickLocation, kQuaternion::IDENTITY, {1,1,1});
-		g_krb->drawCircle(5, 0, {.25f,.75f,.75f,1}, krb::TRANSPARENT, 32);
+		g_krb->drawCircle(g_gs->clickCircleSize, 0, {.25f,.75f,.75f,1}, 
+		                  krb::TRANSPARENT, 32);
 	}
 	if(!lockedMouse && !isnan(resultEyeRayCollidePlaneXY))
 	/* draw a crosshair where the mouse intersects with the XY world plane */
 	{
 		g_krb->setModelXform(
-			eyeRayCollidePlaneXY, kQuaternion::IDENTITY, {5,5,5});
+			eyeRayCollidePlaneXY, kQuaternion::IDENTITY, 
+			{g_gs->clickCircleSize, g_gs->clickCircleSize, 
+			 g_gs->clickCircleSize} );
 		local_persist const VertexNoTexture MESH[] = 
 			{ {{-1, 0,0}, krb::WHITE}, {{1,0,0}, krb::WHITE}
 			, {{ 0,-1,0}, krb::WHITE}, {{0,1,0}, krb::WHITE} };
@@ -160,26 +154,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
-#if DEBUG_DELETE_LATER
-	/* @NoCommit: debug draw the mouse ray */
-	{
-		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
-		const VertexNoTexture mesh[] = 
-			{ {g_gs->lastEyeRay[0], krb::YELLOW}
-			, {g_gs->lastEyeRay[1], krb::YELLOW}};
-		DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
-	}
-	/* @NoCommit: draw a crosshair at the debug draw the mouse ray */
-	{
-		g_krb->setDepthTesting(false);
-		g_krb->setModelXform(
-			g_gs->clickLocation, kQuaternion::IDENTITY, {5,5,5});
-		local_persist const VertexNoTexture MESH[] = 
-			{ {{-1, 0,0}, krb::WHITE}, {{1,0,0}, krb::WHITE}
-			, {{ 0,-1,0}, krb::WHITE}, {{0,1,0}, krb::WHITE} };
-		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
-	}
-#endif//DEBUG_DELETE_LATER
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
