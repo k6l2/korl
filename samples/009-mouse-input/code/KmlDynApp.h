@@ -6,6 +6,8 @@ struct GameState
 	KmlTemplateGameState templateGameState;
 	bool orthographicView;
 	v3f32 cameraPosition = {10,11,12};
+	f32 cameraRadiansYaw = PI32*3/4;
+	f32 cameraRadiansPitch = -PI32/4;
 	v3f32 clickLocation;
 #if DEBUG_DELETE_LATER
 	v3f32 lastEyeRay[2] = {{0,0,1000}, {}};

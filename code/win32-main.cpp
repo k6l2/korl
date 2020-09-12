@@ -404,8 +404,8 @@ internal ButtonState* w32DecodeVirtualKey(GameMouse* gm, WPARAM vKeyCode)
 		case VK_LBUTTON:  buttonState = &gm->left; break;
 		case VK_RBUTTON:  buttonState = &gm->right; break;
 		case VK_MBUTTON:  buttonState = &gm->middle; break;
-		case VK_XBUTTON1: buttonState = &gm->forward; break;
-		case VK_XBUTTON2: buttonState = &gm->back; break;
+		case VK_XBUTTON1: buttonState = &gm->back; break;
+		case VK_XBUTTON2: buttonState = &gm->forward; break;
 	}
 	return buttonState;
 }
@@ -509,6 +509,13 @@ internal void w32GetKeyboardKeyStates(
 }
 internal void w32GetMouseStates(GameMouse* gmCurrent, GameMouse* gmPrevious)
 {
+	if(g_mouseRelativeMode)
+	{
+		/* in mouse relative mode, we the mouse should remain in the same 
+			position in window-space forever */
+		gmCurrent->windowPosition = gmPrevious->windowPosition;
+	}
+	else
 	/* get the mouse cursor position in window-space */
 	{
 		POINT pointMouseCursor;

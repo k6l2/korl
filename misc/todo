@@ -639,8 +639,9 @@
 	[-] set mouse capture state?
 		- capture mouse when it is hidden
 		- it turns out, the win32 "CaptureMouse" API doesn't really do what I 
-			want it to do
-	[ ] kpl: mouse relative mode
+			want it to do: 
+			https://docs.microsoft.com/en-us/windows/win32/learnwin32/mouse-movement
+	[x] kpl: mouse relative mode
 		- when this mode is activated:
 			- hide the mouse cursor
 			- record the mouse cursor absolute position
@@ -651,7 +652,7 @@
 			- set the mouse cursor absolute position to the cached value prior 
 				to relative mode activation
 	[x] relative mouse position (using DirectInput)
-	[ ] move the camera around when mouse is captured & hidden
+	[x] move the camera around when mouse is captured & hidden
 	[x] relative wheel position
 	[ ] scroll to change click circle radius
 [ ] samples: 3D collision detection & resolution capabilities

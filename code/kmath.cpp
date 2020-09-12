@@ -109,6 +109,20 @@ inline v3f32 v3f32::cross(const v3f32& other) const
 	       , z*other.x - x*other.z
 	       , x*other.y - y*other.x };
 }
+inline v3f32& v3f32::operator+=(const v3f32& other)
+{
+	x += other.x;
+	y += other.y;
+	z += other.z;
+	return *this;
+}
+inline v3f32& v3f32::operator-=(const v3f32& other)
+{
+	x -= other.x;
+	y -= other.y;
+	z -= other.z;
+	return *this;
+}
 inline f32 v3f32::magnitude() const
 {
 	return sqrtf(powf(x,2) + powf(y,2) + powf(z,2));

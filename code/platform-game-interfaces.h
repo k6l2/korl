@@ -188,7 +188,16 @@ using KplLockHandle = u8;
 	void name(KplLockHandle hLock)
 #define PLATFORM_MOUSE_SET_HIDDEN(name) \
 	void name(bool value)
-#define PLATFORM_MOUSE_SET_CAPTURED(name) \
+/**
+ * When the mouse is set to "relative mode", the cursor disappears and the 
+ * platform stops reporting the GameMouse's windowPosition (the value freezes to 
+ * the last value it was before relative mode was activated).  The platform will 
+ * continue to report relative mouse axes during this time, including the wheel 
+ * delta position.  When relative mode is turned off, the platform returns the 
+ * mouse cursor to the last known screen-space position before relative mode was 
+ * activated.
+ */
+#define PLATFORM_MOUSE_SET_RELATIVE_MODE(name) \
 	void name(bool value)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
@@ -225,7 +234,7 @@ typedef PLATFORM_RESERVE_LOCK(fnSig_platformReserveLock);
 typedef PLATFORM_LOCK(fnSig_platformLock);
 typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
 typedef PLATFORM_MOUSE_SET_HIDDEN(fnSig_platformMouseSetHidden);
-typedef PLATFORM_MOUSE_SET_CAPTURED(fnSig_platformMouseSetCaptured);
+typedef PLATFORM_MOUSE_SET_RELATIVE_MODE(fnSig_platformMouseSetRelativeMode);
 struct KmlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -261,7 +270,7 @@ struct KmlPlatformApi
 	fnSig_platformLock* lock;
 	fnSig_platformUnlock* unlock;
 	fnSig_platformMouseSetHidden* mouseSetHidden;
-	fnSig_platformMouseSetCaptured* mouseSetCaptured;
+	fnSig_platformMouseSetRelativeMode* mouseSetRelativeMode;
 };
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory

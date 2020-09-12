@@ -15,7 +15,8 @@ global_variable CRITICAL_SECTION g_vorbisAllocationCsLock;
 global_variable CRITICAL_SECTION g_logCsLock;
 global_variable bool g_hasReceivedException;
 global_variable bool g_displayCursor = true;
-global_variable bool g_captureMouse;
+global_variable bool g_mouseRelativeMode;
+global_variable POINT g_mouseRelativeModeCachedScreenPosition;
 global_variable LARGE_INTEGER g_perfCounterHz;
 // Remember, there are two log buffers: one beginning & a circular buffer.  So,
 //	the total # of characters used for logging is 2*MAX_LOG_BUFFER_SIZE.
@@ -68,7 +69,7 @@ internal PLATFORM_RESERVE_LOCK(w32PlatformReserveLock);
 internal PLATFORM_LOCK(w32PlatformLock);
 internal PLATFORM_UNLOCK(w32PlatformUnlock);
 internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden);
-internal PLATFORM_MOUSE_SET_CAPTURED(w32PlatformMouseSetCaptured);
+internal PLATFORM_MOUSE_SET_RELATIVE_MODE(w32PlatformMouseSetRelativeMode);
 const global_variable KmlPlatformApi KML_PLATFORM_API_WIN32 = 
 	{ .postJob                = w32PlatformPostJob
 	, .jobValid               = w32PlatformJobValid
@@ -103,5 +104,5 @@ const global_variable KmlPlatformApi KML_PLATFORM_API_WIN32 =
 	, .lock                   = w32PlatformLock
 	, .unlock                 = w32PlatformUnlock
 	, .mouseSetHidden         = w32PlatformMouseSetHidden
-	, .mouseSetCaptured       = w32PlatformMouseSetCaptured
+	, .mouseSetRelativeMode   = w32PlatformMouseSetRelativeMode
 };

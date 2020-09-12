@@ -1026,14 +1026,40 @@ internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden)
 		kassert(resultSetCursor == 0);
 	}
 #else
-	if(g_displayCursor != displayCursor)
+	if(g_displayCursor != displayCursor && !g_mouseRelativeMode)
 	{
-		//KLOG(INFO, "ShowCursor(%s)", displayCursor?"true":"false");
 		ShowCursor(displayCursor);
 	}
 #endif//if 0 else
 	g_displayCursor = displayCursor;
 }
+internal PLATFORM_MOUSE_SET_RELATIVE_MODE(w32PlatformMouseSetRelativeMode)
+{
+	if(g_mouseRelativeMode != value)
+	{
+		if(g_displayCursor)
+			ShowCursor(!value);
+		if(value)
+		{
+			if(!GetCursorPos(&g_mouseRelativeModeCachedScreenPosition))
+			{
+				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
+				     GetLastError());
+			}
+		}
+		else
+		{
+			if(!SetCursorPos(g_mouseRelativeModeCachedScreenPosition.x, 
+			                 g_mouseRelativeModeCachedScreenPosition.y))
+			{
+				KLOG(ERROR, "SetCursorPos failure! GetLastError=%i", 
+				     GetLastError());
+			}
+		}
+	}
+	g_mouseRelativeMode = value;
+}
+#if 0
 internal PLATFORM_MOUSE_SET_CAPTURED(w32PlatformMouseSetCaptured)
 {
 	if(g_captureMouse != value)
@@ -1049,3 +1075,4 @@ internal PLATFORM_MOUSE_SET_CAPTURED(w32PlatformMouseSetCaptured)
 	}
 	g_captureMouse = value;
 }
+#endif//0
