@@ -101,6 +101,7 @@ struct v4f32
 	};
 	global_variable const v4f32 ZERO;
 public:
+	inline v4f32& operator*=(const f32 scalar);
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
 	/** @return the magnitude of the vector before normalization */

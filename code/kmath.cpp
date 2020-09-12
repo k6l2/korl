@@ -156,6 +156,14 @@ inline v3f32 v3f32::projectOnto(v3f32 other, bool otherIsNormalized) const
 	const f32 scalarProjection = dot(other);
 	return scalarProjection*other;
 }
+inline v4f32& v4f32::operator*=(const f32 scalar)
+{
+	vx *= scalar;
+	vy *= scalar;
+	vz *= scalar;
+	vw *= scalar;
+	return *this;
+}
 inline f32 v4f32::magnitude() const
 {
 	return sqrtf(powf(vw,2) + powf(vx,2) + powf(vy,2) + powf(vz,2));

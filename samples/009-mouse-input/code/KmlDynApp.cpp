@@ -14,6 +14,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
 		    .transform(v3f32::X);
 	if(windowIsFocused)
+	/* process mouse input only if the window is in focus */
 	{
 		if(gameMouse.windowPosition.x >= 0 
 			&& gameMouse.windowPosition.x < 
@@ -55,16 +56,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		local_persist const f32 CAMERA_SPEED = 25;
 		if(lockedMouse)
-		/* move the camera yaw & pitch based on relative mouse inputs */
 		{
-			g_gs->cameraRadiansYaw += 0.01f*gameMouse.deltaPosition.x;
-			g_gs->cameraRadiansYaw  = fmodf(g_gs->cameraRadiansYaw, 2*PI32);
-			g_gs->cameraRadiansPitch -= 0.01f*gameMouse.deltaPosition.y;
+			local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
 			local_persist const f32 MAX_PITCH_MAGNITUDE = PI32/2 - 0.001f;
+			/* move the camera yaw & pitch based on relative mouse inputs */
+			g_gs->cameraRadiansYaw += 
+				CAMERA_LOOK_SENSITIVITY*gameMouse.deltaPosition.x;
+			g_gs->cameraRadiansYaw  = fmodf(g_gs->cameraRadiansYaw, 2*PI32);
+			g_gs->cameraRadiansPitch -= 
+				CAMERA_LOOK_SENSITIVITY*gameMouse.deltaPosition.y;
 			if(g_gs->cameraRadiansPitch < -MAX_PITCH_MAGNITUDE)
 				g_gs->cameraRadiansPitch = -MAX_PITCH_MAGNITUDE;
 			if(g_gs->cameraRadiansPitch > MAX_PITCH_MAGNITUDE)
 				g_gs->cameraRadiansPitch = MAX_PITCH_MAGNITUDE;
+			/* move the camera forward/backward based on mouse side buttons */
 			if(gameMouse.forward > ButtonState::NOT_PRESSED)
 				g_gs->cameraPosition += 
 					deltaSeconds * CAMERA_SPEED * cameraWorldForward;
@@ -74,21 +79,33 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		else
 		{
+			/* move the camera up/down based on mouse side buttons */
 			if(gameMouse.forward > ButtonState::NOT_PRESSED)
 				g_gs->cameraPosition += deltaSeconds * CAMERA_SPEED * v3f32::Z;
 			if(gameMouse.back > ButtonState::NOT_PRESSED)
 				g_gs->cameraPosition -= deltaSeconds * CAMERA_SPEED * v3f32::Z;
 		}
 	}
+	/* display HUD GUI for sample controls */
 	if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		if(!lockedMouse)
-			ImGui::Text("[mouse left  ] - raycast mouse onto XY plane");
-		ImGui::Text("[mouse middle] - toggle orthographic view");
-		ImGui::Text("[mouse right ] - hold to control camera");
+		if(lockedMouse)
+			ImGui::Text("[mouse left   ] - *** DISABLED ***");
+		else
+			ImGui::Text("[mouse left   ] - raycast mouse onto XY plane");
+		ImGui::Text("[mouse middle ] - toggle orthographic view");
+		ImGui::Text("[mouse right  ] - hold to control camera yaw/pitch");
 		if(lockedMouse)
 		{
-			ImGui::Text("[mouse move] - camera yaw/pitch");
+			ImGui::Text("[mouse move   ] - camera yaw/pitch");
+			ImGui::Text("[mouse back   ] - camera back");
+			ImGui::Text("[mouse forward] - camera forward");
+		}
+		else
+		{
+			ImGui::Text("[mouse move   ] - *** DISABLED ***");
+			ImGui::Text("[mouse back   ] - camera down");
+			ImGui::Text("[mouse forward] - camera up");
 		}
 		ImGui::Separator();
 		ImGui::Text("Mouse Window Position={%i,%i}", 
@@ -104,7 +121,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		            g_gs->cameraRadiansPitch*180/PI32);
 	}
 	ImGui::End();
+	/* mouse "relative mode" effectively disable the mouse cursor and use the 
+		mouse as a purely relative axis device (only delta inputs are valid) */
 	g_kpl->mouseSetRelativeMode(lockedMouse);
+	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
 	if(g_gs->orthographicView)

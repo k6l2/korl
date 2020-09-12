@@ -540,7 +540,9 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		value of -1, since coordinates are right-handed */
 	const v4f32 eyeRayDirectionHcs = {eyeRayNds.x, eyeRayNds.y, -1, 1};
 	/* homogeneous-clip-space  => eye-space */
-	const v4f32 eyeRayDirectionEs = mInverseProjection*eyeRayDirectionHcs;
+	v4f32 eyeRayDirectionEs = mInverseProjection*eyeRayDirectionHcs;
+	if(!isOrthographic)
+		eyeRayDirectionEs.vw = 0;
 	/* eye-space               => world-space */
 	const v4f32 eyeRayDirectionWs = mInverseView*eyeRayDirectionEs;
 	v3f32& resultPosition  = *reinterpret_cast<v3f32*>(o_worldEyeRayPosition);
@@ -550,7 +552,7 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		/* the orthographic eye position should be as far to the "front" of the 
 			homogenous clip space box, which means setting the Z coordinate to a 
 			value of 1 */
-		const v4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y,  1, 1};
+		const v4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y, 1, 1};
 		const v4f32 eyeRayPositionEs  = mInverseProjection*eyeRayPositionHcs;
 		const v4f32 eyeRayPositionWs  = mInverseView*eyeRayPositionEs;
 		resultPosition  = 
