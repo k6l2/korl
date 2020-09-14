@@ -657,7 +657,7 @@
 	[x] scroll to change click circle radius
 [ ] samples: 3D collision detection & resolution capabilities
 	https://box2d.org/publications/
-	[ ] kmath: generate box vertices for arbitrary 3D size
+	[x] kmath: generate box vertices for arbitrary 3D size
 	[ ] kmath: generate sphere vertices for arbitrary radius,resolution
 	[ ] create shapes
 		[ ] press 1 to spawn a box at the mouse cursor

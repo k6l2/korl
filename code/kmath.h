@@ -72,6 +72,7 @@ public:
 	inline v3f32 operator-(const v3f32& other) const;
 	inline v3f32 operator*(f32 scalar) const;
 	inline v3f32 cross(const v3f32& other) const;
+	inline v3f32& operator/=(f32 scalar);
 	inline v3f32& operator+=(const v3f32& other);
 	inline v3f32& operator-=(const v3f32& other);
 	inline f32 magnitude() const;
@@ -193,6 +194,24 @@ namespace kmath
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
 		bool cullPlaneBackFace);
+	struct GeneratedMeshVertex
+	{
+		v3f32 localPosition;
+		v2f32 textureNormal;
+	};
+	/**
+	 * Generate mesh data for a box centered on the origin with `lengths` widths 
+	 * for each respective dimension of the `lengths` parameter.
+	 * @param lengths The total length in each dimension of the box.  The final 
+	 *                vertex positions of the box will not exceed 
+	 *                `lengths.? / 2`, where `?` is the element in each 
+	 *                respective dimension.
+	 * @param o_buffer Pointer to the array where the vertex data will be 
+	 *                 stored.  Caller must supply an array of size 6*6=36 in 
+	 *                 order to contain a complete 3D box!
+	 */
+	internal inline void generateMeshBox(
+		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);

@@ -79,8 +79,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		ImGui::Text("[L-SHIFT / SPACE] - move camera up/down");
 	}
 	ImGui::End();
-	/* mouse "relative mode" effectively disable the mouse cursor and use the 
-		mouse as a purely relative axis device (only delta inputs are valid) */
+#if DEBUG_DELETE_LATER
+	ImGui::SliderFloat3("boxLengths", g_gs->boxLengths.elements, 0.1f, 10.f);
+#endif//DEBUG_DELETE_LATER
 	g_kpl->mouseSetRelativeMode(lockedMouse);
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
@@ -93,6 +94,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->lookAt(g_gs->cameraPosition.elements, 
 	              (g_gs->cameraPosition + cameraWorldForward).elements, 
 	              v3f32::Z.elements);
+#if DEBUG_DELETE_LATER
+	/* draw test box */
+	{
+		kmath::GeneratedMeshVertex generatedBox[36];
+		kmath::generateMeshBox(g_gs->boxLengths, generatedBox, 
+		                       sizeof(generatedBox));
+		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
+		DRAW_TRIS(generatedBox, VERTEX_ATTRIBS_GENERATED_MESH);
+	}
+#endif// DEBUG_DELETE_LATER
 	/* draw origin */
 	{
 		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});

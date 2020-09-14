@@ -109,6 +109,14 @@ inline v3f32 v3f32::cross(const v3f32& other) const
 	       , z*other.x - x*other.z
 	       , x*other.y - y*other.x };
 }
+inline v3f32& v3f32::operator/=(f32 scalar)
+{
+	kassert(!kmath::isNearlyZero(scalar));
+	x /= scalar;
+	y /= scalar;
+	z /= scalar;
+	return *this;
+}
 inline v3f32& v3f32::operator+=(const v3f32& other)
 {
 	x += other.x;
@@ -615,4 +623,58 @@ internal inline f32 kmath::collideRayPlane(
 	if(result < 0)
 		return NAN32;
 	return result;
+}
+internal inline void kmath::generateMeshBox(
+		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize)
+{
+	kassert(bufferByteSize >= sizeof(GeneratedMeshVertex)*36);
+	lengths /= 2.f;
+	// top (+Z) low-right
+	o_buffer[ 0] = {{ lengths.x, lengths.y, lengths.z}, {1,1}};
+	o_buffer[ 1] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
+	o_buffer[ 2] = {{ lengths.x,-lengths.y, lengths.z}, {0,1}};
+	// top (+Z) up-left
+	o_buffer[ 3] = {{-lengths.x,-lengths.y, lengths.z}, {0,0}};
+	o_buffer[ 4] = {{ lengths.x,-lengths.y, lengths.z}, {0,1}};
+	o_buffer[ 5] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
+	// front (+X) low-right
+	o_buffer[ 6] = {{ lengths.x, lengths.y, lengths.z}, {1,0}};
+	o_buffer[ 7] = {{ lengths.x,-lengths.y,-lengths.z}, {0,1}};
+	o_buffer[ 8] = {{ lengths.x, lengths.y,-lengths.z}, {1,1}};
+	// front (+X) up-left
+	o_buffer[ 9] = {{ lengths.x,-lengths.y,-lengths.z}, {0,1}};
+	o_buffer[10] = {{ lengths.x, lengths.y, lengths.z}, {1,0}};
+	o_buffer[11] = {{ lengths.x,-lengths.y, lengths.z}, {0,0}};
+	// left (+Y) low-right
+	o_buffer[12] = {{ lengths.x, lengths.y,-lengths.z}, {0,1}};
+	o_buffer[13] = {{-lengths.x, lengths.y,-lengths.z}, {1,1}};
+	o_buffer[14] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
+	// left (+Y) up-left
+	o_buffer[15] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
+	o_buffer[16] = {{ lengths.x, lengths.y, lengths.z}, {0,0}};
+	o_buffer[17] = {{ lengths.x, lengths.y,-lengths.z}, {0,1}};
+	// back (-X) low-right
+	o_buffer[18] = {{-lengths.x, lengths.y,-lengths.z}, {0,1}};
+	o_buffer[19] = {{-lengths.x,-lengths.y,-lengths.z}, {1,1}};
+	o_buffer[20] = {{-lengths.x,-lengths.y, lengths.z}, {1,0}};
+	// back (-X) up-left
+	o_buffer[21] = {{-lengths.x,-lengths.y, lengths.z}, {1,0}};
+	o_buffer[22] = {{-lengths.x, lengths.y, lengths.z}, {0,0}};
+	o_buffer[23] = {{-lengths.x, lengths.y,-lengths.z}, {0,1}};
+	// right (-Y) low-right
+	o_buffer[24] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
+	o_buffer[25] = {{ lengths.x,-lengths.y,-lengths.z}, {1,1}};
+	o_buffer[26] = {{ lengths.x,-lengths.y, lengths.z}, {1,0}};
+	// right (-Y) up-left
+	o_buffer[27] = {{ lengths.x,-lengths.y, lengths.z}, {1,0}};
+	o_buffer[28] = {{-lengths.x,-lengths.y, lengths.z}, {0,0}};
+	o_buffer[29] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
+	// bottom (-Z) low-right
+	o_buffer[30] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
+	o_buffer[31] = {{-lengths.x, lengths.y,-lengths.z}, {1,1}};
+	o_buffer[32] = {{ lengths.x, lengths.y,-lengths.z}, {1,0}};
+	// bottom (-Z) up-left
+	o_buffer[33] = {{ lengths.x, lengths.y,-lengths.z}, {1,0}};
+	o_buffer[34] = {{ lengths.x,-lengths.y,-lengths.z}, {0,0}};
+	o_buffer[35] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
 }
