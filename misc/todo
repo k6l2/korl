@@ -656,11 +656,45 @@
 	[x] relative wheel position
 	[x] scroll to change click circle radius
 [ ] samples: 3D collision detection & resolution capabilities
-	[ ] utility: Aabb3d broadphase collision detection
-	[ ] utility: dynamic bounding volume tree
+	https://box2d.org/publications/
+	[ ] kmath: generate box vertices for arbitrary 3D size
+	[ ] kmath: generate sphere vertices for arbitrary radius,resolution
+	[ ] create shapes
+		[ ] press 1 to spawn a box at the mouse cursor
+		[ ] press 2 to spawn a sphere """
+	[ ] press W to toggle wireframe draw mode
+		https://stackoverflow.com/a/59473781/4526664
+	[ ] click to select shape
+		https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
+		[ ] kmath: ray-sphere collision test
+		[ ] highlight the selected shape by drawing a yellow wireframe or 
+			something
+		[ ] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)
+		[ ] if nothing was clicked, select nothing
+	[ ] press X to delete shape
+	[ ] press G to 'grab' shapes and move them around with mouse
+	[ ] right click to cancel shape manipulation action
+	[ ] left click to confirm shape manipulation action
+	[ ] press R to rotate shapes 
+		[ ] define the shape's forward vector as norm(camera - shape)
+		[ ] define the shape's up vector as view-up
+		[ ] shape's right vector is just cross(shape-forward, shape-up)
+		[ ] mouse Y difference => shape pitch
+		[ ] mouse X difference => shape yaw
 	[ ] utility: Gilbert-Johnson-Keerthi (GJK) collision detection
 		https://www.youtube.com/watch?v=Qupqu1xe7Io
 		https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
+	[ ] utility: Aabb3d broadphase collision detection
+		- input AABBs, output index pairs representing colliding AABBs
+		[ ] given a shape + transform, generate the world-space AABB & draw it
+			[ ] box
+			[ ] sphere
+		[ ] utility: dynamic bounding volume tree
+			https://box2d.org/files/ErinCatto_DynamicBVH_Full.pdf
+			https://www.programiz.com/dsa/priority-queue
+			http://www.cplusplus.com/reference/algorithm/make_heap/
+			- input: a list of AABBs
+			- output: a list of colliding AABB pairs
 	[ ] utility: Expanding Polytope Algorithm (EPA)
 		https://youtu.be/6rgiPrzqt9w
 		http://www.dtecta.com/papers/gdc2001depth.pdf
