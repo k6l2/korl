@@ -662,7 +662,7 @@
 	[x] create shapes
 		[x] press 1 to spawn a box at the mouse cursor
 		[x] press 2 to spawn a sphere """
-	[ ] press W to toggle wireframe draw mode
+	[x] press W to toggle wireframe draw mode
 		https://stackoverflow.com/a/59473781/4526664
 	[ ] click to select shape
 		https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection

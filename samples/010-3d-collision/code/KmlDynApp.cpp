@@ -5,16 +5,22 @@ void drawBox(const v3f32& worldPosition, const Shape& shape)
 	kmath::GeneratedMeshVertex generatedBox[36];
 	kmath::generateMeshBox(
 		shape.box.lengths, generatedBox, sizeof(generatedBox));
-	DRAW_TRIS(generatedBox, VERTEX_ATTRIBS_GENERATED_MESH);
+	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
+		? VERTEX_ATTRIBS_GENERATED_MESH_NO_TEX
+		: VERTEX_ATTRIBS_GENERATED_MESH;
+	DRAW_TRIS(generatedBox, vertexAttribOffsets);
 }
 void drawSphere(const v3f32& worldPosition, const Shape& shape)
 {
 	const v3f32 sphereScale = 
 		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
 	g_krb->setModelXform(worldPosition, kQuaternion::IDENTITY, sphereScale);
+	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
+		? VERTEX_ATTRIBS_GENERATED_MESH_NO_TEX
+		: VERTEX_ATTRIBS_GENERATED_MESH;
 	g_krb->drawTris(
 		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
-	    sizeof(g_gs->generatedSphereMesh[0]), VERTEX_ATTRIBS_GENERATED_MESH);
+	    sizeof(g_gs->generatedSphereMesh[0]), vertexAttribOffsets);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -111,6 +117,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(g_gs->hudState == HudState::NAVIGATING)
 				g_gs->hudState = HudState::ADDING_SHAPE;
 		}
+		if(gameKeyboard.w == ButtonState::PRESSED)
+			g_gs->wireframe = !g_gs->wireframe;
 	}
 	/* display HUD GUI for sample controls */
 	if(g_gs->hudState != HudState::NAVIGATING)
@@ -139,6 +147,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			ImGui::Text("[S / F         ] - move camera left/right");
 			ImGui::Text("[SPACE / L-CTRL] - move camera up/down");
 			ImGui::Text("[SHIFT + A     ] - add shape");
+			ImGui::Text("[W             ] - toggle wireframe");
 		}
 		ImGui::End();
 	}
@@ -186,7 +195,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
-	g_krb->setBackfaceCulling(true);
+	g_krb->setBackfaceCulling(!g_gs->wireframe);
+	g_krb->setWireframe(g_gs->wireframe);
 	if(g_gs->orthographicView)
 		g_krb->setProjectionOrthoFixedHeight(
 			windowDimensions.x, windowDimensions.y, 100, 1000);
@@ -245,13 +255,13 @@ GAME_INITIALIZE(gameInitialize)
 	/* generate a single sphere mesh with reasonable resolution that we can 
 		reuse with different scales */
 	g_gs->generatedSphereMeshVertexCount = 
-		kmath::generateMeshCircleSphereVertexCount(16, 16);
+		kmath::generateMeshCircleSphereVertexCount(6, 6);
 	g_gs->generatedSphereMesh = reinterpret_cast<kmath::GeneratedMeshVertex*>(
 		kgaAlloc(g_gs->templateGameState.hKgaPermanent,
 		         sizeof(kmath::GeneratedMeshVertex) * 
 		              g_gs->generatedSphereMeshVertexCount));
 	kmath::generateMeshCircleSphere(
-		1.f, 16, 16, g_gs->generatedSphereMesh, 
+		1.f, 6, 6, g_gs->generatedSphereMesh, 
 		g_gs->generatedSphereMeshVertexCount * 
 			sizeof(kmath::GeneratedMeshVertex));
 	/* initialize dynamic array of actors */

@@ -41,6 +41,7 @@ struct GameState
 	kmath::GeneratedMeshVertex* generatedSphereMesh;
 	size_t generatedSphereMeshVertexCount;
 	Actor* actors;
+	bool wireframe;
 };
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */
@@ -60,6 +61,11 @@ const global_variable KrbVertexAttributeOffsets
 		, .color_4f32    = sizeof(kmath::GeneratedMeshVertex)
 		, .texCoord_2f32 = 
 			offsetof(kmath::GeneratedMeshVertex, textureNormal) };
+const global_variable KrbVertexAttributeOffsets 
+	VERTEX_ATTRIBS_GENERATED_MESH_NO_TEX = 
+		{ .position_3f32 = offsetof(kmath::GeneratedMeshVertex, localPosition)
+		, .color_4f32    = sizeof(kmath::GeneratedMeshVertex)
+		, .texCoord_2f32 = sizeof(kmath::GeneratedMeshVertex) };
 /* convenience macros for our application */
 #define DRAW_LINES(mesh, vertexAttribs) \
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)

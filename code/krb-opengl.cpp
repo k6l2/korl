@@ -47,6 +47,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glLoadIdentity();
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
@@ -69,6 +70,14 @@ internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling)
 		glEnable(GL_CULL_FACE);
 	else
 		glDisable(GL_CULL_FACE);
+	GL_CHECK_ERROR();
+}
+internal KRB_SET_WIREFRAME(krbSetWireframe)
+{
+	if(enable)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	else
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)

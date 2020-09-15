@@ -32,6 +32,8 @@ namespace krb
 	void name(bool enable)
 #define KRB_SET_BACKFACE_CULLING(name) \
 	void name(bool enable)
+#define KRB_SET_WIREFRAME(name) \
+	void name(bool enable)
 /** Setup a right-handed axis where +Y is UP. */
 #define KRB_SET_PROJECTION_ORTHO(name) \
 	void name(u32 windowSizeX, u32 windowSizeY, f32 halfDepth)
@@ -112,6 +114,7 @@ struct KrbVertexAttributeOffsets
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
+typedef KRB_SET_WIREFRAME(fnSig_krbSetWireframe);
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	fnSig_krbSetProjectionOrthoFixedHeight);
@@ -133,6 +136,7 @@ typedef KRB_SCREEN_TO_WORLD(fnSig_krbScreenToWorld);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
+internal KRB_SET_WIREFRAME(krbSetWireframe);
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	krbSetProjectionOrthoFixedHeight);
@@ -156,6 +160,7 @@ struct KrbApi
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
 	fnSig_krbSetDepthTesting*    setDepthTesting    = krbSetDepthTesting;
 	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
+	fnSig_krbSetWireframe*       setWireframe       = krbSetWireframe;
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
 	fnSig_krbSetProjectionOrthoFixedHeight* 
 		setProjectionOrthoFixedHeight = krbSetProjectionOrthoFixedHeight;
