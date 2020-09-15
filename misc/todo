@@ -658,7 +658,7 @@
 [ ] samples: 3D collision detection & resolution capabilities
 	https://box2d.org/publications/
 	[x] kmath: generate box vertices for arbitrary 3D size
-	[ ] kmath: generate sphere vertices for arbitrary radius,resolution
+	[x] kmath: generate sphere vertices for arbitrary radius,resolution
 	[ ] create shapes
 		[ ] press 1 to spawn a box at the mouse cursor
 		[ ] press 2 to spawn a sphere """
@@ -713,6 +713,17 @@
 		https://www.boristhebrave.com/2018/04/15/dual-contouring-tutorial/
 	[ ] utility: heirarchical approximate convex decomposition
 		http://khaledmammou.com/hacd.html
+[ ] samples: FBX mesh importer
+	[ ] kasset: FBX asset
+		[ ] import mesh data
+			- vertex attributes
+				- position
+				- normal
+				- color
+				- texture normal
+			- tri indices
+		[ ] import material data
+			- texture asset name
 [ ] samples: render TTF
 	[ ] integrate stb_truetype
 	[ ] utility: font cache dynamic asset

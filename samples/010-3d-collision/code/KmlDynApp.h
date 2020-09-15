@@ -9,7 +9,9 @@ struct GameState
 	f32 cameraRadiansYaw = PI32*3/4;
 	f32 cameraRadiansPitch = -PI32/4;
 #if DEBUG_DELETE_LATER
-	v3f32 boxLengths = {1,1,1};
+	f32 radius;
+	u32 latitudes = 3;
+	u32 longitudes = 3;
 #endif//DEBUG_DELETE_LATER
 };
 global_variable GameState* g_gs;
@@ -35,3 +37,6 @@ const global_variable KrbVertexAttributeOffsets
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
 #define DRAW_TRIS(mesh, vertexAttribs) \
 	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
+#define ALLOC_FRAME_ARRAY(type,elements) \
+	reinterpret_cast<type*>(\
+		kalAlloc(g_gs->templateGameState.hKalFrame,sizeof(type)*elements))

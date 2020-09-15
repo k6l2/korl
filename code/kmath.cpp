@@ -678,3 +678,85 @@ internal inline void kmath::generateMeshBox(
 	o_buffer[34] = {{ lengths.x,-lengths.y,-lengths.z}, {0,0}};
 	o_buffer[35] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
 }
+internal inline size_t kmath::generateMeshCircleSphereVertexCount(
+		u32 latitudeSegments, u32 longitudeSegments)
+{
+	return ((latitudeSegments - 2)*6 + 6) * longitudeSegments;
+}
+internal inline void kmath::generateMeshCircleSphere(
+		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
+		GeneratedMeshVertex* o_buffer, size_t bufferByteSize)
+{
+	const size_t requiredVertexCount = 
+		generateMeshCircleSphereVertexCount(
+			latitudeSegments, longitudeSegments);
+	kassert(bufferByteSize >= requiredVertexCount*sizeof(GeneratedMeshVertex));
+	kassert(latitudeSegments  >= 2);
+	kassert(longitudeSegments >= 3);
+	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
+	const f32 radiansPerLatitude      = PI32 / latitudeSegments;
+	const v3f32 verticalRadius        = v3f32::Z * radius;
+	size_t currentVertex = 0;
+	for(u32 longitude = 1; longitude <= longitudeSegments; longitude++)
+	{
+		/* add the next triangle to the top cap */
+		const v3f32 capTopZeroLongitude = 
+			kQuaternion(v3f32::Y, radiansPerLatitude, true)
+				.transform(verticalRadius, true);
+		kQuaternion quatLongitude(
+			v3f32::Z, longitude*radiansPerSemiLongitude, true);
+		const v3f32 capTopLongitudeCurrent = 
+			quatLongitude.transform(capTopZeroLongitude, true);
+		kQuaternion quatLongitudePrevious(
+			v3f32::Z, (longitude - 1)*radiansPerSemiLongitude, true);
+		const v3f32 capTopLongitudePrevious = 
+			quatLongitudePrevious.transform(capTopZeroLongitude, true);
+		o_buffer[currentVertex++] = {capTopLongitudePrevious, {}};
+		o_buffer[currentVertex++] = {capTopLongitudeCurrent , {}};
+		o_buffer[currentVertex++] = {verticalRadius         , {}};
+		/* add the next triangle to the bottom  cap*/
+		o_buffer[currentVertex  ] = {capTopLongitudeCurrent , {}};
+		o_buffer[currentVertex++].localPosition.z *= -1;
+		o_buffer[currentVertex  ] = {capTopLongitudePrevious, {}};
+		o_buffer[currentVertex++].localPosition.z *= -1;
+		o_buffer[currentVertex++] = {v3f32::Z*-radius       , {}};
+		/* add the quads to the internal latitude strips */
+		for(u32 latitude = 1; latitude < latitudeSegments - 1; latitude++)
+		{
+			kQuaternion quatLatitudePrevious(
+				v3f32::Y, latitude*radiansPerLatitude, true);
+			kQuaternion quatLatitude(
+				v3f32::Y, (latitude + 1)*radiansPerLatitude, true);
+			const v3f32 latStripTopPrevious = 
+				(quatLongitudePrevious * quatLatitudePrevious)
+					.transform(verticalRadius, true);
+			const v3f32 latStripBottomPrevious = 
+				(quatLongitudePrevious * quatLatitude)
+					.transform(verticalRadius, true);
+			const v3f32 latStripTop = (quatLongitude * quatLatitudePrevious)
+				.transform(verticalRadius, true);
+			const v3f32 latStripBottom = (quatLongitude * quatLatitude)
+				.transform(verticalRadius, true);
+			o_buffer[currentVertex++] = {latStripTopPrevious   , {}};
+			o_buffer[currentVertex++] = {latStripBottomPrevious, {}};
+			o_buffer[currentVertex++] = {latStripBottom        , {}};
+			o_buffer[currentVertex++] = {latStripBottom        , {}};
+			o_buffer[currentVertex++] = {latStripTop           , {}};
+			o_buffer[currentVertex++] = {latStripTopPrevious   , {}};
+		}
+	}
+	kassert(currentVertex == requiredVertexCount);
+	/* calculate proper texture normals based on cylindrical projection 
+		Source: https://gamedev.stackexchange.com/a/114416 */
+	/* @TODO: figure out how to improve this at some point?  it seems very 
+		glitchy on the north & south poles, as well as some other issues with 
+		low resolution spheres...  But I don't care about generated sphere 
+		textures right now so... */
+	for(size_t v = 0; v < requiredVertexCount; v++)
+	{
+		const v3f32 positionNorm = normal(o_buffer[v].localPosition);
+		o_buffer[v].textureNormal.x = 1.f - 
+			(atan2f(positionNorm.x, positionNorm.y) / (2*PI32) + 0.5f);
+		o_buffer[v].textureNormal.y = 1.f - (positionNorm.z * 0.5f + 0.5f);
+	}
+}

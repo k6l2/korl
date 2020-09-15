@@ -207,11 +207,34 @@ namespace kmath
 	 *                `lengths.? / 2`, where `?` is the element in each 
 	 *                respective dimension.
 	 * @param o_buffer Pointer to the array where the vertex data will be 
-	 *                 stored.  Caller must supply an array of size 6*6=36 in 
-	 *                 order to contain a complete 3D box!
+	 *                 stored.  Caller must supply an array of >= 36 elements in 
+	 *                 order to contain a complete 3D box!  Output vertices are 
+	 *                 a list of right-handed triangles.
 	 */
 	internal inline void generateMeshBox(
 		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
+	internal inline size_t generateMeshCircleSphereVertexCount(
+		u32 latitudeSegments, u32 longitudeSegments);
+	/**
+	 * Generate mesh data for a sphere made of (semi)circles along latitudes and 
+	 * longitudes with the specified respective resolutions.
+	 * @param latitudeSegments The # of latitude circles in the sphere equals 
+	 *                         `latitudeSegments - 1`, as the sphere's "top" and 
+	 *                         "bottom" vertices will define `latitudeSegments` 
+	 *                         strips of solid geometry.  
+	 *                         This value MUST be >= 2.
+	 * @param longitudeSegments The # of longitude semicircles in the sphere.  
+	 *                          This value MUST be >= 3.
+	 * @param o_buffer Pointer to the array where the vertex data will be 
+	 *                 stored.  Caller must supply an array of >= 
+	 *                 `generateMeshCircleSphereVertexCount(...)` elements!  
+	 *                 Output vertices are a list of right-handed triangles.  
+	 *                 Vertex textureNormals are generated using a cylindrical 
+	 *                 projection.
+	 */
+	internal inline void generateMeshCircleSphere(
+		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
+		GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
