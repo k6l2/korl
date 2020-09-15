@@ -19,6 +19,25 @@ const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,
                                    0,1,0,0,
                                    0,0,1,0,
                                    0,0,0,1};
+inline v2u32 v2u32::operator/(u32 discreteScalar) const
+{
+	kassert(discreteScalar != 0);
+	return {x / discreteScalar, y / discreteScalar};
+}
+v2i32::v2i32()
+{
+}
+v2i32::v2i32(const v2u32& value)
+{
+	x = kmath::safeTruncateI32(value.x);
+	y = kmath::safeTruncateI32(value.y);
+}
+inline v2i32& v2i32::operator=(const v2u32& value)
+{
+	x = kmath::safeTruncateI32(value.x);
+	y = kmath::safeTruncateI32(value.y);
+	return *this;
+}
 inline v2f32 v2f32::operator-() const
 {
 	return {-x,-y};

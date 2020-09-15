@@ -15,6 +15,7 @@ struct v2u32
 			u32 x, y;
 		};
 	};
+	inline v2u32 operator/(u32 discreteScalar) const;
 };
 struct v2i32
 {
@@ -26,6 +27,10 @@ struct v2i32
 			i32 x, y;
 		};
 	};
+public:
+	v2i32();
+	v2i32(const v2u32& value);
+	inline v2i32& operator=(const v2u32& value);
 };
 struct v2f32
 {

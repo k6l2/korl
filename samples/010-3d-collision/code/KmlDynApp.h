@@ -1,6 +1,33 @@
 #pragma once
 #include "TemplateGameState.h"
 #define DEBUG_DELETE_LATER 1
+enum class ShapeType : u8
+	{ BOX
+	, SPHERE };
+union Shape
+{
+	ShapeType type;
+	struct 
+	{
+		ShapeType type;
+		v3f32 lengths;
+	} box;
+	struct 
+	{
+		ShapeType type;
+		f32 radius;
+	} sphere;
+};
+enum class HudState : u8
+	{ NAVIGATING
+	, ADDING_SHAPE
+	, ADDING_BOX
+	, ADDING_SPHERE };
+struct Actor
+{
+	v3f32 position;
+	Shape shape;
+};
 struct GameState
 {
 	KmlTemplateGameState templateGameState;
@@ -8,11 +35,12 @@ struct GameState
 	v3f32 cameraPosition = {10,11,12};
 	f32 cameraRadiansYaw = PI32*3/4;
 	f32 cameraRadiansPitch = -PI32/4;
-#if DEBUG_DELETE_LATER
-	f32 radius;
-	u32 latitudes = 3;
-	u32 longitudes = 3;
-#endif//DEBUG_DELETE_LATER
+	HudState hudState;
+	Shape addShape;
+	v3f32 addShapePosition;
+	kmath::GeneratedMeshVertex* generatedSphereMesh;
+	size_t generatedSphereMeshVertexCount;
+	Actor* actors;
 };
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */

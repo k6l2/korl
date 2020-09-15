@@ -659,9 +659,9 @@
 	https://box2d.org/publications/
 	[x] kmath: generate box vertices for arbitrary 3D size
 	[x] kmath: generate sphere vertices for arbitrary radius,resolution
-	[ ] create shapes
-		[ ] press 1 to spawn a box at the mouse cursor
-		[ ] press 2 to spawn a sphere """
+	[x] create shapes
+		[x] press 1 to spawn a box at the mouse cursor
+		[x] press 2 to spawn a sphere """
 	[ ] press W to toggle wireframe draw mode
 		https://stackoverflow.com/a/59473781/4526664
 	[ ] click to select shape

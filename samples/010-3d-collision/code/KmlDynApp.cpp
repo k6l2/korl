@@ -1,11 +1,26 @@
 #include "KmlDynApp.h"
+void drawBox(const v3f32& worldPosition, const Shape& shape)
+{
+	g_krb->setModelXform(worldPosition, kQuaternion::IDENTITY, {1,1,1});
+	kmath::GeneratedMeshVertex generatedBox[36];
+	kmath::generateMeshBox(
+		shape.box.lengths, generatedBox, sizeof(generatedBox));
+	DRAW_TRIS(generatedBox, VERTEX_ATTRIBS_GENERATED_MESH);
+}
+void drawSphere(const v3f32& worldPosition, const Shape& shape)
+{
+	const v3f32 sphereScale = 
+		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
+	g_krb->setModelXform(worldPosition, kQuaternion::IDENTITY, sphereScale);
+	g_krb->drawTris(
+		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
+	    sizeof(g_gs->generatedSphereMesh[0]), VERTEX_ATTRIBS_GENERATED_MESH);
+}
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
 	                                    windowIsFocused))
 		return false;
-	v3f32 mouseEyeRayPosition  = {};
-	v3f32 mouseEyeRayDirection = {};
 	bool lockedMouse = false;
 	const v3f32 cameraWorldForward = 
 		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
@@ -22,7 +37,37 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	/* handle user input */
 	if(windowIsFocused)
 	{
+		if(g_gs->hudState != HudState::NAVIGATING)
+			if(gameKeyboard.grave > ButtonState::NOT_PRESSED)
+				g_gs->hudState = HudState::NAVIGATING;
+		if(    g_gs->hudState == HudState::ADDING_BOX 
+			|| g_gs->hudState == HudState::ADDING_SPHERE)
+		{
+			const bool mouseOverAnyGui = ImGui::IsAnyItemHovered() 
+				|| ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+			v3f32 worldEyeRayPosition;
+			v3f32 worldEyeRayDirection;
+			const v2i32 mouseWindowPosition = mouseOverAnyGui
+				? windowDimensions / 2
+				: gameMouse.windowPosition;
+			if(!g_krb->screenToWorld(
+				mouseWindowPosition.elements, windowDimensions.elements, 
+				worldEyeRayPosition.elements, worldEyeRayDirection.elements))
+			{
+				KLOG(ERROR, "Failed to get mouse world eye ray!");
+			}
+			g_gs->addShapePosition = worldEyeRayPosition + 
+				18*worldEyeRayDirection;
+			if(!mouseOverAnyGui && gameMouse.left == ButtonState::PRESSED)
+			{
+				Actor newActor;
+				newActor.position = g_gs->addShapePosition;
+				newActor.shape    = g_gs->addShape;
+				arrpush(g_gs->actors, newActor);
+			}
+		}
 		lockedMouse = gameMouse.right > ButtonState::NOT_PRESSED;
+		g_kpl->mouseSetRelativeMode(lockedMouse);
 		if(gameMouse.middle == ButtonState::PRESSED)
 			g_gs->orthographicView = !g_gs->orthographicView;
 		local_persist const f32 CAMERA_SPEED = 25;
@@ -60,32 +105,84 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(g_gs->cameraRadiansPitch > MAX_PITCH_MAGNITUDE)
 				g_gs->cameraRadiansPitch = MAX_PITCH_MAGNITUDE;
 		}
+		if(gameKeyboard.modifiers.shift 
+			&& gameKeyboard.a > ButtonState::NOT_PRESSED)
+		{
+			if(g_gs->hudState == HudState::NAVIGATING)
+				g_gs->hudState = HudState::ADDING_SHAPE;
+		}
 	}
 	/* display HUD GUI for sample controls */
-	if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	if(g_gs->hudState != HudState::NAVIGATING)
 	{
-		ImGui::Text("[mouse middle  ] - toggle orthographic view");
-		ImGui::Text("[mouse right   ] - hold to control camera yaw/pitch");
-		if(lockedMouse)
+		if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::Text("[mouse move    ] - camera yaw/pitch");
+			ImGui::Text("[GRAVE] - cancel action");
 		}
-		else
-		{
-			ImGui::Text("[mouse move    ] - *** DISABLED ***");
-		}
-		ImGui::Text("[E / D           ] - move camera forward/back");
-		ImGui::Text("[S / F           ] - move camera left/right");
-		ImGui::Text("[L-SHIFT / L-CTRL] - move camera up/down");
+		ImGui::End();
 	}
-	ImGui::End();
-#if DEBUG_DELETE_LATER
-	//ImGui::SliderFloat3("boxLengths", g_gs->boxLengths.elements, 0.1f, 10.f);
-	ImGui::SliderFloat("radius", &g_gs->radius, 0.1f, 10.f);
-	ImGui::SliderInt("latitudes", (int*)&g_gs->latitudes, 2, 100);
-	ImGui::SliderInt("longitudes", (int*)&g_gs->longitudes, 3, 100);
-#endif//DEBUG_DELETE_LATER
-	g_kpl->mouseSetRelativeMode(lockedMouse);
+	if(g_gs->hudState == HudState::NAVIGATING)
+	{
+		if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Text("[mouse middle] - toggle orthographic view");
+			ImGui::Text("[mouse right ] - hold to control camera yaw/pitch");
+			if(lockedMouse)
+			{
+				ImGui::Text("[mouse move  ] - camera yaw/pitch");
+			}
+			else
+			{
+				ImGui::Text("[mouse move  ] - *** DISABLED ***");
+			}
+			ImGui::Text("[E / D         ] - move camera forward/back");
+			ImGui::Text("[S / F         ] - move camera left/right");
+			ImGui::Text("[SPACE / L-CTRL] - move camera up/down");
+			ImGui::Text("[SHIFT + A     ] - add shape");
+		}
+		ImGui::End();
+	}
+	else if(g_gs->hudState == HudState::ADDING_SHAPE)
+	{
+		if(ImGui::Begin("Add", nullptr, 
+		                ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			if(ImGui::Button("Box"))
+			{
+				g_gs->hudState = HudState::ADDING_BOX;
+				g_gs->addShape.type = ShapeType::BOX;
+				g_gs->addShape.box.lengths = {1,1,1};
+			}
+			if(ImGui::Button("Sphere"))
+			{
+				g_gs->hudState = HudState::ADDING_SPHERE;
+				g_gs->addShape.type = ShapeType::SPHERE;
+				g_gs->addShape.sphere.radius = 1.f;
+			}
+		}
+		ImGui::End();
+	}
+	else if(g_gs->hudState == HudState::ADDING_BOX)
+	{
+		if(ImGui::Begin("Add Box", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::SliderFloat3("lengths", g_gs->addShape.box.lengths.elements, 
+			                    0.1f, 10.f);
+			ImGui::Text("[Click the scene to add the box]");
+		}
+		ImGui::End();
+	}
+	else if(g_gs->hudState == HudState::ADDING_SPHERE)
+	{
+		if(ImGui::Begin("Add Sphere", nullptr, 
+		                ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::SliderFloat("radius", &g_gs->addShape.sphere.radius, 
+			                   0.1f, 10.f);
+			ImGui::Text("[Click the scene to add the sphere]");
+		}
+		ImGui::End();
+	}
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
@@ -98,29 +195,27 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->lookAt(g_gs->cameraPosition.elements, 
 	              (g_gs->cameraPosition + cameraWorldForward).elements, 
 	              v3f32::Z.elements);
-#if DEBUG_DELETE_LATER
-	/* draw test box */
+	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
-		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
-#if 0
-		kmath::GeneratedMeshVertex generatedBox[36];
-		kmath::generateMeshBox(g_gs->boxLengths, generatedBox, 
-		                       sizeof(generatedBox));
-		DRAW_TRIS(generatedBox, VERTEX_ATTRIBS_GENERATED_MESH);
-#else
-		const size_t sphereVertexCount = 
-			kmath::generateMeshCircleSphereVertexCount(
-				g_gs->latitudes, g_gs->longitudes);
-		kmath::GeneratedMeshVertex* generatedSphere = 
-			ALLOC_FRAME_ARRAY(kmath::GeneratedMeshVertex, sphereVertexCount);
-		kmath::generateMeshCircleSphere(
-			g_gs->radius, g_gs->latitudes, g_gs->longitudes, generatedSphere, 
-			sphereVertexCount*sizeof(kmath::GeneratedMeshVertex));
-		g_krb->drawTris(generatedSphere, sphereVertexCount, 
-		    sizeof(generatedSphere[0]), VERTEX_ATTRIBS_GENERATED_MESH);
-#endif
+		Actor& actor = g_gs->actors[a];
+		switch(actor.shape.type)
+		{
+			case ShapeType::BOX:
+				drawBox(actor.position, actor.shape);
+				break;
+			case ShapeType::SPHERE:
+				drawSphere(actor.position, actor.shape);
+				break;
+		}
 	}
-#endif// DEBUG_DELETE_LATER
+	if(g_gs->hudState == HudState::ADDING_BOX)
+	{
+		drawBox(g_gs->addShapePosition, g_gs->addShape);
+	}
+	if(g_gs->hudState == HudState::ADDING_SPHERE)
+	{
+		drawSphere(g_gs->addShapePosition, g_gs->addShape);
+	}
 	/* draw origin */
 	{
 		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
@@ -147,6 +242,20 @@ GAME_INITIALIZE(gameInitialize)
 	*g_gs = {};// clear all GameState memory before initializing the template
 	templateGameState_initialize(&g_gs->templateGameState, memory, 
 	                             sizeof(GameState));
+	/* generate a single sphere mesh with reasonable resolution that we can 
+		reuse with different scales */
+	g_gs->generatedSphereMeshVertexCount = 
+		kmath::generateMeshCircleSphereVertexCount(16, 16);
+	g_gs->generatedSphereMesh = reinterpret_cast<kmath::GeneratedMeshVertex*>(
+		kgaAlloc(g_gs->templateGameState.hKgaPermanent,
+		         sizeof(kmath::GeneratedMeshVertex) * 
+		              g_gs->generatedSphereMeshVertexCount));
+	kmath::generateMeshCircleSphere(
+		1.f, 16, 16, g_gs->generatedSphereMesh, 
+		g_gs->generatedSphereMeshVertexCount * 
+			sizeof(kmath::GeneratedMeshVertex));
+	/* initialize dynamic array of actors */
+	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKgaPermanent);
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
