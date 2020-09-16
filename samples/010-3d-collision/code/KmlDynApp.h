@@ -43,6 +43,9 @@ struct GameState
 	Actor* actors;
 	bool wireframe;
 	v3f32 eyeRayActorHitPosition;
+	/* The array index into `actors` == `selectedActorId` + 1.  A value of 0 
+		indicates no actor is selected */
+	u32 selectedActorId;
 };
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */

@@ -49,6 +49,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
+	*(krb::g_context) = {};
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
@@ -186,7 +187,10 @@ internal KRB_DRAW_LINES(krbDrawLines)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	if(vertexAttribOffsets.color_4f32 >= vertexStride)
-		glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
+		glColor4f(krb::g_context->defaultColor.r, 
+		          krb::g_context->defaultColor.g, 
+		          krb::g_context->defaultColor.b, 
+		          krb::g_context->defaultColor.a);
 	glBegin(GL_LINES);
 	for(size_t v = 0; v < vertexCount; v++)
 	{
@@ -216,7 +220,10 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	if(vertexAttribOffsets.color_4f32 >= vertexStride)
-		glColor4b(0x7F, 0x7F, 0x7F, 0x7F);
+		glColor4f(krb::g_context->defaultColor.r, 
+		          krb::g_context->defaultColor.g, 
+		          krb::g_context->defaultColor.b, 
+		          krb::g_context->defaultColor.a);
 	glBegin(GL_TRIANGLES);
 	for(size_t v = 0; v < vertexCount; v++)
 	{
@@ -583,4 +590,12 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 			                     eyeRayDirectionWs.vz} );
 	}
 	return true;
+}
+internal KRB_SET_CURRENT_CONTEXT(krbSetCurrentContext)
+{
+	krb::g_context = context;
+}
+internal KRB_SET_DEFAULT_COLOR(krbSetDefaultColor)
+{
+	krb::g_context->defaultColor = color;
 }

@@ -1,10 +1,13 @@
 #include "TemplateGameState.h"
-internal void templateGameState_onReloadCode(GameMemory& memory)
+internal void templateGameState_onReloadCode(
+	KmlTemplateGameState* tgs, GameMemory& memory)
 {
 	g_kpl          = &memory.kpl;
 	g_krb          = &memory.krb;
 	platformLog    = memory.kpl.log;
 	platformAssert = memory.kpl.assert;
+	/* tell KRB where it can safely store its CPU-side internal state */
+	g_krb->setCurrentContext(&tgs->krbContext);
 	/* ImGui support */
 	ImGui::SetCurrentContext(
 		reinterpret_cast<ImGuiContext*>(memory.imguiContext));

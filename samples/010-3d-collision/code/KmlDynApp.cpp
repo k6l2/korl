@@ -150,6 +150,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		if(g_gs->hudState == HudState::NAVIGATING)
 		{
 			f32 nearestEyeRayHit = INFINITY32;
+			u32 nearestActorId = 0;
 			for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 			{
 				Actor& actor = g_gs->actors[a];
@@ -158,10 +159,17 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				if(isnan(eyeRayHit))
 					continue;
 				if(eyeRayHit < nearestEyeRayHit)
+				{
 					nearestEyeRayHit = eyeRayHit;
+					nearestActorId = kmath::safeTruncateU32(a + 1);
+				}
 			}
+			if(gameMouse.left == ButtonState::PRESSED)
+				g_gs->selectedActorId = 0;
 			if(nearestEyeRayHit < INFINITY32)
 			{
+				if(gameMouse.left == ButtonState::PRESSED)
+					g_gs->selectedActorId = nearestActorId;
 				g_gs->eyeRayActorHitPosition = worldEyeRayPosition + 
 					nearestEyeRayHit*worldEyeRayDirection;
 			}
@@ -180,7 +188,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			//ImGui::Text("[mouse left  ] - select shape");
+			ImGui::Text("[mouse left  ] - select shape");
 			ImGui::Text("[mouse middle] - toggle orthographic view");
 			ImGui::Text("[mouse right ] - hold to control camera yaw/pitch");
 			if(lockedMouse)
@@ -256,6 +264,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
 		Actor& actor = g_gs->actors[a];
+		if(g_gs->selectedActorId && g_gs->selectedActorId - 1 == a)
+			g_krb->setDefaultColor(krb::YELLOW);
+		else
+			g_krb->setDefaultColor(krb::WHITE);
 		drawShape(actor.position, actor.shape);
 	}
 	if(    g_gs->hudState == HudState::ADDING_BOX
@@ -292,8 +304,8 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	templateGameState_onReloadCode(&g_gs->templateGameState, memory);
 }
 GAME_INITIALIZE(gameInitialize)
 {

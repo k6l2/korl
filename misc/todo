@@ -667,10 +667,10 @@
 	[ ] click to select shape
 		[x] kmath: ray-sphere collision test
 			https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
-		[ ] highlight the selected shape by drawing a yellow wireframe or 
+		[x] highlight the selected shape by drawing a yellow wireframe or 
 			something
 		[ ] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)
-		[ ] if nothing was clicked, select nothing
+		[x] if nothing was clicked, select nothing
 	[ ] press X to delete shape
 	[ ] press G to 'grab' shapes and move them around with mouse
 	[ ] right click to cancel shape manipulation action
@@ -706,6 +706,8 @@
 			http://algolist.ru/maths/geom/convhull/qhull3d.php
 		[ ] or maybe just use someone's QuickHull code?
 			https://github.com/karimnaaji/3d-quickhull
+[ ] update samples to latest API
+	[ ] templateGameState_onReloadCode
 [ ] samples: networking: run kNetClientConnect on a separate thread to prevent 
 	the game from chunking when the address can't be resolved
 [ ] samples: voxel manipulation

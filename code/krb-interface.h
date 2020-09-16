@@ -25,6 +25,11 @@ namespace krb
 	global_variable const Color4f32 GREEN       = {0,1,0,1};
 	global_variable const Color4f32 BLUE        = {0,0,1,1};
 	global_variable const Color4f32 YELLOW      = {1,1,0,1};
+	struct Context
+	{
+		Color4f32 defaultColor = WHITE;
+	};
+	global_variable Context* g_context;
 }
 #define KRB_BEGIN_FRAME(name) \
 	void name(f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue)
@@ -111,6 +116,10 @@ struct KrbVertexAttributeOffsets
 #define KRB_SCREEN_TO_WORLD(name) \
 	bool name(const i32 windowPosition[2], const u32 windowSize[2], \
 	          f32 o_worldEyeRayPosition[3], f32 o_worldEyeRayDirection[3])
+#define KRB_SET_CURRENT_CONTEXT(name) \
+	void name(krb::Context* context)
+#define KRB_SET_DEFAULT_COLOR(name) \
+	void name(const Color4f32& color)
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
@@ -133,6 +142,8 @@ typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
 typedef KRB_WORLD_TO_SCREEN(fnSig_krbWorldToScreen);
 typedef KRB_SCREEN_TO_WORLD(fnSig_krbScreenToWorld);
+typedef KRB_SET_CURRENT_CONTEXT(fnSig_krbSetCurrentContext);
+typedef KRB_SET_DEFAULT_COLOR(fnSig_krbSetDefaultColor);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
@@ -155,6 +166,8 @@ internal KRB_DELETE_TEXTURE(krbDeleteTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen);
 internal KRB_SCREEN_TO_WORLD(krbScreenToWorld);
+internal KRB_SET_CURRENT_CONTEXT(krbSetCurrentContext);
+internal KRB_SET_DEFAULT_COLOR(krbSetDefaultColor);
 struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
@@ -180,4 +193,6 @@ struct KrbApi
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;
 	fnSig_krbWorldToScreen*      worldToScreen      = krbWorldToScreen;
 	fnSig_krbScreenToWorld*      screenToWorld      = krbScreenToWorld;
+	fnSig_krbSetCurrentContext*  setCurrentContext  = krbSetCurrentContext;
+	fnSig_krbSetDefaultColor*    setDefaultColor    = krbSetDefaultColor;
 };
