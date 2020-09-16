@@ -22,6 +22,32 @@ void drawSphere(const v3f32& worldPosition, const Shape& shape)
 		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
 	    sizeof(g_gs->generatedSphereMesh[0]), vertexAttribOffsets);
 }
+void drawShape(const v3f32& worldPosition, const Shape& shape)
+{
+	switch(shape.type)
+	{
+		case ShapeType::BOX:
+			drawBox(worldPosition, shape);
+			break;
+		case ShapeType::SPHERE:
+			drawSphere(worldPosition, shape);
+			break;
+	}
+}
+/** @return NAN32 if the ray doesn't intersect with actor */
+f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
+{
+	switch(actor.shape.type)
+	{
+		case ShapeType::BOX:
+			return NAN32;
+		case ShapeType::SPHERE:
+			return kmath::collideRaySphere(rayOrigin, rayNormal, actor.position, 
+			                               actor.shape.sphere.radius);
+	}
+	kassert(!"This code should never execute!");
+	return NAN32;
+}
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
@@ -40,28 +66,29 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
 		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
 		    .transform(v3f32::Z);
+	g_gs->eyeRayActorHitPosition = {NAN32, NAN32, NAN32};
 	/* handle user input */
 	if(windowIsFocused)
 	{
+		const bool mouseOverAnyGui = ImGui::IsAnyItemHovered() 
+			|| ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+		v3f32 worldEyeRayPosition;
+		v3f32 worldEyeRayDirection;
+		const v2i32 mouseWindowPosition = mouseOverAnyGui
+			? windowDimensions / 2
+			: gameMouse.windowPosition;
+		if(!g_krb->screenToWorld(
+			mouseWindowPosition.elements, windowDimensions.elements, 
+			worldEyeRayPosition.elements, worldEyeRayDirection.elements))
+		{
+			KLOG(ERROR, "Failed to get mouse world eye ray!");
+		}
 		if(g_gs->hudState != HudState::NAVIGATING)
 			if(gameKeyboard.grave > ButtonState::NOT_PRESSED)
 				g_gs->hudState = HudState::NAVIGATING;
 		if(    g_gs->hudState == HudState::ADDING_BOX 
 			|| g_gs->hudState == HudState::ADDING_SPHERE)
 		{
-			const bool mouseOverAnyGui = ImGui::IsAnyItemHovered() 
-				|| ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
-			v3f32 worldEyeRayPosition;
-			v3f32 worldEyeRayDirection;
-			const v2i32 mouseWindowPosition = mouseOverAnyGui
-				? windowDimensions / 2
-				: gameMouse.windowPosition;
-			if(!g_krb->screenToWorld(
-				mouseWindowPosition.elements, windowDimensions.elements, 
-				worldEyeRayPosition.elements, worldEyeRayDirection.elements))
-			{
-				KLOG(ERROR, "Failed to get mouse world eye ray!");
-			}
 			g_gs->addShapePosition = worldEyeRayPosition + 
 				18*worldEyeRayDirection;
 			if(!mouseOverAnyGui && gameMouse.left == ButtonState::PRESSED)
@@ -93,9 +120,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		if(gameKeyboard.space > ButtonState::NOT_PRESSED)
 			g_gs->cameraPosition += 
 				deltaSeconds * CAMERA_SPEED * cameraWorldUp;
-		if(gameKeyboard.controlLeft > ButtonState::NOT_PRESSED)
-			g_gs->cameraPosition -= 
-				deltaSeconds * CAMERA_SPEED * cameraWorldUp;
+		if(gameKeyboard.a > ButtonState::NOT_PRESSED 
+			&& !gameKeyboard.modifiers.shift)
+				g_gs->cameraPosition -= 
+					deltaSeconds * CAMERA_SPEED * cameraWorldUp;
 		if(lockedMouse)
 		{
 			local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
@@ -119,6 +147,25 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		if(gameKeyboard.w == ButtonState::PRESSED)
 			g_gs->wireframe = !g_gs->wireframe;
+		if(g_gs->hudState == HudState::NAVIGATING)
+		{
+			f32 nearestEyeRayHit = INFINITY32;
+			for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
+			{
+				Actor& actor = g_gs->actors[a];
+				f32 eyeRayHit = 
+					testRay(worldEyeRayPosition, worldEyeRayDirection, actor);
+				if(isnan(eyeRayHit))
+					continue;
+				if(eyeRayHit < nearestEyeRayHit)
+					nearestEyeRayHit = eyeRayHit;
+			}
+			if(nearestEyeRayHit < INFINITY32)
+			{
+				g_gs->eyeRayActorHitPosition = worldEyeRayPosition + 
+					nearestEyeRayHit*worldEyeRayDirection;
+			}
+		}
 	}
 	/* display HUD GUI for sample controls */
 	if(g_gs->hudState != HudState::NAVIGATING)
@@ -133,6 +180,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
+			//ImGui::Text("[mouse left  ] - select shape");
 			ImGui::Text("[mouse middle] - toggle orthographic view");
 			ImGui::Text("[mouse right ] - hold to control camera yaw/pitch");
 			if(lockedMouse)
@@ -143,11 +191,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				ImGui::Text("[mouse move  ] - *** DISABLED ***");
 			}
-			ImGui::Text("[E / D         ] - move camera forward/back");
-			ImGui::Text("[S / F         ] - move camera left/right");
-			ImGui::Text("[SPACE / L-CTRL] - move camera up/down");
-			ImGui::Text("[SHIFT + A     ] - add shape");
-			ImGui::Text("[W             ] - toggle wireframe");
+			ImGui::Text("[E / D       ] - move camera forward/back");
+			ImGui::Text("[S / F       ] - move camera left/right");
+			ImGui::Text("[SPACE / A   ] - move camera up/down");
+			ImGui::Text("[SHIFT + A   ] - add shape");
+			ImGui::Text("[W           ] - toggle wireframe");
 		}
 		ImGui::End();
 	}
@@ -208,23 +256,23 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
 		Actor& actor = g_gs->actors[a];
-		switch(actor.shape.type)
-		{
-			case ShapeType::BOX:
-				drawBox(actor.position, actor.shape);
-				break;
-			case ShapeType::SPHERE:
-				drawSphere(actor.position, actor.shape);
-				break;
-		}
+		drawShape(actor.position, actor.shape);
 	}
-	if(g_gs->hudState == HudState::ADDING_BOX)
+	if(    g_gs->hudState == HudState::ADDING_BOX
+	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		drawBox(g_gs->addShapePosition, g_gs->addShape);
+		drawShape(g_gs->addShapePosition, g_gs->addShape);
 	}
-	if(g_gs->hudState == HudState::ADDING_SPHERE)
+	if(!isnan(g_gs->eyeRayActorHitPosition.x))
+	/* draw a crosshair on the 3D position where we hit an actor */
 	{
-		drawSphere(g_gs->addShapePosition, g_gs->addShape);
+		g_krb->setModelXform(g_gs->eyeRayActorHitPosition, 
+		                     kQuaternion::IDENTITY, {10,10,10});
+		g_krb->setModelXformBillboard(true, true, true);
+		local_persist const VertexNoTexture MESH[] = 
+			{ {{-1,-1,0}, krb::WHITE}, {{1, 1,0}, krb::WHITE}
+			, {{-1, 1,0}, krb::WHITE}, {{1,-1,0}, krb::WHITE} };
+		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	/* draw origin */
 	{

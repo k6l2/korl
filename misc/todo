@@ -665,8 +665,8 @@
 	[x] press W to toggle wireframe draw mode
 		https://stackoverflow.com/a/59473781/4526664
 	[ ] click to select shape
-		https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
-		[ ] kmath: ray-sphere collision test
+		[x] kmath: ray-sphere collision test
+			https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
 		[ ] highlight the selected shape by drawing a yellow wireframe or 
 			something
 		[ ] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)

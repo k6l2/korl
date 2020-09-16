@@ -189,9 +189,23 @@ namespace kmath
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
 	/**
+	 * Find the roots of a given quadratic formula which satisfies the form 
+	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
+	 * `f(x) = 0`.  Complex# solutions are ignored.
+	 * @param o_roots The locations in memory where the roots will be stored, if 
+	 *                they exist.  The roots will be stored in ascending order.  
+	 *                Only the first N values will be written to, where N is the 
+	 *                return value of this function.  In the RARE case that the 
+	 *                equation is a line along the x-axis, o_roots[0] is set to 
+	 *                INFINITY32 & a value of 0 is returned.
+	 * @return The number of UNIQUE real# roots found for the given equation.  
+	 *         This value will always be in the range [0,2].
+	 */
+	internal inline u8 solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2]);
+	/**
 	 * @return (1) NAN32 if the ray does not collide with the plane.  
 	 *         (2) INFINITY32 if the ray is co-planar with the plane.  
-	 *         (3) Otherwise, a float representing how far from `rayOrigin` in 
+	 *         (3) Otherwise, a scalar representing how far from `rayOrigin` in 
 	 *             the direction of `rayNormal` the intersection is.
 	 *         In case (3), the return value will ALWAYS be positive.
 	 */
@@ -199,6 +213,15 @@ namespace kmath
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
 		bool cullPlaneBackFace);
+	/**
+	 * @return (1) NAN32 if the ray does not collide with the sphere
+	 *         (2) Otherwise, a scalar representing how far from `rayOrigin` in 
+	 *             the direction of `rayNormal` the intersection is.
+	 *         If the ray origin is contained within the sphere, 0 is returned.
+	 */
+	internal inline f32 collideRaySphere(
+		const v3f32& rayOrigin, const v3f32& rayNormal, 
+		const v3f32& sphereOrigin, f32 sphereRadius);
 	struct GeneratedMeshVertex
 	{
 		v3f32 localPosition;

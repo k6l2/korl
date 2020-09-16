@@ -604,6 +604,54 @@ internal inline v2f32 kmath::rotate(const v2f32& v, f32 radians)
 	};
 	return result;
 }
+internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
+{
+	/* https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection */
+	const f32 discriminant = b*b - 4*a*c;
+	if(discriminant < 0)
+		/* no real# solution */
+		return 0;
+	if(isNearlyZero(a))
+	/* degenerate line equation case */
+	{
+		if(isNearlyZero(b))
+		/* horizontal line case: either NO SOLUTION or INFINITE */
+		{
+			if(isNearlyZero(c))
+				o_roots[0] = INFINITY32;// super-rare case
+			else
+				o_roots[0] = 0;
+			return 0;
+		}
+		o_roots[0] = -c / b;
+		return 1;
+	}
+	u8 result = 1;
+	if(isNearlyZero(discriminant))
+	/* rare case: only ONE real# solution */
+	{
+		o_roots[0] = -0.5f * b / a;
+	}
+	else
+	{
+		result = 2;
+		const f32 q = b > 0
+			? -0.5f * (b + sqrtf(discriminant))
+			: -0.5f * (b - sqrtf(discriminant));
+		/* given the cases handled above, it should not be possible for q to 
+			approach zero, but just in case let's check that here... */
+		kassert(!isNearlyZero(q));
+		o_roots[0] = q/a;
+		o_roots[1] = c/q;
+		if(o_roots[0] > o_roots[1])
+		{
+			const f32 temp = o_roots[0];
+			o_roots[0] = o_roots[1];
+			o_roots[1] = temp;
+		}
+	}
+	return result;
+}
 internal inline f32 kmath::collideRayPlane(
 	const v3f32& rayOrigin, const v3f32& rayNormal, 
 	const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
@@ -642,6 +690,39 @@ internal inline f32 kmath::collideRayPlane(
 	if(result < 0)
 		return NAN32;
 	return result;
+}
+internal inline f32 kmath::collideRaySphere(
+		const v3f32& rayOrigin, const v3f32& rayNormal, 
+		const v3f32& sphereOrigin, f32 sphereRadius)
+{
+	/* analytic solution.  Source:
+		https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection */
+	const v3f32 l = rayOrigin - sphereOrigin;
+	const f32 a = rayNormal.dot(rayNormal);
+	const f32 b = 2 * rayNormal.dot(l);
+	const f32 c = l.dot(l) - (sphereRadius*sphereRadius);
+	f32 analyticSolutions[2];
+	const u8 analyticSolutionCount = solveQuadratic(a, b, c, analyticSolutions);
+	/* no quadratic solutions means the ray's LINE never collides with the 
+		sphere */
+	if(analyticSolutionCount == 0)
+		return NAN32;
+	/* rare case: the ray intersects the sphere at a SINGLE point */
+	if(analyticSolutionCount == 1)
+		if(analyticSolutions[0] < 0)
+			return NAN32;/* intersection is on the wrong side of the ray */
+		else
+			return analyticSolutions[0];
+	/* if the first solution is < 0, the sphere either intersects the ray's 
+		origin, or the sphere is colliding with the ray's line BEHIND the ray 
+		(no collision with the ray itself) */
+	if(analyticSolutions[0] < 0)
+		if(analyticSolutions[1] < 0)
+			return NAN32;
+		else
+			return 0;
+	else
+		return analyticSolutions[0];
 }
 internal inline void kmath::generateMeshBox(
 		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize)

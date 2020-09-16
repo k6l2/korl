@@ -42,6 +42,7 @@ struct GameState
 	size_t generatedSphereMeshVertexCount;
 	Actor* actors;
 	bool wireframe;
+	v3f32 eyeRayActorHitPosition;
 };
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */
