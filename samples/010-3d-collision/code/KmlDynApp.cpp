@@ -304,8 +304,8 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
+	templateGameState_onReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
-	templateGameState_onReloadCode(&g_gs->templateGameState, memory);
 }
 GAME_INITIALIZE(gameInitialize)
 {

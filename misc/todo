@@ -706,8 +706,6 @@
 			http://algolist.ru/maths/geom/convhull/qhull3d.php
 		[ ] or maybe just use someone's QuickHull code?
 			https://github.com/karimnaaji/3d-quickhull
-[ ] update samples to latest API
-	[ ] templateGameState_onReloadCode
 [ ] samples: networking: run kNetClientConnect on a separate thread to prevent 
 	the game from chunking when the address can't be resolved
 [ ] samples: voxel manipulation

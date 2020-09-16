@@ -1,13 +1,10 @@
 #include "TemplateGameState.h"
-internal void templateGameState_onReloadCode(
-	KmlTemplateGameState* tgs, GameMemory& memory)
+internal void templateGameState_onReloadCode(GameMemory& memory)
 {
 	g_kpl          = &memory.kpl;
 	g_krb          = &memory.krb;
 	platformLog    = memory.kpl.log;
 	platformAssert = memory.kpl.assert;
-	/* tell KRB where it can safely store its CPU-side internal state */
-	g_krb->setCurrentContext(&tgs->krbContext);
 	/* ImGui support */
 	ImGui::SetCurrentContext(
 		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
@@ -19,6 +16,10 @@ internal void templateGameState_initialize(
 	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize)
 {
 	kassert(totalGameStateSize <= memory.permanentMemoryBytes);
+	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
+		ever need to do this one time because *tgs should be in an immutable 
+		spot in memory forever */
+	g_krb->setCurrentContext(&tgs->krbContext);
 	// initialize dynamic allocators //
 	tgs->hKgaPermanent = 
 		kgaInit(reinterpret_cast<u8*>(memory.permanentMemory) + 

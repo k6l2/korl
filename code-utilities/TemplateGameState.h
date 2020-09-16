@@ -34,8 +34,7 @@ struct KmlTemplateGameState
 global_variable KmlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;
 /* template game state API */
-internal void templateGameState_onReloadCode(
-	KmlTemplateGameState* tgs, GameMemory& memory);
+internal void templateGameState_onReloadCode(GameMemory& memory);
 /** 
  * Make sure to clear (zero-out) ALL game state memory, including the memory 
  * occupied by `tgs` BEFORE calling this function!!!
