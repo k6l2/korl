@@ -22,7 +22,8 @@ enum class HudState : u8
 	{ NAVIGATING
 	, ADDING_SHAPE
 	, ADDING_BOX
-	, ADDING_SPHERE };
+	, ADDING_SPHERE
+	, MODIFY_SHAPE_GRAB };
 struct Actor
 {
 	v3f32 position;
@@ -46,7 +47,12 @@ struct GameState
 	/* The array index into `actors` == `selectedActorId` - 1.  A value of 0 
 		indicates no actor is selected */
 	u32 selectedActorId;
+	/* when a modification command occurs, the original values of the selected 
+		actor which are to be modified are stored here */
+	f32 modifyShapeTempValues[4];
+	f32 modifyShapeGrabPlaneDistanceFromCamera;
 #if DEBUG_DELETE_LATER
+	v2i32 modifyShapeWindowPositionStart;
 	v3f32 eyeRayActorHitPosition;
 	v3f32 testPosition;
 	v3f32 testRadianAxis;

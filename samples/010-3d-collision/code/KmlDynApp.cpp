@@ -93,9 +93,38 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		if(g_gs->hudState != HudState::NAVIGATING)
 			if(gameKeyboard.grave > ButtonState::NOT_PRESSED)
+			{
+				if(g_gs->hudState == HudState::MODIFY_SHAPE_GRAB)
+				{
+					Actor& actor = g_gs->actors[g_gs->selectedActorId - 1];
+					actor.position.x = g_gs->modifyShapeTempValues[0];
+					actor.position.y = g_gs->modifyShapeTempValues[1];
+					actor.position.z = g_gs->modifyShapeTempValues[2];
+				}
 				g_gs->hudState = HudState::NAVIGATING;
-		if(    g_gs->hudState == HudState::ADDING_BOX 
-			|| g_gs->hudState == HudState::ADDING_SPHERE)
+			}
+		if(g_gs->hudState == HudState::MODIFY_SHAPE_GRAB)
+		{
+			const v3f32 grabBackPlanePosition = worldEyeRayDirection * 
+				g_gs->modifyShapeGrabPlaneDistanceFromCamera;
+			const f32 grabBackPlaneDistance = 
+				grabBackPlanePosition.dot(worldEyeRayDirection);
+			const f32 collide_eyeRay_grabBackPlane = 
+				kmath::collideRayPlane(
+					worldEyeRayPosition, worldEyeRayDirection, 
+					worldEyeRayDirection, grabBackPlaneDistance, false);
+			if(!isnan(collide_eyeRay_grabBackPlane) 
+				&& !isinf(collide_eyeRay_grabBackPlane))
+			{
+				Actor& actor = g_gs->actors[g_gs->selectedActorId - 1];
+				actor.position = worldEyeRayPosition + 
+					collide_eyeRay_grabBackPlane*worldEyeRayDirection;
+			}
+			if(gameMouse.left == ButtonState::PRESSED)
+				g_gs->hudState = HudState::NAVIGATING;
+		}
+		else if(    g_gs->hudState == HudState::ADDING_BOX 
+		         || g_gs->hudState == HudState::ADDING_SPHERE)
 		{
 			g_gs->addShapePosition = worldEyeRayPosition + 
 				18*worldEyeRayDirection;
@@ -188,11 +217,29 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					nearestEyeRayHit*worldEyeRayDirection;
 #endif// DEBUG_DELETE_LATER
 			}
-			if(gameKeyboard.x > ButtonState::NOT_PRESSED 
-				&& g_gs->selectedActorId)
+			if(g_gs->selectedActorId)
 			{
-				arrdel(g_gs->actors, g_gs->selectedActorId - 1);
-				g_gs->selectedActorId = 0;
+				if(gameKeyboard.x > ButtonState::NOT_PRESSED)
+				{
+					arrdel(g_gs->actors, g_gs->selectedActorId - 1);
+					g_gs->selectedActorId = 0;
+				}
+				else if(gameKeyboard.g == ButtonState::PRESSED)
+				{
+					g_gs->hudState = HudState::MODIFY_SHAPE_GRAB;
+					Actor& actor = g_gs->actors[g_gs->selectedActorId - 1];
+					g_gs->modifyShapeTempValues[0] = actor.position.x;
+					g_gs->modifyShapeTempValues[1] = actor.position.y;
+					g_gs->modifyShapeTempValues[2] = actor.position.z;
+					g_gs->modifyShapeGrabPlaneDistanceFromCamera = 
+						actor.position.projectOnto(worldEyeRayDirection)
+							.magnitude();
+#if DEBUG_DELETE_LATER
+						//(actor.position - worldEyeRayPosition).magnitude();
+					g_gs->modifyShapeWindowPositionStart = 
+						gameMouse.windowPosition;
+#endif// DEBUG_DELETE_LATER
+				}
 			}
 		}
 	}
@@ -201,7 +248,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::Text("[GRAVE] - cancel action");
+			if(g_gs->hudState == HudState::ADDING_BOX 
+				|| g_gs->hudState == HudState::ADDING_SPHERE)
+				ImGui::Text("[mouse left] - add shape to the scene");
+			else if(g_gs->hudState == HudState::MODIFY_SHAPE_GRAB)
+				ImGui::Text("[mouse left] - confirm action");
+			ImGui::Text("[GRAVE     ] - cancel action");
 		}
 		ImGui::End();
 	}
@@ -226,9 +278,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			ImGui::Text("[SHIFT + A   ] - add shape");
 			ImGui::Text("[W           ] - toggle wireframe");
 			if(g_gs->selectedActorId)
+			{
 				ImGui::Text("[X           ] - delete shape");
+				ImGui::Text("[G           ] - grab shape");
+			}
 			else
+			{
 				ImGui::Text("[X           ] - *** DISABLED ***");
+				ImGui::Text("[G           ] - *** DISABLED ***");
+			}
 		}
 		ImGui::End();
 	}
@@ -258,7 +316,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			ImGui::SliderFloat3("lengths", g_gs->addShape.box.lengths.elements, 
 			                    0.1f, 10.f);
-			ImGui::Text("[Click the scene to add the box]");
 		}
 		ImGui::End();
 	}
@@ -269,7 +326,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			ImGui::SliderFloat("radius", &g_gs->addShape.sphere.radius, 
 			                   0.1f, 10.f);
-			ImGui::Text("[Click the scene to add the sphere]");
 		}
 		ImGui::End();
 	}
@@ -291,6 +347,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->lookAt(g_gs->cameraPosition.elements, 
 	              (g_gs->cameraPosition + cameraWorldForward).elements, 
 	              v3f32::Z.elements);
+	/* draw all the shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
 		Actor& actor = g_gs->actors[a];
@@ -300,6 +357,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::WHITE);
 		drawShape(actor.position, actor.orientation, actor.shape);
 	}
+	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{

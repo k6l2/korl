@@ -672,10 +672,11 @@
 		[x] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)
 			http://www.opengl-tutorial.org/miscellaneous/clicking-on-objects/picking-with-custom-ray-obb-function/
 		[x] if nothing was clicked, select nothing
-	[ ] press X to delete shape
-	[ ] press G to 'grab' shapes and move them around with mouse
-	[ ] right click to cancel shape manipulation action
-	[ ] left click to confirm shape manipulation action
+	[x] press X to delete shape
+	[x] press G to 'grab' shapes and move them around with mouse
+		[x] right click to cancel shape manipulation action 
+			(or grave key I guess)
+		[x] left click to confirm shape manipulation action
 	[ ] press R to rotate shapes 
 		[ ] define the shape's forward vector as norm(camera - shape)
 		[ ] define the shape's up vector as view-up
