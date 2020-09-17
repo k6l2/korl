@@ -226,10 +226,16 @@ namespace kmath
 	internal inline f32 collideRaySphere(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& sphereOrigin, f32 sphereRadius);
+	/**
+	 * @return (1) NAN32 if the ray does not collide with the box
+	 *         (2) Otherwise, a scalar representing how far from `rayOrigin` in 
+	 *             the direction of `rayNormal` the intersection is.
+	 *         If the ray origin is contained within the box, 0 is returned.
+	 */
 	internal inline f32 collideRayBox(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
-		const v3f32& boxLengths, const v3f32& boxWorldPosition, 
-		const kQuaternion& boxOrientation);
+		const v3f32& boxWorldPosition, const kQuaternion& boxOrientation, 
+		const v3f32& boxLengths);
 	struct GeneratedMeshVertex
 	{
 		v3f32 localPosition;
@@ -274,6 +280,7 @@ namespace kmath
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
+internal inline v3f32 operator/(const v3f32& lhs, f32 rhs);
 internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
 internal inline kQuaternion operator*(const kQuaternion& lhs, 
                                       const kQuaternion& rhs);

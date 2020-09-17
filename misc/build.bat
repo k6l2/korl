@@ -97,6 +97,8 @@ rem /W4 - warning level 4
 rem /Wall - use ALL warnings
 rem /WX - treat all warnings as errors
 rem /wd4100 - disable warning C4100 `unreferenced formal parameter`
+rem /wd4189 - disable warning C4189 `local variable is initialized but not 
+rem           referenced`
 rem /wd4200 - disable warning C4200: nonstandard extension used: zero-sized 
 rem           array in struct/union
 rem /wd4201 - disable warning C4201 
@@ -163,7 +165,7 @@ set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 /wd4200 
 	/Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
 set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
 	/DINTERNAL_BUILD=0 /DSLOW_BUILD=0 
-set CommonCompilerFlagsDebug=%CommonCompilerFlags% /MTd /Od /WX ^
+set CommonCompilerFlagsDebug=%CommonCompilerFlags% /MTd /Od /WX /wd4189 ^
 	/DINTERNAL_BUILD=1 /DSLOW_BUILD=1 
 set CommonCompilerFlagsChosen=%CommonCompilerFlagsDebug%
 if "%buildOptionRelease%"=="TRUE" (

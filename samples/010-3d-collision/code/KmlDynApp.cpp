@@ -1,7 +1,8 @@
 #include "KmlDynApp.h"
-void drawBox(const v3f32& worldPosition, const Shape& shape)
+void drawBox(const v3f32& worldPosition, const kQuaternion& orientation, 
+             const Shape& shape)
 {
-	g_krb->setModelXform(worldPosition, kQuaternion::IDENTITY, {1,1,1});
+	g_krb->setModelXform(worldPosition, orientation, {1,1,1});
 	kmath::GeneratedMeshVertex generatedBox[36];
 	kmath::generateMeshBox(
 		shape.box.lengths, generatedBox, sizeof(generatedBox));
@@ -10,11 +11,12 @@ void drawBox(const v3f32& worldPosition, const Shape& shape)
 		: VERTEX_ATTRIBS_GENERATED_MESH;
 	DRAW_TRIS(generatedBox, vertexAttribOffsets);
 }
-void drawSphere(const v3f32& worldPosition, const Shape& shape)
+void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation, 
+                const Shape& shape)
 {
 	const v3f32 sphereScale = 
 		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
-	g_krb->setModelXform(worldPosition, kQuaternion::IDENTITY, sphereScale);
+	g_krb->setModelXform(worldPosition, orientation, sphereScale);
 	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
 		? VERTEX_ATTRIBS_GENERATED_MESH_NO_TEX
 		: VERTEX_ATTRIBS_GENERATED_MESH;
@@ -22,15 +24,16 @@ void drawSphere(const v3f32& worldPosition, const Shape& shape)
 		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
 	    sizeof(g_gs->generatedSphereMesh[0]), vertexAttribOffsets);
 }
-void drawShape(const v3f32& worldPosition, const Shape& shape)
+void drawShape(const v3f32& worldPosition, const kQuaternion& orientation, 
+               const Shape& shape)
 {
 	switch(shape.type)
 	{
 		case ShapeType::BOX:
-			drawBox(worldPosition, shape);
+			drawBox(worldPosition, orientation, shape);
 			break;
 		case ShapeType::SPHERE:
-			drawSphere(worldPosition, shape);
+			drawSphere(worldPosition, orientation, shape);
 			break;
 	}
 }
@@ -40,10 +43,13 @@ f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 	switch(actor.shape.type)
 	{
 		case ShapeType::BOX:
-			return NAN32;
+			return kmath::collideRayBox(
+				rayOrigin, rayNormal, actor.position, actor.orientation, 
+				actor.shape.box.lengths);
 		case ShapeType::SPHERE:
-			return kmath::collideRaySphere(rayOrigin, rayNormal, actor.position, 
-			                               actor.shape.sphere.radius);
+			return kmath::collideRaySphere(
+				rayOrigin, rayNormal, actor.position, 
+				actor.shape.sphere.radius);
 	}
 	kassert(!"This code should never execute!");
 	return NAN32;
@@ -66,7 +72,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
 		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
 		    .transform(v3f32::Z);
+#if DEBUG_DELETE_LATER
 	g_gs->eyeRayActorHitPosition = {NAN32, NAN32, NAN32};
+#endif// DEBUG_DELETE_LATER
 	/* handle user input */
 	if(windowIsFocused)
 	{
@@ -96,6 +104,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				Actor newActor;
 				newActor.position = g_gs->addShapePosition;
 				newActor.shape    = g_gs->addShape;
+#if DEBUG_DELETE_LATER
+				const kQuaternion modelQuat(
+					g_gs->testRadianAxis, g_gs->testRadians);
+				newActor.orientation = modelQuat;
+#endif// DEBUG_DELETE_LATER
 				arrpush(g_gs->actors, newActor);
 			}
 		}
@@ -170,8 +183,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				if(gameMouse.left == ButtonState::PRESSED)
 					g_gs->selectedActorId = nearestActorId;
+#if DEBUG_DELETE_LATER
 				g_gs->eyeRayActorHitPosition = worldEyeRayPosition + 
 					nearestEyeRayHit*worldEyeRayDirection;
+#endif// DEBUG_DELETE_LATER
 			}
 		}
 	}
@@ -199,9 +214,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				ImGui::Text("[mouse move  ] - *** DISABLED ***");
 			}
-			ImGui::Text("[E / D       ] - move camera forward/back");
-			ImGui::Text("[S / F       ] - move camera left/right");
-			ImGui::Text("[SPACE / A   ] - move camera up/down");
+			ImGui::Text("[E | D       ] - move camera forward | back");
+			ImGui::Text("[S | F       ] - move camera left | right");
+			ImGui::Text("[SPACE | A   ] - move camera up | down");
 			ImGui::Text("[SHIFT + A   ] - add shape");
 			ImGui::Text("[W           ] - toggle wireframe");
 		}
@@ -248,9 +263,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		ImGui::End();
 	}
+#if DEBUG_DELETE_LATER
 	ImGui::SliderFloat3("testPosition", g_gs->testPosition.elements, -20, 20);
 	ImGui::SliderFloat3("testRadianAxis", g_gs->testRadianAxis.elements, -1, 1);
 	ImGui::SliderFloat("testRadians", &g_gs->testRadians, 0, 4*PI32);
+#endif// DEBUG_DELETE_LATER
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
@@ -271,13 +288,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-		drawShape(actor.position, actor.shape);
+		drawShape(actor.position, actor.orientation, actor.shape);
 	}
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		drawShape(g_gs->addShapePosition, g_gs->addShape);
+#if DEBUG_DELETE_LATER
+		const kQuaternion modelQuat(g_gs->testRadianAxis, g_gs->testRadians);
+		drawShape(g_gs->addShapePosition, modelQuat, 
+#else
+		drawShape(g_gs->addShapePosition, kQuaternion::IDENTITY, 
+#endif //DEBUG_DELETE_LATER
+		          g_gs->addShape);
 	}
+#if DEBUG_DELETE_LATER
 	if(!isnan(g_gs->eyeRayActorHitPosition.x))
 	/* draw a crosshair on the 3D position where we hit an actor */
 	{
@@ -300,6 +324,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
+#endif// DEBUG_DELETE_LATER
 	/* draw origin */
 	{
 		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});

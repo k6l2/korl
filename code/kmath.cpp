@@ -110,6 +110,10 @@ internal inline v3f32 operator*(f32 lhs, const v3f32& rhs)
 {
 	return {lhs*rhs.x, lhs*rhs.y, lhs*rhs.z};
 }
+internal inline v3f32 operator/(const v3f32& lhs, f32 rhs)
+{
+	return {lhs.x / rhs, lhs.y / rhs, lhs.z / rhs};
+}
 inline v3f32 v3f32::operator+(const v3f32& other) const
 {
 	return {x + other.x, y + other.y, z + other.z};
@@ -761,6 +765,75 @@ internal inline f32 kmath::collideRaySphere(
 			return 0;
 	else
 		return analyticSolutions[0];
+}
+internal inline f32 kmath::collideRayBox(
+		const v3f32& rayOrigin, const v3f32& rayNormal, 
+		const v3f32& boxWorldPosition, const kQuaternion& boxOrientation, 
+		const v3f32& boxLengths)
+{
+	/* geometric solution.  Sources:
+		http://www.opengl-tutorial.org/miscellaneous/clicking-on-objects/picking-with-custom-ray-obb-function/ 
+		https://svn.science.uu.nl/repos/edu.3803627.INFOMOV/0AD/docs/ray_intersect.pdf */
+	m4x4f32 boxModelMatrix;
+	makeM4f32(boxOrientation, boxWorldPosition, &boxModelMatrix);
+	f32 tMin = 0;
+	f32 tMax = INFINITY32;
+	const v3f32 boxExtents = boxLengths / 2;
+	const v3f32 rayToBox = boxWorldPosition - rayOrigin;
+	auto testAxis = [&](u8 axisIndex)->f32
+	{
+		/* given an arbitrary axis of the box in world space, we can define a 
+			`slab` as being the region of points that lies in the range 
+			[-axisExtent, axisExtent] where axisExtent==boxExtents[axisIndex] */
+		/* we can derive the X,Y & Z axes from a ModelView matrix from the 
+			columns of the upper-left corner.  Source:
+			http://www.songho.ca/opengl/gl_transform.html#matrix */
+		const v3f32 axis = 
+			{ boxModelMatrix.elements[axisIndex    ]
+			, boxModelMatrix.elements[axisIndex + 4]
+			, boxModelMatrix.elements[axisIndex + 8] };
+		const f32 axisExtent = boxExtents.elements[axisIndex];
+		const f32 scalarProj_rayToBox_axis = axis.dot(rayToBox);
+		const f32 cosAngle_axis_rayNormal  = axis.dot(rayNormal);
+		if(isNearlyZero(cosAngle_axis_rayNormal))
+		/* if the cos of the angle between axis & the ray normal is 0, it means 
+			the ray is perpendicular to the slab, which means the ray lies 
+			entirely within the slab or entirely outside the slab */
+		{
+			/* if the ray is outside of the slab */
+			if(scalarProj_rayToBox_axis > axisExtent
+				/* or the ray is pointing away from the box */
+				|| rayNormal.dot(rayToBox) < 0)
+				/* we cannot be colliding! */
+				return NAN32;
+		}
+		else
+		/* otherwise, we can check to see if the accumulated intersections 
+			between the ray and the slab convey the possibility of an 
+			intersection with the box using some fancy logic~ (see sources) */
+		{
+			f32 t1 = (scalarProj_rayToBox_axis - axisExtent) / 
+				cosAngle_axis_rayNormal;
+			f32 t2 = (scalarProj_rayToBox_axis + axisExtent) / 
+				cosAngle_axis_rayNormal;
+			if(t1 > t2)
+			/* swap to ensure t1 <= t2 */
+			{
+				f32 temp = t1; t1 = t2; t2 = temp;
+			}
+			if(t2 < tMax)
+				tMax = t2;
+			if(t1 > tMin)
+				tMin = t1;
+			if(tMax < tMin)
+				return NAN32;
+		}
+		return tMin;
+	};
+	for(u8 axisIndex = 0; axisIndex < 3; axisIndex++)
+		if(isnan(testAxis(axisIndex)))
+			return NAN32;
+	return tMin;
 }
 internal inline void kmath::generateMeshBox(
 		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize)

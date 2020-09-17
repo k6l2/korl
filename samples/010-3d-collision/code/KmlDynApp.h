@@ -26,6 +26,7 @@ enum class HudState : u8
 struct Actor
 {
 	v3f32 position;
+	kQuaternion orientation = kQuaternion::IDENTITY;
 	Shape shape;
 };
 struct GameState
@@ -42,11 +43,11 @@ struct GameState
 	size_t generatedSphereMeshVertexCount;
 	Actor* actors;
 	bool wireframe;
-	v3f32 eyeRayActorHitPosition;
 	/* The array index into `actors` == `selectedActorId` - 1.  A value of 0 
 		indicates no actor is selected */
 	u32 selectedActorId;
 #if DEBUG_DELETE_LATER
+	v3f32 eyeRayActorHitPosition;
 	v3f32 testPosition;
 	v3f32 testRadianAxis;
 	f32 testRadians;

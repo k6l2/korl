@@ -664,12 +664,12 @@
 		[x] press 2 to spawn a sphere """
 	[x] press W to toggle wireframe draw mode
 		https://stackoverflow.com/a/59473781/4526664
-	[ ] click to select shape
+	[x] click to select shape
 		[x] kmath: ray-sphere collision test
 			https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
 		[x] highlight the selected shape by drawing a yellow wireframe or 
 			something
-		[ ] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)
+		[x] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)
 			http://www.opengl-tutorial.org/miscellaneous/clicking-on-objects/picking-with-custom-ray-obb-function/
 		[x] if nothing was clicked, select nothing
 	[ ] press X to delete shape
