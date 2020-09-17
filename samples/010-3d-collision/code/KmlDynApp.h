@@ -1,6 +1,6 @@
 #pragma once
 #include "TemplateGameState.h"
-#define DEBUG_DELETE_LATER 1
+#define DEBUG_DELETE_LATER 0
 enum class ShapeType : u8
 	{ BOX
 	, SPHERE };

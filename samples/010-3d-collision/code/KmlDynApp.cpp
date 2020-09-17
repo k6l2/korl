@@ -188,6 +188,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					nearestEyeRayHit*worldEyeRayDirection;
 #endif// DEBUG_DELETE_LATER
 			}
+			if(gameKeyboard.x > ButtonState::NOT_PRESSED 
+				&& g_gs->selectedActorId)
+			{
+				arrdel(g_gs->actors, g_gs->selectedActorId - 1);
+				g_gs->selectedActorId = 0;
+			}
 		}
 	}
 	/* display HUD GUI for sample controls */
@@ -219,6 +225,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			ImGui::Text("[SPACE | A   ] - move camera up | down");
 			ImGui::Text("[SHIFT + A   ] - add shape");
 			ImGui::Text("[W           ] - toggle wireframe");
+			if(g_gs->selectedActorId)
+				ImGui::Text("[X           ] - delete shape");
+			else
+				ImGui::Text("[X           ] - *** DISABLED ***");
 		}
 		ImGui::End();
 	}
