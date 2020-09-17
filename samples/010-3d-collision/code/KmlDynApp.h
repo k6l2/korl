@@ -23,7 +23,8 @@ enum class HudState : u8
 	, ADDING_SHAPE
 	, ADDING_BOX
 	, ADDING_SPHERE
-	, MODIFY_SHAPE_GRAB };
+	, MODIFY_SHAPE_GRAB
+	, MODIFY_SHAPE_ROTATE };
 struct Actor
 {
 	v3f32 position;
@@ -50,9 +51,9 @@ struct GameState
 	/* when a modification command occurs, the original values of the selected 
 		actor which are to be modified are stored here */
 	f32 modifyShapeTempValues[4];
-	f32 modifyShapeGrabPlaneDistanceFromCamera;
-#if DEBUG_DELETE_LATER
+	f32 modifyShapePlaneDistanceFromCamera;
 	v2i32 modifyShapeWindowPositionStart;
+#if DEBUG_DELETE_LATER
 	v3f32 eyeRayActorHitPosition;
 	v3f32 testPosition;
 	v3f32 testRadianAxis;

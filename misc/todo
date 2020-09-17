@@ -677,12 +677,14 @@
 		[x] right click to cancel shape manipulation action 
 			(or grave key I guess)
 		[x] left click to confirm shape manipulation action
-	[ ] press R to rotate shapes 
-		[ ] define the shape's forward vector as norm(camera - shape)
-		[ ] define the shape's up vector as view-up
-		[ ] shape's right vector is just cross(shape-forward, shape-up)
-		[ ] mouse Y difference => shape pitch
-		[ ] mouse X difference => shape yaw
+	[x] press R to rotate shapes 
+		[-] define the shape's forward vector as norm(camera - shape)
+		[-] define the shape's up vector as view-up
+		[-] shape's right vector is just cross(shape-forward, shape-up)
+		[-] mouse Y difference => shape pitch
+		[-] mouse X difference => shape yaw
+		- I ended up doing things in a little cleaner way which works well with 
+		grab mode
 	[ ] utility: Gilbert-Johnson-Keerthi (GJK) collision detection
 		https://www.youtube.com/watch?v=Qupqu1xe7Io
 		https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
