@@ -86,8 +86,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			? windowDimensions / 2
 			: gameMouse.windowPosition;
 		if(!g_krb->screenToWorld(
-			mouseWindowPosition.elements, windowDimensions.elements, 
-			worldEyeRayPosition.elements, worldEyeRayDirection.elements))
+				mouseWindowPosition.elements, windowDimensions.elements, 
+				worldEyeRayPosition.elements, worldEyeRayDirection.elements))
 		{
 			KLOG(ERROR, "Failed to get mouse world eye ray!");
 		}
@@ -105,14 +105,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}
 		if(g_gs->hudState == HudState::MODIFY_SHAPE_GRAB)
 		{
-			const v3f32 grabBackPlanePosition = worldEyeRayDirection * 
+			const v3f32 grabBackPlanePosition = g_gs->cameraPosition + 
+				cameraWorldForward * 
 				g_gs->modifyShapeGrabPlaneDistanceFromCamera;
 			const f32 grabBackPlaneDistance = 
-				grabBackPlanePosition.dot(worldEyeRayDirection);
+				grabBackPlanePosition.dot(cameraWorldForward);
 			const f32 collide_eyeRay_grabBackPlane = 
 				kmath::collideRayPlane(
 					worldEyeRayPosition, worldEyeRayDirection, 
-					worldEyeRayDirection, grabBackPlaneDistance, false);
+					cameraWorldForward, grabBackPlaneDistance, false);
 			if(!isnan(collide_eyeRay_grabBackPlane) 
 				&& !isinf(collide_eyeRay_grabBackPlane))
 			{
@@ -231,13 +232,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					g_gs->modifyShapeTempValues[0] = actor.position.x;
 					g_gs->modifyShapeTempValues[1] = actor.position.y;
 					g_gs->modifyShapeTempValues[2] = actor.position.z;
+					const v3f32 eyeToActor = 
+						actor.position - worldEyeRayPosition;
 					g_gs->modifyShapeGrabPlaneDistanceFromCamera = 
-						actor.position.projectOnto(worldEyeRayDirection)
-							.magnitude();
+						eyeToActor.projectOnto(cameraWorldForward).magnitude();
 #if DEBUG_DELETE_LATER
-						//(actor.position - worldEyeRayPosition).magnitude();
+					KLOG(INFO, "%f", g_gs->modifyShapeGrabPlaneDistanceFromCamera);
 					g_gs->modifyShapeWindowPositionStart = 
 						gameMouse.windowPosition;
+						//(actor.position - worldEyeRayPosition).magnitude();
 #endif// DEBUG_DELETE_LATER
 				}
 			}
