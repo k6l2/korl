@@ -106,6 +106,14 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG(ERROR, "Failed to get glLoadTransposeMatrixf! "
 		     "GetLastError=%i", GetLastError());
 	}
+	glMultTransposeMatrixf = 
+		reinterpret_cast<PFNGLMULTTRANSPOSEMATRIXFPROC>(
+			wglGetProcAddress("glMultTransposeMatrixf"));
+	if(!glMultTransposeMatrixf)
+	{
+		KLOG(ERROR, "Failed to get glMultTransposeMatrixf! "
+		     "GetLastError=%i", GetLastError());
+	}
 }
 internal void w32KrbOglSetVSyncPreference(bool value)
 {

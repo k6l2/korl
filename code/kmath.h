@@ -114,6 +114,7 @@ public:
 	inline f32 normalize();
 	inline f32 dot(const v4f32& other) const;
 };
+/*@TODO: rename this to m4f32 since the x4 can just be implied */
 struct m4x4f32
 {
 	union 
@@ -188,6 +189,9 @@ namespace kmath
 	internal inline v3f32 normal(v3f32 v);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
+	internal inline void makeM4f32(const kQuaternion& q, m4x4f32* o_m);
+	internal inline void makeM4f32(
+		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m);
 	/**
 	 * Find the roots of a given quadratic formula which satisfies the form 
 	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
@@ -222,6 +226,10 @@ namespace kmath
 	internal inline f32 collideRaySphere(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& sphereOrigin, f32 sphereRadius);
+	internal inline f32 collideRayBox(
+		const v3f32& rayOrigin, const v3f32& rayNormal, 
+		const v3f32& boxLengths, const v3f32& boxWorldPosition, 
+		const kQuaternion& boxOrientation);
 	struct GeneratedMeshVertex
 	{
 		v3f32 localPosition;

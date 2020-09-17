@@ -248,6 +248,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		ImGui::End();
 	}
+	ImGui::SliderFloat3("testPosition", g_gs->testPosition.elements, -20, 20);
+	ImGui::SliderFloat3("testRadianAxis", g_gs->testRadianAxis.elements, -1, 1);
+	ImGui::SliderFloat("testRadians", &g_gs->testRadians, 0, 4*PI32);
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
@@ -284,6 +287,17 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		local_persist const VertexNoTexture MESH[] = 
 			{ {{-1,-1,0}, krb::WHITE}, {{1, 1,0}, krb::WHITE}
 			, {{-1, 1,0}, krb::WHITE}, {{1,-1,0}, krb::WHITE} };
+		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
+	}
+	{
+		const kQuaternion modelQuat(g_gs->testRadianAxis, g_gs->testRadians);
+		m4x4f32 modelMatrix;
+		kmath::makeM4f32(modelQuat, g_gs->testPosition, &modelMatrix);
+		g_krb->setModelMatrix(modelMatrix.elements);
+		local_persist const VertexNoTexture MESH[] = 
+			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
+			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN}
+			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	/* draw origin */

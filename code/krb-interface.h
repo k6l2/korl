@@ -92,6 +92,8 @@ struct KrbVertexAttributeOffsets
 #define KRB_SET_MODEL_XFORM_2D(name) \
 	void name(const v2f32& translation, const kQuaternion& orientation, \
 	          const v2f32& scale)
+#define KRB_SET_MODEL_MATRIX(name) \
+	void name(const f32 rowMajorMatrix4x4[16])
 #define KRB_SET_MODEL_XFORM_BILLBOARD(name) \
 	void name(bool lockX, bool lockY, bool lockZ)
 #define KRB_LOAD_IMAGE(name) \
@@ -136,6 +138,7 @@ typedef KRB_DRAW_CIRCLE(fnSig_krbDrawCircle);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_SET_MODEL_XFORM_2D(fnSig_krbSetModelXform2d);
+typedef KRB_SET_MODEL_MATRIX(fnSig_krbSetModelMatrix);
 typedef KRB_SET_MODEL_XFORM_BILLBOARD(fnSig_krbSetModelXformBillboard);
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
 typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
@@ -160,6 +163,7 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d);
+internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix);
 internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard);
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_DELETE_TEXTURE(krbDeleteTexture);
@@ -186,6 +190,7 @@ struct KrbApi
 	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
 	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
 	fnSig_krbSetModelXform2d*    setModelXform2d    = krbSetModelXform2d;
+	fnSig_krbSetModelMatrix*     setModelMatrix     = krbSetModelMatrix;
 	fnSig_krbSetModelXformBillboard* 
 		setModelXformBillboard = krbSetModelXformBillboard;
 	fnSig_krbLoadImage*          loadImage          = krbLoadImage;

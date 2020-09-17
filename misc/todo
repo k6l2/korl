@@ -670,6 +670,7 @@
 		[x] highlight the selected shape by drawing a yellow wireframe or 
 			something
 		[ ] kmath: ray-box collision test (NOT AABB, but arbitrary box shape)
+			http://www.opengl-tutorial.org/miscellaneous/clicking-on-objects/picking-with-custom-ray-obb-function/
 		[x] if nothing was clicked, select nothing
 	[ ] press X to delete shape
 	[ ] press G to 'grab' shapes and move them around with mouse
@@ -706,6 +707,10 @@
 			http://algolist.ru/maths/geom/convhull/qhull3d.php
 		[ ] or maybe just use someone's QuickHull code?
 			https://github.com/karimnaaji/3d-quickhull
+[ ] win32: disable the right-click menu in the window title bar when the 
+	application is in mouse relative mode
+	- when the mouse exits relative mode and the cursor is in the title bar, the 
+		right-click menu should not pop up
 [ ] samples: networking: run kNetClientConnect on a separate thread to prevent 
 	the game from chunking when the address can't be resolved
 [ ] samples: voxel manipulation

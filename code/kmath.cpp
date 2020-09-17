@@ -604,6 +604,44 @@ internal inline v2f32 kmath::rotate(const v2f32& v, f32 radians)
 	};
 	return result;
 }
+internal inline void kmath::makeM4f32(const kQuaternion& q, m4x4f32* o_m)
+{
+	/* https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix */
+	const f32 sqW = q.qw*q.qw;
+	const f32 sqX = q.qx*q.qx;
+	const f32 sqY = q.qy*q.qy;
+	const f32 sqZ = q.qz*q.qz;
+	const f32 inverseSquareLength = 1 / (sqW + sqX + sqY + sqZ);
+	o_m->r0c0 = ( sqX - sqY - sqZ + sqW) * inverseSquareLength;
+	o_m->r1c1 = (-sqX + sqY - sqZ + sqW) * inverseSquareLength;
+	o_m->r2c2 = (-sqX - sqY + sqZ + sqW) * inverseSquareLength;
+	const f32 temp1 = q.qx*q.qy;
+	const f32 temp2 = q.qz*q.qw;
+	o_m->r1c0 = 2*(temp1 + temp2) * inverseSquareLength;
+	o_m->r0c1 = 2*(temp1 - temp2) * inverseSquareLength;
+	const f32 temp3 = q.qx*q.qz;
+	const f32 temp4 = q.qy*q.qw;
+	o_m->r2c0 = 2*(temp3 - temp4) * inverseSquareLength;
+	o_m->r0c2 = 2*(temp3 + temp4) * inverseSquareLength;
+	const f32 temp5 = q.qy*q.qz;
+	const f32 temp6 = q.qx*q.qw;
+	o_m->r2c1 = 2*(temp5 + temp6) * inverseSquareLength;
+	o_m->r1c2 = 2*(temp5 - temp6) * inverseSquareLength;
+	o_m->r0c3 = o_m->r1c3 = o_m->r2c3 = 0;
+	o_m->r3c0 = o_m->r3c1 = o_m->r3c2 = 0;
+	o_m->r3c3 = 1;
+}
+internal inline void kmath::makeM4f32(
+		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m)
+{
+	m4x4f32 m4Rotation;
+	makeM4f32(q, &m4Rotation);
+	m4x4f32 m4Translation = m4x4f32::IDENTITY;
+	m4Translation.r0c3 = translation.x;
+	m4Translation.r1c3 = translation.y;
+	m4Translation.r2c3 = translation.z;
+	*o_m = m4Translation * m4Rotation;
+}
 internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
 {
 	/* https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection */

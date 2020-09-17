@@ -402,6 +402,19 @@ internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 	glScalef(scale.x, scale.y, 1.f);
 	GL_CHECK_ERROR();
 }
+internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix)
+{
+	glMatrixMode(GL_MODELVIEW);
+	GLint modelViewStackDepth;
+	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+	if(modelViewStackDepth > 1)
+	{
+		glPopMatrix();
+	}
+	glPushMatrix();
+	glMultTransposeMatrixf(rowMajorMatrix4x4);
+	GL_CHECK_ERROR();
+}
 internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard)
 {
 	m4x4f32 modelView;
