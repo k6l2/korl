@@ -688,6 +688,7 @@
 	[ ] utility: Gilbert-Johnson-Keerthi (GJK) collision detection
 		https://www.youtube.com/watch?v=Qupqu1xe7Io
 		https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
+		[x] test the support functions for box & sphere before attempting
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it

@@ -971,3 +971,39 @@ internal inline void kmath::generateMeshCircleSphere(
 		o_buffer[v].textureNormal.y = 1.f - (positionNorm.z * 0.5f + 0.5f);
 	}
 }
+internal inline v3f32 kmath::supportSphere(
+	f32 radius, v3f32 supportDirection, bool supportDirectionIsNormalized)
+{
+	if(!supportDirectionIsNormalized)
+		supportDirection.normalize();
+	return radius*supportDirection;
+}
+internal inline v3f32 kmath::supportBox(
+	v3f32 lengths, kQuaternion orientation, 
+	v3f32 supportDirection, bool supportDirectionIsNormalized)
+{
+	if(!supportDirectionIsNormalized)
+		supportDirection.normalize();
+	/* @optimization: transform the supportDirection by inverse orientation & 
+		test with the AABB defined by lengths, then just transform that result 
+		by orientation (only 2 transforms instead of 4 required) */
+	lengths /= 2;
+	orientation.normalize();
+	const v3f32 corners[] = 
+		{ orientation.transform({lengths.x,  lengths.y,  lengths.z}, true)
+		, orientation.transform({lengths.x,  lengths.y, -lengths.z}, true)
+		, orientation.transform({lengths.x, -lengths.y, -lengths.z}, true)
+		, orientation.transform({lengths.x, -lengths.y,  lengths.z}, true) };
+	f32 largestDot = 0;
+	u8 farthestCornerIndex = 0;
+	for(u8 c = 0; c < CARRAY_SIZE(corners); c++)
+	{
+		const f32 supportDotCorner = corners[c].dot(supportDirection);
+		if(fabsf(supportDotCorner) > fabsf(largestDot))
+		{
+			largestDot = supportDotCorner;
+			farthestCornerIndex = c;
+		}
+	}
+	return corners[farthestCornerIndex]*(largestDot >= 0 ? 1.f : -1.f);
+}

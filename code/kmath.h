@@ -189,8 +189,8 @@ namespace kmath
 	internal inline v3f32 normal(v3f32 v);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
-	internal inline void makeM4f32(const kQuaternion& q, m4x4f32* o_m);
-	internal inline void makeM4f32(
+	internal void makeM4f32(const kQuaternion& q, m4x4f32* o_m);
+	internal void makeM4f32(
 		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m);
 	/**
 	 * Find the roots of a given quadratic formula which satisfies the form 
@@ -205,7 +205,7 @@ namespace kmath
 	 * @return The number of UNIQUE real# roots found for the given equation.  
 	 *         This value will always be in the range [0,2].
 	 */
-	internal inline u8 solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2]);
+	internal u8 solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2]);
 	/**
 	 * @return (1) NAN32 if the ray does not collide with the plane.  
 	 *         (2) INFINITY32 if the ray is co-planar with the plane.  
@@ -213,7 +213,7 @@ namespace kmath
 	 *             the direction of `rayNormal` the intersection is.
 	 *         In case (3), the return value will ALWAYS be positive.
 	 */
-	internal inline f32 collideRayPlane(
+	internal f32 collideRayPlane(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
 		bool cullPlaneBackFace);
@@ -223,7 +223,7 @@ namespace kmath
 	 *             the direction of `rayNormal` the intersection is.
 	 *         If the ray origin is contained within the sphere, 0 is returned.
 	 */
-	internal inline f32 collideRaySphere(
+	internal f32 collideRaySphere(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& sphereOrigin, f32 sphereRadius);
 	/**
@@ -232,7 +232,7 @@ namespace kmath
 	 *             the direction of `rayNormal` the intersection is.
 	 *         If the ray origin is contained within the box, 0 is returned.
 	 */
-	internal inline f32 collideRayBox(
+	internal f32 collideRayBox(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& boxWorldPosition, const kQuaternion& boxOrientation, 
 		const v3f32& boxLengths);
@@ -253,9 +253,9 @@ namespace kmath
 	 *                 order to contain a complete 3D box!  Output vertices are 
 	 *                 a list of right-handed triangles.
 	 */
-	internal inline void generateMeshBox(
+	internal void generateMeshBox(
 		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
-	internal inline size_t generateMeshCircleSphereVertexCount(
+	internal size_t generateMeshCircleSphereVertexCount(
 		u32 latitudeSegments, u32 longitudeSegments);
 	/**
 	 * Generate mesh data for a sphere made of (semi)circles along latitudes and 
@@ -274,9 +274,23 @@ namespace kmath
 	 *                 Vertex textureNormals are generated using a cylindrical 
 	 *                 projection.
 	 */
-	internal inline void generateMeshCircleSphere(
+	internal void generateMeshCircleSphere(
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
 		GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
+	/**
+	 * @return the world-space position on the shape with the highest dot 
+	 *         product with the supportDirection
+	 */
+	internal inline v3f32 supportSphere(
+		f32 radius, v3f32 supportDirection, 
+		bool supportDirectionIsNormalized = false);
+	/**
+	 * @return the world-space position on the shape with the highest dot 
+	 *         product with the supportDirection
+	 */
+	internal inline v3f32 supportBox(
+		v3f32 lengths, kQuaternion orientation, 
+		v3f32 supportDirection, bool supportDirectionIsNormalized = false);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);

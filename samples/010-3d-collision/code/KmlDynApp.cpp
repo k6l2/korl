@@ -430,6 +430,26 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		else
 			g_krb->setDefaultColor(krb::WHITE);
 		drawShape(actor.position, actor.orientation, actor.shape);
+#if DEBUG_DELETE_LATER
+		/* calculate the world-space support function of the shape */
+		const v3f32 supportDirection = actor.position;
+		const v3f32 supportResult = actor.position + 
+			(actor.shape.type == ShapeType::BOX
+			? kmath::supportBox(
+				actor.shape.box.lengths, actor.orientation, supportDirection)
+			: kmath::supportSphere(
+				actor.shape.sphere.radius, supportDirection));
+		/* draw a crosshair on the 3D position of the support direction */
+		{
+			g_krb->setModelXform(
+				supportResult, kQuaternion::IDENTITY, {10,10,10});
+			g_krb->setModelXformBillboard(true, true, true);
+			local_persist const VertexNoTexture MESH[] = 
+				{ {{-1,-1,0}, krb::WHITE}, {{1, 1,0}, krb::WHITE}
+				, {{-1, 1,0}, krb::WHITE}, {{1,-1,0}, krb::WHITE} };
+			DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
+		}
+#endif //DEBUG_DELETE_LATER
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
