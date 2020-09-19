@@ -161,7 +161,6 @@ struct kQuaternion : public v4f32
 	v3f32 name(const v3f32& supportDirection, void* userData)
 namespace kmath
 {
-	typedef GJK_SUPPORT_FUNCTION(fnSig_gjkSupport);
 	/* Thanks, Bruce Dawson!  Source: 
 		https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ */
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
@@ -299,6 +298,20 @@ namespace kmath
 	internal inline v3f32 supportBox(
 		v3f32 lengths, kQuaternion orientation, 
 		v3f32 supportDirection, bool supportDirectionIsNormalized = false);
+	typedef GJK_SUPPORT_FUNCTION(fnSig_gjkSupport);
+	struct GjkState
+	{
+		v3f32 o_simplex[4];
+		u8 simplexSize;
+		v3f32 searchDirection;
+		u32 iteration;
+	};
+	internal void gjk_initialize(
+		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
+	enum class GjkIterationResult : u8
+		{ FAILURE, INCOMPLETE, SUCCESS};
+	internal GjkIterationResult gjk_iterate(
+		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
 	/**
 	 * @param simplex if the return value is true, this will contain the 
 	 *                vertices of a tetrahedron which contains the origin whose 

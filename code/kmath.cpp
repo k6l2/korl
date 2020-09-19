@@ -1011,160 +1011,186 @@ internal inline v3f32 kmath::supportBox(
 	}
 	return corners[farthestCornerIndex]*(largestDot >= 0 ? 1.f : -1.f);
 }
-internal bool kmath::gjk(
-	fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4])
+internal void kmath::gjk_initialize(
+	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData)
 {
-	/**
-	 * @return true if we were able to build a complete simplex around the 
-	 *         origin given the initial points in `o_simplex` after adding 
-	 *         `newPoint`, false if we require more iterations
-	 */
-	local_persist const auto buildSimplexAroundOrigin = [](
-		v3f32 o_simplex[4], u8* o_simplexSize, const v3f32& newPoint, 
-		v3f32* o_searchDirection)->bool
+	gjkState->o_simplex[0]    = support({1,0,0}, supportUserData);
+	gjkState->simplexSize     = 1;
+	gjkState->searchDirection = -gjkState->o_simplex[0];
+	gjkState->iteration       = 0;
+}
+/**
+ * @return true if we were able to build a complete simplex around the 
+ *         origin given the initial points in `o_simplex` after adding 
+ *         `newPoint`, false if we require more iterations
+ */
+internal bool gjk_buildSimplexAroundOrigin(
+	v3f32 o_simplex[4], u8* o_simplexSize, const v3f32& newPoint, 
+	v3f32* o_searchDirection)
+{
+	const v3f32 newToOrigin = -newPoint;
+	if(*o_simplexSize == 1)
+	/* creating a line segment */
 	{
-		const v3f32 newToOrigin = -newPoint;
-		if(*o_simplexSize == 1)
-		/* creating a line segment */
+		const v3f32 newToPrev = o_simplex[0] - newPoint;
+		if(newToPrev.dot(newToOrigin) > 0)
+		/* origin is closest to the new line segment */
 		{
-			const v3f32 newToPrev = o_simplex[0] - newPoint;
-			if(newToPrev.dot(newToOrigin) > 0)
-			/* origin is closest to the new line segment */
+			*o_searchDirection = 
+				newToPrev.cross(newToOrigin).cross(newToPrev);
+			o_simplex[(*o_simplexSize)++] = newPoint;
+		}
+		else
+		/* origin is closest to the new point */
+		{
+			*o_searchDirection = newToOrigin;
+			o_simplex[0] = newPoint;
+		}
+	}
+	else if(*o_simplexSize == 2)
+	/* creating a triangle, where the triangle vertices {A,B & C} correspond 
+		to {newPoint, o_simplex[1], o_simplex[0]} respectively */
+	{
+		const v3f32 ab = o_simplex[1] - newPoint;
+		const v3f32 ac = o_simplex[0] - newPoint;
+		const v3f32 abc = ab.cross(ac);
+		const v3f32 abc_x_ac = abc.cross(ac);
+		const v3f32 ab_x_abc = ab.cross(abc);
+		if(abc_x_ac.dot(newToOrigin) > 0)
+			if(ac.dot(newToOrigin) > 0)
+			/* origin is closest to the AC line segment */
 			{
-				*o_searchDirection = 
-					newToPrev.cross(newToOrigin).cross(newToPrev);
-				o_simplex[(*o_simplexSize)++] = newPoint;
+				*o_searchDirection = ac.cross(newToOrigin).cross(ac);
+				o_simplex[1] = newPoint;
+			}
+			else if(ab.dot(newToOrigin) > 0)
+			/* origin is closest to the AB line segment */
+			{
+				*o_searchDirection = ab.cross(newToOrigin).cross(ab);
+				o_simplex[0] = o_simplex[1];
+				o_simplex[1] = newPoint;
 			}
 			else
 			/* origin is closest to the new point */
 			{
 				*o_searchDirection = newToOrigin;
 				o_simplex[0] = newPoint;
+				*o_simplexSize = 1;
 			}
-		}
-		else if(*o_simplexSize == 2)
-		/* creating a triangle, where the triangle vertices {A,B & C} correspond 
-			to {newPoint, o_simplex[1], o_simplex[0]} respectively */
-		{
-			const v3f32 ab = o_simplex[1] - newPoint;
-			const v3f32 ac = o_simplex[0] - newPoint;
-			const v3f32 abc = ab.cross(ac);
-			const v3f32 abc_x_ac = abc.cross(ac);
-			const v3f32 ab_x_abc = ab.cross(abc);
-			if(abc_x_ac.dot(newToOrigin) > 0)
-				if(ac.dot(newToOrigin) > 0)
-				/* origin is closest to the AC line segment */
-				{
-					*o_searchDirection = ac.cross(newToOrigin).cross(ac);
-					o_simplex[1] = newPoint;
-				}
-				else if(ab.dot(newToOrigin) > 0)
-				/* origin is closest to the AB line segment */
-				{
-					*o_searchDirection = ab.cross(newToOrigin).cross(ab);
-					o_simplex[0] = o_simplex[1];
-					o_simplex[1] = newPoint;
-				}
-				else
-				/* origin is closest to the new point */
-				{
-					*o_searchDirection = newToOrigin;
-					o_simplex[0] = newPoint;
-					*o_simplexSize = 1;
-				}
-			else if(ab_x_abc.dot(newToOrigin) > 0)
-				if(ab.dot(newToOrigin) > 0)
-				/* origin is closest to the AB line segment */
-				{
-					*o_searchDirection = ab.cross(newToOrigin).cross(ab);
-					o_simplex[0] = o_simplex[1];
-					o_simplex[1] = newPoint;
-				}
-				else
-				/* origin is closest to the new point */
-				{
-					*o_searchDirection = newToOrigin;
-					o_simplex[0] = newPoint;
-					*o_simplexSize = 1;
-				}
-			else /* origin is closest to the ABC triangle */
-				if(abc.dot(newToOrigin) > 0)
-				/* origin is on the front side (right-handed, remember) */
-				{
-					*o_searchDirection = abc;
-					o_simplex[(*o_simplexSize)++] = newPoint;
-				}
-				else
-				/* origin is on the back side */
-				{
-					*o_searchDirection = -abc;
-					/* swap B & C to ensure correct winding in final simplex */
-					o_simplex[2] = o_simplex[1];
-					o_simplex[1] = o_simplex[0];
-					o_simplex[0] = o_simplex[2];
-					o_simplex[(*o_simplexSize)++] = newPoint;
-				}
-		}
-		else if(*o_simplexSize == 3)
-		/* creating a tetrahedron from a triangle, where the triangle vertices 
-			{A,B & C} correspond to {o_simplex[2], o_simplex[1], o_simplex[0]} 
-			and newPoint is in the opposite direction of the triangle's normal*/
-		{
-			/* possible cases:
-				- origin is outside tetrahedron beyond P in the search direction
-					(this case will never occur, since the caller can easily 
-					check for this with a simple dot product)
-				- origin is in the direction of PBA
-				- origin is in the direction of PAC
-				- origin is in the direction of PCB
-					set the simplex to be the respective triangle with opposing 
-					normal & return false
-				- origin is within the tetrahedron (none of the above cases)
-					return true!!! */
-			const v3f32 pa = newPoint - o_simplex[2];
-			const v3f32 pb = newPoint - o_simplex[1];
-			const v3f32 pc = newPoint - o_simplex[0];
-			const v3f32 pba = pb.cross(pa);
-			const v3f32 pac = pa.cross(pc);
-			const v3f32 pcb = pc.cross(pb);
-			if(pba.dot(newToOrigin) > 0)
+		else if(ab_x_abc.dot(newToOrigin) > 0)
+			if(ab.dot(newToOrigin) > 0)
+			/* origin is closest to the AB line segment */
 			{
-				*o_searchDirection = pba.cross(newToOrigin).cross(pba);
-				o_simplex[0] = newPoint;
-			}
-			else if(pac.dot(newToOrigin) > 0)
-			{
-				*o_searchDirection = pac.cross(newToOrigin).cross(pac);
+				*o_searchDirection = ab.cross(newToOrigin).cross(ab);
+				o_simplex[0] = o_simplex[1];
 				o_simplex[1] = newPoint;
 			}
-			else if(pcb.dot(newToOrigin) > 0)
+			else
+			/* origin is closest to the new point */
 			{
-				*o_searchDirection = pcb.cross(newToOrigin).cross(pcb);
-				o_simplex[2] = newPoint;
+				*o_searchDirection = newToOrigin;
+				o_simplex[0] = newPoint;
+				*o_simplexSize = 1;
+			}
+		else /* origin is closest to the ABC triangle */
+			if(abc.dot(newToOrigin) > 0)
+			/* origin is on the front side (right-handed, remember) */
+			{
+				*o_searchDirection = abc;
+				o_simplex[(*o_simplexSize)++] = newPoint;
 			}
 			else
+			/* origin is on the back side */
 			{
+				*o_searchDirection = -abc;
+				/* swap B & C to ensure correct winding in final simplex */
+				o_simplex[2] = o_simplex[1];
+				o_simplex[1] = o_simplex[0];
+				o_simplex[0] = o_simplex[2];
 				o_simplex[(*o_simplexSize)++] = newPoint;
-				return true;
 			}
-		}
-		return false;
-	};
-	o_simplex[0] = support({1,0,0}, supportUserData);
-	u8 simplexSize = 1;
-	v3f32 searchDirection = -o_simplex[0];
-	local_persist const u32 MAX_GJK_ITERATIONS = 100;
-	for(u32 i = 0; i < MAX_GJK_ITERATIONS; i++)
-	{
-		const v3f32 newPoint = support(searchDirection, supportUserData);
-		if(newPoint.dot(searchDirection) < 0)
-			return false;
-		if(buildSimplexAroundOrigin(o_simplex, &simplexSize, newPoint, 
-		                            &searchDirection))
-			return true;
 	}
-	KLOG(ERROR, "Maximum GJK iterations reached; the algorithm will most "
-	     "likely never converge with the given support function!  This should "
-	     "never happen!");
+	else if(*o_simplexSize == 3)
+	/* creating a tetrahedron from a triangle, where the triangle vertices 
+		{A,B & C} correspond to {o_simplex[2], o_simplex[1], o_simplex[0]} 
+		and newPoint is in the opposite direction of the triangle's normal*/
+	{
+		/* possible cases:
+			- origin is outside tetrahedron beyond P in the search direction
+				(this case will never occur, since the caller can easily 
+				check for this with a simple dot product)
+			- origin is in the direction of PBA
+			- origin is in the direction of PAC
+			- origin is in the direction of PCB
+				set the simplex to be the respective triangle with opposing 
+				normal & return false
+			- origin is within the tetrahedron (none of the above cases)
+				return true!!! */
+		const v3f32 pa = newPoint - o_simplex[2];
+		const v3f32 pb = newPoint - o_simplex[1];
+		const v3f32 pc = newPoint - o_simplex[0];
+		const v3f32 pba = pb.cross(pa);
+		const v3f32 pac = pa.cross(pc);
+		const v3f32 pcb = pc.cross(pb);
+		if(pba.dot(newToOrigin) > 0)
+		{
+			*o_searchDirection = pba.cross(newToOrigin).cross(pba);
+			o_simplex[0] = newPoint;
+		}
+		else if(pac.dot(newToOrigin) > 0)
+		{
+			*o_searchDirection = pac.cross(newToOrigin).cross(pac);
+			o_simplex[1] = newPoint;
+		}
+		else if(pcb.dot(newToOrigin) > 0)
+		{
+			*o_searchDirection = pcb.cross(newToOrigin).cross(pcb);
+			o_simplex[2] = newPoint;
+		}
+		else
+		{
+			o_simplex[(*o_simplexSize)++] = newPoint;
+			return true;
+		}
+	}
+	return false;
+}
+internal kmath::GjkIterationResult kmath::gjk_iterate(
+	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData)
+{
+	local_persist const u32 MAX_GJK_ITERATIONS = 100;
+	if(gjkState->iteration >= MAX_GJK_ITERATIONS)
+	{
+		KLOG(ERROR, "Maximum GJK iterations reached; the algorithm will most "
+		     "likely never converge with the given support function!  This "
+		     "should never happen!");
+		return GjkIterationResult::FAILURE;
+	}
+	if(gjkState->simplexSize == CARRAY_SIZE(gjkState->o_simplex))
+		return GjkIterationResult::SUCCESS;
+	const v3f32 newPoint = support(gjkState->searchDirection, supportUserData);
+	if(newPoint.dot(gjkState->searchDirection) < 0)
+		return GjkIterationResult::FAILURE;
+	if(gjk_buildSimplexAroundOrigin(
+			gjkState->o_simplex, &gjkState->simplexSize, newPoint, 
+			&gjkState->searchDirection))
+		return GjkIterationResult::SUCCESS;
+	gjkState->iteration++;
+	return GjkIterationResult::INCOMPLETE;
+}
+internal bool kmath::gjk(
+	fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4])
+{
+	GjkState gjkState;
+	gjk_initialize(&gjkState, support, supportUserData);
+	while(true)
+	{
+		const GjkIterationResult result = 
+			gjk_iterate(&gjkState, support, supportUserData);
+		if(result == GjkIterationResult::SUCCESS)
+			return true;
+		if(result == GjkIterationResult::FAILURE)
+			return false;
+	}
 	return false;
 }
