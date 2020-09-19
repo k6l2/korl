@@ -689,6 +689,12 @@
 		https://www.youtube.com/watch?v=Qupqu1xe7Io
 		https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
 		[x] test the support functions for box & sphere before attempting
+		[ ] draw visualization of the minkowski difference between 2 shapes
+		[ ] split GJK into a state, and initializer function, and a kernel 
+			function
+		[ ] press button to initialize a new GJK algorithm
+		[ ] draw the simplex at any given GJK state
+		[ ] press button to process another iteration of GJK
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it

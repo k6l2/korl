@@ -6,10 +6,10 @@ v3f32 supportShape(const Shape& shape, const kQuaternion& orientation,
 	{
 		case ShapeType::BOX:
 			return kmath::supportBox(
-				shape.box.lengths, orientation, supportDirection, true);
+				shape.box.lengths, orientation, supportDirection);
 		case ShapeType::SPHERE:
 			return kmath::supportSphere(
-				shape.sphere.radius, supportDirection, true);
+				shape.sphere.radius, supportDirection);
 	}
 	KLOG(ERROR, "shape.type {%i} is invalid!", i32(shape.type));
 	return {};
@@ -68,6 +68,25 @@ f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 	}
 	KLOG(ERROR, "actor.shape.type {%i} is invalid!", i32(actor.shape.type));
 	return NAN32;
+}
+struct ShapeGjkSupportData
+{
+	const Shape& shapeA;
+	const v3f32& positionA;
+	const kQuaternion& orientationA;
+	const Shape& shapeB;
+	const v3f32& positionB;
+	const kQuaternion& orientationB;
+};
+internal GJK_SUPPORT_FUNCTION(shapeGjkSupport)
+{
+	const ShapeGjkSupportData& data = 
+		*reinterpret_cast<ShapeGjkSupportData*>(userData);
+	const v3f32 supportA = data.positionA + 
+		supportShape(data.shapeA, data.orientationA,  supportDirection);
+	const v3f32 supportB = data.positionB + 
+		supportShape(data.shapeB, data.orientationB, -supportDirection);
+	return supportA - supportB;
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -444,25 +463,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
+#if 0
 		for(size_t a2 = 0; a2 < arrlenu(g_gs->actors); a2++)
 		{
 			if(a == a2)
 				continue;
 			Actor& actor2 = g_gs->actors[a2];
 			v3f32 gjkSimplex[4];
-			auto gjkSupport = [&](const v3f32& supportDirection)->v3f32
-			{
-				const v3f32 supportA = actor.position + 
-					supportShape(actor.shape, actor.orientation, 
-					             supportDirection);
-				const v3f32 supportB = actor2.position + 
-					supportShape(actor2.shape, actor2.orientation, 
-					             -supportDirection);
-				return supportA - supportB;
-			};
-			if(kmath::gjk(gjkSupport, gjkSimplex))
+			ShapeGjkSupportData shapeGjkSupportData = 
+				{ .shapeA       = actor.shape
+				, .positionA    = actor.position
+				, .orientationA = actor.orientation
+				, .shapeB       = actor2.shape
+				, .positionB    = actor2.position
+				, .orientationB = actor2.orientation };
+			if(kmath::gjk(shapeGjkSupport, &shapeGjkSupportData, gjkSimplex))
 				g_krb->setDefaultColor(krb::RED);
 		}
+#endif// 0
 		drawShape(actor.position, actor.orientation, actor.shape);
 #if DEBUG_DELETE_LATER
 		/* calculate the world-space support function of the shape */

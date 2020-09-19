@@ -1012,7 +1012,7 @@ internal inline v3f32 kmath::supportBox(
 	return corners[farthestCornerIndex]*(largestDot >= 0 ? 1.f : -1.f);
 }
 internal bool kmath::gjk(
-	const std::function<v3f32(const v3f32&)>& support, v3f32 o_simplex[4])
+	fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4])
 {
 	/**
 	 * @return true if we were able to build a complete simplex around the 
@@ -1150,13 +1150,13 @@ internal bool kmath::gjk(
 		}
 		return false;
 	};
-	o_simplex[0] = support({1,0,0});
+	o_simplex[0] = support({1,0,0}, supportUserData);
 	u8 simplexSize = 1;
 	v3f32 searchDirection = -o_simplex[0];
 	local_persist const u32 MAX_GJK_ITERATIONS = 100;
 	for(u32 i = 0; i < MAX_GJK_ITERATIONS; i++)
 	{
-		const v3f32 newPoint = support(searchDirection);
+		const v3f32 newPoint = support(searchDirection, supportUserData);
 		if(newPoint.dot(searchDirection) < 0)
 			return false;
 		if(buildSimplexAroundOrigin(o_simplex, &simplexSize, newPoint, 

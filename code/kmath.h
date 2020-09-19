@@ -5,8 +5,6 @@ global_variable const f32 PI32 = 3.14159f;
 global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
 global_variable const f32 NAN32 = nanf("");
-/* for lambda parameter support, for example kmath::gjk */
-#include <functional>
 struct v2u32
 {
 	union 
@@ -155,8 +153,15 @@ struct kQuaternion : public v4f32
 		quaternion! */
 	inline v3f32 transform(const v3f32& v3d, bool quatIsNormalized = false);
 };
+/**
+ * a function which is passed a support direction, and returns a position in 
+ * space representing the "minkowski difference" for the GJK algorithm below
+ */
+#define GJK_SUPPORT_FUNCTION(name) \
+	v3f32 name(const v3f32& supportDirection, void* userData)
 namespace kmath
 {
+	typedef GJK_SUPPORT_FUNCTION(fnSig_gjkSupport);
 	/* Thanks, Bruce Dawson!  Source: 
 		https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ */
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
@@ -295,9 +300,6 @@ namespace kmath
 		v3f32 lengths, kQuaternion orientation, 
 		v3f32 supportDirection, bool supportDirectionIsNormalized = false);
 	/**
-	 * @param support a lambda/function which is passed a support direction, and 
-	 *                returns a position in space. eg:
-	 *                `[](const v3f32& supportDirection)->v3f32`
 	 * @param simplex if the return value is true, this will contain the 
 	 *                vertices of a tetrahedron which contains the origin whose 
 	 *                vertex indices for each triangle are:
@@ -306,7 +308,7 @@ namespace kmath
 	 *         bounds which contains the origin
 	 */
 	internal bool gjk(
-		const std::function<v3f32(const v3f32&)>& support, v3f32 o_simplex[4]);
+		fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4]);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
