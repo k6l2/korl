@@ -482,7 +482,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 #endif// 0
 		drawShape(actor.position, actor.orientation, actor.shape);
-#if DEBUG_DELETE_LATER
+#if DEBUG_DELETE_LATER && 0
 		/* calculate the world-space support function of the shape */
 		const v3f32 supportDirection = actor.position;
 		const v3f32 supportResult = actor.position + 
@@ -516,6 +516,21 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		          g_gs->addShape);
 	}
 #if DEBUG_DELETE_LATER
+	if(arrlenu(g_gs->actors) == 2)
+	/* draw debug minkowski difference */
+	{
+		Actor& a1 = g_gs->actors[0];
+		Actor& a2 = g_gs->actors[1];
+		g_gs->minkowskiDifferencePosition = a1.position - a2.position;
+		g_gs->minkowskiDifferenceShape.type = ShapeType::SPHERE;
+		kassert(   a1.shape.type == ShapeType::SPHERE 
+		        && a2.shape.type == ShapeType::SPHERE);
+		g_gs->minkowskiDifferenceShape.sphere.radius = 
+			a1.shape.sphere.radius + a2.shape.sphere.radius;
+		g_krb->setWireframe(true);
+		drawSphere(g_gs->minkowskiDifferencePosition, kQuaternion::IDENTITY, 
+		           g_gs->minkowskiDifferenceShape);
+	}
 	if(!isnan(g_gs->eyeRayActorHitPosition.x))
 	/* draw a crosshair on the 3D position where we hit an actor */
 	{
@@ -525,17 +540,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		local_persist const VertexNoTexture MESH[] = 
 			{ {{-1,-1,0}, krb::WHITE}, {{1, 1,0}, krb::WHITE}
 			, {{-1, 1,0}, krb::WHITE}, {{1,-1,0}, krb::WHITE} };
-		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
-	}
-	{
-		const kQuaternion modelQuat(g_gs->testRadianAxis, g_gs->testRadians);
-		m4x4f32 modelMatrix;
-		kmath::makeM4f32(modelQuat, g_gs->testPosition, &modelMatrix);
-		g_krb->setModelMatrix(modelMatrix.elements);
-		local_persist const VertexNoTexture MESH[] = 
-			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN}
-			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 #endif// DEBUG_DELETE_LATER
@@ -568,13 +572,13 @@ GAME_INITIALIZE(gameInitialize)
 	/* generate a single sphere mesh with reasonable resolution that we can 
 		reuse with different scales */
 	g_gs->generatedSphereMeshVertexCount = 
-		kmath::generateMeshCircleSphereVertexCount(6, 6);
+		kmath::generateMeshCircleSphereVertexCount(16, 16);
 	g_gs->generatedSphereMesh = reinterpret_cast<kmath::GeneratedMeshVertex*>(
 		kgaAlloc(g_gs->templateGameState.hKgaPermanent,
 		         sizeof(kmath::GeneratedMeshVertex) * 
 		              g_gs->generatedSphereMeshVertexCount));
 	kmath::generateMeshCircleSphere(
-		1.f, 6, 6, g_gs->generatedSphereMesh, 
+		1.f, 16, 16, g_gs->generatedSphereMesh, 
 		g_gs->generatedSphereMeshVertexCount * 
 			sizeof(kmath::GeneratedMeshVertex));
 	/* initialize dynamic array of actors */
