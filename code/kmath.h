@@ -78,6 +78,7 @@ public:
 	inline v3f32 operator-(const v3f32& other) const;
 	inline v3f32 operator*(f32 scalar) const;
 	inline v3f32 cross(const v3f32& other) const;
+	inline v3f32& operator*=(f32 scalar);
 	inline v3f32& operator/=(f32 scalar);
 	inline v3f32& operator+=(const v3f32& other);
 	inline v3f32& operator-=(const v3f32& other);
@@ -312,6 +313,14 @@ namespace kmath
 		{ FAILURE, INCOMPLETE, SUCCESS};
 	internal GjkIterationResult gjk_iterate(
 		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
+	/**
+	 * @return The # of vertex positions written, corresponding to #/2 lines.  
+	 *         This value should always be in the range [0,12], and it should 
+	 *         always be even because each line requires 2 vertices.
+	 */
+	internal u8 gjk_buildSimplexLines(
+		GjkState* gjkState, void* o_vertexData, size_t vertexDataBytes, 
+		size_t vertexByteStride, size_t vertexPositionOffset);
 	/**
 	 * @param simplex if the return value is true, this will contain the 
 	 *                vertices of a tetrahedron which contains the origin whose 

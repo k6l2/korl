@@ -136,6 +136,13 @@ inline v3f32 v3f32::cross(const v3f32& other) const
 	       , z*other.x - x*other.z
 	       , x*other.y - y*other.x };
 }
+inline v3f32& v3f32::operator*=(f32 scalar)
+{
+	x *= scalar;
+	y *= scalar;
+	z *= scalar;
+	return *this;
+}
 inline v3f32& v3f32::operator/=(f32 scalar)
 {
 	kassert(!kmath::isNearlyZero(scalar));
@@ -1094,19 +1101,21 @@ internal bool gjk_buildSimplexAroundOrigin(
 			}
 		else /* origin is closest to the ABC triangle */
 			if(abc.dot(newToOrigin) > 0)
-			/* origin is on the front side (right-handed, remember) */
+			/* origin is on the front side (right-handed, remember), so the 
+				simplex needs to reverse the triangle normal since the origin is 
+				on the opposite side of this simplex face */
 			{
 				*o_searchDirection = abc;
+				/* swap B & C to ensure correct winding in final simplex */
+				o_simplex[2] = o_simplex[1];
+				o_simplex[1] = o_simplex[0];
+				o_simplex[0] = o_simplex[2];
 				o_simplex[(*o_simplexSize)++] = newPoint;
 			}
 			else
 			/* origin is on the back side */
 			{
 				*o_searchDirection = -abc;
-				/* swap B & C to ensure correct winding in final simplex */
-				o_simplex[2] = o_simplex[1];
-				o_simplex[1] = o_simplex[0];
-				o_simplex[0] = o_simplex[2];
 				o_simplex[(*o_simplexSize)++] = newPoint;
 			}
 	}
@@ -1178,6 +1187,66 @@ internal kmath::GjkIterationResult kmath::gjk_iterate(
 	gjkState->iteration++;
 	return GjkIterationResult::INCOMPLETE;
 }
+internal u8 kmath::gjk_buildSimplexLines(
+	GjkState* gjkState, void* o_vertexData, size_t vertexDataBytes, 
+	size_t vertexByteStride, size_t vertexPositionOffset)
+{
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	/* cases: 
+		- gjkState->simplexSize == 0?
+			do nothing; return 0
+		- gjkState->simplexSize == 1?
+			draw a 3D crosshair at the simplex vertex; return 6
+		- gjkState->simplexSize == 2?
+			draw a line; return 2
+		- gjkState->simplexSize == 3?
+			draw a triangle; return 6
+		- gjkState->simplexSize == 4?
+			draw a tetrahedron wireframe; return 12 */
+	kassert(gjkState->simplexSize <= 4);
+	const u8*const vertexDataEnd = o_vertexDataU8 + vertexPositionOffset + 
+		(12*vertexByteStride);
+	kassert(safeTruncateU32(vertexDataEnd - o_vertexDataU8) <= vertexDataBytes);
+	u8 lineVertexPositionsWritten = 0;
+	switch(gjkState->simplexSize)
+	{
+	case 0:
+		return 0;
+	case 1: {
+		local_persist const v3f32 CROSSHAIR_OFFSETS[] = 
+			{ {-1,0,0}, {1,0,0}, {0,-1,0}, {0,1,0}, {0,0,-1}, {0,0,1} };
+		for(u8 v = 0; v < 6; v++)
+			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
+					v*vertexByteStride) = 
+				gjkState->o_simplex[0] + CROSSHAIR_OFFSETS[v];
+		return 6;
+	} break;
+	case 2:
+		for(u8 v = 0; v < 2; v++)
+			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
+					v*vertexByteStride) = 
+				gjkState->o_simplex[v];
+		return 2;
+	case 3:{
+		local_persist const size_t SIMPLEX_LINE_INDICES[] = { 0,1,1,2,2,0 };
+		for(u8 v = 0; v < CARRAY_SIZE(SIMPLEX_LINE_INDICES); v++)
+			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
+					v*vertexByteStride) = 
+				gjkState->o_simplex[SIMPLEX_LINE_INDICES[v]];
+		return CARRAY_SIZE(SIMPLEX_LINE_INDICES);
+	} break;
+	case 4:{
+		local_persist const size_t SIMPLEX_LINE_INDICES[] = 
+			{ 0,1,1,2,2,0, 3,0,3,1,3,2 };
+		for(u8 v = 0; v < CARRAY_SIZE(SIMPLEX_LINE_INDICES); v++)
+			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
+					v*vertexByteStride) = 
+				gjkState->o_simplex[SIMPLEX_LINE_INDICES[v]];
+		return CARRAY_SIZE(SIMPLEX_LINE_INDICES);
+	} break;
+	}
+	return lineVertexPositionsWritten;
+}
 internal bool kmath::gjk(
 	fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4])
 {
@@ -1188,7 +1257,11 @@ internal bool kmath::gjk(
 		const GjkIterationResult result = 
 			gjk_iterate(&gjkState, support, supportUserData);
 		if(result == GjkIterationResult::SUCCESS)
+		{
+			for(u8 s = 0; s < 4; s++)
+				o_simplex[s] = gjkState.o_simplex[s];
 			return true;
+		}
 		if(result == GjkIterationResult::FAILURE)
 			return false;
 	}

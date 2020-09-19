@@ -692,9 +692,9 @@
 		[x] draw visualization of the minkowski difference between 2 shapes
 		[x] split GJK into a state, and initializer function, and a kernel 
 			function
-		[ ] press button to initialize a new GJK algorithm
-		[ ] draw the simplex at any given GJK state
-		[ ] press button to process another iteration of GJK
+		[x] press button to initialize a new GJK algorithm
+		[x] draw the simplex at any given GJK state
+		[x] press button to process another iteration of GJK
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it

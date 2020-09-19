@@ -36,6 +36,7 @@ struct GameState
 	KmlTemplateGameState templateGameState;
 	bool orthographicView;
 	v3f32 cameraPosition = {10,11,12};
+	v3f32 cameraVelocity;
 	f32 cameraRadiansYaw = PI32*3/4;
 	f32 cameraRadiansPitch = -PI32/4;
 	HudState hudState;
@@ -60,6 +61,8 @@ struct GameState
 	f32 testRadians;
 	v3f32 minkowskiDifferencePosition;
 	Shape minkowskiDifferenceShape;
+	kmath::GjkState gjkState;
+	kmath::GjkIterationResult gjkIterationResult;
 #endif// DEBUG_DELETE_LATER
 };
 global_variable GameState* g_gs;
@@ -73,6 +76,11 @@ const global_variable KrbVertexAttributeOffsets
 	VERTEX_ATTRIBS_NO_TEXTURE = 
 		{ .position_3f32 = offsetof(VertexNoTexture, position)
 		, .color_4f32    = offsetof(VertexNoTexture, color)
+		, .texCoord_2f32 = sizeof(VertexNoTexture) };
+const global_variable KrbVertexAttributeOffsets 
+	VERTEX_ATTRIBS_POSITION_ONLY = 
+		{ .position_3f32 = offsetof(VertexNoTexture, position)
+		, .color_4f32    = sizeof(VertexNoTexture)
 		, .texCoord_2f32 = sizeof(VertexNoTexture) };
 const global_variable KrbVertexAttributeOffsets 
 	VERTEX_ATTRIBS_GENERATED_MESH = 

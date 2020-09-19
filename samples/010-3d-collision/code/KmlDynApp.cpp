@@ -112,6 +112,50 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	/* handle user input */
 	if(windowIsFocused)
 	{
+#if DEBUG_DELETE_LATER
+		if(gameKeyboard.f1 == ButtonState::PRESSED)
+		{
+			arrsetlen(g_gs->actors, 2);
+			g_gs->actors[0].shape.type = ShapeType::SPHERE;
+			g_gs->actors[1].shape.type = ShapeType::SPHERE;
+			g_gs->actors[0].shape.sphere.radius = 1;
+			g_gs->actors[1].shape.sphere.radius = 1;
+			g_gs->actors[0].position = {-0.214954376f,4.43508482f,-0.0842480659f};
+			g_gs->actors[1].position = {-1.82670593f,5.56357288f,-0.432786942f};
+			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
+			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
+		}
+		if(gameKeyboard.f2 == ButtonState::PRESSED)
+		{
+			Actor& actorA = g_gs->actors[0];
+			Actor& actorB = g_gs->actors[1];
+			ShapeGjkSupportData shapeGjkSupportData = 
+				{ .shapeA       = actorA.shape
+				, .positionA    = actorA.position
+				, .orientationA = actorA.orientation
+				, .shapeB       = actorB.shape
+				, .positionB    = actorB.position
+				, .orientationB = actorB.orientation };
+			kmath::gjk_initialize(
+				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
+			g_gs->gjkIterationResult = kmath::GjkIterationResult::INCOMPLETE;
+		}
+		if(gameKeyboard.f3 == ButtonState::PRESSED)
+		{
+			Actor& actorA = g_gs->actors[0];
+			Actor& actorB = g_gs->actors[1];
+			ShapeGjkSupportData shapeGjkSupportData = 
+				{ .shapeA       = actorA.shape
+				, .positionA    = actorA.position
+				, .orientationA = actorA.orientation
+				, .shapeB       = actorB.shape
+				, .positionB    = actorB.position
+				, .orientationB = actorB.orientation };
+			g_gs->gjkIterationResult = 
+				kmath::gjk_iterate(
+					&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
+		}
+#endif// DEBUG_DELETE_LATER
 		const bool mouseOverAnyGui = ImGui::IsAnyItemHovered() 
 			|| ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
 		v3f32 worldEyeRayPosition;
@@ -303,27 +347,40 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_kpl->mouseSetRelativeMode(lockedMouse);
 		if(gameMouse.middle == ButtonState::PRESSED)
 			g_gs->orthographicView = !g_gs->orthographicView;
-		local_persist const f32 CAMERA_SPEED = 25;
+		local_persist const f32 CAMERA_SPEED_MAX = 25;
+		local_persist const f32 CAMERA_ACCELERATION = 10;
+		local_persist const f32 CAMERA_DECELERATION = 50;
+		v3f32 camControl = v3f32::ZERO;
 		/* move the camera world position */
 		if(gameKeyboard.e > ButtonState::NOT_PRESSED)
-			g_gs->cameraPosition += 
-				deltaSeconds * CAMERA_SPEED * cameraWorldForward;
+			camControl += cameraWorldForward;
 		if(gameKeyboard.d > ButtonState::NOT_PRESSED)
-			g_gs->cameraPosition -= 
-				deltaSeconds * CAMERA_SPEED * cameraWorldForward;
+			camControl -= cameraWorldForward;
 		if(gameKeyboard.f > ButtonState::NOT_PRESSED)
-			g_gs->cameraPosition += 
-				deltaSeconds * CAMERA_SPEED * cameraWorldRight;
+			camControl += cameraWorldRight;
 		if(gameKeyboard.s > ButtonState::NOT_PRESSED)
-			g_gs->cameraPosition -= 
-				deltaSeconds * CAMERA_SPEED * cameraWorldRight;
+			camControl -= cameraWorldRight;
 		if(gameKeyboard.space > ButtonState::NOT_PRESSED)
-			g_gs->cameraPosition += 
-				deltaSeconds * CAMERA_SPEED * cameraWorldUp;
+			camControl += cameraWorldUp;
 		if(gameKeyboard.a > ButtonState::NOT_PRESSED 
 			&& !gameKeyboard.modifiers.shift)
-				g_gs->cameraPosition -= 
-					deltaSeconds * CAMERA_SPEED * cameraWorldUp;
+				camControl -= cameraWorldUp;
+		f32 camControlMag = camControl.normalize();
+		if(kmath::isNearlyZero(camControlMag))
+		{
+			v3f32 camDecelDir = kmath::normal(-g_gs->cameraVelocity);
+			g_gs->cameraVelocity += 
+				deltaSeconds*CAMERA_DECELERATION*camDecelDir;
+			if(g_gs->cameraVelocity.dot(camDecelDir) > 0)
+				g_gs->cameraVelocity = v3f32::ZERO;
+		}
+		else
+			g_gs->cameraVelocity += deltaSeconds*CAMERA_ACCELERATION*camControl;
+		f32 camSpeed = g_gs->cameraVelocity.normalize();
+		if(camSpeed > CAMERA_SPEED_MAX)
+			camSpeed = CAMERA_SPEED_MAX;
+		g_gs->cameraVelocity *= camSpeed;
+		g_gs->cameraPosition += deltaSeconds*g_gs->cameraVelocity;
 		if(lockedMouse)
 		{
 			local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
@@ -451,7 +508,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->setProjectionOrthoFixedHeight(
 			windowDimensions.x, windowDimensions.y, 100, 1000);
 	else
-		g_krb->setProjectionFov(50.f, windowDimensions.elements, 1, 1000);
+		g_krb->setProjectionFov(50.f, windowDimensions.elements, 0.001f, 100);
 	g_krb->lookAt(g_gs->cameraPosition.elements, 
 	              (g_gs->cameraPosition + cameraWorldForward).elements, 
 	              v3f32::Z.elements);
@@ -517,19 +574,61 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 #if DEBUG_DELETE_LATER
 	if(arrlenu(g_gs->actors) == 2)
-	/* draw debug minkowski difference */
 	{
-		Actor& a1 = g_gs->actors[0];
-		Actor& a2 = g_gs->actors[1];
-		g_gs->minkowskiDifferencePosition = a1.position - a2.position;
-		g_gs->minkowskiDifferenceShape.type = ShapeType::SPHERE;
-		kassert(   a1.shape.type == ShapeType::SPHERE 
-		        && a2.shape.type == ShapeType::SPHERE);
-		g_gs->minkowskiDifferenceShape.sphere.radius = 
-			a1.shape.sphere.radius + a2.shape.sphere.radius;
-		g_krb->setWireframe(true);
-		drawSphere(g_gs->minkowskiDifferencePosition, kQuaternion::IDENTITY, 
-		           g_gs->minkowskiDifferenceShape);
+		/* draw debug minkowski difference */
+		{
+			Actor& a1 = g_gs->actors[0];
+			Actor& a2 = g_gs->actors[1];
+			g_gs->minkowskiDifferencePosition = a1.position - a2.position;
+			g_gs->minkowskiDifferenceShape.type = ShapeType::SPHERE;
+			kassert(   a1.shape.type == ShapeType::SPHERE 
+			        && a2.shape.type == ShapeType::SPHERE);
+			g_gs->minkowskiDifferenceShape.sphere.radius = 
+				a1.shape.sphere.radius + a2.shape.sphere.radius;
+			g_krb->setWireframe(true);
+			drawSphere(g_gs->minkowskiDifferencePosition, kQuaternion::IDENTITY, 
+			           g_gs->minkowskiDifferenceShape);
+		}
+		/* draw the GJK simplex */
+		{
+			VertexNoTexture vertices[12];
+			const u8 simplexLineVertexCount = 
+				kmath::gjk_buildSimplexLines(
+					&g_gs->gjkState, vertices, sizeof(vertices), 
+					sizeof(vertices[0]), offsetof(VertexNoTexture, position));
+			switch(g_gs->gjkIterationResult)
+			{
+				case kmath::GjkIterationResult::INCOMPLETE:
+					g_krb->setDefaultColor(krb::WHITE);
+					break;
+				case kmath::GjkIterationResult::FAILURE:
+					g_krb->setDefaultColor(krb::RED);
+					break;
+				case kmath::GjkIterationResult::SUCCESS:
+					g_krb->setDefaultColor(krb::GREEN);
+					break;
+			}
+			if(simplexLineVertexCount)
+			{
+				g_krb->setModelXform(
+					v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
+				g_krb->drawLines(
+					vertices, simplexLineVertexCount, sizeof(vertices[0]), 
+					VERTEX_ATTRIBS_POSITION_ONLY);
+			}
+		}
+		/* draw the GJK search direction from the last added simplex vertex */
+		{
+			const v3f32 lastSimplexPosition = 
+				g_gs->gjkState.o_simplex[g_gs->gjkState.simplexSize - 1];
+			const v3f32 searchDirection = 
+				kmath::normal(g_gs->gjkState.searchDirection);
+			g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
+			const VertexNoTexture mesh[] = 
+				{ {lastSimplexPosition                  , krb::YELLOW}
+				, {lastSimplexPosition + searchDirection, krb::YELLOW} };
+			DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
+		}
 	}
 	if(!isnan(g_gs->eyeRayActorHitPosition.x))
 	/* draw a crosshair on the 3D position where we hit an actor */
