@@ -45,7 +45,14 @@
 		"xstring": "cpp",
 		"xtr1common": "cpp",
 		"xtree": "cpp",
-		"ctime": "cpp"
+		"ctime": "cpp",
+		"functional": "cpp",
+		"cctype": "cpp",
+		"list": "cpp",
+		"string": "cpp",
+		"unordered_map": "cpp",
+		"vector": "cpp",
+		"xhash": "cpp"
 	},
 	"files.exclude": {
 		"**/.git": true,

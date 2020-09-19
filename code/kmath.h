@@ -5,6 +5,8 @@ global_variable const f32 PI32 = 3.14159f;
 global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
 global_variable const f32 NAN32 = nanf("");
+/* for lambda parameter support, for example kmath::gjk */
+#include <functional>
 struct v2u32
 {
 	union 
@@ -73,6 +75,7 @@ struct v3f32
 	global_variable const v3f32 Y;
 	global_variable const v3f32 Z;
 public:
+	inline v3f32 operator-() const;
 	inline v3f32 operator+(const v3f32& other) const;
 	inline v3f32 operator-(const v3f32& other) const;
 	inline v3f32 operator*(f32 scalar) const;
@@ -278,19 +281,32 @@ namespace kmath
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
 		GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
 	/**
-	 * @return the world-space position on the shape with the highest dot 
-	 *         product with the supportDirection
+	 * @return the local position on the shape with the highest dot product with 
+	 *         the supportDirection
 	 */
 	internal inline v3f32 supportSphere(
 		f32 radius, v3f32 supportDirection, 
 		bool supportDirectionIsNormalized = false);
 	/**
-	 * @return the world-space position on the shape with the highest dot 
-	 *         product with the supportDirection
+	 * @return the local position on the shape with the highest dot product with 
+	 *         the supportDirection
 	 */
 	internal inline v3f32 supportBox(
 		v3f32 lengths, kQuaternion orientation, 
 		v3f32 supportDirection, bool supportDirectionIsNormalized = false);
+	/**
+	 * @param support a lambda/function which is passed a support direction, and 
+	 *                returns a position in space. eg:
+	 *                `[](const v3f32& supportDirection)->v3f32`
+	 * @param simplex if the return value is true, this will contain the 
+	 *                vertices of a tetrahedron which contains the origin whose 
+	 *                vertex indices for each triangle are:
+	 *                {{0,1,2}, {0,2,3}, {0,3,1}, {3,2,1}}
+	 * @return true if there exists a tetrahedron within the support function's 
+	 *         bounds which contains the origin
+	 */
+	internal bool gjk(
+		const std::function<v3f32(const v3f32&)>& support, v3f32 o_simplex[4]);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);

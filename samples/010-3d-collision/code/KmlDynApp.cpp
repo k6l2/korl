@@ -1,4 +1,19 @@
 #include "KmlDynApp.h"
+v3f32 supportShape(const Shape& shape, const kQuaternion& orientation, 
+                   const v3f32& supportDirection)
+{
+	switch(shape.type)
+	{
+		case ShapeType::BOX:
+			return kmath::supportBox(
+				shape.box.lengths, orientation, supportDirection, true);
+		case ShapeType::SPHERE:
+			return kmath::supportSphere(
+				shape.sphere.radius, supportDirection, true);
+	}
+	KLOG(ERROR, "shape.type {%i} is invalid!", i32(shape.type));
+	return {};
+}
 void drawBox(const v3f32& worldPosition, const kQuaternion& orientation, 
              const Shape& shape)
 {
@@ -51,7 +66,7 @@ f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 				rayOrigin, rayNormal, actor.position, 
 				actor.shape.sphere.radius);
 	}
-	kassert(!"This code should never execute!");
+	KLOG(ERROR, "actor.shape.type {%i} is invalid!", i32(actor.shape.type));
 	return NAN32;
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
@@ -429,6 +444,25 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
+		for(size_t a2 = 0; a2 < arrlenu(g_gs->actors); a2++)
+		{
+			if(a == a2)
+				continue;
+			Actor& actor2 = g_gs->actors[a2];
+			v3f32 gjkSimplex[4];
+			auto gjkSupport = [&](const v3f32& supportDirection)->v3f32
+			{
+				const v3f32 supportA = actor.position + 
+					supportShape(actor.shape, actor.orientation, 
+					             supportDirection);
+				const v3f32 supportB = actor2.position + 
+					supportShape(actor2.shape, actor2.orientation, 
+					             -supportDirection);
+				return supportA - supportB;
+			};
+			if(kmath::gjk(gjkSupport, gjkSimplex))
+				g_krb->setDefaultColor(krb::RED);
+		}
 		drawShape(actor.position, actor.orientation, actor.shape);
 #if DEBUG_DELETE_LATER
 		/* calculate the world-space support function of the shape */
