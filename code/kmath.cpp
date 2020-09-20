@@ -1195,7 +1195,11 @@ internal u8 kmath::gjk_buildSimplexLines(
 	GjkState* gjkState, void* o_vertexData, size_t vertexDataBytes, 
 	size_t vertexByteStride, size_t vertexPositionOffset)
 {
+	/* try to ensure that the data buffer passed to us contains enough memory */
 	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	const void*const vertexDataEnd = o_vertexDataU8 + vertexDataBytes;
+	kassert(o_vertexDataU8 + (12*vertexByteStride) <= vertexDataEnd);
+	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
 	/* cases: 
 		- gjkState->simplexSize == 0?
 			do nothing; return 0
@@ -1208,9 +1212,6 @@ internal u8 kmath::gjk_buildSimplexLines(
 		- gjkState->simplexSize == 4?
 			draw a tetrahedron wireframe; return 12 */
 	kassert(gjkState->simplexSize <= 4);
-	const u8*const vertexDataEnd = o_vertexDataU8 + vertexPositionOffset + 
-		(12*vertexByteStride);
-	kassert(safeTruncateU32(vertexDataEnd - o_vertexDataU8) <= vertexDataBytes);
 	u8 lineVertexPositionsWritten = 0;
 	switch(gjkState->simplexSize)
 	{
@@ -1220,22 +1221,20 @@ internal u8 kmath::gjk_buildSimplexLines(
 		local_persist const v3f32 CROSSHAIR_OFFSETS[] = 
 			{ {-1,0,0}, {1,0,0}, {0,-1,0}, {0,1,0}, {0,0,-1}, {0,0,1} };
 		for(u8 v = 0; v < 6; v++)
-			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
-					v*vertexByteStride) = 
+			*reinterpret_cast<v3f32*>(o_vertexPositions + v*vertexByteStride) = 
 				gjkState->o_simplex[0] + CROSSHAIR_OFFSETS[v];
 		return 6;
 	} break;
 	case 2:
 		for(u8 v = 0; v < 2; v++)
-			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
+			*reinterpret_cast<v3f32*>(o_vertexPositions + 
 					v*vertexByteStride) = 
 				gjkState->o_simplex[v];
 		return 2;
 	case 3:{
 		local_persist const size_t SIMPLEX_LINE_INDICES[] = { 0,1,1,2,2,0 };
 		for(u8 v = 0; v < CARRAY_SIZE(SIMPLEX_LINE_INDICES); v++)
-			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
-					v*vertexByteStride) = 
+			*reinterpret_cast<v3f32*>(o_vertexPositions + v*vertexByteStride) = 
 				gjkState->o_simplex[SIMPLEX_LINE_INDICES[v]];
 		return CARRAY_SIZE(SIMPLEX_LINE_INDICES);
 	} break;
@@ -1243,8 +1242,7 @@ internal u8 kmath::gjk_buildSimplexLines(
 		local_persist const size_t SIMPLEX_LINE_INDICES[] = 
 			{ 0,1,1,2,2,0, 3,0,3,1,3,2 };
 		for(u8 v = 0; v < CARRAY_SIZE(SIMPLEX_LINE_INDICES); v++)
-			*reinterpret_cast<v3f32*>(o_vertexDataU8 + vertexPositionOffset + 
-					v*vertexByteStride) = 
+			*reinterpret_cast<v3f32*>(o_vertexPositions + v*vertexByteStride) = 
 				gjkState->o_simplex[SIMPLEX_LINE_INDICES[v]];
 		return CARRAY_SIZE(SIMPLEX_LINE_INDICES);
 	} break;
