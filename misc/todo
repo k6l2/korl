@@ -696,13 +696,17 @@
 		[x] draw the simplex at any given GJK state
 		[x] press button to process another iteration of GJK
 		[ ] add optional "best guess" initial search direction
-		[ ] move GjkIterationResult into GjkState
+		[x] move GjkIterationResult into GjkState
 		[ ] generalize `generateMeshX` functions to output to arbitrary vertex 
 			data (remove GeneratedMeshVertex)
 		[ ] generateWireframe(Box/CircleSphere)
 		[ ] generate minkowski difference point cloud by sampling the support 
 			function evenly in all directions
 		[ ] KRB: draw points
+	[ ] utility: Expanding Polytope Algorithm (EPA)
+		https://youtu.be/6rgiPrzqt9w
+		http://www.dtecta.com/papers/gdc2001depth.pdf
+		http://www.dyn4j.org/2010/05/epa-expanding-polytope-algorithm/
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it
@@ -714,10 +718,6 @@
 			http://www.cplusplus.com/reference/algorithm/make_heap/
 			- input: a list of AABBs
 			- output: a list of colliding AABB pairs
-	[ ] utility: Expanding Polytope Algorithm (EPA)
-		https://youtu.be/6rgiPrzqt9w
-		http://www.dtecta.com/papers/gdc2001depth.pdf
-		http://www.dyn4j.org/2010/05/epa-expanding-polytope-algorithm/
 	[ ] create arbitrary convex shapes
 		[ ] utility: NewtonAppleWrapper
 			http://www.newtonapples.net/NewtonAppleWrapper.html

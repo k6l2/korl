@@ -300,18 +300,19 @@ namespace kmath
 		v3f32 lengths, kQuaternion orientation, 
 		v3f32 supportDirection, bool supportDirectionIsNormalized = false);
 	typedef GJK_SUPPORT_FUNCTION(fnSig_gjkSupport);
+	enum class GjkIterationResult : u8
+		{ FAILURE, INCOMPLETE, SUCCESS };
 	struct GjkState
 	{
 		v3f32 o_simplex[4];
-		u8 simplexSize;
 		v3f32 searchDirection;
-		u32 iteration;
+		u8 simplexSize;
+		u8 iteration;
+		GjkIterationResult lastIterationResult;
 	};
 	internal void gjk_initialize(
 		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
-	enum class GjkIterationResult : u8
-		{ FAILURE, INCOMPLETE, SUCCESS};
-	internal GjkIterationResult gjk_iterate(
+	internal void gjk_iterate(
 		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
 	/**
 	 * @return The # of vertex positions written, corresponding to #/2 lines.  

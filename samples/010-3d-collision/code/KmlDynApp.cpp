@@ -138,7 +138,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, .orientationB = actorB.orientation };
 			kmath::gjk_initialize(
 				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
-			g_gs->gjkIterationResult = kmath::GjkIterationResult::INCOMPLETE;
 			KLOG(INFO, "distance between actorA/B=%f", 
 			     (actorA.position - actorB.position).magnitude());
 		}
@@ -153,9 +152,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, .shapeB       = actorB.shape
 				, .positionB    = actorB.position
 				, .orientationB = actorB.orientation };
-			g_gs->gjkIterationResult = 
-				kmath::gjk_iterate(
-					&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
+			kmath::gjk_iterate(
+				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
 		}
 #endif// DEBUG_DELETE_LATER
 		const bool mouseOverAnyGui = ImGui::IsAnyItemHovered() 
@@ -598,7 +596,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				kmath::gjk_buildSimplexLines(
 					&g_gs->gjkState, vertices, sizeof(vertices), 
 					sizeof(vertices[0]), offsetof(VertexNoTexture, position));
-			switch(g_gs->gjkIterationResult)
+			switch(g_gs->gjkState.lastIterationResult)
 			{
 				case kmath::GjkIterationResult::INCOMPLETE:
 					g_krb->setDefaultColor(krb::WHITE);

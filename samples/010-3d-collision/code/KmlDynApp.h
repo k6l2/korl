@@ -1,6 +1,6 @@
 #pragma once
 #include "TemplateGameState.h"
-#define DEBUG_DELETE_LATER 0
+#define DEBUG_DELETE_LATER 1
 enum class ShapeType : u8
 	{ BOX
 	, SPHERE };
@@ -62,7 +62,6 @@ struct GameState
 	v3f32 minkowskiDifferencePosition;
 	Shape minkowskiDifferenceShape;
 	kmath::GjkState gjkState;
-	kmath::GjkIterationResult gjkIterationResult;
 #endif// DEBUG_DELETE_LATER
 };
 global_variable GameState* g_gs;

@@ -1021,10 +1021,11 @@ internal inline v3f32 kmath::supportBox(
 internal void kmath::gjk_initialize(
 	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData)
 {
-	gjkState->o_simplex[0]    = support({1,0,0}, supportUserData);
-	gjkState->simplexSize     = 1;
-	gjkState->searchDirection = -gjkState->o_simplex[0];
-	gjkState->iteration       = 0;
+	gjkState->o_simplex[0]        = support({1,0,0}, supportUserData);
+	gjkState->simplexSize         = 1;
+	gjkState->searchDirection     = -gjkState->o_simplex[0];
+	gjkState->iteration           = 0;
+	gjkState->lastIterationResult = GjkIterationResult::INCOMPLETE;
 }
 /**
  * @return true if we were able to build a complete simplex around the 
@@ -1164,28 +1165,27 @@ internal bool gjk_buildSimplexAroundOrigin(
 	}
 	return false;
 }
-internal kmath::GjkIterationResult kmath::gjk_iterate(
+internal void kmath::gjk_iterate(
 	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData)
 {
-	local_persist const u32 MAX_GJK_ITERATIONS = 100;
+	local_persist const u8 MAX_GJK_ITERATIONS = 100;
 	if(gjkState->iteration >= MAX_GJK_ITERATIONS)
 	{
 		KLOG(ERROR, "Maximum GJK iterations reached; the algorithm will most "
 		     "likely never converge with the given support function!  This "
 		     "should never happen!");
-		return GjkIterationResult::FAILURE;
+		return;
 	}
-	if(gjkState->simplexSize == CARRAY_SIZE(gjkState->o_simplex))
-		return GjkIterationResult::SUCCESS;
+	if(gjkState->lastIterationResult != GjkIterationResult::INCOMPLETE)
+		return;
 	const v3f32 newPoint = support(gjkState->searchDirection, supportUserData);
 	if(newPoint.dot(gjkState->searchDirection) < 0)
-		return GjkIterationResult::FAILURE;
-	if(gjk_buildSimplexAroundOrigin(
+		gjkState->lastIterationResult = GjkIterationResult::FAILURE;
+	else if(gjk_buildSimplexAroundOrigin(
 			gjkState->o_simplex, &gjkState->simplexSize, newPoint, 
 			&gjkState->searchDirection))
-		return GjkIterationResult::SUCCESS;
+		gjkState->lastIterationResult = GjkIterationResult::SUCCESS;
 	gjkState->iteration++;
-	return GjkIterationResult::INCOMPLETE;
 }
 internal u8 kmath::gjk_buildSimplexLines(
 	GjkState* gjkState, void* o_vertexData, size_t vertexDataBytes, 
@@ -1252,18 +1252,14 @@ internal bool kmath::gjk(
 {
 	GjkState gjkState;
 	gjk_initialize(&gjkState, support, supportUserData);
-	while(true)
+	while(gjkState.lastIterationResult == GjkIterationResult::INCOMPLETE)
 	{
-		const GjkIterationResult result = 
-			gjk_iterate(&gjkState, support, supportUserData);
-		if(result == GjkIterationResult::SUCCESS)
+		gjk_iterate(&gjkState, support, supportUserData);
+		if(gjkState.lastIterationResult == GjkIterationResult::SUCCESS)
 		{
 			for(u8 s = 0; s < 4; s++)
 				o_simplex[s] = gjkState.o_simplex[s];
-			return true;
 		}
-		if(result == GjkIterationResult::FAILURE)
-			return false;
 	}
-	return false;
+	return gjkState.lastIterationResult == GjkIterationResult::SUCCESS;
 }
