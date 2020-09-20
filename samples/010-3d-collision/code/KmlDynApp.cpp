@@ -139,6 +139,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			kmath::gjk_initialize(
 				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
 			g_gs->gjkIterationResult = kmath::GjkIterationResult::INCOMPLETE;
+			KLOG(INFO, "distance between actorA/B=%f", 
+			     (actorA.position - actorB.position).magnitude());
 		}
 		if(gameKeyboard.f3 == ButtonState::PRESSED)
 		{
@@ -520,7 +522,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-#if 0
+#if 1
 		for(size_t a2 = 0; a2 < arrlenu(g_gs->actors); a2++)
 		{
 			if(a == a2)

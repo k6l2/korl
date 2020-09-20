@@ -1143,17 +1143,17 @@ internal bool gjk_buildSimplexAroundOrigin(
 		const v3f32 pcb = pc.cross(pb);
 		if(pba.dot(newToOrigin) > 0)
 		{
-			*o_searchDirection = pba.cross(newToOrigin).cross(pba);
+			*o_searchDirection = pba;
 			o_simplex[0] = newPoint;
 		}
 		else if(pac.dot(newToOrigin) > 0)
 		{
-			*o_searchDirection = pac.cross(newToOrigin).cross(pac);
+			*o_searchDirection = pac;
 			o_simplex[1] = newPoint;
 		}
 		else if(pcb.dot(newToOrigin) > 0)
 		{
-			*o_searchDirection = pcb.cross(newToOrigin).cross(pcb);
+			*o_searchDirection = pcb;
 			o_simplex[2] = newPoint;
 		}
 		else

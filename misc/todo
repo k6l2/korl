@@ -695,6 +695,14 @@
 		[x] press button to initialize a new GJK algorithm
 		[x] draw the simplex at any given GJK state
 		[x] press button to process another iteration of GJK
+		[ ] add optional "best guess" initial search direction
+		[ ] move GjkIterationResult into GjkState
+		[ ] generalize `generateMeshX` functions to output to arbitrary vertex 
+			data (remove GeneratedMeshVertex)
+		[ ] generateWireframe(Box/CircleSphere)
+		[ ] generate minkowski difference point cloud by sampling the support 
+			function evenly in all directions
+		[ ] KRB: draw points
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it
