@@ -136,8 +136,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, .shapeB       = actorB.shape
 				, .positionB    = actorB.position
 				, .orientationB = actorB.orientation };
+			const v3f32 initialSupportDirection = 
+				-(actorA.position - actorB.position);
 			kmath::gjk_initialize(
-				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
+				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData, 
+				&initialSupportDirection);
 			KLOG(INFO, "distance between actorA/B=%f", 
 			     (actorA.position - actorB.position).magnitude());
 		}

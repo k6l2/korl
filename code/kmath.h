@@ -311,7 +311,8 @@ namespace kmath
 		GjkIterationResult lastIterationResult;
 	};
 	internal void gjk_initialize(
-		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
+		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData, 
+		const v3f32* initialSupportDirection = nullptr);
 	internal void gjk_iterate(
 		GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData);
 	/**
@@ -331,7 +332,8 @@ namespace kmath
 	 *         bounds which contains the origin
 	 */
 	internal bool gjk(
-		fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4]);
+		fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4], 
+		const v3f32* initialSupportDirection = nullptr);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);

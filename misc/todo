@@ -695,7 +695,7 @@
 		[x] press button to initialize a new GJK algorithm
 		[x] draw the simplex at any given GJK state
 		[x] press button to process another iteration of GJK
-		[ ] add optional "best guess" initial search direction
+		[x] add optional "best guess" initial search direction
 		[x] move GjkIterationResult into GjkState
 		[ ] generalize `generateMeshX` functions to output to arbitrary vertex 
 			data (remove GeneratedMeshVertex)

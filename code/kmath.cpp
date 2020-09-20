@@ -1019,9 +1019,13 @@ internal inline v3f32 kmath::supportBox(
 	return corners[farthestCornerIndex]*(largestDot >= 0 ? 1.f : -1.f);
 }
 internal void kmath::gjk_initialize(
-	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData)
+	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData, 
+	const v3f32* initialSupportDirection)
 {
-	gjkState->o_simplex[0]        = support({1,0,0}, supportUserData);
+	const v3f32& initSupportDir = initialSupportDirection 
+		? *initialSupportDirection 
+		: v3f32{1,0,0};
+	gjkState->o_simplex[0]        = support(initSupportDir, supportUserData);
 	gjkState->simplexSize         = 1;
 	gjkState->searchDirection     = -gjkState->o_simplex[0];
 	gjkState->iteration           = 0;
@@ -1248,10 +1252,12 @@ internal u8 kmath::gjk_buildSimplexLines(
 	return lineVertexPositionsWritten;
 }
 internal bool kmath::gjk(
-	fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4])
+	fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4], 
+	const v3f32* initialSupportDirection)
 {
 	GjkState gjkState;
-	gjk_initialize(&gjkState, support, supportUserData);
+	gjk_initialize(&gjkState, support, supportUserData, 
+	               initialSupportDirection);
 	while(gjkState.lastIterationResult == GjkIterationResult::INCOMPLETE)
 	{
 		gjk_iterate(&gjkState, support, supportUserData);
