@@ -1049,6 +1049,29 @@ internal inline void kmath::generateMeshCircleSphere(
 			1.f - (positionNorm.z * 0.5f + 0.5f);
 	}
 }
+internal void kmath::generateUniformSpherePoints(
+	u32 pointCount, void* o_vertexData, size_t vertexDataBytes, 
+	size_t vertexByteStride, size_t vertexPositionOffset)
+{
+	/* ensure that the data buffer passed to us contains enough memory */
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
+	/* sizeof(position) */
+	const size_t requiredVertexBytes = sizeof(v3f32);
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	kassert(requiredVertexBytes*pointCount <= vertexDataBytes);
+	/* create a MOSTLY even distribution of points around a unit sphere using 
+		the golden ratio.  
+		Source: https://stackoverflow.com/a/44164075/4526664 */
+	for(u32 p = 0; p < pointCount; p++)
+	{
+		const f32 phi   = acosf(1.f - 2.f*(p + 0.5f) / pointCount);
+		const f32 theta = 2*PI32 * PHI32 * (p + 0.5f);
+		*V3F32_STRIDE(o_positions, vertexByteStride, p) = 
+			{cosf(theta)*sinf(phi), sinf(theta)*sinf(phi), cosf(phi)};
+	}
+}
 internal inline v3f32 kmath::supportSphere(
 	f32 radius, v3f32 supportDirection, bool supportDirectionIsNormalized)
 {

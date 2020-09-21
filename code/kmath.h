@@ -1,10 +1,11 @@
 #pragma once
 #include "kutil.h"
-global_variable const f32 PI32 = 3.14159f;
+global_variable const f32 PI32  = 3.14159f;
+/* the golden ratio */
+global_variable const f32 PHI32 = 1.61803398875f;
 #include <limits>
 global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
-global_variable const f32 PHI32 = (1 + sqrtf(5))/2;
 global_variable const f32 NAN32 = nanf("");
 struct v2u32
 {
@@ -284,6 +285,9 @@ namespace kmath
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
 		void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
 		size_t vertexPositionOffset, size_t vertexTextureNormalOffset);
+	internal void generateUniformSpherePoints(
+		u32 pointCount, void* o_vertexData, size_t vertexDataBytes, 
+		size_t vertexByteStride, size_t vertexPositionOffset);
 	/**
 	 * @return the local position on the shape with the highest dot product with 
 	 *         the supportDirection

@@ -503,6 +503,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	ImGui::SliderFloat3("testPosition", g_gs->testPosition.elements, -20, 20);
 	ImGui::SliderFloat3("testRadianAxis", g_gs->testRadianAxis.elements, -1, 1);
 	ImGui::SliderFloat("testRadians", &g_gs->testRadians, 0, 4*PI32);
+	{
+		i32 sliderInt = g_gs->minkowskiDifferencePointCloudCount;
+		ImGui::SliderInt("pointCloudCount", &sliderInt, 1, 
+		                 CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud) - 1);
+		g_gs->minkowskiDifferencePointCloudCount = 
+			kmath::safeTruncateU16(sliderInt);
+	}
 #endif// DEBUG_DELETE_LATER
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
@@ -579,38 +586,39 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 #if DEBUG_DELETE_LATER
 	if(arrlenu(g_gs->actors) == 2)
+	/* GJK debug draw stuff */
 	{
+		Actor& actorA = g_gs->actors[0];
+		Actor& actorB = g_gs->actors[1];
+		ShapeGjkSupportData shapeGjkSupportData = 
+			{ .shapeA       = actorA.shape
+			, .positionA    = actorA.position
+			, .orientationA = actorA.orientation
+			, .shapeB       = actorB.shape
+			, .positionB    = actorB.position
+			, .orientationB = actorB.orientation };
 		/* draw debug minkowski difference */
 		{
-#if 0
-			Actor& a1 = g_gs->actors[0];
-			Actor& a2 = g_gs->actors[1];
-			g_gs->minkowskiDifferencePosition = a1.position - a2.position;
-			g_gs->minkowskiDifferenceShape.type = ShapeType::SPHERE;
-			kassert(   a1.shape.type == ShapeType::SPHERE 
-			        && a2.shape.type == ShapeType::SPHERE);
-			g_gs->minkowskiDifferenceShape.sphere.radius = 
-				a1.shape.sphere.radius + a2.shape.sphere.radius;
-			g_krb->setWireframe(true);
-			drawSphere(g_gs->minkowskiDifferencePosition, kQuaternion::IDENTITY, 
-			           g_gs->minkowskiDifferenceShape);
-#else
-			/* test drawing points */
-			const f32 radiansPerPoint = 
-				2*PI32 / CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud);
-			for(size_t p = 0; 
-				p < CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud); p++)
+			kmath::generateUniformSpherePoints(
+				g_gs->minkowskiDifferencePointCloudCount, 
+				g_gs->minkowskiDifferencePointCloud, 
+				sizeof(g_gs->minkowskiDifferencePointCloud),
+				sizeof(g_gs->minkowskiDifferencePointCloud[0]),
+				offsetof(Vertex, position));
+			for(u16 p = 0; p < g_gs->minkowskiDifferencePointCloudCount; p++)
 			{
-				const v2f32 rotPoint2d = 
-					kmath::rotate({10,0}, p*radiansPerPoint);
 				g_gs->minkowskiDifferencePointCloud[p].position = 
-					{rotPoint2d.x, rotPoint2d.y, 0};
+					shapeGjkSupport(
+						g_gs->minkowskiDifferencePointCloud[p].position, 
+						&shapeGjkSupportData);
 			}
 			g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
 			g_krb->setDefaultColor(krb::WHITE);
-			DRAW_POINTS(g_gs->minkowskiDifferencePointCloud,
-			            VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
-#endif
+			g_krb->drawPoints(
+				g_gs->minkowskiDifferencePointCloud, 
+				g_gs->minkowskiDifferencePointCloudCount, 
+				sizeof(g_gs->minkowskiDifferencePointCloud[0]), 
+				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
 		}
 		/* draw the GJK simplex */
 		{
