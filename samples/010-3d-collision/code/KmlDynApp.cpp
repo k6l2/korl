@@ -18,12 +18,14 @@ void drawBox(const v3f32& worldPosition, const kQuaternion& orientation,
              const Shape& shape)
 {
 	g_krb->setModelXform(worldPosition, orientation, {1,1,1});
-	kmath::GeneratedMeshVertex generatedBox[36];
+	Vertex generatedBox[36];
 	kmath::generateMeshBox(
-		shape.box.lengths, generatedBox, sizeof(generatedBox));
+		shape.box.lengths, generatedBox, sizeof(generatedBox), 
+		sizeof(generatedBox[0]), offsetof(Vertex,position), 
+		offsetof(Vertex,textureNormal));
 	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
-		? VERTEX_ATTRIBS_GENERATED_MESH_NO_TEX
-		: VERTEX_ATTRIBS_GENERATED_MESH;
+		? VERTEX_ATTRIBS_VERTEX_POSITION_ONLY
+		: VERTEX_ATTRIBS_VERTEX_NO_COLOR;
 	DRAW_TRIS(generatedBox, vertexAttribOffsets);
 }
 void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation, 
@@ -33,8 +35,8 @@ void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation,
 		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
 	g_krb->setModelXform(worldPosition, orientation, sphereScale);
 	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
-		? VERTEX_ATTRIBS_GENERATED_MESH_NO_TEX
-		: VERTEX_ATTRIBS_GENERATED_MESH;
+		? VERTEX_ATTRIBS_VERTEX_POSITION_ONLY
+		: VERTEX_ATTRIBS_VERTEX_NO_COLOR;
 	g_krb->drawTris(
 		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
 	    sizeof(g_gs->generatedSphereMesh[0]), vertexAttribOffsets);
@@ -675,14 +677,15 @@ GAME_INITIALIZE(gameInitialize)
 		reuse with different scales */
 	g_gs->generatedSphereMeshVertexCount = 
 		kmath::generateMeshCircleSphereVertexCount(16, 16);
-	g_gs->generatedSphereMesh = reinterpret_cast<kmath::GeneratedMeshVertex*>(
+	const size_t generatedSphereMeshBytes = 
+		g_gs->generatedSphereMeshVertexCount * sizeof(Vertex);
+	g_gs->generatedSphereMesh = reinterpret_cast<Vertex*>(
 		kgaAlloc(g_gs->templateGameState.hKgaPermanent,
-		         sizeof(kmath::GeneratedMeshVertex) * 
-		              g_gs->generatedSphereMeshVertexCount));
+		         generatedSphereMeshBytes));
 	kmath::generateMeshCircleSphere(
-		1.f, 16, 16, g_gs->generatedSphereMesh, 
-		g_gs->generatedSphereMeshVertexCount * 
-			sizeof(kmath::GeneratedMeshVertex));
+		1.f, 16, 16, g_gs->generatedSphereMesh, generatedSphereMeshBytes, 
+		sizeof(Vertex), offsetof(Vertex,position), 
+		offsetof(Vertex,textureNormal));
 	/* initialize dynamic array of actors */
 	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKgaPermanent);
 }

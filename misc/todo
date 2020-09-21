@@ -697,11 +697,12 @@
 		[x] press button to process another iteration of GJK
 		[x] add optional "best guess" initial search direction
 		[x] move GjkIterationResult into GjkState
-		[ ] generalize `generateMeshX` functions to output to arbitrary vertex 
+		[x] generalize `generateMeshX` functions to output to arbitrary vertex 
 			data (remove GeneratedMeshVertex)
-		[ ] generateWireframe(Box/CircleSphere)
+		[-] generateWireframe(Box/CircleSphere)
 		[ ] generate minkowski difference point cloud by sampling the support 
 			function evenly in all directions
+			https://stackoverflow.com/a/44164075/4526664
 		[ ] KRB: draw points
 	[ ] utility: Expanding Polytope Algorithm (EPA)
 		https://youtu.be/6rgiPrzqt9w

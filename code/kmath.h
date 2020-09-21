@@ -244,11 +244,6 @@ namespace kmath
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& boxWorldPosition, const kQuaternion& boxOrientation, 
 		const v3f32& boxLengths);
-	struct GeneratedMeshVertex
-	{
-		v3f32 localPosition;
-		v2f32 textureNormal;
-	};
 	/**
 	 * Generate mesh data for a box centered on the origin with `lengths` widths 
 	 * for each respective dimension of the `lengths` parameter.
@@ -262,7 +257,9 @@ namespace kmath
 	 *                 a list of right-handed triangles.
 	 */
 	internal void generateMeshBox(
-		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
+		v3f32 lengths, void* o_vertexData, size_t vertexDataBytes, 
+		size_t vertexByteStride, size_t vertexPositionOffset, 
+		size_t vertexTextureNormalOffset);
 	internal size_t generateMeshCircleSphereVertexCount(
 		u32 latitudeSegments, u32 longitudeSegments);
 	/**
@@ -284,7 +281,8 @@ namespace kmath
 	 */
 	internal void generateMeshCircleSphere(
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
-		GeneratedMeshVertex* o_buffer, size_t bufferByteSize);
+		void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
+		size_t vertexPositionOffset, size_t vertexTextureNormalOffset);
 	/**
 	 * @return the local position on the shape with the highest dot product with 
 	 *         the supportDirection

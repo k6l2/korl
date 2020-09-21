@@ -846,59 +846,101 @@ internal inline f32 kmath::collideRayBox(
 			return NAN32;
 	return tMin;
 }
+#define V3F32_STRIDE(pu8,byteStride,index) \
+	reinterpret_cast<v3f32*>(pu8 + (index*byteStride))
+#define V2F32_STRIDE(pu8,byteStride,index) \
+	reinterpret_cast<v2f32*>(pu8 + (index*byteStride))
 internal inline void kmath::generateMeshBox(
-		v3f32 lengths, GeneratedMeshVertex* o_buffer, size_t bufferByteSize)
+	v3f32 lengths, void* o_vertexData, size_t vertexDataBytes, 
+	size_t vertexByteStride, size_t vertexPositionOffset, 
+	size_t vertexTextureNormalOffset)
 {
-	kassert(bufferByteSize >= sizeof(GeneratedMeshVertex)*36);
+	/* pre-calculate half-lengths from lengths */
 	lengths /= 2.f;
-	// top (+Z) low-right
-	o_buffer[ 0] = {{ lengths.x, lengths.y, lengths.z}, {1,1}};
-	o_buffer[ 1] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
-	o_buffer[ 2] = {{ lengths.x,-lengths.y, lengths.z}, {0,1}};
-	// top (+Z) up-left
-	o_buffer[ 3] = {{-lengths.x,-lengths.y, lengths.z}, {0,0}};
-	o_buffer[ 4] = {{ lengths.x,-lengths.y, lengths.z}, {0,1}};
-	o_buffer[ 5] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
-	// front (+X) low-right
-	o_buffer[ 6] = {{ lengths.x, lengths.y, lengths.z}, {1,0}};
-	o_buffer[ 7] = {{ lengths.x,-lengths.y,-lengths.z}, {0,1}};
-	o_buffer[ 8] = {{ lengths.x, lengths.y,-lengths.z}, {1,1}};
-	// front (+X) up-left
-	o_buffer[ 9] = {{ lengths.x,-lengths.y,-lengths.z}, {0,1}};
-	o_buffer[10] = {{ lengths.x, lengths.y, lengths.z}, {1,0}};
-	o_buffer[11] = {{ lengths.x,-lengths.y, lengths.z}, {0,0}};
-	// left (+Y) low-right
-	o_buffer[12] = {{ lengths.x, lengths.y,-lengths.z}, {0,1}};
-	o_buffer[13] = {{-lengths.x, lengths.y,-lengths.z}, {1,1}};
-	o_buffer[14] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
-	// left (+Y) up-left
-	o_buffer[15] = {{-lengths.x, lengths.y, lengths.z}, {1,0}};
-	o_buffer[16] = {{ lengths.x, lengths.y, lengths.z}, {0,0}};
-	o_buffer[17] = {{ lengths.x, lengths.y,-lengths.z}, {0,1}};
-	// back (-X) low-right
-	o_buffer[18] = {{-lengths.x, lengths.y,-lengths.z}, {0,1}};
-	o_buffer[19] = {{-lengths.x,-lengths.y,-lengths.z}, {1,1}};
-	o_buffer[20] = {{-lengths.x,-lengths.y, lengths.z}, {1,0}};
-	// back (-X) up-left
-	o_buffer[21] = {{-lengths.x,-lengths.y, lengths.z}, {1,0}};
-	o_buffer[22] = {{-lengths.x, lengths.y, lengths.z}, {0,0}};
-	o_buffer[23] = {{-lengths.x, lengths.y,-lengths.z}, {0,1}};
-	// right (-Y) low-right
-	o_buffer[24] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
-	o_buffer[25] = {{ lengths.x,-lengths.y,-lengths.z}, {1,1}};
-	o_buffer[26] = {{ lengths.x,-lengths.y, lengths.z}, {1,0}};
-	// right (-Y) up-left
-	o_buffer[27] = {{ lengths.x,-lengths.y, lengths.z}, {1,0}};
-	o_buffer[28] = {{-lengths.x,-lengths.y, lengths.z}, {0,0}};
-	o_buffer[29] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
-	// bottom (-Z) low-right
-	o_buffer[30] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
-	o_buffer[31] = {{-lengths.x, lengths.y,-lengths.z}, {1,1}};
-	o_buffer[32] = {{ lengths.x, lengths.y,-lengths.z}, {1,0}};
-	// bottom (-Z) up-left
-	o_buffer[33] = {{ lengths.x, lengths.y,-lengths.z}, {1,0}};
-	o_buffer[34] = {{ lengths.x,-lengths.y,-lengths.z}, {0,0}};
-	o_buffer[35] = {{-lengths.x,-lengths.y,-lengths.z}, {0,1}};
+	/* @optimization: instead of writing these values to two memory locations 
+		for position, just write them once directly into the buffer along with 
+		the texture normals to promote good space locality & cut # of writes.  
+		I just did it this way to make it easier to read... */
+	const v3f32 triPositions[] = 
+		// top (+Z) low-right
+		{ { lengths.x, lengths.y, lengths.z}
+		, {-lengths.x, lengths.y, lengths.z}
+		, { lengths.x,-lengths.y, lengths.z}
+		// top (+Z) up-left
+		, {-lengths.x,-lengths.y, lengths.z}
+		, { lengths.x,-lengths.y, lengths.z}
+		, {-lengths.x, lengths.y, lengths.z}
+		// front (+X) low-right
+		, { lengths.x, lengths.y, lengths.z}
+		, { lengths.x,-lengths.y,-lengths.z}
+		, { lengths.x, lengths.y,-lengths.z}
+		// front (+X) up-left
+		, { lengths.x,-lengths.y,-lengths.z}
+		, { lengths.x, lengths.y, lengths.z}
+		, { lengths.x,-lengths.y, lengths.z}
+		// left (+Y) low-right
+		, { lengths.x, lengths.y,-lengths.z}
+		, {-lengths.x, lengths.y,-lengths.z}
+		, {-lengths.x, lengths.y, lengths.z}
+		// left (+Y) up-left
+		, {-lengths.x, lengths.y, lengths.z}
+		, { lengths.x, lengths.y, lengths.z}
+		, { lengths.x, lengths.y,-lengths.z}
+		// back (-X) low-right
+		, {-lengths.x, lengths.y,-lengths.z}
+		, {-lengths.x,-lengths.y,-lengths.z}
+		, {-lengths.x,-lengths.y, lengths.z}
+		// back (-X) up-left
+		, {-lengths.x,-lengths.y, lengths.z}
+		, {-lengths.x, lengths.y, lengths.z}
+		, {-lengths.x, lengths.y,-lengths.z}
+		// right (-Y) low-right
+		, {-lengths.x,-lengths.y,-lengths.z}
+		, { lengths.x,-lengths.y,-lengths.z}
+		, { lengths.x,-lengths.y, lengths.z}
+		// right (-Y) up-left
+		, { lengths.x,-lengths.y, lengths.z}
+		, {-lengths.x,-lengths.y, lengths.z}
+		, {-lengths.x,-lengths.y,-lengths.z}
+		// bottom (-Z) low-right
+		, {-lengths.x,-lengths.y,-lengths.z}
+		, {-lengths.x, lengths.y,-lengths.z}
+		, { lengths.x, lengths.y,-lengths.z}
+		// bottom (-Z) up-left
+		, { lengths.x, lengths.y,-lengths.z}
+		, { lengths.x,-lengths.y,-lengths.z}
+		, {-lengths.x,-lengths.y,-lengths.z} };
+	local_persist const v2f32 TRI_TEX_NORMS[] = 
+		// top (+Z) low-right, up-left
+		{ {1,1}, {1,0}, {0,1}, {0,0}, {0,1}, {1,0}
+		// front (+X) low-right, up-left
+		, {1,0}, {0,1}, {1,1}, {0,1}, {1,0}, {0,0}
+		// left (+Y) low-right, up-left
+		, {0,1}, {1,1}, {1,0}, {1,0}, {0,0}, {0,1}
+		// back (-X) low-right, up-left
+		, {0,1}, {1,1}, {1,0}, {1,0}, {0,0}, {0,1}
+		// right (-Y) low-right, up-left
+		, {0,1}, {1,1}, {1,0}, {1,0}, {0,0}, {0,1}
+		// bottom (-Z) low-right, up-left
+		, {0,1}, {1,1}, {1,0}, {1,0}, {0,0}, {0,1} };
+	const size_t requiredVertexCount = CARRAY_SIZE(triPositions);
+	kassert(requiredVertexCount == CARRAY_SIZE(TRI_TEX_NORMS));
+	/* ensure that the data buffer passed to us contains enough memory */
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
+	u8*const o_texNormals = o_vertexDataU8 + vertexTextureNormalOffset;
+	/* sizeof(position) + sizeof(textureNormal) */
+	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(v2f32);
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset      <= vertexByteStride - sizeof(v3f32));
+	kassert(vertexTextureNormalOffset <= vertexByteStride - sizeof(v2f32));
+	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	/* finally, actually write the data to the output buffer */
+	for(size_t v = 0; v < CARRAY_SIZE(triPositions); v++)
+	{
+		*V3F32_STRIDE(o_positions ,vertexByteStride,v) = triPositions[v];
+		*V2F32_STRIDE(o_texNormals,vertexByteStride,v) = TRI_TEX_NORMS[v];
+	}
 }
 internal inline size_t kmath::generateMeshCircleSphereVertexCount(
 		u32 latitudeSegments, u32 longitudeSegments)
@@ -907,12 +949,23 @@ internal inline size_t kmath::generateMeshCircleSphereVertexCount(
 }
 internal inline void kmath::generateMeshCircleSphere(
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
-		GeneratedMeshVertex* o_buffer, size_t bufferByteSize)
+		void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
+		size_t vertexPositionOffset, size_t vertexTextureNormalOffset)
 {
 	const size_t requiredVertexCount = 
 		generateMeshCircleSphereVertexCount(
 			latitudeSegments, longitudeSegments);
-	kassert(bufferByteSize >= requiredVertexCount*sizeof(GeneratedMeshVertex));
+	/* ensure that the data buffer passed to us contains enough memory */
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
+	u8*const o_texNormals = o_vertexDataU8 + vertexTextureNormalOffset;
+	/* sizeof(position) + sizeof(textureNormal) */
+	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(v2f32);
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset      <= vertexByteStride - sizeof(v3f32));
+	kassert(vertexTextureNormalOffset <= vertexByteStride - sizeof(v2f32));
+	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	/* calculate the sphere mesh on-the-fly */
 	kassert(latitudeSegments  >= 2);
 	kassert(longitudeSegments >= 3);
 	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
@@ -933,15 +986,21 @@ internal inline void kmath::generateMeshCircleSphere(
 			v3f32::Z, (longitude - 1)*radiansPerSemiLongitude, true);
 		const v3f32 capTopLongitudePrevious = 
 			quatLongitudePrevious.transform(capTopZeroLongitude, true);
-		o_buffer[currentVertex++] = {capTopLongitudePrevious, {}};
-		o_buffer[currentVertex++] = {capTopLongitudeCurrent , {}};
-		o_buffer[currentVertex++] = {verticalRadius         , {}};
+		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+			capTopLongitudePrevious;
+		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+			capTopLongitudeCurrent;
+		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+			verticalRadius;
 		/* add the next triangle to the bottom  cap*/
-		o_buffer[currentVertex  ] = {capTopLongitudeCurrent , {}};
-		o_buffer[currentVertex++].localPosition.z *= -1;
-		o_buffer[currentVertex  ] = {capTopLongitudePrevious, {}};
-		o_buffer[currentVertex++].localPosition.z *= -1;
-		o_buffer[currentVertex++] = {v3f32::Z*-radius       , {}};
+		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex) = 
+			capTopLongitudeCurrent;
+		V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++)->z *= -1;
+		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex) = 
+			capTopLongitudePrevious;
+		V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++)->z *= -1;
+		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+			v3f32::Z*-radius;
 		/* add the quads to the internal latitude strips */
 		for(u32 latitude = 1; latitude < latitudeSegments - 1; latitude++)
 		{
@@ -959,12 +1018,18 @@ internal inline void kmath::generateMeshCircleSphere(
 				.transform(verticalRadius, true);
 			const v3f32 latStripBottom = (quatLongitude * quatLatitude)
 				.transform(verticalRadius, true);
-			o_buffer[currentVertex++] = {latStripTopPrevious   , {}};
-			o_buffer[currentVertex++] = {latStripBottomPrevious, {}};
-			o_buffer[currentVertex++] = {latStripBottom        , {}};
-			o_buffer[currentVertex++] = {latStripBottom        , {}};
-			o_buffer[currentVertex++] = {latStripTop           , {}};
-			o_buffer[currentVertex++] = {latStripTopPrevious   , {}};
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				latStripTopPrevious;
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				latStripBottomPrevious;
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				latStripBottom;
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				latStripBottom;
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				latStripTop;
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				latStripTopPrevious;
 		}
 	}
 	kassert(currentVertex == requiredVertexCount);
@@ -976,10 +1041,12 @@ internal inline void kmath::generateMeshCircleSphere(
 		textures right now so... */
 	for(size_t v = 0; v < requiredVertexCount; v++)
 	{
-		const v3f32 positionNorm = normal(o_buffer[v].localPosition);
-		o_buffer[v].textureNormal.x = 1.f - 
-			(atan2f(positionNorm.x, positionNorm.y) / (2*PI32) + 0.5f);
-		o_buffer[v].textureNormal.y = 1.f - (positionNorm.z * 0.5f + 0.5f);
+		const v3f32 positionNorm = 
+			normal(*V3F32_STRIDE(o_positions, vertexByteStride, v));
+		V2F32_STRIDE(o_texNormals, vertexByteStride, v)->x = 
+			1.f - (atan2f(positionNorm.x, positionNorm.y) / (2*PI32) + 0.5f);
+		V2F32_STRIDE(o_texNormals, vertexByteStride, v)->y = 
+			1.f - (positionNorm.z * 0.5f + 0.5f);
 	}
 }
 internal inline v3f32 kmath::supportSphere(
@@ -1195,11 +1262,16 @@ internal u8 kmath::gjk_buildSimplexLines(
 	GjkState* gjkState, void* o_vertexData, size_t vertexDataBytes, 
 	size_t vertexByteStride, size_t vertexPositionOffset)
 {
-	/* try to ensure that the data buffer passed to us contains enough memory */
+	/* ensure that the data buffer passed to us contains enough memory */
 	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
 	const void*const vertexDataEnd = o_vertexDataU8 + vertexDataBytes;
-	kassert(o_vertexDataU8 + (12*vertexByteStride) <= vertexDataEnd);
 	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
+	/* sizeof(vertexPosition) */
+	const size_t requiredVertexBytes = sizeof(v3f32);
+	const size_t requiredVertexCount = 12;// maximum emitted vertex count
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* cases: 
 		- gjkState->simplexSize == 0?
 			do nothing; return 0
