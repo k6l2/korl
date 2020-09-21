@@ -176,6 +176,36 @@ internal KRB_LOOK_AT(krbLookAt)
 	glPushMatrix();
 	GL_CHECK_ERROR();
 }
+internal KRB_DRAW_POINTS(krbDrawPoints)
+{
+	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
+	kassert(vertexAttribOffsets.texCoord_2f32 >= vertexStride);
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	if(vertexAttribOffsets.color_4f32 >= vertexStride)
+		glColor4f(krb::g_context->defaultColor.r, 
+		          krb::g_context->defaultColor.g, 
+		          krb::g_context->defaultColor.b, 
+		          krb::g_context->defaultColor.a);
+	glBegin(GL_POINTS);
+	for(size_t v = 0; v < vertexCount; v++)
+	{
+		const void* vertex = 
+			reinterpret_cast<const u8*>(vertices) + (v*vertexStride);
+		const f32* v3f32_position = reinterpret_cast<const f32*>(
+			reinterpret_cast<const u8*>(vertex) + 
+				vertexAttribOffsets.position_3f32);
+		const f32* v4f32_color = reinterpret_cast<const f32*>(
+			reinterpret_cast<const u8*>(vertex) + 
+				vertexAttribOffsets.color_4f32);
+		if(vertexAttribOffsets.color_4f32 < vertexStride)
+			glColor4fv(v4f32_color);
+		glVertex3fv(v3f32_position);
+	}
+	glEnd();
+	GL_CHECK_ERROR();
+}
 internal KRB_DRAW_LINES(krbDrawLines)
 {
 	kassert(vertexCount % 2 == 0);

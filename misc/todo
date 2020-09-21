@@ -703,7 +703,7 @@
 		[ ] generate minkowski difference point cloud by sampling the support 
 			function evenly in all directions
 			https://stackoverflow.com/a/44164075/4526664
-		[ ] KRB: draw points
+		[x] KRB: draw points
 	[ ] utility: Expanding Polytope Algorithm (EPA)
 		https://youtu.be/6rgiPrzqt9w
 		http://www.dtecta.com/papers/gdc2001depth.pdf

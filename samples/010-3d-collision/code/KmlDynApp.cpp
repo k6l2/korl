@@ -582,6 +582,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		/* draw debug minkowski difference */
 		{
+#if 0
 			Actor& a1 = g_gs->actors[0];
 			Actor& a2 = g_gs->actors[1];
 			g_gs->minkowskiDifferencePosition = a1.position - a2.position;
@@ -593,6 +594,23 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setWireframe(true);
 			drawSphere(g_gs->minkowskiDifferencePosition, kQuaternion::IDENTITY, 
 			           g_gs->minkowskiDifferenceShape);
+#else
+			/* test drawing points */
+			const f32 radiansPerPoint = 
+				2*PI32 / CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud);
+			for(size_t p = 0; 
+				p < CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud); p++)
+			{
+				const v2f32 rotPoint2d = 
+					kmath::rotate({10,0}, p*radiansPerPoint);
+				g_gs->minkowskiDifferencePointCloud[p].position = 
+					{rotPoint2d.x, rotPoint2d.y, 0};
+			}
+			g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
+			g_krb->setDefaultColor(krb::WHITE);
+			DRAW_POINTS(g_gs->minkowskiDifferencePointCloud,
+			            VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
+#endif
 		}
 		/* draw the GJK simplex */
 		{

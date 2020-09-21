@@ -4,6 +4,7 @@ global_variable const f32 PI32 = 3.14159f;
 #include <limits>
 global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
+global_variable const f32 PHI32 = (1 + sqrtf(5))/2;
 global_variable const f32 NAN32 = nanf("");
 struct v2u32
 {

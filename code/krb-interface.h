@@ -62,6 +62,9 @@ struct KrbVertexAttributeOffsets
 	size_t color_4f32;
 	size_t texCoord_2f32;
 };
+#define KRB_DRAW_POINTS(name) \
+	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
+	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
 #define KRB_DRAW_LINES(name) \
 	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
 	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
@@ -131,6 +134,7 @@ typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	fnSig_krbSetProjectionOrthoFixedHeight);
 typedef KRB_SET_PROJECTION_FOV(fnSig_krbSetProjectionFov);
 typedef KRB_LOOK_AT(fnSig_krbLookAt);
+typedef KRB_DRAW_POINTS(fnSig_krbDrawPoints);
 typedef KRB_DRAW_LINES(fnSig_krbDrawLines);
 typedef KRB_DRAW_TRIS(fnSig_krbDrawTris);
 typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
@@ -156,6 +160,7 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	krbSetProjectionOrthoFixedHeight);
 internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov);
 internal KRB_LOOK_AT(krbLookAt);
+internal KRB_DRAW_POINTS(krbDrawPoints);
 internal KRB_DRAW_LINES(krbDrawLines);
 internal KRB_DRAW_TRIS(krbDrawTris);
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
@@ -183,6 +188,7 @@ struct KrbApi
 		setProjectionOrthoFixedHeight = krbSetProjectionOrthoFixedHeight;
 	fnSig_krbSetProjectionFov*   setProjectionFov   = krbSetProjectionFov;
 	fnSig_krbLookAt*             lookAt             = krbLookAt;
+	fnSig_krbDrawPoints*         drawPoints         = krbDrawPoints;
 	fnSig_krbDrawLines*          drawLines          = krbDrawLines;
 	fnSig_krbDrawTris*           drawTris           = krbDrawTris;
 	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;

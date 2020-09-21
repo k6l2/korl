@@ -71,7 +71,7 @@ struct GameState
 	v3f32 testRadianAxis;
 	f32 testRadians;
 	v3f32 minkowskiDifferencePosition;
-	Shape minkowskiDifferenceShape;
+	Vertex minkowskiDifferencePointCloud[1000];
 	kmath::GjkState gjkState;
 #endif// DEBUG_DELETE_LATER
 };
@@ -98,6 +98,8 @@ const global_variable KrbVertexAttributeOffsets
 		, .color_4f32    = sizeof(VertexNoTexture)
 		, .texCoord_2f32 = sizeof(VertexNoTexture) };
 /* convenience macros for our application */
+#define DRAW_POINTS(mesh, vertexAttribs) \
+	g_krb->drawPoints(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
 #define DRAW_LINES(mesh, vertexAttribs) \
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
 #define DRAW_TRIS(mesh, vertexAttribs) \
