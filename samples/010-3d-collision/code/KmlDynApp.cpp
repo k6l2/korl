@@ -373,14 +373,34 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		f32 camControlMag = camControl.normalize();
 		if(kmath::isNearlyZero(camControlMag))
 		{
-			v3f32 camDecelDir = kmath::normal(-g_gs->cameraVelocity);
+			const v3f32 camDecelDir = kmath::normal(-g_gs->cameraVelocity);
 			g_gs->cameraVelocity += 
 				deltaSeconds*CAMERA_DECELERATION*camDecelDir;
 			if(g_gs->cameraVelocity.dot(camDecelDir) > 0)
 				g_gs->cameraVelocity = v3f32::ZERO;
 		}
 		else
-			g_gs->cameraVelocity += deltaSeconds*CAMERA_ACCELERATION*camControl;
+		{
+			/* split camera velocity into the `control direction` direction & 
+			 * the component perpendicular to this direction */
+			v3f32 camControlComp = 
+				g_gs->cameraVelocity.projectOnto(camControl, true);
+			v3f32 camControlPerpComp = 
+				g_gs->cameraVelocity - camControlComp;
+			/* decelerate along the perpendicular component */
+			const v3f32 camControlPerpDecelDir = 
+				kmath::normal(-camControlPerpComp);
+			camControlPerpComp += 
+				deltaSeconds*CAMERA_DECELERATION*camControlPerpDecelDir;
+			if(camControlPerpComp.dot(camControlPerpDecelDir) > 0)
+				camControlPerpComp = v3f32::ZERO;
+			/* halt if we're moving away from camControl */
+			if(camControlComp.dot(camControl) < 0)
+				camControlComp = v3f32::ZERO;
+			/* rejoin the components and accelerate towards camControl */
+			g_gs->cameraVelocity = camControlComp + camControlPerpComp + 
+				deltaSeconds*CAMERA_ACCELERATION*camControl;
+		}
 		f32 camSpeed = g_gs->cameraVelocity.normalize();
 		if(camSpeed > CAMERA_SPEED_MAX)
 			camSpeed = CAMERA_SPEED_MAX;
@@ -506,7 +526,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		i32 sliderInt = g_gs->minkowskiDifferencePointCloudCount;
 		ImGui::SliderInt("pointCloudCount", &sliderInt, 1, 
-		                 CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud) - 1);
+		                 CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud));
 		g_gs->minkowskiDifferencePointCloudCount = 
 			kmath::safeTruncateU16(sliderInt);
 	}

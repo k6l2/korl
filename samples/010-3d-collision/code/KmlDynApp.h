@@ -72,7 +72,7 @@ struct GameState
 	f32 testRadians;
 	v3f32 minkowskiDifferencePosition;
 	Vertex minkowskiDifferencePointCloud[1000];
-	u16 minkowskiDifferencePointCloudCount = 1;
+	u16 minkowskiDifferencePointCloudCount = 1000;
 	kmath::GjkState gjkState;
 #endif// DEBUG_DELETE_LATER
 };
