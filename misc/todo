@@ -726,6 +726,14 @@
 			http://algolist.ru/maths/geom/convhull/qhull3d.php
 		[ ] or maybe just use someone's QuickHull code?
 			https://github.com/karimnaaji/3d-quickhull
+[x] figure out how to automatically debug launch a program in Visual Studio 
+	without having to actually swap to it and press the stupid button
+	https://stackoverflow.com/a/46243064/4526664
+	https://stackoverflow.com/a/3989349/4526664
+	[x] just create an autohotkey script to do this for me lol...
+	[x] add the invocation to the AHK script to my .vimrc so I can just press 
+		<F5> to start debugging in VS
+[ ] kmd5: ignore *.swp files
 [ ] win32: disable the right-click menu in the window title bar when the 
 	application is in mouse relative mode
 	- when the mouse exits relative mode and the cursor is in the title bar, the 
@@ -755,7 +763,6 @@
 [x] kassert: open a dialog box to allow option of continuing execution
 [x] kassert: optionally generate a minidump
 [ ] kassert: optionally generate a memory dump
-[ ] kmd5: ignore *.swp files
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators
