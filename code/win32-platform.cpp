@@ -708,7 +708,41 @@ internal PLATFORM_ASSERT(w32PlatformAssert)
 		DebugBreak();
 	}
 	else
-		*(int*)0 = 0;
+	{
+		/* the user running without a debugger should have two options here:
+		 * - attempt to continue running the program, hopefully after attaching 
+		 *   the process to a debugger
+		 * - end the program execution here and generate a minidump or 
+		 *   something */
+		/*@TODO: allow the user to save a memory dump (everything except asset 
+		 * memory I guess?) as well as a minidump for later analysis */
+		const int resultMsgBox = MessageBox(
+			g_mainWindow, TEXT("Something has gone horribly wrong...  "
+			"Cancel program execution?"), TEXT("I AM ERROR."), 
+			MB_RETRYCANCEL | MB_ICONERROR);
+		if(resultMsgBox == 0)
+		{
+			KLOG(ERROR, "Failed to issue message box! lasterror=%li", 
+			     GetLastError());
+		}
+		else 
+		{
+			switch(resultMsgBox)
+			{
+				case IDCANCEL:
+					/* "cancel" program execution by attempting to crash it 
+					 * ;) */
+					*((int*)0) = 0;
+				case IDRETRY:
+					/* just attempt to continue the program, do nothing */
+					break;
+				default:
+					KLOG(ERROR, "Invalid message box result! (%i)", 
+					     resultMsgBox);
+					break;
+			}
+		}
+	}
 }
 internal PLATFORM_GET_ASSET_BYTE_SIZE(w32PlatformGetAssetByteSize)
 {

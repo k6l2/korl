@@ -510,6 +510,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_gs->minkowskiDifferencePointCloudCount = 
 			kmath::safeTruncateU16(sliderInt);
 	}
+	if(ImGui::Button("assert false"))
+	{
+		kassert(false);
+	}
+	if(ImGui::Button("crash program"))
+	{
+		*((int*)0) = 0;
+	}
 #endif// DEBUG_DELETE_LATER
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);

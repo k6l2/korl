@@ -751,8 +751,11 @@
 [ ] samples: render TTF
 	[ ] integrate stb_truetype
 	[ ] utility: font cache dynamic asset
-[ ] kassert: generate a memory dump & a dialog box with the option to continue 
-	execution
+[x] kassert: halt program execution if no debugger is attached to the process
+[x] kassert: open a dialog box to allow option of continuing execution
+[x] kassert: optionally generate a minidump
+[ ] kassert: optionally generate a memory dump
+[ ] kmd5: ignore *.swp files
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators
