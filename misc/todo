@@ -738,7 +738,7 @@
 	allow the creation of a stb_ds dynamic array using either permanent generic 
 	allocator OR using the frame-local linear allocator)
 [x] vim: notify build error return value with an error noise
-[ ] fix visual studio not getting output from stdout
+[x] fix visual studio not getting output from stdout
 [ ] kmd5: ignore *.swp files
 [ ] win32: disable the right-click menu in the window title bar when the 
 	application is in mouse relative mode

@@ -582,6 +582,11 @@ internal PLATFORM_LOG(w32PlatformLog)
 #if SLOW_BUILD
 		fflush(duplicatedOutput);
 #endif
+		if(IsDebuggerPresent())
+		{
+			OutputDebugStringA(logLineBuffer);
+			OutputDebugStringA("\n");
+		}
 	}
 	// Errors should NEVER happen.  Assert now to ensure that they are fixed as
 	//	soon as possible!
