@@ -31,12 +31,14 @@ internal u16 kauSoundHandleTrackIndex(KTapeHandle soundHandle)
 {
 	return soundHandle & 0xFFFF;
 }
-internal KAudioMixer* kauConstruct(KgaHandle allocator, u16 audioTrackCount, 
-                                   KAssetManager* assetManager)
+internal KAudioMixer* kauConstruct(
+	KAllocatorHandle allocator, u16 audioTrackCount, 
+	KAssetManager* assetManager)
 {
+	const size_t totalBytesRequired = 
+		sizeof(KAudioMixer) + sizeof(AudioTrack)*audioTrackCount;
 	KAudioMixer*const result = reinterpret_cast<KAudioMixer*>(
-		kgaAlloc(allocator, sizeof(KAudioMixer) + 
-		                        sizeof(AudioTrack)*audioTrackCount));
+		kAllocAlloc(allocator, totalBytesRequired));
 	if(result)
 	{
 		*result = 

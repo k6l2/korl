@@ -733,6 +733,10 @@
 	[x] just create an autohotkey script to do this for me lol...
 	[x] add the invocation to the AHK script to my .vimrc so I can just press 
 		<F5> to start debugging in VS
+[x] create a generic memory allocator interface + dispatch to allow systems to 
+	operate without knowledge of how memory is being allocated (for example, to 
+	allow the creation of a stb_ds dynamic array using either permanent generic 
+	allocator OR using the frame-local linear allocator)
 [ ] kmd5: ignore *.swp files
 [ ] win32: disable the right-click menu in the window title bar when the 
 	application is in mouse relative mode

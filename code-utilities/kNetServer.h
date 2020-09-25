@@ -29,7 +29,8 @@ struct KNetServer
 	 * running for several years non-stop - which is perfectly fine by me */
 	u32 rollingUnreliableStateIndex;
 } FORCE_SYMBOL_EXPORT;
-internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients);
+internal bool kNetServerStart(
+	KNetServer* kns, KAllocatorHandle hKal, u8 maxClients);
 internal void kNetServerStop(KNetServer* kns);
 #define K_NET_SERVER_READ_CLIENT_STATE(name) \
 	void name(network::ServerClientId clientId, const u8* data, \

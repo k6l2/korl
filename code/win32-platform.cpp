@@ -107,7 +107,7 @@ internal PLATFORM_JOB_VALID(w32PlatformJobValid)
 	return jobQueueTicketIsValid(&g_jobQueue, ticket);
 }
 internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
-                               KgaHandle pixelDataAllocator)
+                               KAllocatorHandle pixelDataAllocator)
 {
 	i32 imgW, imgH, imgNumByteChannels;
 	u8*const img = 
@@ -124,7 +124,7 @@ internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
 	// Copy the output from STBI to a buffer in our pixelDataAllocator //
 	EnterCriticalSection(&g_assetAllocationCsLock);
 	u8*const pixelData = reinterpret_cast<u8*>(
-		kgaAlloc(pixelDataAllocator, imgW*imgH*4));
+		kAllocAlloc(pixelDataAllocator, imgW*imgH*4));
 	LeaveCriticalSection(&g_assetAllocationCsLock);
 	if(!pixelData)
 	{
@@ -146,7 +146,7 @@ internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 		return {};
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawAssetBytes);
+	void* rawFileMemory = kAllocAlloc(g_hKalRawFiles, rawAssetBytes);
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
@@ -155,7 +155,7 @@ internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 	}
 	defer({
 		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgaFree(g_hKgaRawFiles, rawFileMemory);
+		kAllocFree(g_hKalRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	const bool assetReadResult = 
@@ -178,7 +178,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 		return result;
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawAssetBytes);
+	void* rawFileMemory = kAllocAlloc(g_hKalRawFiles, rawAssetBytes);
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
@@ -187,7 +187,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	}
 	defer({
 		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgaFree(g_hKgaRawFiles, rawFileMemory);
+		kAllocFree(g_hKalRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	const bool assetReadResult = 
@@ -230,7 +230,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 		vorbisSampleLength*vorbisInfo.channels*sizeof(SoundSample);
 	EnterCriticalSection(&g_assetAllocationCsLock);
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
-		kgaAlloc(sampleDataAllocator, sampleDataSize) );
+		kAllocAlloc(sampleDataAllocator, sampleDataSize) );
 	LeaveCriticalSection(&g_assetAllocationCsLock);
 	if(!sampleData)
 	{
@@ -249,7 +249,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	{
 		KLOG(ERROR, "Failed to get samples for '%s'!", fileName);
 		EnterCriticalSection(&g_assetAllocationCsLock);
-		kgaFree(sampleDataAllocator, sampleData);
+		kAllocFree(sampleDataAllocator, sampleData);
 		LeaveCriticalSection(&g_assetAllocationCsLock);
 		return result;
 	}
@@ -262,7 +262,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	return result;
 }
 internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes, 
-                               KgaHandle sampleDataAllocator, 
+                               KAllocatorHandle sampleDataAllocator, 
                                const TCHAR* szFileFullPath)
 {
 	// Now that we have the entire file in memory, we can verify if the file is
@@ -388,7 +388,7 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	}
 	EnterCriticalSection(&g_assetAllocationCsLock);
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
-		kgaAlloc(sampleDataAllocator, riffDataSize) );
+		kAllocAlloc(sampleDataAllocator, riffDataSize) );
 	LeaveCriticalSection(&g_assetAllocationCsLock);
 	if(!sampleData)
 	{
@@ -418,7 +418,7 @@ internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
 		return {};
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgaAlloc(g_hKgaRawFiles, rawAssetBytes);
+	void* rawFileMemory = kAllocAlloc(g_hKalRawFiles, rawAssetBytes);
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
@@ -427,7 +427,7 @@ internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
 	}
 	defer({
 		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgaFree(g_hKgaRawFiles, rawFileMemory);
+		kAllocFree(g_hKalRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	const bool assetReadResult = 
@@ -444,13 +444,13 @@ internal PLATFORM_IMGUI_ALLOC(w32PlatformImguiAlloc)
 {
 	/* imgui allocations don't have to be thread-safe because they should ONLY 
 		proc on the main thread! @TODO: assert this is the main thread */
-	return kgaAlloc(user_data, sz);
+	return kAllocAlloc(user_data, sz);
 }
 internal PLATFORM_IMGUI_FREE(w32PlatformImguiFree)
 {
 	/* imgui allocations don't have to be thread-safe because they should ONLY 
 		proc on the main thread! @TODO: assert this is the main thread */
-	kgaFree(user_data, ptr);
+	kAllocFree(user_data, ptr);
 }
 internal PLATFORM_DECODE_Z85_PNG(w32PlatformDecodeZ85Png)
 {
@@ -463,7 +463,7 @@ internal PLATFORM_DECODE_Z85_PNG(w32PlatformDecodeZ85Png)
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
 	i8* rawFileMemory = reinterpret_cast<i8*>(
-		kgaAlloc(g_hKgaRawFiles, rawFileBytes));
+		kAllocAlloc(g_hKalRawFiles, rawFileBytes));
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
@@ -472,7 +472,7 @@ internal PLATFORM_DECODE_Z85_PNG(w32PlatformDecodeZ85Png)
 	}
 	defer({
 		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgaFree(g_hKgaRawFiles, rawFileMemory);
+		kAllocFree(g_hKalRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	if(!z85::decode(reinterpret_cast<const i8*>(z85PngData), rawFileMemory))
@@ -493,7 +493,7 @@ internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav)
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
 	i8* rawFileMemory = reinterpret_cast<i8*>(
-		kgaAlloc(g_hKgaRawFiles, rawFileBytes));
+		kAllocAlloc(g_hKalRawFiles, rawFileBytes));
 	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	if(!rawFileMemory)
 	{
@@ -502,7 +502,7 @@ internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav)
 	}
 	defer({
 		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgaFree(g_hKgaRawFiles, rawFileMemory);
+		kAllocFree(g_hKalRawFiles, rawFileMemory);
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	if(!z85::decode(reinterpret_cast<const i8*>(z85WavData), rawFileMemory))

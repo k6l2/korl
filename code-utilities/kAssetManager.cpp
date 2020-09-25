@@ -44,16 +44,16 @@ struct KAssetManager
 	KAsset defaultAssetImage;
 	KAsset defaultAssetSound;
 	KAsset defaultAssetFlipbookMetaData;
-	KgaHandle assetDataAllocator;
-	KgaHandle hKgaRawFiles;
+	KAllocatorHandle assetDataAllocator;
+	KAllocatorHandle hKgaRawFiles;
 	KplLockHandle hLockAssetDataAllocator;
 	KmlPlatformApi* kpl;
 	KrbApi* krb;
 	//KAsset assets[];
 };
-internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles, 
-                                     KgaHandle assetDataAllocator,
-                                     KmlPlatformApi* kpl, KrbApi* krbApi)
+internal KAssetManager* kamConstruct(
+	KAllocatorHandle allocator, u32 maxAssetHandles, 
+	KAllocatorHandle assetDataAllocator, KmlPlatformApi* kpl, KrbApi* krbApi)
 {
 	if(maxAssetHandles >= INVALID_KASSET_HANDLE)
 	{
@@ -63,7 +63,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 	const size_t requiredBytes = sizeof(KAssetManager) + 
 		sizeof(KAsset)*maxAssetHandles + rawFilePoolBytes;
 	KAssetManager*const result = reinterpret_cast<KAssetManager*>(
-		kgaAlloc(allocator, requiredBytes));
+		kAllocAlloc(allocator, requiredBytes));
 	if(!result)
 	{
 		KLOG(ERROR, "Failed to allocate memory for KAssetManager!");
@@ -72,7 +72,8 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 	void*const rawFileAllocatorAddress = 
 		reinterpret_cast<u8*>(result) + sizeof(KAssetManager) + 
 		sizeof(KAsset)*maxAssetHandles;
-	KgaHandle hKgaRawFiles = kgaInit(rawFileAllocatorAddress, rawFilePoolBytes);
+	KAllocatorHandle hKalRawFiles = kAllocInit(
+		KAllocatorType::GENERAL, rawFileAllocatorAddress, rawFilePoolBytes);
 	// Quickly load very tiny default assets which can be immediately used
 	//	in place of any asset handle which has not yet been loaded from the
 	//	platform and decoded into useful data for us yet! //
@@ -112,7 +113,7 @@ internal KAssetManager* kamConstruct(KgaHandle allocator, u32 maxAssetHandles,
 		, .defaultAssetSound            = defaultAssetSound
 		, .defaultAssetFlipbookMetaData = defaultAssetFlipbook
 		, .assetDataAllocator           = assetDataAllocator
-		, .hKgaRawFiles                 = hKgaRawFiles
+		, .hKgaRawFiles                 = hKalRawFiles
 		, .hLockAssetDataAllocator      = hLockAssetDataAllocator
 		, .kpl = kpl
 		, .krb = krbApi };
@@ -133,13 +134,13 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 		case KAssetType::RAW_IMAGE:
 		{
 			kam->krb->deleteTexture(asset->assetData.image.krbTextureHandle);
-			kgaFree(kam->assetDataAllocator, 
-			        asset->assetData.image.rawImage.pixelData);
+			kAllocFree(kam->assetDataAllocator, 
+			           asset->assetData.image.rawImage.pixelData);
 		} break;
 		case KAssetType::RAW_SOUND:
 		{
-			kgaFree(kam->assetDataAllocator, 
-			        asset->assetData.sound.sampleData);
+			kAllocFree(kam->assetDataAllocator, 
+			           asset->assetData.sound.sampleData);
 		} break;
 		case KAssetType::FLIPBOOK_META:
 		{
@@ -424,14 +425,14 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 		entirely in the KAsset */
 	asset->kam->kpl->lock(asset->kam->hLockAssetDataAllocator);
 	void*const rawFileMemory = 
-		kgaAlloc(asset->kam->hKgaRawFiles, 
-		         kmath::safeTruncateU32(assetByteSize));
+		kAllocAlloc(asset->kam->hKgaRawFiles, 
+		            kmath::safeTruncateU32(assetByteSize));
 	kassert(rawFileMemory);
 	asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* defer cleanup of the raw file memory until after we utilize it */
 	defer({
 		asset->kam->kpl->lock(asset->kam->hLockAssetDataAllocator);
-		kgaFree(asset->kam->hKgaRawFiles, rawFileMemory);
+		kAllocFree(asset->kam->hKgaRawFiles, rawFileMemory);
 		asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	});
 	/* load the entire raw file into a `fileByteSize` chunk */

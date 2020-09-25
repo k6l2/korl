@@ -1,5 +1,6 @@
 #include "kNetServer.h"
-internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients)
+internal bool kNetServerStart(
+	KNetServer* kns, KAllocatorHandle hKal, u8 maxClients)
 {
 	kassert(kns->socket == KPL_INVALID_SOCKET_INDEX);
 	kns->socket = g_kpl->socketOpenUdp(kns->port);
@@ -8,7 +9,7 @@ internal bool kNetServerStart(KNetServer* kns, KgaHandle hKga, u8 maxClients)
 		KLOG(ERROR, "Failed to open a network socket on port %i!", kns->port);
 		return false;
 	}
-	kns->clientArray = arrinit(KNetServerClientEntry, hKga);
+	kns->clientArray = arrinit(KNetServerClientEntry, hKal);
 	arrsetcap(kns->clientArray, maxClients);
 	return true;
 }

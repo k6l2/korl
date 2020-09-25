@@ -1,11 +1,20 @@
 #pragma once
 #include "kutil.h"
-using KalHandle = void*;
-internal KalHandle kalInit(void* allocatorMemoryStart, 
-                           size_t allocatorByteCount);
-internal void* kalAlloc(KalHandle hKal, size_t allocationByteCount);
-internal void* kalRealloc(KalHandle hKal, void* allocatedAddress, 
-                          size_t newAllocationSize);
-internal void kalReset(KalHandle hKal);
-internal size_t kalUsedBytes(KalHandle hKal);
-internal size_t kalMaxTotalUsableBytes(KalHandle hKal);
+#include "kAllocator.h"
+struct KAllocatorLinear
+{
+	KAllocatorType type;
+	void* memoryStart;
+	size_t memoryByteCount;
+	size_t bytesAllocated;
+	void* lastAllocResult;
+	size_t lastAllocByteCount;
+};
+internal KAllocatorLinear* kalInit(
+	void* allocatorMemoryStart, size_t allocatorByteCount);
+internal void* kalAlloc(KAllocatorLinear* kal, size_t allocationByteCount);
+internal void* kalRealloc(
+	KAllocatorLinear* kal, void* allocatedAddress, size_t newAllocationSize);
+internal void kalReset(KAllocatorLinear* kal);
+internal size_t kalUsedBytes(KAllocatorLinear* kal);
+internal size_t kalMaxTotalUsableBytes(KAllocatorLinear* kal);

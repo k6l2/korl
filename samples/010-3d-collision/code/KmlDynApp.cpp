@@ -734,14 +734,14 @@ GAME_INITIALIZE(gameInitialize)
 	const size_t generatedSphereMeshBytes = 
 		g_gs->generatedSphereMeshVertexCount * sizeof(Vertex);
 	g_gs->generatedSphereMesh = reinterpret_cast<Vertex*>(
-		kgaAlloc(g_gs->templateGameState.hKgaPermanent,
-		         generatedSphereMeshBytes));
+		kAllocAlloc(g_gs->templateGameState.hKalPermanent,
+		            generatedSphereMeshBytes));
 	kmath::generateMeshCircleSphere(
 		1.f, 16, 16, g_gs->generatedSphereMesh, generatedSphereMeshBytes, 
 		sizeof(Vertex), offsetof(Vertex,position), 
 		offsetof(Vertex,textureNormal));
 	/* initialize dynamic array of actors */
-	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKgaPermanent);
+	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKalPermanent);
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {

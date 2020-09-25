@@ -8,7 +8,7 @@
 global_variable stb_vorbis_alloc g_oggVorbisAlloc;
 global_variable TCHAR g_pathToAssets[MAX_PATH];
 global_variable JobQueue g_jobQueue;
-global_variable KgaHandle g_hKgaRawFiles;
+global_variable KAllocatorHandle g_hKalRawFiles;
 global_variable CRITICAL_SECTION g_csLockAllocatorRawFiles;
 global_variable CRITICAL_SECTION g_assetAllocationCsLock;
 global_variable CRITICAL_SECTION g_vorbisAllocationCsLock;

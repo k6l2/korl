@@ -1,31 +1,5 @@
 #include "kGeneralAllocator.h"
 #include <cstring>
-struct KGeneralAllocatorChunk
-{
-	KGeneralAllocatorChunk* chunkPrev;
-	KGeneralAllocatorChunk* chunkNext;
-	/** represents total available memory EXCLUDING the chunk header! */
-	size_t bytes;
-	bool allocated;
-	u8 allocated_PADDING[7];
-};
-struct KGeneralAllocator
-{
-	/** 
-	 * Represents total available fragmented memory EXCLUDING allocator header 
-	 * structs.  This is the theoretical maximum amount of data we have left to
-	 * allocate (excluding possible additional chunk headers) assuming no more 
-	 * fragmentation occurs.
-	*/
-	size_t freeBytes;
-	/** 
-	 * Only represents the total memory assuming there is a SINGLE chunk.  This 
-	 * is the theoretical maximum amount of data the allocator can allocate.
-	*/
-	size_t totalBytes;
-	size_t totalChunks;
-	KGeneralAllocatorChunk* firstChunk;
-};
 // This is just a relatively inexpensive sanity check to see if the address 
 //	spaces of the chunk and its immediate neighbors lie within the total address
 //	space of the allocator.  Also doing some other simple checks now... //
@@ -89,8 +63,8 @@ internal bool kgaVerifyChunk(const KGeneralAllocator* kga,
 	}
 	return true;
 }
-internal KgaHandle kgaInit(void* allocatorMemoryLocation, 
-                           size_t allocatorByteCount)
+internal KGeneralAllocator* kgaInit(
+	void* allocatorMemoryLocation, size_t allocatorByteCount)
 {
 	local_persist const size_t MIN_ALLOC_OVERHEAD =
 		sizeof(KGeneralAllocator) + sizeof(KGeneralAllocatorChunk);
@@ -98,11 +72,12 @@ internal KgaHandle kgaInit(void* allocatorMemoryLocation,
 	KGeneralAllocator*const kga = 
 		reinterpret_cast<KGeneralAllocator*>(allocatorMemoryLocation);
 	*kga = {};
-	kga->freeBytes  = allocatorByteCount - MIN_ALLOC_OVERHEAD;
-	kga->totalBytes = allocatorByteCount - MIN_ALLOC_OVERHEAD;
+	kga->type        = KAllocatorType::GENERAL;
+	kga->freeBytes   = allocatorByteCount - MIN_ALLOC_OVERHEAD;
+	kga->totalBytes  = allocatorByteCount - MIN_ALLOC_OVERHEAD;
 	kga->totalChunks = 1;
-	kga->firstChunk = reinterpret_cast<KGeneralAllocatorChunk*>(
-	                  reinterpret_cast<u8*>(kga) + sizeof(KGeneralAllocator));
+	kga->firstChunk  = reinterpret_cast<KGeneralAllocatorChunk*>(
+	                   reinterpret_cast<u8*>(kga) + sizeof(KGeneralAllocator));
 	kga->firstChunk->chunkPrev = kga->firstChunk;
 	kga->firstChunk->chunkNext = kga->firstChunk;
 	kga->firstChunk->bytes     = allocatorByteCount - MIN_ALLOC_OVERHEAD;
@@ -110,7 +85,7 @@ internal KgaHandle kgaInit(void* allocatorMemoryLocation,
 	kassert(kgaVerifyChunk(kga, kga->firstChunk));
 	return kga;
 }
-internal void* kgaAlloc(KgaHandle kgaHandle, size_t allocationByteCount)
+internal void* kgaAlloc(KGeneralAllocator* kga, size_t allocationByteCount)
 {
 	if(allocationByteCount == 0)
 	{
@@ -118,8 +93,6 @@ internal void* kgaAlloc(KgaHandle kgaHandle, size_t allocationByteCount)
 	}
 	local_persist const size_t MIN_ALLOC_OVERHEAD = 
 		sizeof(KGeneralAllocatorChunk);
-	KGeneralAllocator*const kga = 
-		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
 	if(kga->freeBytes < allocationByteCount)
 	{
 		return nullptr;
@@ -178,22 +151,20 @@ internal void* kgaAlloc(KgaHandle kgaHandle, size_t allocationByteCount)
 	       0x0, firstAvailableChunk->bytes);
 	return reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD;
 }
-internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress, 
-                          size_t newAllocationSize)
+internal void* kgaRealloc(
+	KGeneralAllocator* kga, void* allocatedAddress, size_t newAllocationSize)
 {
-	void* newAllocation = kgaAlloc(kgaHandle, newAllocationSize);
+	void* newAllocation = kgaAlloc(kga, newAllocationSize);
 	if(!newAllocation)
 	{
 		if(allocatedAddress)
 		{
-			kgaFree(kgaHandle, allocatedAddress);
+			kgaFree(kga, allocatedAddress);
 		}
 		return nullptr;
 	}
 	if(allocatedAddress)
 	{
-		KGeneralAllocator*const kga = 
-			reinterpret_cast<KGeneralAllocator*>(kgaHandle);
 		KGeneralAllocatorChunk* allocatedChunk = 
 			reinterpret_cast<KGeneralAllocatorChunk*>(
 				reinterpret_cast<u8*>(allocatedAddress) - 
@@ -202,7 +173,7 @@ internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress,
 		const size_t bytesToCopy = allocatedChunk->bytes < newAllocationSize
 			? allocatedChunk->bytes : newAllocationSize;
 		memcpy(newAllocation, allocatedAddress, bytesToCopy);
-		kgaFree(kgaHandle, allocatedAddress);
+		kgaFree(kga, allocatedAddress);
 	}
 	return newAllocation;
 	///TODO:
@@ -219,14 +190,12 @@ internal void* kgaRealloc(KgaHandle kgaHandle, void* allocatedAddress,
 	//	If new size > potential merge size,
 	//		then we have no choice but to alloc, then free
 }
-internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
+internal void kgaFree(KGeneralAllocator* kga, void* allocatedAddress)
 {
 	if(!allocatedAddress)
 	{
 		return;
 	}
-	KGeneralAllocator*const kga = 
-		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
 	KGeneralAllocatorChunk* allocatedChunk = 
 		reinterpret_cast<KGeneralAllocatorChunk*>(
 			reinterpret_cast<u8*>(allocatedAddress) - 
@@ -275,15 +244,11 @@ internal void kgaFree(KgaHandle kgaHandle, void* allocatedAddress)
 	}
 	///TODO: verify the integrity of `kga`'s double-linked list of chunks
 }
-internal size_t kgaUsedBytes(KgaHandle kgaHandle)
+internal size_t kgaUsedBytes(KGeneralAllocator* kga)
 {
-	const KGeneralAllocator*const kga = 
-		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
 	return kga->totalBytes - kga->freeBytes;
 }
-internal size_t kgaMaxTotalUsableBytes(KgaHandle kgaHandle)
+internal size_t kgaMaxTotalUsableBytes(KGeneralAllocator* kga)
 {
-	const KGeneralAllocator*const kga = 
-		reinterpret_cast<KGeneralAllocator*>(kgaHandle);
 	return kga->totalBytes;
 }

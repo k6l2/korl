@@ -1,13 +1,14 @@
 #pragma once
 #include "kutil.h"
-#include "kGeneralAllocator.h"
+#include "kAllocator.h"
 #include "kAssetManager.h"
 #include "platform-game-interfaces.h"
 #include "gen_kassets.h"
 struct KAudioMixer;
 using KTapeHandle = u64;
 internal KAudioMixer* kauConstruct(
-	KgaHandle allocator, u16 audioTrackCount, KAssetManager* assetManager);
+	KAllocatorHandle allocator, u16 audioTrackCount, 
+	KAssetManager* assetManager);
 internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer, 
                      u32 sampleBlocksConsumed);
 internal KTapeHandle kauPlaySound(

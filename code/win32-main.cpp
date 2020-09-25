@@ -5,7 +5,7 @@
 #include "win32-krb-opengl.h"
 #include "win32-network.h"
 #include "win32-platform.h"
-#include "kGeneralAllocator.h"
+#include "kAllocator.h"
 #include <cstdio>
 #include <ctime>
 #include <dbghelp.h>
@@ -41,8 +41,8 @@ global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
 global_variable HCURSOR g_cursorSizeNeSw;
 global_variable HCURSOR g_cursorSizeNwSe;
-global_variable KgaHandle g_genAllocStbImage;
-global_variable KgaHandle g_genAllocImgui;
+global_variable KAllocatorHandle g_genAllocStbImage;
+global_variable KAllocatorHandle g_genAllocImgui;
 global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
 // @assumption: once we have written a crash dump, there is never a need to 
 //	write any more, let alone continue execution.
@@ -1493,7 +1493,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_genAllocStbImage = kgaInit(memoryAddressStart, memoryBytes);
+		g_genAllocStbImage = kAllocInit(
+			KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 	}
 	/* assign a pre-allocated dynamic memory arena for ImGui */
 	{
@@ -1503,7 +1504,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_genAllocImgui = kgaInit(memoryAddressStart, memoryBytes);
+		g_genAllocImgui = kAllocInit(
+			KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 	}
 	/* assign a pre-allocated dynamic memory arena for loading files into memory 
 		note: this memory definitely needs to be thread-safe */
@@ -1514,7 +1516,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_hKgaRawFiles = kgaInit(memoryAddressStart, memoryBytes);
+		g_hKalRawFiles = kAllocInit(KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 	}
 	/* assign a pre-allocated dynamic memory arena for decoding vorbis data */
 	{
@@ -1943,7 +1945,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 	}
-	kassert(kgaUsedBytes(g_genAllocStbImage) == 0);
+	kassert(kAllocUsedBytes(g_genAllocStbImage) == 0);
 	KLOG(INFO, "END! :)");
 	return RETURN_CODE_SUCCESS;
 }
@@ -1963,27 +1965,26 @@ internal void* stbiMalloc(size_t allocationByteCount)
 {
 	EnterCriticalSection(&g_stbiAllocationCsLock);
 	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
-	return kgaAlloc(g_genAllocStbImage, allocationByteCount);
+	return kAllocAlloc(g_genAllocStbImage, allocationByteCount);
 }
 internal void* stbiRealloc(void* allocatedAddress, 
                            size_t newAllocationByteCount)
 {
 	EnterCriticalSection(&g_stbiAllocationCsLock);
 	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
-	return kgaRealloc(g_genAllocStbImage, 
-	                  allocatedAddress, newAllocationByteCount);
+	return kAllocRealloc(g_genAllocStbImage, 
+	                     allocatedAddress, newAllocationByteCount);
 }
 internal void stbiFree(void* allocatedAddress)
 {
 	EnterCriticalSection(&g_stbiAllocationCsLock);
-	kgaFree(g_genAllocStbImage, allocatedAddress);
+	kAllocFree(g_genAllocStbImage, allocatedAddress);
 	LeaveCriticalSection(&g_stbiAllocationCsLock);
 }
 #define STBI_MALLOC(sz)       stbiMalloc(sz)
 #define STBI_REALLOC(p,newsz) stbiRealloc(p,newsz)
 #define STBI_FREE(p)          stbiFree(p)
 #include "stb/stb_image.h"
-#include "kGeneralAllocator.cpp"
 #pragma warning( push )
 // warning C4127: conditional expression is constant
 #pragma warning( disable : 4127 )
@@ -2005,3 +2006,4 @@ internal void stbiFree(void* allocatedAddress)
 #pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
+#include "kAllocator.cpp"

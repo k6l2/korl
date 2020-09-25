@@ -2,10 +2,9 @@
 #include "kutil.h"
 #include "platform-game-interfaces.h"
 #include "krb-interface.h"
-#include "kGeneralAllocator.h"
+#include "kAllocator.h"
 #include "kAssetManager.h"
 #include "kAudioMixer.h"
-#include "kAllocatorLinear.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )
@@ -21,9 +20,9 @@ internal void kStbDsFree(void* allocatedAddress, void* context);
 struct KmlTemplateGameState
 {
 	/* memory allocators */
-	KgaHandle hKgaPermanent;
-	KgaHandle hKgaTransient;
-	KalHandle hKalFrame;
+	KAllocatorHandle hKalPermanent;
+	KAllocatorHandle hKalTransient;
+	KAllocatorHandle hKalFrame;
 	/* required state for KRB */
 	krb::Context krbContext;
 	/* useful utilities which almost every game will use */

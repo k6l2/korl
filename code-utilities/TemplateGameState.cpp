@@ -21,24 +21,26 @@ internal void templateGameState_initialize(
 		spot in memory forever */
 	g_krb->setCurrentContext(&tgs->krbContext);
 	// initialize dynamic allocators //
-	tgs->hKgaPermanent = 
-		kgaInit(reinterpret_cast<u8*>(memory.permanentMemory) + 
-		            totalGameStateSize, 
-		        memory.permanentMemoryBytes - totalGameStateSize);
-	tgs->hKgaTransient = kgaInit(memory.transientMemory, 
-	                             memory.transientMemoryBytes);
+	tgs->hKalPermanent = kAllocInit(
+		KAllocatorType::GENERAL, 
+		reinterpret_cast<u8*>(memory.permanentMemory) + totalGameStateSize, 
+		memory.permanentMemoryBytes - totalGameStateSize);
+	tgs->hKalTransient = kAllocInit(
+		KAllocatorType::GENERAL, 
+		memory.transientMemory, memory.transientMemoryBytes);
 	// construct a linear frame allocator //
 	{
-		const size_t kalFrameSize = kmath::megabytes(5);
+		local_persist const size_t FRAME_ALLOC_BYTES = kmath::megabytes(5);
 		void*const kalFrameStartAddress = 
-			kgaAlloc(tgs->hKgaPermanent, kalFrameSize);
-		tgs->hKalFrame = kalInit(kalFrameStartAddress, kalFrameSize);
+			kAllocAlloc(tgs->hKalPermanent, FRAME_ALLOC_BYTES);
+		tgs->hKalFrame = kAllocInit(
+			KAllocatorType::LINEAR, kalFrameStartAddress, FRAME_ALLOC_BYTES);
 	}
 	// Contruct/Initialize the game's AssetManager //
-	tgs->assetManager = kamConstruct(tgs->hKgaPermanent, KASSET_COUNT,
-	                                 tgs->hKgaTransient, g_kpl, g_krb);
+	tgs->assetManager = kamConstruct(tgs->hKalPermanent, KASSET_COUNT,
+	                                 tgs->hKalTransient, g_kpl, g_krb);
 	// Initialize the game's audio mixer //
-	tgs->kAudioMixer = kauConstruct(tgs->hKgaPermanent, 16, 
+	tgs->kAudioMixer = kauConstruct(tgs->hKalPermanent, 16, 
 	                                tgs->assetManager);
 	// Tell the asset manager to load assets asynchronously! //
 	kamPushAllKAssets(tgs->assetManager);
@@ -53,7 +55,7 @@ internal bool templateGameState_updateAndDraw(
 	KmlTemplateGameState* tgs, const GameKeyboard& gameKeyboard, 
 	bool windowIsFocused)
 {
-	kalReset(tgs->hKalFrame);
+	kAllocReset(tgs->hKalFrame);
 	/* Esc, Ctrl+W & Alt+F4 shortcuts to quickly exit the program */
 	if(gameKeyboard.escape == ButtonState::PRESSED 
 		|| (gameKeyboard.f4 == ButtonState::PRESSED 
@@ -77,16 +79,6 @@ internal bool templateGameState_updateAndDraw(
 		kamPushAllKAssets(tgs->assetManager);
 	return true;
 }
-#include "kFlipBook.cpp"
-#include "kAudioMixer.cpp"
-#pragma warning( push )
-	/* warning C4296: '<': expression is always false.  This happens if there 
-		are no KAssets in the assets directory */
-	#pragma warning( disable : 4296 )
-	#include "kAssetManager.cpp"
-#pragma warning( pop )
-#include "kGeneralAllocator.cpp"
-#include "kAllocatorLinear.cpp"
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
 	#pragma warning( disable : 4127 )
@@ -110,16 +102,17 @@ internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize,
                              void* context)
 {
 	kassert(context);
-	KgaHandle hKga = reinterpret_cast<KgaHandle>(context);
-	void*const result = kgaRealloc(hKga, allocatedAddress, newAllocationSize);
+	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
+	void*const result = 
+		kAllocRealloc(hKal, allocatedAddress, newAllocationSize);
 	kassert(result);
 	return result;
 }
 internal void kStbDsFree(void* allocatedAddress, void* context)
 {
 	kassert(context);
-	KgaHandle hKga = reinterpret_cast<KgaHandle>(context);
-	kgaFree(hKga, allocatedAddress);
+	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
+	kAllocFree(hKal, allocatedAddress);
 }
 #pragma warning( push )
 	// warning C4365: 'argument': conversion
@@ -133,3 +126,13 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kNetClient.cpp"
 #include "kNetServer.cpp"
 #include "KNetReliableDataBuffer.cpp"
+#include "kFlipBook.cpp"
+#include "kAudioMixer.cpp"
+#pragma warning( push )
+	/* warning C4296: '<': expression is always false.  This happens if there 
+		are no KAssets in the assets directory */
+	#pragma warning( disable : 4296 )
+	#include "kAssetManager.cpp"
+#pragma warning( pop )
+#include "kAllocator.cpp"
+

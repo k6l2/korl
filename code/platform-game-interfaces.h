@@ -1,7 +1,7 @@
 #pragma once
 #include "kutil.h"
 #include "krb-interface.h"
-#include "kGeneralAllocator.h"
+#include "kAllocator.h"
 #include "kmath.h"
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
@@ -47,10 +47,10 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 	void  name(void* ptr, void* user_data)
 #define PLATFORM_DECODE_Z85_PNG(name) \
 	RawImage name(const u8* z85PngData, size_t z85PngNumBytes, \
-	              KgaHandle pixelDataAllocator)
+	              KAllocatorHandle pixelDataAllocator)
 #define PLATFORM_DECODE_Z85_WAV(name) \
 	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
-	              KgaHandle sampleDataAllocator)
+	              KAllocatorHandle sampleDataAllocator)
 /** @return a value < 0 if an error occurs */
 #define PLATFORM_GET_ASSET_BYTE_SIZE(name) \
 	i32 name(const char* ansiAssetName)
@@ -63,19 +63,19 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
  *         containing sampleData==nullptr is returned.
  */
 #define PLATFORM_LOAD_WAV(name) \
-	RawSound name(const char* fileName, KgaHandle sampleDataAllocator)
+	RawSound name(const char* fileName, KAllocatorHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
  */
 #define PLATFORM_LOAD_OGG(name) \
-	RawSound name(const char* fileName, KgaHandle sampleDataAllocator)
+	RawSound name(const char* fileName, KAllocatorHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawImage 
  *         containing pixelData==nullptr is returned.
  */
 #define PLATFORM_LOAD_PNG(name) \
-	RawImage name(const char* fileName, KgaHandle pixelDataAllocator)
+	RawImage name(const char* fileName, KAllocatorHandle pixelDataAllocator)
 #define PLATFORM_GET_ASSET_WRITE_TIME(name) \
 	FileWriteTime name(const char* assetFileName)
 #define PLATFORM_IS_ASSET_CHANGED(name) \
