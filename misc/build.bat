@@ -290,4 +290,5 @@ del %codeTreeFileNamePrefixGame%-existing.txt
 :ON_FAILURE_KML
 del %codeTreeFileNamePrefixKml%-existing.txt
 popd
+echo KML build failed! 1>&2
 exit /B %ERRORLEVEL%
