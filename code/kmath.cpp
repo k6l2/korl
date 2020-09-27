@@ -847,9 +847,9 @@ internal inline f32 kmath::collideRayBox(
 	return tMin;
 }
 #define V3F32_STRIDE(pu8,byteStride,index) \
-	reinterpret_cast<v3f32*>(pu8 + (index*byteStride))
+	reinterpret_cast<v3f32*>((pu8) + ((index)*(byteStride)))
 #define V2F32_STRIDE(pu8,byteStride,index) \
-	reinterpret_cast<v2f32*>(pu8 + (index*byteStride))
+	reinterpret_cast<v2f32*>((pu8) + ((index*byteStride)))
 internal inline void kmath::generateMeshBox(
 	v3f32 lengths, void* o_vertexData, size_t vertexDataBytes, 
 	size_t vertexByteStride, size_t vertexPositionOffset, 
@@ -1361,4 +1361,69 @@ internal bool kmath::gjk(
 		}
 	}
 	return gjkState.lastIterationResult == GjkIterationResult::SUCCESS;
+}
+internal void kmath::epa_initialize(
+	EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator)
+{
+	*epaState = {};
+	/* allocate the dynamic memory containers required by EPA, attempting to 
+	 * minimize reallocs while at the same time not taking up too much memory */
+	epaState->vertexPositions = arrinit(v3f32, allocator);
+	arrsetcap(epaState->vertexPositions, 32);
+	epaState->tris = arrinit(EpaState::RightHandTri, allocator);
+	arrsetcap(epaState->tris, 32);
+	/* initialize the EPA polytope to start with the simplex output by GJK (see 
+	 * documentation for the `gjk` function for details) */
+	for(size_t v = 0; v < 4; v++)
+		arrput(epaState->vertexPositions, simplex[v]);
+	local_persist const EpaState::RightHandTri SIMPLEX_TRIS[] = 
+		{{0,1,2}, {0,2,3}, {0,3,1}, {3,2,1}};
+	for(size_t t = 0; t < 4; t++)
+	{
+		arrput(epaState->tris, SIMPLEX_TRIS[t]);
+	}
+	/* misc state initialization */
+	epaState->lastIterationResult = EpaIterationResult::INCOMPLETE;
+}
+internal void kmath::epa_iterate(
+	EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData)
+{
+	/* first, we need to find the polytope face with the shortest distance to 
+	 * the origin */
+	//@TODO
+	/* if we're done, clean up dynamic memory here */
+	//@TODO
+}
+internal void kmath::epa_cleanup(EpaState* epaState)
+{
+	arrfree(epaState->vertexPositions);
+	arrfree(epaState->tris);
+}
+internal u16 kmath::epa_buildPolytopeTriangles(
+	EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
+	size_t vertexByteStride, size_t vertexPositionOffset)
+{
+	const size_t requiredVertexCount = 3*(arrlenu(epaState->tris));
+	if(!o_vertexData)
+	{
+		return kmath::safeTruncateU16(requiredVertexCount);
+	}
+	/* ensure that the data buffer passed to us contains enough memory */
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	const void*const vertexDataEnd = o_vertexDataU8 + vertexDataBytes;
+	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
+	/* sizeof(vertexPosition) */
+	const size_t requiredVertexBytes = sizeof(v3f32);
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	/* iterate over the polytope triangles and emit the vertex positions */
+	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
+	{
+		const EpaState::RightHandTri& tri = epaState->tris[t];
+		for(size_t e = 0; e < 3; e++)
+			*V3F32_STRIDE(o_vertexPositions, vertexByteStride, 3*t + e) = 
+				epaState->vertexPositions[tri.vertexPositionIndices[e]];
+	}
+	return kmath::safeTruncateU16(requiredVertexCount);
 }

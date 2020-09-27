@@ -10,10 +10,6 @@
 	#pragma warning( disable : 4820 )
 	#include "imgui/imgui.h"
 #pragma warning( pop )
-#define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size,context)
-#define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
-#define STBDS_ASSERT(x)                 g_kpl->assert(x)
-#include "stb/stb_ds.h"
 internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
                              void* context);
 internal void kStbDsFree(void* allocatedAddress, void* context);

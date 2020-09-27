@@ -20,6 +20,7 @@ namespace krb
 {
 	global_variable const KrbTextureHandle INVALID_TEXTURE_HANDLE = 0;
 	global_variable const Color4f32 TRANSPARENT = {0,0,0,0};
+	global_variable const Color4f32 BLACK       = {0,0,0,1};
 	global_variable const Color4f32 WHITE       = {1,1,1,1};
 	global_variable const Color4f32 RED         = {1,0,0,1};
 	global_variable const Color4f32 GREEN       = {0,1,0,1};

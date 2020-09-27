@@ -80,7 +80,7 @@ DOCUMENTATION
       arrinit:
         void* arrinit(T, void* ctx)
           Initialize an empty dynamic array of type T which has a reference to 
-		  the memory context `ctx`.
+          the memory context `ctx`.
 
       arrfree:
         void arrfree(T*);

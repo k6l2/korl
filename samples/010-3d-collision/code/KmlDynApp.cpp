@@ -140,6 +140,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, .orientationB = actorB.orientation };
 			const v3f32 initialSupportDirection = 
 				-(actorA.position - actorB.position);
+			kmath::epa_cleanup(&g_gs->epaState);
 			kmath::gjk_initialize(
 				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData, 
 				&initialSupportDirection);
@@ -157,8 +158,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, .shapeB       = actorB.shape
 				, .positionB    = actorB.position
 				, .orientationB = actorB.orientation };
-			kmath::gjk_iterate(
-				&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
+			if(g_gs->gjkState.lastIterationResult != 
+				kmath::GjkIterationResult::SUCCESS)
+			{
+				kmath::gjk_iterate(
+					&g_gs->gjkState, shapeGjkSupport, &shapeGjkSupportData);
+				if(g_gs->gjkState.lastIterationResult == 
+					kmath::GjkIterationResult::SUCCESS)
+				{
+					kmath::epa_initialize(
+						&g_gs->epaState, g_gs->gjkState.o_simplex, 
+						g_gs->templateGameState.hKalPermanent);
+				}
+			}
+			else
+			{
+				kmath::epa_iterate(&g_gs->epaState, shapeGjkSupport, 
+				                   &shapeGjkSupportData);
+			}
 		}
 #endif// DEBUG_DELETE_LATER
 		const bool mouseOverAnyGui = ImGui::IsAnyItemHovered() 
@@ -648,6 +665,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				sizeof(g_gs->minkowskiDifferencePointCloud[0]), 
 				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
 		}
+		if(g_gs->gjkState.lastIterationResult == 
+			kmath::GjkIterationResult::SUCCESS)
+		/* draw the EPA's polytope */
+		{
+			const u16 epaPolytopeVertexCount = 
+				kmath::epa_buildPolytopeTriangles(
+					&g_gs->epaState, nullptr, 0, 0, 0);
+			Vertex* epaPolytopeTris = reinterpret_cast<Vertex*>(
+				kAllocAlloc(g_gs->templateGameState.hKalFrame, 
+				            epaPolytopeVertexCount*sizeof(Vertex)));
+			kmath::epa_buildPolytopeTriangles(
+				&g_gs->epaState, epaPolytopeTris, 
+				epaPolytopeVertexCount*sizeof(Vertex), sizeof(Vertex), 
+				offsetof(Vertex, position));
+			g_krb->drawTris(
+				epaPolytopeTris, epaPolytopeVertexCount, sizeof(Vertex), 
+				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
+		}
 		/* draw the GJK simplex */
 		{
 			VertexNoTexture vertices[12];
@@ -664,7 +699,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					g_krb->setDefaultColor(krb::RED);
 					break;
 				case kmath::GjkIterationResult::SUCCESS:
-					g_krb->setDefaultColor(krb::GREEN);
+					g_krb->setDefaultColor(krb::BLACK);
 					break;
 			}
 			if(simplexLineVertexCount)
@@ -676,6 +711,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					VERTEX_ATTRIBS_POSITION_ONLY);
 			}
 		}
+		if(g_gs->gjkState.lastIterationResult != 
+			kmath::GjkIterationResult::SUCCESS)
 		/* draw the GJK search direction from the last added simplex vertex */
 		{
 			const v3f32 lastSimplexPosition = 

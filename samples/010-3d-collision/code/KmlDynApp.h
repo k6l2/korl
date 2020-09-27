@@ -74,6 +74,7 @@ struct GameState
 	Vertex minkowskiDifferencePointCloud[1000];
 	u16 minkowskiDifferencePointCloudCount = 1000;
 	kmath::GjkState gjkState;
+	kmath::EpaState epaState;
 #endif// DEBUG_DELETE_LATER
 };
 global_variable GameState* g_gs;

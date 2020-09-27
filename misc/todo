@@ -708,6 +708,10 @@
 		https://youtu.be/6rgiPrzqt9w?t=1680
 		http://www.dtecta.com/papers/gdc2001depth.pdf
 		http://www.dyn4j.org/2010/05/epa-expanding-polytope-algorithm/
+		[x] draw the polytope triangles
+		[ ] draw the polytope edges since my scene is still unlit.. FeelsBadMan
+		[ ] test the overlapping sphere case, since it is apparently difficult 
+			to converge!
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it

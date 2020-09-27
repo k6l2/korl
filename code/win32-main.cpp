@@ -2004,6 +2004,24 @@ internal void stbiFree(void* allocatedAddress)
 #pragma warning( disable : 4701 )
 #include "stb/stb_vorbis.c"
 #pragma warning( pop )
+internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
+                             void* context)
+{
+	KLOG(ERROR, "Win32 platform layer should not be using STB_DS!");
+	kassert(context);
+	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
+	void*const result = 
+		kAllocRealloc(hKal, allocatedAddress, newAllocationSize);
+	kassert(result);
+	return result;
+}
+internal void kStbDsFree(void* allocatedAddress, void* context)
+{
+	KLOG(ERROR, "Win32 platform layer should not be using STB_DS!");
+	kassert(context);
+	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
+	kAllocFree(hKal, allocatedAddress);
+}
 #include "kmath.cpp"
 #include "kutil.cpp"
 #include "kAllocator.cpp"

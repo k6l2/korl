@@ -75,6 +75,11 @@ typedef PLATFORM_ASSERT(fnSig_platformAssert);
 	ability to log & assert */
 global_variable fnSig_platformLog* platformLog;
 global_variable fnSig_platformAssert* platformAssert;
+/* STB_DS API.  translation unit specific implementation required! */
+#define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size,context)
+#define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
+#define STBDS_ASSERT(x)                 platformAssert(x)
+#include "stb/stb_ds.h"
 /* @TODO: allow the game to define the SoundSample size in the build script? */
 using SoundSample = i16;
 namespace kutil

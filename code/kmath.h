@@ -7,6 +7,7 @@ global_variable const f32 PHI32 = 1.61803398875f;
 global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
 global_variable const f32 NAN32 = nanf("");
+#include "kAllocator.h"
 struct v2u32
 {
 	union 
@@ -327,16 +328,58 @@ namespace kmath
 		GjkState* gjkState, void* o_vertexData, size_t vertexDataBytes, 
 		size_t vertexByteStride, size_t vertexPositionOffset);
 	/**
-	 * @param simplex if the return value is true, this will contain the 
-	 *                vertices of a tetrahedron which contains the origin whose 
-	 *                vertex indices for each triangle are:
-	 *                {{0,1,2}, {0,2,3}, {0,3,1}, {3,2,1}}
+	 * Gilbert–Johnson–Keerthi algorithm implementation.
+	 * @param o_simplex if the return value is true, this will contain the 
+	 *                  vertices of a tetrahedron which contains the origin 
+	 *                  whose vertex indices for each triangle are:
+	 *                  {{0,1,2}, {0,2,3}, {0,3,1}, {3,2,1}}
 	 * @return true if there exists a tetrahedron within the support function's 
 	 *         bounds which contains the origin
 	 */
 	internal bool gjk(
 		fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4], 
 		const v3f32* initialSupportDirection = nullptr);
+	enum class EpaIterationResult : u8
+		{ FAILURE, INCOMPLETE, SUCCESS };
+	struct EpaState
+	{
+		/** stb_ds array */
+		v3f32* vertexPositions;
+		/** the normal of a triangle is defined as (v1-v0).cross(v2-v0) */
+		struct RightHandTri
+		{
+			/** each u16 represents an index of the `vertices` array */
+			u16 vertexPositionIndices[3];
+		} *tris;/** stb_ds array of triangles */
+		u8 iteration;
+		EpaIterationResult lastIterationResult;
+	};
+	/** remember to call `epa_cleanup` after calling this if `allocator` uses 
+	 * persistent memory storage!!! */
+	internal void epa_initialize(
+		EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator);
+	internal void epa_iterate(
+		EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData);
+	internal void epa_cleanup(EpaState* epaState);
+	/**
+	 * @return The required number of triangle vertices written to 
+	 *         `o_vertexData`.  If `o_vertexData` == nullptr, no actual work is 
+	 *         performed and the required vertex count is returned immediately.
+	 */
+	internal u16 epa_buildPolytopeTriangles(
+		EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
+		size_t vertexByteStride, size_t vertexPositionOffset);
+	/**
+	 * Expanding Polytope algorithm implementation.
+	 * @param simplex The output of the `gjk` function when it returns true.  
+	 *                This set of tetrahedron vertices MUST enclose the origin 
+	 *                of the minkowski space defined by the support function in 
+	 *                order for this algorithm to work!
+	 * @param allocator It's probably a good idea to use a frame allocator here.
+	 */
+	internal v3f32 epa(
+		fnSig_gjkSupport* support, void* supportUserData, 
+		const v3f32 simplex[4], KAllocatorHandle allocator);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
