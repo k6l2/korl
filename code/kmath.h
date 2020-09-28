@@ -332,7 +332,7 @@ namespace kmath
 	 * @param o_simplex if the return value is true, this will contain the 
 	 *                  vertices of a tetrahedron which contains the origin 
 	 *                  whose vertex indices for each triangle are:
-	 *                  {{0,1,2}, {0,2,3}, {0,3,1}, {3,2,1}}
+	 *                  {{2,1,0}, {3,2,0}, {3,0,1}, {3,1,2}}
 	 * @return true if there exists a tetrahedron within the support function's 
 	 *         bounds which contains the origin
 	 */
@@ -351,6 +351,7 @@ namespace kmath
 			/** each u16 represents an index of the `vertices` array */
 			u16 vertexPositionIndices[3];
 		} *tris;/** stb_ds array of triangles */
+		u32 nearestTriToOriginIndex;
 		u8 iteration;
 		EpaIterationResult lastIterationResult;
 	};
@@ -368,7 +369,8 @@ namespace kmath
 	 */
 	internal u16 epa_buildPolytopeTriangles(
 		EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
-		size_t vertexByteStride, size_t vertexPositionOffset);
+		size_t vertexByteStride, size_t vertexPositionOffset, 
+		size_t vertexColorOffset);
 	/**
 	 * @return The required number of line vertices written to 
 	 *         `o_vertexData`.  If `o_vertexData` == nullptr, the required 

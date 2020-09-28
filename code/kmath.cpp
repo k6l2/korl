@@ -846,6 +846,8 @@ internal inline f32 kmath::collideRayBox(
 			return NAN32;
 	return tMin;
 }
+#define COLOR4F32_STRIDE(pu8,byteStride,index) \
+	reinterpret_cast<Color4f32*>((pu8) + ((index)*(byteStride)))
 #define V3F32_STRIDE(pu8,byteStride,index) \
 	reinterpret_cast<v3f32*>((pu8) + ((index)*(byteStride)))
 #define V2F32_STRIDE(pu8,byteStride,index) \
@@ -1362,6 +1364,35 @@ internal bool kmath::gjk(
 	}
 	return gjkState.lastIterationResult == GjkIterationResult::SUCCESS;
 }
+/**
+ * @return The index of the triangle within `epaState->tris` which is closest to 
+ *         the origin.
+ */
+internal u32 epa_findTriNearestToOrigin(kmath::EpaState* epaState)
+{
+	u32 nearestTriIndex = 0;
+	f32 nearestDistanceToOrigin = INFINITY32;
+	for(u32 t = 0; t < arrlenu(epaState->tris); t++)
+	{
+		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
+		const v3f32 triEdgeA = 
+			epaState->vertexPositions[tri.vertexPositionIndices[0]] - 
+			epaState->vertexPositions[tri.vertexPositionIndices[1]];
+		const v3f32 triEdgeB = 
+			epaState->vertexPositions[tri.vertexPositionIndices[0]] - 
+			epaState->vertexPositions[tri.vertexPositionIndices[2]];
+		const v3f32 triNorm = kmath::normal(triEdgeA.cross(triEdgeB));
+		const f32 nearestDistanceToOriginCurrentTri = 
+			epaState->vertexPositions[tri.vertexPositionIndices[0]]
+			.dot(triNorm);
+		if(nearestDistanceToOriginCurrentTri < nearestDistanceToOrigin)
+		{
+			nearestDistanceToOrigin = nearestDistanceToOriginCurrentTri;
+			nearestTriIndex = t;
+		}
+	}
+	return nearestTriIndex;
+}
 internal void kmath::epa_initialize(
 	EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator)
 {
@@ -1377,22 +1408,25 @@ internal void kmath::epa_initialize(
 	for(size_t v = 0; v < 4; v++)
 		arrput(epaState->vertexPositions, simplex[v]);
 	local_persist const EpaState::RightHandTri SIMPLEX_TRIS[] = 
-		{{0,1,2}, {0,2,3}, {0,3,1}, {3,2,1}};
+		{{2,1,0}, {3,2,0}, {3,0,1}, {3,1,2}};
 	for(size_t t = 0; t < 4; t++)
 	{
 		arrput(epaState->tris, SIMPLEX_TRIS[t]);
 	}
+	/* initialize the EPA by finding the tri closest to the origin */
+	epaState->nearestTriToOriginIndex = epa_findTriNearestToOrigin(epaState);
 	/* misc state initialization */
 	epaState->lastIterationResult = EpaIterationResult::INCOMPLETE;
 }
 internal void kmath::epa_iterate(
 	EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData)
 {
-	/* first, we need to find the polytope face with the shortest distance to 
-	 * the origin */
-	//@TODO
+	/* expand the polytope */
+	kassert(!"TODO");
 	/* if we're done, clean up dynamic memory here */
-	//@TODO
+	kassert(!"TODO");
+	/* find the next polytope face with the shortest distance to the origin */
+	kassert(!"TODO");
 }
 internal void kmath::epa_cleanup(EpaState* epaState)
 {
@@ -1401,7 +1435,8 @@ internal void kmath::epa_cleanup(EpaState* epaState)
 }
 internal u16 kmath::epa_buildPolytopeTriangles(
 	EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
-	size_t vertexByteStride, size_t vertexPositionOffset)
+	size_t vertexByteStride, size_t vertexPositionOffset, 
+	size_t vertexColorOffset)
 {
 	const size_t requiredVertexCount = 3*(arrlenu(epaState->tris));
 	if(!o_vertexData)
@@ -1412,22 +1447,31 @@ internal u16 kmath::epa_buildPolytopeTriangles(
 	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
 	const void*const vertexDataEnd = o_vertexDataU8 + vertexDataBytes;
 	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
-	/* sizeof(vertexPosition) */
-	const size_t requiredVertexBytes = sizeof(v3f32);
+	u8*const o_vertexColors    = o_vertexDataU8 + vertexColorOffset;
+	/* sizeof(vertexPosition) + sizeof(vertexColor) */
+	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(Color4f32);
 	kassert(vertexByteStride >= requiredVertexBytes);
 	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	kassert(vertexColorOffset    <= vertexByteStride - sizeof(Color4f32));
 	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* iterate over the polytope triangles and emit the vertex positions */
 	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
 	{
 		const EpaState::RightHandTri& tri = epaState->tris[t];
+		/* draw the triangle nearest to the origin green, and the rest white */
+		const Color4f32 triColor = (t == epaState->nearestTriToOriginIndex
+			? krb::GREEN : krb::WHITE);
 		for(size_t e = 0; e < 3; e++)
+		{
 			*V3F32_STRIDE(o_vertexPositions, vertexByteStride, 3*t + e) = 
 				epaState->vertexPositions[tri.vertexPositionIndices[e]];
+			*COLOR4F32_STRIDE(o_vertexColors, vertexByteStride, 3*t + e) = 
+				triColor;
+		}
 	}
 	return kmath::safeTruncateU16(requiredVertexCount);
 }
-internal u32 hashEdge(u16 vertexIndex0, u16 vertexIndex1)
+internal u32 epa_hashEdge(u16 vertexIndex0, u16 vertexIndex1)
 {
 	kassert(vertexIndex0 != vertexIndex1);
 	if(vertexIndex0 > vertexIndex1)
@@ -1438,7 +1482,8 @@ internal u32 hashEdge(u16 vertexIndex0, u16 vertexIndex1)
 	}
 	return (static_cast<u32>(vertexIndex0) << 16) | vertexIndex1;
 }
-internal void unHashEdge(u32 edgeHash, u16* o_vertexIndex0, u16* o_vertexIndex1)
+internal void epa_unHashEdge(
+	u32 edgeHash, u16* o_vertexIndex0, u16* o_vertexIndex1)
 {
 	*o_vertexIndex0 = edgeHash >> 16;
 	*o_vertexIndex1 = edgeHash & 0xFFFF;
@@ -1458,7 +1503,7 @@ internal u16 kmath::epa_buildPolytopeEdges(
 		const EpaState::RightHandTri& tri = epaState->tris[t];
 		for(size_t v = 0; v < 3; v++)
 		{
-			HashedEdge hashedEdge = {hashEdge(
+			HashedEdge hashedEdge = {epa_hashEdge(
 				tri.vertexPositionIndices[v      ], 
 				tri.vertexPositionIndices[(v+1)%3])};
 			const ptrdiff_t edgeIndex = hmgeti(edgeSet, hashedEdge.key);
@@ -1483,7 +1528,7 @@ internal u16 kmath::epa_buildPolytopeEdges(
 	for(size_t e = 0; e < hmlenu(edgeSet); e++)
 	{
 		u16 vertexIndices[2];
-		unHashEdge(edgeSet[e].key, &vertexIndices[0], &vertexIndices[1]);
+		epa_unHashEdge(edgeSet[e].key, &vertexIndices[0], &vertexIndices[1]);
 		for(size_t v = 0; v < CARRAY_SIZE(vertexIndices); v++)
 			*V3F32_STRIDE(o_vertexPositions, vertexByteStride, 2*e + v) = 
 				epaState->vertexPositions[vertexIndices[v]];

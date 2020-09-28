@@ -95,6 +95,11 @@ const global_variable KrbVertexAttributeOffsets
 		, .color_4f32    = sizeof(Vertex)
 		, .texCoord_2f32 = sizeof(Vertex) };
 const global_variable KrbVertexAttributeOffsets 
+	VERTEX_ATTRIBS_VERTEX_NO_TEXTURE = 
+		{ .position_3f32 = offsetof(Vertex, position)
+		, .color_4f32    = offsetof(Vertex, color)
+		, .texCoord_2f32 = sizeof(Vertex) };
+const global_variable KrbVertexAttributeOffsets 
 	VERTEX_ATTRIBS_POSITION_ONLY = 
 		{ .position_3f32 = offsetof(VertexNoTexture, position)
 		, .color_4f32    = sizeof(VertexNoTexture)

@@ -671,16 +671,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			const u16 epaPolytopeVertexCount = 
 				kmath::epa_buildPolytopeTriangles(
-					&g_gs->epaState, nullptr, 0, 0, 0);
+					&g_gs->epaState, nullptr, 0, 0, 0, 0);
 			Vertex* epaPolytopeTris = 
 				ALLOC_FRAME_ARRAY(Vertex, epaPolytopeVertexCount);
 			kmath::epa_buildPolytopeTriangles(
 				&g_gs->epaState, epaPolytopeTris, 
 				epaPolytopeVertexCount*sizeof(Vertex), sizeof(Vertex), 
-				offsetof(Vertex, position));
+				offsetof(Vertex, position), offsetof(Vertex, color));
 			g_krb->drawTris(
 				epaPolytopeTris, epaPolytopeVertexCount, sizeof(Vertex), 
-				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
+				VERTEX_ATTRIBS_VERTEX_NO_TEXTURE);
 			/* draw the polytope outline since the scene is unlit */
 			const u16 epaPolytopeLineVertexCount = 
 				kmath::epa_buildPolytopeEdges(
