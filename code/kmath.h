@@ -370,6 +370,16 @@ namespace kmath
 		EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
 		size_t vertexByteStride, size_t vertexPositionOffset);
 	/**
+	 * @return The required number of line vertices written to 
+	 *         `o_vertexData`.  If `o_vertexData` == nullptr, the required 
+	 *         vertex count is calculated and returned immediately (this process
+	 *         requires dynamic memory allocation).
+	 */
+	internal u16 epa_buildPolytopeEdges(
+		EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
+		size_t vertexByteStride, size_t vertexPositionOffset, 
+		KAllocatorHandle allocator);
+	/**
 	 * Expanding Polytope algorithm implementation.
 	 * @param simplex The output of the `gjk` function when it returns true.  
 	 *                This set of tetrahedron vertices MUST enclose the origin 

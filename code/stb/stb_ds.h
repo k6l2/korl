@@ -185,6 +185,10 @@ DOCUMENTATION
 
     Function interface (actually macros):
 
+      hminit
+        void hminit(T*, ctx);
+          Initialize a hashmap with a memory context `ctx`.
+
       hmfree
       shfree
         void hmfree(T*);

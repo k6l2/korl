@@ -1427,3 +1427,66 @@ internal u16 kmath::epa_buildPolytopeTriangles(
 	}
 	return kmath::safeTruncateU16(requiredVertexCount);
 }
+internal u32 hashEdge(u16 vertexIndex0, u16 vertexIndex1)
+{
+	kassert(vertexIndex0 != vertexIndex1);
+	if(vertexIndex0 > vertexIndex1)
+	{
+		u16 temp = vertexIndex0;
+		vertexIndex0 = vertexIndex1;
+		vertexIndex1 = temp;
+	}
+	return (static_cast<u32>(vertexIndex0) << 16) | vertexIndex1;
+}
+internal void unHashEdge(u32 edgeHash, u16* o_vertexIndex0, u16* o_vertexIndex1)
+{
+	*o_vertexIndex0 = edgeHash >> 16;
+	*o_vertexIndex1 = edgeHash & 0xFFFF;
+}
+internal u16 kmath::epa_buildPolytopeEdges(
+	EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
+	size_t vertexByteStride, size_t vertexPositionOffset, 
+	KAllocatorHandle allocator)
+{
+	/* first, we need to figure out how many edges there are excluding edges 
+	 * which are shared between triangles */
+	struct HashedEdge{ u32 key; } *edgeSet = nullptr;
+	hminit(edgeSet, allocator);
+	defer(hmfree(edgeSet));
+	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
+	{
+		const EpaState::RightHandTri& tri = epaState->tris[t];
+		for(size_t v = 0; v < 3; v++)
+		{
+			HashedEdge hashedEdge = {hashEdge(
+				tri.vertexPositionIndices[v      ], 
+				tri.vertexPositionIndices[(v+1)%3])};
+			const ptrdiff_t edgeIndex = hmgeti(edgeSet, hashedEdge.key);
+			if(edgeIndex > -1)
+				continue;
+			hmputs(edgeSet, hashedEdge);
+		}
+	}
+	/* at this point, we have a set of all unique edges in the polytope! */
+	const size_t requiredVertexCount = 2*hmlenu(edgeSet);
+	if(!o_vertexData)
+		return safeTruncateU16(requiredVertexCount);
+	/* ensure that the data buffer passed to us contains enough memory */
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	const void*const vertexDataEnd = o_vertexDataU8 + vertexDataBytes;
+	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
+	/* sizeof(vertexPosition) */
+	const size_t requiredVertexBytes = sizeof(v3f32);
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	for(size_t e = 0; e < hmlenu(edgeSet); e++)
+	{
+		u16 vertexIndices[2];
+		unHashEdge(edgeSet[e].key, &vertexIndices[0], &vertexIndices[1]);
+		for(size_t v = 0; v < CARRAY_SIZE(vertexIndices); v++)
+			*V3F32_STRIDE(o_vertexPositions, vertexByteStride, 2*e + v) = 
+				epaState->vertexPositions[vertexIndices[v]];
+	}
+	return safeTruncateU16(requiredVertexCount);
+}

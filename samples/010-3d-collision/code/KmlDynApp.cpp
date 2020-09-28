@@ -672,9 +672,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			const u16 epaPolytopeVertexCount = 
 				kmath::epa_buildPolytopeTriangles(
 					&g_gs->epaState, nullptr, 0, 0, 0);
-			Vertex* epaPolytopeTris = reinterpret_cast<Vertex*>(
-				kAllocAlloc(g_gs->templateGameState.hKalFrame, 
-				            epaPolytopeVertexCount*sizeof(Vertex)));
+			Vertex* epaPolytopeTris = 
+				ALLOC_FRAME_ARRAY(Vertex, epaPolytopeVertexCount);
 			kmath::epa_buildPolytopeTriangles(
 				&g_gs->epaState, epaPolytopeTris, 
 				epaPolytopeVertexCount*sizeof(Vertex), sizeof(Vertex), 
@@ -682,8 +681,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->drawTris(
 				epaPolytopeTris, epaPolytopeVertexCount, sizeof(Vertex), 
 				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
+			/* draw the polytope outline since the scene is unlit */
+			const u16 epaPolytopeLineVertexCount = 
+				kmath::epa_buildPolytopeEdges(
+					&g_gs->epaState, nullptr, 0, 0, 0, 
+					g_gs->templateGameState.hKalFrame);
+			Vertex* epaPolytopeLines = 
+				ALLOC_FRAME_ARRAY(Vertex, epaPolytopeLineVertexCount);
+			kmath::epa_buildPolytopeEdges(
+				&g_gs->epaState, epaPolytopeLines, 
+				epaPolytopeLineVertexCount*sizeof(Vertex), sizeof(Vertex), 
+				offsetof(Vertex, position), g_gs->templateGameState.hKalFrame);
+			g_krb->setDefaultColor(krb::BLACK);
+			g_krb->drawLines(
+				epaPolytopeLines, epaPolytopeLineVertexCount, sizeof(Vertex), 
+				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
 		}
 		/* draw the GJK simplex */
+		else
 		{
 			VertexNoTexture vertices[12];
 			const u8 simplexLineVertexCount = 

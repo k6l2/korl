@@ -2004,6 +2004,7 @@ internal void stbiFree(void* allocatedAddress)
 #pragma warning( disable : 4701 )
 #include "stb/stb_vorbis.c"
 #pragma warning( pop )
+#define STB_DS_IMPLEMENTATION
 internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
                              void* context)
 {
@@ -2022,6 +2023,13 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
 	kAllocFree(hKal, allocatedAddress);
 }
+#pragma warning( push )
+	// warning C4365: 'argument': conversion
+	#pragma warning( disable : 4365 )
+	// warning C4456: declaration of 'i' hides previous local declaration
+	#pragma warning( disable : 4456 )
+	#include "stb/stb_ds.h"
+#pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
 #include "kAllocator.cpp"

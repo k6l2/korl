@@ -108,4 +108,4 @@ const global_variable KrbVertexAttributeOffsets
 	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
 #define ALLOC_FRAME_ARRAY(type,elements) \
 	reinterpret_cast<type*>(\
-		kalAlloc(g_gs->templateGameState.hKalFrame,sizeof(type)*elements))
+		kAllocAlloc(g_gs->templateGameState.hKalFrame,sizeof(type)*(elements)))

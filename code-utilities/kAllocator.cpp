@@ -81,7 +81,7 @@ internal void kAllocFree(KAllocatorHandle hKal, void* allocatedAddress)
 	switch(kAlloc->type)
 	{
 		case KAllocatorType::LINEAR:
-			kassert(!"NOT IMPLEMENTED");
+			kalFree(&kAlloc->linear, allocatedAddress);
 			break;
 		case KAllocatorType::GENERAL:
 			kgaFree(&kAlloc->general, allocatedAddress);
