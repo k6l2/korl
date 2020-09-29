@@ -1515,9 +1515,11 @@ internal void kmath::epa_iterate(
 			const u32 edgeKey = epa_hashEdge(edgeIndices[0], edgeIndices[1]);
 			HashedEdge hashedEdge = 
 				{edgeKey, 1, edgeIndices[0], edgeIndices[1]};
-			HashedEdge*const mappedEdge = hmgetp_null(edgeMap, edgeKey);
-			if(mappedEdge)
-				mappedEdge->value++;
+			const ptrdiff_t mappedEdgeIndex = hmgeti(edgeMap, edgeKey);
+			if(mappedEdgeIndex >= 0)
+			{
+				edgeMap[mappedEdgeIndex].value++;
+			}
 			else
 				hmputs(edgeMap, hashedEdge);
 		}
