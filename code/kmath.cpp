@@ -1373,6 +1373,8 @@ internal void epa_findTriNearestToOrigin(kmath::EpaState* epaState)
 	epaState->nearestTriToOriginDistance = INFINITY32;
 	for(u32 t = 0; t < arrlenu(epaState->tris); t++)
 	{
+		/* @optimization: cache tri norms & distance to origin, then heapify the 
+		 *                array of tris to treat it as a priority queue! */
 		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
 		const v3f32 triEdgeA = 
 			epaState->vertexPositions[tri.vertexPositionIndices[0]] - 
@@ -1395,7 +1397,8 @@ internal void epa_findTriNearestToOrigin(kmath::EpaState* epaState)
 	}
 }
 internal void kmath::epa_initialize(
-	EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator)
+	EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator, 
+	f32 resultTolerance)
 {
 	*epaState = {};
 	/* allocate the dynamic memory containers required by EPA, attempting to 
@@ -1417,6 +1420,7 @@ internal void kmath::epa_initialize(
 	/* initialize the EPA by finding the tri closest to the origin */
 	epa_findTriNearestToOrigin(epaState);
 	/* misc state initialization */
+	epaState->resultTolerance = resultTolerance;
 	epaState->lastIterationResult = EpaIterationResult::INCOMPLETE;
 }
 internal u32 epa_hashEdge(u16 vertexIndex0, u16 vertexIndex1)
@@ -1461,13 +1465,15 @@ internal void kmath::epa_iterate(
 		supportPoint.dot(epaState->nearestTriToOriginNormal);
 	kassert(supportPointPolytopeDistance >= 
 	        epaState->nearestTriToOriginDistance);
-	epaState->resultDistance = 
+	const f32 polytopeDistanceToMinkowski = 
 		supportPointPolytopeDistance - epaState->nearestTriToOriginDistance;
-	if(isNearlyZero(epaState->resultDistance))
+	if(polytopeDistanceToMinkowski < epaState->resultTolerance)
 	/* if the distance between the support point & the polytope along the 
 	 * polytope face's normal is within some threshold near zero, then we're 
 	 * done! */
 	{
+		epaState->resultNormal        = -epaState->nearestTriToOriginNormal;
+		epaState->resultDistance      = epaState->nearestTriToOriginDistance;
 		epaState->lastIterationResult = EpaIterationResult::SUCCESS;
 	}
 	if(epaState->lastIterationResult != EpaIterationResult::INCOMPLETE)
@@ -1483,6 +1489,11 @@ internal void kmath::epa_iterate(
 	 *   shared between them
 	 * - create new tris between the unshared edges and the support point
 	 */
+	/* @optimization: instead of having to calculate the dot products between 
+	 *                tri normals and the vector to the support point for every 
+	 *                tri, we can cache the list of 3 adjacent triangles per 
+	 *                tri, which would allow us to perform breadth-first-search 
+	 *                due to the topology of the polytope! */
 	struct HashedEdge{ u32 key; u8 value; u16 vertexIndices[2]; } 
 		*edgeMap = nullptr;
 	hminit(edgeMap, allocator);

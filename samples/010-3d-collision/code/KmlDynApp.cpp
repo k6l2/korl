@@ -667,6 +667,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
 		}
 		if(g_gs->gjkState.lastIterationResult == 
+				kmath::GjkIterationResult::SUCCESS
+			&& g_gs->epaState.lastIterationResult == 
+				kmath::EpaIterationResult::SUCCESS)
+		/* draw the minimum translation vector calculated via EPA! */
+		{
+			const v3f32 minTranslationVec = 
+				g_gs->epaState.resultDistance * g_gs->epaState.resultNormal;
+			g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
+			const VertexNoTexture mesh[] = 
+				{ {v3f32::ZERO, krb::CYAN}, {minTranslationVec, krb::CYAN} };
+			DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
+		}
+		if(g_gs->gjkState.lastIterationResult == 
 			kmath::GjkIterationResult::SUCCESS)
 		/* draw the EPA's polytope */
 		{

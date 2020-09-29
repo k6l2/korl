@@ -24,6 +24,7 @@ namespace krb
 	global_variable const Color4f32 WHITE       = {1,1,1,1};
 	global_variable const Color4f32 RED         = {1,0,0,1};
 	global_variable const Color4f32 GREEN       = {0,1,0,1};
+	global_variable const Color4f32 CYAN        = {0,1,1,1};
 	global_variable const Color4f32 BLUE        = {0,0,1,1};
 	global_variable const Color4f32 YELLOW      = {1,1,0,1};
 	struct Context

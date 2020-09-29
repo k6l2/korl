@@ -351,12 +351,12 @@ namespace kmath
 			/** each u16 represents an index of the `vertices` array */
 			u16 vertexPositionIndices[3];
 		} *tris;/** stb_ds array of triangles */
+		f32 resultTolerance;
 		u32   nearestTriToOriginIndex;
 		f32   nearestTriToOriginDistance;
-		/* when the algorithm completes, this will contain the normal along 
-		 * which we should move by `resultDistance` to achieve separation */
 		v3f32 nearestTriToOriginNormal;
-		f32 resultDistance;
+		v3f32 resultNormal;
+		f32   resultDistance;
 		u8 iteration;
 		EpaIterationResult lastIterationResult;
 	};
@@ -366,7 +366,8 @@ namespace kmath
 	 * `EpaIterationResult::SUCCESS` then there is no need to manually cleanup 
 	 * resources. */
 	internal void epa_initialize(
-		EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator);
+		EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator, 
+		f32 resultTolerance = 0.0001f);
 	internal void epa_iterate(
 		EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData, 
 		KAllocatorHandle allocator);
