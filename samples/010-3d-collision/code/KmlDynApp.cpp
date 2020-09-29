@@ -173,8 +173,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}
 			else
 			{
-				kmath::epa_iterate(&g_gs->epaState, shapeGjkSupport, 
-				                   &shapeGjkSupportData);
+				kmath::epa_iterate(
+					&g_gs->epaState, shapeGjkSupport, &shapeGjkSupportData, 
+					g_gs->templateGameState.hKalFrame);
 			}
 		}
 #endif// DEBUG_DELETE_LATER

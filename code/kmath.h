@@ -351,16 +351,25 @@ namespace kmath
 			/** each u16 represents an index of the `vertices` array */
 			u16 vertexPositionIndices[3];
 		} *tris;/** stb_ds array of triangles */
-		u32 nearestTriToOriginIndex;
+		u32   nearestTriToOriginIndex;
+		f32   nearestTriToOriginDistance;
+		/* when the algorithm completes, this will contain the normal along 
+		 * which we should move by `resultDistance` to achieve separation */
+		v3f32 nearestTriToOriginNormal;
+		f32 resultDistance;
 		u8 iteration;
 		EpaIterationResult lastIterationResult;
 	};
 	/** remember to call `epa_cleanup` after calling this if `allocator` uses 
-	 * persistent memory storage!!! */
+	 * persistent memory storage and the EPA is aborted early!!!  If 
+	 * `epa_iterate` is called until the algorithm returns 
+	 * `EpaIterationResult::SUCCESS` then there is no need to manually cleanup 
+	 * resources. */
 	internal void epa_initialize(
 		EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator);
 	internal void epa_iterate(
-		EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData);
+		EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData, 
+		KAllocatorHandle allocator);
 	internal void epa_cleanup(EpaState* epaState);
 	/**
 	 * @return The required number of triangle vertices written to 

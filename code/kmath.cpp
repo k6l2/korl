@@ -1368,10 +1368,9 @@ internal bool kmath::gjk(
  * @return The index of the triangle within `epaState->tris` which is closest to 
  *         the origin.
  */
-internal u32 epa_findTriNearestToOrigin(kmath::EpaState* epaState)
+internal void epa_findTriNearestToOrigin(kmath::EpaState* epaState)
 {
-	u32 nearestTriIndex = 0;
-	f32 nearestDistanceToOrigin = INFINITY32;
+	epaState->nearestTriToOriginDistance = INFINITY32;
 	for(u32 t = 0; t < arrlenu(epaState->tris); t++)
 	{
 		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
@@ -1385,13 +1384,15 @@ internal u32 epa_findTriNearestToOrigin(kmath::EpaState* epaState)
 		const f32 nearestDistanceToOriginCurrentTri = 
 			epaState->vertexPositions[tri.vertexPositionIndices[0]]
 			.dot(triNorm);
-		if(nearestDistanceToOriginCurrentTri < nearestDistanceToOrigin)
+		if(nearestDistanceToOriginCurrentTri < 
+			epaState->nearestTriToOriginDistance)
 		{
-			nearestDistanceToOrigin = nearestDistanceToOriginCurrentTri;
-			nearestTriIndex = t;
+			epaState->nearestTriToOriginDistance = 
+				nearestDistanceToOriginCurrentTri;
+			epaState->nearestTriToOriginIndex = t;
+			epaState->nearestTriToOriginNormal = triNorm;
 		}
 	}
-	return nearestTriIndex;
 }
 internal void kmath::epa_initialize(
 	EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator)
@@ -1414,19 +1415,134 @@ internal void kmath::epa_initialize(
 		arrput(epaState->tris, SIMPLEX_TRIS[t]);
 	}
 	/* initialize the EPA by finding the tri closest to the origin */
-	epaState->nearestTriToOriginIndex = epa_findTriNearestToOrigin(epaState);
+	epa_findTriNearestToOrigin(epaState);
 	/* misc state initialization */
 	epaState->lastIterationResult = EpaIterationResult::INCOMPLETE;
 }
-internal void kmath::epa_iterate(
-	EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData)
+internal u32 epa_hashEdge(u16 vertexIndex0, u16 vertexIndex1)
 {
-	/* expand the polytope */
-	kassert(!"TODO");
-	/* if we're done, clean up dynamic memory here */
-	kassert(!"TODO");
+	kassert(vertexIndex0 != vertexIndex1);
+	if(vertexIndex0 > vertexIndex1)
+	{
+		u16 temp = vertexIndex0;
+		vertexIndex0 = vertexIndex1;
+		vertexIndex1 = temp;
+	}
+	return (static_cast<u32>(vertexIndex0) << 16) | vertexIndex1;
+}
+internal void epa_unHashEdge(
+	u32 edgeHash, u16* o_vertexIndex0, u16* o_vertexIndex1)
+{
+	*o_vertexIndex0 = edgeHash >> 16;
+	*o_vertexIndex1 = edgeHash & 0xFFFF;
+}
+internal void kmath::epa_iterate(
+	EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData, 
+	KAllocatorHandle allocator)
+{
+	if(epaState->lastIterationResult != EpaIterationResult::INCOMPLETE)
+		return;
+	local_persist const u8 MAX_ITERATIONS = 100;
+	if(epaState->iteration >= MAX_ITERATIONS)
+	/* If we've reached the maximum # of iterations, silently report a failure 
+	 * so the caller can fall back on another minimum-translation-vector 
+	 * finding algorithm, such as support sampling.  This should only be likely 
+	 * to occur in edge cases, such as two spheres occupying almost the exact 
+	 * same position in space */
+	{
+		epaState->lastIterationResult = EpaIterationResult::FAILURE;
+		epa_cleanup(epaState);
+		return;
+	}
+	/* check to see if the current normal is a good enough result */
+	const v3f32 supportPoint = 
+		support(epaState->nearestTriToOriginNormal, supportUserData);
+	const f32 supportPointPolytopeDistance = 
+		supportPoint.dot(epaState->nearestTriToOriginNormal);
+	kassert(supportPointPolytopeDistance >= 
+	        epaState->nearestTriToOriginDistance);
+	epaState->resultDistance = 
+		supportPointPolytopeDistance - epaState->nearestTriToOriginDistance;
+	if(isNearlyZero(epaState->resultDistance))
+	/* if the distance between the support point & the polytope along the 
+	 * polytope face's normal is within some threshold near zero, then we're 
+	 * done! */
+	{
+		epaState->lastIterationResult = EpaIterationResult::SUCCESS;
+	}
+	if(epaState->lastIterationResult != EpaIterationResult::INCOMPLETE)
+	/* if we're done, clean up dynamic memory and return */
+	{
+		epa_cleanup(epaState);
+		return;
+	}
+	/* we're not done yet; expand the polytope using the new support point */
+	/* - calculate all the polytope tris whose normals are pointing towards the 
+	 *   new support point
+	 * - remove all these tris and save a list of all the edges which are not 
+	 *   shared between them
+	 * - create new tris between the unshared edges and the support point
+	 */
+	struct HashedEdge{ u32 key; u8 value; u16 vertexIndices[2]; } 
+		*edgeMap = nullptr;
+	hminit(edgeMap, allocator);
+	defer(hmfree(edgeMap));
+	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
+	{
+		/* figure out if the triangle is facing the support point */
+		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
+		const v3f32 triEdgeA = 
+			epaState->vertexPositions[tri.vertexPositionIndices[0]] - 
+			epaState->vertexPositions[tri.vertexPositionIndices[1]];
+		const v3f32 triEdgeB = 
+			epaState->vertexPositions[tri.vertexPositionIndices[0]] - 
+			epaState->vertexPositions[tri.vertexPositionIndices[2]];
+		const v3f32 triUnNorm = triEdgeA.cross(triEdgeB);
+		const v3f32 triToSupportPoint = supportPoint - 
+			epaState->vertexPositions[tri.vertexPositionIndices[0]];
+		if(triUnNorm.dot(triToSupportPoint) < 0)
+		{
+			continue;
+		}
+		/* this polytope triangle is pointing towards the support point, and 
+		 * therefore must be removed */
+		for(u16 v = 0; v < 3; v++)
+		/* before removing the triangle, add the edges to the edge map */
+		{
+			const u16 edgeIndices[2] = 
+				{ tri.vertexPositionIndices[v]
+				, tri.vertexPositionIndices[(v+1)%3] };
+			const u32 edgeKey = epa_hashEdge(edgeIndices[0], edgeIndices[1]);
+			HashedEdge hashedEdge = 
+				{edgeKey, 1, edgeIndices[0], edgeIndices[1]};
+			HashedEdge*const mappedEdge = hmgetp_null(edgeMap, edgeKey);
+			if(mappedEdge)
+				mappedEdge->value++;
+			else
+				hmputs(edgeMap, hashedEdge);
+		}
+		arrdel(epaState->tris, t);
+		t--;
+	}
+	/* at this point, we now know that every element of the edgeMap whose value 
+	 * == 1 needs to have a triangle attached to it in the same order as 
+	 * `vertexIndices` using `supportPoint` as the third point */
+	const u16 supportPointIndex = 
+		safeTruncateU16(arrlenu(epaState->vertexPositions));
+	for(size_t e = 0; e < hmlenu(edgeMap); e++)
+	{
+		if(edgeMap[e].value > 1)
+			continue;
+		kmath::EpaState::RightHandTri tri;
+		tri.vertexPositionIndices[0] = edgeMap[e].vertexIndices[0];
+		tri.vertexPositionIndices[1] = edgeMap[e].vertexIndices[1];
+		tri.vertexPositionIndices[2] = supportPointIndex;
+		arrput(epaState->tris, tri);
+	}
+	arrput(epaState->vertexPositions, supportPoint);
 	/* find the next polytope face with the shortest distance to the origin */
-	kassert(!"TODO");
+	epa_findTriNearestToOrigin(epaState);
+	epaState->iteration++;
 }
 internal void kmath::epa_cleanup(EpaState* epaState)
 {
@@ -1470,23 +1586,6 @@ internal u16 kmath::epa_buildPolytopeTriangles(
 		}
 	}
 	return kmath::safeTruncateU16(requiredVertexCount);
-}
-internal u32 epa_hashEdge(u16 vertexIndex0, u16 vertexIndex1)
-{
-	kassert(vertexIndex0 != vertexIndex1);
-	if(vertexIndex0 > vertexIndex1)
-	{
-		u16 temp = vertexIndex0;
-		vertexIndex0 = vertexIndex1;
-		vertexIndex1 = temp;
-	}
-	return (static_cast<u32>(vertexIndex0) << 16) | vertexIndex1;
-}
-internal void epa_unHashEdge(
-	u32 edgeHash, u16* o_vertexIndex0, u16* o_vertexIndex1)
-{
-	*o_vertexIndex0 = edgeHash >> 16;
-	*o_vertexIndex1 = edgeHash & 0xFFFF;
 }
 internal u16 kmath::epa_buildPolytopeEdges(
 	EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
