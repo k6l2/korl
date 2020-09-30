@@ -201,6 +201,10 @@ namespace kmath
 	/** @return The right-handed normal of the triangle defined by the 3 
 	 *          parameters. */
 	internal inline v3f32 normal(v3f32 p0, v3f32 p1, v3f32 p2);
+	/** @return The right-handed un-normalized normal of the triangle defined by 
+	 *          the 3 parameters. */
+	internal inline v3f32 unNormal(
+		const v3f32& p0, const v3f32& p1, const v3f32& p2);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
 	internal bool coplanar(

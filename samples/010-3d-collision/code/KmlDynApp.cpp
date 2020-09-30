@@ -119,14 +119,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			arrsetlen(g_gs->actors, 2);
 #if 1// sphere-box causing GJK large iteration count
-			g_gs->actors[0].shape.type = ShapeType::SPHERE;
-			g_gs->actors[1].shape.type = ShapeType::BOX;
-			g_gs->actors[0].shape.sphere.radius = 1;
-			g_gs->actors[1].shape.box.lengths = {10.f, 2.57500005f, 1.f};
-			g_gs->actors[0].position = {5.62551165f, -0.0211007893f, 5.48981619f};
-			g_gs->actors[1].position = {4.13719988f, 1.52010334f, 5.44527102f};
-			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
-			g_gs->actors[1].orientation = {0.863134146f, -0.0314538814f, -0.442472607f, -0.241305053f};
+			g_gs->actors[0].shape.type = ShapeType::BOX;
+			g_gs->actors[1].shape.type = ShapeType::SPHERE;
+			g_gs->actors[0].shape.box.lengths = {10.f, 2.57500005f, 1.f};
+			g_gs->actors[1].shape.sphere.radius = 1;
+			g_gs->actors[0].position = {5.13738346f, 1.00441194f, -0.175031766f};
+			g_gs->actors[1].position = {4.67744732f, -1.33129382f, 0.426167607f};
+			g_gs->actors[0].orientation = {0.946916521f, -0.111779444f, -0.157558724f, -0.256962419f};
+			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
 #endif// sphere-box causing GJK large iteration count
 #if 0//sphere-box causing crash in EPA!!!
 			g_gs->actors[0].shape.type = ShapeType::SPHERE;

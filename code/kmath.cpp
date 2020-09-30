@@ -615,6 +615,11 @@ internal inline v3f32 kmath::normal(v3f32 p0, v3f32 p1, v3f32 p2)
 	p0.normalize();
 	return p0;
 }
+internal inline v3f32 kmath::unNormal(
+	const v3f32& p0, const v3f32& p1, const v3f32& p2)
+{
+	return (p1 - p0).cross(p2 - p0);
+}
 internal inline f32 kmath::lerp(f32 min, f32 max, f32 ratio)
 {
 	return min + ratio*(max - min);
@@ -1255,9 +1260,9 @@ internal bool gjk_buildSimplexAroundOrigin(
 				normal & return false
 			- origin is within the tetrahedron (none of the above cases)
 				return true!!! */
-		const v3f32 pa = newPoint - o_simplex[2];
-		const v3f32 pb = newPoint - o_simplex[1];
-		const v3f32 pc = newPoint - o_simplex[0];
+		const v3f32 pa = o_simplex[2] - newPoint;
+		const v3f32 pb = o_simplex[1] - newPoint;
+		const v3f32 pc = o_simplex[0] - newPoint;
 		const v3f32 pba = pb.cross(pa);
 		const v3f32 pac = pa.cross(pc);
 		const v3f32 pcb = pc.cross(pb);
@@ -1300,6 +1305,10 @@ internal void kmath::gjk_iterate(
 	const v3f32 newPoint = support(gjkState->searchDirection, supportUserData);
 	const f32 newPoint_dot_searchDirection = 
 		newPoint.dot(gjkState->searchDirection);
+	const u8 simplexSize = gjkState->simplexSize;
+	const v3f32 negativeSimplexUnNorm = 
+		unNormal(gjkState->o_simplex[0], gjkState->o_simplex[1], 
+		         gjkState->o_simplex[2]);
 	/* Failure conditions for GJK:
 	 * - the new support point wasn't able to cross the origin along the search 
 	 *   direction
@@ -1307,18 +1316,24 @@ internal void kmath::gjk_iterate(
 	 *   (-tri.norm) AND the new point is co-planar, this means the origin lies 
 	 *   DIRECTLY on the edge of the minkowski difference (or at the very least, 
 	 *   we do not have the necessary numerical precision to tell otherwise!).*/
-	if(   newPoint_dot_searchDirection < 0
+	if(   newPoint_dot_searchDirection < 0 
 	   || (   gjkState->simplexSize == 3 
-	       && isNearlyZero(newPoint_dot_searchDirection)
+	       //&& isNearlyZero(newPoint_dot_searchDirection)
+	       && coplanar(newPoint, gjkState->o_simplex[0], gjkState->o_simplex[1], 
+	                   gjkState->o_simplex[2]) 
 	       && isNearlyZero(radiansBetween(
-	              gjkState->searchDirection, 
-	              normal(gjkState->o_simplex[0], gjkState->o_simplex[1], 
-	                     gjkState->o_simplex[2])))))
+	              gjkState->searchDirection, negativeSimplexUnNorm))))
 		gjkState->lastIterationResult = GjkIterationResult::FAILURE;
 	else if(gjk_buildSimplexAroundOrigin(
 			gjkState->o_simplex, &gjkState->simplexSize, newPoint, 
 			&gjkState->searchDirection))
 		gjkState->lastIterationResult = GjkIterationResult::SUCCESS;
+	/* If our previous & new simplex are triangles, and the search direction is 
+	 * now > PI/2 difference between iterations, then something must have gone 
+	 * wrong due to numerical error and we will most likely never converge! */
+	else if(simplexSize == 3 && gjkState->simplexSize == 3 
+			&& negativeSimplexUnNorm.dot(gjkState->searchDirection) < 0)
+		gjkState->lastIterationResult = GjkIterationResult::FAILURE;
 	gjkState->iteration++;
 }
 internal u8 kmath::gjk_buildSimplexLines(
