@@ -198,8 +198,13 @@ namespace kmath
 	internal inline v3f32 cross(const v2f32& lhs, const v2f32& rhs);
 	internal inline v2f32 normal(v2f32 v);
 	internal inline v3f32 normal(v3f32 v);
+	/** @return The right-handed normal of the triangle defined by the 3 
+	 *          parameters. */
+	internal inline v3f32 normal(v3f32 p0, v3f32 p1, v3f32 p2);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
+	internal bool coplanar(
+		const v3f32& p0, const v3f32& p1, const v3f32& p2, const v3f32& p3);
 	internal void makeM4f32(const kQuaternion& q, m4x4f32* o_m);
 	internal void makeM4f32(
 		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m);

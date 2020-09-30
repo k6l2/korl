@@ -607,6 +607,14 @@ internal inline v3f32 kmath::normal(v3f32 v)
 	v.normalize();
 	return v;
 }
+internal inline v3f32 kmath::normal(v3f32 p0, v3f32 p1, v3f32 p2)
+{
+	p1 = p1 - p0;
+	p2 = p2 - p0;
+	p0 = p1.cross(p2);
+	p0.normalize();
+	return p0;
+}
 internal inline f32 kmath::lerp(f32 min, f32 max, f32 ratio)
 {
 	return min + ratio*(max - min);
@@ -618,6 +626,17 @@ internal inline v2f32 kmath::rotate(const v2f32& v, f32 radians)
 		, sinf(radians)*v.x + cosf(radians)*v.y
 	};
 	return result;
+}
+internal bool kmath::coplanar(
+	const v3f32& p0, const v3f32& p1, const v3f32& p2, const v3f32& p3)
+{
+	/* 4 points can be defined as 3 vectors eminating from a single point */
+	const v3f32 v0 = p1 - p0;
+	const v3f32 v1 = p2 - p0;
+	const v3f32 v2 = p3 - p0;
+	/* the points are coplanar if one of the vectors is exactly 
+	 * perpendicular to the normal of the plane defined by the first two */
+	return isNearlyZero(v2.dot(v0.cross(v1)));
 }
 internal inline void kmath::makeM4f32(const kQuaternion& q, m4x4f32* o_m)
 {
@@ -1114,6 +1133,10 @@ internal void kmath::gjk_initialize(
 	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData, 
 	const v3f32* initialSupportDirection)
 {
+	if(!initialSupportDirection)
+		KLOG(WARNING, "Attempting to solve GJK with no initial support "
+		     "direction can lead to SIGNIFICANT performance penalties or "
+		     "potentially even no answer due to numerical imprecision!");
 	const v3f32& initSupportDir = initialSupportDirection 
 		? *initialSupportDirection 
 		: v3f32{1,0,0};
@@ -1275,7 +1298,22 @@ internal void kmath::gjk_iterate(
 	if(gjkState->lastIterationResult != GjkIterationResult::INCOMPLETE)
 		return;
 	const v3f32 newPoint = support(gjkState->searchDirection, supportUserData);
-	if(newPoint.dot(gjkState->searchDirection) < 0)
+	const f32 newPoint_dot_searchDirection = 
+		newPoint.dot(gjkState->searchDirection);
+	/* Failure conditions for GJK:
+	 * - the new support point wasn't able to cross the origin along the search 
+	 *   direction
+	 * - if the simplex is currently a triangle, and the search direction equals 
+	 *   (-tri.norm) AND the new point is co-planar, this means the origin lies 
+	 *   DIRECTLY on the edge of the minkowski difference (or at the very least, 
+	 *   we do not have the necessary numerical precision to tell otherwise!).*/
+	if(   newPoint_dot_searchDirection < 0
+	   || (   gjkState->simplexSize == 3 
+	       && isNearlyZero(newPoint_dot_searchDirection)
+	       && isNearlyZero(radiansBetween(
+	              gjkState->searchDirection, 
+	              normal(gjkState->o_simplex[0], gjkState->o_simplex[1], 
+	                     gjkState->o_simplex[2])))))
 		gjkState->lastIterationResult = GjkIterationResult::FAILURE;
 	else if(gjk_buildSimplexAroundOrigin(
 			gjkState->o_simplex, &gjkState->simplexSize, newPoint, 

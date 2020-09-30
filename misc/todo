@@ -714,24 +714,7 @@
 			to converge!
 		[ ] delete calls to epa_verifyTriListIntegrity after I'm done making 
 			sure that everything works reasonably well
-	[ ] utility: Aabb3d broadphase collision detection
-		- input AABBs, output index pairs representing colliding AABBs
-		[ ] given a shape + transform, generate the world-space AABB & draw it
-			[ ] box
-			[ ] sphere
-		[ ] utility: dynamic bounding volume tree
-			https://box2d.org/files/ErinCatto_DynamicBVH_Full.pdf
-			https://www.programiz.com/dsa/priority-queue
-			http://www.cplusplus.com/reference/algorithm/make_heap/
-			- input: a list of AABBs
-			- output: a list of colliding AABB pairs
-	[ ] create arbitrary convex shapes
-		[ ] utility: NewtonAppleWrapper
-			http://www.newtonapples.net/NewtonAppleWrapper.html
-		[ ] utility: QuickHull
-			http://algolist.ru/maths/geom/convhull/qhull3d.php
-		[ ] or maybe just use someone's QuickHull code?
-			https://github.com/karimnaaji/3d-quickhull
+	[ ] clean up this extremely messy sample
 [x] figure out how to automatically debug launch a program in Visual Studio 
 	without having to actually swap to it and press the stupid button
 	https://stackoverflow.com/a/46243064/4526664
@@ -750,13 +733,44 @@
 	application is in mouse relative mode
 	- when the mouse exits relative mode and the cursor is in the title bar, the 
 		right-click menu should not pop up
+[ ] samples: constrained physics simulation
+	https://box2d.org/publications/
+		https://box2d.org/files/ErinCatto_IterativeDynamics_GDC2005.pdf
+		https://box2d.org/files/ErinCatto_IterativeDynamicsSlides_GDC2005.pdf
+	verbose source, but maybe useful:
+		http://www.kuffner.org/james/software/dynamics/mirtich/mirtichThesis.pdf
+	[ ] contact point calculation
+	[ ] compute Jacobian for non-penetration & friction constraints
+	[ ] Gauss-Seidel solver
+	[ ] update rigid-body position/velocity
+[ ] samples: spatial partitioning
+	[ ] utility: Aabb3d broadphase collision detection
+		- input AABBs, output index pairs representing colliding AABBs
+		[ ] given a shape + transform, generate the world-space AABB & draw it
+			[ ] box
+			[ ] sphere
+		[ ] utility: dynamic bounding volume tree
+			https://box2d.org/files/ErinCatto_DynamicBVH_Full.pdf
+			https://www.programiz.com/dsa/priority-queue
+			http://www.cplusplus.com/reference/algorithm/make_heap/
+			- input: a list of AABBs
+			- output: a list of colliding AABB pairs
 [ ] samples: networking: run kNetClientConnect on a separate thread to prevent 
 	the game from chunking when the address can't be resolved
+[ ] samples: convex decomposition
 [ ] samples: voxel manipulation
 	[ ] utility: dual contouring 
 		https://www.boristhebrave.com/2018/04/15/dual-contouring-tutorial/
 	[ ] utility: heirarchical approximate convex decomposition
 		http://khaledmammou.com/hacd.html
+[ ] samples: convex hull
+	[ ] create arbitrary convex shapes
+		[ ] utility: NewtonAppleWrapper
+			http://www.newtonapples.net/NewtonAppleWrapper.html
+		[ ] utility: QuickHull
+			http://algolist.ru/maths/geom/convhull/qhull3d.php
+		[ ] or maybe just use someone's QuickHull code?
+			https://github.com/karimnaaji/3d-quickhull
 [ ] samples: FBX mesh importer
 	[ ] kasset: FBX asset
 		[ ] import mesh data
@@ -778,6 +792,9 @@
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators
+[ ] separate kmath into core & geometry
+	[ ] remove the need to compile stb_ds on the win32 platform translation unit
+[ ] continuous collision detection
 [ ] kcpp: bring back kcpp and repurpose it 
 	[ ] scan for a macro to generate reflection code on data declarations
 		[ ] generate string arrays for enumerations

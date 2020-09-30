@@ -119,14 +119,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			arrsetlen(g_gs->actors, 2);
 #if 1// sphere-box causing GJK large iteration count
-			g_gs->actors[0].shape.type = ShapeType::BOX;
-			g_gs->actors[1].shape.type = ShapeType::SPHERE;
-			g_gs->actors[0].shape.box.lengths = {10.f, 2.57500005f, 1.f};
-			g_gs->actors[1].shape.sphere.radius = 1;
-			g_gs->actors[0].position = {3.04967594f, 1.0379566f, 7.0530076f};
-			g_gs->actors[1].position = {2.13544583f, 1.22441208f, 8.31546211f};
-			g_gs->actors[0].orientation = {0.863134146f, -0.0314538814f, -0.442472607f, -0.241305053f};
-			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
+			g_gs->actors[0].shape.type = ShapeType::SPHERE;
+			g_gs->actors[1].shape.type = ShapeType::BOX;
+			g_gs->actors[0].shape.sphere.radius = 1;
+			g_gs->actors[1].shape.box.lengths = {10.f, 2.57500005f, 1.f};
+			g_gs->actors[0].position = {5.62551165f, -0.0211007893f, 5.48981619f};
+			g_gs->actors[1].position = {4.13719988f, 1.52010334f, 5.44527102f};
+			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
+			g_gs->actors[1].orientation = {0.863134146f, -0.0314538814f, -0.442472607f, -0.241305053f};
 #endif// sphere-box causing GJK large iteration count
 #if 0//sphere-box causing crash in EPA!!!
 			g_gs->actors[0].shape.type = ShapeType::SPHERE;
@@ -601,12 +601,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, .shapeB       = actor2.shape
 				, .positionB    = actor2.position
 				, .orientationB = actor2.orientation };
+			const v3f32 initialSupportDirection = 
+				-(actor.position - actor2.position);
 			v3f32 minTranslationVec;
 			f32   minTranslationDist;
-			if(kmath::gjk(shapeGjkSupport, &shapeGjkSupportData, gjkSimplex)
-				&& kmath::epa(&minTranslationVec, &minTranslationDist, 
-				              shapeGjkSupport, &shapeGjkSupportData, gjkSimplex, 
-				              g_gs->templateGameState.hKalFrame))
+			if(   kmath::gjk(shapeGjkSupport, &shapeGjkSupportData, gjkSimplex, 
+			                 &initialSupportDirection)
+			   && kmath::epa(&minTranslationVec, &minTranslationDist, 
+			                 shapeGjkSupport, &shapeGjkSupportData, gjkSimplex, 
+			                 g_gs->templateGameState.hKalFrame))
 			{
 				actor .position += 0.5f*minTranslationDist*minTranslationVec;
 				actor2.position -= 0.5f*minTranslationDist*minTranslationVec;
