@@ -398,10 +398,15 @@ namespace kmath
 	 *                of the minkowski space defined by the support function in 
 	 *                order for this algorithm to work!
 	 * @param allocator It's probably a good idea to use a frame allocator here.
+	 * @return true if the algorithm was able to converge on a minimum 
+	 *         translation vector, false otherwise.  If an MTV is found, it will 
+	 *         be stored in the appropriate `o_*` parameters.
 	 */
-	internal v3f32 epa(
+	internal bool epa(
+		v3f32* o_minimumTranslationNormal, f32* o_minimumTranslationDistance, 
 		fnSig_gjkSupport* support, void* supportUserData, 
-		const v3f32 simplex[4], KAllocatorHandle allocator);
+		const v3f32 simplex[4], KAllocatorHandle allocator, 
+		f32 resultTolerance = 0.0001f);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);

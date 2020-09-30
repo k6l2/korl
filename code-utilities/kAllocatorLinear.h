@@ -8,7 +8,6 @@ struct KAllocatorLinear
 	size_t memoryByteCount;
 	size_t bytesAllocated;
 	void* lastAllocResult;
-	size_t lastAllocByteCount;
 };
 internal KAllocatorLinear* kalInit(
 	void* allocatorMemoryStart, size_t allocatorByteCount);

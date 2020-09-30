@@ -1440,6 +1440,28 @@ internal void epa_unHashEdge(
 	*o_vertexIndex0 = edgeHash >> 16;
 	*o_vertexIndex1 = edgeHash & 0xFFFF;
 }
+/** this is a slow function created to debug crazy memory shenanigans I am 
+ * experiencing right now, so this probably shouldn't get called in release
+ * deployments 
+ * @return false if an invalid triangle is found in the EpaState's tri list
+ */
+internal bool epa_verifyTriListIntegrity(kmath::EpaState* epaState)
+{
+	const size_t numTris = arrlenu(epaState->tris);
+	for(size_t t = 0; t < numTris; t++)
+	{
+		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
+		for(i32 v0 = 0; v0 < 3; v0++)
+			for(i32 v1 = v0 + 1; v1 < 3; v1++)
+				if(tri.vertexPositionIndices[v0] == 
+						tri.vertexPositionIndices[v1])
+				{
+					kassert(false);
+					return false;
+				}
+	}
+	return true;
+}
 internal void kmath::epa_iterate(
 	EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData, 
 	KAllocatorHandle allocator)
@@ -1463,8 +1485,6 @@ internal void kmath::epa_iterate(
 		support(epaState->nearestTriToOriginNormal, supportUserData);
 	const f32 supportPointPolytopeDistance = 
 		supportPoint.dot(epaState->nearestTriToOriginNormal);
-	kassert(supportPointPolytopeDistance >= 
-	        epaState->nearestTriToOriginDistance);
 	const f32 polytopeDistanceToMinkowski = 
 		supportPointPolytopeDistance - epaState->nearestTriToOriginDistance;
 	if(polytopeDistanceToMinkowski < epaState->resultTolerance)
@@ -1493,13 +1513,22 @@ internal void kmath::epa_iterate(
 	 *                tri normals and the vector to the support point for every 
 	 *                tri, we can cache the list of 3 adjacent triangles per 
 	 *                tri, which would allow us to perform breadth-first-search 
-	 *                due to the topology of the polytope! */
+	 *                due to the topology of the polytope!  It should also be 
+	 *                possible to completely avoid using KAllocator here by 
+	 *                caching `iteration` for each tri, because then we can 
+	 *                traverse the tris recursively on the stack!  */
 	struct HashedEdge{ u32 key; u8 value; u16 vertexIndices[2]; } 
 		*edgeMap = nullptr;
+#if SLOW_BUILD
+	kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 	hminit(edgeMap, allocator);
 	defer(hmfree(edgeMap));
 	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
 	{
+#if SLOW_BUILD
+		kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 		/* figure out if the triangle is facing the support point */
 		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
 		const v3f32 triEdgeA = 
@@ -1520,6 +1549,9 @@ internal void kmath::epa_iterate(
 		for(u16 v = 0; v < 3; v++)
 		/* before removing the triangle, add the edges to the edge map */
 		{
+#if SLOW_BUILD
+			kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 			const u16 edgeIndices[2] = 
 				{ tri.vertexPositionIndices[v]
 				, tri.vertexPositionIndices[(v+1)%3] };
@@ -1533,6 +1565,9 @@ internal void kmath::epa_iterate(
 			}
 			else
 				hmputs(edgeMap, hashedEdge);
+#if SLOW_BUILD
+			kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 		}
 		arrdel(epaState->tris, t);
 		t--;
@@ -1550,12 +1585,28 @@ internal void kmath::epa_iterate(
 		tri.vertexPositionIndices[0] = edgeMap[e].vertexIndices[0];
 		tri.vertexPositionIndices[1] = edgeMap[e].vertexIndices[1];
 		tri.vertexPositionIndices[2] = supportPointIndex;
+#if SLOW_BUILD
+		kassert(epa_verifyTriListIntegrity(epaState));
+		//kassert(arrlenu(epaState->tris) < 32);
+#endif // SLOW_BUILD
 		arrput(epaState->tris, tri);
+#if SLOW_BUILD
+		kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 	}
+#if SLOW_BUILD
+	kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 	arrput(epaState->vertexPositions, supportPoint);
+#if SLOW_BUILD
+	kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 	/* find the next polytope face with the shortest distance to the origin */
 	epa_findTriNearestToOrigin(epaState);
 	epaState->iteration++;
+#if SLOW_BUILD
+	kassert(epa_verifyTriListIntegrity(epaState));
+#endif // SLOW_BUILD
 }
 internal void kmath::epa_cleanup(EpaState* epaState)
 {
@@ -1646,4 +1697,25 @@ internal u16 kmath::epa_buildPolytopeEdges(
 				epaState->vertexPositions[vertexIndices[v]];
 	}
 	return safeTruncateU16(requiredVertexCount);
+}
+internal bool kmath::epa(
+	v3f32* o_minimumTranslationNormal, f32* o_minimumTranslationDistance, 
+	fnSig_gjkSupport* support, void* supportUserData, const v3f32 simplex[4], 
+	KAllocatorHandle allocator, f32 resultTolerance)
+{
+	EpaState state;
+	epa_initialize(&state, simplex, allocator, resultTolerance);
+	while(state.lastIterationResult == EpaIterationResult::INCOMPLETE)
+	{
+		epa_iterate(&state, support, supportUserData, allocator);
+#if SLOW_BUILD
+		kassert(epa_verifyTriListIntegrity(&state));
+#endif // SLOW_BUILD
+	}
+	if(state.lastIterationResult == EpaIterationResult::SUCCESS)
+	{
+		*o_minimumTranslationDistance = state.resultDistance;
+		*o_minimumTranslationNormal   = state.resultNormal;
+	}
+	return state.lastIterationResult == EpaIterationResult::SUCCESS;
 }

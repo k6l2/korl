@@ -712,6 +712,8 @@
 		[x] draw the polytope edges since my scene is still unlit.. FeelsBadMan
 		[ ] test the overlapping sphere case, since it is apparently difficult 
 			to converge!
+		[ ] delete calls to epa_verifyTriListIntegrity after I'm done making 
+			sure that everything works reasonably well
 	[ ] utility: Aabb3d broadphase collision detection
 		- input AABBs, output index pairs representing colliding AABBs
 		[ ] given a shape + transform, generate the world-space AABB & draw it

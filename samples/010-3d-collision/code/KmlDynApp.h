@@ -57,6 +57,7 @@ struct GameState
 	size_t generatedSphereMeshVertexCount;
 	Actor* actors;
 	bool wireframe;
+	bool resolveShapeCollisions;
 	/* The array index into `actors` == `selectedActorId` - 1.  A value of 0 
 		indicates no actor is selected */
 	u32 selectedActorId;

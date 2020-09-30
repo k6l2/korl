@@ -118,6 +118,27 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		if(gameKeyboard.f1 == ButtonState::PRESSED)
 		{
 			arrsetlen(g_gs->actors, 2);
+#if 1// sphere-box causing GJK large iteration count
+			g_gs->actors[0].shape.type = ShapeType::BOX;
+			g_gs->actors[1].shape.type = ShapeType::SPHERE;
+			g_gs->actors[0].shape.box.lengths = {10.f, 2.57500005f, 1.f};
+			g_gs->actors[1].shape.sphere.radius = 1;
+			g_gs->actors[0].position = {3.04967594f, 1.0379566f, 7.0530076f};
+			g_gs->actors[1].position = {2.13544583f, 1.22441208f, 8.31546211f};
+			g_gs->actors[0].orientation = {0.863134146f, -0.0314538814f, -0.442472607f, -0.241305053f};
+			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
+#endif// sphere-box causing GJK large iteration count
+#if 0//sphere-box causing crash in EPA!!!
+			g_gs->actors[0].shape.type = ShapeType::SPHERE;
+			g_gs->actors[1].shape.type = ShapeType::BOX;
+			g_gs->actors[0].shape.sphere.radius = 1;
+			g_gs->actors[1].shape.box.lengths = {1,1,1};
+			g_gs->actors[0].position = {2.17163181f, 1.81948531f, -0.776723206f};
+			g_gs->actors[1].position = {0.847760916f, 2.80684662f, -0.114495963f};
+			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
+			g_gs->actors[1].orientation = {0.976274312f, 0.0385377184f, -0.205251694f, -0.0572286993f};
+#endif//sphere-box causing crash in EPA!!!
+#if 0//two barely intersecting spheres
 			g_gs->actors[0].shape.type = ShapeType::SPHERE;
 			g_gs->actors[1].shape.type = ShapeType::SPHERE;
 			g_gs->actors[0].shape.sphere.radius = 1;
@@ -126,6 +147,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_gs->actors[1].position = {-1.82670593f,5.56357288f,-0.432786942f};
 			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
 			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
+#endif// two barely intersecting spheres
 		}
 		if(gameKeyboard.f2 == ButtonState::PRESSED)
 		{
@@ -495,6 +517,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				ImGui::Text("[G           ] - *** DISABLED ***");
 				ImGui::Text("[R           ] - *** DISABLED ***");
 			}
+			ImGui::Separator();
+			ImGui::Checkbox("resolve shape collisions", 
+			                &g_gs->resolveShapeCollisions);
 		}
 		ImGui::End();
 	}
@@ -557,6 +582,37 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		*((int*)0) = 0;
 	}
 #endif// DEBUG_DELETE_LATER
+	/* perform collision detection + resolution on all shapes in the scene */
+	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
+	{
+		if(!g_gs->resolveShapeCollisions)
+			continue;
+		Actor& actor = g_gs->actors[a];
+		for(size_t a2 = 0; a2 < arrlenu(g_gs->actors); a2++)
+		{
+			if(a == a2)
+				continue;
+			Actor& actor2 = g_gs->actors[a2];
+			v3f32 gjkSimplex[4];
+			ShapeGjkSupportData shapeGjkSupportData = 
+				{ .shapeA       = actor.shape
+				, .positionA    = actor.position
+				, .orientationA = actor.orientation
+				, .shapeB       = actor2.shape
+				, .positionB    = actor2.position
+				, .orientationB = actor2.orientation };
+			v3f32 minTranslationVec;
+			f32   minTranslationDist;
+			if(kmath::gjk(shapeGjkSupport, &shapeGjkSupportData, gjkSimplex)
+				&& kmath::epa(&minTranslationVec, &minTranslationDist, 
+				              shapeGjkSupport, &shapeGjkSupportData, gjkSimplex, 
+				              g_gs->templateGameState.hKalFrame))
+			{
+				actor .position += 0.5f*minTranslationDist*minTranslationVec;
+				actor2.position -= 0.5f*minTranslationDist*minTranslationVec;
+			}
+		}
+	}
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
@@ -578,7 +634,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-#if 1
+#if 0
 		for(size_t a2 = 0; a2 < arrlenu(g_gs->actors); a2++)
 		{
 			if(a == a2)
@@ -597,26 +653,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 #endif// 0
 		drawShape(actor.position, actor.orientation, actor.shape);
-#if DEBUG_DELETE_LATER && 0
-		/* calculate the world-space support function of the shape */
-		const v3f32 supportDirection = actor.position;
-		const v3f32 supportResult = actor.position + 
-			(actor.shape.type == ShapeType::BOX
-			? kmath::supportBox(
-				actor.shape.box.lengths, actor.orientation, supportDirection)
-			: kmath::supportSphere(
-				actor.shape.sphere.radius, supportDirection));
-		/* draw a crosshair on the 3D position of the support direction */
-		{
-			g_krb->setModelXform(
-				supportResult, kQuaternion::IDENTITY, {10,10,10});
-			g_krb->setModelXformBillboard(true, true, true);
-			local_persist const VertexNoTexture MESH[] = 
-				{ {{-1,-1,0}, krb::WHITE}, {{1, 1,0}, krb::WHITE}
-				, {{-1, 1,0}, krb::WHITE}, {{1,-1,0}, krb::WHITE} };
-			DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
-		}
-#endif //DEBUG_DELETE_LATER
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
