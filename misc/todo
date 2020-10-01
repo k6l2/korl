@@ -704,7 +704,7 @@
 			function evenly in all directions
 			https://stackoverflow.com/a/44164075/4526664
 		[x] KRB: draw points
-	[ ] utility: Expanding Polytope Algorithm (EPA)
+	[x] utility: Expanding Polytope Algorithm (EPA)
 		https://youtu.be/6rgiPrzqt9w?t=1680
 		http://www.dtecta.com/papers/gdc2001depth.pdf
 		http://www.dyn4j.org/2010/05/epa-expanding-polytope-algorithm/
@@ -712,7 +712,7 @@
 		[x] draw the polytope edges since my scene is still unlit.. FeelsBadMan
 		[x] test the overlapping sphere case, since it is apparently difficult 
 			to converge!
-		[ ] delete calls to epa_verifyTriListIntegrity after I'm done making 
+		[x] delete calls to epa_verifyTriListIntegrity after I'm done making 
 			sure that everything works reasonably well
 	[ ] clean up this extremely messy sample
 [x] figure out how to automatically debug launch a program in Visual Studio 

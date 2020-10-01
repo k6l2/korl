@@ -1589,16 +1589,10 @@ internal void kmath::epa_iterate(
 	 *                traverse the tris recursively on the stack!  */
 	struct HashedEdge{ u32 key; u8 value; u16 vertexIndices[2]; } 
 		*edgeMap = nullptr;
-#if SLOW_BUILD
-	kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 	hminit(edgeMap, allocator);
 	defer(hmfree(edgeMap));
 	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
 	{
-#if SLOW_BUILD
-		kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 		/* figure out if the triangle is facing the support point */
 		const kmath::EpaState::RightHandTri& tri = epaState->tris[t];
 		const v3f32 triEdgeA = 
@@ -1619,9 +1613,6 @@ internal void kmath::epa_iterate(
 		for(u16 v = 0; v < 3; v++)
 		/* before removing the triangle, add the edges to the edge map */
 		{
-#if SLOW_BUILD
-			kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 			const u16 edgeIndices[2] = 
 				{ tri.vertexPositionIndices[v]
 				, tri.vertexPositionIndices[(v+1)%3] };
@@ -1635,9 +1626,6 @@ internal void kmath::epa_iterate(
 			}
 			else
 				hmputs(edgeMap, hashedEdge);
-#if SLOW_BUILD
-			kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 		}
 		arrdel(epaState->tris, t);
 		t--;
@@ -1655,28 +1643,12 @@ internal void kmath::epa_iterate(
 		tri.vertexPositionIndices[0] = edgeMap[e].vertexIndices[0];
 		tri.vertexPositionIndices[1] = edgeMap[e].vertexIndices[1];
 		tri.vertexPositionIndices[2] = supportPointIndex;
-#if SLOW_BUILD
-		kassert(epa_verifyTriListIntegrity(epaState));
-		//kassert(arrlenu(epaState->tris) < 32);
-#endif // SLOW_BUILD
 		arrput(epaState->tris, tri);
-#if SLOW_BUILD
-		kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 	}
-#if SLOW_BUILD
-	kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 	arrput(epaState->vertexPositions, supportPoint);
-#if SLOW_BUILD
-	kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 	/* find the next polytope face with the shortest distance to the origin */
 	epa_findTriNearestToOrigin(epaState);
 	epaState->iteration++;
-#if SLOW_BUILD
-	kassert(epa_verifyTriListIntegrity(epaState));
-#endif // SLOW_BUILD
 }
 internal void kmath::epa_cleanup(EpaState* epaState)
 {
@@ -1778,9 +1750,6 @@ internal bool kmath::epa(
 	while(state.lastIterationResult == EpaIterationResult::INCOMPLETE)
 	{
 		epa_iterate(&state, support, supportUserData, allocator);
-#if SLOW_BUILD
-		kassert(epa_verifyTriListIntegrity(&state));
-#endif // SLOW_BUILD
 	}
 	if(state.lastIterationResult == EpaIterationResult::SUCCESS)
 	{
