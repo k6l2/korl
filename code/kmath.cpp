@@ -1330,9 +1330,13 @@ internal void kmath::gjk_iterate(
 		gjkState->lastIterationResult = GjkIterationResult::SUCCESS;
 	/* If our previous & new simplex are triangles, and the search direction is 
 	 * now > PI/2 difference between iterations, then something must have gone 
-	 * wrong due to numerical error and we will most likely never converge! */
+	 * wrong due to numerical error and we will most likely never converge! 
+	 * Also if the angle between these two vectors is nearly the exact same 
+	 * thing, then we will likely not find the simplex */
 	else if(simplexSize == 3 && gjkState->simplexSize == 3 
-			&& negativeSimplexUnNorm.dot(gjkState->searchDirection) < 0)
+			&& (negativeSimplexUnNorm.dot(gjkState->searchDirection) < 0
+				|| isNearlyZero(radiansBetween(
+					negativeSimplexUnNorm, gjkState->searchDirection))))
 		gjkState->lastIterationResult = GjkIterationResult::FAILURE;
 	gjkState->iteration++;
 }
