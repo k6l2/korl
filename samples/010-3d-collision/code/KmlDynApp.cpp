@@ -24,8 +24,8 @@ void drawBox(const v3f32& worldPosition, const kQuaternion& orientation,
 		sizeof(generatedBox[0]), offsetof(Vertex,position), 
 		offsetof(Vertex,textureNormal));
 	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
-		? VERTEX_ATTRIBS_VERTEX_POSITION_ONLY
-		: VERTEX_ATTRIBS_VERTEX_NO_COLOR;
+		? VERTEX_ATTRIBS_POSITION_ONLY
+		: VERTEX_ATTRIBS_NO_COLOR;
 	DRAW_TRIS(generatedBox, vertexAttribOffsets);
 }
 void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation, 
@@ -35,8 +35,8 @@ void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation,
 		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
 	g_krb->setModelXform(worldPosition, orientation, sphereScale);
 	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
-		? VERTEX_ATTRIBS_VERTEX_POSITION_ONLY
-		: VERTEX_ATTRIBS_VERTEX_NO_COLOR;
+		? VERTEX_ATTRIBS_POSITION_ONLY
+		: VERTEX_ATTRIBS_NO_COLOR;
 	g_krb->drawTris(
 		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
 	    sizeof(g_gs->generatedSphereMesh[0]), vertexAttribOffsets);
@@ -723,7 +723,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				g_gs->minkowskiDifferencePointCloud, 
 				g_gs->minkowskiDifferencePointCloudCount, 
 				sizeof(g_gs->minkowskiDifferencePointCloud[0]), 
-				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
+				VERTEX_ATTRIBS_POSITION_ONLY);
 		}
 		if(g_gs->gjkState.lastIterationResult == 
 				kmath::GjkIterationResult::SUCCESS
@@ -734,8 +734,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			const v3f32 minTranslationVec = 
 				g_gs->epaState.resultDistance * g_gs->epaState.resultNormal;
 			g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
-			const VertexNoTexture mesh[] = 
-				{ {v3f32::ZERO, krb::CYAN}, {minTranslationVec, krb::CYAN} };
+			const Vertex mesh[] = 
+				{ {v3f32::ZERO      , {}, krb::CYAN}
+				, {minTranslationVec, {}, krb::CYAN} };
 			DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
 		}
 		if(g_gs->gjkState.lastIterationResult == 
@@ -753,7 +754,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				offsetof(Vertex, position), offsetof(Vertex, color));
 			g_krb->drawTris(
 				epaPolytopeTris, epaPolytopeVertexCount, sizeof(Vertex), 
-				VERTEX_ATTRIBS_VERTEX_NO_TEXTURE);
+				VERTEX_ATTRIBS_NO_TEXTURE);
 			/* draw the polytope outline since the scene is unlit */
 			const u16 epaPolytopeLineVertexCount = 
 				kmath::epa_buildPolytopeEdges(
@@ -768,16 +769,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::BLACK);
 			g_krb->drawLines(
 				epaPolytopeLines, epaPolytopeLineVertexCount, sizeof(Vertex), 
-				VERTEX_ATTRIBS_VERTEX_POSITION_ONLY);
+				VERTEX_ATTRIBS_POSITION_ONLY);
 		}
 		/* draw the GJK simplex */
 		else
 		{
-			VertexNoTexture vertices[12];
+			Vertex vertices[12];
 			const u8 simplexLineVertexCount = 
 				kmath::gjk_buildSimplexLines(
 					&g_gs->gjkState, vertices, sizeof(vertices), 
-					sizeof(vertices[0]), offsetof(VertexNoTexture, position));
+					sizeof(vertices[0]), offsetof(Vertex, position));
 			switch(g_gs->gjkState.lastIterationResult)
 			{
 				case kmath::GjkIterationResult::INCOMPLETE:
@@ -808,9 +809,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			const v3f32 searchDirection = 
 				kmath::normal(g_gs->gjkState.searchDirection);
 			g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {1,1,1});
-			const VertexNoTexture mesh[] = 
-				{ {lastSimplexPosition                  , krb::YELLOW}
-				, {lastSimplexPosition + searchDirection, krb::YELLOW} };
+			const Vertex mesh[] = 
+				{ {lastSimplexPosition                  , {}, krb::YELLOW}
+				, {lastSimplexPosition + searchDirection, {}, krb::YELLOW} };
 			DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
 		}
 	}
@@ -820,19 +821,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->setModelXform(g_gs->eyeRayActorHitPosition, 
 		                     kQuaternion::IDENTITY, {10,10,10});
 		g_krb->setModelXformBillboard(true, true, true);
-		local_persist const VertexNoTexture MESH[] = 
-			{ {{-1,-1,0}, krb::WHITE}, {{1, 1,0}, krb::WHITE}
-			, {{-1, 1,0}, krb::WHITE}, {{1,-1,0}, krb::WHITE} };
+		local_persist const Vertex MESH[] = 
+			{ {{-1,-1,0}, {}, krb::WHITE}, {{1, 1,0}, {}, krb::WHITE}
+			, {{-1, 1,0}, {}, krb::WHITE}, {{1,-1,0}, {}, krb::WHITE} };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 #endif// DEBUG_DELETE_LATER
 	/* draw origin */
 	{
 		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
-		local_persist const VertexNoTexture MESH[] = 
-			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN}
-			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
+		local_persist const Vertex MESH[] = 
+			{ {{0,0,0}, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
+			, {{0,0,0}, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}
+			, {{0,0,0}, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
 		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	return true;

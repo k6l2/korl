@@ -37,11 +37,6 @@ struct Vertex
 	v2f32 textureNormal;
 	Color4f32 color;
 };
-struct VertexNoTexture
-{
-	v3f32 position;
-	Color4f32 color;
-};
 struct GameState
 {
 	KmlTemplateGameState templateGameState;
@@ -81,30 +76,20 @@ struct GameState
 global_variable GameState* g_gs;
 /* KRB vertex attribute specification */
 const global_variable KrbVertexAttributeOffsets 
-	VERTEX_ATTRIBS_NO_TEXTURE = 
-		{ .position_3f32 = offsetof(VertexNoTexture, position)
-		, .color_4f32    = offsetof(VertexNoTexture, color)
-		, .texCoord_2f32 = sizeof(VertexNoTexture) };
-const global_variable KrbVertexAttributeOffsets 
-	VERTEX_ATTRIBS_VERTEX_NO_COLOR = 
+	VERTEX_ATTRIBS_NO_COLOR = 
 		{ .position_3f32 = offsetof(Vertex, position)
 		, .color_4f32    = sizeof(Vertex)
 		, .texCoord_2f32 = offsetof(Vertex, textureNormal) };
 const global_variable KrbVertexAttributeOffsets 
-	VERTEX_ATTRIBS_VERTEX_POSITION_ONLY = 
+	VERTEX_ATTRIBS_POSITION_ONLY = 
 		{ .position_3f32 = offsetof(Vertex, position)
 		, .color_4f32    = sizeof(Vertex)
 		, .texCoord_2f32 = sizeof(Vertex) };
 const global_variable KrbVertexAttributeOffsets 
-	VERTEX_ATTRIBS_VERTEX_NO_TEXTURE = 
+	VERTEX_ATTRIBS_NO_TEXTURE = 
 		{ .position_3f32 = offsetof(Vertex, position)
 		, .color_4f32    = offsetof(Vertex, color)
 		, .texCoord_2f32 = sizeof(Vertex) };
-const global_variable KrbVertexAttributeOffsets 
-	VERTEX_ATTRIBS_POSITION_ONLY = 
-		{ .position_3f32 = offsetof(VertexNoTexture, position)
-		, .color_4f32    = sizeof(VertexNoTexture)
-		, .texCoord_2f32 = sizeof(VertexNoTexture) };
 /* convenience macros for our application */
 #define DRAW_POINTS(mesh, vertexAttribs) \
 	g_krb->drawPoints(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
