@@ -118,7 +118,27 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		if(gameKeyboard.f1 == ButtonState::PRESSED)
 		{
 			arrsetlen(g_gs->actors, 2);
-#if 1// sphere-box causing GJK large iteration count
+#if 1 // two overlapping boxes
+			g_gs->actors[0].shape.type = ShapeType::BOX;
+			g_gs->actors[1].shape.type = ShapeType::BOX;
+			g_gs->actors[0].shape.box.lengths = {1,1,1};
+			g_gs->actors[1].shape.box.lengths = {1,1,1};
+			g_gs->actors[0].position = {-3,-3,3};
+			g_gs->actors[1].position = {-3,-3,3};
+			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
+			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
+#endif// two overlapping boxes
+#if 0 // two overlapping spheres could be difficult to converge w/ EPA 
+			g_gs->actors[0].shape.type = ShapeType::SPHERE;
+			g_gs->actors[1].shape.type = ShapeType::SPHERE;
+			g_gs->actors[0].shape.sphere.radius = 1;
+			g_gs->actors[1].shape.sphere.radius = 1;
+			g_gs->actors[0].position = {-3,-3,3};
+			g_gs->actors[1].position = {-3,-3,3};
+			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
+			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
+#endif// two overlapping spheres could be difficult to converge w/ EPA
+#if 0// sphere-box causing GJK large iteration count
 			g_gs->actors[0].shape.type = ShapeType::SPHERE;
 			g_gs->actors[1].shape.type = ShapeType::BOX;
 			g_gs->actors[0].shape.sphere.radius = 1;

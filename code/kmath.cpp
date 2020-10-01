@@ -165,6 +165,12 @@ inline v3f32& v3f32::operator-=(const v3f32& other)
 	z -= other.z;
 	return *this;
 }
+inline bool v3f32::isNearlyZero() const
+{
+	return kmath::isNearlyZero(x)
+	    && kmath::isNearlyZero(y)
+	    && kmath::isNearlyZero(z);
+}
 inline f32 v3f32::magnitude() const
 {
 	return sqrtf(powf(x,2) + powf(y,2) + powf(z,2));
@@ -1143,7 +1149,9 @@ internal void kmath::gjk_initialize(
 		     "direction can lead to SIGNIFICANT performance penalties or "
 		     "potentially even no answer due to numerical imprecision!");
 	const v3f32& initSupportDir = initialSupportDirection 
-		? *initialSupportDirection 
+		? (initialSupportDirection->isNearlyZero()
+			? v3f32{1,0,0}
+			: *initialSupportDirection)
 		: v3f32{1,0,0};
 	gjkState->o_simplex[0]        = support(initSupportDir, supportUserData);
 	gjkState->simplexSize         = 1;
@@ -1164,12 +1172,17 @@ internal bool gjk_buildSimplexAroundOrigin(
 	if(*o_simplexSize == 1)
 	/* creating a line segment */
 	{
-		const v3f32 newToPrev = o_simplex[0] - newPoint;
-		if(newToPrev.dot(newToOrigin) > 0)
+		const v3f32 prevToNew = o_simplex[0] - newPoint;
+		if(prevToNew.dot(newToOrigin) > 0)
 		/* origin is closest to the new line segment */
 		{
 			*o_searchDirection = 
-				newToPrev.cross(newToOrigin).cross(newToPrev);
+				prevToNew.cross(newToOrigin).cross(prevToNew);
+			if(o_searchDirection->isNearlyZero())
+			/* if the origin is essentially colinear with our line segment, 
+			 * search in an arbitrary direction perpendicular to the line 
+			 * segment */
+				*o_searchDirection = prevToNew.cross(prevToNew + v3f32{1,2,3});
 			o_simplex[(*o_simplexSize)++] = newPoint;
 		}
 		else

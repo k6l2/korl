@@ -85,6 +85,7 @@ public:
 	inline v3f32& operator/=(f32 scalar);
 	inline v3f32& operator+=(const v3f32& other);
 	inline v3f32& operator-=(const v3f32& other);
+	inline bool isNearlyZero() const;
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
 	/** @return the magnitude of the vector before normalization */

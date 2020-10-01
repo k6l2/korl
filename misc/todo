@@ -710,7 +710,7 @@
 		http://www.dyn4j.org/2010/05/epa-expanding-polytope-algorithm/
 		[x] draw the polytope triangles
 		[x] draw the polytope edges since my scene is still unlit.. FeelsBadMan
-		[ ] test the overlapping sphere case, since it is apparently difficult 
+		[x] test the overlapping sphere case, since it is apparently difficult 
 			to converge!
 		[ ] delete calls to epa_verifyTriListIntegrity after I'm done making 
 			sure that everything works reasonably well
