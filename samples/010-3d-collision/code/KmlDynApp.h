@@ -41,10 +41,6 @@ struct GameState
 {
 	KmlTemplateGameState templateGameState;
 	HudState hudState;
-/* @TODO: delete this and generate on the fly for simplicity */
-	Vertex* generatedSphereMesh;
-/* @TODO: delete this and generate on the fly for simplicity */
-	size_t generatedSphereMeshVertexCount;
 	/* Director */
 	Actor* actors;
 	bool wireframe;

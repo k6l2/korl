@@ -31,6 +31,18 @@ void drawBox(const v3f32& worldPosition, const kQuaternion& orientation,
 void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation, 
                 const Shape& shape)
 {
+	/* generate sphere mesh */
+	const size_t generatedSphereMeshVertexCount = 
+		kmath::generateMeshCircleSphereVertexCount(16, 16);
+	const size_t generatedSphereMeshBytes = 
+		generatedSphereMeshVertexCount * sizeof(Vertex);
+	Vertex*const generatedSphereMesh = 
+		ALLOC_FRAME_ARRAY(Vertex, generatedSphereMeshVertexCount);
+	kmath::generateMeshCircleSphere(
+		1.f, 16, 16, generatedSphereMesh, generatedSphereMeshBytes, 
+		sizeof(Vertex), offsetof(Vertex,position), 
+		offsetof(Vertex,textureNormal));
+	/* draw the sphere */
 	const v3f32 sphereScale = 
 		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
 	g_krb->setModelXform(worldPosition, orientation, sphereScale);
@@ -38,8 +50,8 @@ void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation,
 		? VERTEX_ATTRIBS_POSITION_ONLY
 		: VERTEX_ATTRIBS_NO_COLOR;
 	g_krb->drawTris(
-		g_gs->generatedSphereMesh, g_gs->generatedSphereMeshVertexCount, 
-	    sizeof(g_gs->generatedSphereMesh[0]), vertexAttribOffsets);
+		generatedSphereMesh, generatedSphereMeshVertexCount, 
+	    sizeof(generatedSphereMesh[0]), vertexAttribOffsets);
 }
 void drawShape(const v3f32& worldPosition, const kQuaternion& orientation, 
                const Shape& shape)
@@ -805,19 +817,6 @@ GAME_INITIALIZE(gameInitialize)
 	*g_gs = {};// clear all GameState memory before initializing the template
 	templateGameState_initialize(&g_gs->templateGameState, memory, 
 	                             sizeof(GameState));
-	/* generate a single sphere mesh with reasonable resolution that we can 
-		reuse with different scales */
-	g_gs->generatedSphereMeshVertexCount = 
-		kmath::generateMeshCircleSphereVertexCount(16, 16);
-	const size_t generatedSphereMeshBytes = 
-		g_gs->generatedSphereMeshVertexCount * sizeof(Vertex);
-	g_gs->generatedSphereMesh = reinterpret_cast<Vertex*>(
-		kAllocAlloc(g_gs->templateGameState.hKalPermanent,
-		            generatedSphereMeshBytes));
-	kmath::generateMeshCircleSphere(
-		1.f, 16, 16, g_gs->generatedSphereMesh, generatedSphereMeshBytes, 
-		sizeof(Vertex), offsetof(Vertex,position), 
-		offsetof(Vertex,textureNormal));
 	/* initialize dynamic array of actors */
 	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKalPermanent);
 }
