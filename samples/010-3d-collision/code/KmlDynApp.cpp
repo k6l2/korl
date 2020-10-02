@@ -108,18 +108,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                                    windowIsFocused))
 		return false;
 	bool lockedMouse = false;
-	const v3f32 cameraWorldForward = 
-		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
-		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
-		    .transform(v3f32::X);
-	const v3f32 cameraWorldRight = 
-		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
-		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
-		    .transform(v3f32::Y*-1);
-	const v3f32 cameraWorldUp = 
-		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
-		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
-		    .transform(v3f32::Z);
+	const v3f32 cameraWorldForward = cam3dWorldForward(&g_gs->camera);
+	const v3f32 cameraWorldRight   = cam3dWorldRight(&g_gs->camera);
+	const v3f32 cameraWorldUp      = cam3dWorldUp(&g_gs->camera);
 	/* handle user input */
 	if(windowIsFocused)
 	{
@@ -267,7 +258,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			|| g_gs->hudState == HudState::MODIFY_SHAPE_ROTATE)
 		{
 			/* calculate the plane which we will use to modify the shape */
-			const v3f32 modShapeBackPlanePosition = g_gs->cameraPosition + 
+			const v3f32 modShapeBackPlanePosition = g_gs->camera.position + 
 				cameraWorldForward * g_gs->modifyShapePlaneDistanceFromCamera;
 			const f32 modShapeBackPlaneDistance = 
 				modShapeBackPlanePosition.dot(cameraWorldForward);
@@ -385,7 +376,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					g_gs->modifyShapeTempValues[1] = actor.position.y;
 					g_gs->modifyShapeTempValues[2] = actor.position.z;
 					const v3f32 eyeToActor = 
-						actor.position - g_gs->cameraPosition;
+						actor.position - g_gs->camera.position;
 					g_gs->modifyShapePlaneDistanceFromCamera = 
 						eyeToActor.projectOnto(cameraWorldForward).magnitude();
 					g_gs->modifyShapeWindowPositionStart = 
@@ -400,7 +391,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					g_gs->modifyShapeTempValues[2] = actor.orientation.qy;
 					g_gs->modifyShapeTempValues[3] = actor.orientation.qz;
 					const v3f32 eyeToActor = 
-						actor.position - g_gs->cameraPosition;
+						actor.position - g_gs->camera.position;
 					g_gs->modifyShapePlaneDistanceFromCamera = 
 						eyeToActor.projectOnto(cameraWorldForward).magnitude();
 					g_gs->modifyShapeWindowPositionStart = 
@@ -411,75 +402,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		lockedMouse = gameMouse.right > ButtonState::NOT_PRESSED;
 		g_kpl->mouseSetRelativeMode(lockedMouse);
 		if(gameMouse.middle == ButtonState::PRESSED)
-			g_gs->orthographicView = !g_gs->orthographicView;
-		local_persist const f32 CAMERA_SPEED_MAX = 25;
-		local_persist const f32 CAMERA_ACCELERATION = 10;
-		local_persist const f32 CAMERA_DECELERATION = 50;
-		v3f32 camControl = v3f32::ZERO;
-		/* move the camera world position */
-		if(gameKeyboard.e > ButtonState::NOT_PRESSED)
-			camControl += cameraWorldForward;
-		if(gameKeyboard.d > ButtonState::NOT_PRESSED)
-			camControl -= cameraWorldForward;
-		if(gameKeyboard.f > ButtonState::NOT_PRESSED)
-			camControl += cameraWorldRight;
-		if(gameKeyboard.s > ButtonState::NOT_PRESSED)
-			camControl -= cameraWorldRight;
-		if(gameKeyboard.space > ButtonState::NOT_PRESSED)
-			camControl += cameraWorldUp;
-		if(gameKeyboard.a > ButtonState::NOT_PRESSED 
-			&& !gameKeyboard.modifiers.shift)
-				camControl -= cameraWorldUp;
-		f32 camControlMag = camControl.normalize();
-		if(kmath::isNearlyZero(camControlMag))
-		{
-			const v3f32 camDecelDir = kmath::normal(-g_gs->cameraVelocity);
-			g_gs->cameraVelocity += 
-				deltaSeconds*CAMERA_DECELERATION*camDecelDir;
-			if(g_gs->cameraVelocity.dot(camDecelDir) > 0)
-				g_gs->cameraVelocity = v3f32::ZERO;
-		}
-		else
-		{
-			/* split camera velocity into the `control direction` direction & 
-			 * the component perpendicular to this direction */
-			v3f32 camControlComp = 
-				g_gs->cameraVelocity.projectOnto(camControl, true);
-			v3f32 camControlPerpComp = 
-				g_gs->cameraVelocity - camControlComp;
-			/* decelerate along the perpendicular component */
-			const v3f32 camControlPerpDecelDir = 
-				kmath::normal(-camControlPerpComp);
-			camControlPerpComp += 
-				deltaSeconds*CAMERA_DECELERATION*camControlPerpDecelDir;
-			if(camControlPerpComp.dot(camControlPerpDecelDir) > 0)
-				camControlPerpComp = v3f32::ZERO;
-			/* halt if we're moving away from camControl */
-			if(camControlComp.dot(camControl) < 0)
-				camControlComp = v3f32::ZERO;
-			/* rejoin the components and accelerate towards camControl */
-			g_gs->cameraVelocity = camControlComp + camControlPerpComp + 
-				deltaSeconds*CAMERA_ACCELERATION*camControl;
-		}
-		f32 camSpeed = g_gs->cameraVelocity.normalize();
-		if(camSpeed > CAMERA_SPEED_MAX)
-			camSpeed = CAMERA_SPEED_MAX;
-		g_gs->cameraVelocity *= camSpeed;
-		g_gs->cameraPosition += deltaSeconds*g_gs->cameraVelocity;
+			g_gs->camera.orthographicView = !g_gs->camera.orthographicView;
+		cam3dStep(&g_gs->camera, 
+			gameKeyboard.e > ButtonState::NOT_PRESSED, 
+			gameKeyboard.d > ButtonState::NOT_PRESSED, 
+			gameKeyboard.f > ButtonState::NOT_PRESSED, 
+			gameKeyboard.s > ButtonState::NOT_PRESSED, 
+			gameKeyboard.space > ButtonState::NOT_PRESSED, 
+			gameKeyboard.a > ButtonState::NOT_PRESSED 
+				&& !gameKeyboard.modifiers.shift,
+			deltaSeconds);
 		if(lockedMouse)
 		{
-			local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
-			local_persist const f32 MAX_PITCH_MAGNITUDE = PI32/2 - 0.001f;
-			/* move the camera yaw & pitch based on relative mouse inputs */
-			g_gs->cameraRadiansYaw += 
-				CAMERA_LOOK_SENSITIVITY*gameMouse.deltaPosition.x;
-			g_gs->cameraRadiansYaw  = fmodf(g_gs->cameraRadiansYaw, 2*PI32);
-			g_gs->cameraRadiansPitch -= 
-				CAMERA_LOOK_SENSITIVITY*gameMouse.deltaPosition.y;
-			if(g_gs->cameraRadiansPitch < -MAX_PITCH_MAGNITUDE)
-				g_gs->cameraRadiansPitch = -MAX_PITCH_MAGNITUDE;
-			if(g_gs->cameraRadiansPitch > MAX_PITCH_MAGNITUDE)
-				g_gs->cameraRadiansPitch = MAX_PITCH_MAGNITUDE;
+			cam3dLook(&g_gs->camera, gameMouse.deltaPosition);
 		}
 		if(gameKeyboard.modifiers.shift 
 			&& gameKeyboard.a > ButtonState::NOT_PRESSED)
@@ -621,14 +556,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setDepthTesting(true);
 	g_krb->setBackfaceCulling(!g_gs->wireframe);
 	g_krb->setWireframe(g_gs->wireframe);
-	if(g_gs->orthographicView)
-		g_krb->setProjectionOrthoFixedHeight(
-			windowDimensions.x, windowDimensions.y, 100, 1000);
-	else
-		g_krb->setProjectionFov(50.f, windowDimensions.elements, 0.001f, 100);
-	g_krb->lookAt(g_gs->cameraPosition.elements, 
-	              (g_gs->cameraPosition + cameraWorldForward).elements, 
-	              v3f32::Z.elements);
+	cam3dApplyViewProjection(&g_gs->camera, g_krb, windowDimensions);
 	/* draw all the shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
@@ -817,6 +745,9 @@ GAME_INITIALIZE(gameInitialize)
 	*g_gs = {};// clear all GameState memory before initializing the template
 	templateGameState_initialize(&g_gs->templateGameState, memory, 
 	                             sizeof(GameState));
+	g_gs->camera.position     = {10,11,12};
+	g_gs->camera.radiansYaw   = PI32*3/4;
+	g_gs->camera.radiansPitch = -PI32/4;
 	/* initialize dynamic array of actors */
 	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKalPermanent);
 }
@@ -824,3 +755,4 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 }
 #include "TemplateGameState.cpp"
+#include "camera3d.cpp"

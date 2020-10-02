@@ -1,5 +1,6 @@
 #pragma once
 #include "TemplateGameState.h"
+#include "camera3d.h"
 #define DEBUG_DELETE_LATER 1
 enum class ShapeType : u8
 	{ BOX
@@ -41,6 +42,7 @@ struct GameState
 {
 	KmlTemplateGameState templateGameState;
 	HudState hudState;
+	Camera3d camera;
 	/* Director */
 	Actor* actors;
 	bool wireframe;
@@ -57,12 +59,6 @@ struct GameState
 	f32 modifyShapeTempValues[4];
 	f32 modifyShapePlaneDistanceFromCamera;
 	v2i32 modifyShapeWindowPositionStart;
-	/* Camera */
-	bool orthographicView;
-	v3f32 cameraPosition = {10,11,12};
-	v3f32 cameraVelocity;
-	f32 cameraRadiansYaw = PI32*3/4;
-	f32 cameraRadiansPitch = -PI32/4;
 #if DEBUG_DELETE_LATER
 	/* GJK + EPA visualizations */
 	v3f32 minkowskiDifferencePosition;
