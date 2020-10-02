@@ -108,9 +108,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
 		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
 		    .transform(v3f32::Z);
-#if DEBUG_DELETE_LATER
-	g_gs->eyeRayActorHitPosition = {NAN32, NAN32, NAN32};
-#endif// DEBUG_DELETE_LATER
 	/* handle user input */
 	if(windowIsFocused)
 	{
@@ -334,11 +331,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				Actor newActor;
 				newActor.position = g_gs->addShapePosition;
 				newActor.shape    = g_gs->addShape;
-#if DEBUG_DELETE_LATER
-				const kQuaternion modelQuat(
-					g_gs->testRadianAxis, g_gs->testRadians);
-				newActor.orientation = modelQuat;
-#endif// DEBUG_DELETE_LATER
 				arrpush(g_gs->actors, newActor);
 			}
 		}
@@ -365,10 +357,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{
 				if(gameMouse.left == ButtonState::PRESSED)
 					g_gs->selectedActorId = nearestActorId;
-#if DEBUG_DELETE_LATER
-				g_gs->eyeRayActorHitPosition = worldEyeRayPosition + 
-					nearestEyeRayHit*worldEyeRayDirection;
-#endif// DEBUG_DELETE_LATER
 			}
 			if(g_gs->selectedActorId)
 			{
@@ -582,26 +570,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 		ImGui::End();
 	}
-#if DEBUG_DELETE_LATER
-	ImGui::SliderFloat3("testPosition", g_gs->testPosition.elements, -20, 20);
-	ImGui::SliderFloat3("testRadianAxis", g_gs->testRadianAxis.elements, -1, 1);
-	ImGui::SliderFloat("testRadians", &g_gs->testRadians, 0, 4*PI32);
-	{
-		i32 sliderInt = g_gs->minkowskiDifferencePointCloudCount;
-		ImGui::SliderInt("pointCloudCount", &sliderInt, 1, 
-		                 CARRAY_SIZE(g_gs->minkowskiDifferencePointCloud));
-		g_gs->minkowskiDifferencePointCloudCount = 
-			kmath::safeTruncateU16(sliderInt);
-	}
-	if(ImGui::Button("assert false"))
-	{
-		kassert(false);
-	}
-	if(ImGui::Button("crash program"))
-	{
-		*((int*)0) = 0;
-	}
-#endif// DEBUG_DELETE_LATER
 	/* perform collision detection + resolution on all shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
@@ -681,12 +649,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-#if DEBUG_DELETE_LATER
-		const kQuaternion modelQuat(g_gs->testRadianAxis, g_gs->testRadians);
-		drawShape(g_gs->addShapePosition, modelQuat, 
-#else
 		drawShape(g_gs->addShapePosition, kQuaternion::IDENTITY, 
-#endif //DEBUG_DELETE_LATER
 		          g_gs->addShape);
 	}
 #if DEBUG_DELETE_LATER
@@ -814,17 +777,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				, {lastSimplexPosition + searchDirection, {}, krb::YELLOW} };
 			DRAW_LINES(mesh, VERTEX_ATTRIBS_NO_TEXTURE);
 		}
-	}
-	if(!isnan(g_gs->eyeRayActorHitPosition.x))
-	/* draw a crosshair on the 3D position where we hit an actor */
-	{
-		g_krb->setModelXform(g_gs->eyeRayActorHitPosition, 
-		                     kQuaternion::IDENTITY, {10,10,10});
-		g_krb->setModelXformBillboard(true, true, true);
-		local_persist const Vertex MESH[] = 
-			{ {{-1,-1,0}, {}, krb::WHITE}, {{1, 1,0}, {}, krb::WHITE}
-			, {{-1, 1,0}, {}, krb::WHITE}, {{1,-1,0}, {}, krb::WHITE} };
-		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 #endif// DEBUG_DELETE_LATER
 	/* draw origin */

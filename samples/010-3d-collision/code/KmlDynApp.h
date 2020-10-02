@@ -40,19 +40,19 @@ struct Vertex
 struct GameState
 {
 	KmlTemplateGameState templateGameState;
-	bool orthographicView;
-	v3f32 cameraPosition = {10,11,12};
-	v3f32 cameraVelocity;
-	f32 cameraRadiansYaw = PI32*3/4;
-	f32 cameraRadiansPitch = -PI32/4;
 	HudState hudState;
-	Shape addShape;
-	v3f32 addShapePosition;
+/* @TODO: delete this and generate on the fly for simplicity */
 	Vertex* generatedSphereMesh;
+/* @TODO: delete this and generate on the fly for simplicity */
 	size_t generatedSphereMeshVertexCount;
+	/* Director */
 	Actor* actors;
 	bool wireframe;
 	bool resolveShapeCollisions;
+	/* add actor state */
+	Shape addShape;
+	v3f32 addShapePosition;
+	/* actor manipulation state */
 	/* The array index into `actors` == `selectedActorId` - 1.  A value of 0 
 		indicates no actor is selected */
 	u32 selectedActorId;
@@ -61,11 +61,14 @@ struct GameState
 	f32 modifyShapeTempValues[4];
 	f32 modifyShapePlaneDistanceFromCamera;
 	v2i32 modifyShapeWindowPositionStart;
+	/* Camera */
+	bool orthographicView;
+	v3f32 cameraPosition = {10,11,12};
+	v3f32 cameraVelocity;
+	f32 cameraRadiansYaw = PI32*3/4;
+	f32 cameraRadiansPitch = -PI32/4;
 #if DEBUG_DELETE_LATER
-	v3f32 eyeRayActorHitPosition;
-	v3f32 testPosition;
-	v3f32 testRadianAxis;
-	f32 testRadians;
+	/* GJK + EPA visualizations */
 	v3f32 minkowskiDifferencePosition;
 	Vertex minkowskiDifferencePointCloud[1000];
 	u16 minkowskiDifferencePointCloudCount = 1000;

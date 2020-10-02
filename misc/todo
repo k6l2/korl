@@ -792,6 +792,7 @@
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators
+[ ] rebrand project to KORL (Kyle's OS Resource Layer)
 [ ] separate kmath into core & geometry
 	[ ] remove the need to compile stb_ds on the win32 platform translation unit
 [ ] continuous collision detection
