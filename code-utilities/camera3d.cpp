@@ -99,7 +99,7 @@ internal void cam3dApplyViewProjection(
 		krb->setProjectionOrthoFixedHeight(
 			windowDimensions.x, windowDimensions.y, 100, 1000);
 	else
-		krb->setProjectionFov(50.f, windowDimensions.elements, 0.001f, 100);
+		krb->setProjectionFov(50.f, windowDimensions.elements, 0.001f, 1000);
 	krb->lookAt(cam->position.elements, 
 	            (cam->position + cameraWorldForward).elements, 
 	            v3f32::Z.elements);

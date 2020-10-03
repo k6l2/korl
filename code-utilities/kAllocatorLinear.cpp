@@ -72,8 +72,9 @@ internal void* kalRealloc(
 		/* we can simply expand the last allocation in-place without moving it 
 		 * around */
 		{
-			if(kal->bytesAllocated - lastAllocHeader->allocationBytes + 
-				newAllocationSize > kalMaxTotalUsableBytes(kal))
+			if(newAllocationSize > lastAllocHeader->allocationBytes 
+				&& newAllocationSize - lastAllocHeader->allocationBytes 
+					> kalMaxTotalUsableBytes(kal))
 			/* if the new allocation size will not fit, return nothing 
 			 * indicating we are out of memory */
 			{
