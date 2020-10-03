@@ -97,6 +97,9 @@ internal bool templateGameState_updateAndDraw(
 	#include "imgui/imgui_widgets.cpp"
 	#include "imgui/imgui.cpp"
 #pragma warning( pop )
+#if defined TRANSPARENT
+	#undef TRANSPARENT
+#endif
 #define STB_DS_IMPLEMENTATION
 internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
                              void* context)
