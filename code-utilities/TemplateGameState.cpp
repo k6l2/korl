@@ -13,13 +13,15 @@ internal void templateGameState_onReloadCode(GameMemory& memory)
 	                             memory.imguiAllocUserData);
 }
 internal void templateGameState_initialize(
-	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize)
+	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize, 
+	bool indieTextureHack)
 {
 	kassert(totalGameStateSize <= memory.permanentMemoryBytes);
 	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
 		ever need to do this one time because *tgs should be in an immutable 
 		spot in memory forever */
 	g_krb->setCurrentContext(&tgs->krbContext);
+	tgs->krbContext.indieTextureHack = indieTextureHack;
 	// initialize dynamic allocators //
 	tgs->hKalPermanent = kAllocInit(
 		KAllocatorType::GENERAL, 

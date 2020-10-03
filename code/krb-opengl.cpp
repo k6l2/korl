@@ -49,7 +49,12 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
-	*(krb::g_context) = {};
+	/* clear the krb context without clearing the indie texture hack :| 
+	 * forgive me, graphics gods, for I have sinned */
+	const bool prevIndieTextureHack = krb::g_context->indieTextureHack;
+	krb::Context ctx = {};
+	ctx.indieTextureHack = prevIndieTextureHack;
+	*(krb::g_context) = ctx;
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
@@ -477,7 +482,12 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	if(krb::g_context->indieTextureHack)
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageSizeX, imageSizeY, 0, 
 	             GL_RGBA, GL_UNSIGNED_BYTE, imageDataRGBA);
 	GL_CHECK_ERROR();

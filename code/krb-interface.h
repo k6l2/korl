@@ -30,6 +30,7 @@ namespace krb
 	struct Context
 	{
 		Color4f32 defaultColor = WHITE;
+		bool indieTextureHack = false;
 	};
 	global_variable Context* g_context;
 }
