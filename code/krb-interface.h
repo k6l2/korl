@@ -81,7 +81,10 @@ struct KrbVertexAttributeOffsets
  *                    the mesh to be in the center.  {0,0} will set the pivot of 
  *                    the mesh to be the top-left corner of the mesh, which 
  *                    should correspond to the top-left corner of the texture!
- * @param texCoords [up-left, down-left, down-right, up-right]
+ * @param texCoords [up-left, down-left, down-right, up-right] these are 
+ *                  NORMALIZED values!  Texture-space origin is the upper-left 
+ *                  corner of the texture.
+ *                  @TODO: Yes, I should rename this `texNorms`...
  * @param colors [up-left, down-left, down-right, up-right]
 */
 #define KRB_DRAW_QUAD_TEXTURED(name) \

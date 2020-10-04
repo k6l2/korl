@@ -426,7 +426,7 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 	asset->kam->kpl->lock(asset->kam->hLockAssetDataAllocator);
 	void*const rawFileMemory = 
 		kAllocAlloc(asset->kam->hKgaRawFiles, 
-		            kmath::safeTruncateU32(assetByteSize));
+		            kmath::safeTruncateU32(assetByteSize) + 1);
 	kassert(rawFileMemory);
 	asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* defer cleanup of the raw file memory until after we utilize it */
@@ -445,6 +445,7 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 		KLOG(ERROR, "Failed to read asset \"%s\"!", kAssetFileNames[kAssetId]);
 		return;
 	}
+	reinterpret_cast<u8*>(rawFileMemory)[assetByteSize] = 0;
 	/* decode the file data into a struct we can use */
 	const bool flipbookMetaDecodeSuccess = 
 		kfbDecodeMeta(

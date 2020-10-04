@@ -23,12 +23,13 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 {
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(fileData);
+	kassert(fileCStr[fileBytes] == '\0');
 	u32 fbPropertiesFoundBitflags = 0;
 	u8 fbPropertiesFoundCount = 0;
 	// destructively read the file line by line //
 	// source: https://stackoverflow.com/a/17983619
 	char* currLine = fileCStr;
-	while(currLine)
+	while(currLine && *currLine)
 	{
 		char* nextLine = strchr(currLine, '\n');
 		if(nextLine >= fileCStr + fileBytes)
