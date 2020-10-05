@@ -732,20 +732,22 @@
 	[x] use functions (if possible)
 	[x] move 'clean' functionality into 'clean.bat'
 [x] build: optionally disable kmd5
-[ ] build: compile EXE + DLL simultaneously
-	[ ] before starting the async build tasks, create a file in the build 
+[x] build: compile EXE + DLL simultaneously
+	[x] before starting the async build tasks, create a file in the build 
 		directory for each task whose existance indicates the task is running 
 		(a lock file)
-	[ ] launch each build task in a separate thread
-	[ ] pipe all the output of each build task into it's own file in the build 
+	[x] launch each build task in a separate thread
+	[-] pipe all the output of each build task into it's own file in the build 
 		directory
-	[ ] when the build task completes, create an exit status file indicating 
+		- no need, since output just gets sent to the original command prompt?
+	[x] when the build task completes, create an exit status file indicating 
 		whether or not the build succeeded 
-	[ ] when the build task completes, delete the corresponding lock file
-	[ ] in the main build command, wait for all lock files to be deleted
-	[ ] once all lock files are deleted, echo the output files of each build 
+	[x] when the build task completes, delete the corresponding lock file
+	[x] in the main build command, wait for all lock files to be deleted
+	[-] once all lock files are deleted, echo the output files of each build 
 		task in order
-	[ ] read the build task exit status files to determine if there were any 
+		- no need?, see above
+	[x] read the build task exit status files to determine if there were any 
 		build failures
 [ ] kmd5: ignore *.swp files
 [ ] win32: disable the right-click menu in the window title bar when the 

@@ -274,8 +274,8 @@ rem ole32.lib    - DirectInput8 support.
 rem oleaut32.lib - DirectInput8 support.
 rem Hid.lib      - RawInput support (indirectly; support features)
 rem ws2_32.lib   - winsock (networking support)
-set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 /wd4200 ^
-	/wd4623 /wd5027 /Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
+set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 ^
+	/wd4200 /wd4623 /wd5027 /Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
 set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
 	/DINTERNAL_BUILD=0 /DSLOW_BUILD=0 
 set CommonCompilerFlagsDebug=%CommonCompilerFlags% /MTd /Od /WX /wd4189 ^
@@ -297,27 +297,68 @@ rem }}}----- choose compiler options
 
 
 rem --- Clean up old DLL binaries from the build directory ---
+set statusFileDll=status-build-dll.txt
+del %statusFileDll% > NUL 2> NUL
 del *%kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
 
 
 
 
+rem --- create a lock file so we can wait for the build to finish on another 
+rem     thread ---
+rem Source: https://stackoverflow.com/a/211045/4526664
+set lockFileDll=lock-build-dll
+type NUL >> "%lockFileDll%"
+
+
+
+
+rem --- generate the DLL build command string -----
+set              cmdBuildDll=cl %project_root%\code\%kmlGameDllFileName%.cpp 
+set cmdBuildDll=%cmdBuildDll%/Fe%kmlGameDllFileName% 
+set cmdBuildDll=%cmdBuildDll%/Fm%kmlGameDllFileName%.map 
+set cmdBuildDll=%cmdBuildDll%^
+/FdVC_%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb 
+set cmdBuildDll=%cmdBuildDll%/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 ^
+/wd4820 /LDd 
+set cmdBuildDll=%cmdBuildDll%/link %CommonLinkerFlags% 
+set cmdBuildDll=%cmdBuildDll%^
+/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb 
+set cmdBuildDll=%cmdBuildDll%/EXPORT:gameInitialize /EXPORT:gameOnReloadCode 
+set cmdBuildDll=%cmdBuildDll%/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw ^
+/EXPORT:gameOnPreUnload
+
+
+
+
+rem --- launch the DLL build in a separate thread -----
+start "Build DLL Thread" /b ^
+	"cmd /c build-atom.bat ^"%cmdBuildDll%^" %lockFileDll% %statusFileDll%"
+
+
+
+
+
+
+
+
+
 
 rem --- Compile game code module ---
-cl %project_root%\code\%kmlGameDllFileName%.cpp ^
-	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-	/FdVC_%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
-	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
-	/link %CommonLinkerFlags% ^
-	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
-	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
-	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw /EXPORT:gameOnPreUnload
-IF %ERRORLEVEL% NEQ 0 (
-	echo %kmlGameDllFileName% build failed!
-	GOTO :ON_FAILURE_GAME
-)
-:SKIP_GAME_BUILD
+rem cl %project_root%\code\%kmlGameDllFileName%.cpp ^
+rem 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
+rem 	/FdVC_%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
+rem 	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
+rem 	/link %CommonLinkerFlags% ^
+rem 	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
+rem 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
+rem 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw /EXPORT:gameOnPreUnload
+rem IF %ERRORLEVEL% NEQ 0 (
+rem 	echo %kmlGameDllFileName% build failed!
+rem 	GOTO :ON_FAILURE_GAME
+rem )
+rem :SKIP_GAME_BUILD
 
 
 
@@ -377,9 +418,14 @@ IF %ERRORLEVEL% NEQ 0 (
 
 
 
-rem ----- LEAVE THE BUILD DIRECTORY -----
+rem --- wait for the DLL build thread to complete -----
 :SKIP_WIN32_BUILD
+:WAIT_FOR_DLL_BUILD
+if exist %lockFileDll% goto WAIT_FOR_DLL_BUILD
+:DLL_BUILD_COMPLETE
+if exist %statusFileDll% goto ON_FAILURE_GAME
 :SKIP_ALL_BUILDS
+rem ----- LEAVE THE BUILD DIRECTORY -----
 popd
 
 
