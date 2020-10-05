@@ -13,4 +13,4 @@ internal void* kAllocRealloc(
 internal void kAllocFree(KAllocatorHandle hKal, void* allocatedAddress);
 internal size_t kAllocUsedBytes(const KAllocatorHandle hKal);
 internal size_t kAllocMaxTotalUsableBytes(const KAllocatorHandle hKal);
-
+internal void kAllocUnitTest(const KAllocatorHandle hKal);

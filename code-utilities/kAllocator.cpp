@@ -124,5 +124,57 @@ internal size_t kAllocMaxTotalUsableBytes(const KAllocatorHandle hKal)
 	}
 	return 0;
 }
+internal void kAllocUnitTest(const KAllocatorHandle hKal)
+{
+	void* allocs[16];
+	allocs[0] = kAllocRealloc(hKal, 0, 4096);
+	allocs[1] = kAllocAlloc(hKal, 16448);
+	kAllocFree(hKal, allocs[0]);
+	allocs[0] = kAllocAlloc(hKal, 16384);
+	kAllocFree(hKal, allocs[1]);
+	kAllocFree(hKal, allocs[0]);
+	allocs[0] = kAllocRealloc(hKal, 0, 4096);
+	allocs[1] = kAllocAlloc(hKal, 16416);
+	allocs[2] = kAllocRealloc(hKal, 0, 4096);
+	allocs[3] = kAllocAlloc(hKal, 16448);
+	allocs[4] = kAllocRealloc(hKal, 0, 4096);
+	allocs[5] = kAllocAlloc(hKal, 4128);
+	kAllocFree(hKal, allocs[0]);
+	kAllocFree(hKal, allocs[4]);
+	allocs[0] = kAllocAlloc(hKal, 4096);
+	allocs[4] = kAllocRealloc(hKal, 0, 4096);
+	allocs[6] = kAllocAlloc(hKal, 1040);
+	allocs[7] = kAllocRealloc(hKal, 0, 4096);
+	allocs[8] = kAllocAlloc(hKal, 4128);
+	allocs[9] = kAllocRealloc(hKal, 0, 4096);
+	allocs[10] = kAllocAlloc(hKal, 4128);
+	kAllocFree(hKal, allocs[5]);
+	kAllocFree(hKal, allocs[9]);
+	allocs[5] = kAllocAlloc(hKal, 4096);
+	allocs[9] = kAllocAlloc(hKal, 16384);
+	kAllocFree(hKal, allocs[7]);
+	allocs[7] = kAllocAlloc(hKal, 4096);
+	kAllocFree(hKal, allocs[2]);
+	allocs[2] = kAllocAlloc(hKal, 16384);
+	kAllocFree(hKal, allocs[4]);
+	allocs[4] = kAllocAlloc(hKal, 1024);
+	allocs[11] = kAllocRealloc(hKal, 0, 4096);
+	allocs[12] = kAllocAlloc(hKal, 1040);
+	kAllocFree(hKal, allocs[8]);
+	kAllocFree(hKal, allocs[0]);
+	kAllocFree(hKal, allocs[10]);
+	kAllocFree(hKal, allocs[5]);
+	kAllocFree(hKal, allocs[6]);
+	kAllocFree(hKal, allocs[1]);
+	kAllocFree(hKal, allocs[11]);
+	allocs[0] = kAllocAlloc(hKal, 1024);
+	kAllocFree(hKal, allocs[3]);
+	kAllocFree(hKal, allocs[4]);
+	kAllocFree(hKal, allocs[9]);
+	kAllocFree(hKal, allocs[7]);
+	kAllocFree(hKal, allocs[12]);
+	kAllocFree(hKal, allocs[2]);
+	kAllocFree(hKal, allocs[0]);
+}
 #include "kGeneralAllocator.cpp"
 #include "kAllocatorLinear.cpp"

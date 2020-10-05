@@ -1495,6 +1495,9 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
 		g_genAllocStbImage = kAllocInit(
 			KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
+#if SLOW_BUILD && INTERNAL_BUILD
+		kAllocUnitTest(g_genAllocStbImage);
+#endif//SLOW_BUILD && INTERNAL_BUILD
 	}
 	/* assign a pre-allocated dynamic memory arena for ImGui */
 	{
@@ -1961,23 +1964,43 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #define STBI_ASSERT(x) kassert(x)
+#define DEBUG_PRINT_STBI_MEMORY 0
 internal void* stbiMalloc(size_t allocationByteCount)
 {
 	EnterCriticalSection(&g_stbiAllocationCsLock);
-	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
-	return kAllocAlloc(g_genAllocStbImage, allocationByteCount);
+#if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	KLOG(INFO, "stbiMalloc(%i)", allocationByteCount);
+#endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	void*const result = kAllocAlloc(g_genAllocStbImage, allocationByteCount);
+#if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	KLOG(INFO, "stbiMalloc: result=%x", result);
+#endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	LeaveCriticalSection(&g_stbiAllocationCsLock);
+	return result;
 }
 internal void* stbiRealloc(void* allocatedAddress, 
                            size_t newAllocationByteCount)
 {
 	EnterCriticalSection(&g_stbiAllocationCsLock);
-	defer(LeaveCriticalSection(&g_stbiAllocationCsLock));
-	return kAllocRealloc(g_genAllocStbImage, 
-	                     allocatedAddress, newAllocationByteCount);
+#if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	KLOG(INFO, "stbiRealloc(%x, %i)", allocatedAddress, newAllocationByteCount);
+#endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	void*const result = kAllocRealloc(
+		g_genAllocStbImage, allocatedAddress, newAllocationByteCount);
+#if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	KLOG(INFO, "stbiRealloc: result=%x", result);
+#endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	LeaveCriticalSection(&g_stbiAllocationCsLock);
+	return result;
 }
 internal void stbiFree(void* allocatedAddress)
 {
+	if(!allocatedAddress)
+		return;
 	EnterCriticalSection(&g_stbiAllocationCsLock);
+#if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
+	KLOG(INFO, "stbiFree(0x%x)", allocatedAddress);
+#endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
 	kAllocFree(g_genAllocStbImage, allocatedAddress);
 	LeaveCriticalSection(&g_stbiAllocationCsLock);
 }
