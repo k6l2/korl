@@ -2,11 +2,25 @@
 rem prerequisites: shell.bat has been run successfully
 rem                KML_HOME environment variable
 rem                KMD5_HOME environment variable
-set codeTreeFileNamePrefixGame=code-tree-game
-set codeTreeFileNamePrefixKml=code-tree-kml
-rem --- Iterate over build script arguments ---
-set buildOptionClean=FALSE
+setlocal
+
+
+
+
+
+rem --- Save the timestamp before building for timing metric ----------------{{{
+for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
+   set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
+)
+rem }}}----- save build start timestamp
+
+
+
+
+
+rem --- Iterate over build script arguments ---------------------------------{{{
 set buildOptionRelease=FALSE
+set buildOptionDisableKmd5=FALSE
 if "%~1"=="" goto ARGUMENT_LOOP_END
 rem set argNumber=0
 :ARGUMENT_LOOP_START
@@ -14,64 +28,159 @@ rem echo arg%argNumber%=%1
 if "%~1"=="release" (
 	set buildOptionRelease=TRUE
 )
-if "%~1"=="clean" (
-	set buildOptionClean=TRUE
+if "%~1"=="nohash" (
+	set buildOptionDisableKmd5=TRUE
 )
 shift
 rem set /A argNumber+=1
 if not "%~1"=="" goto ARGUMENT_LOOP_START
 :ARGUMENT_LOOP_END
-rem --- CLEAN build command ---
-if "%buildOptionClean%"=="TRUE" (
-	echo Cleaning all build files...
-	del /S /F /Q "%project_root%\build" > NUL 2> NUL
-	rmdir /S /Q "%project_root%\build" > NUL 2> NUL
-	rmdir /S /Q "%project_root%\build" > NUL 2> NUL
-	echo Clean complete!
-	exit /B 0
-)
-rem --- Save the timestamp before building for timing metric ---
-for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
-   set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
-)
-rem --- generate asset manifest C++ header file using `kasset` ---
+rem }}}----- build script arguments
+
+
+
+
+
+rem --- generate asset manifest C++ header file using `kasset` --------------{{{
 rem     NOTE: this also creates the build directory in the process
 pushd %KASSET_HOME%
 echo Building kasset.exe...
 call build.bat
 popd
-call %KASSET_HOME%\build\kasset.exe %project_root%\assets %project_root%\build\code
-rem --- create the build directory ---
+call %KASSET_HOME%\build\kasset.exe %project_root%\assets ^
+	%project_root%\build\code
+rem }}}----- run KAsset
+
+
+
+
+
+rem --- create the build directory ------------------------------------------{{{
 if not exist "%project_root%\build" mkdir "%project_root%\build"
-rem --- build kmd5 program so we can use it to check if source files have 
-rem     changed, requiring new builds ---
-pushd %KMD5_HOME%
-echo Building kmd5.exe...
-call build.bat
-popd
-rem --- Create a text tree of the code so we can skip the build if nothing 
-rem     changed ---
-rem Source: https://www.dostips.com/forum/viewtopic.php?t=6223
-for %%a in ("%KCPP_INCLUDE:;=" "%") do (
-	call %KMD5_HOME%\build\kmd5.exe %%~a %project_root%\build %codeTreeFileNamePrefixGame%-current.txt --append
+rem }}}----- create build directory
+
+
+
+
+
+rem --- build kmd5 program --------------------------------------------------{{{
+rem we can use it to check if source files have changed, requiring new builds
+if "%buildOptionDisableKmd5%"=="FALSE" (
+	pushd %KMD5_HOME%
+	echo Building kmd5.exe...
+	call build.bat
+	popd
 )
-echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixGame%-current.txt"
-rem --- Create a text tree of KML code to conditionally skip the .exe build ---
-call %KMD5_HOME%\build\kmd5.exe %KML_HOME%\code %project_root%\build %codeTreeFileNamePrefixKml%-current.txt
-rem append the build files (including this one) to the KML build dependency diff
-call %KMD5_HOME%\build\kmd5.exe %KML_HOME%\misc %project_root%\build %codeTreeFileNamePrefixKml%-current.txt --append
-echo buildOptionRelease==%buildOptionRelease%>>"%project_root%\build\%codeTreeFileNamePrefixKml%-current.txt"
+rem }}}----- build kmd5 program
+
+
+
+
+
+rem --- hash the DLL source to see if it requires a rebuild -----------------{{{
+set hashFilePrefixDll=source-hash-dll
+set hashFileCurrentDll=%hashFilePrefixDll%-current.txt
+if "%buildOptionDisableKmd5%"=="FALSE" (
+	for %%a in ("%KCPP_INCLUDE:;=" "%") do (
+		call %KMD5_HOME%\build\kmd5.exe "%%~a" "%project_root%\build" ^
+			"%hashFileCurrentDll%" --append
+	)
+	echo buildOptionRelease==%buildOptionRelease%>>^
+"%project_root%\build\%hashFileCurrentDll%"
+)
+rem }}}----- hash the DLL source
+
+
+
+
+
+rem --- hash the EXE source to see if it requires a rebuild -----------------{{{
+set hashFilePrefixExe=source-hash-exe
+set hashFileCurrentExe=%hashFilePrefixExe%-current.txt
+if "%buildOptionDisableKmd5%"=="FALSE" (
+	call %KMD5_HOME%\build\kmd5.exe "%KML_HOME%\code" "%project_root%\build" ^
+		"%hashFileCurrentExe%"
+	rem append the build files (including this one) to the EXE build 
+	rem dependency hash
+	call %KMD5_HOME%\build\kmd5.exe "%KML_HOME%\misc" "%project_root%\build" ^
+		"%hashFileCurrentExe%" --append
+	echo buildOptionRelease==%buildOptionRelease%>>^
+"%project_root%\build\%hashFileCurrentExe%"
+)
+rem }}}----- hash the EXE source
+
+
+
+
+rem --- ENTER THE BUILD DIRECTORY HERE ---
 pushd %project_root%\build
-rem --- Compile the win32 application's resource file in release mode ---
+
+
+
+
+
+rem --- Detect if the EXE code differs ---
+set hashFileExistingExe=%hashFilePrefixExe%-existing.txt
+set codeIsDifferentExe=TRUE
+if "%buildOptionDisableKmd5%"=="FALSE" (
+call :checkHash %hashFileExistingExe%, %hashFileCurrentExe%, codeIsDifferentExe
+)
+
+
+
+
+
+rem --- Detect if the DLL code differs ---
+set hashFileExistingDll=%hashFilePrefixDll%-existing.txt
+set codeIsDifferentDll=TRUE
+if "%buildOptionDisableKmd5%"=="FALSE" (
+call :checkHash %hashFileExistingDll%, %hashFileCurrentDll%, codeIsDifferentDll
+)
+
+
+
+
+
+rem --- Compile the win32 application's resource file in release mode -------{{{
 rem ---    The resource file contains the application icon ---
 if "%buildOptionRelease%"=="TRUE" (
 	rc /fo win32.res %KML_HOME%\default-assets\win32.rc
 )
+rem }}}----- compile win32 app resource file
+
+
+
+
+
+rem --- We can only skip the game code build if BOTH the game code tree AND KML
+rem --- are unchanged! ---
+IF "%codeIsDifferentDll%"=="TRUE" (
+	echo %kmlGameDllFileName% code has changed!  Continuing build...
+) ELSE (
+	if "%codeIsDifferentExe%"=="TRUE" (
+		echo %kmlGameDllFileName% code is unchanged, but EXE differs! Continuing build...
+	) ELSE (
+		echo %kmlGameDllFileName% code and EXE are unchanged!  Skipping all builds...
+		GOTO :SKIP_ALL_BUILDS
+	)
+)
+
+
+
+
+
+rem --- generate a filename-safe timestamp ----------------------------------{{{
 set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
 set fileNameSafeTimestamp=%fileNameSafeDate%_%time:~0,2%%time:~3,2%%time:~6,2%
 rem remove any spaces from the generated timestamp:
 rem source: https://stackoverflow.com/a/10116045
 set fileNameSafeTimestamp=%fileNameSafeTimestamp: =%
+rem }}}----- generate a filename-safe timestamp
+
+
+
+
+rem --- Choose the compiler options -----------------------------------------{{{
 rem --- DEFINES ---
 rem     KML_APP_NAME = A string representing the name of the application,
 rem                    which is used in operating-system specific features
@@ -180,38 +289,21 @@ set Win32LinkerFlags=%CommonLinkerFlags%
 if "%buildOptionRelease%"=="TRUE" (
 	set Win32LinkerFlags=%CommonLinkerFlags% win32.res
 )
-rem --- Detect if the KML code tree differs ---
-set codeTreeIsDifferentKml=FALSE
-fc %codeTreeFileNamePrefixKml%-existing.txt %codeTreeFileNamePrefixKml%-current.txt > NUL 2> NUL
-if %ERRORLEVEL% GTR 0 (
-	set codeTreeIsDifferentKml=TRUE
-)
-del %codeTreeFileNamePrefixKml%-existing.txt
-ren %codeTreeFileNamePrefixKml%-current.txt %codeTreeFileNamePrefixKml%-existing.txt
-rem --- Detect if the game code tree differs ---
-set codeTreeIsDifferent=FALSE
-fc %codeTreeFileNamePrefixGame%-existing.txt %codeTreeFileNamePrefixGame%-current.txt > NUL 2> NUL
-if %ERRORLEVEL% GTR 0 (
-	set codeTreeIsDifferent=TRUE
-)
-del %codeTreeFileNamePrefixGame%-previous.txt
-ren %codeTreeFileNamePrefixGame%-existing.txt %codeTreeFileNamePrefixGame%-previous.txt
-ren %codeTreeFileNamePrefixGame%-current.txt %codeTreeFileNamePrefixGame%-existing.txt
-rem --- We can only skip the game code build if BOTH the game code tree AND KML
-rem --- are unchanged! ---
-IF "%codeTreeIsDifferent%"=="TRUE" (
-	echo %kmlGameDllFileName% code tree has changed!  Continuing build...
-) ELSE (
-	if "%codeTreeIsDifferentKml%"=="TRUE" (
-		echo %kmlGameDllFileName% code tree is unchanged, but KML differs! Continuing build...
-	) ELSE (
-		echo %kmlGameDllFileName% code tree and KML are unchanged!  Skipping all builds...
-		GOTO :SKIP_ALL_BUILDS
-	)
-)
-rem --- Clean up build directory ---
+rem }}}----- choose compiler options
+
+
+
+
+
+
+rem --- Clean up old DLL binaries from the build directory ---
 del *%kmlGameDllFileName%*.pdb > NUL 2> NUL
 del %kmlGameDllFileName%*.dll > NUL 2> NUL
+
+
+
+
+
 rem --- Compile game code module ---
 cl %project_root%\code\%kmlGameDllFileName%.cpp ^
 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
@@ -226,13 +318,23 @@ IF %ERRORLEVEL% NEQ 0 (
 	GOTO :ON_FAILURE_GAME
 )
 :SKIP_GAME_BUILD
+
+
+
+
+
 rem --- If the KML code tree is unchanged, skip the build ---
-IF "%codeTreeIsDifferentKml%"=="TRUE" (
-	echo KML Code tree has changed!  Continuing build...
+IF "%codeIsDifferentExe%"=="TRUE" (
+	echo EXE Code tree has changed!  Continuing build...
 ) ELSE (
-	echo KML Code tree is unchanged!  Skipping build...
+	echo EXE Code tree is unchanged!  Skipping build...
 	GOTO :SKIP_WIN32_BUILD
 )
+
+
+
+
+
 rem Before building the win32 platform application, check to see if it's already
 rem running...
 if exist %kmlApplicationName%.exe (
@@ -243,10 +345,20 @@ if exist %kmlApplicationName%.exe (
 		GOTO :SKIP_WIN32_BUILD
 	)
 )
-rem --- Clean up build directory ---
+
+
+
+
+
+rem --- Clean up old EXE binaries from the build directory ---
 del *%kmlApplicationName%*.pdb > NUL 2> NUL
 del %kmlApplicationName%*.pdb > NUL 2> NUL
 del %kmlApplicationName%*.dll > NUL 2> NUL
+
+
+
+
+
 rem --- Compile Windows Executable ---
 cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	/FdVC_%kmlApplicationName%.pdb /Fm%kmlApplicationName%.map ^
@@ -261,9 +373,19 @@ IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE_KML
 )
+
+
+
+
+rem ----- LEAVE THE BUILD DIRECTORY -----
 :SKIP_WIN32_BUILD
 :SKIP_ALL_BUILDS
 popd
+
+
+
+
+
 rem --- Calculate how long it took the build script to run ---
 rem Source: https://stackoverflow.com/a/9935540
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
@@ -284,11 +406,43 @@ IF %hh% LEQ 0 (
 ) ELSE (
 	echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
 )
+
+
+
+
+rem ----- SUCCESSFULLY END THE BUILD -----
+endlocal
 exit /B 0
+
+
+
+
+rem ----- FAILURE END THE BUILD -----
 :ON_FAILURE_GAME
 del %codeTreeFileNamePrefixGame%-existing.txt
 :ON_FAILURE_KML
 del %codeTreeFileNamePrefixKml%-existing.txt
+rem ----- LEAVE THE BUILD DIRECTORY -----
 popd
 echo KML build failed! 1>&2
 exit /B %ERRORLEVEL%
+
+
+
+
+
+rem @param %~1 hash file name (existing)
+rem @param %~2 hash file name (current)
+rem @param %~3 return status (TRUE || FALSE)
+:checkHash
+	setlocal
+	fc %~1 %~2 > NUL 2> NUL
+	if %ERRORLEVEL% GTR 0 (
+		set "result=TRUE"
+	) else (
+		set "result=FALSE"
+	)
+	del %~1 2> NUL
+	ren %~2 %~1
+	endlocal&set "%~3=%result%"
+	exit /b 0
