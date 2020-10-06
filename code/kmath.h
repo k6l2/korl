@@ -170,6 +170,8 @@ namespace kmath
 		https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ */
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
 	internal inline bool isNearlyZero(f32 f, f32 epsilon = 1e-5f);
+	internal inline f32    min(f32    a, f32    b);
+	internal inline size_t min(size_t a, size_t b);
 	/** @return the # of bytes which represent `k` kilobytes */
 	internal inline u64 kilobytes(u64 k);
 	/** @return the # of bytes which represent `m` megabytes */

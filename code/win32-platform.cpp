@@ -634,8 +634,9 @@ internal PLATFORM_LOG(w32PlatformLog)
 		//	preemptively destroying earlier buffer data!
 		_set_errno(0); int charsWritten = 
 			_snprintf_s(g_logCircularBuffer + g_logCurrentCircularBufferChar,
+			            kmath::min(remainingLogCircularBuffer, 
 			            // +2 here to account for the \n\0 at the end !!!
-			            min(remainingLogCircularBuffer, totalLogLineSize + 2), 
+			                       totalLogLineSize + 2), 
 			            _TRUNCATE, "%s\n", logLineBuffer);
 		if(errno && !g_hasReceivedException)
 		{

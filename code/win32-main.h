@@ -3,7 +3,15 @@
 #include "platform-game-interfaces.h"
 /* prevent windows from including winsock which causes conflict in win32-network 
 	Source: https://stackoverflow.com/a/1372836 */
-#define _WINSOCKAPI_
+#ifndef _WINSOCKAPI_
+	#define _WINSOCKAPI_
+#endif
+/*#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif*/
+#ifndef NOMINMAX
+	#define NOMINMAX
+#endif
 #include <windows.h>
 struct GameCode
 {

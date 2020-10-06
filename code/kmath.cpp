@@ -1,13 +1,5 @@
 #include "kmath.h"
 #include <limits>
-/* no idea where these stupid macros are coming from, but I don't care since 
-	they are probably worthless anyway */
-#if defined(max)
-	#undef max
-#endif
-#if defined(min)
-	#undef min
-#endif
 const v2f32 v2f32::ZERO = {0,0};
 const v3f32 v3f32::ZERO = {0,0,0};
 const v3f32 v3f32::X = {1,0,0};
@@ -458,6 +450,14 @@ internal inline bool kmath::isNearlyEqual(f32 fA, f32 fB, f32 epsilon)
 internal inline bool kmath::isNearlyZero(f32 f, f32 epsilon)
 {
 	return isNearlyEqual(f, 0.f, epsilon);
+}
+internal inline f32 kmath::min(f32 a, f32 b)
+{
+	return (a < b ? a : b);
+}
+internal inline size_t kmath::min(size_t a, size_t b)
+{
+	return (a < b ? a : b);
 }
 internal inline u64 kmath::kilobytes(u64 k)
 {

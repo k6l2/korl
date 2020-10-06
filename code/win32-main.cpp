@@ -1857,8 +1857,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				}
 				ImGui::End();
 			}
-			const f32 deltaSeconds = 
-				min(MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
+			const f32 deltaSeconds = kmath::min(
+				MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
 			if(!game.updateAndDraw(
 					deltaSeconds, windowDims, 
 					*gameMouseFrameCurrent, *gameKeyboardCurrentFrame,
