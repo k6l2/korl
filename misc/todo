@@ -715,6 +715,16 @@
 		[x] delete calls to epa_verifyTriListIntegrity after I'm done making 
 			sure that everything works reasonably well
 	[ ] clean up this extremely messy sample
+		[ ] pull the Shape tagged union out into its own utility module?
+		[ ] pull Vertex specialization out into its own utility header?
+		[ ] maybe split the minkowski region visualization code + GJK/EPA step 
+			code into a separate example?
+[ ] move the EPA/GJK step functions into their own internal module which must be 
+	specifically included to use them manually (simplify kmath API)
+[ ] utility: generic Director
+[ ] samples: render TTF
+	[ ] integrate stb_truetype
+	[ ] utility: font cache dynamic asset
 [x] figure out how to automatically debug launch a program in Visual Studio 
 	without having to actually swap to it and press the stupid button
 	https://stackoverflow.com/a/46243064/4526664
@@ -803,9 +813,6 @@
 			- tri indices
 		[ ] import material data
 			- texture asset name
-[ ] samples: render TTF
-	[ ] integrate stb_truetype
-	[ ] utility: font cache dynamic asset
 [x] kassert: halt program execution if no debugger is attached to the process
 [x] kassert: open a dialog box to allow option of continuing execution
 [x] kassert: optionally generate a minidump

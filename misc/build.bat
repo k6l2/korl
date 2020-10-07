@@ -471,6 +471,7 @@ del %codeTreeFileNamePrefixKml%-existing.txt
 rem ----- LEAVE THE BUILD DIRECTORY -----
 popd
 echo KML build failed! 1>&2
+endlocal
 exit /B %ERRORLEVEL%
 
 

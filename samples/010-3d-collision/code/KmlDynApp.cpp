@@ -1,71 +1,4 @@
 #include "KmlDynApp.h"
-v3f32 supportShape(const Shape& shape, const kQuaternion& orientation, 
-                   const v3f32& supportDirection)
-{
-	switch(shape.type)
-	{
-		case ShapeType::BOX:
-			return kmath::supportBox(
-				shape.box.lengths, orientation, supportDirection);
-		case ShapeType::SPHERE:
-			return kmath::supportSphere(
-				shape.sphere.radius, supportDirection);
-	}
-	KLOG(ERROR, "shape.type {%i} is invalid!", i32(shape.type));
-	return {};
-}
-void drawBox(const v3f32& worldPosition, const kQuaternion& orientation, 
-             const Shape& shape)
-{
-	g_krb->setModelXform(worldPosition, orientation, {1,1,1});
-	Vertex generatedBox[36];
-	kmath::generateMeshBox(
-		shape.box.lengths, generatedBox, sizeof(generatedBox), 
-		sizeof(generatedBox[0]), offsetof(Vertex,position), 
-		offsetof(Vertex,textureNormal));
-	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
-		? VERTEX_ATTRIBS_POSITION_ONLY
-		: VERTEX_ATTRIBS_NO_COLOR;
-	DRAW_TRIS(generatedBox, vertexAttribOffsets);
-}
-void drawSphere(const v3f32& worldPosition, const kQuaternion& orientation, 
-                const Shape& shape)
-{
-	/* generate sphere mesh */
-	const size_t generatedSphereMeshVertexCount = 
-		kmath::generateMeshCircleSphereVertexCount(16, 16);
-	const size_t generatedSphereMeshBytes = 
-		generatedSphereMeshVertexCount * sizeof(Vertex);
-	Vertex*const generatedSphereMesh = 
-		ALLOC_FRAME_ARRAY(Vertex, generatedSphereMeshVertexCount);
-	kmath::generateMeshCircleSphere(
-		1.f, 16, 16, generatedSphereMesh, generatedSphereMeshBytes, 
-		sizeof(Vertex), offsetof(Vertex,position), 
-		offsetof(Vertex,textureNormal));
-	/* draw the sphere */
-	const v3f32 sphereScale = 
-		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
-	g_krb->setModelXform(worldPosition, orientation, sphereScale);
-	const KrbVertexAttributeOffsets vertexAttribOffsets = g_gs->wireframe
-		? VERTEX_ATTRIBS_POSITION_ONLY
-		: VERTEX_ATTRIBS_NO_COLOR;
-	g_krb->drawTris(
-		generatedSphereMesh, generatedSphereMeshVertexCount, 
-	    sizeof(generatedSphereMesh[0]), vertexAttribOffsets);
-}
-void drawShape(const v3f32& worldPosition, const kQuaternion& orientation, 
-               const Shape& shape)
-{
-	switch(shape.type)
-	{
-		case ShapeType::BOX:
-			drawBox(worldPosition, orientation, shape);
-			break;
-		case ShapeType::SPHERE:
-			drawSphere(worldPosition, orientation, shape);
-			break;
-	}
-}
 /** @return NAN32 if the ray doesn't intersect with actor */
 f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 {
@@ -82,25 +15,6 @@ f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 	}
 	KLOG(ERROR, "actor.shape.type {%i} is invalid!", i32(actor.shape.type));
 	return NAN32;
-}
-struct ShapeGjkSupportData
-{
-	const Shape& shapeA;
-	const v3f32& positionA;
-	const kQuaternion& orientationA;
-	const Shape& shapeB;
-	const v3f32& positionB;
-	const kQuaternion& orientationB;
-};
-internal GJK_SUPPORT_FUNCTION(shapeGjkSupport)
-{
-	const ShapeGjkSupportData& data = 
-		*reinterpret_cast<ShapeGjkSupportData*>(userData);
-	const v3f32 supportA = data.positionA + 
-		supportShape(data.shapeA, data.orientationA,  supportDirection);
-	const v3f32 supportB = data.positionB + 
-		supportShape(data.shapeB, data.orientationB, -supportDirection);
-	return supportA - supportB;
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -565,32 +479,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-#if 0
-		for(size_t a2 = 0; a2 < arrlenu(g_gs->actors); a2++)
-		{
-			if(a == a2)
-				continue;
-			Actor& actor2 = g_gs->actors[a2];
-			v3f32 gjkSimplex[4];
-			ShapeGjkSupportData shapeGjkSupportData = 
-				{ .shapeA       = actor.shape
-				, .positionA    = actor.position
-				, .orientationA = actor.orientation
-				, .shapeB       = actor2.shape
-				, .positionB    = actor2.position
-				, .orientationB = actor2.orientation };
-			if(kmath::gjk(shapeGjkSupport, &shapeGjkSupportData, gjkSimplex))
-				g_krb->setDefaultColor(krb::RED);
-		}
-#endif// 0
-		drawShape(actor.position, actor.orientation, actor.shape);
+		shapeDraw(actor.position, actor.orientation, actor.shape, 
+		          g_gs->wireframe, g_krb, g_gs->templateGameState.hKalFrame);
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		drawShape(g_gs->addShapePosition, kQuaternion::IDENTITY, 
-		          g_gs->addShape);
+		shapeDraw(g_gs->addShapePosition, kQuaternion::IDENTITY, 
+		          g_gs->addShape, g_gs->wireframe, g_krb, 
+		          g_gs->templateGameState.hKalFrame);
 	}
 #if DEBUG_DELETE_LATER
 	if(arrlenu(g_gs->actors) == 2)
@@ -756,3 +654,4 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 }
 #include "TemplateGameState.cpp"
 #include "camera3d.cpp"
+#include "kShape.cpp"
