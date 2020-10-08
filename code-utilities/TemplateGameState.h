@@ -45,3 +45,7 @@ internal void templateGameState_renderAudio(
 internal bool templateGameState_updateAndDraw(
 	KmlTemplateGameState* tgs, const GameKeyboard& gameKeyboard, 
 	bool windowIsFocused);
+/* convenience macros for our application */
+#define ALLOC_FRAME_ARRAY(gs,type,elements) \
+	reinterpret_cast<type*>(\
+		kAllocAlloc((gs)->templateGameState.hKalFrame,sizeof(type)*(elements)))

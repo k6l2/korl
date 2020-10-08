@@ -3,7 +3,6 @@
 #include "camera3d.h"
 #include "kVertex.h"
 #include "kShape.h"
-#define DEBUG_DELETE_LATER 1
 enum class HudState : u8
 	{ NAVIGATING
 	, ADDING_SHAPE
@@ -38,17 +37,5 @@ struct GameState
 	f32 modifyShapeTempValues[4];
 	f32 modifyShapePlaneDistanceFromCamera;
 	v2i32 modifyShapeWindowPositionStart;
-#if DEBUG_DELETE_LATER
-	/* GJK + EPA visualizations */
-	v3f32 minkowskiDifferencePosition;
-	Vertex minkowskiDifferencePointCloud[1000];
-	u16 minkowskiDifferencePointCloudCount = 1000;
-	kmath::GjkState gjkState;
-	kmath::EpaState epaState;
-#endif// DEBUG_DELETE_LATER
 };
 global_variable GameState* g_gs;
-/* convenience macros for our application */
-#define ALLOC_FRAME_ARRAY(type,elements) \
-	reinterpret_cast<type*>(\
-		kAllocAlloc(g_gs->templateGameState.hKalFrame,sizeof(type)*(elements)))

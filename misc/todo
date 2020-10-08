@@ -655,7 +655,7 @@
 	[x] move the camera around when mouse is captured & hidden
 	[x] relative wheel position
 	[x] scroll to change click circle radius
-[ ] samples: 3D collision detection & resolution capabilities
+[x] samples: 3D collision detection & resolution capabilities
 	https://box2d.org/publications/
 	[x] kmath: generate box vertices for arbitrary 3D size
 	[x] kmath: generate sphere vertices for arbitrary radius,resolution
@@ -714,14 +714,42 @@
 			to converge!
 		[x] delete calls to epa_verifyTriListIntegrity after I'm done making 
 			sure that everything works reasonably well
-	[ ] clean up this extremely messy sample
-		[ ] pull the Shape tagged union out into its own utility module?
-		[ ] pull Vertex specialization out into its own utility header?
-		[ ] maybe split the minkowski region visualization code + GJK/EPA step 
+	[x] clean up this extremely messy sample
+		[x] pull the Shape tagged union out into its own utility module?
+		[x] pull Vertex specialization out into its own utility header?
+		[x] maybe split the minkowski region visualization code + GJK/EPA step 
 			code into a separate example?
 [ ] move the EPA/GJK step functions into their own internal module which must be 
 	specifically included to use them manually (simplify kmath API)
-[ ] utility: generic Director
+[ ] LD47 post-mortem cleanup
+	[ ] create a "texture metadata" asset
+		- image file 
+			(by default, a PNG in the same directory with the same name)
+		- render properties
+			- texture clamp modes
+			- texture filter modes
+		[ ] update Flipbook to use a TEX asset instead of a raw image asset
+	[x] pre-defined general-purpose Vertex structure
+	[x] pre-defined general-purpose Shape structure
+	[ ] SIMPLER drawQuad API that doesn't require defining texNorm & color 
+		vertex attributes
+	[ ] investigate why the hell I can't initialize a kQuaternion member struct 
+		with an initialization list (see stateSim.h of the ld47 project)
+	[ ] utility: physics solver
+		[ ] use general-purpose Shape structure (make generic in the future?)
+		[ ] save handles to user-defined Shapes
+		[ ] create "bodies" who reference Shape handles
+			- position
+			- velocity
+			- orientation
+			- angularVelocity
+	[ ] utility: generic Actor interface
+		[ ] is there some way of automatically constructing an "Actor" interface 
+			with virtual dispatch functions without using C++ class 
+			inheritance?..
+		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
+	[ ] utility: generic Director
+		[ ] is such a thing even possible/worth making?...
 [ ] samples: render TTF
 	[ ] integrate stb_truetype
 	[ ] utility: font cache dynamic asset
@@ -760,6 +788,7 @@
 	[x] read the build task exit status files to determine if there were any 
 		build failures
 [ ] kmd5: ignore *.swp files
+[ ] samples: GJK + EPA visualization
 [ ] win32: disable the right-click menu in the window title bar when the 
 	application is in mouse relative mode
 	- when the mouse exits relative mode and the cursor is in the title bar, the 
@@ -831,6 +860,8 @@
 	provided by default from KML to allow the game to customize the application 
 	icon
 	[ ] Add a `Deployment Procedures` section to README to document this process
+[ ] simplify samples 10 - there's really no need to have the ability to 
+	spawn/delete arbitrary # of Shape actors...
 [ ] create a script which attempts to build all the KML samples and reports if 
 	any of them fail to build
 [ ] DInput: move device enumeration into a separate thread so the main thread 
