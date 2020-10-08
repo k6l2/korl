@@ -719,7 +719,7 @@
 		[x] pull Vertex specialization out into its own utility header?
 		[x] maybe split the minkowski region visualization code + GJK/EPA step 
 			code into a separate example?
-[ ] move the EPA/GJK step functions into their own internal module which must be 
+[x] move the EPA/GJK step functions into their own internal module which must be 
 	specifically included to use them manually (simplify kmath API)
 [ ] LD47 post-mortem cleanup
 	[ ] create a "texture metadata" asset
