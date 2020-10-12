@@ -163,4 +163,23 @@ namespace kutil
 	template<class T>
 	u32 netUnpack(T data, const u8** bufferCursor, const u8* bufferEnd) 
 		= delete;
+	/**
+	 * Modify the c-string pointed to by `pCStr` to point to the first 
+	 * non-whitespace character in the string, then destructively terminate the 
+	 * string at the first whitespace character following this address.
+	 * @return The size of the contiguous string of non-whitespace characters.
+	 */
+	size_t extractNonWhitespaceToken(char** pCStr, size_t cStrSize);
+	void cStrToLowercase(char* cStr, size_t cStrSize);
+	/**
+	 * Convert all '_' characters in `cStr` into '-' characters.
+	 */
+	void cStrRaiseUnderscores(char* cStr, size_t cStrSize);
+	/**
+	 * Compare `cStr` to an array of c-strings.
+	 * @return The index of `cStrArray` of the first match with `cStr`.  If no 
+	 *         match is found, then `cStrArraySize` is returned.
+	 */
+	size_t cStrCompareArray(
+		const char* cStr, const char*const* cStrArray, size_t cStrArraySize);
 }

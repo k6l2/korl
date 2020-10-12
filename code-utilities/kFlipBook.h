@@ -58,12 +58,21 @@ struct KFlipBook
 	bool reverse;
 	bool flipH;
 };
-internal bool kfbDecodeMeta(void* fileData, u32 fileBytes, 
-                            const char* cStrAnsiAssetName, 
-                            FlipbookMetaData* o_fbMeta, 
-                            char* o_texAssetFileName, 
-                            size_t texAssetFileNameBufferSize);
-internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
-                      KrbApi* krb, KAssetIndex assetIndex);
-internal void kfbStep(KFlipBook* kfb, f32 deltaSeconds);
-internal void kfbDraw(KFlipBook* kfb, const Color4f32& color);
+/**
+ * This function decodes & populates all members of FlipbookMetaData excluding 
+ * textureKAssetIndex, since this data must be determined by the asset manager 
+ * itself using o_texAssetFileName.
+ */
+internal bool 
+	kfbDecodeMeta(
+		void* fileData, u32 fileBytes, const char* cStrAnsiAssetName, 
+		FlipbookMetaData* o_fbMeta, char* o_texAssetFileName, 
+		size_t texAssetFileNameBufferSize);
+internal void 
+	kfbInit(
+		KFlipBook* kfb, KAssetManager* kam, KrbApi* krb, 
+		KAssetIndex assetIndex);
+internal void 
+	kfbStep(KFlipBook* kfb, f32 deltaSeconds);
+internal void 
+	kfbDraw(KFlipBook* kfb, const Color4f32& color);

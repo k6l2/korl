@@ -1,14 +1,14 @@
 #include "kAssetManager.h"
 #include "z85-png-default.h"
 #include "z85-wav-default.h"
+#include "korl-texture.h"
 #include <string>
 enum class KAssetType : u8
-{
-	UNUSED,
-	RAW_IMAGE,
-	RAW_SOUND,
-	FLIPBOOK_META
-};
+	{ UNUSED
+	, RAW_IMAGE
+	, RAW_SOUND
+	, FLIPBOOK_META
+	, TEXTURE_META };
 struct KAsset
 {
 	FileWriteTime lastWriteTime;
@@ -28,6 +28,12 @@ struct KAsset
 			FlipbookMetaData metaData;
 			char textureAssetFileName[128];
 		} flipbook;
+		struct
+		{
+			KorlTextureMetaData metaData;
+			char imageAssetName[128];
+			KAssetIndex kaiImage;
+		} texture;
 	} assetData;
 	// This pointer is here only for convenience with respect to asynchronous 
 	//	job posting to the platform layer.
@@ -44,6 +50,7 @@ struct KAssetManager
 	KAsset defaultAssetImage;
 	KAsset defaultAssetSound;
 	KAsset defaultAssetFlipbookMetaData;
+	KAsset defaultAssetTextureMetaData;
 	KAllocatorHandle assetDataAllocator;
 	KAllocatorHandle hKgaRawFiles;
 	KplLockHandle hLockAssetDataAllocator;
@@ -102,6 +109,13 @@ internal KAssetManager* kamConstruct(
 		CARRAY_SIZE(
 			defaultAssetFlipbook.assetData.flipbook.textureAssetFileName),
 		"flipbook-default");
+	KAsset defaultAssetTexture;
+	defaultAssetTexture.type = KAssetType::TEXTURE_META;
+	defaultAssetTexture.assetData.texture.metaData = {};
+	defaultAssetTexture.assetData.texture.kaiImage = KAssetIndex::ENUM_SIZE;
+	strcpy_s(defaultAssetTexture.assetData.texture.imageAssetName, 
+		CARRAY_SIZE(defaultAssetTexture.assetData.texture.imageAssetName),
+		"texture-default");
 	/* request access to a spinlock from the platform layer so we can keep 
 		the asset data allocator safe between asset loading job threads */
 	const KplLockHandle hLockAssetDataAllocator = kpl->reserveLock();
@@ -112,6 +126,7 @@ internal KAssetManager* kamConstruct(
 		, .defaultAssetImage            = defaultAssetImage
 		, .defaultAssetSound            = defaultAssetSound
 		, .defaultAssetFlipbookMetaData = defaultAssetFlipbook
+		, .defaultAssetTextureMetaData  = defaultAssetTexture
 		, .assetDataAllocator           = assetDataAllocator
 		, .hKgaRawFiles                 = hKalRawFiles
 		, .hLockAssetDataAllocator      = hLockAssetDataAllocator
@@ -144,9 +159,13 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetHandle assetHandle)
 		} break;
 		case KAssetType::FLIPBOOK_META:
 		{
-			KAssetHandle kahTexture = static_cast<KAssetHandle>(
+			 KAssetHandle kahTexture = static_cast<KAssetHandle>(
 				asset->assetData.flipbook.metaData.textureKAssetIndex);
 			kamFreeAsset(kam, kahTexture);
+		} break;
+		case KAssetType::TEXTURE_META:
+		{
+			kamFreeAsset(kam, asset->assetData.texture.kaiImage);
 		} break;
 		case KAssetType::UNUSED: 
 		default:
@@ -167,6 +186,17 @@ internal void kamFreeAsset(KAssetManager* kam, KAssetIndex assetIndex)
 {
 	const KAssetHandle assetHandle = static_cast<KAssetHandle>(assetIndex);
 	kamFreeAsset(kam, assetHandle);
+}
+internal KAssetIndex kgtAmFindKAssetIndex(const char* assetName)
+{
+	for(size_t id = 0; id < KASSET_COUNT; id++)
+	{
+		if(strcmp(kAssetFileNames[id], assetName) == 0)
+		{
+			return static_cast<KAssetIndex>(id);
+		}
+	}
+	return KAssetIndex::ENUM_SIZE;
 }
 internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 {
@@ -189,32 +219,32 @@ internal void kamOnLoadingJobFinished(KAssetManager* kam, KAssetHandle kah)
 		}break;
 		case KAssetType::FLIPBOOK_META:
 		{
-			char*const fbTexAssetFileName = 
-				asset->assetData.flipbook.textureAssetFileName;
-			size_t assetFileNameIdTex;
-			for(assetFileNameIdTex = 0; assetFileNameIdTex < KASSET_COUNT; 
-				assetFileNameIdTex++)
-			{
-				if(strcmp(kAssetFileNames[assetFileNameIdTex], 
-				          fbTexAssetFileName) == 0)
-				{
-					break;
-				}
-			}
-			kassert(assetFileNameIdTex < KASSET_COUNT);
-			if(assetFileNameIdTex >= KASSET_COUNT)
-			{
-				KLOG(WARNING, 
+			const KAssetIndex kgtAssetIdTex = kgtAmFindKAssetIndex(
+				asset->assetData.flipbook.textureAssetFileName);
+			if(kgtAssetIdTex >= KAssetIndex::ENUM_SIZE)
+				KLOG(ERROR, 
 				     "Flipbook meta textureAssetFileName='%s' not found!", 
 				     asset->assetData.flipbook.textureAssetFileName);
-			}
 			else
 			{
 				asset->assetData.flipbook.metaData.textureKAssetIndex = 
-					assetFileNameIdTex;
-				kamPushAsset(kam, KAssetIndex(assetFileNameIdTex));
+					static_cast<size_t>(kgtAssetIdTex);
+				kamPushAsset(kam, kgtAssetIdTex);
 			}
 		}break;
+		case KAssetType::TEXTURE_META:
+		{
+			const KAssetIndex kgtAssetIdImage = kgtAmFindKAssetIndex(
+				asset->assetData.texture.imageAssetName);
+			if(kgtAssetIdImage >= KAssetIndex::ENUM_SIZE)
+				KLOG(ERROR, "texture meta image asset name ('%s') not found!", 
+				     asset->assetData.texture.imageAssetName);
+			else
+			{
+				asset->assetData.texture.kaiImage = kgtAssetIdImage;
+				kamPushAsset(kam, kgtAssetIdImage);
+			}
+		} break;
 		case KAssetType::UNUSED:
 		{
 			KLOG(ERROR, "UNUSED asset!");
@@ -457,13 +487,70 @@ JOB_QUEUE_FUNCTION(asyncLoadFlipbookMeta)
 	{
 		KLOG(ERROR, "Failed to decode flipbook meta data \"%s\"!", 
 		     kAssetFileNames[kAssetId]);
-	    return;
+		return;
+	}
+}
+JOB_QUEUE_FUNCTION(asyncLoadTextureMeta)
+{
+	KAsset*const asset = reinterpret_cast<KAsset*>(data);
+	const size_t kAssetId = asset->kAssetIndex;
+	while(!asset->kam->kpl->isAssetAvailable(kAssetFileNames[kAssetId]))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", kAssetFileNames[kAssetId]);
+	}
+	const i32 assetByteSize = 
+		asset->kam->kpl->getAssetByteSize(kAssetFileNames[kAssetId]);
+	if(assetByteSize < 0)
+	{
+		KLOG(ERROR, "Failed to get asset byte size of \"%s\"", 
+		     kAssetFileNames[kAssetId]);
+		return;
+	}
+	/* lock the asset manager's asset data allocator so we can safely allocate 
+		data for the raw file.  The decoded asset structure is stored entirely 
+		in the KAsset */
+	asset->kam->kpl->lock(asset->kam->hLockAssetDataAllocator);
+	void*const rawFileMemory = 
+		kAllocAlloc(asset->kam->hKgaRawFiles, 
+		            kmath::safeTruncateU32(assetByteSize) + 1);
+	kassert(rawFileMemory);
+	asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
+	/* defer cleanup of the raw file memory until after we utilize it */
+	defer({
+		asset->kam->kpl->lock(asset->kam->hLockAssetDataAllocator);
+		kAllocFree(asset->kam->hKgaRawFiles, rawFileMemory);
+		asset->kam->kpl->unlock(asset->kam->hLockAssetDataAllocator);
+	});
+	/* load the entire raw file into a `fileByteSize` chunk */
+	const bool assetReadSuccess = 
+		asset->kam->kpl->readEntireAsset(
+			kAssetFileNames[kAssetId], rawFileMemory, 
+			kmath::safeTruncateU32(assetByteSize));
+	if(!assetReadSuccess)
+	{
+		KLOG(ERROR, "Failed to read asset \"%s\"!", kAssetFileNames[kAssetId]);
+		return;
+	}
+	/* null-terminate the file buffer */
+	reinterpret_cast<u8*>(rawFileMemory)[assetByteSize] = 0;
+	/* decode the file data into a struct we can use */
+	const bool textureMetaDecodeSuccess = 
+		korlTextureMetaDecode(
+			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
+			kAssetFileNames[kAssetId], &asset->assetData.texture.metaData, 
+			asset->assetData.texture.imageAssetName, 
+			CARRAY_SIZE(asset->assetData.texture.imageAssetName));
+	if(!textureMetaDecodeSuccess)
+	{
+		KLOG(ERROR, "Failed to decode texture meta data \"%s\"!", 
+		     kAssetFileNames[kAssetId]);
+		return;
 	}
 }
 // @optimization (minor): just bake this info using `kasset`
 enum class KAssetFileType
 {
-	PNG, WAV, OGG, FLIPBOOK_META, 
+	PNG, WAV, OGG, FLIPBOOK_META, TEXTURE_META, 
 	UNKNOWN
 };
 internal KAssetFileType kamAssetFileType(KAssetIndex assetIndex)
@@ -483,6 +570,10 @@ internal KAssetFileType kamAssetFileType(KAssetIndex assetIndex)
 	else if(strstr(kAssetFileNames[static_cast<size_t>(assetIndex)], ".fbm"))
 	{
 		return KAssetFileType::FLIPBOOK_META;
+	}
+	else if(strstr(kAssetFileNames[static_cast<size_t>(assetIndex)], ".tex"))
+	{
+		return KAssetFileType::TEXTURE_META;
 	}
 	return KAssetFileType::UNKNOWN;
 }
@@ -527,6 +618,13 @@ internal KAssetHandle kamPushAsset(KAssetManager* kam,
 				asset->jqTicketLoading = 
 				                kam->kpl->postJob(asyncLoadFlipbookMeta, asset);
 			}break;
+			case KAssetFileType::TEXTURE_META:
+			{
+				asset->type            = KAssetType::TEXTURE_META;
+				asset->kam             = kam;
+				asset->jqTicketLoading = 
+				                 kam->kpl->postJob(asyncLoadTextureMeta, asset);
+			}break;
 			case KAssetFileType::UNKNOWN:
 			default:
 			{
@@ -565,8 +663,9 @@ internal bool kamIsLoadingAssets(KAssetManager* kam, KAssetType type)
 }
 internal bool kamIsLoadingImages(KAssetManager* kam)
 {
-	return kamIsLoadingAssets(kam, KAssetType::RAW_IMAGE) |
-	       kamIsLoadingAssets(kam, KAssetType::FLIPBOOK_META);
+	return kamIsLoadingAssets(kam, KAssetType::RAW_IMAGE) 
+	     | kamIsLoadingAssets(kam, KAssetType::FLIPBOOK_META) 
+	     | kamIsLoadingAssets(kam, KAssetType::TEXTURE_META);
 }
 internal bool kamIsLoadingSounds(KAssetManager* kam)
 {

@@ -139,4 +139,4 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 	#include "kAssetManager.cpp"
 #pragma warning( pop )
 #include "kAllocator.cpp"
-
+#include "korl-texture.cpp"

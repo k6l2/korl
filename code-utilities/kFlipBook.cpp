@@ -23,9 +23,10 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 {
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(fileData);
+	const char*const fileCStrEnd = fileCStr + fileBytes;
 	kassert(fileCStr[fileBytes] == '\0');
 	u32 fbPropertiesFoundBitflags = 0;
-	u8 fbPropertiesFoundCount = 0;
+	u8  fbPropertiesFoundCount    = 0;
 	// destructively read the file line by line //
 	// source: https://stackoverflow.com/a/17983619
 	char* currLine = fileCStr;
@@ -34,12 +35,15 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 		char* nextLine = strchr(currLine, '\n');
 		if(nextLine >= fileCStr + fileBytes)
 			nextLine = nullptr;
+		const char*const currLineEnd = (nextLine
+			? nextLine
+			: fileCStrEnd);
 		if(nextLine) 
 			*nextLine = '\0';
 		// parse `currLine` for flipbook meta data //
 		{
 			char* idValueSeparator = strchr(currLine, ':');
-			if(!idValueSeparator)
+			if(!idValueSeparator || idValueSeparator >= currLineEnd)
 			{
 				KLOG(ERROR, "Failed to find idValueSeparator for "
 				     "currLine=='%s'!", currLine);
@@ -47,6 +51,8 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 			}
 			*idValueSeparator = '\0';
 			idValueSeparator++;
+			const size_t valueStringSize = kmath::safeTruncateU64(
+				currLineEnd - idValueSeparator);
 			if(strstr(currLine, "frame-size-x"))
 			{
 				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_FRAME_SIZE_X;
@@ -72,25 +78,14 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 			{
 				fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_TEX_ASSET_NAME;
 				fbPropertiesFoundCount++;
-				while(*idValueSeparator && isspace(*idValueSeparator))
-				{
-					idValueSeparator++;
-				}
-				for(char* spaceSearchChar = idValueSeparator + 1; 
-					*spaceSearchChar; spaceSearchChar++)
-				{
-					if(isspace(*spaceSearchChar))
-					{
-						*spaceSearchChar = '\0';
-						break;
-					}
-				}
-				const size_t valueStrLength = strlen(idValueSeparator);
-				if(valueStrLength >= texAssetFileNameBufferSize - 1)
+				const size_t cStrValueTokenSize = 
+					kutil::extractNonWhitespaceToken(
+						&idValueSeparator, valueStringSize);
+				if(cStrValueTokenSize >= texAssetFileNameBufferSize - 1)
 				{
 					KLOG(ERROR, "Texture asset file name length==%i is too "
 					     "long for asset file name buffer==%i!",
-					     valueStrLength, texAssetFileNameBufferSize);
+					     cStrValueTokenSize, texAssetFileNameBufferSize);
 					return false;
 				}
 				strcpy_s(o_texAssetFileName, texAssetFileNameBufferSize,
@@ -168,8 +163,9 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 		fbPropertiesFoundCount++;
 		fbPropertiesFoundBitflags |= 1<<KFB_META_DECODE_TEX_ASSET_NAME;
 	}
-	const bool success = (fbPropertiesFoundCount == 9) && 
-		(fbPropertiesFoundBitflags == (1<<KFB_META_DECODE_ENTRY_COUNT) - 1);
+	const bool success = 
+		   (fbPropertiesFoundCount    ==     KFB_META_DECODE_ENTRY_COUNT) 
+		&& (fbPropertiesFoundBitflags == (1<<KFB_META_DECODE_ENTRY_COUNT) - 1);
 	if(!success)
 	{
 		KLOG(ERROR, "Failed to pass safety check for '%s'!", cStrAnsiAssetName);

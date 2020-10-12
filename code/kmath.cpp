@@ -532,6 +532,12 @@ internal inline u8 kmath::safeTruncateU8(u64 value)
 	kassert(value <= std::numeric_limits<u8>::max());
 	return static_cast<u8>(value);
 }
+internal inline i8 kmath::safeTruncateI8(i32 value)
+{
+	kassert(value <= std::numeric_limits<i8>::max() 
+	     && value >= std::numeric_limits<i8>::min());
+	return static_cast<i8>(value);
+}
 internal inline f32 kmath::v2Radians(const v2f32& v)
 {
 	if(isNearlyZero(v.x) && isNearlyZero(v.y))
