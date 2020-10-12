@@ -35,8 +35,7 @@ internal void templateGameState_onReloadCode(GameMemory& memory);
  * occupied by `tgs` BEFORE calling this function!!!
  */
 internal void templateGameState_initialize(
-	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize, 
-	bool indieTextureHack = false);
+	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize);
 internal void templateGameState_renderAudio(
 	KmlTemplateGameState* tgs, GameAudioBuffer& audioBuffer, 
 	u32 sampleBlocksConsumed);

@@ -730,7 +730,10 @@
 			- texture filter modes
 		[x] load tex files into the asset manager
 		[x] automatically load RawImage asset which the tex file refers to
-		[ ] update kamGetTexture to only utilize texture meta data assets
+		[x] update kamGetTexture to utilize texture meta data assets, or use the 
+			default texture meta data asset if a RawImage asset is requested
+		[x] remove stupid indie pixel hack from template game state
+		[x] kasset: ignore *.swp files
 		[ ] update kamGetImageSize to " " "
 		[ ] load TextureMetaData into KRB when `useTexture` API is called
 		[ ] update Flipbook to use a TEX asset instead of a raw image asset

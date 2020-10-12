@@ -284,7 +284,8 @@ internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
 	// Submit draw commands to the render backend. //
 	const KAssetIndex kAssetIdTex = 
 		KAssetIndex(kfb->cachedMetaData.textureKAssetIndex);
-	kfb->krb->useTexture(kamGetTexture(kfb->kam, kAssetIdTex));
+	kfb->krb->useTexture(kamGetTexture(kfb->kam, kAssetIdTex), 
+	                     kamGetTextureMetaData(kfb->kam, kAssetIdTex));
 	v2f32 texCoords[4] = {{pageTexCoordLeft, pageTexCoordUp},
 	                      {pageTexCoordLeft, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordDown},

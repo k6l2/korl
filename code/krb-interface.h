@@ -2,6 +2,7 @@
 #pragma once
 #include "kutil.h"
 #include "kmath.h"
+#include "korl-texture.h"
 using KrbTextureHandle = u32;
 struct Color4f32
 {
@@ -30,7 +31,6 @@ namespace krb
 	struct Context
 	{
 		Color4f32 defaultColor = WHITE;
-		bool indieTextureHack = false;
 	};
 	global_variable Context* g_context;
 }
@@ -110,7 +110,7 @@ struct KrbVertexAttributeOffsets
 #define KRB_DELETE_TEXTURE(name) \
 	void name(KrbTextureHandle krbTextureHandle)
 #define KRB_USE_TEXTURE(name) \
-	void name(KrbTextureHandle kth)
+	void name(KrbTextureHandle kth, const KorlTextureMetaData& texMeta)
 /** 
  * @return {NAN,NAN} if the provided world position is not contained within the 
  *         camera's clip space.  This does NOT mean that non-{NAN,NAN} values 

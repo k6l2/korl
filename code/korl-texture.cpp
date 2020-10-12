@@ -169,7 +169,7 @@ internal bool
 				     idValueSeparator);
 				return false;
 			}
-			o_texMeta->filterMinify = static_cast<KorlTextureFilterMode>(
+			o_texMeta->filterMagnify = static_cast<KorlTextureFilterMode>(
 				cStrMatchIndex);
 		}
 		if(nextLine) *nextLine = '\n';

@@ -49,12 +49,8 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
-	/* clear the krb context without clearing the indie texture hack :| 
-	 * forgive me, graphics gods, for I have sinned */
-	const bool prevIndieTextureHack = krb::g_context->indieTextureHack;
-	krb::Context ctx = {};
-	ctx.indieTextureHack = prevIndieTextureHack;
-	*(krb::g_context) = ctx;
+	/* clear the krb context */
+	*(krb::g_context) = {};
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
@@ -481,13 +477,6 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	GLuint texName;
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	if(krb::g_context->indieTextureHack)
-	{
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	}
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageSizeX, imageSizeY, 0, 
 	             GL_RGBA, GL_UNSIGNED_BYTE, imageDataRGBA);
 	GL_CHECK_ERROR();
@@ -498,9 +487,51 @@ internal KRB_DELETE_TEXTURE(krbDeleteTexture)
 	glDeleteTextures(1, &krbTextureHandle);
 	GL_CHECK_ERROR();
 }
+internal GLint korlRenderBackendDecodeTextureWrapMode(KorlTextureWrapMode m)
+{
+	switch(m)
+	{
+		case KorlTextureWrapMode::CLAMP:
+			return GL_CLAMP_TO_EDGE;
+		case KorlTextureWrapMode::REPEAT:
+			return GL_REPEAT;
+		case KorlTextureWrapMode::REPEAT_MIRRORED:
+			return GL_MIRRORED_REPEAT;
+		default:
+			KLOG(ERROR, "Invalid texture meta data wrap mode (%i)!", 
+			     static_cast<i32>(m));
+	}
+	return GL_CLAMP_TO_EDGE;
+}
+internal GLint korlRenderBackendDecodeTextureFilterMode(KorlTextureFilterMode m)
+{
+	switch(m)
+	{
+		case KorlTextureFilterMode::NEAREST:
+			return GL_NEAREST;
+		case KorlTextureFilterMode::LINEAR:
+			return GL_LINEAR;
+		default:
+			KLOG(ERROR, "Invalid texture meta data filter mode (%i)!", 
+			     static_cast<i32>(m));
+	}
+	return GL_NEAREST_MIPMAP_LINEAR;
+}
 internal KRB_USE_TEXTURE(krbUseTexture)
 {
 	glBindTexture(GL_TEXTURE_2D, kth);
+	const GLint paramWrapS = 
+		korlRenderBackendDecodeTextureWrapMode(texMeta.wrapX);
+	const GLint paramWrapT = 
+		korlRenderBackendDecodeTextureWrapMode(texMeta.wrapY);
+	const GLint paramFilterMin = 
+		korlRenderBackendDecodeTextureFilterMode(texMeta.filterMinify);
+	const GLint paramFilterMag = 
+		korlRenderBackendDecodeTextureFilterMode(texMeta.filterMagnify);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, paramWrapS);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, paramWrapT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, paramFilterMin);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, paramFilterMag);
 	GL_CHECK_ERROR();
 }
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)

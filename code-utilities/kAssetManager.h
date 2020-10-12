@@ -18,8 +18,9 @@ internal void
 internal RawSound 
 	kamGetRawSound(KAssetManager* kam, KAssetIndex assetIndex);
 internal KrbTextureHandle 
-	kamGetTexture(
-		KAssetManager* kam, KAssetIndex assetIndex);
+	kamGetTexture(KAssetManager* kam, KAssetIndex assetIndex);
+internal KorlTextureMetaData
+	kamGetTextureMetaData(KAssetManager* kam, KAssetIndex assetIndex);
 internal v2u32 
 	kamGetImageSize(KAssetManager* kam, KAssetIndex assetIndex);
 internal FlipbookMetaData 

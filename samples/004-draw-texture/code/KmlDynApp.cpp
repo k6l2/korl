@@ -101,8 +101,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			, {{-1,-1,-1}, krb::WHITE, {0,1}}
 			};
 		g_krb->setModelXform({0,0,0}, kQuaternion::IDENTITY, {4,4,4});
-		g_krb->useTexture(kamGetTexture(g_gs->templateGameState.assetManager, 
-		                                KAssetIndex::gfx_crate_png));
+		g_krb->useTexture(
+			kamGetTexture(g_gs->templateGameState.assetManager, 
+			              KAssetIndex::gfx_crate_tex), 
+			kamGetTextureMetaData(g_gs->templateGameState.assetManager, 
+			                      KAssetIndex::gfx_crate_tex));
 		DRAW_TRIS(CRATE_MESH, VERTEX_ATTRIBS);
 	}
 	return true;
