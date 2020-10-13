@@ -397,21 +397,37 @@ internal KorlTextureMetaData
 	}
 	if(asset->loaded)
 	{
-		kassert(asset->type == KAssetType::TEXTURE_META);
-		return asset->assetData.texture.metaData;
+		if(asset->type == KAssetType::TEXTURE_META)
+			return asset->assetData.texture.metaData;
+		else if(asset->type == KAssetType::RAW_IMAGE)
+			return kam->defaultAssetTextureMetaData.assetData.texture.metaData;
+		else
+		{
+			KLOG(ERROR, "Invalid asset type (%i)!", asset->type);
+			return kam->defaultAssetTextureMetaData.assetData.texture.metaData;
+		}
 	}
 	else
 	{
 		if(kam->kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kamOnLoadingJobFinished(kam, assetHandle);
-			kassert(asset->type == KAssetType::TEXTURE_META);
-			return asset->assetData.texture.metaData;
+			if(asset->type == KAssetType::TEXTURE_META)
+				return asset->assetData.texture.metaData;
+			else if(asset->type == KAssetType::RAW_IMAGE)
+				return 
+					kam->defaultAssetTextureMetaData.assetData.texture.metaData;
+			else
+			{
+				KLOG(ERROR, "Invalid asset type (%i)!", asset->type);
+				return 
+					kam->defaultAssetTextureMetaData.assetData.texture.metaData;
+			}
 		}
 		return kam->defaultAssetTextureMetaData.assetData.texture.metaData;
 	}
 }
-internal v2u32 kamGetImageSize(KAssetManager* kam, KAssetIndex assetIndex)
+internal v2u32 kamGetRawImageSize(KAssetManager* kam, KAssetIndex assetIndex)
 {
 	if(assetIndex >= KAssetIndex::ENUM_SIZE)
 	{
@@ -440,6 +456,56 @@ internal v2u32 kamGetImageSize(KAssetManager* kam, KAssetIndex assetIndex)
 			kassert(asset->type == KAssetType::RAW_IMAGE);
 			return {asset->assetData.image.rawImage.sizeX,
 			        asset->assetData.image.rawImage.sizeY};
+		}
+		return {kam->defaultAssetImage.assetData.image.rawImage.sizeX,
+		        kam->defaultAssetImage.assetData.image.rawImage.sizeY};
+	}
+}
+internal v2u32 kamGetImageSize(KAssetManager* kam, KAssetIndex assetIndex)
+{
+	if(assetIndex >= KAssetIndex::ENUM_SIZE)
+	{
+		return {kam->defaultAssetImage.assetData.image.rawImage.sizeX,
+		        kam->defaultAssetImage.assetData.image.rawImage.sizeY};
+	}
+	KAsset*const assets = reinterpret_cast<KAsset*>(kam + 1);
+	const KAssetHandle assetHandle = static_cast<KAssetHandle>(assetIndex);
+	kassert(assetHandle < kam->maxAssetHandles);
+	KAsset*const asset = assets + assetHandle;
+	if(asset->type == KAssetType::UNUSED)
+	{
+		kamPushAsset(kam, assetIndex);
+	}
+	if(asset->loaded)
+	{
+		if(asset->type == KAssetType::TEXTURE_META)
+			return kamGetRawImageSize(
+				kam, asset->assetData.texture.kaiImage);
+		else if(asset->type == KAssetType::RAW_IMAGE)
+			return {asset->assetData.image.rawImage.sizeX,
+			        asset->assetData.image.rawImage.sizeY};
+		else
+		{
+			KLOG(ERROR, "Invalid asset type (%i)!", asset->type);
+			return {0,0};
+		}
+	}
+	else
+	{
+		if(kam->kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kamOnLoadingJobFinished(kam, assetHandle);
+			if(asset->type == KAssetType::TEXTURE_META)
+				return kamGetRawImageSize(
+					kam, asset->assetData.texture.kaiImage);
+			else if(asset->type == KAssetType::RAW_IMAGE)
+				return {asset->assetData.image.rawImage.sizeX,
+				        asset->assetData.image.rawImage.sizeY};
+			else
+			{
+				KLOG(ERROR, "Invalid asset type (%i)!", asset->type);
+				return {0,0};
+			}
 		}
 		return {kam->defaultAssetImage.assetData.image.rawImage.sizeX,
 		        kam->defaultAssetImage.assetData.image.rawImage.sizeY};
