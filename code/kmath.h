@@ -219,6 +219,10 @@ namespace kmath
 	internal void makeM4f32(
 		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m);
 	/**
+	 * @return A sine curve that lies in the range [0,1]
+	 */
+	internal inline f32 sine_0_1(f32 radians);
+	/**
 	 * Find the roots of a given quadratic formula which satisfies the form 
 	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
 	 * `f(x) = 0`.  Complex# solutions are ignored.

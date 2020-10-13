@@ -101,6 +101,17 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 	projectionMatrix.r2c2 = -2 / (zFar - zNear);
 	projectionMatrix.r2c3 = -(zFar + zNear) / (zFar - zNear);
 	glLoadTransposeMatrixf(projectionMatrix.elements);
+	// empty the modelview stack //
+	glMatrixMode(GL_MODELVIEW);
+	{
+		GLint modelViewStackDepth;
+		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+		for(; modelViewStackDepth > 1; modelViewStackDepth--)
+		{
+			glPopMatrix();
+		}
+	}
+	glLoadIdentity();
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
@@ -129,6 +140,17 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	projectionMatrix.r2c2 = -2 / (zFar - zNear);
 	projectionMatrix.r2c3 = -(zFar + zNear) / (zFar - zNear);
 	glLoadTransposeMatrixf(projectionMatrix.elements);
+	// empty the modelview stack //
+	glMatrixMode(GL_MODELVIEW);
+	{
+		GLint modelViewStackDepth;
+		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+		for(; modelViewStackDepth > 1; modelViewStackDepth--)
+		{
+			glPopMatrix();
+		}
+	}
+	glLoadIdentity();
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
@@ -152,6 +174,17 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 	projectionMatrix.r3c2 = -1;
 	glMatrixMode(GL_PROJECTION);
 	glLoadTransposeMatrixf(projectionMatrix.elements);
+	// empty the modelview stack //
+	glMatrixMode(GL_MODELVIEW);
+	{
+		GLint modelViewStackDepth;
+		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
+		for(; modelViewStackDepth > 1; modelViewStackDepth--)
+		{
+			glPopMatrix();
+		}
+	}
+	glLoadIdentity();
 	GL_CHECK_ERROR();
 }
 internal KRB_LOOK_AT(krbLookAt)

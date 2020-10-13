@@ -694,6 +694,10 @@ internal inline void kmath::makeM4f32(
 	m4Translation.r2c3 = translation.z;
 	*o_m = m4Translation * m4Rotation;
 }
+internal inline f32 kmath::sine_0_1(f32 radians)
+{
+	return 0.5f*sinf(radians) + 0.5f;
+}
 internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
 {
 	/* https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection */

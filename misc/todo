@@ -741,7 +741,7 @@
 		[x] update Flipbook to use a TEX asset instead of a raw image asset
 	[x] pre-defined general-purpose Vertex structure
 	[x] pre-defined general-purpose Shape structure
-	[ ] SIMPLER drawQuad API that doesn't require defining texNorm & color 
+	[x] SIMPLER drawQuad API that doesn't require defining texNorm & color 
 		vertex attributes
 	[ ] investigate why the hell I can't initialize a kQuaternion member struct 
 		with an initialization list (see stateSim.h of the ld47 project)

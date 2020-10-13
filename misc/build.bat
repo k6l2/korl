@@ -21,6 +21,7 @@ rem }}}----- save build start timestamp
 rem --- Iterate over build script arguments ---------------------------------{{{
 set buildOptionRelease=FALSE
 set buildOptionDisableKmd5=FALSE
+set buildOptionNoThreads=FALSE
 if "%~1"=="" goto ARGUMENT_LOOP_END
 rem set argNumber=0
 :ARGUMENT_LOOP_START
@@ -30,6 +31,9 @@ if "%~1"=="release" (
 )
 if "%~1"=="nohash" (
 	set buildOptionDisableKmd5=TRUE
+)
+if "%~1"=="nothreads" (
+	set buildOptionNoThreads=TRUE
 )
 shift
 rem set /A argNumber+=1
@@ -333,8 +337,12 @@ set cmdBuildDll=%cmdBuildDll%/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw ^
 
 
 rem --- launch the DLL build in a separate thread -----
-start "Build DLL Thread" /b ^
-	"cmd /c build-atom.bat ^"%cmdBuildDll%^" %lockFileDll% %statusFileDll%"
+if "%buildOptionNoThreads%"=="TRUE" (
+	call build-atom.bat "%cmdBuildDll%" %lockFileDll% %statusFileDll%
+) else (
+	start "Build DLL Thread" /b ^
+		"cmd /c build-atom.bat ^"%cmdBuildDll%^" %lockFileDll% %statusFileDll%"
+)
 
 
 
@@ -419,6 +427,8 @@ IF %ERRORLEVEL% NEQ 0 (
 
 
 rem --- wait for the DLL build thread to complete -----
+rem @TODO: automatically terminate the DLL build thread if it hangs for like 10
+rem        seconds or something
 :SKIP_WIN32_BUILD
 :WAIT_FOR_DLL_BUILD
 if exist %lockFileDll% goto WAIT_FOR_DLL_BUILD

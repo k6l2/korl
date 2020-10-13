@@ -1,5 +1,6 @@
 #include "KmlDynApp.h"
 #include "kVertex.h"
+#include "kgtDraw.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
@@ -24,8 +25,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				kmath::rotate(g_gs->camPosition2d, deltaSeconds);
 		}
 	}
-	/* draw the sample */
+	/* begin drawing the sample */
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);
+	/* setup a 3D projection to draw a textured cube */
 	g_krb->setBackfaceCulling(true);
 	g_krb->setDepthTesting(true);
 	g_krb->setProjectionFov(90.f, windowDimensions.elements, 1.f, 100.f);
@@ -42,7 +44,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			, {v3f32::ZERO, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
 		DRAW_LINES(g_krb, meshOrigin, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
-	/* draw textures onto geometry
+	/* draw a textured cube 
 		- the `kasset` build tool automatically generates KAssetIndex entries 
 			for all files (excluding ones that match regex patterns in the 
 			`assets/assets.ignore` file)
@@ -57,13 +59,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{2,2,2}, meshBox, meshBoxBytes, sizeof(meshBox[0]), 
 			offsetof(Vertex, position), offsetof(Vertex, textureNormal));
 		g_krb->setModelXform({0,0,0}, kQuaternion::IDENTITY, {4,4,4});
-		g_krb->useTexture(
-			kamGetTexture(g_gs->templateGameState.assetManager, 
-			              KAssetIndex::gfx_crate_tex), 
-			kamGetTextureMetaData(g_gs->templateGameState.assetManager, 
-			                      KAssetIndex::gfx_crate_tex));
 		DRAW_TRIS_DYNAMIC(g_krb, meshBox, 36, VERTEX_ATTRIBS_NO_COLOR);
 	}
+	/* draw a simple textured quad on the screen */
+	g_krb->setProjectionOrtho(windowDimensions.x, windowDimensions.y, 1);
+	kgtDrawTexture2d(g_krb, g_gs->templateGameState.assetManager, 
+		KAssetIndex::gfx_crate_tex, 
+		{static_cast<f32>(windowDimensions.x)* 0.5f, 
+		 static_cast<f32>(windowDimensions.y)*-0.5f}, {1,1}, 0.f, {4,4});
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
@@ -86,3 +89,4 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 }
 #include "TemplateGameState.cpp"
+#include "kgtDraw.cpp"

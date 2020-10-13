@@ -17,24 +17,24 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	/* draw a simple 2D origin */
 	{
 		g_krb->setModelXform2d({0,0}, kQuaternion::IDENTITY, {10,10});
-		const local_persist VertexNoTexture meshOrigin[] = 
-			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN} };
-		DRAW_LINES(meshOrigin, VERTEX_NO_TEXTURE_ATTRIBS);
+		local_persist const Vertex meshOrigin[] = 
+			{ {{0,0,0}, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
+			, {{0,0,0}, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN} };
+		DRAW_LINES(g_krb, meshOrigin, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	/* if you can draw a triangle, you can draw ANYTHING~ */
 	{
 		const kQuaternion quatModel = kQuaternion({0,0,1}, g_gs->seconds);
 		const f32 distanceFromOrigin = 
-			kmath::lerp(10, 40, SINEF_0_1(3*g_gs->seconds));
+			kmath::lerp(10, 40, kmath::sine_0_1(3*g_gs->seconds));
 		const v2f32 positionModel = kQuaternion({0,0,-1}, g_gs->seconds)
 			.transform(v2f32{distanceFromOrigin,0});
 		g_krb->setModelXform2d(positionModel, quatModel, {1,1});
-		const local_persist VertexNoTexture meshTri[] = 
-			{ {{  0, 30,0}, {1,0,0,0.5f}}
-			, {{ 30,-20,0}, {0,1,0,0.5f}}
-			, {{-30,-20,0}, {0,0,1,0.5f}} };
-		DRAW_TRIS(meshTri, VERTEX_NO_TEXTURE_ATTRIBS);
+		local_persist const Vertex meshTri[] = 
+			{ {{  0, 30,0}, {}, {1,0,0,0.5f}}
+			, {{ 30,-20,0}, {}, {0,1,0,0.5f}}
+			, {{-30,-20,0}, {}, {0,0,1,0.5f}} };
+		DRAW_TRIS(g_krb, meshTri, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	return true;
 }
