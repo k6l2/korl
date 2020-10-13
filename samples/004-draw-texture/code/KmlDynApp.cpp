@@ -1,4 +1,5 @@
 #include "KmlDynApp.h"
+#include "kVertex.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
@@ -36,10 +37,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
 		const local_persist Vertex meshOrigin[] = 
-			{ {v3f32::ZERO, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {v3f32::ZERO, krb::GREEN}, {{0,1,0}, krb::GREEN}
-			, {v3f32::ZERO, krb::BLUE }, {{0,0,1}, krb::BLUE } };
-		DRAW_LINES(meshOrigin, VERTEX_ATTRIBS_NO_TEXTURE);
+			{ {v3f32::ZERO, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
+			, {v3f32::ZERO, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}
+			, {v3f32::ZERO, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
+		DRAW_LINES(g_krb, meshOrigin, VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	/* draw textures onto geometry
 		- the `kasset` build tool automatically generates KAssetIndex entries 
@@ -50,63 +51,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		- the template game state also automatically hot-reloads assets when 
 			they are changed on disk! */
 	{
-		const local_persist Vertex CRATE_MESH[] = 
-			// top (+Z) low-right
-			{ {{ 1, 1, 1}, krb::WHITE, {1,1}}
-			, {{-1, 1, 1}, krb::WHITE, {1,0}}
-			, {{ 1,-1, 1}, krb::WHITE, {0,1}}
-			// top (+Z) up-left
-			, {{-1,-1, 1}, krb::WHITE, {0,0}}
-			, {{ 1,-1, 1}, krb::WHITE, {0,1}}
-			, {{-1, 1, 1}, krb::WHITE, {1,0}}
-			// front (+X) low-right
-			, {{ 1, 1, 1}, krb::WHITE, {1,0}}
-			, {{ 1,-1,-1}, krb::WHITE, {0,1}}
-			, {{ 1, 1,-1}, krb::WHITE, {1,1}}
-			// front (+X) up-left
-			, {{ 1,-1,-1}, krb::WHITE, {0,1}}
-			, {{ 1, 1, 1}, krb::WHITE, {1,0}}
-			, {{ 1,-1, 1}, krb::WHITE, {0,0}}
-			// left (+Y) low-right
-			, {{ 1, 1,-1}, krb::WHITE, {0,1}}
-			, {{-1, 1,-1}, krb::WHITE, {1,1}}
-			, {{-1, 1, 1}, krb::WHITE, {1,0}}
-			// left (+Y) up-left
-			, {{-1, 1, 1}, krb::WHITE, {1,0}}
-			, {{ 1, 1, 1}, krb::WHITE, {0,0}}
-			, {{ 1, 1,-1}, krb::WHITE, {0,1}}
-			// back (-X) low-right
-			, {{-1, 1,-1}, krb::WHITE, {0,1}}
-			, {{-1,-1,-1}, krb::WHITE, {1,1}}
-			, {{-1,-1, 1}, krb::WHITE, {1,0}}
-			// back (-X) up-left
-			, {{-1,-1, 1}, krb::WHITE, {1,0}}
-			, {{-1, 1, 1}, krb::WHITE, {0,0}}
-			, {{-1, 1,-1}, krb::WHITE, {0,1}}
-			// right (-Y) low-right
-			, {{-1,-1,-1}, krb::WHITE, {0,1}}
-			, {{ 1,-1,-1}, krb::WHITE, {1,1}}
-			, {{ 1,-1, 1}, krb::WHITE, {1,0}}
-			// right (-Y) up-left
-			, {{ 1,-1, 1}, krb::WHITE, {1,0}}
-			, {{-1,-1, 1}, krb::WHITE, {0,0}}
-			, {{-1,-1,-1}, krb::WHITE, {0,1}}
-			// bottom (-Z) low-right
-			, {{-1,-1,-1}, krb::WHITE, {0,1}}
-			, {{-1, 1,-1}, krb::WHITE, {1,1}}
-			, {{ 1, 1,-1}, krb::WHITE, {1,0}}
-			// bottom (-Z) up-left
-			, {{ 1, 1,-1}, krb::WHITE, {1,0}}
-			, {{ 1,-1,-1}, krb::WHITE, {0,0}}
-			, {{-1,-1,-1}, krb::WHITE, {0,1}}
-			};
+		const size_t meshBoxBytes = 36*sizeof(Vertex);
+		Vertex* meshBox = ALLOC_FRAME_ARRAY(g_gs, Vertex, 36);
+		kmath::generateMeshBox(
+			{2,2,2}, meshBox, meshBoxBytes, sizeof(meshBox[0]), 
+			offsetof(Vertex, position), offsetof(Vertex, textureNormal));
 		g_krb->setModelXform({0,0,0}, kQuaternion::IDENTITY, {4,4,4});
 		g_krb->useTexture(
 			kamGetTexture(g_gs->templateGameState.assetManager, 
 			              KAssetIndex::gfx_crate_tex), 
 			kamGetTextureMetaData(g_gs->templateGameState.assetManager, 
 			                      KAssetIndex::gfx_crate_tex));
-		DRAW_TRIS(CRATE_MESH, VERTEX_ATTRIBS);
+		DRAW_TRIS_DYNAMIC(g_krb, meshBox, 36, VERTEX_ATTRIBS_NO_COLOR);
 	}
 	return true;
 }

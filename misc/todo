@@ -735,7 +735,7 @@
 		[x] remove stupid indie pixel hack from template game state
 		[x] kasset: ignore *.swp files
 		[ ] update kamGetImageSize to " " "
-		[ ] load TextureMetaData into KRB when `useTexture` API is called
+		[x] load TextureMetaData into KRB when `useTexture` API is called
 		[ ] update Flipbook to use a TEX asset instead of a raw image asset
 	[x] pre-defined general-purpose Vertex structure
 	[x] pre-defined general-purpose Shape structure
