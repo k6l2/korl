@@ -722,7 +722,7 @@
 [x] move the EPA/GJK step functions into their own internal module which must be 
 	specifically included to use them manually (simplify kmath API)
 [ ] LD47 post-mortem cleanup
-	[ ] create a "texture metadata" asset
+	[x] create a "texture metadata" asset
 		- image file 
 			(by default, a PNG in the same directory with the same name)
 		- render properties
@@ -738,7 +738,7 @@
 		[x] return default texture meta data if a raw image asset is passed to 
 			the get texture meta data function
 		[x] load TextureMetaData into KRB when `useTexture` API is called
-		[ ] update Flipbook to use a TEX asset instead of a raw image asset
+		[x] update Flipbook to use a TEX asset instead of a raw image asset
 	[x] pre-defined general-purpose Vertex structure
 	[x] pre-defined general-purpose Shape structure
 	[ ] SIMPLER drawQuad API that doesn't require defining texNorm & color 

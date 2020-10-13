@@ -145,7 +145,7 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 			     "file extension!", cStrAnsiAssetName);
 			return false;
 		}
-		const char textureFileExtension[] = "png";
+		const char textureFileExtension[] = "tex";
 		const char*const texAssetFileNameBufferEnd = 
 			o_texAssetFileName + texAssetFileNameBufferSize;
 		if(pFileExtension + CARRAY_SIZE(textureFileExtension) >= 

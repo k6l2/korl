@@ -12,7 +12,7 @@ FlipbookMetaData asset files are just text.  They must contain ONE of EACH
 	allowed at any time.  The file extention MUST be ".fbm".
 If `texture-asset-file-name` is not present in the FlipbookMetaData asset file, 
 	it is assumed that the texture asset file is equivilant to the 
-	FlipbookMetaData asset file, except with a ".png" file extension instead.
+	FlipbookMetaData asset file, except with a ".tex" file extension instead.
 A `frame-count` of 0 means the texture asset is "fully saturated" with flipbook 
 	pages.  This means the true frame count is equivilant to: 
 	`flipbookPageRows*flipbookPageCols` where 
@@ -23,9 +23,9 @@ A `frame-size-x/y` of {0,0} means the entire texture asset is a single frame.
 	asset.
 ----- Example of a flipbook meta data asset text file: -----
 frame-size-x              : 48
-frame-size-y              : 48
+frame-size-y              : 0
 frame-count               : 6
-texture-asset-file-name   : fighter-exhaust.png
+texture-asset-file-name   : fighter-exhaust.tex
 default-repeat            : 1
 default-reverse           : 0
 default-seconds-per-frame : 0.05
