@@ -1,32 +1,32 @@
-#include "camera3d.h"
-internal v3f32 cam3dWorldForward(const Camera3d* cam)
+#include "KgtCamera3d.h"
+internal v3f32 kgtCam3dWorldForward(const KgtCamera3d* cam)
 {
 	return (kQuaternion(v3f32::Z*-1, cam->radiansYaw) * 
 	        kQuaternion(v3f32::Y*-1, cam->radiansPitch))
 	            .transform(v3f32::X);
 }
-internal v3f32 cam3dWorldRight(const Camera3d* cam)
+internal v3f32 kgtCam3dWorldRight(const KgtCamera3d* cam)
 {
 	return (kQuaternion(v3f32::Z*-1, cam->radiansYaw) * 
 	        kQuaternion(v3f32::Y*-1, cam->radiansPitch))
 	            .transform(v3f32::Y*-1);
 }
-internal v3f32 cam3dWorldUp(const Camera3d* cam)
+internal v3f32 kgtCam3dWorldUp(const KgtCamera3d* cam)
 {
 	return (kQuaternion(v3f32::Z*-1, cam->radiansYaw) * 
 	        kQuaternion(v3f32::Y*-1, cam->radiansPitch))
 	            .transform(v3f32::Z);
 }
-internal void cam3dStep(
-	Camera3d* cam, bool moveForward, bool moveBack, bool moveRight, 
+internal void kgtCam3dStep(
+	KgtCamera3d* cam, bool moveForward, bool moveBack, bool moveRight, 
 	bool moveLeft, bool moveUp, bool moveDown, f32 deltaSeconds)
 {
 	local_persist const f32 CAMERA_SPEED_MAX = 25;
 	local_persist const f32 CAMERA_ACCELERATION = 10;
 	local_persist const f32 CAMERA_DECELERATION = 50;
-	const v3f32 cameraWorldForward = cam3dWorldForward(cam);
-	const v3f32 cameraWorldRight   = cam3dWorldRight(cam);
-	const v3f32 cameraWorldUp      = cam3dWorldUp(cam);
+	const v3f32 cameraWorldForward = kgtCam3dWorldForward(cam);
+	const v3f32 cameraWorldRight   = kgtCam3dWorldRight(cam);
+	const v3f32 cameraWorldUp      = kgtCam3dWorldUp(cam);
 	v3f32 camControl = v3f32::ZERO;
 	/* move the camera world position */
 	if(moveForward)
@@ -78,7 +78,7 @@ internal void cam3dStep(
 	cam->velocity *= camSpeed;
 	cam->position += deltaSeconds * cam->velocity;
 }
-internal void cam3dLook(Camera3d* cam, const v2i32& deltaYawPitch)
+internal void kgtCam3dLook(KgtCamera3d* cam, const v2i32& deltaYawPitch)
 {
 	local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
 	local_persist const f32 MAX_PITCH_MAGNITUDE = PI32/2 - 0.001f;
@@ -91,10 +91,10 @@ internal void cam3dLook(Camera3d* cam, const v2i32& deltaYawPitch)
 	if(cam->radiansPitch > MAX_PITCH_MAGNITUDE)
 		cam->radiansPitch = MAX_PITCH_MAGNITUDE;
 }
-internal void cam3dApplyViewProjection(
-	const Camera3d* cam, const KrbApi* krb, const v2u32& windowDimensions)
+internal void kgtCam3dApplyViewProjection(
+	const KgtCamera3d* cam, const KrbApi* krb, const v2u32& windowDimensions)
 {
-	const v3f32 cameraWorldForward = cam3dWorldForward(cam);
+	const v3f32 cameraWorldForward = kgtCam3dWorldForward(cam);
 	if(cam->orthographicView)
 		krb->setProjectionOrthoFixedHeight(
 			windowDimensions.x, windowDimensions.y, 100, 1000);

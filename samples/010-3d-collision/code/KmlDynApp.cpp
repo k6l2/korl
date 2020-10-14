@@ -1,30 +1,20 @@
 #include "KmlDynApp.h"
+#include "kgtDraw.h"
 /** @return NAN32 if the ray doesn't intersect with actor */
 f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 {
-	switch(actor.shape.type)
-	{
-		case ShapeType::BOX:
-			return kmath::collideRayBox(
-				rayOrigin, rayNormal, actor.position, actor.orientation, 
-				actor.shape.box.lengths);
-		case ShapeType::SPHERE:
-			return kmath::collideRaySphere(
-				rayOrigin, rayNormal, actor.position, 
-				actor.shape.sphere.radius);
-	}
-	KLOG(ERROR, "actor.shape.type {%i} is invalid!", i32(actor.shape.type));
-	return NAN32;
+	return kgtShapeTestRay(actor.shape, actor.position, actor.orientation, 
+	                       rayOrigin, rayNormal);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
-	                                    windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(&g_gs->kgtGameState, gameKeyboard, 
+	                              windowIsFocused))
 		return false;
 	bool lockedMouse = false;
-	const v3f32 cameraWorldForward = cam3dWorldForward(&g_gs->camera);
-	const v3f32 cameraWorldRight   = cam3dWorldRight(&g_gs->camera);
-	const v3f32 cameraWorldUp      = cam3dWorldUp(&g_gs->camera);
+	const v3f32 cameraWorldForward = kgtCam3dWorldForward(&g_gs->camera);
+	const v3f32 cameraWorldRight   = kgtCam3dWorldRight(&g_gs->camera);
+	const v3f32 cameraWorldUp      = kgtCam3dWorldUp(&g_gs->camera);
 	/* handle user input */
 	if(windowIsFocused)
 	{
@@ -210,7 +200,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_kpl->mouseSetRelativeMode(lockedMouse);
 		if(gameMouse.middle == ButtonState::PRESSED)
 			g_gs->camera.orthographicView = !g_gs->camera.orthographicView;
-		cam3dStep(&g_gs->camera, 
+		kgtCam3dStep(&g_gs->camera, 
 			gameKeyboard.e > ButtonState::NOT_PRESSED, 
 			gameKeyboard.d > ButtonState::NOT_PRESSED, 
 			gameKeyboard.f > ButtonState::NOT_PRESSED, 
@@ -221,7 +211,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			deltaSeconds);
 		if(lockedMouse)
 		{
-			cam3dLook(&g_gs->camera, gameMouse.deltaPosition);
+			kgtCam3dLook(&g_gs->camera, gameMouse.deltaPosition);
 		}
 		if(gameKeyboard.modifiers.shift 
 			&& gameKeyboard.a > ButtonState::NOT_PRESSED)
@@ -293,13 +283,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(ImGui::Button("Box"))
 			{
 				g_gs->hudState = HudState::ADDING_BOX;
-				g_gs->addShape.type = ShapeType::BOX;
+				g_gs->addShape.type = KgtShapeType::BOX;
 				g_gs->addShape.box.lengths = {1,1,1};
 			}
 			if(ImGui::Button("Sphere"))
 			{
 				g_gs->hudState = HudState::ADDING_SPHERE;
-				g_gs->addShape.type = ShapeType::SPHERE;
+				g_gs->addShape.type = KgtShapeType::SPHERE;
 				g_gs->addShape.sphere.radius = 1.f;
 			}
 		}
@@ -336,7 +326,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				continue;
 			Actor& actor2 = g_gs->actors[a2];
 			v3f32 gjkSimplex[4];
-			ShapeGjkSupportData shapeGjkSupportData = 
+			KgtShapeGjkSupportData shapeGjkSupportData = 
 				{ .shapeA       = actor.shape
 				, .positionA    = actor.position
 				, .orientationA = actor.orientation
@@ -347,11 +337,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				-(actor.position - actor2.position);
 			v3f32 minTranslationVec;
 			f32   minTranslationDist;
-			if(   kmath::gjk(shapeGjkSupport, &shapeGjkSupportData, gjkSimplex, 
-			                 &initialSupportDirection)
+			if(   kmath::gjk(kgtShapeGjkSupport, &shapeGjkSupportData, 
+				             gjkSimplex, &initialSupportDirection)
 			   && kmath::epa(&minTranslationVec, &minTranslationDist, 
-			                 shapeGjkSupport, &shapeGjkSupportData, gjkSimplex, 
-			                 g_gs->templateGameState.hKalFrame))
+			                 kgtShapeGjkSupport, &shapeGjkSupportData, 
+			                 gjkSimplex, g_gs->kgtGameState.hKalFrame))
 			{
 				actor .position += 0.5f*minTranslationDist*minTranslationVec;
 				actor2.position -= 0.5f*minTranslationDist*minTranslationVec;
@@ -363,7 +353,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setDepthTesting(true);
 	g_krb->setBackfaceCulling(!g_gs->wireframe);
 	g_krb->setWireframe(g_gs->wireframe);
-	cam3dApplyViewProjection(&g_gs->camera, g_krb, windowDimensions);
+	kgtCam3dApplyViewProjection(&g_gs->camera, g_krb, windowDimensions);
+	/* use the default texture asset */
+	USE_IMAGE(g_gs->kgtGameState.assetManager, KAssetIndex::ENUM_SIZE);
 	/* draw all the shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
@@ -372,52 +364,44 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-		shapeDraw(actor.position, actor.orientation, actor.shape, 
-		          g_gs->wireframe, g_krb, g_gs->templateGameState.hKalFrame);
+		kgtShapeDraw(actor.position, actor.orientation, actor.shape, 
+		             g_gs->wireframe, g_krb, g_gs->kgtGameState.hKalFrame);
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		shapeDraw(g_gs->addShapePosition, kQuaternion::IDENTITY, 
-		          g_gs->addShape, g_gs->wireframe, g_krb, 
-		          g_gs->templateGameState.hKalFrame);
+		kgtShapeDraw(g_gs->addShapePosition, kQuaternion::IDENTITY, 
+		             g_gs->addShape, g_gs->wireframe, g_krb, 
+		             g_gs->kgtGameState.hKalFrame);
 	}
-	/* draw origin */
-	{
-		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
-		local_persist const Vertex MESH[] = 
-			{ {{0,0,0}, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
-			, {{0,0,0}, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}
-			, {{0,0,0}, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
-		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
-	}
+	kgtDrawOrigin({10,10,10});
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	templateGameState_renderAudio(&g_gs->templateGameState, audioBuffer, 
-	                              sampleBlocksConsumed);
+	kgtGameStateRenderAudio(&g_gs->kgtGameState, audioBuffer, 
+	                        sampleBlocksConsumed);
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
+	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	templateGameState_initialize(&g_gs->templateGameState, memory, 
-	                             sizeof(GameState));
+	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
 	g_gs->camera.position     = {10,11,12};
 	g_gs->camera.radiansYaw   = PI32*3/4;
 	g_gs->camera.radiansPitch = -PI32/4;
 	/* initialize dynamic array of actors */
-	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKalPermanent);
+	g_gs->actors = arrinit(Actor, g_gs->kgtGameState.hKalPermanent);
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 }
-#include "TemplateGameState.cpp"
-#include "camera3d.cpp"
-#include "kShape.cpp"
+#include "kgtGameState.cpp"
+#include "kgtCamera3d.cpp"
+#include "kgtShape.cpp"
+#include "kgtDraw.cpp"

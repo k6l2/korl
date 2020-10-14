@@ -1,3 +1,6 @@
+/*
+ * User code must define a global KrbApi* called `g_krb` to use this module!
+ */
 #pragma once
 #include "kutil.h"
 #include "krb-interface.h"
@@ -8,21 +11,23 @@ global_variable const Color4f32 QUAD_WHITE[]  =
 	{ krb::WHITE, krb::WHITE, krb::WHITE, krb::WHITE };
 internal void 
 	kgtDrawTexture2d(
-		KrbApi* krb, KAssetManager* kam, KAssetIndex kai, 
+		KAssetManager* kam, KAssetIndex kai, 
 		const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale);
-#define USE_IMAGE(krbApi, kAssetManager, kAssetIndex) \
-	(krbApi)->useTexture(\
+internal void 
+	kgtDrawOrigin(const v3f32& scale);
+#define USE_IMAGE(kAssetManager, kAssetIndex) \
+	g_krb->useTexture(\
 		kamGetTexture(kAssetManager, kAssetIndex), \
 		kamGetTextureMetaData(kAssetManager, kAssetIndex));
 /* useful drawing macros which can work with arbitrarily defined vertex 
  * structures */
-#define DRAW_POINTS(krbApi, mesh, vertexAttribs) \
-	(krbApi)->drawPoints(\
+#define DRAW_POINTS(mesh, vertexAttribs) \
+	g_krb->drawPoints(\
 		mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-#define DRAW_LINES(krbApi, mesh, vertexAttribs) \
-	(krbApi)->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-#define DRAW_TRIS(krbApi, mesh, vertexAttribs) \
-	(krbApi)->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-#define DRAW_TRIS_DYNAMIC(krbApi, mesh, meshSize, vertexAttribs) \
-	(krbApi)->drawTris(mesh, meshSize, sizeof(mesh[0]), vertexAttribs)
+#define DRAW_LINES(mesh, vertexAttribs) \
+	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
+#define DRAW_TRIS(mesh, vertexAttribs) \
+	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
+#define DRAW_TRIS_DYNAMIC(mesh, meshSize, vertexAttribs) \
+	g_krb->drawTris(mesh, meshSize, sizeof(mesh[0]), vertexAttribs)

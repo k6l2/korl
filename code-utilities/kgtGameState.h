@@ -13,7 +13,7 @@
 internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
                              void* context);
 internal void kStbDsFree(void* allocatedAddress, void* context);
-struct KmlTemplateGameState
+struct KgtGameState
 {
 	/* memory allocators */
 	KAllocatorHandle hKalPermanent;
@@ -28,23 +28,27 @@ struct KmlTemplateGameState
 /* useful global variables */
 global_variable KmlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;
-/* template game state API */
-internal void templateGameState_onReloadCode(GameMemory& memory);
+/* KGT game state API */
+internal void 
+	kgtGameStateOnReloadCode(GameMemory& memory);
 /** 
  * Make sure to clear (zero-out) ALL game state memory, including the memory 
  * occupied by `tgs` BEFORE calling this function!!!
  */
-internal void templateGameState_initialize(
-	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize);
-internal void templateGameState_renderAudio(
-	KmlTemplateGameState* tgs, GameAudioBuffer& audioBuffer, 
-	u32 sampleBlocksConsumed);
+internal void 
+	kgtGameStateInitialize(
+		KgtGameState* tgs, GameMemory& memory, size_t totalGameStateSize);
+internal void 
+	kgtGameStateRenderAudio(
+		KgtGameState* tgs, GameAudioBuffer& audioBuffer, 
+		u32 sampleBlocksConsumed);
 /** @return true to request the platform continues to run, false to request the 
  *          platform closes the application */
-internal bool templateGameState_updateAndDraw(
-	KmlTemplateGameState* tgs, const GameKeyboard& gameKeyboard, 
-	bool windowIsFocused);
+internal bool 
+	kgtGameStateUpdateAndDraw(
+		KgtGameState* tgs, const GameKeyboard& gameKeyboard, 
+		bool windowIsFocused);
 /* convenience macros for our application */
 #define ALLOC_FRAME_ARRAY(gs,type,elements) \
 	reinterpret_cast<type*>(\
-		kAllocAlloc((gs)->templateGameState.hKalFrame,sizeof(type)*(elements)))
+		kAllocAlloc((gs)->kgtGameState.hKalFrame,sizeof(type)*(elements)))

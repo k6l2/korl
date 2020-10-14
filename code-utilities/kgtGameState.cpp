@@ -1,5 +1,5 @@
-#include "TemplateGameState.h"
-internal void templateGameState_onReloadCode(GameMemory& memory)
+#include "kgtGameState.h"
+internal void kgtGameStateOnReloadCode(GameMemory& memory)
 {
 	g_kpl          = &memory.kpl;
 	g_krb          = &memory.krb;
@@ -12,8 +12,8 @@ internal void templateGameState_onReloadCode(GameMemory& memory)
 	                             memory.platformImguiFree, 
 	                             memory.imguiAllocUserData);
 }
-internal void templateGameState_initialize(
-	KmlTemplateGameState* tgs, GameMemory& memory, size_t totalGameStateSize)
+internal void kgtGameStateInitialize(
+	KgtGameState* tgs, GameMemory& memory, size_t totalGameStateSize)
 {
 	kassert(totalGameStateSize <= memory.permanentMemoryBytes);
 	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
@@ -45,15 +45,13 @@ internal void templateGameState_initialize(
 	// Tell the asset manager to load assets asynchronously! //
 	kamPushAllKAssets(tgs->assetManager);
 }
-internal void templateGameState_renderAudio(
-	KmlTemplateGameState* tgs, GameAudioBuffer& audioBuffer, 
-	u32 sampleBlocksConsumed)
+internal void kgtGameStateRenderAudio(
+	KgtGameState* tgs, GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed)
 {
 	kauMix(tgs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
 }
-internal bool templateGameState_updateAndDraw(
-	KmlTemplateGameState* tgs, const GameKeyboard& gameKeyboard, 
-	bool windowIsFocused)
+internal bool kgtGameStateUpdateAndDraw(
+	KgtGameState* tgs, const GameKeyboard& gameKeyboard, bool windowIsFocused)
 {
 	kAllocReset(tgs->hKalFrame);
 	/* Esc, Ctrl+W & Alt+F4 shortcuts to quickly exit the program */

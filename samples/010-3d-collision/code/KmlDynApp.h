@@ -1,8 +1,8 @@
 #pragma once
-#include "TemplateGameState.h"
-#include "camera3d.h"
-#include "kVertex.h"
-#include "kShape.h"
+#include "kgtGameState.h"
+#include "kgtCamera3d.h"
+#include "kgtVertex.h"
+#include "kgtShape.h"
 enum class HudState : u8
 	{ NAVIGATING
 	, ADDING_SHAPE
@@ -14,19 +14,19 @@ struct Actor
 {
 	v3f32 position;
 	kQuaternion orientation = kQuaternion::IDENTITY;
-	Shape shape;
+	KgtShape shape;
 };
 struct GameState
 {
-	KmlTemplateGameState templateGameState;
+	KgtGameState kgtGameState;
 	HudState hudState;
-	Camera3d camera;
+	KgtCamera3d camera;
 	/* Director */
 	Actor* actors;
 	bool wireframe;
 	bool resolveShapeCollisions;
 	/* add actor state */
-	Shape addShape;
+	KgtShape addShape;
 	v3f32 addShapePosition;
 	/* actor manipulation state */
 	/* The array index into `actors` == `selectedActorId` - 1.  A value of 0 
