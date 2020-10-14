@@ -11,6 +11,10 @@ internal void
 		KrbApi* krb, KAssetManager* kam, KAssetIndex kai, 
 		const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale);
+#define USE_IMAGE(krbApi, kAssetManager, kAssetIndex) \
+	(krbApi)->useTexture(\
+		kamGetTexture(kAssetManager, kAssetIndex), \
+		kamGetTextureMetaData(kAssetManager, kAssetIndex));
 /* useful drawing macros which can work with arbitrarily defined vertex 
  * structures */
 #define DRAW_POINTS(krbApi, mesh, vertexAttribs) \
