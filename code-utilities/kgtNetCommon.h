@@ -1,6 +1,6 @@
 #pragma once
 #include "kutil.h"
-namespace network
+namespace kgtNet
 {
 	using ServerClientId = u16;
 	global_variable const ServerClientId SERVER_INVALID_CLIENT_ID = 

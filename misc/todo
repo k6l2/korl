@@ -764,6 +764,7 @@
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+[x] unify code-utilities to use the `kgt` namespace for all identifiers
 [ ] simplify code utility asset manager usage
 	[ ] kgtGameState: define a pointer to a global asset manager (g_kam)
 	[ ] apply all necessary simplifications to other kgt code utilities

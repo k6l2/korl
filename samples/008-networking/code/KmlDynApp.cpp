@@ -1,8 +1,9 @@
 #include "KmlDynApp.h"
 #include "exampleGameNet.h"
+#include "kgtDraw.h"
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
+	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 	if(gameMemoryIsInitialized)
 	{
@@ -12,31 +13,30 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	templateGameState_initialize(&g_gs->templateGameState, memory, 
-	                             sizeof(GameState));
+	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
 	/* initialize server state */
 	serverInitialize(&g_gs->serverState, 1.f/60, 
-	                 g_gs->templateGameState.hKgaPermanent, 
-	                 g_gs->templateGameState.hKgaTransient, 
+	                 g_gs->kgtGameState.hKalPermanent, 
+	                 g_gs->kgtGameState.hKalTransient, 
 	                 kmath::megabytes(5), kmath::megabytes(5), 
 	                 GAME_NET_SERVER_LISTEN_PORT);
 	// Initialize flipbooks //
-	kfbInit(&g_gs->kFbShip, g_gs->templateGameState.assetManager, g_krb, 
-	        KAssetIndex::gfx_fighter_fbm);
-	kfbInit(&g_gs->kFbShipExhaust, g_gs->templateGameState.assetManager, g_krb, 
-	        KAssetIndex::gfx_fighter_exhaust_fbm);
+	kgtFlipBookInit(&g_gs->kFbShip, g_gs->kgtGameState.assetManager, 
+	                KgtAssetIndex::gfx_fighter_fbm);
+	kgtFlipBookInit(&g_gs->kFbShipExhaust, g_gs->kgtGameState.assetManager, 
+	                KgtAssetIndex::gfx_fighter_exhaust_fbm);
 	// Initialize dynamic Actor array //
-	g_gs->actors = arrinit(Actor, g_gs->templateGameState.hKgaPermanent);
+	g_gs->actors = arrinit(Actor, g_gs->kgtGameState.hKalPermanent);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	templateGameState_renderAudio(&g_gs->templateGameState, audioBuffer, 
-	                              sampleBlocksConsumed);
+	kgtGameStateRenderAudio(
+		&g_gs->kgtGameState, audioBuffer, sampleBlocksConsumed);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
-	                                    windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(
+			&g_gs->kgtGameState, gameKeyboard, windowIsFocused))
 		return false;
 	/* TESTING SERVER EXAMPLE */
 	if(ImGui::Begin("TESTING SERVER EXAMPLE"))
@@ -63,12 +63,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}break;
 		}
 		ImGui::Separator();
-		if(kNetClientIsDisconnected(&g_gs->kNetClient))
+		if(kgtNetClientIsDisconnected(&g_gs->kNetClient))
 		{
 			if(ImGui::Button("Connect to Server"))
 			{
-				kNetClientConnect(&g_gs->kNetClient, g_gs->clientAddressBuffer, 
-				                  GAME_NET_SERVER_LISTEN_PORT);
+				kgtNetClientConnect(
+					&g_gs->kNetClient, g_gs->clientAddressBuffer, 
+					GAME_NET_SERVER_LISTEN_PORT);
 			}
 			ImGui::InputText("net address", g_gs->clientAddressBuffer, 
 			                 CARRAY_SIZE(g_gs->clientAddressBuffer));
@@ -77,22 +78,22 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			switch(g_gs->kNetClient.connectionState)
 			{
-				case network::ConnectionState::DISCONNECTING:{
+				case kgtNet::ConnectionState::DISCONNECTING:{
 					ImGui::Text("Disconnecting...%c", 
 					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
 				}break;
-				case network::ConnectionState::ACCEPTING:{
+				case kgtNet::ConnectionState::ACCEPTING:{
 					ImGui::Text("Connecting...%c", 
 					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
 				}break;
-				case network::ConnectionState::CONNECTED:{
+				case kgtNet::ConnectionState::CONNECTED:{
 					if(ImGui::Button("Disconnect"))
 					{
-						kNetClientBeginDisconnect(&g_gs->kNetClient);
+						kgtNetClientBeginDisconnect(&g_gs->kNetClient);
 					}
 					if(ImGui::Button("Drop"))
 					{
-						kNetClientDropConnection(&g_gs->kNetClient);
+						kgtNetClientDropConnection(&g_gs->kNetClient);
 					}
 				}break;
 			}
@@ -110,20 +111,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 						g_gs->reliableMessageBuffer, 
 						g_gs->reliableMessageBuffer + 
 							CARRAY_SIZE(g_gs->reliableMessageBuffer));
-				kNetClientQueueReliableMessage(&g_gs->kNetClient, 
+				kgtNetClientQueueReliableMessage(&g_gs->kNetClient, 
 					g_gs->reliableMessageBuffer, reliableMessageBytes);
 			}
 		}
 	}
 	ImGui::End();
 	/* Networking example Client logic */
-	if(kNetClientIsDisconnected(&g_gs->kNetClient))
+	if(kgtNetClientIsDisconnected(&g_gs->kNetClient))
 	{
 		arrsetlen(g_gs->actors, 0);
 	}
-	kNetClientStep(&g_gs->kNetClient, deltaSeconds, 0.1f*deltaSeconds, 
-	               gameWriteClientState, gameClientReadServerState, 
-	               gameClientReadReliableMessage);
+	kgtNetClientStep(&g_gs->kNetClient, deltaSeconds, 0.1f*deltaSeconds, 
+	                 gameWriteClientState, gameClientReadServerState, 
+	                 gameClientReadReliableMessage);
 	for(u8 c = 0; c < numGamePads; c++)
 	{
 		GamePad& gpad = gamePadArray[c];
@@ -143,27 +144,28 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			controlInput.controlResetPosition = true;
 		}
 #if 1
+		//@TODO: @cleanup; delete this code
 		if(gpad.faceRight > ButtonState::NOT_PRESSED)
 		{
-			kamUnloadAllAssets(g_gs->templateGameState.assetManager);
+			kgtAssetManagerUnloadAllAssets(g_gs->kgtGameState.assetManager);
 		}
-#endif //@TODO: @simplification; delete this code
+#endif 
 		/* send the client's controller input for this frame as a reliable 
 			message */
-		if(!kNetClientIsDisconnected(&g_gs->kNetClient))
+		if(!kgtNetClientIsDisconnected(&g_gs->kNetClient))
 		{
 			const u16 reliableMessageBytes = 
 				reliableMessageClientControlInputPack(
 					controlInput, g_gs->reliableMessageBuffer, 
 					g_gs->reliableMessageBuffer + 
 						CARRAY_SIZE(g_gs->reliableMessageBuffer));
-			kNetClientQueueReliableMessage(&g_gs->kNetClient, 
+			kgtNetClientQueueReliableMessage(&g_gs->kNetClient, 
 				g_gs->reliableMessageBuffer, reliableMessageBytes);
 		}
 	}
 	g_krb->beginFrame(0.2f, 0.f, 0.2f);
-	g_krb->setProjectionOrthoFixedHeight(windowDimensions.x, windowDimensions.y, 
-	                                     300, 1.f);
+	g_krb->setProjectionOrthoFixedHeight(
+		windowDimensions.x, windowDimensions.y, 300, 1.f);
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
 		Actor& actor = g_gs->actors[a];
@@ -173,30 +175,25 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			break;
 		}
 	}
-	kfbStep(&g_gs->kFbShip       , deltaSeconds);
-	kfbStep(&g_gs->kFbShipExhaust, deltaSeconds);
+	kgtFlipBookStep(&g_gs->kFbShip       , deltaSeconds);
+	kgtFlipBookStep(&g_gs->kFbShipExhaust, deltaSeconds);
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
 		Actor& actor = g_gs->actors[a];
-		g_krb->setModelXform2d(actor.shipWorldPosition, 
-		                       actor.shipWorldOrientation, {1,1});
-		kfbDraw(&g_gs->kFbShip       , krb::WHITE);
-		kfbDraw(&g_gs->kFbShipExhaust, krb::WHITE);
+		g_krb->setModelXform2d(
+			actor.shipWorldPosition, actor.shipWorldOrientation, {1,1});
+		kgtFlipBookDraw(&g_gs->kFbShip       , krb::WHITE);
+		kgtFlipBookDraw(&g_gs->kFbShipExhaust, krb::WHITE);
 	}
 	/* draw a simple 2D origin */
-	{
-		g_krb->setModelXform2d({0,0}, kQuaternion::IDENTITY, {10,10});
-		const local_persist VertexNoTexture meshOrigin[] = 
-			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN} };
-		DRAW_LINES(meshOrigin, VERTEX_NO_TEXTURE_ATTRIBS);
-	}
+	kgtDrawOrigin({10,10,10});
 	return true;
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 	serverOnPreUnload(&g_gs->serverState);
 }
-#include "TemplateGameState.cpp"
+#include "kgtGameState.cpp"
 #include "serverExample.cpp"
 #include "exampleGameNet.cpp"
+#include "kgtDraw.cpp"

@@ -1,8 +1,8 @@
 #pragma once
-#include "kAssetManager.h"
-#include "kAllocatorLinear.h"
-#include "kNetCommon.h"
-#include "kNetServer.h"
+#include "kgtAssetManager.h"
+#include "kgtAllocator.h"
+#include "kgtNetCommon.h"
+#include "kgtNetServer.h"
 #include "exampleGameNet.h"
 struct ServerState
 {
@@ -16,12 +16,12 @@ struct ServerState
 	/* configuration */
 	f32 secondsPerFrame;
 	/* memory management */
-	KgaHandle hKgaPermanent;
-	KgaHandle hKgaTransient;
-	KalHandle hKalFrame;
-	KAssetManager* assetManager;
+	KgtAllocatorHandle hKalPermanent;
+	KgtAllocatorHandle hKalTransient;
+	KgtAllocatorHandle hKalFrame;
+	KgtAssetManager* assetManager;
 	/* data */
-	KNetServer kNetServer;
+	KgtNetServer kNetServer;
 	bool serverStartCausedByRestart;
 	Actor actors[4];
 };
@@ -31,8 +31,8 @@ enum class ServerOperatingState : u8
 	, STOPPED
 };
 internal void serverInitialize(ServerState* ss, f32 secondsPerFrame, 
-                               KgaHandle hKgaPermanentParent, 
-                               KgaHandle hKgaTransientParent, 
+                               KgtAllocatorHandle hKgaPermanentParent, 
+                               KgtAllocatorHandle hKgaTransientParent, 
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes, u16 port);
 internal ServerOperatingState serverOpState(ServerState* ss);

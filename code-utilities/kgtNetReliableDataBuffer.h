@@ -1,8 +1,8 @@
 #pragma once
 #include "kutil.h"
-#include "kNetCommon.h"
 #include "platform-game-interfaces.h"
-struct KNetReliableDataBuffer
+#include "kgtNetCommon.h"
+struct KgtNetReliableDataBuffer
 {
 	/** treated as a circular buffer queue of network::ReliableMessage.  
 	 * We subtract the sizes of 
@@ -12,7 +12,7 @@ struct KNetReliableDataBuffer
 	 * for the reliable packet header to ensure that 
 	 * the entire buffer will fit in a single datagram.  */
 	u8 data[KPL_MAX_DATAGRAM_SIZE - sizeof(u16) - sizeof(u32) - 
-	        sizeof(network::PacketType)];
+	        sizeof(kgtNet::PacketType)];
 	u16 messageCount;
 	u16 frontMessageByteOffset;
 	/** start at an index if 1 to ensure that the remote's rolling index is out 
@@ -27,15 +27,21 @@ struct KNetReliableDataBuffer
  *        safe to start storing the next reliable message at this location.  If 
  *        this value == `nullptr`, then it is unused.
  */
-internal u16 kNetReliableDataBufferUsedBytes(
-	KNetReliableDataBuffer* rdb, u8** o_reliableDataBufferCursor);
-internal void kNetReliableDataBufferDequeue(
-	KNetReliableDataBuffer* rdb, u32 remoteReportedReliableMessageRollingIndex);
-internal u32 kNetReliableDataBufferNetPack(
-	KNetReliableDataBuffer* rdb, u8** dataCursor, const u8* dataEnd);
-internal u32 kNetReliableDataBufferUnpackMeta(
-	const u8** dataCursor, const u8* dataEnd, u32* o_frontMessageRollingIndex, 
-	u16* o_reliableMessageCount);
-internal void kNetReliableDataBufferQueueMessage(
-	KNetReliableDataBuffer* rdb, const u8* netPackedData, 
-	u16 netPackedDataBytes);
+internal u16 
+	kgtNetReliableDataBufferUsedBytes(
+		KgtNetReliableDataBuffer* rdb, u8** o_reliableDataBufferCursor);
+internal void 
+	kgtNetReliableDataBufferDequeue(
+		KgtNetReliableDataBuffer* rdb, 
+		u32 remoteReportedReliableMessageRollingIndex);
+internal u32 
+	kgtNetReliableDataBufferNetPack(
+		KgtNetReliableDataBuffer* rdb, u8** dataCursor, const u8* dataEnd);
+internal u32 
+	kgtNetReliableDataBufferUnpackMeta(
+		const u8** dataCursor, const u8* dataEnd, 
+		u32* o_frontMessageRollingIndex, u16* o_reliableMessageCount);
+internal void 
+	kgtNetReliableDataBufferQueueMessage(
+		KgtNetReliableDataBuffer* rdb, const u8* netPackedData, 
+		u16 netPackedDataBytes);

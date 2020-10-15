@@ -1,7 +1,7 @@
 #include "exampleGameNet.h"
 #include "serverExample.h"
 #include "KmlDynApp.h"
-#include "kNetCommon.h"
+#include "kgtNetCommon.h"
 internal u16 reliableMessageAnsiTextPack(
 	const char* nullTerminatedAnsiText, u8* dataBuffer, const u8* dataBufferEnd)
 {
@@ -133,12 +133,12 @@ internal u32 reliableMessageClientControlInputUnpack(
 	unpackedBytes += controlInputNetUnpack(o_cci, &data, dataEnd);
 	return unpackedBytes;
 }
-internal K_NET_CLIENT_WRITE_STATE(gameWriteClientState)
+internal KGT_NET_CLIENT_WRITE_STATE(gameWriteClientState)
 {
 	/* if client ever needs to send unreliable data, pack it up here! */
 	return 0;
 }
-internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
+internal KGT_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
 {
 	u32 bytesUnpacked = 0;
 	size_t netActorCount;
@@ -151,21 +151,21 @@ internal K_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
 	}
 	kassert(data == dataEnd);
 }
-internal K_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
+internal KGT_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 {
 	/* if client ever sends any unreliable data, unpack and interpret it 
 		here! */
 }
-internal K_NET_SERVER_WRITE_STATE(serverWriteState)
+internal KGT_NET_SERVER_WRITE_STATE(serverWriteState)
 {
 	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
-	size_t* arrayActorIndices = arrinit(size_t, ss->hKgaPermanent);
+	size_t* arrayActorIndices = arrinit(size_t, ss->hKalPermanent);
 	defer(arrfree(arrayActorIndices));
 	arrsetcap(arrayActorIndices, CARRAY_SIZE(ss->actors));
 	for(size_t a = 0; a < CARRAY_SIZE(ss->actors); a++)
 	/* accumulate a list of active actors */
 	{
-		if(ss->actors[a].clientId != network::SERVER_INVALID_CLIENT_ID)
+		if(ss->actors[a].clientId != kgtNet::SERVER_INVALID_CLIENT_ID)
 			arrpush(arrayActorIndices, a);
 	}
 	/* pack all the active actors into the server state 
@@ -179,7 +179,7 @@ internal K_NET_SERVER_WRITE_STATE(serverWriteState)
 	}
 	return bytesPacked;
 }
-internal K_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
+internal KGT_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
 {
 	/* spawn the client's possessed actor if it hasn't already been spawned */
 	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
@@ -188,7 +188,7 @@ internal K_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
 		clientActorIndex++)
 	{
 		if(ss->actors[clientActorIndex].clientId == 
-			network::SERVER_INVALID_CLIENT_ID)
+			kgtNet::SERVER_INVALID_CLIENT_ID)
 		{
 			break;
 		}
@@ -197,7 +197,7 @@ internal K_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
 	ss->actors[clientActorIndex] = {};
 	ss->actors[clientActorIndex].clientId = clientId;
 }
-internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
+internal KGT_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
 {
 	/* "erase" the client's possessed actor */
 	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
@@ -211,9 +211,9 @@ internal K_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
 		}
 	}
 	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
-	ss->actors[clientActorIndex].clientId = network::SERVER_INVALID_CLIENT_ID;
+	ss->actors[clientActorIndex].clientId = kgtNet::SERVER_INVALID_CLIENT_ID;
 }
-internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
+internal KGT_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 {
 	ServerState*const ss = reinterpret_cast<ServerState*>(userPointer);
 	/* peek at the `ReliableMessageType`, then read the data from it 
@@ -271,8 +271,8 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 			/* simply broadcast the text message back to all other clients~ */
 			const u16 netDataBytes = 
 				kmath::safeTruncateU16(netDataEnd - netData);
-			kNetServerQueueReliableMessage(&ss->kNetServer, netData, 
-			                               netDataBytes, clientId);
+			kgtNetServerQueueReliableMessage(
+				&ss->kNetServer, netData, netDataBytes, clientId);
 			bytesUnpacked += netDataBytes;
 		}break;
 		default:{
@@ -283,7 +283,7 @@ internal K_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 	kassert(bytesUnpacked == (netDataEnd - netData));
 	return bytesUnpacked;
 }
-internal K_NET_CLIENT_READ_RELIABLE_MESSAGE(gameClientReadReliableMessage)
+internal KGT_NET_CLIENT_READ_RELIABLE_MESSAGE(gameClientReadReliableMessage)
 {
 	/* peek at the `ReliableMessageType`, then read the data from it 
 		appropriately */

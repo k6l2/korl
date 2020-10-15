@@ -1,38 +1,38 @@
-#include "kNetClient.h"
-internal bool kNetClientIsDisconnected(const KNetClient* knc)
+#include "kgtNetClient.h"
+internal bool kgtNetClientIsDisconnected(const KgtNetClient* knc)
 {
 	return knc->socket == KPL_INVALID_SOCKET_INDEX;
 }
-internal void kNetClientConnect(
-	KNetClient* knc, const char* cStrServerAddress, u16 serverListenPort)
+internal void kgtNetClientConnect(
+	KgtNetClient* knc, const char* cStrServerAddress, u16 serverListenPort)
 {
 	knc->addressServer = g_kpl->netResolveAddress(cStrServerAddress);
 	knc->serverListenPort = serverListenPort;
 	knc->socket = g_kpl->socketOpenUdp(0);
-	knc->connectionState = network::ConnectionState::ACCEPTING;
+	knc->connectionState = kgtNet::ConnectionState::ACCEPTING;
 	knc->secondsSinceLastServerPacket = 0;
 	/* when the client connects to the server, initially there are ZERO reliable 
 		messages queued to be sent to us, so we can safely set this value to 
 		zero */
 	knc->latestReceivedReliableMessageIndex = 0;
 }
-internal void kNetClientBeginDisconnect(KNetClient* knc)
+internal void kgtNetClientBeginDisconnect(KgtNetClient* knc)
 {
-	knc->connectionState = network::ConnectionState::DISCONNECTING;
+	knc->connectionState = kgtNet::ConnectionState::DISCONNECTING;
 	knc->secondsSinceLastServerPacket = 0;
 }
-internal void kNetClientDropConnection(KNetClient* knc)
+internal void kgtNetClientDropConnection(KgtNetClient* knc)
 {
 	g_kpl->socketClose(knc->socket);
 	knc->socket = KPL_INVALID_SOCKET_INDEX;
 }
-internal void kNetClientStep(
-	KNetClient* knc, f32 deltaSeconds, f32 netReceiveSeconds, 
-	fnSig_kNetClientWriteState* fnWriteState,
-	fnSig_kNetClientReadServerState* fnReadServerState, 
-	fnSig_kNetClientReadReliableMessage* fnReadReliableMessage)
+internal void kgtNetClientStep(
+	KgtNetClient* knc, f32 deltaSeconds, f32 netReceiveSeconds, 
+	funcKgtNetClientWriteState* fnWriteState,
+	funcKgtNetClientReadServerState* fnReadServerState, 
+	funcKgtNetClientReadReliableMessage* fnReadReliableMessage)
 {
-	if(kNetClientIsDisconnected(knc))
+	if(kgtNetClientIsDisconnected(knc))
 	/* there's no need to perform any network logic if the client isn't even 
 		virtually connected to the server */
 	{
@@ -45,21 +45,21 @@ internal void kNetClientStep(
 			knc->packetBuffer + CARRAY_SIZE(knc->packetBuffer);
 		switch(knc->connectionState)
 		{
-			case network::ConnectionState::DISCONNECTING:{
+			case kgtNet::ConnectionState::DISCONNECTING:{
 				/* send disconnect packets to the server until we receive a 
 					disconnect aknowledgement from the server */
 				*(dataCursor++) = static_cast<u8>(
-					network::PacketType::CLIENT_DISCONNECT_REQUEST);
+					kgtNet::PacketType::CLIENT_DISCONNECT_REQUEST);
 			}break;
-			case network::ConnectionState::ACCEPTING:{
+			case kgtNet::ConnectionState::ACCEPTING:{
 				/* send connection requests until we receive server state */
 				*(dataCursor++) = static_cast<u8>(
-					network::PacketType::CLIENT_CONNECT_REQUEST);
+					kgtNet::PacketType::CLIENT_CONNECT_REQUEST);
 			}break;
-			case network::ConnectionState::CONNECTED:{
+			case kgtNet::ConnectionState::CONNECTED:{
 				/* send unreliable client state every frame */
 				kutil::netPack(static_cast<u8>(
-				               network::PacketType::CLIENT_UNRELIABLE_STATE), 
+				               kgtNet::PacketType::CLIENT_UNRELIABLE_STATE), 
 				               &dataCursor, kncPacketBufferEnd);
 				kutil::netPack(knc->rollingUnreliableStateIndex, 
 				               &dataCursor, kncPacketBufferEnd);
@@ -87,16 +87,16 @@ internal void kNetClientStep(
 		/* if we're connected to the server & we have reliable messages to send, 
 			attempt to send everything in our queue of reliable messages to the 
 			server */
-		if(knc->connectionState == network::ConnectionState::CONNECTED
+		if(knc->connectionState == kgtNet::ConnectionState::CONNECTED
 			&& knc->reliableDataBuffer.messageCount > 0)
 		{
 			dataCursor = knc->packetBuffer;
 			u32 packetSize = 
-				kutil::netPack(static_cast<u8>(network::PacketType
+				kutil::netPack(static_cast<u8>(kgtNet::PacketType
 				                   ::CLIENT_RELIABLE_MESSAGE_BUFFER), 
 				               &dataCursor, kncPacketBufferEnd);
 			packetSize += 
-				kNetReliableDataBufferNetPack(
+				kgtNetReliableDataBufferNetPack(
 					&knc->reliableDataBuffer, &dataCursor, kncPacketBufferEnd);
 			/* send the packetBuffer which now contains the reliable messages */
 			kassert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
@@ -109,7 +109,7 @@ internal void kNetClientStep(
 	/* process CLIENT <= SERVER communication */
 	knc->secondsSinceLastServerPacket += deltaSeconds;
 	if(knc->secondsSinceLastServerPacket >= 
-		network::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
+		kgtNet::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
 	/* if the client has timed out, there's no point in continuing since there 
 		is no more virtual connection to the server */
 	{
@@ -117,7 +117,7 @@ internal void kNetClientStep(
 		g_kpl->socketClose(knc->socket);
 		knc->socket = KPL_INVALID_SOCKET_INDEX;
 		knc->connectionState = 
-			network::ConnectionState::DISCONNECTING;
+			kgtNet::ConnectionState::DISCONNECTING;
 		return;
 	}
 	/* since the virtual net connection is still live, look for packets being 
@@ -144,14 +144,14 @@ internal void kNetClientStep(
 		u32 bytesUnpacked = 0;
 		if(netAddress == knc->addressServer && netPort == knc->serverListenPort)
 		{
-			const network::PacketType packetType = 
-				network::PacketType(*(packetBuffer++));
+			const kgtNet::PacketType packetType = 
+				kgtNet::PacketType(*(packetBuffer++));
 			bytesUnpacked++;
 			switch(packetType)
 			{
-				case network::PacketType::SERVER_ACCEPT_CONNECTION:{
+				case kgtNet::PacketType::SERVER_ACCEPT_CONNECTION:{
 					if(knc->connectionState != 
-						network::ConnectionState::ACCEPTING)
+						kgtNet::ConnectionState::ACCEPTING)
 					{
 						break;
 					}
@@ -159,19 +159,19 @@ internal void kNetClientStep(
 						kutil::netUnpack(&knc->id, &packetBuffer, 
 						                 packetBufferEnd);
 					knc->connectionState = 
-						network::ConnectionState::CONNECTED;
+						kgtNet::ConnectionState::CONNECTED;
 					knc->secondsSinceLastServerPacket = 0;
 					knc->reliableDataBuffer.frontMessageRollingIndex = 1;
 					KLOG(INFO, "CLIENT: connected!");
 				}break;
-				case network::PacketType::SERVER_REJECT_CONNECTION:{
+				case kgtNet::PacketType::SERVER_REJECT_CONNECTION:{
 					KLOG(INFO, "CLIENT: rejected by server!");
 					g_kpl->socketClose(knc->socket);
 					knc->socket = KPL_INVALID_SOCKET_INDEX;
 				}break;
-				case network::PacketType::SERVER_UNRELIABLE_STATE:{
+				case kgtNet::PacketType::SERVER_UNRELIABLE_STATE:{
 					if(knc->connectionState != 
-						network::ConnectionState::CONNECTED)
+						kgtNet::ConnectionState::CONNECTED)
 					{
 						break;
 					}
@@ -198,16 +198,16 @@ internal void kNetClientStep(
 						kutil::netUnpack(
 							&serverReportedReliableMessageRollingIndex, 
 							&packetBuffer, packetBufferEnd);
-					kNetReliableDataBufferDequeue(
+					kgtNetReliableDataBufferDequeue(
 						&knc->reliableDataBuffer, 
 						serverReportedReliableMessageRollingIndex);
 //					KLOG(INFO, "CLIENT: got server state!");
 					fnReadServerState(packetBuffer, packetBufferEnd);
 					knc->secondsSinceLastServerPacket = 0;
 				}break;
-				case network::PacketType::SERVER_RELIABLE_MESSAGE_BUFFER:{
+				case kgtNet::PacketType::SERVER_RELIABLE_MESSAGE_BUFFER:{
 					if(knc->connectionState != 
-						network::ConnectionState::CONNECTED)
+						kgtNet::ConnectionState::CONNECTED)
 					/* we aren't even connected; ignore. */
 					{
 						break;
@@ -215,7 +215,7 @@ internal void kNetClientStep(
 					u32 frontMessageRollingIndex;
 					u16 reliableMessageCount;
 					bytesUnpacked += 
-						kNetReliableDataBufferUnpackMeta(
+						kgtNetReliableDataBufferUnpackMeta(
 							&packetBuffer, packetBufferEnd, 
 							&frontMessageRollingIndex, &reliableMessageCount);
 					/* using this information, we can determine if we need to:
@@ -271,15 +271,15 @@ internal void kNetClientStep(
 					knc->latestReceivedReliableMessageIndex = 
 						lastMessageRollingIndex;
 				}break;
-				case network::PacketType::SERVER_DISCONNECT:{
+				case kgtNet::PacketType::SERVER_DISCONNECT:{
 					KLOG(INFO, "CLIENT: disconnected from server!");
 					g_kpl->socketClose(knc->socket);
 					knc->socket = KPL_INVALID_SOCKET_INDEX;
 				}break;
-				case network::PacketType::CLIENT_CONNECT_REQUEST:
-				case network::PacketType::CLIENT_UNRELIABLE_STATE:
-				case network::PacketType::CLIENT_RELIABLE_MESSAGE_BUFFER:
-				case network::PacketType::CLIENT_DISCONNECT_REQUEST:
+				case kgtNet::PacketType::CLIENT_CONNECT_REQUEST:
+				case kgtNet::PacketType::CLIENT_UNRELIABLE_STATE:
+				case kgtNet::PacketType::CLIENT_RELIABLE_MESSAGE_BUFFER:
+				case kgtNet::PacketType::CLIENT_DISCONNECT_REQUEST:
 				default:{
 					KLOG(ERROR, "CLIENT: invalid packet!");
 				}break;
@@ -290,11 +290,11 @@ internal void kNetClientStep(
 			all the data */
 	}while(g_kpl->secondsSinceTimeStamp(timeStampNetReceive) < 
 	           netReceiveSeconds
-	       && !kNetClientIsDisconnected(knc));
+	       && !kgtNetClientIsDisconnected(knc));
 }
-internal void kNetClientQueueReliableMessage(
-	KNetClient* knc, const u8* netPackedData, u16 netPackedDataBytes)
+internal void kgtNetClientQueueReliableMessage(
+	KgtNetClient* knc, const u8* netPackedData, u16 netPackedDataBytes)
 {
-	kNetReliableDataBufferQueueMessage(&knc->reliableDataBuffer, netPackedData, 
-	                                   netPackedDataBytes);
+	kgtNetReliableDataBufferQueueMessage(
+		&knc->reliableDataBuffer, netPackedData, netPackedDataBytes);
 }

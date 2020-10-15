@@ -1,8 +1,8 @@
 #include "serverExample.h"
 #include "KmlDynApp.h"
 internal void serverInitialize(ServerState* ss, f32 secondsPerFrame, 
-                               KgaHandle hKgaPermanentParent, 
-                               KgaHandle hKgaTransientParent, 
+                               KgtAllocatorHandle hKgaPermanentParent, 
+                               KgtAllocatorHandle hKgaTransientParent, 
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes, u16 port)
 {
@@ -13,27 +13,29 @@ internal void serverInitialize(ServerState* ss, f32 secondsPerFrame,
 	ss->serverJobTicket = g_kpl->postJob(nullptr, nullptr);
 	/* allocate memory for the server */
 	void*const permanentMemory = 
-		kgaAlloc(hKgaPermanentParent, permanentMemoryBytes);
+		kgtAllocAlloc(hKgaPermanentParent, permanentMemoryBytes);
 	void*const transientMemory = 
-		kgaAlloc(hKgaTransientParent, transientMemoryBytes);
+		kgtAllocAlloc(hKgaTransientParent, transientMemoryBytes);
 	// initialize dynamic allocators //
-	ss->hKgaPermanent = 
-		kgaInit(reinterpret_cast<u8*>(permanentMemory), permanentMemoryBytes);
-	ss->hKgaTransient = kgaInit(transientMemory, transientMemoryBytes);
+	ss->hKalPermanent = kgtAllocInit(
+		KgtAllocatorType::GENERAL, permanentMemory, permanentMemoryBytes);
+	ss->hKalTransient = kgtAllocInit(
+		KgtAllocatorType::GENERAL, transientMemory, transientMemoryBytes);
 	// construct a linear frame allocator //
 	{
 		const size_t kalFrameSize = kmath::megabytes(1);
 		void*const kalFrameStartAddress = 
-			kgaAlloc(ss->hKgaPermanent, kalFrameSize);
-		ss->hKalFrame = kalInit(kalFrameStartAddress, kalFrameSize);
+			kgtAllocAlloc(ss->hKalPermanent, kalFrameSize);
+		ss->hKalFrame = kgtAllocInit(
+			KgtAllocatorType::LINEAR, kalFrameStartAddress, kalFrameSize);
 	}
 	// Contruct/Initialize the server's AssetManager //
-	ss->assetManager = 
-		kamConstruct(ss->hKgaPermanent, KASSET_COUNT,
-		             /* pass nullptr for the kRenderBackend to ensure that the 
-		                server doesn't try to load any assets onto the GPU, 
-		                since there's no point. */
-		             ss->hKgaTransient, g_kpl, nullptr);
+	ss->assetManager = kgtAssetManagerConstruct(
+		ss->hKalPermanent, KGT_ASSET_COUNT,
+		/* pass nullptr for the kRenderBackend to ensure that the 
+		   server doesn't try to load any assets onto the GPU, 
+		   since there's no point. */
+		ss->hKalTransient, nullptr);
 }
 internal JOB_QUEUE_FUNCTION(serverUpdate)
 {
@@ -41,7 +43,7 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 	ServerState* ss = reinterpret_cast<ServerState*>(data);
 	if(!ss->serverStartCausedByRestart)
 	{
-		if(!kNetServerStart(&ss->kNetServer, ss->hKgaPermanent, 4))
+		if(!kgtNetServerStart(&ss->kNetServer, ss->hKalPermanent, 4))
 		{
 			KLOG(ERROR, "Failed to start server on port %i!", 
 			     ss->kNetServer.port);
@@ -50,22 +52,22 @@ internal JOB_QUEUE_FUNCTION(serverUpdate)
 		}
 		for(size_t a = 0; a < CARRAY_SIZE(ss->actors); a++)
 		{
-			ss->actors[a].clientId = network::SERVER_INVALID_CLIENT_ID;
+			ss->actors[a].clientId = kgtNet::SERVER_INVALID_CLIENT_ID;
 		}
 	}
 	defer(
 		if(ss->runState != ServerState::RunState::RESTART)
-			kNetServerStop(&ss->kNetServer)
+			kgtNetServerStop(&ss->kNetServer)
 	);
 	while(ss->runState == ServerState::RunState::RUN)
 	{
 		const PlatformTimeStamp timeStampFrameStart = g_kpl->getTimeStamp();
-		kalReset(ss->hKalFrame);
-		kNetServerStep(&ss->kNetServer, ss->secondsPerFrame, 
-		               0.1f*ss->secondsPerFrame, timeStampFrameStart, 
-		               serverReadClient, serverWriteState, 
-		               serverOnClientConnect, serverOnClientDisconnect, 
-		               serverReadReliableMessage, ss);
+		kgtAllocReset(ss->hKalFrame);
+		kgtNetServerStep(&ss->kNetServer, ss->secondsPerFrame, 
+		                 0.1f*ss->secondsPerFrame, timeStampFrameStart, 
+		                 serverReadClient, serverWriteState, 
+		                 serverOnClientConnect, serverOnClientDisconnect, 
+		                 serverReadReliableMessage, ss);
 		g_kpl->sleepFromTimeStamp(timeStampFrameStart, ss->secondsPerFrame);
 	}
 	KLOG(INFO, "Server job END!");

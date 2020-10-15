@@ -1,7 +1,7 @@
-#include "KNetReliableDataBuffer.h"
+#include "KgtNetReliableDataBuffer.h"
 #include <cstring>
-internal u16 kNetReliableDataBufferUsedBytes(
-	KNetReliableDataBuffer* rdb, u8** o_reliableDataBufferCursor)
+internal u16 kgtNetReliableDataBufferUsedBytes(
+	KgtNetReliableDataBuffer* rdb, u8** o_reliableDataBufferCursor)
 {
 	u16 usedBytes = 0;
 	u8* dataCursor = rdb->data + rdb->frontMessageByteOffset;
@@ -41,8 +41,9 @@ internal u16 kNetReliableDataBufferUsedBytes(
 		*o_reliableDataBufferCursor = dataCursor;
 	return usedBytes;
 }
-internal void kNetReliableDataBufferDequeue(
-	KNetReliableDataBuffer* rdb, u32 remoteReportedReliableMessageRollingIndex)
+internal void kgtNetReliableDataBufferDequeue(
+	KgtNetReliableDataBuffer* rdb, 
+	u32 remoteReportedReliableMessageRollingIndex)
 {
 	if(rdb->messageCount == 0)
 	/* ensure that the next reliable message sent to server will have a newer 
@@ -101,8 +102,8 @@ internal void kNetReliableDataBufferDequeue(
 //		KLOG(INFO, "confirmed reliable message[%i]", rmi);
 	}
 }
-internal u32 kNetReliableDataBufferNetPack(
-	KNetReliableDataBuffer* rdb, u8** dataCursor, const u8* dataEnd)
+internal u32 kgtNetReliableDataBufferNetPack(
+	KgtNetReliableDataBuffer* rdb, u8** dataCursor, const u8* dataEnd)
 {
 	u32 bytesPacked = 0;
 	/* first, pack the datagram header & the # of reliable messages we're about 
@@ -117,7 +118,7 @@ internal u32 kNetReliableDataBufferNetPack(
 		- reliableDataBufferFront >= reliableDataBufferCursor => two memcpys */
 	u8* reliableDataBufferCursor = nullptr;
 	const u16 reliableDataBufferUsedBytes = 
-		kNetReliableDataBufferUsedBytes(rdb, &reliableDataBufferCursor);
+		kgtNetReliableDataBufferUsedBytes(rdb, &reliableDataBufferCursor);
 	const u8* reliableDataBufferFront = rdb->data + rdb->frontMessageByteOffset;
 	const u8*const reliableDataBufferEnd = rdb->data + CARRAY_SIZE(rdb->data);
 	if(reliableDataBufferFront < reliableDataBufferCursor)
@@ -146,7 +147,7 @@ internal u32 kNetReliableDataBufferNetPack(
 	}
 	return bytesPacked;
 }
-internal u32 kNetReliableDataBufferUnpackMeta(
+internal u32 kgtNetReliableDataBufferUnpackMeta(
 	const u8** dataCursor, const u8* dataEnd, u32* o_frontMessageRollingIndex, 
 	u16* o_reliableMessageCount)
 {
@@ -159,8 +160,8 @@ internal u32 kNetReliableDataBufferUnpackMeta(
 		kutil::netUnpack(o_reliableMessageCount, dataCursor, dataEnd);
 	return bytesUnpacked;
 }
-internal void kNetReliableDataBufferQueueMessage(
-	KNetReliableDataBuffer* rdb, const u8* netPackedData, 
+internal void kgtNetReliableDataBufferQueueMessage(
+	KgtNetReliableDataBuffer* rdb, const u8* netPackedData, 
 	u16 netPackedDataBytes)
 {
 	/* make sure that we have enough room in the circular buffer queue for 
@@ -168,7 +169,7 @@ internal void kNetReliableDataBufferQueueMessage(
 	const u8*const reliableDataBufferEnd = rdb->data + CARRAY_SIZE(rdb->data);
 	u8* reliableDataBufferCursor = nullptr;
 	u16 reliableDataBufferUsedBytes = 
-		kNetReliableDataBufferUsedBytes(rdb, &reliableDataBufferCursor);
+		kgtNetReliableDataBufferUsedBytes(rdb, &reliableDataBufferCursor);
 	if(CARRAY_SIZE(rdb->data) - reliableDataBufferUsedBytes <
 		(netPackedDataBytes + sizeof(netPackedDataBytes)))
 	{
@@ -206,8 +207,8 @@ internal void kNetReliableDataBufferQueueMessage(
 		kassert(reliableDataBufferCursor >= rdb->data);
 		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
 	}
-	/* finally, update the rest of the KNetClient's reliable message queue state 
-		to reflect our newly added message.  For now, all we have to do is 
+	/* finally, update the rest of the KgtNetClient's reliable message queue 
+		state to reflect our newly added message.  For now, all we have to do is 
 		increment the message count, since the other information is all 
 		calculated on the fly.  */
 	rdb->messageCount++;

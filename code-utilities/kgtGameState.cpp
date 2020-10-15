@@ -125,9 +125,9 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
-#include "kNetClient.cpp"
-#include "kNetServer.cpp"
-#include "KNetReliableDataBuffer.cpp"
+#include "kgtNetClient.cpp"
+#include "kgtNetServer.cpp"
+#include "KgtNetReliableDataBuffer.cpp"
 #include "kgtFlipBook.cpp"
 #include "kgtAudioMixer.cpp"
 #pragma warning( push )
