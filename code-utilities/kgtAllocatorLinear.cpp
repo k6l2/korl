@@ -1,17 +1,17 @@
-#include "kAllocatorLinear.h"
+#include "kgtAllocatorLinear.h"
 /* each allocation is placed in front of this header in memory */
-struct KLinearAllocationHeader
+struct KgtLinearAllocationHeader
 {
 	size_t allocationBytes;
 };
-internal KAllocatorLinear* kalInit(
+internal KgtAllocatorLinear* kgtAllocLinearInit(
 	void* allocatorMemoryStart, size_t allocatorByteCount)
 {
-	KAllocatorLinear*const kal = 
-		static_cast<KAllocatorLinear*>(allocatorMemoryStart);
+	KgtAllocatorLinear*const kal = 
+		static_cast<KgtAllocatorLinear*>(allocatorMemoryStart);
 	kassert(allocatorByteCount > sizeof(*kal));
 	*kal = 
-		{ .type            = KAllocatorType::LINEAR
+		{ .type            = KgtAllocatorType::LINEAR
 		, .memoryStart     = kal + 1
 		, .memoryByteCount = allocatorByteCount - sizeof(*kal)
 		, .bytesAllocated  = 0
@@ -19,17 +19,18 @@ internal KAllocatorLinear* kalInit(
 	};
 	return kal;
 }
-internal void* kalAlloc(KAllocatorLinear* kal, size_t allocationByteCount)
+internal void* kgtAllocLinearAlloc(
+	KgtAllocatorLinear* kal, size_t allocationByteCount)
 {
 	const size_t totalRequiredBytes = 
-		allocationByteCount + sizeof(KLinearAllocationHeader);
-	if(totalRequiredBytes > kalMaxTotalUsableBytes(kal) ||
+		allocationByteCount + sizeof(KgtLinearAllocationHeader);
+	if(totalRequiredBytes > kgtAllocLinearMaxTotalUsableBytes(kal) ||
 	   allocationByteCount <= 0)
 	{
 		return nullptr;
 	}
-	KLinearAllocationHeader*const resultHeader = 
-		reinterpret_cast<KLinearAllocationHeader*>(
+	KgtLinearAllocationHeader*const resultHeader = 
+		reinterpret_cast<KgtLinearAllocationHeader*>(
 			reinterpret_cast<u8*>(kal->memoryStart) + kal->bytesAllocated);
 	resultHeader->allocationBytes = allocationByteCount;
 	void*const result = resultHeader + 1;
@@ -38,12 +39,13 @@ internal void* kalAlloc(KAllocatorLinear* kal, size_t allocationByteCount)
 	/* @TODO: clear the newly allocated memory for safety? */
 	return result;
 }
-internal void kalFree(KAllocatorLinear* kal, void* allocatedAddress)
+internal void kgtAllocLinearFree(
+	KgtAllocatorLinear* kal, void* allocatedAddress)
 {
 	if(allocatedAddress && allocatedAddress == kal->lastAllocResult)
 	{
-		const KLinearAllocationHeader*const lastAllocHeader = 
-			reinterpret_cast<KLinearAllocationHeader*>(allocatedAddress) - 1;
+		const KgtLinearAllocationHeader*const lastAllocHeader = 
+			reinterpret_cast<KgtLinearAllocationHeader*>(allocatedAddress) - 1;
 		kal->bytesAllocated -= 
 			lastAllocHeader->allocationBytes + sizeof(*lastAllocHeader);
 		kal->lastAllocResult = nullptr;
@@ -53,8 +55,8 @@ internal void kalFree(KAllocatorLinear* kal, void* allocatedAddress)
 	 * address wasn't the most recently allocated one.  The only way to reclaim 
 	 * all other memory is by resetting the allocator! */
 }
-internal void* kalRealloc(
-	KAllocatorLinear* kal, void* allocatedAddress, size_t newAllocationSize)
+internal void* kgtAllocLinearRealloc(
+	KgtAllocatorLinear* kal, void* allocatedAddress, size_t newAllocationSize)
 {
 	void* result = allocatedAddress;
 	if(allocatedAddress)
@@ -66,15 +68,15 @@ internal void* kalRealloc(
 	}
 	if(allocatedAddress)
 	{
-		KLinearAllocationHeader*const lastAllocHeader = 
-			reinterpret_cast<KLinearAllocationHeader*>(allocatedAddress) - 1;
+		KgtLinearAllocationHeader*const lastAllocHeader = 
+			reinterpret_cast<KgtLinearAllocationHeader*>(allocatedAddress) - 1;
 		if(allocatedAddress == kal->lastAllocResult)
 		/* we can simply expand the last allocation in-place without moving it 
 		 * around */
 		{
 			if(newAllocationSize > lastAllocHeader->allocationBytes 
 				&& newAllocationSize - lastAllocHeader->allocationBytes 
-					> kalMaxTotalUsableBytes(kal))
+					> kgtAllocLinearMaxTotalUsableBytes(kal))
 			/* if the new allocation size will not fit, return nothing 
 			 * indicating we are out of memory */
 			{
@@ -102,7 +104,7 @@ internal void* kalRealloc(
 		 * user wants to shrink the allocation we can just return & do no 
 		 * work */
 		{
-			result = kalAlloc(kal, newAllocationSize);
+			result = kgtAllocLinearAlloc(kal, newAllocationSize);
 			if(!result)
 				return nullptr;
 			memcpy(result, allocatedAddress, lastAllocHeader->allocationBytes);
@@ -113,20 +115,20 @@ internal void* kalRealloc(
 	/* we're effectively just calling `alloc` if we're passing a nullptr as the 
 	 * allocated address, so just do that */
 	{
-		return kalAlloc(kal, newAllocationSize);
+		return kgtAllocLinearAlloc(kal, newAllocationSize);
 	}
 	return result;
 }
-internal void kalReset(KAllocatorLinear* kal)
+internal void kgtAllocLinearReset(KgtAllocatorLinear* kal)
 {
 	kal->bytesAllocated = 0;
 	kal->lastAllocResult = nullptr;
 }
-internal size_t kalUsedBytes(KAllocatorLinear* kal)
+internal size_t kgtAllocLinearUsedBytes(KgtAllocatorLinear* kal)
 {
 	return kal->bytesAllocated;
 }
-internal size_t kalMaxTotalUsableBytes(KAllocatorLinear* kal)
+internal size_t kgtAllocLinearMaxTotalUsableBytes(KgtAllocatorLinear* kal)
 {
 	return kal->memoryByteCount - kal->bytesAllocated;
 }

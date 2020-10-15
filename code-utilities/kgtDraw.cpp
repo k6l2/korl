@@ -1,14 +1,15 @@
 #include "kgtDraw.h"
 #include "kgtVertex.h"
 internal void kgtDrawTexture2d(
-	KAssetManager* kam, KAssetIndex kai, 
-	const v2f32& position, const v2f32& ratioAnchor, 
+	KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 	f32 counterClockwiseRadians, const v2f32& scale)
 {
 	g_krb->setModelXform2d(
 		position, kQuaternion(v3f32::Z, counterClockwiseRadians), scale);
-	g_krb->useTexture(kamGetTexture(kam, kai), kamGetTextureMetaData(kam, kai));
-	const v2u32 imageSize = kamGetImageSize(kam, kai);
+	g_krb->useTexture(
+		kgtAssetManagerGetTexture(g_kam, kai), 
+		kgtAssetManagerGetTextureMetaData(g_kam, kai));
+	const v2u32 imageSize = kgtAssetManagerGetImageSize(g_kam, kai);
 	const v2f32 quadSize = 
 		{ static_cast<f32>(imageSize.x)
 		, static_cast<f32>(imageSize.y) };

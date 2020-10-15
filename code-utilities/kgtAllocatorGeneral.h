@@ -2,10 +2,10 @@
 #include "kutil.h"
 #include "kgtAllocator.h"
 /** Kyle's General Allocator */
-struct KgtGeneralAllocatorChunk
+struct KgtAllocatorGeneralChunk
 {
-	KgtGeneralAllocatorChunk* chunkPrev;
-	KgtGeneralAllocatorChunk* chunkNext;
+	KgtAllocatorGeneralChunk* chunkPrev;
+	KgtAllocatorGeneralChunk* chunkNext;
 	/** represents total available memory EXCLUDING the chunk header! */
 	size_t bytes;
 	bool allocated;
@@ -27,7 +27,7 @@ struct KgtAllocatorGeneral
 	*/
 	size_t totalBytes;
 	size_t totalChunks;
-	KgtGeneralAllocatorChunk* firstChunk;
+	KgtAllocatorGeneralChunk* firstChunk;
 };
 internal KgtAllocatorGeneral* 
 	kgtAllocGeneralInit(

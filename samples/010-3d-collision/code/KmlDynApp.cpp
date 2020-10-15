@@ -364,15 +364,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-		kgtShapeDraw(actor.position, actor.orientation, actor.shape, 
+		kgtShapeDraw(actor.shape, actor.position, actor.orientation, 
 		             g_gs->wireframe, g_gs->kgtGameState.hKalFrame);
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		kgtShapeDraw(g_gs->addShapePosition, kQuaternion::IDENTITY, 
-		             g_gs->addShape, g_gs->wireframe, 
+		kgtShapeDraw(g_gs->addShape, g_gs->addShapePosition, 
+		             kQuaternion::IDENTITY, g_gs->wireframe, 
 		             g_gs->kgtGameState.hKalFrame);
 	}
 	kgtDrawOrigin({10,10,10});

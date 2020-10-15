@@ -43,7 +43,7 @@ void kgtShapeDrawBox(
 }
 void kgtShapeDrawSphere(
 	const v3f32& worldPosition, const kQuaternion& orientation, 
-	const KgtShape& shape, bool wireframe, KAllocatorHandle hKal)
+	const KgtShape& shape, bool wireframe, KgtAllocatorHandle hKal)
 {
 	/* generate sphere mesh */
 	const size_t generatedSphereMeshVertexCount = 
@@ -51,7 +51,7 @@ void kgtShapeDrawSphere(
 	const size_t generatedSphereMeshBytes = 
 		generatedSphereMeshVertexCount * sizeof(KgtVertex);
 	KgtVertex*const generatedSphereMesh = reinterpret_cast<KgtVertex*>(
-		kAllocAlloc(hKal, generatedSphereMeshBytes));
+		kgtAllocAlloc(hKal, generatedSphereMeshBytes));
 	kmath::generateMeshCircleSphere(
 		1.f, 16, 16, generatedSphereMesh, generatedSphereMeshBytes, 
 		sizeof(KgtVertex), offsetof(KgtVertex,position), 
@@ -66,12 +66,11 @@ void kgtShapeDrawSphere(
 	g_krb->drawTris(
 		generatedSphereMesh, generatedSphereMeshVertexCount, 
 		sizeof(generatedSphereMesh[0]), vertexAttribOffsets);
-	kAllocFree(hKal, generatedSphereMesh);
+	kgtAllocFree(hKal, generatedSphereMesh);
 }
 void kgtShapeDraw(
-	const v3f32& worldPosition, const kQuaternion& orientation, 
-	const KgtShape& shape, bool wireframe, const KrbApi* krb, 
-	KAllocatorHandle hKal)
+	const KgtShape& shape, const v3f32& worldPosition, 
+	const kQuaternion& orientation, bool wireframe, KgtAllocatorHandle hKal)
 {
 	switch(shape.type)
 	{

@@ -1,5 +1,7 @@
 /*
- * User code must define a global KrbApi* called `g_krb` to use this module!
+ * User code must define the following global variables to use this module:
+ * - KrbApi* g_krb
+ * - KgtAssetManager* g_kam
  */
 #pragma once
 #include "kutil.h"
@@ -11,8 +13,7 @@ global_variable const Color4f32 QUAD_WHITE[]  =
 	{ krb::WHITE, krb::WHITE, krb::WHITE, krb::WHITE };
 internal void 
 	kgtDrawTexture2d(
-		KgtAssetManager* kam, KgtAssetIndex kai, 
-		const v2f32& position, const v2f32& ratioAnchor, 
+		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale);
 internal void 
 	kgtDrawOrigin(const v3f32& scale);

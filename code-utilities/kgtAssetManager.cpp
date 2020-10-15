@@ -455,7 +455,7 @@ internal v2u32
 	}
 }
 internal v2u32 
-	kgtAssetMangerGetImageSize(KgtAssetManager* kam, KgtAssetIndex assetIndex)
+	kgtAssetManagerGetImageSize(KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
 	if(assetIndex >= KgtAssetIndex::ENUM_SIZE)
 	{

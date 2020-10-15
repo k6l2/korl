@@ -1493,10 +1493,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_genAllocStbImage = kAllocInit(
-			KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
+		g_genAllocStbImage = kgtAllocInit(
+			KgtAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 #if SLOW_BUILD && INTERNAL_BUILD
-		kAllocUnitTest(g_genAllocStbImage);
+		kgtAllocUnitTest(g_genAllocStbImage);
 #endif//SLOW_BUILD && INTERNAL_BUILD
 	}
 	/* assign a pre-allocated dynamic memory arena for ImGui */
@@ -1507,8 +1507,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_genAllocImgui = kAllocInit(
-			KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
+		g_genAllocImgui = kgtAllocInit(
+			KgtAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 	}
 	/* assign a pre-allocated dynamic memory arena for loading files into memory 
 		note: this memory definitely needs to be thread-safe */
@@ -1519,7 +1519,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_hKalRawFiles = kAllocInit(KAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
+		g_hKalRawFiles = kgtAllocInit(
+			KgtAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 	}
 	/* assign a pre-allocated dynamic memory arena for decoding vorbis data */
 	{
