@@ -420,7 +420,7 @@ cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
 	dinput8.lib dxguid.lib ole32.lib oleaut32.lib Hid.lib ws2_32.lib 
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
-	GOTO :ON_FAILURE_KML
+	GOTO :ON_FAILURE_EXE
 )
 
 
@@ -433,7 +433,7 @@ rem        seconds or something
 :WAIT_FOR_DLL_BUILD
 if exist %lockFileDll% goto WAIT_FOR_DLL_BUILD
 :DLL_BUILD_COMPLETE
-if exist %statusFileDll% goto ON_FAILURE_GAME
+if exist %statusFileDll% goto ON_FAILURE_DLL
 :SKIP_ALL_BUILDS
 rem ----- LEAVE THE BUILD DIRECTORY -----
 popd
@@ -474,10 +474,10 @@ exit /B 0
 
 
 rem ----- FAILURE END THE BUILD -----
-:ON_FAILURE_GAME
-del %codeTreeFileNamePrefixGame%-existing.txt
-:ON_FAILURE_KML
-del %codeTreeFileNamePrefixKml%-existing.txt
+:ON_FAILURE_DLL
+del %hashFileExistingDll%
+:ON_FAILURE_EXE
+del %hashFileExistingExe%
 rem ----- LEAVE THE BUILD DIRECTORY -----
 popd
 echo KML build failed! 1>&2
