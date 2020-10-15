@@ -24,15 +24,15 @@ struct KgtShapeGjkSupportData
 {
 	const KgtShape& shapeA;
 	const v3f32& positionA;
-	const kQuaternion& orientationA;
+	const q32& orientA;
 	const KgtShape& shapeB;
 	const v3f32& positionB;
-	const kQuaternion& orientationB;
+	const q32& orientB;
 };
 internal GJK_SUPPORT_FUNCTION(kgtShapeGjkSupport);
 internal v3f32 
 	kgtShapeSupport(
-		const KgtShape& shape, const kQuaternion& orientation, 
+		const KgtShape& shape, const q32& orient, 
 		const v3f32& supportDirection);
 /**
  * @param hKal A temporary frame allocator would work best, as any memory needs 
@@ -41,13 +41,11 @@ internal v3f32
 internal void 
 	kgtShapeDraw(
 		const KgtShape& shape, const v3f32& worldPosition, 
-		const kQuaternion& orientation, bool wireframe, 
-		KgtAllocatorHandle hKal);
+		const q32& orient, bool wireframe, KgtAllocatorHandle hKal);
 /** 
  * @return NAN32 if the ray doesn't intersect with the shape 
  */
 internal f32 
 	kgtShapeTestRay(
 		const KgtShape& shape, const v3f32& position, 
-		const kQuaternion& orientation, 
-		const v3f32& rayOrigin, const v3f32& rayNormal);
+		const q32& orient, const v3f32& rayOrigin, const v3f32& rayNormal);

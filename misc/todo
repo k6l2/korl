@@ -749,7 +749,7 @@
 			kQuaternion::IDENTITY???
 		- it's because I need to NOT DEFINE STATIC CONSTANTS in header files 
 			EVER!!!
-	[ ] utility: physics solver
+	[ ] utility: BodyCollider
 		[ ] use general-purpose Shape structure (make generic in the future?)
 		[ ] save handles to user-defined Shapes
 		[ ] create "bodies" who reference Shape handles
@@ -757,6 +757,9 @@
 			- velocity
 			- orientation
 			- angularVelocity
+		[ ] step: solve which bodies are colliding
+		[ ] provide an interface for user code to perform work when bodies 
+			collide
 	[ ] utility: generic Actor interface
 		[ ] is there some way of automatically constructing an "Actor" interface 
 			with virtual dispatch functions without using C++ class 
@@ -764,10 +767,17 @@
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+[ ] attempt to initialize GJK with 3 iterations with intelligently selected 
+	search directions in an attempt to create a simplex pointing directly at the 
+	origin in the perfect sphere case
+[x] rename kQuaternion => q32
 [x] unify code-utilities to use the `kgt` namespace for all identifiers
-[ ] simplify code utility asset manager usage
-	[ ] kgtGameState: define a pointer to a global asset manager (g_kam)
-	[ ] apply all necessary simplifications to other kgt code utilities
+[x] update all samples to new API
+[x] simplify code utility asset manager usage
+	[x] kgtGameState: define a pointer to a global asset manager (g_kam)
+	[x] apply all necessary simplifications to other kgt code utilities
+[ ] prevent application from hanging when the asset manager can't find an asset 
+	file
 [ ] samples: render TTF
 	[ ] integrate stb_truetype
 	[ ] utility: font cache dynamic asset

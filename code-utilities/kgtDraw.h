@@ -6,7 +6,6 @@
 #pragma once
 #include "kutil.h"
 #include "krb-interface.h"
-#include "kgtAssetManager.h"
 global_variable const v2f32 QUAD_DEFAULT_TEX_NORMS[] = 
 	{ {0,0}, {0,1}, {1,1}, {1,0} };
 global_variable const Color4f32 QUAD_WHITE[]  = 
@@ -17,10 +16,10 @@ internal void
 		f32 counterClockwiseRadians, const v2f32& scale);
 internal void 
 	kgtDrawOrigin(const v3f32& scale);
-#define USE_IMAGE(kgtAssetManager, kgtAssetIndex) \
+#define USE_IMAGE(kgtAssetIndex) \
 	g_krb->useTexture(\
-		kgtAssetManagerGetTexture        (kgtAssetManager, kgtAssetIndex), \
-		kgtAssetManagerGetTextureMetaData(kgtAssetManager, kgtAssetIndex));
+		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \
+		kgtAssetManagerGetTextureMetaData(g_kam, kgtAssetIndex));
 /* useful drawing macros which can work with arbitrarily defined vertex 
  * structures */
 #define DRAW_POINTS(mesh, vertexAttribs) \

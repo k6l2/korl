@@ -10,7 +10,6 @@ struct KgtAudioTrack
 };
 struct KgtAudioMixer
 {
-	KgtAssetManager* assetManager;
 	u16 trackCount;
 	u8 trackCount_PADDING[6];
 	//AudioTrack tracks[];
@@ -36,8 +35,7 @@ internal u16
 }
 internal KgtAudioMixer* 
 	kgtAudioMixerConstruct(
-		KgtAllocatorHandle allocator, u16 audioTrackCount, 
-		KgtAssetManager* assetManager)
+		KgtAllocatorHandle allocator, u16 audioTrackCount)
 {
 	const size_t totalBytesRequired = 
 		sizeof(KgtAudioMixer) + sizeof(KgtAudioTrack)*audioTrackCount;
@@ -46,8 +44,7 @@ internal KgtAudioMixer*
 	if(result)
 	{
 		*result = 
-			{ .assetManager = assetManager
-			, .trackCount   = audioTrackCount };
+			{ .trackCount = audioTrackCount };
 		KgtAudioTrack*const tracks = 
 			reinterpret_cast<KgtAudioTrack*>(result + 1);
 		for(u16 t = 0; t < audioTrackCount; t++)
@@ -76,7 +73,7 @@ internal void
 			continue;
 		}
 		const RawSound tRawSound = kgtAssetManagerGetRawSound(
-			audioMixer->assetManager, tracks[t].kaiRawSound);
+			g_kam, tracks[t].kaiRawSound);
 		if(!tracks[t].pause)
 			tracks[t].currentSampleBlock += sampleBlocksConsumed;
 		if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
@@ -123,7 +120,7 @@ internal void
 			kassert(tracks[t].volumeRatio >= 0.f && 
 			        tracks[t].volumeRatio <= 1.f);
 			const RawSound tRawSound = kgtAssetManagerGetRawSound(
-				audioMixer->assetManager, tracks[t].kaiRawSound);
+				g_kam, tracks[t].kaiRawSound);
 			u32 currTapeSampleBlock = s + tracks[t].currentSampleBlock;
 			if(currTapeSampleBlock >= tRawSound.sampleBlockCount)
 			{

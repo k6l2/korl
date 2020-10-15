@@ -1,20 +1,20 @@
 #include "kgtCamera3d.h"
 internal v3f32 kgtCamera3dWorldForward(const KgtCamera3d* cam)
 {
-	return (kQuaternion(v3f32::Z*-1, cam->radiansYaw) * 
-	        kQuaternion(v3f32::Y*-1, cam->radiansPitch))
+	return (q32(v3f32::Z*-1, cam->radiansYaw) * 
+	        q32(v3f32::Y*-1, cam->radiansPitch))
 	            .transform(v3f32::X);
 }
 internal v3f32 kgtCamera3dWorldRight(const KgtCamera3d* cam)
 {
-	return (kQuaternion(v3f32::Z*-1, cam->radiansYaw) * 
-	        kQuaternion(v3f32::Y*-1, cam->radiansPitch))
+	return (q32(v3f32::Z*-1, cam->radiansYaw) * 
+	        q32(v3f32::Y*-1, cam->radiansPitch))
 	            .transform(v3f32::Y*-1);
 }
 internal v3f32 kgtCamera3dWorldUp(const KgtCamera3d* cam)
 {
-	return (kQuaternion(v3f32::Z*-1, cam->radiansYaw) * 
-	        kQuaternion(v3f32::Y*-1, cam->radiansPitch))
+	return (q32(v3f32::Z*-1, cam->radiansYaw) * 
+	        q32(v3f32::Y*-1, cam->radiansPitch))
 	            .transform(v3f32::Z);
 }
 internal void kgtCamera3dStep(
@@ -90,6 +90,17 @@ internal void kgtCamera3dLook(KgtCamera3d* cam, const v2i32& deltaYawPitch)
 		cam->radiansPitch = -MAX_PITCH_MAGNITUDE;
 	if(cam->radiansPitch > MAX_PITCH_MAGNITUDE)
 		cam->radiansPitch = MAX_PITCH_MAGNITUDE;
+}
+internal void kgtCamera3dLookAt(KgtCamera3d* cam, const v3f32& targetPosition)
+{
+	const v3f32 toTarget            = targetPosition - cam->position;
+	const v3f32 toTargetCompUp      = toTarget.projectOnto(v3f32::Z);
+	const v3f32 toTargetCompLateral = toTarget - toTargetCompUp;
+	cam->radiansYaw = kmath::radiansBetween(toTargetCompLateral, v3f32::X);
+	cam->radiansYaw *= 
+		(v3f32::X.cross(toTargetCompLateral)).dot(v3f32::Z) > 0 ? -1 : 1;
+	cam->radiansPitch = 
+		(PI32 - kmath::radiansBetween(toTarget, v3f32::Z)) - PI32/2;
 }
 internal void kgtCamera3dApplyViewProjection(
 	const KgtCamera3d* cam, const v2u32& windowDimensions)

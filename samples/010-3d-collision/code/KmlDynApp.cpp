@@ -1,10 +1,9 @@
 #include "KmlDynApp.h"
-#include "kgtDraw.h"
 /** @return NAN32 if the ray doesn't intersect with actor */
 f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 {
-	return kgtShapeTestRay(actor.shape, actor.position, actor.orientation, 
-	                       rayOrigin, rayNormal);
+	return kgtShapeTestRay(
+		actor.shape, actor.position, actor.orient, rayOrigin, rayNormal);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
@@ -46,7 +45,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					Actor& actor = g_gs->actors[g_gs->selectedActorId - 1];
 					for(u8 e = 0; 
 							e < CARRAY_SIZE(g_gs->modifyShapeTempValues); e++)
-						actor.orientation.elements[e] = 
+						actor.orient.elements[e] = 
 							g_gs->modifyShapeTempValues[e];
 				}
 				g_gs->hudState = HudState::NAVIGATING;
@@ -110,12 +109,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 						.cross(shapeModPlaneDeltaCurrent);
 					const f32 deltaRadians = kmath::radiansBetween(
 						shapeModPlaneDeltaStart, shapeModPlaneDeltaCurrent);
-					const kQuaternion deltaQuat(deltaAxis, deltaRadians);
+					const q32 deltaQuat(deltaAxis, deltaRadians);
 					/* new actor orientation = deltaQuat * old orientation */
-					const kQuaternion*const actorOrientationCached = 
-						reinterpret_cast<kQuaternion*>(
-							g_gs->modifyShapeTempValues);
-					actor.orientation = deltaQuat * (*actorOrientationCached);
+					const q32*const actorOrientationCached = 
+						reinterpret_cast<q32*>(g_gs->modifyShapeTempValues);
+					actor.orient = deltaQuat * (*actorOrientationCached);
 				}
 			}
 			if(gameMouse.left == ButtonState::PRESSED)
@@ -183,10 +181,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				{
 					g_gs->hudState = HudState::MODIFY_SHAPE_ROTATE;
 					Actor& actor = g_gs->actors[g_gs->selectedActorId - 1];
-					g_gs->modifyShapeTempValues[0] = actor.orientation.qw;
-					g_gs->modifyShapeTempValues[1] = actor.orientation.qx;
-					g_gs->modifyShapeTempValues[2] = actor.orientation.qy;
-					g_gs->modifyShapeTempValues[3] = actor.orientation.qz;
+					g_gs->modifyShapeTempValues[0] = actor.orient.qw;
+					g_gs->modifyShapeTempValues[1] = actor.orient.qx;
+					g_gs->modifyShapeTempValues[2] = actor.orient.qy;
+					g_gs->modifyShapeTempValues[3] = actor.orient.qz;
 					const v3f32 eyeToActor = 
 						actor.position - g_gs->camera.position;
 					g_gs->modifyShapePlaneDistanceFromCamera = 
@@ -228,7 +226,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			if(g_gs->hudState == HudState::ADDING_BOX 
-				|| g_gs->hudState == HudState::ADDING_SPHERE)
+					|| g_gs->hudState == HudState::ADDING_SPHERE)
 				ImGui::Text("[mouse left] - add shape to the scene");
 			else if(g_gs->hudState == HudState::MODIFY_SHAPE_GRAB
 					|| g_gs->hudState == HudState::MODIFY_SHAPE_ROTATE)
@@ -327,18 +325,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			Actor& actor2 = g_gs->actors[a2];
 			v3f32 gjkSimplex[4];
 			KgtShapeGjkSupportData shapeGjkSupportData = 
-				{ .shapeA       = actor.shape
-				, .positionA    = actor.position
-				, .orientationA = actor.orientation
-				, .shapeB       = actor2.shape
-				, .positionB    = actor2.position
-				, .orientationB = actor2.orientation };
+				{ .shapeA    = actor.shape
+				, .positionA = actor.position
+				, .orientA   = actor.orient
+				, .shapeB    = actor2.shape
+				, .positionB = actor2.position
+				, .orientB   = actor2.orient };
 			const v3f32 initialSupportDirection = 
 				-(actor.position - actor2.position);
 			v3f32 minTranslationVec;
 			f32   minTranslationDist;
 			if(   kmath::gjk(kgtShapeGjkSupport, &shapeGjkSupportData, 
-				             gjkSimplex, &initialSupportDirection)
+			                 gjkSimplex, &initialSupportDirection)
 			   && kmath::epa(&minTranslationVec, &minTranslationDist, 
 			                 kgtShapeGjkSupport, &shapeGjkSupportData, 
 			                 gjkSimplex, g_gs->kgtGameState.hKalFrame))
@@ -355,7 +353,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setWireframe(g_gs->wireframe);
 	kgtCamera3dApplyViewProjection(&g_gs->camera, windowDimensions);
 	/* use the default texture asset */
-	USE_IMAGE(g_gs->kgtGameState.assetManager, KgtAssetIndex::ENUM_SIZE);
+	USE_IMAGE(KgtAssetIndex::ENUM_SIZE);
 	/* draw all the shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
@@ -364,7 +362,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-		kgtShapeDraw(actor.shape, actor.position, actor.orientation, 
+		kgtShapeDraw(actor.shape, actor.position, actor.orient, 
 		             g_gs->wireframe, g_gs->kgtGameState.hKalFrame);
 	}
 	/* draw the shape that the user is attempting to add to the scene */
@@ -372,7 +370,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
 		kgtShapeDraw(g_gs->addShape, g_gs->addShapePosition, 
-		             kQuaternion::IDENTITY, g_gs->wireframe, 
+		             q32::IDENTITY, g_gs->wireframe, 
 		             g_gs->kgtGameState.hKalFrame);
 	}
 	kgtDrawOrigin({10,10,10});
@@ -393,8 +391,7 @@ GAME_INITIALIZE(gameInitialize)
 	*g_gs = {};// clear all GameState memory before initializing the template
 	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
 	g_gs->camera.position     = {10,11,12};
-	g_gs->camera.radiansYaw   = PI32*3/4;
-	g_gs->camera.radiansPitch = -PI32/4;
+	kgtCamera3dLookAt(&g_gs->camera, v3f32::ZERO);
 	/* initialize dynamic array of actors */
 	g_gs->actors = arrinit(Actor, g_gs->kgtGameState.hKalPermanent);
 }
@@ -404,4 +401,3 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 #include "kgtGameState.cpp"
 #include "kgtCamera3d.cpp"
 #include "kgtShape.cpp"
-#include "kgtDraw.cpp"

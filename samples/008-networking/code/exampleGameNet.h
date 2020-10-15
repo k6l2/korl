@@ -7,7 +7,7 @@ struct Actor
 {
 	kgtNet::ServerClientId clientId = kgtNet::SERVER_INVALID_CLIENT_ID;
 	v2f32 shipWorldPosition;
-	kQuaternion shipWorldOrientation;
+	q32 shipWorldOrientation;
 };
 enum class ReliableMessageType : u8
 {

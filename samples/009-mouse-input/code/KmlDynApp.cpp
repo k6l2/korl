@@ -1,27 +1,24 @@
 #include "KmlDynApp.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
-	                                    windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
 		return false;
 	v3f32 mouseEyeRayPosition  = {};
 	v3f32 mouseEyeRayDirection = {};
 	f32 resultEyeRayCollidePlaneXY = NAN32;
 	v3f32 eyeRayCollidePlaneXY = {};
 	bool lockedMouse = false;
-	const v3f32 cameraWorldForward = 
-		(kQuaternion(v3f32::Z*-1, g_gs->cameraRadiansYaw) * 
-		 kQuaternion(v3f32::Y*-1, g_gs->cameraRadiansPitch))
-		    .transform(v3f32::X);
+	const v3f32 cameraWorldForward = kgtCamera3dWorldForward(&g_gs->camera);
 	if(windowIsFocused)
 	/* process mouse input only if the window is in focus */
 	{
-		if(gameMouse.windowPosition.x >= 0 
-			&& gameMouse.windowPosition.x < 
-				static_cast<i64>(windowDimensions.x)
-			&& gameMouse.windowPosition.y >= 0 
-			&& gameMouse.windowPosition.y < 
-				static_cast<i64>(windowDimensions.y))
+		/* perform a raycast from the mouse position onto the XY plane */
+		if(   gameMouse.windowPosition.x >= 0 
+		   && gameMouse.windowPosition.x < 
+		          static_cast<i64>(windowDimensions.x)
+		   && gameMouse.windowPosition.y >= 0 
+		   && gameMouse.windowPosition.y < 
+		          static_cast<i64>(windowDimensions.y))
 		{
 			if(!g_krb->screenToWorld(
 					gameMouse.windowPosition.elements, 
@@ -42,8 +39,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			}
 		}
 		lockedMouse = gameMouse.right > ButtonState::NOT_PRESSED;
-		if(gameMouse.middle == ButtonState::PRESSED)
-			g_gs->orthographicView = !g_gs->orthographicView;
 		if(gameMouse.left == ButtonState::PRESSED && !lockedMouse)
 		{
 			if(!isnan(resultEyeRayCollidePlaneXY))
@@ -51,42 +46,19 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				g_gs->clickLocation = eyeRayCollidePlaneXY;
 			}
 		}
-		local_persist const f32 CAMERA_SPEED = 25;
+		if(gameMouse.middle == ButtonState::PRESSED)
+			g_gs->camera.orthographicView = !g_gs->camera.orthographicView;
 		if(lockedMouse)
-		{
-			local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
-			local_persist const f32 MAX_PITCH_MAGNITUDE = PI32/2 - 0.001f;
-			/* move the camera yaw & pitch based on relative mouse inputs */
-			g_gs->cameraRadiansYaw += 
-				CAMERA_LOOK_SENSITIVITY*gameMouse.deltaPosition.x;
-			g_gs->cameraRadiansYaw  = fmodf(g_gs->cameraRadiansYaw, 2*PI32);
-			g_gs->cameraRadiansPitch -= 
-				CAMERA_LOOK_SENSITIVITY*gameMouse.deltaPosition.y;
-			if(g_gs->cameraRadiansPitch < -MAX_PITCH_MAGNITUDE)
-				g_gs->cameraRadiansPitch = -MAX_PITCH_MAGNITUDE;
-			if(g_gs->cameraRadiansPitch > MAX_PITCH_MAGNITUDE)
-				g_gs->cameraRadiansPitch = MAX_PITCH_MAGNITUDE;
-			/* move the camera forward/backward based on mouse side buttons */
-			if(gameMouse.forward > ButtonState::NOT_PRESSED)
-				g_gs->cameraPosition += 
-					deltaSeconds * CAMERA_SPEED * cameraWorldForward;
-			if(gameMouse.back > ButtonState::NOT_PRESSED)
-				g_gs->cameraPosition -= 
-					deltaSeconds * CAMERA_SPEED * cameraWorldForward;
-		}
-		else
-		{
-			/* move the camera up/down based on mouse side buttons */
-			if(gameMouse.forward > ButtonState::NOT_PRESSED)
-				g_gs->cameraPosition += deltaSeconds * CAMERA_SPEED * v3f32::Z;
-			if(gameMouse.back > ButtonState::NOT_PRESSED)
-				g_gs->cameraPosition -= deltaSeconds * CAMERA_SPEED * v3f32::Z;
-		}
-		g_gs->clickCircleSize += 0.01f*gameMouse.deltaWheel;
-		if(g_gs->clickCircleSize < 1.f)
-			g_gs->clickCircleSize = 1.f;
-		if(g_gs->clickCircleSize > 10.f)
-			g_gs->clickCircleSize = 10.f;
+			kgtCamera3dLook(&g_gs->camera, gameMouse.deltaPosition);
+		kgtCamera3dStep(&g_gs->camera, 
+			lockedMouse ? gameMouse.forward > ButtonState::NOT_PRESSED : false, 
+			lockedMouse ? gameMouse.back    > ButtonState::NOT_PRESSED : false, 
+			false, false, 
+			lockedMouse ? false : gameMouse.forward > ButtonState::NOT_PRESSED, 
+			lockedMouse ? false : gameMouse.back    > ButtonState::NOT_PRESSED, 
+			deltaSeconds);
+		g_gs->clickCircleSize = kmath::clamp(
+			g_gs->clickCircleSize + 0.01f*gameMouse.deltaWheel, 1.f, 10.f);
 	}
 	/* display HUD GUI for sample controls */
 	if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -118,61 +90,47 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	/* render the scene */
 	g_krb->beginFrame(0.2f, 0, 0.2f);
 	g_krb->setDepthTesting(true);
-	if(g_gs->orthographicView)
-		g_krb->setProjectionOrthoFixedHeight(
-			windowDimensions.x, windowDimensions.y, 100, 1000);
-	else
-		g_krb->setProjectionFov(50.f, windowDimensions.elements, 1, 1000);
-	g_krb->lookAt(g_gs->cameraPosition.elements, 
-	              (g_gs->cameraPosition + cameraWorldForward).elements, 
-	              v3f32::Z.elements);
+	kgtCamera3dApplyViewProjection(&g_gs->camera, windowDimensions);
 	/* draw something at the click location */
 	{
-		g_krb->setModelXform(
-			g_gs->clickLocation, kQuaternion::IDENTITY, {1,1,1});
-		g_krb->drawCircle(g_gs->clickCircleSize, 0, {.25f,.75f,.75f,1}, 
-		                  krb::TRANSPARENT, 32);
+		g_krb->setModelXform(g_gs->clickLocation, q32::IDENTITY, {1,1,1});
+		g_krb->drawCircle(
+			g_gs->clickCircleSize, 0, {.25f,.75f,.75f,1}, krb::TRANSPARENT, 32);
 	}
 	if(!lockedMouse && !isnan(resultEyeRayCollidePlaneXY))
 	/* draw a crosshair where the mouse intersects with the XY world plane */
 	{
 		g_krb->setModelXform(
-			eyeRayCollidePlaneXY, kQuaternion::IDENTITY, 
-			{g_gs->clickCircleSize, g_gs->clickCircleSize, 
-			 g_gs->clickCircleSize} );
-		local_persist const VertexNoTexture MESH[] = 
-			{ {{-1, 0,0}, krb::WHITE}, {{1,0,0}, krb::WHITE}
-			, {{ 0,-1,0}, krb::WHITE}, {{0,1,0}, krb::WHITE} };
-		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
+			eyeRayCollidePlaneXY, q32::IDENTITY, 
+			{ g_gs->clickCircleSize 
+			, g_gs->clickCircleSize 
+			, g_gs->clickCircleSize} );
+		local_persist const KgtVertex MESH[] = 
+			{ {{-1, 0,0}, {}, krb::WHITE}, {{1,0,0}, {}, krb::WHITE}
+			, {{ 0,-1,0}, {}, krb::WHITE}, {{0,1,0}, {}, krb::WHITE} };
+		DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 	}
-	/* draw origin */
-	{
-		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
-		local_persist const VertexNoTexture MESH[] = 
-			{ {{0,0,0}, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {{0,0,0}, krb::GREEN}, {{0,1,0}, krb::GREEN}
-			, {{0,0,0}, krb::BLUE }, {{0,0,1}, krb::BLUE } };
-		DRAW_LINES(MESH, VERTEX_ATTRIBS_NO_TEXTURE);
-	}
+	kgtDrawOrigin({10,10,10});
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	templateGameState_renderAudio(&g_gs->templateGameState, audioBuffer, 
-	                              sampleBlocksConsumed);
+	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
+	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	templateGameState_initialize(&g_gs->templateGameState, memory, 
-	                             sizeof(GameState));
+	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
+	g_gs->camera.position = {10,10,10};
+	kgtCamera3dLookAt(&g_gs->camera, v3f32::ZERO);
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 }
-#include "TemplateGameState.cpp"
+#include "kgtGameState.cpp"
+#include "kgtCamera3d.cpp"

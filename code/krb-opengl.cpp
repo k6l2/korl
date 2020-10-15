@@ -675,7 +675,7 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 	/* homogeneous-clip-space  => eye-space */
 	v4f32 eyeRayDirectionEs = mInverseProjection*eyeRayDirectionHcs;
 	if(!isOrthographic)
-		eyeRayDirectionEs.vw = 0;
+		eyeRayDirectionEs.w = 0;
 	/* eye-space               => world-space */
 	const v4f32 eyeRayDirectionWs = mInverseView*eyeRayDirectionEs;
 	v3f32& resultPosition  = *reinterpret_cast<v3f32*>(o_worldEyeRayPosition);
@@ -689,11 +689,11 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		const v4f32 eyeRayPositionEs  = mInverseProjection*eyeRayPositionHcs;
 		const v4f32 eyeRayPositionWs  = mInverseView*eyeRayPositionEs;
 		resultPosition  = 
-			{eyeRayPositionWs.vx, eyeRayPositionWs.vy, eyeRayPositionWs.vz};
+			{eyeRayPositionWs.x, eyeRayPositionWs.y, eyeRayPositionWs.z};
 		resultDirection = 
-			kmath::normal( v3f32{eyeRayDirectionWs.vx, 
-			                     eyeRayDirectionWs.vy, 
-			                     eyeRayDirectionWs.vz} - resultPosition );
+			kmath::normal( v3f32{eyeRayDirectionWs.x, 
+			                     eyeRayDirectionWs.y, 
+			                     eyeRayDirectionWs.z} - resultPosition );
 	}
 	else
 	{
@@ -702,9 +702,9 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		resultPosition = 
 			{mInverseView.r0c3, mInverseView.r1c3, mInverseView.r2c3};
 		resultDirection = 
-			kmath::normal( v3f32{eyeRayDirectionWs.vx, 
-			                     eyeRayDirectionWs.vy, 
-			                     eyeRayDirectionWs.vz} );
+			kmath::normal( v3f32{eyeRayDirectionWs.x, 
+			                     eyeRayDirectionWs.y, 
+			                     eyeRayDirectionWs.z} );
 	}
 	return true;
 }

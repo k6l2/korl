@@ -5,7 +5,7 @@ internal void kgtDrawTexture2d(
 	f32 counterClockwiseRadians, const v2f32& scale)
 {
 	g_krb->setModelXform2d(
-		position, kQuaternion(v3f32::Z, counterClockwiseRadians), scale);
+		position, q32{v3f32::Z, counterClockwiseRadians}, scale);
 	g_krb->useTexture(
 		kgtAssetManagerGetTexture(g_kam, kai), 
 		kgtAssetManagerGetTextureMetaData(g_kam, kai));
@@ -18,7 +18,7 @@ internal void kgtDrawTexture2d(
 }
 internal void kgtDrawOrigin(const v3f32& scale)
 {
-	g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, scale);
+	g_krb->setModelXform(v3f32::ZERO, q32::IDENTITY, scale);
 	local_persist const KgtVertex MESH[] = 
 		{ {{0,0,0}, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
 		, {{0,0,0}, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}

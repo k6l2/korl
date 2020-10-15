@@ -5,32 +5,30 @@ internal GJK_SUPPORT_FUNCTION(kgtShapeGjkSupport)
 	const KgtShapeGjkSupportData& data = 
 		*reinterpret_cast<KgtShapeGjkSupportData*>(userData);
 	const v3f32 supportA = data.positionA + 
-		kgtShapeSupport(data.shapeA, data.orientationA,  supportDirection);
+		kgtShapeSupport(data.shapeA, data.orientA,  supportDirection);
 	const v3f32 supportB = data.positionB + 
-		kgtShapeSupport(data.shapeB, data.orientationB, -supportDirection);
+		kgtShapeSupport(data.shapeB, data.orientB, -supportDirection);
 	return supportA - supportB;
 }
 v3f32 kgtShapeSupport(
-	const KgtShape& shape, const kQuaternion& orientation, 
-	const v3f32& supportDirection)
+	const KgtShape& shape, const q32& orient, const v3f32& supportDirection)
 {
 	switch(shape.type)
 	{
 		case KgtShapeType::BOX:
 			return kmath::supportBox(
-				shape.box.lengths, orientation, supportDirection);
+				shape.box.lengths, orient, supportDirection);
 		case KgtShapeType::SPHERE:
-			return kmath::supportSphere(
-				shape.sphere.radius, supportDirection);
+			return kmath::supportSphere(shape.sphere.radius, supportDirection);
 	}
 	KLOG(ERROR, "shape.type {%i} is invalid!", i32(shape.type));
 	return {};
 }
 void kgtShapeDrawBox(
-	const v3f32& worldPosition, const kQuaternion& orientation, 
-	const KgtShape& shape, bool wireframe)
+	const v3f32& worldPosition, const q32& orient, const KgtShape& shape, 
+	bool wireframe)
 {
-	g_krb->setModelXform(worldPosition, orientation, {1,1,1});
+	g_krb->setModelXform(worldPosition, orient, {1,1,1});
 	KgtVertex generatedBox[36];
 	kmath::generateMeshBox(
 		shape.box.lengths, generatedBox, sizeof(generatedBox), 
@@ -42,8 +40,8 @@ void kgtShapeDrawBox(
 	DRAW_TRIS(generatedBox, vertexAttribs);
 }
 void kgtShapeDrawSphere(
-	const v3f32& worldPosition, const kQuaternion& orientation, 
-	const KgtShape& shape, bool wireframe, KgtAllocatorHandle hKal)
+	const v3f32& worldPosition, const q32& orient, const KgtShape& shape, 
+	bool wireframe, KgtAllocatorHandle hKal)
 {
 	/* generate sphere mesh */
 	const size_t generatedSphereMeshVertexCount = 
@@ -59,7 +57,7 @@ void kgtShapeDrawSphere(
 	/* draw the sphere */
 	const v3f32 sphereScale = 
 		{ shape.sphere.radius, shape.sphere.radius, shape.sphere.radius };
-	g_krb->setModelXform(worldPosition, orientation, sphereScale);
+	g_krb->setModelXform(worldPosition, orient, sphereScale);
 	const KrbVertexAttributeOffsets vertexAttribOffsets = wireframe
 		? KGT_VERTEX_ATTRIBS_POSITION_ONLY
 		: KGT_VERTEX_ATTRIBS_NO_COLOR;
@@ -69,17 +67,16 @@ void kgtShapeDrawSphere(
 	kgtAllocFree(hKal, generatedSphereMesh);
 }
 void kgtShapeDraw(
-	const KgtShape& shape, const v3f32& worldPosition, 
-	const kQuaternion& orientation, bool wireframe, KgtAllocatorHandle hKal)
+	const KgtShape& shape, const v3f32& worldPosition, const q32& orient, 
+	bool wireframe, KgtAllocatorHandle hKal)
 {
 	switch(shape.type)
 	{
 		case KgtShapeType::BOX:
-			kgtShapeDrawBox(worldPosition, orientation, shape, wireframe);
+			kgtShapeDrawBox(worldPosition, orient, shape, wireframe);
 			break;
 		case KgtShapeType::SPHERE:
-			kgtShapeDrawSphere(
-				worldPosition, orientation, shape, wireframe, hKal);
+			kgtShapeDrawSphere(worldPosition, orient, shape, wireframe, hKal);
 			break;
 		default:
 			KLOG(ERROR, "Invalid shape type! (%i)", shape.type);
@@ -87,15 +84,14 @@ void kgtShapeDraw(
 	}
 }
 internal f32 kgtShapeTestRay(
-	const KgtShape& shape, const v3f32& position, 
-	const kQuaternion& orientation, const v3f32& rayOrigin, 
-	const v3f32& rayNormal)
+	const KgtShape& shape, const v3f32& position, const q32& orient, 
+	const v3f32& rayOrigin, const v3f32& rayNormal)
 {
 	switch(shape.type)
 	{
 		case KgtShapeType::BOX:
 			return kmath::collideRayBox(
-				rayOrigin, rayNormal, position, orientation, shape.box.lengths);
+				rayOrigin, rayNormal, position, orient, shape.box.lengths);
 		case KgtShapeType::SPHERE:
 			return kmath::collideRaySphere(
 				rayOrigin, rayNormal, position, shape.sphere.radius);

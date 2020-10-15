@@ -104,7 +104,7 @@ struct v4f32
 		};
 		struct
 		{
-			f32 vx, vy, vz, vw;
+			f32 x, y, z, w;
 		};
 		struct
 		{
@@ -140,17 +140,16 @@ public:
 	class_namespace bool invert(const f32 elements[16], f32 o_elements[16]);
 	inline m4x4f32 operator*(const m4x4f32& other) const;
 };
-struct kQuaternion : public v4f32
+struct q32 : public v4f32
 {
-	class_namespace const kQuaternion IDENTITY;
+	class_namespace const q32 IDENTITY;
 	// Source: https://en.wikipedia.org/wiki/Quaternion#Hamilton_product
-	class_namespace inline kQuaternion hamilton(const kQuaternion& q0, 
-	                                            const kQuaternion& q1);
-	inline kQuaternion(f32 w = 0.f, f32 x = 0.f, f32 y = 0.f, f32 z = 0.f);
-	inline kQuaternion(v3f32 axis, f32 radians, bool axisIsNormalized = false);
+	class_namespace inline q32 hamilton(const q32& q0, const q32& q1);
+	inline q32(f32 w = 0.f, f32 x = 0.f, f32 y = 0.f, f32 z = 0.f);
+	inline q32(v3f32 axis, f32 radians, bool axisIsNormalized = false);
 	/* Source: 
 		https://en.wikipedia.org/wiki/Quaternion#Conjugation,_the_norm,_and_reciprocal */
-	inline kQuaternion conjugate() const;
+	inline q32 conjugate() const;
 	/* transform is not `const` because it can potentially auto-normalize the 
 		quaternion! */
 	inline v2f32 transform(const v2f32& v2d, bool quatIsNormalized = false);
@@ -215,13 +214,14 @@ namespace kmath
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
 	internal bool coplanar(
 		const v3f32& p0, const v3f32& p1, const v3f32& p2, const v3f32& p3);
-	internal void makeM4f32(const kQuaternion& q, m4x4f32* o_m);
+	internal void makeM4f32(const q32& q, m4x4f32* o_m);
 	internal void makeM4f32(
-		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m);
+		const q32& q, const v3f32& translation, m4x4f32* o_m);
 	/**
 	 * @return A sine curve that lies in the range [0,1]
 	 */
 	internal inline f32 sine_0_1(f32 radians);
+	internal inline f32 clamp(f32 x, f32 min, f32 max);
 	/**
 	 * Find the roots of a given quadratic formula which satisfies the form 
 	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
@@ -264,7 +264,7 @@ namespace kmath
 	 */
 	internal f32 collideRayBox(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
-		const v3f32& boxWorldPosition, const kQuaternion& boxOrientation, 
+		const v3f32& boxWorldPosition, const q32& boxOrientation, 
 		const v3f32& boxLengths);
 	/**
 	 * Generate mesh data for a box centered on the origin with `lengths` widths 
@@ -325,8 +325,8 @@ namespace kmath
 	 *         the supportDirection
 	 */
 	internal inline v3f32 supportBox(
-		v3f32 lengths, kQuaternion orientation, 
-		v3f32 supportDirection, bool supportDirectionIsNormalized = false);
+		v3f32 lengths, q32 orient, v3f32 supportDirection, 
+		bool supportDirectionIsNormalized = false);
 	/**
 	 * Gilbert–Johnson–Keerthi algorithm implementation.
 	 * @param o_simplex if the return value is true, this will contain the 
@@ -360,5 +360,4 @@ internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
 internal inline v3f32 operator/(const v3f32& lhs, f32 rhs);
 internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
-internal inline kQuaternion operator*(const kQuaternion& lhs, 
-                                      const kQuaternion& rhs);
+internal inline q32 operator*(const q32& lhs, const q32& rhs);

@@ -17,7 +17,6 @@ internal void kgtGameStateInitialize(
 {
 	kassert(totalGameStateSize <= memory.permanentMemoryBytes);
 	g_kgs = kgs;
-	g_kam = kgs->assetManager;
 	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
 		ever need to do this one time because *tgs should be in an immutable 
 		spot in memory forever */
@@ -41,9 +40,9 @@ internal void kgtGameStateInitialize(
 	// Contruct/Initialize the game's AssetManager //
 	kgs->assetManager = kgtAssetManagerConstruct(
 		kgs->hKalPermanent, KGT_ASSET_COUNT, kgs->hKalTransient, g_krb);
+	g_kam = kgs->assetManager;
 	// Initialize the game's audio mixer //
-	kgs->audioMixer = kgtAudioMixerConstruct(
-		kgs->hKalPermanent, 16, kgs->assetManager);
+	kgs->audioMixer = kgtAudioMixerConstruct(kgs->hKalPermanent, 16);
 	// Tell the asset manager to load assets asynchronously! //
 	kgtAssetManagerPushAllKgtAssets(kgs->assetManager);
 }
@@ -138,3 +137,4 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #pragma warning( pop )
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
+#include "kgtDraw.cpp"

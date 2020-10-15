@@ -7,7 +7,7 @@ const v3f32 v3f32::X = {1,0,0};
 const v3f32 v3f32::Y = {0,1,0};
 const v3f32 v3f32::Z = {0,0,1};
 const v4f32 v4f32::ZERO = {0,0,0,0};
-const kQuaternion kQuaternion::IDENTITY = {1,0,0,0};
+const q32 q32::IDENTITY = {1,0,0,0};
 const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,
                                    0,1,0,0,
                                    0,0,1,0,
@@ -199,36 +199,36 @@ inline v3f32 v3f32::projectOnto(v3f32 other, bool otherIsNormalized) const
 }
 inline v4f32& v4f32::operator*=(const f32 scalar)
 {
-	vx *= scalar;
-	vy *= scalar;
-	vz *= scalar;
-	vw *= scalar;
+	x *= scalar;
+	y *= scalar;
+	z *= scalar;
+	w *= scalar;
 	return *this;
 }
 inline f32 v4f32::magnitude() const
 {
-	return sqrtf(powf(vw,2) + powf(vx,2) + powf(vy,2) + powf(vz,2));
+	return sqrtf(powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2));
 }
 inline f32 v4f32::magnitudeSquared() const
 {
-	return powf(vw,2) + powf(vx,2) + powf(vy,2) + powf(vz,2);
+	return powf(w,2) + powf(x,2) + powf(y,2) + powf(z,2);
 }
 inline f32 v4f32::normalize()
 {
 	const f32 mag = magnitude();
 	if(kmath::isNearlyZero(mag))
 	{
-		return vw = vx = vy = vz = 0;
+		return w = x = y = z = 0;
 	}
-	vw /= mag;
-	vx /= mag;
-	vy /= mag;
-	vz /= mag;
+	w /= mag;
+	x /= mag;
+	y /= mag;
+	z /= mag;
 	return mag;
 }
 inline f32 v4f32::dot(const v4f32& other) const
 {
-	return vw*other.vw + vx*other.vx + vy*other.vy + vz*other.vz;
+	return w*other.w + x*other.x + y*other.y + z*other.z;
 }
 m4x4f32 m4x4f32::transpose(const f32* elements)
 {
@@ -384,27 +384,25 @@ internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs)
 	}
 	return result;
 }
-internal inline kQuaternion operator*(const kQuaternion& lhs, 
-                                      const kQuaternion& rhs)
+internal inline q32 operator*(const q32& lhs, const q32& rhs)
 {
-	return kQuaternion::hamilton(lhs, rhs);
+	return q32::hamilton(lhs, rhs);
 }
-inline kQuaternion kQuaternion::hamilton(const kQuaternion& q0, 
-                                         const kQuaternion& q1)
+inline q32 q32::hamilton(const q32& q0, const q32& q1)
 {
 	return { q0.qw*q1.qw - q0.qx*q1.qx - q0.qy*q1.qy - q0.qz*q1.qz, 
 	         q0.qw*q1.qx + q0.qx*q1.qw + q0.qy*q1.qz - q0.qz*q1.qy,
 	         q0.qw*q1.qy - q0.qx*q1.qz + q0.qy*q1.qw + q0.qz*q1.qx,
 	         q0.qw*q1.qz + q0.qx*q1.qy - q0.qy*q1.qx + q0.qz*q1.qw };
 }
-inline kQuaternion::kQuaternion(f32 w, f32 x, f32 y, f32 z)
+inline q32::q32(f32 w, f32 x, f32 y, f32 z)
 {
 	this->qw = w;
 	this->qx = x;
 	this->qy = y;
 	this->qz = z;
 }
-inline kQuaternion::kQuaternion(v3f32 axis, f32 radians, bool axisIsNormalized)
+inline q32::q32(v3f32 axis, f32 radians, bool axisIsNormalized)
 {
 	if(!axisIsNormalized)
 	{
@@ -416,27 +414,27 @@ inline kQuaternion::kQuaternion(v3f32 axis, f32 radians, bool axisIsNormalized)
 	qy = sine * axis.y;
 	qz = sine * axis.z;
 }
-inline kQuaternion kQuaternion::conjugate() const
+inline q32 q32::conjugate() const
 {
 	return {qw, -qx, -qy, -qz};
 }
-inline v2f32 kQuaternion::transform(const v2f32& v2d, bool quatIsNormalized)
+inline v2f32 q32::transform(const v2f32& v2d, bool quatIsNormalized)
 {
 	if(!quatIsNormalized)
 	{
 		normalize();
 	}
-	const kQuaternion result = 
+	const q32 result = 
 		hamilton(hamilton(*this, {0, v2d.x, v2d.y, 0}), conjugate());
 	return {result.qx, result.qy};
 }
-inline v3f32 kQuaternion::transform(const v3f32& v3d, bool quatIsNormalized)
+inline v3f32 q32::transform(const v3f32& v3d, bool quatIsNormalized)
 {
 	if(!quatIsNormalized)
 	{
 		normalize();
 	}
-	const kQuaternion result = 
+	const q32 result = 
 		hamilton(hamilton(*this, {0, v3d.x, v3d.y, v3d.z}), conjugate());
 	return {result.qx, result.qy, result.qz};
 }
@@ -656,7 +654,7 @@ internal bool kmath::coplanar(
 	 * perpendicular to the normal of the plane defined by the first two */
 	return isNearlyZero(v2.dot(v0.cross(v1)));
 }
-internal inline void kmath::makeM4f32(const kQuaternion& q, m4x4f32* o_m)
+internal inline void kmath::makeM4f32(const q32& q, m4x4f32* o_m)
 {
 	/* https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix */
 	const f32 sqW = q.qw*q.qw;
@@ -684,7 +682,7 @@ internal inline void kmath::makeM4f32(const kQuaternion& q, m4x4f32* o_m)
 	o_m->r3c3 = 1;
 }
 internal inline void kmath::makeM4f32(
-		const kQuaternion& q, const v3f32& translation, m4x4f32* o_m)
+		const q32& q, const v3f32& translation, m4x4f32* o_m)
 {
 	m4x4f32 m4Rotation;
 	makeM4f32(q, &m4Rotation);
@@ -697,6 +695,14 @@ internal inline void kmath::makeM4f32(
 internal inline f32 kmath::sine_0_1(f32 radians)
 {
 	return 0.5f*sinf(radians) + 0.5f;
+}
+internal inline f32 kmath::clamp(f32 x, f32 min, f32 max)
+{
+	if(x < min)
+		return min;
+	if(x > max)
+		return max;
+	return x;
 }
 internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
 {
@@ -820,7 +826,7 @@ internal inline f32 kmath::collideRaySphere(
 }
 internal inline f32 kmath::collideRayBox(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
-		const v3f32& boxWorldPosition, const kQuaternion& boxOrientation, 
+		const v3f32& boxWorldPosition, const q32& boxOrientation, 
 		const v3f32& boxLengths)
 {
 	/* geometric solution.  Sources:
@@ -1019,13 +1025,13 @@ internal inline void kmath::generateMeshCircleSphere(
 	{
 		/* add the next triangle to the top cap */
 		const v3f32 capTopZeroLongitude = 
-			kQuaternion(v3f32::Y, radiansPerLatitude, true)
+			q32(v3f32::Y, radiansPerLatitude, true)
 				.transform(verticalRadius, true);
-		kQuaternion quatLongitude(
+		q32 quatLongitude(
 			v3f32::Z, longitude*radiansPerSemiLongitude, true);
 		const v3f32 capTopLongitudeCurrent = 
 			quatLongitude.transform(capTopZeroLongitude, true);
-		kQuaternion quatLongitudePrevious(
+		q32 quatLongitudePrevious(
 			v3f32::Z, (longitude - 1)*radiansPerSemiLongitude, true);
 		const v3f32 capTopLongitudePrevious = 
 			quatLongitudePrevious.transform(capTopZeroLongitude, true);
@@ -1047,9 +1053,9 @@ internal inline void kmath::generateMeshCircleSphere(
 		/* add the quads to the internal latitude strips */
 		for(u32 latitude = 1; latitude < latitudeSegments - 1; latitude++)
 		{
-			kQuaternion quatLatitudePrevious(
+			q32 quatLatitudePrevious(
 				v3f32::Y, latitude*radiansPerLatitude, true);
-			kQuaternion quatLatitude(
+			q32 quatLatitude(
 				v3f32::Y, (latitude + 1)*radiansPerLatitude, true);
 			const v3f32 latStripTopPrevious = 
 				(quatLongitudePrevious * quatLatitudePrevious)
@@ -1121,8 +1127,8 @@ internal inline v3f32 kmath::supportSphere(
 	return radius*supportDirection;
 }
 internal inline v3f32 kmath::supportBox(
-	v3f32 lengths, kQuaternion orientation, 
-	v3f32 supportDirection, bool supportDirectionIsNormalized)
+	v3f32 lengths, q32 orientation, v3f32 supportDirection, 
+	bool supportDirectionIsNormalized)
 {
 	if(!supportDirectionIsNormalized)
 		supportDirection.normalize();

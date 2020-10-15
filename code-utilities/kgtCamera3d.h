@@ -22,6 +22,8 @@ internal void
 		bool moveLeft, bool moveUp, bool moveDown, f32 deltaSeconds);
 internal void 
 	kgtCamera3dLook(KgtCamera3d* cam, const v2i32& deltaYawPitch);
+internal void
+	kgtCamera3dLookAt(KgtCamera3d* cam, const v3f32& targetPosition);
 internal void 
 	kgtCamera3dApplyViewProjection(
 		const KgtCamera3d* cam, const v2u32& windowDimensions);

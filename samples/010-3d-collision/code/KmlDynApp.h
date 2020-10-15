@@ -13,7 +13,7 @@ enum class HudState : u8
 struct Actor
 {
 	v3f32 position;
-	kQuaternion orientation = kQuaternion::IDENTITY;
+	q32 orient = q32::IDENTITY;
 	KgtShape shape;
 };
 struct GameState

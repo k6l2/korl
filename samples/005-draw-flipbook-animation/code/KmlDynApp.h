@@ -1,11 +1,11 @@
 #pragma once
-#include "TemplateGameState.h"
-#include "kFlipBook.h"
+#include "kgtGameState.h"
+#include "kgtFlipBook.h"
 struct GameState
 {
-	KmlTemplateGameState templateGameState;
+	KgtGameState kgtGameState;
 	/* flipbook animation state is stored in a simple struct which must be 
 		initialized before using */
-	KFlipBook kfbBlob;
+	KgtFlipBook kfbBlob;
 };
 global_variable GameState* g_gs;

@@ -1,8 +1,7 @@
 #include "KmlDynApp.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
-	                                    windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
 		return false;
 	/* simple HUD visualization of which controllers are plugged in */
 	if(ImGui::Begin("Gamepads", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -63,48 +62,46 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrthoFixedHeight(
 		windowDimensions.x, windowDimensions.y, 150, 1);
 	local_persist const v2f32 HUD_LEFT_STICK_OFFSET = {-75,0};
-	g_krb->setModelXform2d(HUD_LEFT_STICK_OFFSET, kQuaternion::IDENTITY, {1,1});
+	g_krb->setModelXform2d(HUD_LEFT_STICK_OFFSET, q32::IDENTITY, {1,1});
 	g_krb->drawCircle(25, 0, krb::TRANSPARENT, krb::WHITE, 32);
-	g_krb->setModelXform2d(HUD_LEFT_STICK_OFFSET + 25*hudLeftStick, 
-	                       kQuaternion::IDENTITY, {1,1});
+	g_krb->setModelXform2d(
+		HUD_LEFT_STICK_OFFSET + 25*hudLeftStick, q32::IDENTITY, {1,1});
 	g_krb->drawCircle(20, 0, hudFillColorStickClickLeft, krb::TRANSPARENT, 32);
 	local_persist const v2f32 HUD_FACE_BUTTON_OFFSET = {75,0};
 	local_persist const f32 HUD_FACE_BUTTON_SPREAD = 20;
-	g_krb->setModelXform2d(HUD_FACE_BUTTON_OFFSET + 
-	                           v2f32{0,HUD_FACE_BUTTON_SPREAD}, 
-	                       kQuaternion::IDENTITY, {1,1});
+	g_krb->setModelXform2d(
+		HUD_FACE_BUTTON_OFFSET + v2f32{0,HUD_FACE_BUTTON_SPREAD}, 
+		q32::IDENTITY, {1,1});
 	g_krb->drawCircle(5, 0, hudFillColorFaceUp, krb::WHITE, 32);
-	g_krb->setModelXform2d(HUD_FACE_BUTTON_OFFSET + 
-	                           v2f32{0,-HUD_FACE_BUTTON_SPREAD}, 
-	                       kQuaternion::IDENTITY, {1,1});
+	g_krb->setModelXform2d(
+		HUD_FACE_BUTTON_OFFSET + v2f32{0,-HUD_FACE_BUTTON_SPREAD}, 
+		q32::IDENTITY, {1,1});
 	g_krb->drawCircle(5, 0, hudFillColorFaceDown, krb::WHITE, 32);
-	g_krb->setModelXform2d(HUD_FACE_BUTTON_OFFSET + 
-	                           v2f32{-HUD_FACE_BUTTON_SPREAD,0}, 
-	                       kQuaternion::IDENTITY, {1,1});
+	g_krb->setModelXform2d(
+		HUD_FACE_BUTTON_OFFSET + v2f32{-HUD_FACE_BUTTON_SPREAD,0}, 
+		q32::IDENTITY, {1,1});
 	g_krb->drawCircle(5, 0, hudFillColorFaceLeft, krb::WHITE, 32);
-	g_krb->setModelXform2d(HUD_FACE_BUTTON_OFFSET + 
-	                           v2f32{HUD_FACE_BUTTON_SPREAD,0}, 
-	                       kQuaternion::IDENTITY, {1,1});
+	g_krb->setModelXform2d(
+		HUD_FACE_BUTTON_OFFSET + v2f32{HUD_FACE_BUTTON_SPREAD,0}, 
+		q32::IDENTITY, {1,1});
 	g_krb->drawCircle(5, 0, hudFillColorFaceRight, krb::WHITE, 32);
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	templateGameState_renderAudio(&g_gs->templateGameState, audioBuffer, 
-	                              sampleBlocksConsumed);
+	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
+	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	templateGameState_initialize(&g_gs->templateGameState, memory, 
-	                             sizeof(GameState));
+	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 }
-#include "TemplateGameState.cpp"
+#include "kgtGameState.cpp"

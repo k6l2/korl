@@ -1,15 +1,18 @@
+/*
+ * User code must define the following global variables to use this module:
+ * - KrbApi* g_krb
+ * - KgtAssetManager* g_kam
+ */
 #pragma once
 #include "kutil.h"
 #include "kgtAllocator.h"
-#include "kgtAssetManager.h"
 #include "platform-game-interfaces.h"
 #include "gen_kgtAssets.h"
 struct KgtAudioMixer;
 using KgtTapeHandle = u64;
 internal KgtAudioMixer* 
 	kgtAudioMixerConstruct(
-		KgtAllocatorHandle allocator, u16 audioTrackCount, 
-		KgtAssetManager* assetManager);
+		KgtAllocatorHandle allocator, u16 audioTrackCount);
 internal void 
 	kgtAudioMixerMix(
 		KgtAudioMixer* audioMixer, GameAudioBuffer& audioBuffer, 

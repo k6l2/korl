@@ -1,7 +1,7 @@
 #pragma once
-#include "TemplateGameState.h"
+#include "kgtGameState.h"
 struct GameState
 {
-	KmlTemplateGameState templateGameState;
+	KgtGameState kgtGameState;
 };
 global_variable GameState* g_gs;

@@ -1,11 +1,11 @@
 #pragma once
-#include "TemplateGameState.h"
+#include "kgtGameState.h"
 struct GameState
 {
-	KmlTemplateGameState templateGameState;
+	KgtGameState kgtGameState;
 	bool musicLoop;
 	f32 musicVolumeRatio = 0.5f;
-	KTapeHandle musicTapeHandle;
+	KgtTapeHandle htMusic;
 	f32 sfxVolumeRatio = 0.7f;
 };
 global_variable GameState* g_gs;

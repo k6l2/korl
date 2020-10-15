@@ -20,6 +20,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_gs->actors[0].orientation = kQuaternion::IDENTITY;
 			g_gs->actors[1].orientation = kQuaternion::IDENTITY;
 #endif// two overlapping boxes
+#if 0 // two barely overlapping spheres causing large GJK iteration count
+			g_gs->actors[0].shape.type = ShapeType::SPHERE;
+			g_gs->actors[1].shape.type = ShapeType::SPHERE;
+			g_gs->actors[0].shape.sphere.radius = 1;
+			g_gs->actors[1].shape.sphere.radius = 1;
+			g_gs->actors[0].position = {8.92687702f, -0.164159507f, 0.522272706f};
+			g_gs->actors[1].position = {8.23775101f, -0.965597868f, 2.22015452f};
+			g_gs->actors[0].orient = q32::IDENTITY;
+			g_gs->actors[1].orient = q32::IDENTITY;
+#endif // two barely overlapping spheres causing large GJK iteration count
 #if 0 // two overlapping spheres could be difficult to converge w/ EPA 
 			g_gs->actors[0].shape.type = ShapeType::SPHERE;
 			g_gs->actors[1].shape.type = ShapeType::SPHERE;

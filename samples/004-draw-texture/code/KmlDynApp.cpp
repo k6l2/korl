@@ -1,10 +1,7 @@
 #include "KmlDynApp.h"
-#include "kVertex.h"
-#include "kgtDraw.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
-	                                    windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
 		return false;
 	/* display GUI window containing sample instructions */
 	ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -35,15 +32,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		v3f32{g_gs->camPosition2d.x, g_gs->camPosition2d.y, 7};
 	g_krb->lookAt(camPosition.elements, v3f32::ZERO.elements, 
 	              WORLD_UP.elements);
-	/* draw a simple 2D origin */
-	{
-		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
-		const local_persist Vertex meshOrigin[] = 
-			{ {v3f32::ZERO, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
-			, {v3f32::ZERO, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}
-			, {v3f32::ZERO, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
-		DRAW_LINES(g_krb, meshOrigin, VERTEX_ATTRIBS_NO_TEXTURE);
-	}
+	kgtDrawOrigin({10,10,10});
 	/* draw a textured cube 
 		- the `kasset` build tool automatically generates KAssetIndex entries 
 			for all files (excluding ones that match regex patterns in the 
@@ -53,40 +42,37 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		- the template game state also automatically hot-reloads assets when 
 			they are changed on disk! */
 	{
-		const size_t meshBoxBytes = 36*sizeof(Vertex);
-		Vertex* meshBox = ALLOC_FRAME_ARRAY(g_gs, Vertex, 36);
+		const size_t meshBoxBytes = 36*sizeof(KgtVertex);
+		KgtVertex* meshBox = ALLOC_FRAME_ARRAY(KgtVertex, 36);
 		kmath::generateMeshBox(
 			{2,2,2}, meshBox, meshBoxBytes, sizeof(meshBox[0]), 
-			offsetof(Vertex, position), offsetof(Vertex, textureNormal));
-		g_krb->setModelXform({0,0,0}, kQuaternion::IDENTITY, {4,4,4});
-		DRAW_TRIS_DYNAMIC(g_krb, meshBox, 36, VERTEX_ATTRIBS_NO_COLOR);
+			offsetof(KgtVertex, position), offsetof(KgtVertex, textureNormal));
+		g_krb->setModelXform({0,0,0}, q32::IDENTITY, {4,4,4});
+		USE_IMAGE(KgtAssetIndex::gfx_crate_tex);
+		DRAW_TRIS_DYNAMIC(meshBox, 36, KGT_VERTEX_ATTRIBS_NO_COLOR);
 	}
 	/* draw a simple textured quad on the screen */
 	g_krb->setProjectionOrtho(windowDimensions.x, windowDimensions.y, 1);
-	kgtDrawTexture2d(g_krb, g_gs->templateGameState.assetManager, 
-		KAssetIndex::gfx_crate_tex, 
+	kgtDrawTexture2d(KgtAssetIndex::gfx_crate_tex, 
 		{static_cast<f32>(windowDimensions.x)* 0.5f, 
 		 static_cast<f32>(windowDimensions.y)*-0.5f}, {1,1}, 0.f, {4,4});
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	templateGameState_renderAudio(&g_gs->templateGameState, audioBuffer, 
-	                              sampleBlocksConsumed);
+	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
+	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	templateGameState_initialize(&g_gs->templateGameState, memory, 
-	                             sizeof(GameState));
+	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
 }
-#include "TemplateGameState.cpp"
-#include "kgtDraw.cpp"
+#include "kgtGameState.cpp"

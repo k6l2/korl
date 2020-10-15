@@ -2,8 +2,7 @@
 #include <algorithm>
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!templateGameState_updateAndDraw(&g_gs->templateGameState, gameKeyboard, 
-	                                    windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
 		return false;
 	g_gs->seconds += deltaSeconds;
 	/* display GUI window containing sample instructions */
@@ -29,7 +28,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 					a < arrlenu(g_gs->dynamicArrayActorPositions); a++)
 				{
 					g_gs->dynamicArrayActorPositions[a] = 
-						kQuaternion(WORLD_UP, a*radiansPerActor)
+						q32(WORLD_UP, a*radiansPerActor)
 							.transform(v3f32{10,0,0});
 				}
 			}
@@ -51,20 +50,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->lookAt(camPosition.elements, v3f32::ZERO.elements, 
 	              WORLD_UP.elements);
 	/* draw a simple 2D origin */
-	{
-		g_krb->setModelXform(v3f32::ZERO, kQuaternion::IDENTITY, {10,10,10});
-		const local_persist VertexNoTexture meshOrigin[] = 
-			{ {v3f32::ZERO, krb::RED  }, {{1,0,0}, krb::RED  }
-			, {v3f32::ZERO, krb::GREEN}, {{0,1,0}, krb::GREEN}
-			, {v3f32::ZERO, krb::BLUE }, {{0,0,1}, krb::BLUE } };
-		DRAW_LINES(meshOrigin, VERTEX_NO_TEXTURE_ATTRIBS);
-	}
-	const local_persist VertexNoTexture tetrahedronVerts[] = 
-		{ {{ 1, 1, 1}, Color4f32{1,0,0,0.75}}
-		, {{-1,-1, 1}, Color4f32{0,1,0,0.75}}
-		, {{-1, 1,-1}, Color4f32{0,0,1,0.75}}
-		, {{ 1,-1,-1}, Color4f32{1,1,0,0.75}} };
-	const local_persist VertexNoTexture meshTri[] = 
+	kgtDrawOrigin({10,10,10});
+	const local_persist KgtVertex tetrahedronVerts[] = 
+		{ {{ 1, 1, 1}, {}, {1,0,0,0.75}}
+		, {{-1,-1, 1}, {}, {0,1,0,0.75}}
+		, {{-1, 1,-1}, {}, {0,0,1,0.75}}
+		, {{ 1,-1,-1}, {}, {1,1,0,0.75}} };
+	const local_persist KgtVertex meshTri[] = 
 		{ tetrahedronVerts[0], tetrahedronVerts[2], tetrahedronVerts[1]
 		, tetrahedronVerts[0], tetrahedronVerts[1], tetrahedronVerts[3]
 		, tetrahedronVerts[0], tetrahedronVerts[3], tetrahedronVerts[2]
@@ -77,9 +69,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		/* we can sort a separate array of actors using a linear frame allocator 
 			for temp storage, allowing us to preserve the original actor array's 
 			order for demonstration purposes */
-		v3f32* actorTempArray = reinterpret_cast<v3f32*>(
-			kalAlloc(g_gs->templateGameState.hKalFrame, 
-			         actorTempArrayLength*sizeof(v3f32)));
+		v3f32* actorTempArray = ALLOC_FRAME_ARRAY(v3f32, actorTempArrayLength);
 		for(size_t a = 0; a < actorTempArrayLength; a++)
 			actorTempArray[a] = g_gs->dynamicArrayActorPositions[a];
 		const auto actorSort = 
@@ -92,9 +82,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		          actorSort);
 		for(size_t a = 0; a < actorTempArrayLength; a++)
 		{
-			g_krb->setModelXform(actorTempArray[a], kQuaternion::IDENTITY, 
-			                     {1,1,1});
-			DRAW_TRIS(meshTri, VERTEX_NO_TEXTURE_ATTRIBS);
+			g_krb->setModelXform(actorTempArray[a], q32::IDENTITY, {1,1,1});
+			DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 		}
 	}
 	return true;
@@ -104,21 +93,19 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	templateGameState_onReloadCode(memory);
+	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	templateGameState_initialize(&g_gs->templateGameState, memory, 
-	                             sizeof(GameState));
+	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
 	/* initialize a dynamic array of actor positions using STB_DS */
 	g_gs->dynamicArrayActorPositions = 
-		arrinit(v3f32, g_gs->templateGameState.hKgaPermanent);
+		arrinit(v3f32, g_gs->kgtGameState.hKalPermanent);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	templateGameState_renderAudio(&g_gs->templateGameState, audioBuffer, 
-	                              sampleBlocksConsumed);
+	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
 }
-#include "TemplateGameState.cpp"
+#include "kgtGameState.cpp"

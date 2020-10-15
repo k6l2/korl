@@ -171,12 +171,11 @@ internal bool kgtFlipBookDecodeMeta(
 	}
 	return success;
 }
-internal void kgtFlipBookInit(
-	KgtFlipBook* kfb, KgtAssetManager* kam, KgtAssetIndex assetIndex)
+internal void kgtFlipBookInit(KgtFlipBook* kfb, KgtAssetIndex assetIndex)
 {
-	kfb->kam             = kam;
 	kfb->kaiMetaData     = assetIndex;
-	kfb->cachedMetaData  = kgtAssetManagerGetFlipBookMetaData(kam, assetIndex);
+	kfb->cachedMetaData  = kgtAssetManagerGetFlipBookMetaData(
+	                           g_kam, assetIndex);
 	kfb->anchorRatioX    = kfb->cachedMetaData.defaultAnchorRatioX;
 	kfb->anchorRatioY    = kfb->cachedMetaData.defaultAnchorRatioY;
 	kfb->repeat          = kfb->cachedMetaData.defaultRepeat;
@@ -219,7 +218,7 @@ internal void kgtFlipBookGetPageProperties(
 	*o_pageSizeY = kfb->cachedMetaData.frameSizeY;
 	*o_pageCount = kfb->cachedMetaData.frameCount;
 	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
-	const v2u32 texSize = kgtAssetManagerGetImageSize(kfb->kam, kaiTex);
+	const v2u32 texSize = kgtAssetManagerGetImageSize(g_kam, kaiTex);
 	if(*o_pageSizeX == 0)
 	{
 		*o_pageSizeX = texSize.x;
@@ -243,7 +242,7 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 	//	asset, then initialize the flipbook using the latest asset data. //
 	const KgtAssetIndex kaiFbm = kfb->kaiMetaData;
 	const KgtFlipBookMetaData fbmd = 
-		kgtAssetManagerGetFlipBookMetaData(kfb->kam, kaiFbm);
+		kgtAssetManagerGetFlipBookMetaData(g_kam, kaiFbm);
 	if(kfb->cachedMetaData != fbmd)
 	{
 		kfb->cachedMetaData  = fbmd;
@@ -282,8 +281,8 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 	          static_cast<f32>(pageCol + (kfb->flipH ? 0 : 1))/flipbookPageCols;
 	// Submit draw commands to the render backend. //
 	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
-	g_krb->useTexture(kgtAssetManagerGetTexture(kfb->kam, kaiTex), 
-	                  kgtAssetManagerGetTextureMetaData(kfb->kam, kaiTex));
+	g_krb->useTexture(kgtAssetManagerGetTexture        (g_kam, kaiTex), 
+	                  kgtAssetManagerGetTextureMetaData(g_kam, kaiTex));
 	v2f32 texCoords[4] = {{pageTexCoordLeft, pageTexCoordUp},
 	                      {pageTexCoordLeft, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordDown},

@@ -1,6 +1,5 @@
 #include "KmlDynApp.h"
 #include "exampleGameNet.h"
-#include "kgtDraw.h"
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
 	kgtGameStateOnReloadCode(memory);
@@ -21,10 +20,9 @@ GAME_INITIALIZE(gameInitialize)
 	                 kmath::megabytes(5), kmath::megabytes(5), 
 	                 GAME_NET_SERVER_LISTEN_PORT);
 	// Initialize flipbooks //
-	kgtFlipBookInit(&g_gs->kFbShip, g_gs->kgtGameState.assetManager, 
-	                KgtAssetIndex::gfx_fighter_fbm);
-	kgtFlipBookInit(&g_gs->kFbShipExhaust, g_gs->kgtGameState.assetManager, 
-	                KgtAssetIndex::gfx_fighter_exhaust_fbm);
+	kgtFlipBookInit(&g_gs->kFbShip, KgtAssetIndex::gfx_fighter_fbm);
+	kgtFlipBookInit(
+		&g_gs->kFbShipExhaust, KgtAssetIndex::gfx_fighter_exhaust_fbm);
 	// Initialize dynamic Actor array //
 	g_gs->actors = arrinit(Actor, g_gs->kgtGameState.hKalPermanent);
 }
@@ -196,4 +194,3 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 #include "kgtGameState.cpp"
 #include "serverExample.cpp"
 #include "exampleGameNet.cpp"
-#include "kgtDraw.cpp"

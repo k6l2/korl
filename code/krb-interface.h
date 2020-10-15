@@ -96,10 +96,10 @@ struct KrbVertexAttributeOffsets
 #define KRB_VIEW_TRANSLATE(name) \
 	void name(const v2f32& offset)
 #define KRB_SET_MODEL_XFORM(name) \
-	void name(const v3f32& translation, const kQuaternion& orientation, \
+	void name(const v3f32& translation, const q32& orientation, \
 	          const v3f32& scale)
 #define KRB_SET_MODEL_XFORM_2D(name) \
-	void name(const v2f32& translation, const kQuaternion& orientation, \
+	void name(const v2f32& translation, const q32& orientation, \
 	          const v2f32& scale)
 #define KRB_SET_MODEL_MATRIX(name) \
 	void name(const f32 rowMajorMatrix4x4[16])

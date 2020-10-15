@@ -253,7 +253,7 @@ internal KGT_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 				const f32 stickRadians =
 					kmath::v2Radians(cci.controlMoveVector);
 				clientActor.shipWorldOrientation =
-					kQuaternion({0,0,1}, stickRadians - PI32/2);
+					{{0,0,1}, stickRadians - PI32/2};
 			}
 			if(cci.controlResetPosition)
 			{

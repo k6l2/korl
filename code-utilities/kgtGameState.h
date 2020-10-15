@@ -5,6 +5,8 @@
 #include "kgtAllocator.h"
 #include "kgtAssetManager.h"
 #include "kgtAudioMixer.h"
+#include "kgtVertex.h"
+#include "kgtDraw.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )

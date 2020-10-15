@@ -1,11 +1,12 @@
 /*
- * User code must define a global KrbApi* called `g_krb` to use this module!
+ * User code must define the following global variables to use this module:
+ * - KrbApi* g_krb
+ * - KgtAssetManager* g_kam
  */
 #pragma once
 #include "kutil.h"
 #include "platform-game-interfaces.h"
 #include "gen_kgtAssets.h"
-struct KgtAssetManager;
 /* 
 FlipbookMetaData asset files are just text.  They must contain ONE of EACH 
 	property of the struct (with one exception, see below).  Each property must 
@@ -49,7 +50,6 @@ struct KgtFlipBookMetaData
 };
 struct KgtFlipBook
 {
-	KgtAssetManager* kam;
 	KgtAssetIndex kaiMetaData;
 	KgtFlipBookMetaData cachedMetaData;
 	f32 secondsPerFrame;
@@ -71,8 +71,7 @@ internal bool
 		KgtFlipBookMetaData* o_fbMeta, char* o_texAssetFileName, 
 		size_t texAssetFileNameBufferSize);
 internal void 
-	kgtFlipBookInit(
-		KgtFlipBook* kfb, KgtAssetManager* kam, KgtAssetIndex assetIndex);
+	kgtFlipBookInit(KgtFlipBook* kfb, KgtAssetIndex assetIndex);
 internal void 
 	kgtFlipBookStep(KgtFlipBook* kfb, f32 deltaSeconds);
 internal void 
