@@ -4,22 +4,22 @@
 #pragma once
 #include "kutil.h"
 #include "krb-interface.h"
-#include "kAssetManager.h"
+#include "kgtAssetManager.h"
 global_variable const v2f32 QUAD_DEFAULT_TEX_NORMS[] = 
 	{ {0,0}, {0,1}, {1,1}, {1,0} };
 global_variable const Color4f32 QUAD_WHITE[]  = 
 	{ krb::WHITE, krb::WHITE, krb::WHITE, krb::WHITE };
 internal void 
 	kgtDrawTexture2d(
-		KAssetManager* kam, KAssetIndex kai, 
+		KgtAssetManager* kam, KgtAssetIndex kai, 
 		const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale);
 internal void 
 	kgtDrawOrigin(const v3f32& scale);
-#define USE_IMAGE(kAssetManager, kAssetIndex) \
+#define USE_IMAGE(kgtAssetManager, kgtAssetIndex) \
 	g_krb->useTexture(\
-		kamGetTexture(kAssetManager, kAssetIndex), \
-		kamGetTextureMetaData(kAssetManager, kAssetIndex));
+		kgtAssetManagerGetTexture        (kgtAssetManager, kgtAssetIndex), \
+		kgtAssetManagerGetTextureMetaData(kgtAssetManager, kgtAssetIndex));
 /* useful drawing macros which can work with arbitrarily defined vertex 
  * structures */
 #define DRAW_POINTS(mesh, vertexAttribs) \

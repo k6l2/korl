@@ -1,8 +1,11 @@
+/*
+ * User code must define a global KrbApi* called `g_krb` to use this module!
+ */
 #pragma once
 #include "kutil.h"
 #include "platform-game-interfaces.h"
-#include "gen_kassets.h"
-struct KAssetManager;
+#include "gen_kgtAssets.h"
+struct KgtAssetManager;
 /* 
 FlipbookMetaData asset files are just text.  They must contain ONE of EACH 
 	property of the struct (with one exception, see below).  Each property must 
@@ -32,7 +35,7 @@ default-seconds-per-frame : 0.05
 default-anchor-ratio-x    : 0.5
 default-anchor-ratio-y    : 0.5
 */
-struct FlipbookMetaData
+struct KgtFlipBookMetaData
 {
 	u32 frameSizeX;
 	u32 frameSizeY;
@@ -40,16 +43,15 @@ struct FlipbookMetaData
 	bool defaultRepeat;
 	bool defaultReverse;
 	f32 defaultSecondsPerFrame;
-	size_t textureKAssetIndex;
+	KgtAssetIndex kaiTexture;
 	f32 defaultAnchorRatioX;
 	f32 defaultAnchorRatioY;
 };
-struct KFlipBook
+struct KgtFlipBook
 {
-	KAssetManager* kam;
-	KrbApi* krb;
-	size_t kAssetIndexMetaData;
-	FlipbookMetaData cachedMetaData;
+	KgtAssetManager* kam;
+	KgtAssetIndex kaiMetaData;
+	KgtFlipBookMetaData cachedMetaData;
 	f32 secondsPerFrame;
 	f32 anchorRatioX;
 	f32 anchorRatioY;
@@ -60,19 +62,18 @@ struct KFlipBook
 };
 /**
  * This function decodes & populates all members of FlipbookMetaData excluding 
- * textureKAssetIndex, since this data must be determined by the asset manager 
+ * kaiTexture, since this data must be determined by the asset manager 
  * itself using o_texAssetFileName.
  */
 internal bool 
-	kfbDecodeMeta(
+	kgtFlipBookDecodeMeta(
 		void* fileData, u32 fileBytes, const char* cStrAnsiAssetName, 
-		FlipbookMetaData* o_fbMeta, char* o_texAssetFileName, 
+		KgtFlipBookMetaData* o_fbMeta, char* o_texAssetFileName, 
 		size_t texAssetFileNameBufferSize);
 internal void 
-	kfbInit(
-		KFlipBook* kfb, KAssetManager* kam, KrbApi* krb, 
-		KAssetIndex assetIndex);
+	kgtFlipBookInit(
+		KgtFlipBook* kfb, KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal void 
-	kfbStep(KFlipBook* kfb, f32 deltaSeconds);
+	kgtFlipBookStep(KgtFlipBook* kfb, f32 deltaSeconds);
 internal void 
-	kfbDraw(KFlipBook* kfb, const Color4f32& color);
+	kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color);

@@ -1170,7 +1170,7 @@ internal bool kmath::gjk(
 internal bool kmath::epa(
 	v3f32* o_minimumTranslationNormal, f32* o_minimumTranslationDistance, 
 	fnSig_gjkSupport* support, void* supportUserData, const v3f32 simplex[4], 
-	KAllocatorHandle allocator, f32 resultTolerance)
+	KgtAllocatorHandle allocator, f32 resultTolerance)
 {
 	EpaState state;
 	epa_initialize(&state, simplex, allocator, resultTolerance);

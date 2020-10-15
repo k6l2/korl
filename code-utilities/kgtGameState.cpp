@@ -13,68 +13,70 @@ internal void kgtGameStateOnReloadCode(GameMemory& memory)
 	                             memory.imguiAllocUserData);
 }
 internal void kgtGameStateInitialize(
-	KgtGameState* tgs, GameMemory& memory, size_t totalGameStateSize)
+	KgtGameState* kgs, GameMemory& memory, size_t totalGameStateSize)
 {
 	kassert(totalGameStateSize <= memory.permanentMemoryBytes);
+	g_kgs = kgs;
+	g_kam = kgs->assetManager;
 	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
 		ever need to do this one time because *tgs should be in an immutable 
 		spot in memory forever */
-	g_krb->setCurrentContext(&tgs->krbContext);
+	g_krb->setCurrentContext(&kgs->krbContext);
 	// initialize dynamic allocators //
-	tgs->hKalPermanent = kAllocInit(
-		KAllocatorType::GENERAL, 
+	kgs->hKalPermanent = kgtAllocInit(
+		KgtAllocatorType::GENERAL, 
 		reinterpret_cast<u8*>(memory.permanentMemory) + totalGameStateSize, 
 		memory.permanentMemoryBytes - totalGameStateSize);
-	tgs->hKalTransient = kAllocInit(
-		KAllocatorType::GENERAL, 
+	kgs->hKalTransient = kgtAllocInit(
+		KgtAllocatorType::GENERAL, 
 		memory.transientMemory, memory.transientMemoryBytes);
 	// construct a linear frame allocator //
 	{
 		local_persist const size_t FRAME_ALLOC_BYTES = kmath::megabytes(5);
 		void*const kalFrameStartAddress = 
-			kAllocAlloc(tgs->hKalPermanent, FRAME_ALLOC_BYTES);
-		tgs->hKalFrame = kAllocInit(
-			KAllocatorType::LINEAR, kalFrameStartAddress, FRAME_ALLOC_BYTES);
+			kgtAllocAlloc(kgs->hKalPermanent, FRAME_ALLOC_BYTES);
+		kgs->hKalFrame = kgtAllocInit(
+			KgtAllocatorType::LINEAR, kalFrameStartAddress, FRAME_ALLOC_BYTES);
 	}
 	// Contruct/Initialize the game's AssetManager //
-	tgs->assetManager = kamConstruct(tgs->hKalPermanent, KASSET_COUNT,
-	                                 tgs->hKalTransient, g_kpl, g_krb);
+	kgs->assetManager = kgtAssetManagerConstruct(
+		kgs->hKalPermanent, KGT_ASSET_COUNT, kgs->hKalTransient, g_krb);
 	// Initialize the game's audio mixer //
-	tgs->kAudioMixer = kauConstruct(tgs->hKalPermanent, 16, 
-	                                tgs->assetManager);
+	kgs->audioMixer = kgtAudioMixerConstruct(
+		kgs->hKalPermanent, 16, kgs->assetManager);
 	// Tell the asset manager to load assets asynchronously! //
-	kamPushAllKAssets(tgs->assetManager);
+	kgtAssetManagerPushAllKgtAssets(kgs->assetManager);
 }
 internal void kgtGameStateRenderAudio(
-	KgtGameState* tgs, GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed)
+	KgtGameState* kgs, GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed)
 {
-	kauMix(tgs->kAudioMixer, audioBuffer, sampleBlocksConsumed);
+	kgtAudioMixerMix(kgs->audioMixer, audioBuffer, sampleBlocksConsumed);
 }
 internal bool kgtGameStateUpdateAndDraw(
-	KgtGameState* tgs, const GameKeyboard& gameKeyboard, bool windowIsFocused)
+	KgtGameState* kgs, const GameKeyboard& gameKeyboard, bool windowIsFocused)
 {
-	kAllocReset(tgs->hKalFrame);
+	kgtAllocReset(kgs->hKalFrame);
 	/* Esc, Ctrl+W & Alt+F4 shortcuts to quickly exit the program */
 	if(gameKeyboard.escape == ButtonState::PRESSED 
-		|| (gameKeyboard.f4 == ButtonState::PRESSED 
-			&& gameKeyboard.modifiers.alt)
-		|| (gameKeyboard.w == ButtonState::PRESSED 
-			&& gameKeyboard.modifiers.control))
+	   || (   gameKeyboard.f4 == ButtonState::PRESSED 
+	       && gameKeyboard.modifiers.alt)
+	   || (   gameKeyboard.w == ButtonState::PRESSED 
+	       && gameKeyboard.modifiers.control))
 	{
 		if(windowIsFocused)
 			return false;
 	}
 	/* easy fullscreen shortcuts */
 	if(gameKeyboard.f11 == ButtonState::PRESSED 
-		|| (gameKeyboard.enter == ButtonState::PRESSED 
-			&& gameKeyboard.modifiers.alt))
+	   || (   gameKeyboard.enter == ButtonState::PRESSED 
+	       && gameKeyboard.modifiers.alt))
 	{
 		g_kpl->setFullscreen(!g_kpl->isFullscreen());
 	}
 	/* hot-reload all assets which have been reported to be changed by the 
 		platform layer (newer file write timestamp) */
-	if(kamUnloadChangedAssets(tgs->assetManager))
-		kamPushAllKAssets(tgs->assetManager);
+	if(kgtAssetManagerUnloadChangedAssets(kgs->assetManager))
+		kgtAssetManagerPushAllKgtAssets(kgs->assetManager);
 	return true;
 }
 #pragma warning( push )
@@ -98,21 +100,21 @@ internal bool kgtGameStateUpdateAndDraw(
 	#undef NOGDI
 #pragma warning( pop )
 #define STB_DS_IMPLEMENTATION
-internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
-                             void* context)
+internal void* kStbDsRealloc(
+	void* allocatedAddress, size_t newAllocationSize, void* context)
 {
 	kassert(context);
-	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
+	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
 	void*const result = 
-		kAllocRealloc(hKal, allocatedAddress, newAllocationSize);
+		kgtAllocRealloc(hKal, allocatedAddress, newAllocationSize);
 	kassert(result);
 	return result;
 }
 internal void kStbDsFree(void* allocatedAddress, void* context)
 {
 	kassert(context);
-	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
-	kAllocFree(hKal, allocatedAddress);
+	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
+	kgtAllocFree(hKal, allocatedAddress);
 }
 #pragma warning( push )
 	// warning C4365: 'argument': conversion
@@ -126,13 +128,13 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kNetClient.cpp"
 #include "kNetServer.cpp"
 #include "KNetReliableDataBuffer.cpp"
-#include "kFlipBook.cpp"
-#include "kAudioMixer.cpp"
+#include "kgtFlipBook.cpp"
+#include "kgtAudioMixer.cpp"
 #pragma warning( push )
 	/* warning C4296: '<': expression is always false.  This happens if there 
 		are no KAssets in the assets directory */
 	#pragma warning( disable : 4296 )
-	#include "kAssetManager.cpp"
+	#include "kgtAssetManager.cpp"
 #pragma warning( pop )
-#include "kAllocator.cpp"
+#include "kgtAllocator.cpp"
 #include "korl-texture.cpp"

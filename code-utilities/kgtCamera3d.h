@@ -1,3 +1,6 @@
+/*
+ * User code must define a global KrbApi* called `g_krb` to use this module!
+ */
 #pragma once
 struct KgtCamera3d
 {
@@ -8,18 +11,17 @@ struct KgtCamera3d
 	bool orthographicView;
 };
 internal v3f32 
-	kgtCam3dWorldForward(const KgtCamera3d* cam);
+	kgtCamera3dWorldForward(const KgtCamera3d* cam);
 internal v3f32 
-	kgtCam3dWorldRight(const KgtCamera3d* cam);
+	kgtCamera3dWorldRight(const KgtCamera3d* cam);
 internal v3f32 
-	kgtCam3dWorldUp(const KgtCamera3d* cam);
+	kgtCamera3dWorldUp(const KgtCamera3d* cam);
 internal void 
-	kgtCam3dStep(
+	kgtCamera3dStep(
 		KgtCamera3d* cam, bool moveForward, bool moveBack, bool moveRight, 
 		bool moveLeft, bool moveUp, bool moveDown, f32 deltaSeconds);
 internal void 
-	kgtCam3dLook(KgtCamera3d* cam, const v2i32& deltaYawPitch);
+	kgtCamera3dLook(KgtCamera3d* cam, const v2i32& deltaYawPitch);
 internal void 
-	kgtCam3dApplyViewProjection(
-		const KgtCamera3d* cam, const KrbApi* krb, 
-		const v2u32& windowDimensions);
+	kgtCamera3dApplyViewProjection(
+		const KgtCamera3d* cam, const v2u32& windowDimensions);

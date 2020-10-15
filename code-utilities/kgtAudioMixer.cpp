@@ -1,50 +1,55 @@
-#include "kAudioMixer.h"
-struct AudioTrack
+#include "kgtAudioMixer.h"
+struct KgtAudioTrack
 {
-	KAssetIndex soundKAssetId = KAssetIndex::ENUM_SIZE;
+	KgtAssetIndex kaiRawSound = KgtAssetIndex::ENUM_SIZE;
 	u32 currentSampleBlock;
 	u16 idSalt;
 	bool repeat;
 	bool pause;
 	f32 volumeRatio = 1.f;
 };
-struct KAudioMixer
+struct KgtAudioMixer
 {
-	KAssetManager* assetManager;
+	KgtAssetManager* assetManager;
 	u16 trackCount;
 	u8 trackCount_PADDING[6];
 	//AudioTrack tracks[];
 };
-internal KTapeHandle kauHashTrack(KAudioMixer* audioMixer, u16 trackIndex)
+internal KgtTapeHandle 
+	kgtAudioMixerHashTrack(KgtAudioMixer* audioMixer, u16 trackIndex)
 {
 	if(trackIndex == audioMixer->trackCount)
 	{
 		return trackIndex;
 	}
 	kassert(trackIndex < audioMixer->trackCount);
-	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
-	return (static_cast<u64>(tracks[trackIndex].soundKAssetId) << 32) |
+	KgtAudioTrack*const tracks = 
+		reinterpret_cast<KgtAudioTrack*>(audioMixer + 1);
+	return (static_cast<u64>(tracks[trackIndex].kaiRawSound) << 32) |
 		   (static_cast<u32>(tracks[trackIndex].idSalt) << 16) |
 		   trackIndex;
 }
-internal u16 kauSoundHandleTrackIndex(KTapeHandle soundHandle)
+internal u16 
+	kgtAudioMixerSoundHandleTrackIndex(KgtTapeHandle soundHandle)
 {
 	return soundHandle & 0xFFFF;
 }
-internal KAudioMixer* kauConstruct(
-	KAllocatorHandle allocator, u16 audioTrackCount, 
-	KAssetManager* assetManager)
+internal KgtAudioMixer* 
+	kgtAudioMixerConstruct(
+		KgtAllocatorHandle allocator, u16 audioTrackCount, 
+		KgtAssetManager* assetManager)
 {
 	const size_t totalBytesRequired = 
-		sizeof(KAudioMixer) + sizeof(AudioTrack)*audioTrackCount;
-	KAudioMixer*const result = reinterpret_cast<KAudioMixer*>(
-		kAllocAlloc(allocator, totalBytesRequired));
+		sizeof(KgtAudioMixer) + sizeof(KgtAudioTrack)*audioTrackCount;
+	KgtAudioMixer*const result = reinterpret_cast<KgtAudioMixer*>(
+		kgtAllocAlloc(allocator, totalBytesRequired));
 	if(result)
 	{
 		*result = 
 			{ .assetManager = assetManager
 			, .trackCount   = audioTrackCount };
-		AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(result + 1);
+		KgtAudioTrack*const tracks = 
+			reinterpret_cast<KgtAudioTrack*>(result + 1);
 		for(u16 t = 0; t < audioTrackCount; t++)
 		{
 			tracks[t] = {};
@@ -52,10 +57,13 @@ internal KAudioMixer* kauConstruct(
 	}
 	return result;
 }
-internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
-                     u32 sampleBlocksConsumed)
+internal void 
+	kgtAudioMixerMix(
+		KgtAudioMixer* audioMixer, GameAudioBuffer& audioBuffer, 
+		u32 sampleBlocksConsumed)
 {
-	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
+	KgtAudioTrack*const tracks = 
+		reinterpret_cast<KgtAudioTrack*>(audioMixer + 1);
 	u16 tracksActive = 0;
 	// Examine all the tape tracks of the audio mixer.  
 	//	Determine if there are any tapes currently playing.
@@ -63,12 +71,12 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 	//	layer, and consequently if the track has run out of tape.
 	for(u16 t = 0; t < audioMixer->trackCount; t++)
 	{
-		if(tracks[t].soundKAssetId == KAssetIndex::ENUM_SIZE)
+		if(tracks[t].kaiRawSound == KgtAssetIndex::ENUM_SIZE)
 		{
 			continue;
 		}
-		const RawSound tRawSound = 
-			kamGetRawSound(audioMixer->assetManager, tracks[t].soundKAssetId);
+		const RawSound tRawSound = kgtAssetManagerGetRawSound(
+			audioMixer->assetManager, tracks[t].kaiRawSound);
 		if(!tracks[t].pause)
 			tracks[t].currentSampleBlock += sampleBlocksConsumed;
 		if(tracks[t].currentSampleBlock >= tRawSound.sampleBlockCount)
@@ -79,10 +87,10 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 			}
 			else
 			{
-				tracks[t].soundKAssetId = KAssetIndex::ENUM_SIZE;
+				tracks[t].kaiRawSound = KgtAssetIndex::ENUM_SIZE;
 			}
 		}
-		if(tracks[t].soundKAssetId != KAssetIndex::ENUM_SIZE)
+		if(tracks[t].kaiRawSound != KgtAssetIndex::ENUM_SIZE)
 		{
 			tracksActive++;
 		}
@@ -103,8 +111,8 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 		}
 		for(u16 t = 0; t < audioMixer->trackCount; t++)
 		{
-			if(tracks[t].soundKAssetId == KAssetIndex::ENUM_SIZE
-				|| tracks[t].pause)
+			if(   tracks[t].kaiRawSound == KgtAssetIndex::ENUM_SIZE
+			   || tracks[t].pause)
 			{
 				continue;
 			}
@@ -114,9 +122,8 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 			}
 			kassert(tracks[t].volumeRatio >= 0.f && 
 			        tracks[t].volumeRatio <= 1.f);
-			const RawSound tRawSound = 
-				kamGetRawSound(audioMixer->assetManager, 
-				               tracks[t].soundKAssetId);
+			const RawSound tRawSound = kgtAssetManagerGetRawSound(
+				audioMixer->assetManager, tracks[t].kaiRawSound);
 			u32 currTapeSampleBlock = s + tracks[t].currentSampleBlock;
 			if(currTapeSampleBlock >= tRawSound.sampleBlockCount)
 			{
@@ -143,17 +150,19 @@ internal void kauMix(KAudioMixer* audioMixer, GameAudioBuffer& audioBuffer,
 		}
 	}
 }
-internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer, 
-                                  KAssetIndex assetIndex)
+internal KgtTapeHandle 
+	kgtAudioMixerPlaySound(
+		KgtAudioMixer* audioMixer, KgtAssetIndex assetIndex)
 {
 	/* locate the first available audio track in the mixer (if one exists) */
-	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
+	KgtAudioTrack*const tracks = 
+		reinterpret_cast<KgtAudioTrack*>(audioMixer + 1);
 	u16 trackIndexFirstAvailable = 0;
 	for(; trackIndexFirstAvailable < audioMixer->trackCount
 		; trackIndexFirstAvailable++)
 	{
-		if(tracks[trackIndexFirstAvailable].soundKAssetId == 
-			KAssetIndex::ENUM_SIZE)
+		if(tracks[trackIndexFirstAvailable].kaiRawSound == 
+			KgtAssetIndex::ENUM_SIZE)
 		{
 			break;
 		}
@@ -161,7 +170,7 @@ internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer,
 	if(trackIndexFirstAvailable >= audioMixer->trackCount)
 	/* all of the audio mixer's tracks are currently playing sounds */
 	{
-		return kauHashTrack(audioMixer, audioMixer->trackCount);
+		return kgtAudioMixerHashTrack(audioMixer, audioMixer->trackCount);
 	}
 	/* there is an available tape track to put the sound in!  setup the track to 
 		use the sound contained in `assetIndex` and pop it into the mixer.  We 
@@ -169,13 +178,15 @@ internal KTapeHandle kauPlaySound(KAudioMixer* audioMixer,
 	const u16 nextTapeSalt = static_cast<u16>( 
 		tracks[trackIndexFirstAvailable].idSalt + u16(1) );
 	tracks[trackIndexFirstAvailable] = {};
-	tracks[trackIndexFirstAvailable].soundKAssetId = assetIndex;
-	tracks[trackIndexFirstAvailable].idSalt        = nextTapeSalt;
-	return kauHashTrack(audioMixer, trackIndexFirstAvailable);
+	tracks[trackIndexFirstAvailable].kaiRawSound = assetIndex;
+	tracks[trackIndexFirstAvailable].idSalt      = nextTapeSalt;
+	return kgtAudioMixerHashTrack(audioMixer, trackIndexFirstAvailable);
 }
-internal bool kauIsTapeHandleValid(KAudioMixer* audioMixer, KTapeHandle* kth)
+internal bool 
+	kgtAudioMixerIsTapeHandleValid(
+		KgtAudioMixer* audioMixer, KgtTapeHandle* kth)
 {
-	const u16 trackIndex = kauSoundHandleTrackIndex(*kth);
+	const u16 trackIndex = kgtAudioMixerSoundHandleTrackIndex(*kth);
 	if(trackIndex >= audioMixer->trackCount)
 	/* If the tape handle's trackIndex is out of bounds, it should always be 
 		invalid no matter what.
@@ -183,7 +194,8 @@ internal bool kauIsTapeHandleValid(KAudioMixer* audioMixer, KTapeHandle* kth)
 	{
 		return false;
 	}
-	const KTapeHandle currHandle = kauHashTrack(audioMixer, trackIndex);
+	const KgtTapeHandle currHandle = 
+		kgtAudioMixerHashTrack(audioMixer, trackIndex);
 	if(*kth != currHandle)
 	/* the salt of `*kth` doesn't match the current tape handle of this track 
 		index, which indicates `*kth` was once valid, but is no longer.  We 
@@ -191,43 +203,51 @@ internal bool kauIsTapeHandleValid(KAudioMixer* audioMixer, KTapeHandle* kth)
 		exists in the mixer to prevent it from accidentally becoming valid in 
 		the future if the salt rolls around to the same value! */
 	{
-		*kth = kauHashTrack(audioMixer, audioMixer->trackCount);
+		*kth = kgtAudioMixerHashTrack(audioMixer, audioMixer->trackCount);
 	}
 	return trackIndex < audioMixer->trackCount;
 }
 #define K_AUDIO_MIXER_DECODE_TAPE_HANDLE(...) \
-	if(!kauIsTapeHandleValid(audioMixer, tapeHandle))\
+	if(!kgtAudioMixerIsTapeHandleValid(audioMixer, tapeHandle))\
 	/* Silently ignore the request to modify the track if the handle is \
 		invalid */\
 	{\
 		return __VA_ARGS__;\
 	}\
-	const u16 trackIndex = kauSoundHandleTrackIndex(*tapeHandle);\
-	AudioTrack*const tracks = reinterpret_cast<AudioTrack*>(audioMixer + 1);
-internal void kauStopSound(KAudioMixer* audioMixer, KTapeHandle* tapeHandle)
+	const u16 trackIndex = kgtAudioMixerSoundHandleTrackIndex(*tapeHandle);\
+	KgtAudioTrack*const tracks = \
+		reinterpret_cast<KgtAudioTrack*>(audioMixer + 1);
+internal void 
+	kgtAudioMixerStopSound(
+		KgtAudioMixer* audioMixer, KgtTapeHandle* tapeHandle)
 {
 	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
-	tracks[trackIndex].soundKAssetId = KAssetIndex::ENUM_SIZE;
+	tracks[trackIndex].kaiRawSound = KgtAssetIndex::ENUM_SIZE;
 }
-internal void kauSetRepeat(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
-                           bool value)
+internal void 
+	kgtAudioMixerSetRepeat(
+		KgtAudioMixer* audioMixer, KgtTapeHandle* tapeHandle, bool value)
 {
 	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
 	tracks[trackIndex].repeat = value;
 }
-internal void kauSetPause(
-	KAudioMixer* audioMixer, KTapeHandle* tapeHandle, bool value)
+internal void 
+	kgtAudioMixerSetPause(
+		KgtAudioMixer* audioMixer, KgtTapeHandle* tapeHandle, bool value)
 {
 	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
 	tracks[trackIndex].pause = value;
 }
-internal void kauSetVolume(KAudioMixer* audioMixer, KTapeHandle* tapeHandle, 
-                           f32 volumeRatio)
+internal void 
+	kgtAudioMixerSetVolume(
+		KgtAudioMixer* audioMixer, KgtTapeHandle* tapeHandle, f32 volumeRatio)
 {
 	K_AUDIO_MIXER_DECODE_TAPE_HANDLE();
 	tracks[trackIndex].volumeRatio = volumeRatio;
 }
-internal bool kauGetPause(KAudioMixer* audioMixer, KTapeHandle* tapeHandle)
+internal bool 
+	kgtAudioMixerGetPause(
+		KgtAudioMixer* audioMixer, KgtTapeHandle* tapeHandle)
 {
 	K_AUDIO_MIXER_DECODE_TAPE_HANDLE(false);
 	return tracks[trackIndex].pause;

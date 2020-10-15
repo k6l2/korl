@@ -41,8 +41,7 @@ internal v3f32
 internal void 
 	kgtShapeDraw(
 		const v3f32& worldPosition, const kQuaternion& orientation, 
-		const KgtShape& shape, bool wireframe, const KrbApi* krb, 
-		KAllocatorHandle hKal);
+		const KgtShape& shape, bool wireframe, KgtAllocatorHandle hKal);
 /** 
  * @return NAN32 if the ray doesn't intersect with the shape 
  */

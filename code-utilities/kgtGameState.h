@@ -2,9 +2,9 @@
 #include "kutil.h"
 #include "platform-game-interfaces.h"
 #include "krb-interface.h"
-#include "kAllocator.h"
-#include "kAssetManager.h"
-#include "kAudioMixer.h"
+#include "kgtAllocator.h"
+#include "kgtAssetManager.h"
+#include "kgtAudioMixer.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )
@@ -16,18 +16,20 @@ internal void kStbDsFree(void* allocatedAddress, void* context);
 struct KgtGameState
 {
 	/* memory allocators */
-	KAllocatorHandle hKalPermanent;
-	KAllocatorHandle hKalTransient;
-	KAllocatorHandle hKalFrame;
+	KgtAllocatorHandle hKalPermanent;
+	KgtAllocatorHandle hKalTransient;
+	KgtAllocatorHandle hKalFrame;
 	/* required state for KRB */
 	krb::Context krbContext;
 	/* useful utilities which almost every game will use */
-	KAssetManager* assetManager;
-	KAudioMixer* kAudioMixer;
+	KgtAssetManager* assetManager;
+	KgtAudioMixer* audioMixer;
 };
 /* useful global variables */
 global_variable KmlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;
+global_variable KgtAssetManager* g_kam;
+global_variable KgtGameState* g_kgs;
 /* KGT game state API */
 internal void 
 	kgtGameStateOnReloadCode(GameMemory& memory);
@@ -37,18 +39,18 @@ internal void
  */
 internal void 
 	kgtGameStateInitialize(
-		KgtGameState* tgs, GameMemory& memory, size_t totalGameStateSize);
+		KgtGameState* kgs, GameMemory& memory, size_t totalGameStateSize);
 internal void 
 	kgtGameStateRenderAudio(
-		KgtGameState* tgs, GameAudioBuffer& audioBuffer, 
+		KgtGameState* kgs, GameAudioBuffer& audioBuffer, 
 		u32 sampleBlocksConsumed);
 /** @return true to request the platform continues to run, false to request the 
  *          platform closes the application */
 internal bool 
 	kgtGameStateUpdateAndDraw(
-		KgtGameState* tgs, const GameKeyboard& gameKeyboard, 
+		KgtGameState* kgs, const GameKeyboard& gameKeyboard, 
 		bool windowIsFocused);
 /* convenience macros for our application */
-#define ALLOC_FRAME_ARRAY(gs,type,elements) \
+#define ALLOC_FRAME_ARRAY(type,elements) \
 	reinterpret_cast<type*>(\
-		kAllocAlloc((gs)->kgtGameState.hKalFrame,sizeof(type)*(elements)))
+		kgtAllocAlloc(g_kgs->hKalFrame,sizeof(type)*(elements)))

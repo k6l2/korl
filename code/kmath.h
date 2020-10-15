@@ -7,7 +7,7 @@ global_variable const f32 PHI32 = 1.61803398875f;
 global_variable const f32 INFINITY32 = std::numeric_limits<f32>::infinity();
 #include <math.h>
 global_variable const f32 NAN32 = nanf("");
-#include "kAllocator.h"
+#include "kgtAllocator.h"
 struct v2u32
 {
 	union 
@@ -353,7 +353,7 @@ namespace kmath
 	internal bool epa(
 		v3f32* o_minimumTranslationNormal, f32* o_minimumTranslationDistance, 
 		fnSig_gjkSupport* support, void* supportUserData, 
-		const v3f32 simplex[4], KAllocatorHandle allocator, 
+		const v3f32 simplex[4], KgtAllocatorHandle allocator, 
 		f32 resultTolerance = 0.0001f);
 }
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);

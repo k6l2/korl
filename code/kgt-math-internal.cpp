@@ -309,7 +309,7 @@ internal void epa_findTriNearestToOrigin(kmath::EpaState* epaState)
 	}
 }
 internal void kmath::epa_initialize(
-	EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator, 
+	EpaState* epaState, const v3f32 simplex[4], KgtAllocatorHandle allocator, 
 	f32 resultTolerance)
 {
 	*epaState = {};
@@ -376,7 +376,7 @@ internal bool epa_verifyTriListIntegrity(kmath::EpaState* epaState)
 }
 internal void kmath::epa_iterate(
 	EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData, 
-	KAllocatorHandle allocator)
+	KgtAllocatorHandle allocator)
 {
 	if(epaState->lastIterationResult != EpaIterationResult::INCOMPLETE)
 		return;
@@ -538,7 +538,7 @@ internal u16 kmath::epa_buildPolytopeTriangles(
 internal u16 kmath::epa_buildPolytopeEdges(
 	EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
 	size_t vertexByteStride, size_t vertexPositionOffset, 
-	KAllocatorHandle allocator)
+	KgtAllocatorHandle allocator)
 {
 	/* first, we need to figure out how many edges there are excluding edges 
 	 * which are shared between triangles */

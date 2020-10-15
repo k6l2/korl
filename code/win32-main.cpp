@@ -5,7 +5,7 @@
 #include "win32-krb-opengl.h"
 #include "win32-network.h"
 #include "win32-platform.h"
-#include "kAllocator.h"
+#include "kgtAllocator.h"
 #include <cstdio>
 #include <ctime>
 #include <dbghelp.h>
@@ -41,8 +41,8 @@ global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
 global_variable HCURSOR g_cursorSizeNeSw;
 global_variable HCURSOR g_cursorSizeNwSe;
-global_variable KAllocatorHandle g_genAllocStbImage;
-global_variable KAllocatorHandle g_genAllocImgui;
+global_variable KgtAllocatorHandle g_genAllocStbImage;
+global_variable KgtAllocatorHandle g_genAllocImgui;
 global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
 // @assumption: once we have written a crash dump, there is never a need to 
 //	write any more, let alone continue execution.
@@ -1948,7 +1948,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 	}
-	kassert(kAllocUsedBytes(g_genAllocStbImage) == 0);
+	kassert(kgtAllocUsedBytes(g_genAllocStbImage) == 0);
 	KLOG(INFO, "END! :)");
 	return RETURN_CODE_SUCCESS;
 }
@@ -1971,7 +1971,7 @@ internal void* stbiMalloc(size_t allocationByteCount)
 #if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
 	KLOG(INFO, "stbiMalloc(%i)", allocationByteCount);
 #endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
-	void*const result = kAllocAlloc(g_genAllocStbImage, allocationByteCount);
+	void*const result = kgtAllocAlloc(g_genAllocStbImage, allocationByteCount);
 #if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
 	KLOG(INFO, "stbiMalloc: result=%x", result);
 #endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
@@ -1985,7 +1985,7 @@ internal void* stbiRealloc(void* allocatedAddress,
 #if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
 	KLOG(INFO, "stbiRealloc(%x, %i)", allocatedAddress, newAllocationByteCount);
 #endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
-	void*const result = kAllocRealloc(
+	void*const result = kgtAllocRealloc(
 		g_genAllocStbImage, allocatedAddress, newAllocationByteCount);
 #if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
 	KLOG(INFO, "stbiRealloc: result=%x", result);
@@ -2001,7 +2001,7 @@ internal void stbiFree(void* allocatedAddress)
 #if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
 	KLOG(INFO, "stbiFree(0x%x)", allocatedAddress);
 #endif// SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 
-	kAllocFree(g_genAllocStbImage, allocatedAddress);
+	kgtAllocFree(g_genAllocStbImage, allocatedAddress);
 	LeaveCriticalSection(&g_stbiAllocationCsLock);
 }
 #define STBI_MALLOC(sz)       stbiMalloc(sz)
@@ -2028,14 +2028,14 @@ internal void stbiFree(void* allocatedAddress)
 #include "stb/stb_vorbis.c"
 #pragma warning( pop )
 #define STB_DS_IMPLEMENTATION
-internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
-                             void* context)
+internal void* kStbDsRealloc(
+	void* allocatedAddress, size_t newAllocationSize, void* context)
 {
 	KLOG(ERROR, "Win32 platform layer should not be using STB_DS!");
 	kassert(context);
-	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
+	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
 	void*const result = 
-		kAllocRealloc(hKal, allocatedAddress, newAllocationSize);
+		kgtAllocRealloc(hKal, allocatedAddress, newAllocationSize);
 	kassert(result);
 	return result;
 }
@@ -2043,8 +2043,8 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 {
 	KLOG(ERROR, "Win32 platform layer should not be using STB_DS!");
 	kassert(context);
-	KAllocatorHandle hKal = reinterpret_cast<KAllocatorHandle>(context);
-	kAllocFree(hKal, allocatedAddress);
+	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
+	kgtAllocFree(hKal, allocatedAddress);
 }
 #pragma warning( push )
 	// warning C4365: 'argument': conversion
@@ -2055,4 +2055,4 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
-#include "kAllocator.cpp"
+#include "kgtAllocator.cpp"

@@ -12,9 +12,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	                              windowIsFocused))
 		return false;
 	bool lockedMouse = false;
-	const v3f32 cameraWorldForward = kgtCam3dWorldForward(&g_gs->camera);
-	const v3f32 cameraWorldRight   = kgtCam3dWorldRight(&g_gs->camera);
-	const v3f32 cameraWorldUp      = kgtCam3dWorldUp(&g_gs->camera);
+	const v3f32 cameraWorldForward = kgtCamera3dWorldForward(&g_gs->camera);
+	const v3f32 cameraWorldRight   = kgtCamera3dWorldRight(&g_gs->camera);
+	const v3f32 cameraWorldUp      = kgtCamera3dWorldUp(&g_gs->camera);
 	/* handle user input */
 	if(windowIsFocused)
 	{
@@ -200,7 +200,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_kpl->mouseSetRelativeMode(lockedMouse);
 		if(gameMouse.middle == ButtonState::PRESSED)
 			g_gs->camera.orthographicView = !g_gs->camera.orthographicView;
-		kgtCam3dStep(&g_gs->camera, 
+		kgtCamera3dStep(&g_gs->camera, 
 			gameKeyboard.e > ButtonState::NOT_PRESSED, 
 			gameKeyboard.d > ButtonState::NOT_PRESSED, 
 			gameKeyboard.f > ButtonState::NOT_PRESSED, 
@@ -211,7 +211,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			deltaSeconds);
 		if(lockedMouse)
 		{
-			kgtCam3dLook(&g_gs->camera, gameMouse.deltaPosition);
+			kgtCamera3dLook(&g_gs->camera, gameMouse.deltaPosition);
 		}
 		if(gameKeyboard.modifiers.shift 
 			&& gameKeyboard.a > ButtonState::NOT_PRESSED)
@@ -353,9 +353,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setDepthTesting(true);
 	g_krb->setBackfaceCulling(!g_gs->wireframe);
 	g_krb->setWireframe(g_gs->wireframe);
-	kgtCam3dApplyViewProjection(&g_gs->camera, g_krb, windowDimensions);
+	kgtCamera3dApplyViewProjection(&g_gs->camera, windowDimensions);
 	/* use the default texture asset */
-	USE_IMAGE(g_gs->kgtGameState.assetManager, KAssetIndex::ENUM_SIZE);
+	USE_IMAGE(g_gs->kgtGameState.assetManager, KgtAssetIndex::ENUM_SIZE);
 	/* draw all the shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
@@ -365,14 +365,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		else
 			g_krb->setDefaultColor(krb::WHITE);
 		kgtShapeDraw(actor.position, actor.orientation, actor.shape, 
-		             g_gs->wireframe, g_krb, g_gs->kgtGameState.hKalFrame);
+		             g_gs->wireframe, g_gs->kgtGameState.hKalFrame);
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
 		kgtShapeDraw(g_gs->addShapePosition, kQuaternion::IDENTITY, 
-		             g_gs->addShape, g_gs->wireframe, g_krb, 
+		             g_gs->addShape, g_gs->wireframe, 
 		             g_gs->kgtGameState.hKalFrame);
 	}
 	kgtDrawOrigin({10,10,10});

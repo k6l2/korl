@@ -1,6 +1,6 @@
 #include "kNetServer.h"
 internal bool kNetServerStart(
-	KNetServer* kns, KAllocatorHandle hKal, u8 maxClients)
+	KNetServer* kns, KgtAllocatorHandle hKal, u8 maxClients)
 {
 	kassert(kns->socket == KPL_INVALID_SOCKET_INDEX);
 	kns->socket = g_kpl->socketOpenUdp(kns->port);

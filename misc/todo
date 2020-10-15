@@ -764,6 +764,9 @@
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+[ ] simplify code utility asset manager usage
+	[ ] kgtGameState: define a pointer to a global asset manager (g_kam)
+	[ ] apply all necessary simplifications to other kgt code utilities
 [ ] samples: render TTF
 	[ ] integrate stb_truetype
 	[ ] utility: font cache dynamic asset

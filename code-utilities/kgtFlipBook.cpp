@@ -1,5 +1,5 @@
-#include "kFlipBook.h"
-#include "kAssetManager.h"
+#include "kgtFlipBook.h"
+#include "kgtAssetManager.h"
 #include <cstring>
 #include <cstdlib>
 #include <cctype>
@@ -15,11 +15,10 @@ enum KFlipbookMetaEntries : u32
 	, KFB_META_DECODE_DEFAULT_ANCHOR_Y
 	, KFB_META_DECODE_ENTRY_COUNT
 };
-internal bool kfbDecodeMeta(void* fileData, u32 fileBytes, 
-                            const char* cStrAnsiAssetName, 
-                            FlipbookMetaData* o_fbMeta, 
-                            char* o_texAssetFileName, 
-                            size_t texAssetFileNameBufferSize)
+internal bool kgtFlipBookDecodeMeta(
+	void* fileData, u32 fileBytes, const char* cStrAnsiAssetName, 
+	KgtFlipBookMetaData* o_fbMeta, char* o_texAssetFileName, 
+	size_t texAssetFileNameBufferSize)
 {
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(fileData);
@@ -172,21 +171,20 @@ internal bool kfbDecodeMeta(void* fileData, u32 fileBytes,
 	}
 	return success;
 }
-internal void kfbInit(KFlipBook* kfb, KAssetManager* kam, 
-                      KrbApi* krb, KAssetIndex assetIndex)
+internal void kgtFlipBookInit(
+	KgtFlipBook* kfb, KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
-	kfb->kam = kam;
-	kfb->krb = krb;
-	kfb->kAssetIndexMetaData = static_cast<size_t>(assetIndex);
-	const size_t kAssetIndexMetaData = kfb->kAssetIndexMetaData;
-	kfb->cachedMetaData = kamGetFlipbookMetaData(kfb->kam, assetIndex);
+	kfb->kam             = kam;
+	kfb->kaiMetaData     = assetIndex;
+	kfb->cachedMetaData  = kgtAssetManagerGetFlipBookMetaData(kam, assetIndex);
 	kfb->anchorRatioX    = kfb->cachedMetaData.defaultAnchorRatioX;
 	kfb->anchorRatioY    = kfb->cachedMetaData.defaultAnchorRatioY;
 	kfb->repeat          = kfb->cachedMetaData.defaultRepeat;
 	kfb->reverse         = kfb->cachedMetaData.defaultReverse;
 	kfb->secondsPerFrame = kfb->cachedMetaData.defaultSecondsPerFrame;
 }
-internal bool operator==(const FlipbookMetaData& a, const FlipbookMetaData& b)
+internal bool operator==(
+	const KgtFlipBookMetaData& a, const KgtFlipBookMetaData& b)
 {
 	if(a.defaultAnchorRatioX != b.defaultAnchorRatioX)
 		return false;
@@ -204,25 +202,24 @@ internal bool operator==(const FlipbookMetaData& a, const FlipbookMetaData& b)
 		return false;
 	if(a.frameSizeY != b.frameSizeY)
 		return false;
-	if(a.textureKAssetIndex != b.textureKAssetIndex)
+	if(a.kaiTexture != b.kaiTexture)
 		return false;
 	return true;
 }
-internal bool operator!=(const FlipbookMetaData& a, const FlipbookMetaData& b)
+internal bool operator!=(
+	const KgtFlipBookMetaData& a, const KgtFlipBookMetaData& b)
 {
 	return !(a == b);
 }
-internal void kfbGetPageProperties(KFlipBook* kfb, 
-                                   u32* o_pageSizeX, u32* o_pageSizeY, 
-                                   u16* o_pageCount,
-                                   u32* o_pageRows, u32* o_pageCols)
+internal void kgtFlipBookGetPageProperties(
+	KgtFlipBook* kfb, u32* o_pageSizeX, u32* o_pageSizeY, u16* o_pageCount, 
+	u32* o_pageRows, u32* o_pageCols)
 {
 	*o_pageSizeX = kfb->cachedMetaData.frameSizeX;
 	*o_pageSizeY = kfb->cachedMetaData.frameSizeY;
 	*o_pageCount = kfb->cachedMetaData.frameCount;
-	const KAssetIndex kAssetIdTex = 
-		KAssetIndex(kfb->cachedMetaData.textureKAssetIndex);
-	const v2u32 texSize = kamGetImageSize(kfb->kam, kAssetIdTex);
+	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
+	const v2u32 texSize = kgtAssetManagerGetImageSize(kfb->kam, kaiTex);
 	if(*o_pageSizeX == 0)
 	{
 		*o_pageSizeX = texSize.x;
@@ -240,12 +237,13 @@ internal void kfbGetPageProperties(KFlipBook* kfb,
 	}
 	kassert(*o_pageCount >= 1);
 }
-internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
+internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 {
 	// If the flipbook's meta data doesn't match the meta data of the flipbook 
 	//	asset, then initialize the flipbook using the latest asset data. //
-	const KAssetIndex kAssetIdFb = KAssetIndex(kfb->kAssetIndexMetaData);
-	const FlipbookMetaData fbmd = kamGetFlipbookMetaData(kfb->kam, kAssetIdFb);
+	const KgtAssetIndex kaiFbm = kfb->kaiMetaData;
+	const KgtFlipBookMetaData fbmd = 
+		kgtAssetManagerGetFlipBookMetaData(kfb->kam, kaiFbm);
 	if(kfb->cachedMetaData != fbmd)
 	{
 		kfb->cachedMetaData  = fbmd;
@@ -259,8 +257,9 @@ internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
 	//	to submit to the backend renderer. //
 	u32 frameSizeX, frameSizeY, flipbookPageRows, flipbookPageCols;
 	u16 frameCount;
-	kfbGetPageProperties(kfb, &frameSizeX, &frameSizeY, &frameCount, 
-	                     &flipbookPageRows, &flipbookPageCols);
+	kgtFlipBookGetPageProperties(
+		kfb, &frameSizeX, &frameSizeY, &frameCount, 
+		&flipbookPageRows, &flipbookPageCols);
 	// Determine which page/frame of the flipbook we need to draw so we know 
 	//	what UV coordinates to submit to the backend renderer. //
 #if 0
@@ -282,28 +281,28 @@ internal void kfbDraw(KFlipBook* kfb, const Color4f32& color)
 	const f32 pageTexCoordRight = 
 	          static_cast<f32>(pageCol + (kfb->flipH ? 0 : 1))/flipbookPageCols;
 	// Submit draw commands to the render backend. //
-	const KAssetIndex kAssetIdTex = 
-		KAssetIndex(kfb->cachedMetaData.textureKAssetIndex);
-	kfb->krb->useTexture(kamGetTexture(kfb->kam, kAssetIdTex), 
-	                     kamGetTextureMetaData(kfb->kam, kAssetIdTex));
+	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
+	g_krb->useTexture(kgtAssetManagerGetTexture(kfb->kam, kaiTex), 
+	                  kgtAssetManagerGetTextureMetaData(kfb->kam, kaiTex));
 	v2f32 texCoords[4] = {{pageTexCoordLeft, pageTexCoordUp},
 	                      {pageTexCoordLeft, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordUp}};
 	Color4f32 colors[4] = {color,color,color,color};
-	kfb->krb->drawQuadTextured({ static_cast<f32>(frameSizeX), 
-	                             static_cast<f32>(frameSizeY) }, 
-	                           {kfb->anchorRatioX, kfb->anchorRatioY},
-	                           texCoords, colors);
+	g_krb->drawQuadTextured({ static_cast<f32>(frameSizeX), 
+	                          static_cast<f32>(frameSizeY) }, 
+	                        {kfb->anchorRatioX, kfb->anchorRatioY},
+	                        texCoords, colors);
 }
-internal void kfbStep(KFlipBook* kfb, f32 deltaSeconds)
+internal void kgtFlipBookStep(KgtFlipBook* kfb, f32 deltaSeconds)
 {
 	// Determine the flipbook's page properties so we can figure out how long a 
 	//	loop of the animation is in seconds //
 	u32 frameSizeX, frameSizeY, flipbookPageRows, flipbookPageCols;
 	u16 frameCount;
-	kfbGetPageProperties(kfb, &frameSizeX, &frameSizeY, &frameCount, 
-	                     &flipbookPageRows, &flipbookPageCols);
+	kgtFlipBookGetPageProperties(
+		kfb, &frameSizeX, &frameSizeY, &frameCount, 
+		&flipbookPageRows, &flipbookPageCols);
 	const f32 animationLoopTotalSeconds = frameCount * kfb->secondsPerFrame;
 	if(kmath::isNearlyZero(animationLoopTotalSeconds))
 	{

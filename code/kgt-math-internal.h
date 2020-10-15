@@ -51,11 +51,11 @@ namespace kmath
 	 * `EpaIterationResult::SUCCESS` then there is no need to manually cleanup 
 	 * resources. */
 	internal void epa_initialize(
-		EpaState* epaState, const v3f32 simplex[4], KAllocatorHandle allocator, 
-		f32 resultTolerance = 0.0001f);
+		EpaState* epaState, const v3f32 simplex[4], 
+		KgtAllocatorHandle allocator, f32 resultTolerance = 0.0001f);
 	internal void epa_iterate(
 		EpaState* epaState, fnSig_gjkSupport* support, void* supportUserData, 
-		KAllocatorHandle allocator);
+		KgtAllocatorHandle allocator);
 	internal void epa_cleanup(EpaState* epaState);
 	/**
 	 * @return The required number of triangle vertices written to 
@@ -75,5 +75,5 @@ namespace kmath
 	internal u16 epa_buildPolytopeEdges(
 		EpaState* epaState, void* o_vertexData, size_t vertexDataBytes, 
 		size_t vertexByteStride, size_t vertexPositionOffset, 
-		KAllocatorHandle allocator);
+		KgtAllocatorHandle allocator);
 }
