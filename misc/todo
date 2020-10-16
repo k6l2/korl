@@ -758,6 +758,9 @@
 			- orientation
 			- angularVelocity
 		[ ] step: solve which bodies are colliding
+		[ ] calculate minimum translation vector
+		[ ] calculate MTV penetration distance
+		[ ] calculate contact manifold
 		[ ] provide an interface for user code to perform work when bodies 
 			collide
 	[ ] utility: generic Actor interface
@@ -767,6 +770,11 @@
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+[ ] samples: shape collision manifold
+	http://www.dyn4j.org/2011/11/contact-points-using-clipping/
+	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf
+	http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
+	https://archive.org/details/GDC2013Gregorius
 [ ] attempt to initialize GJK with 3 iterations with intelligently selected 
 	search directions in an attempt to create a simplex pointing directly at the 
 	origin in the perfect sphere case
