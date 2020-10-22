@@ -19,7 +19,7 @@ union KgtShape
 		KgtShapeType type;
 		f32 radius;
 	} sphere;
-};
+} FORCE_SYMBOL_EXPORT;
 struct KgtShapeGjkSupportData
 {
 	const KgtShape& shapeA;

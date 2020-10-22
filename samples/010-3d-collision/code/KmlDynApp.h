@@ -1,7 +1,6 @@
 #pragma once
 #include "kgtGameState.h"
 #include "kgtCamera3d.h"
-#include "kgtVertex.h"
 #include "kgtShape.h"
 enum class HudState : u8
 	{ NAVIGATING

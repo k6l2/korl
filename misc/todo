@@ -763,6 +763,12 @@
 		[ ] calculate contact manifold
 		[ ] provide an interface for user code to perform work when bodies 
 			collide
+			- callback API sucks, it would probably be easier for user code to 
+				perform queries like "get all collision manifolds for body X"
+			- this requires having a pool of contact manifolds, where each body 
+				stores a pointer to a dynamic array of manifolds
+			- limit the maximum # of total active manifolds
+			- initialize the array of manifolds per body to a minimum #
 	[ ] utility: generic Actor interface
 		[ ] is there some way of automatically constructing an "Actor" interface 
 			with virtual dispatch functions without using C++ class 
@@ -775,6 +781,7 @@
 	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf
 	http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 	https://archive.org/details/GDC2013Gregorius
+	http://twvideo01.ubm-us.net/o1/vault/gdc10/slides/Catto_Erin_PhysicsForProgrammers_ComputingDistance.pdf
 [ ] attempt to initialize GJK with 3 iterations with intelligently selected 
 	search directions in an attempt to create a simplex pointing directly at the 
 	origin in the perfect sphere case

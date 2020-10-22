@@ -53,6 +53,10 @@ internal bool
 		KgtGameState* kgs, const GameKeyboard& gameKeyboard, 
 		bool windowIsFocused);
 /* convenience macros for our application */
+#define KGT_ALLOC(bytes) \
+	kgtAllocAlloc(g_kgs->hKalPermanent, bytes)
+#define KGT_FREE(address) \
+	kgtAllocFree(g_kgs->hKalPermanent, address)
 #define ALLOC_FRAME_ARRAY(type,elements) \
 	reinterpret_cast<type*>(\
-		kgtAllocAlloc(g_kgs->hKalFrame,sizeof(type)*(elements)))
+		kgtAllocAlloc(g_kgs->hKalFrame, sizeof(type)*(elements)))
