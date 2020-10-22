@@ -305,6 +305,14 @@ namespace kmath
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
 		void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
 		size_t vertexPositionOffset, size_t vertexTextureNormalOffset);
+	internal size_t 
+		generateMeshCircleSphereWireframeVertexCount(
+			u32 latitudeSegments, u32 longitudeSegments);
+	internal void 
+		generateMeshCircleSphereWireframe(
+			f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
+			void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
+			size_t vertexPositionOffset);
 	/** 
 	 * create a MOSTLY even distribution of points around a unit sphere using 
 	 * the golden ratio.  

@@ -1098,6 +1098,19 @@ internal inline void kmath::generateMeshCircleSphere(
 			1.f - (positionNorm.z * 0.5f + 0.5f);
 	}
 }
+internal size_t 
+	kmath::generateMeshCircleSphereWireframeVertexCount(
+		u32 latitudeSegments, u32 longitudeSegments)
+{
+	return 2 * longitudeSegments * (latitudeSegments + latitudeSegments - 1);
+}
+internal void 
+	kmath::generateMeshCircleSphereWireframe(
+		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
+		void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
+		size_t vertexPositionOffset)
+{
+}
 internal void kmath::generateUniformSpherePoints(
 	u32 pointCount, void* o_vertexData, size_t vertexDataBytes, 
 	size_t vertexByteStride, size_t vertexPositionOffset)
