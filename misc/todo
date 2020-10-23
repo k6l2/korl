@@ -776,6 +776,12 @@
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+[ ] installer batch script
+	[ ] automatically locate visual studio build tools
+		https://renenyffenegger.ch/notes/development/tools/scripts/personal/vsenv_bat
+	[ ] automatically clone build tools if they don't exist
+	[ ] automatically set environment variables permanently
+		https://stackoverflow.com/questions/5898131/set-a-persistent-environment-variable-from-cmd-exe
 [ ] samples: shape collision manifold
 	http://www.dyn4j.org/2011/11/contact-points-using-clipping/
 	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf

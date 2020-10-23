@@ -34,29 +34,26 @@ global_variable KgtAssetManager* g_kam;
 global_variable KgtGameState* g_kgs;
 /* KGT game state API */
 internal void 
-	kgtGameStateOnReloadCode(GameMemory& memory);
+	kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory);
 /** 
  * Make sure to clear (zero-out) ALL game state memory, including the memory 
  * occupied by `tgs` BEFORE calling this function!!!
  */
 internal void 
-	kgtGameStateInitialize(
-		KgtGameState* kgs, GameMemory& memory, size_t totalGameStateSize);
+	kgtGameStateInitialize(GameMemory& memory, size_t totalGameStateSize);
 internal void 
 	kgtGameStateRenderAudio(
-		KgtGameState* kgs, GameAudioBuffer& audioBuffer, 
-		u32 sampleBlocksConsumed);
+		GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed);
 /** @return true to request the platform continues to run, false to request the 
  *          platform closes the application */
 internal bool 
 	kgtGameStateUpdateAndDraw(
-		KgtGameState* kgs, const GameKeyboard& gameKeyboard, 
-		bool windowIsFocused);
+		const GameKeyboard& gameKeyboard, bool windowIsFocused);
 /* convenience macros for our application */
 #define KGT_ALLOC(bytes) \
 	kgtAllocAlloc(g_kgs->hKalPermanent, bytes)
 #define KGT_FREE(address) \
 	kgtAllocFree(g_kgs->hKalPermanent, address)
-#define ALLOC_FRAME_ARRAY(type,elements) \
+#define KGT_ALLOC_FRAME_ARRAY(type,elements) \
 	reinterpret_cast<type*>(\
 		kgtAllocAlloc(g_kgs->hKalFrame, sizeof(type)*(elements)))

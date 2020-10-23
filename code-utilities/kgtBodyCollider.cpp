@@ -166,16 +166,30 @@ internal KgtShape*
 	kgtBodyColliderGetShape(
 		KgtBodyCollider* bc, KgtBodyColliderShapeHandle* hBcs)
 {
-	kassert(!"TODO");
-	return nullptr;
+	KgtBodyColliderShapeId sid;
+	u16 shapeSalt;
+	if(   !kgtBodyColliderParseShapeHandle(*hBcs, &sid, &shapeSalt)
+	   || !bc->shapeSlots[sid].occupied
+	   ||  bc->shapeSlots[sid].salt != shapeSalt)
+	{
+		*hBcs = 0;
+		return nullptr;
+	}
+	return &bc->shapePool[sid];
 }
+global_variable const u32 
+	KGT_BODY_COLLIDER_CIRCLE_SPHERE_LATITUDE_SEGMENTS  = 16;
+global_variable const u32 
+	KGT_BODY_COLLIDER_CIRCLE_SPHERE_LONGITUDE_SEGMENTS = 16;
 internal size_t 
 	kgtBodyColliderShapeVertexCount(const KgtShape* shape)
 {
 	switch(shape->type)
 	{
 		case KgtShapeType::SPHERE:{
-			return kmath::generateMeshCircleSphereWireframeVertexCount(16, 16);
+			return kmath::generateMeshCircleSphereWireframeVertexCount(
+				KGT_BODY_COLLIDER_CIRCLE_SPHERE_LATITUDE_SEGMENTS, 
+				KGT_BODY_COLLIDER_CIRCLE_SPHERE_LONGITUDE_SEGMENTS);
 		}break;
 		case KgtShapeType::BOX:
 		default:
@@ -186,18 +200,38 @@ internal size_t
 }
 internal void 
 	kgtBodyColliderEmitBodyWireframe(
-		const KgtBodyColliderBody* body, const KgtShape* shape, 
-		u8*const o_positions, u8*const o_colors, const v4f32& color)
+		KgtBodyColliderBody* body, const KgtShape* shape, 
+		size_t shapeVertexCount, size_t vertexByteStride, u8*const o_positions, 
+		u8*const o_colors, const v4f32& color)
 {
+	const size_t vertexDataBytes = vertexByteStride*shapeVertexCount;
+	for(size_t v = 0; v < shapeVertexCount; v++)
+	{
+		v4f32*const o_color = reinterpret_cast<v4f32*>(
+			o_colors + v*vertexByteStride);
+		*o_color = color;
+	}
+	/* generate the vertex positions in model-space */
 	switch(shape->type)
 	{
 		case KgtShapeType::SPHERE:{
-			kassert(!"TODO");
+			kmath::generateMeshCircleSphereWireframe(
+				shape->sphere.radius, 
+				KGT_BODY_COLLIDER_CIRCLE_SPHERE_LATITUDE_SEGMENTS, 
+				KGT_BODY_COLLIDER_CIRCLE_SPHERE_LONGITUDE_SEGMENTS, o_positions, 
+				vertexDataBytes, vertexByteStride, 0);
 		}break;
 		case KgtShapeType::BOX:
 		default:
 			KLOG(ERROR, "NOT IMPLEMENTED!");
 		break;
+	}
+	/* transform the vertex positions to world-space using `body` */
+	for(size_t v = 0; v < shapeVertexCount; v++)
+	{
+		v3f32*const o_position = reinterpret_cast<v3f32*>(
+			o_positions + v*vertexByteStride);
+		*o_position = body->orient.transform(*o_position) + body->position;
 	}
 }
 internal size_t 
@@ -209,8 +243,8 @@ internal size_t
 	size_t vertexCount = 0;
 	const size_t maxVertexCount = vertexDataBytes / vertexByteStride;
 	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
-	u8*const o_positions    = o_vertexDataU8 + vertexOffsetPositionV3f32;
-	u8*const o_colors       = o_vertexDataU8 + vertexOffsetColorV4f32;
+	u8* o_positions = o_vertexDataU8 + vertexOffsetPositionV3f32;
+	u8* o_colors    = o_vertexDataU8 + vertexOffsetColorV4f32;
 	/* sizeof(position) + sizeof(color) */
 	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(v4f32);
 	/* make some reasonable sanity checks about the output vertex data 
@@ -243,9 +277,17 @@ internal size_t
 			const size_t shapeVertexCount = 
 				kgtBodyColliderShapeVertexCount(shape);
 			if(vertexCount + shapeVertexCount > maxVertexCount)
+			{
+				KLOG(WARNING, "Supplied vertex buffer array size (%i) is not "
+				     "large enough!", maxVertexCount);
 				return vertexCount;
+			}
 			kgtBodyColliderEmitBodyWireframe(
-				&bc->bodyPool[b], shape, o_positions, o_colors, color);
+				&bc->bodyPool[b], shape, shapeVertexCount, vertexByteStride, 
+				o_positions, o_colors, color);
+			o_positions += shapeVertexCount*vertexByteStride;
+			o_colors    += shapeVertexCount*vertexByteStride;
+			vertexCount += shapeVertexCount;
 			bCount++;
 		}
 		kassert(bCount == bc->bodyAllocCount);

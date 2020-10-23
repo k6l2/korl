@@ -1102,7 +1102,9 @@ internal size_t
 	kmath::generateMeshCircleSphereWireframeVertexCount(
 		u32 latitudeSegments, u32 longitudeSegments)
 {
-	return 2 * longitudeSegments * (latitudeSegments + latitudeSegments - 1);
+	return 2*(longitudeSegments*latitudeSegments + 
+	          (longitudeSegments + 1)*(latitudeSegments - 1));
+	//return 2 * longitudeSegments * (latitudeSegments + latitudeSegments - 1);
 }
 internal void 
 	kmath::generateMeshCircleSphereWireframe(
@@ -1110,6 +1112,57 @@ internal void
 		void* o_vertexData, size_t vertexDataBytes, size_t vertexByteStride, 
 		size_t vertexPositionOffset)
 {
+	const size_t requiredVertexCount = 
+		generateMeshCircleSphereWireframeVertexCount(
+			latitudeSegments, longitudeSegments);
+	/* ensure that the data buffer passed to us contains enough memory */
+	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
+	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
+	/* sizeof(position) */
+	const size_t requiredVertexBytes = sizeof(v3f32);
+	kassert(vertexByteStride >= requiredVertexBytes);
+	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	/* calculate the sphere mesh on-the-fly */
+	kassert(latitudeSegments  >= 2);
+	kassert(longitudeSegments >= 3);
+	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
+	const f32 radiansPerLatitude      =   PI32 / latitudeSegments;
+	const v3f32 verticalRadius        = v3f32::Z * radius;
+	size_t currentVertex = 0;
+	/* build a list of line segments that go from the top of the sphere 
+		(+Z) to the bottom (-Z) along this longitude segment, 
+		starting at the semi-longitude that faces the +X axis */
+	for(u32 longitude = 0; longitude < longitudeSegments; longitude++)
+	{
+		q32 qLongitude = q32(v3f32::Z, longitude*radiansPerSemiLongitude);
+		const v3f32 longitudeRotAxis = qLongitude.transform(v3f32::Y, true);
+		for(u32 latitude = 0; latitude < latitudeSegments; latitude++)
+		{
+			q32 q0 = q32(longitudeRotAxis,  latitude    * radiansPerLatitude);
+			q32 q1 = q32(longitudeRotAxis, (latitude+1) * radiansPerLatitude);
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				q0.transform(verticalRadius, true);
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				q1.transform(verticalRadius, true);
+		}
+	}
+	/* build a list of line segments around each latitude circle */
+	for(u32 latitude = 1; latitude < latitudeSegments; latitude++)
+	{
+		q32 qLatitude = q32(v3f32::Y, latitude*radiansPerLatitude);
+		const v3f32 latitudeVector = qLatitude.transform(verticalRadius, true);
+		for(u32 longitude = 0; longitude <= longitudeSegments; longitude++)
+		{
+			q32 q0 = q32(v3f32::Z,  longitude    * radiansPerSemiLongitude);
+			q32 q1 = q32(v3f32::Z, (longitude+1) * radiansPerSemiLongitude);
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				q0.transform(latitudeVector, true);
+			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
+				q1.transform(latitudeVector, true);
+		}
+	}
+	kassert(currentVertex == requiredVertexCount);
 }
 internal void kmath::generateUniformSpherePoints(
 	u32 pointCount, void* o_vertexData, size_t vertexDataBytes, 
