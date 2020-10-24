@@ -76,7 +76,8 @@ internal KgtBodyColliderBody*
 	kgtBodyColliderAddBody(
 		KgtBodyCollider* bc, KgtBodyColliderShapeHandle* hBcs);
 internal void 
-	kgtBodyColliderUpdateManifolds(KgtBodyCollider* bc);
+	kgtBodyColliderUpdateManifolds(
+		KgtBodyCollider* bc, KgtAllocatorHandle hKal);
 internal KgtBodyColliderManifoldIterator 
 	kgtBodyColliderGetManifoldIterator(KgtBodyCollider* bc);
 internal KgtBodyColliderBody* 

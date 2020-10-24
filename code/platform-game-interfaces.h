@@ -301,6 +301,7 @@ enum class ButtonState : u8
 	, PRESSED
 	, HELD
 };
+#define KORL_BUTTON_ON(x) (x) > ButtonState::NOT_PRESSED
 struct GameMouse
 {
 	/** 

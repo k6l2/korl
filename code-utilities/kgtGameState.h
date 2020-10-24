@@ -57,3 +57,5 @@ internal bool
 #define KGT_ALLOC_FRAME_ARRAY(type,elements) \
 	reinterpret_cast<type*>(\
 		kgtAllocAlloc(g_kgs->hKalFrame, sizeof(type)*(elements)))
+#define KGT_FREE_FRAME(address) \
+	kgtAllocFree(g_kgs->hKalFrame, address)

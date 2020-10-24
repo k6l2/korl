@@ -178,9 +178,9 @@ internal KgtShape*
 	return &bc->shapePool[sid];
 }
 global_variable const u32 
-	KGT_BODY_COLLIDER_CIRCLE_SPHERE_LATITUDE_SEGMENTS  = 16;
+	KGT_BODY_COLLIDER_CIRCLE_SPHERE_LATITUDE_SEGMENTS  = 8;
 global_variable const u32 
-	KGT_BODY_COLLIDER_CIRCLE_SPHERE_LONGITUDE_SEGMENTS = 16;
+	KGT_BODY_COLLIDER_CIRCLE_SPHERE_LONGITUDE_SEGMENTS = 8;
 internal size_t 
 	kgtBodyColliderShapeVertexCount(const KgtShape* shape)
 {
@@ -300,4 +300,49 @@ internal size_t
 				begins and in what direction it is going */
 	///@TODO
 	return vertexCount;
+}
+internal KgtBodyColliderManifold 
+	kgtBodyColliderCreateManifold(
+		KgtBodyCollider* bc, KgtBodyColliderBody* b0, KgtBodyColliderBody* b1)
+{
+	KgtBodyColliderManifold result = {};
+	kassert(!"TODO");
+	return result;
+}
+internal void 
+	kgtBodyColliderUpdateManifolds(
+		KgtBodyCollider* bc, KgtAllocatorHandle hKal)
+{
+	/* @TODO(speed): use some sort of space-partitioning acceleration structure 
+		to reduce the # of iterations */
+	/* gather a contiguous list of bodies in the body collider, and while doing 
+		so check for collisions with the current body */
+	KgtBodyColliderBody** bodyPointerArray = 
+		arrinit(KgtBodyColliderBody*, hKal);
+	arrsetcap(bodyPointerArray, bc->bodyAllocCount);
+	defer(arrfree(bodyPointerArray));
+	{
+		size_t bCount = 0;
+		for(size_t b = 0; 
+			b < bc->memoryReqs.maxBodies && bCount < bc->bodyAllocCount; b++)
+		{
+			if(!bc->bodySlots[b].occupied)
+				continue;
+			for(size_t b1 = 0; b1 < arrlenu(bodyPointerArray); b1++)
+			{
+#if 0
+				KgtBodyColliderManifold manifold = 
+					kgtBodyColliderCreateManifold(
+						bc, &bc->bodyPool[b], bodyPointerArray[b1]);
+				if(manifold.worldContactPointsSize <= 0)
+					continue;
+				kassert(!"TODO: add symetric manifolds to the manifold pool "
+				         "for both these bodies");
+#endif// 0
+			}
+			arrpush(bodyPointerArray, &bc->bodyPool[b]);
+			bCount++;
+		}
+		kassert(bCount == bc->bodyAllocCount);
+	}
 }
