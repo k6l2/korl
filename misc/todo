@@ -750,9 +750,9 @@
 		- it's because I need to NOT DEFINE STATIC CONSTANTS in header files 
 			EVER!!!
 	[ ] utility: BodyCollider
-		[ ] use general-purpose Shape structure (make generic in the future?)
-		[ ] save handles to user-defined Shapes
-		[ ] create "bodies" who reference Shape handles
+		[x] use general-purpose Shape structure (make generic in the future?)
+		[x] save handles to user-defined Shapes
+		[x] create "bodies" who reference Shape handles
 			- position
 			- velocity
 			- orientation
@@ -782,6 +782,16 @@
 	[ ] automatically clone build tools if they don't exist
 	[ ] automatically set environment variables permanently
 		https://stackoverflow.com/questions/5898131/set-a-persistent-environment-variable-from-cmd-exe
+[ ] create new project batch script
+	[ ] take input for project name from the user
+	[ ] take input for project directory from the user
+		[ ] create a GUI dialog box for this?
+			https://stackoverflow.com/a/61741362/4526664
+	[ ] create this directory
+	[ ] copy necessary samples 000 files into this folder
+	[ ] generate a vscode .code-workspace file for this project
+	[ ] copy .vscode folder stuff into this directory
+	[ ] copy git dotfiles into this directory
 [ ] samples: shape collision manifold
 	http://www.dyn4j.org/2011/11/contact-points-using-clipping/
 	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf
