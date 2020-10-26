@@ -3,9 +3,9 @@
 using KgtBodyColliderShapeHandle    = u32;
 using KgtBodyColliderBodyHandle     = u64;
 using KgtBodyColliderManifoldHandle = u64;
-using KgtBodyColliderShapeId     = u16;
-using KgtBodyColliderBodyId      = u32;
-using KgtBodyColliderManifoldId  = u32;
+using KgtBodyColliderShapeId    = u16;
+using KgtBodyColliderBodyId     = u32;
+using KgtBodyColliderManifoldId = u32;
 struct KgtBodyColliderBody
 {
 	KgtBodyColliderBodyHandle handle;
@@ -13,6 +13,8 @@ struct KgtBodyColliderBody
 	v3f32 position;
 	q32 orient = q32::IDENTITY;
 	/* internal manifold resource handling */
+	/* all elements of the body's manifold array should possess the SAME 
+		HANDLE */
 	KgtBodyColliderManifoldHandle hManifoldArray;
 	u32 manifoldArraySize;
 	u32 manifoldArrayCapacity;

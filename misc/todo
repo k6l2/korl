@@ -750,6 +750,7 @@
 		- it's because I need to NOT DEFINE STATIC CONSTANTS in header files 
 			EVER!!!
 	[ ] utility: BodyCollider
+		http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 		[x] use general-purpose Shape structure (make generic in the future?)
 		[x] save handles to user-defined Shapes
 		[x] create "bodies" who reference Shape handles

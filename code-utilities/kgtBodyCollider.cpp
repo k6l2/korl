@@ -328,11 +328,120 @@ internal bool
 	    && aabb0.min.y <= aabb1.max.y && aabb0.max.y >= aabb1.min.y 
 	    && aabb0.min.z <= aabb1.max.z && aabb0.max.z >= aabb1.min.z;
 }
+#define KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(name) \
+	void name(\
+		KgtBodyColliderManifold* o_manifold, \
+		const KgtShape* shape0, const KgtShape* shape1, \
+		KgtBodyColliderBody* b0, KgtBodyColliderBody* b1)
+typedef KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
+	KgtBodyColliderManifoldSolverFunction);
+internal KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
+	kgtBodyColliderMsf_S_S)
+{
+	kassert(shape0->type == KgtShapeType::SPHERE);
+	kassert(shape1->type == KgtShapeType::SPHERE);
+	v3f32 b1ToB0         = b0->position - b1->position;
+	const f32 distance   = b1ToB0.normalize();
+	const f32 sumOfRadii = shape0->sphere.radius + shape1->sphere.radius;
+	const bool colliding = distance < sumOfRadii;
+	if(colliding)
+	{
+		local_persist const v3f32 DEGENERATE_NORMAL = v3f32::Z;
+		if(kmath::isNearlyZero(distance))
+			o_manifold->minTranslateNormal = DEGENERATE_NORMAL;
+		else
+			o_manifold->minTranslateNormal = b1ToB0;
+		o_manifold->minTranslateDistance   = sumOfRadii - distance;
+		o_manifold->worldContactPointsSize = 1;
+		o_manifold->worldContactPoints[0]  = 
+			b1->position + 0.5f*distance*b1ToB0;
+	}
+	else
+	{
+		o_manifold->worldContactPointsSize = 0;
+	}
+}
+/** @return true if the param `hm` is valid */
+internal bool 
+	kgtBodyColliderParseManifoldHandle(
+		KgtBodyColliderManifoldHandle hm, 
+		KgtBodyColliderManifoldId* o_mid, u16* o_salt)
+{
+	const u64 rawId = hm >> 16;
+	if(rawId == 0)
+		return false;
+	*o_mid  = static_cast<KgtBodyColliderManifoldId>(rawId - 1);
+	*o_salt = hm & 0xFFFF;
+	return true;
+}
+internal void 
+	kgtBodyColliderBodyAddManifold(
+		KgtBodyCollider* bc, KgtBodyColliderBody* b, KgtBodyColliderManifold m)
+{
+	/* place the manifold into b's manifold array in the body collider's 
+		manifold pool */
+	if(  !b->hManifoldArray 
+	   || b->manifoldArraySize >= b->manifoldArrayCapacity)
+	/* (re)allocate a manifold array from the manifold pool */
+	{
+		const u32 newArrayCapacity = (b->manifoldArrayCapacity == 0
+			? 8
+			: 2*b->manifoldArrayCapacity);
+		/* check to see if we can just expand our array in-place (realloc) */
+		bool allocRequired = true;
+		if(b->manifoldArrayCapacity > 0)
+		{
+			KgtBodyColliderManifoldId mid;
+			u16 manifoldArraySalt;
+			if(!kgtBodyColliderParseManifoldHandle(
+					b->hManifoldArray, &mid, &manifoldArraySalt)
+				|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
+			{
+				KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
+				     b->hManifoldArray);
+			}
+			kassert(!"TODO: iterate past the manifold pool array (if possible) and check if newArrayCapacity can be satisfied");
+		}
+		if(allocRequired)
+		{
+			kassert(!"TODO: allocate a manifold array from the pool without modifying b yet");
+			if(b->manifoldArrayCapacity)
+			{
+				kassert(!"TODO: copy the manifolds of the old pool to the new one");
+			}
+			kassert(!"TODO: update b's internal manifold pool state here");
+		}
+	}
+	/* add the new manifold to the body's manifold array */
+	{
+		KgtBodyColliderManifoldId mid;
+		u16 manifoldArraySalt;
+		if(!kgtBodyColliderParseManifoldHandle(
+				b->hManifoldArray, &mid, &manifoldArraySalt)
+			|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
+		{
+			KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
+			     b->hManifoldArray);
+		}
+		m.handle = b->hManifoldArray;
+		bc->manifoldPool[mid + b->manifoldArraySize++] = m;
+	}
+}
 internal void 
 	kgtBodyColliderMakeManifold(
 		KgtBodyCollider* bc, KgtBodyColliderBody* b0, KgtBodyColliderBody* b1)
 {
-	kassert(!"TODO");
+	const KgtShape*const shape0 = kgtBodyColliderGetShape(bc, &b0->hShape);
+	const KgtShape*const shape1 = kgtBodyColliderGetShape(bc, &b1->hShape);
+	kassert(shape0 && shape1);
+	KgtBodyColliderManifold manifold = {};
+	manifold.hBodyA = b0->handle;
+	manifold.hBodyB = b1->handle;
+	local_persist KgtBodyColliderManifoldSolverFunction*const SOLVERS[1][1] = 
+		{ { kgtBodyColliderMsf_S_S } };
+	SOLVERS[u8(shape0->type)][u8(shape1->type)](
+		&manifold, shape0, shape1, b0, b1);
+	kgtBodyColliderBodyAddManifold(bc, b0, manifold);
 }
 internal void 
 	kgtBodyColliderBodyReleaseManifolds(
@@ -364,7 +473,6 @@ internal void
 			bc->bodyPool[b].manifoldArraySize = 0;
 			for(size_t b1 = 0; b1 < arrlenu(bodyPointerArray); b1++)
 			{
-#if 1
 				if(!kgtBodyColliderBodyAabbsAreColliding(
 						bc, &bc->bodyPool[b], bodyPointerArray[b1]))
 					continue;
@@ -372,17 +480,6 @@ internal void
 					bc, &bc->bodyPool[b], bodyPointerArray[b1]);
 				kgtBodyColliderMakeManifold(
 					bc, bodyPointerArray[b1], &bc->bodyPool[b]);
-#else
-				KgtBodyColliderManifold manifold = 
-					kgtBodyColliderCreateManifold(
-						bc, &bc->bodyPool[b], bodyPointerArray[b1]);
-				if(manifold.worldContactPointsSize <= 0)
-					continue;
-				kgtBodyColliderBodyAddManifold(
-					bc, &bc->bodyPool[b], manifold, false);
-				kgtBodyColliderBodyAddManifold(
-					bc, bodyPointerArray[b1], manifold, true);
-#endif// 0
 			}
 			if(bc->bodyPool[b].manifoldArraySize == 0)
 			{

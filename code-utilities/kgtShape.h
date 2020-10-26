@@ -4,8 +4,8 @@
 #pragma once
 #include "kmath.h"
 enum class KgtShapeType : u8
-	{ BOX
-	, SPHERE };
+	{ SPHERE
+	, BOX };
 union KgtShape
 {
 	KgtShapeType type;
