@@ -1,7 +1,8 @@
 #pragma once
 #include "kgtShape.h"
-using KgtBodyColliderShapeHandle = u32;
-using KgtBodyColliderBodyHandle  = u64;
+using KgtBodyColliderShapeHandle    = u32;
+using KgtBodyColliderBodyHandle     = u64;
+using KgtBodyColliderManifoldHandle = u64;
 using KgtBodyColliderShapeId     = u16;
 using KgtBodyColliderBodyId      = u32;
 using KgtBodyColliderManifoldId  = u32;
@@ -11,6 +12,10 @@ struct KgtBodyColliderBody
 	KgtBodyColliderShapeHandle hShape;
 	v3f32 position;
 	q32 orient = q32::IDENTITY;
+	/* internal manifold resource handling */
+	KgtBodyColliderManifoldHandle hManifoldArray;
+	u32 manifoldArraySize;
+	u32 manifoldArrayCapacity;
 } FORCE_SYMBOL_EXPORT;
 /** A manifold describes data about a collision between two 
  * `KgtBodyColliderBody` objects.  The minimum translation vector described 
@@ -18,6 +23,7 @@ struct KgtBodyColliderBody
  */
 struct KgtBodyColliderManifold
 {
+	KgtBodyColliderManifoldHandle handle;
 	KgtBodyColliderBodyHandle hBodyA;
 	KgtBodyColliderBodyHandle hBodyB;
 	/** points in the direction from bodyB TOWARDS bodyA */
@@ -53,15 +59,17 @@ struct KgtBodyCollider
 	KgtBodyColliderShapeId shapeAllocNext;
 	KgtBodyColliderBodyId bodyAllocCount;
 	KgtBodyColliderBodyId bodyAllocNext;
-//	KgtBodyColliderManifoldId manifoldAllocCount;
-//	KgtBodyColliderManifoldId manifoldAllocNext;
+	KgtBodyColliderManifoldId manifoldAllocCount;
+	KgtBodyColliderManifoldId manifoldAllocNext;
 };
 struct KgtBodyColliderManifoldIterator
 {
+#if 0
 	KgtBodyCollider* kbc;
 	KgtBodyColliderManifoldId kbcManifoldId;
 	operator bool() const;
 	KgtBodyColliderManifoldIterator& operator++();
+#endif //0
 };
 internal void 
 	kgtBodyColliderMemoryRequirements(

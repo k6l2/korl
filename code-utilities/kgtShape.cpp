@@ -99,3 +99,26 @@ internal f32 kgtShapeTestRay(
 	KLOG(ERROR, "shape.type {%i} is invalid!", i32(shape.type));
 	return NAN32;
 }
+internal void 
+	kgtShapeCalculateAabb(
+		const KgtShape& shape, v3f32* o_aabbMin, v3f32* o_aabbMax, 
+		const v3f32& position, const q32& orient)
+{
+	switch(shape.type)
+	{
+		case KgtShapeType::SPHERE:
+			*o_aabbMin = position - 
+				v3f32{shape.sphere.radius, 
+				      shape.sphere.radius, 
+				      shape.sphere.radius};
+			*o_aabbMax = position + 
+				v3f32{shape.sphere.radius, 
+				      shape.sphere.radius, 
+				      shape.sphere.radius};
+			break;
+		case KgtShapeType::BOX:
+		default:
+			KLOG(ERROR, "Not implemented for shape type (%i)!", shape.type);
+			break;
+	}
+}

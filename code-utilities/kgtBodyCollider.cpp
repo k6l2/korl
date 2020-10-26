@@ -1,4 +1,6 @@
 #include "kgtBodyCollider.h"
+/* for custom stb_ds implementation */
+#include "kgtGameState.h"
 internal void 
 	kgtBodyColliderMemoryRequirements(
 		const KgtBodyColliderMemoryRequirements& memReqs, 
@@ -301,13 +303,44 @@ internal size_t
 	///@TODO
 	return vertexCount;
 }
-internal KgtBodyColliderManifold 
-	kgtBodyColliderCreateManifold(
+struct KgtBodyColliderBodyAabb
+{
+	v3f32 min;
+	v3f32 max;
+};
+internal KgtBodyColliderBodyAabb 
+	kgtBodyColliderBodyGetAabb(KgtBodyCollider* bc, KgtBodyColliderBody* body)
+{
+	KgtBodyColliderBodyAabb result = {};
+	KgtShape*const shape = kgtBodyColliderGetShape(bc, &body->hShape);
+	kassert(shape);
+	kgtShapeCalculateAabb(
+		*shape, &result.min, &result.max, body->position, body->orient);
+	return result;
+}
+internal bool 
+	kgtBodyColliderBodyAabbsAreColliding(
 		KgtBodyCollider* bc, KgtBodyColliderBody* b0, KgtBodyColliderBody* b1)
 {
-	KgtBodyColliderManifold result = {};
+	const KgtBodyColliderBodyAabb aabb0 = kgtBodyColliderBodyGetAabb(bc, b0);
+	const KgtBodyColliderBodyAabb aabb1 = kgtBodyColliderBodyGetAabb(bc, b1);
+	return aabb0.min.x <= aabb1.max.x && aabb0.max.x >= aabb1.min.x 
+	    && aabb0.min.y <= aabb1.max.y && aabb0.max.y >= aabb1.min.y 
+	    && aabb0.min.z <= aabb1.max.z && aabb0.max.z >= aabb1.min.z;
+}
+internal void 
+	kgtBodyColliderMakeManifold(
+		KgtBodyCollider* bc, KgtBodyColliderBody* b0, KgtBodyColliderBody* b1)
+{
 	kassert(!"TODO");
-	return result;
+}
+internal void 
+	kgtBodyColliderBodyReleaseManifolds(
+		KgtBodyCollider* bc, KgtBodyColliderBody* body)
+{
+	if(!body->hManifoldArray)
+		return;
+	kassert(!"TODO");
 }
 internal void 
 	kgtBodyColliderUpdateManifolds(
@@ -315,12 +348,12 @@ internal void
 {
 	/* @TODO(speed): use some sort of space-partitioning acceleration structure 
 		to reduce the # of iterations */
-	/* gather a contiguous list of bodies in the body collider, and while doing 
-		so check for collisions with the current body */
 	KgtBodyColliderBody** bodyPointerArray = 
 		arrinit(KgtBodyColliderBody*, hKal);
 	arrsetcap(bodyPointerArray, bc->bodyAllocCount);
 	defer(arrfree(bodyPointerArray));
+	/* gather a contiguous list of bodies in the body collider, and while doing 
+		so check for collisions with the current body */
 	{
 		size_t bCount = 0;
 		for(size_t b = 0; 
@@ -328,17 +361,32 @@ internal void
 		{
 			if(!bc->bodySlots[b].occupied)
 				continue;
+			bc->bodyPool[b].manifoldArraySize = 0;
 			for(size_t b1 = 0; b1 < arrlenu(bodyPointerArray); b1++)
 			{
-#if 0
+#if 1
+				if(!kgtBodyColliderBodyAabbsAreColliding(
+						bc, &bc->bodyPool[b], bodyPointerArray[b1]))
+					continue;
+				kgtBodyColliderMakeManifold(
+					bc, &bc->bodyPool[b], bodyPointerArray[b1]);
+				kgtBodyColliderMakeManifold(
+					bc, bodyPointerArray[b1], &bc->bodyPool[b]);
+#else
 				KgtBodyColliderManifold manifold = 
 					kgtBodyColliderCreateManifold(
 						bc, &bc->bodyPool[b], bodyPointerArray[b1]);
 				if(manifold.worldContactPointsSize <= 0)
 					continue;
-				kassert(!"TODO: add symetric manifolds to the manifold pool "
-				         "for both these bodies");
+				kgtBodyColliderBodyAddManifold(
+					bc, &bc->bodyPool[b], manifold, false);
+				kgtBodyColliderBodyAddManifold(
+					bc, bodyPointerArray[b1], manifold, true);
 #endif// 0
+			}
+			if(bc->bodyPool[b].manifoldArraySize == 0)
+			{
+				kgtBodyColliderBodyReleaseManifolds(bc, &bc->bodyPool[b]);
 			}
 			arrpush(bodyPointerArray, &bc->bodyPool[b]);
 			bCount++;

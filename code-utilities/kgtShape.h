@@ -49,3 +49,7 @@ internal f32
 	kgtShapeTestRay(
 		const KgtShape& shape, const v3f32& position, 
 		const q32& orient, const v3f32& rayOrigin, const v3f32& rayNormal);
+internal void 
+	kgtShapeCalculateAabb(
+		const KgtShape& shape, v3f32* o_aabbMin, v3f32* o_aabbMax, 
+		const v3f32& position, const q32& orient);
