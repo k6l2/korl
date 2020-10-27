@@ -375,42 +375,209 @@ internal bool
 	return true;
 }
 internal void 
+	kgtBodyColliderBodyReleaseManifolds(
+		KgtBodyCollider* bc, KgtBodyColliderBody* body)
+{
+	if(!body->hManifoldArray)
+		return;
+	KgtBodyColliderManifoldId mid;
+	u16 manifoldArraySalt;
+	if(!kgtBodyColliderParseManifoldHandle(
+		   body->hManifoldArray, &mid, &manifoldArraySalt)
+		|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
+	{
+		KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
+		     body->hManifoldArray);
+	}
+	kassert(mid + body->manifoldArrayCapacity <= 
+	            bc->memoryReqs.maxCollisionManifolds);
+	for(KgtBodyColliderManifoldId m = mid; 
+		m < mid + body->manifoldArrayCapacity; m++)
+	{
+		bc->manifoldSlots[m].occupied = false;
+	}
+	bc->manifoldAllocCount -= body->manifoldArrayCapacity;
+	body->hManifoldArray        = 0;
+	body->manifoldArrayCapacity = 0;
+	body->manifoldArraySize     = 0;
+}
+/** combine the 32-bit manifold Id with the 16-bit slot salt into a 64-bit 
+ * handle */
+internal KgtBodyColliderManifoldHandle 
+	kgtBodyColliderMakeManifoldHandle(
+		KgtBodyCollider* bc, KgtBodyColliderManifoldId mid)
+{
+	kassert(mid < 0xFFFFFFFF - 1);
+	return (u64(mid + 1) << 16) | bc->manifoldSlots[mid].salt;
+}
+internal void 
+	kgtBodyColliderAllocManifolds(
+		KgtBodyCollider* bc, KgtBodyColliderBody* body, 
+		KgtBodyColliderManifoldId manifoldCount)
+{
+	kassert(bc->memoryReqs.maxCollisionManifolds >= 
+	            bc->manifoldAllocCount + manifoldCount);
+	/* search for a contiguous array of unoccupied manifold pool slots */
+	KgtBodyColliderManifoldId mid = bc->memoryReqs.maxCollisionManifolds;
+	for(KgtBodyColliderManifoldId m = 0; 
+		m < bc->memoryReqs.maxCollisionManifolds; m++)
+	{
+		const KgtBodyColliderManifoldId mMod = 
+			(bc->manifoldAllocNext + m) % bc->memoryReqs.maxCollisionManifolds;
+		/* if the current modulus position in the pool is incapable of storing 
+			`manifoldCount` elements, then we need to move `m` forward by an 
+			amount that will bring `mMod` back to 0 on the next iteration */
+		//           X  N
+		// [0][1][2][3][4]
+		if(mMod > bc->memoryReqs.maxCollisionManifolds - manifoldCount)
+		{
+			const KgtBodyColliderManifoldId mAdvance = 
+				bc->memoryReqs.maxCollisionManifolds - mMod - 1;
+			kassert(mAdvance > 0);
+			m += mAdvance;
+			continue;
+		}
+		if(bc->manifoldSlots[mMod].occupied)
+			continue;
+		/* check to see if (`manifoldCount` - 1) unoccupied slots exist after 
+			`mMod` */
+		KgtBodyColliderManifoldId unoccupiedCount = 1;
+		for(KgtBodyColliderManifoldId mu = mMod + 1; 
+			mu < mMod + manifoldCount; mu++)
+		{
+			if(bc->manifoldSlots[mMod].occupied)
+				break;
+			unoccupiedCount++;
+		}
+		if(unoccupiedCount < manifoldCount)
+			continue;
+		mid = mMod;
+		break;
+	}
+	if(mid >= bc->memoryReqs.maxCollisionManifolds)
+		KLOG(ERROR, "Unable to allocate collision manifolds!");
+	/* at this point we have a valid location to allocate an array of manifolds 
+		in the manifold pool, so let's initialize them and update allocation 
+		book keeping */
+	bc->manifoldSlots[mid].occupied = true;
+	bc->manifoldSlots[mid].salt++;
+	const KgtBodyColliderManifoldHandle hManifoldArray = 
+		kgtBodyColliderMakeManifoldHandle(bc, mid);
+	for(KgtBodyColliderManifoldId m = mid; m < mid + manifoldCount; m++)
+	/* make sure that all the manifolds in the array have the SAME HANDLE */
+	{
+		bc->manifoldSlots[m].occupied = true;
+		bc->manifoldSlots[m].salt     = bc->manifoldSlots[mid].salt;
+		bc->manifoldPool[m].handle = hManifoldArray;
+	}
+	body->manifoldArrayCapacity = manifoldCount;
+	body->manifoldArraySize     = 0;
+	body->hManifoldArray        = hManifoldArray;
+	bc->manifoldAllocCount += manifoldCount;
+	bc->manifoldAllocNext   = mid + manifoldCount;
+}
+internal void 
+	kgtBodyColliderReallocManifolds(
+		KgtBodyCollider* bc, KgtBodyColliderBody* body, 
+		KgtBodyColliderManifoldId manifoldCount)
+{
+	if(!body->hManifoldArray)
+	{
+		kgtBodyColliderAllocManifolds(bc, body, manifoldCount);
+		return;
+	}
+	if(body->manifoldArrayCapacity >= manifoldCount)
+		return;
+	/* first we need to check to see if we can just expand the manifold array 
+		in-place in the pool */
+	KgtBodyColliderManifoldId mid;
+	u16 manifoldArraySalt;
+	if(!kgtBodyColliderParseManifoldHandle(
+		   body->hManifoldArray, &mid, &manifoldArraySalt)
+		|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
+	{
+		KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
+		     body->hManifoldArray);
+	}
+	//        X     N
+	// [0][1][2][3][4]
+	/* first new allocation requirement; if the new `manifoldCount` would make 
+		our array go past the bounds of `bc->memoryReqs.maxCollisionManifolds */
+	bool newAllocationRequired = 
+		(mid + manifoldCount >= bc->memoryReqs.maxCollisionManifolds);
+	if(!newAllocationRequired)
+	/* if `manifoldCount` will let us stay within the bounds of the manifold 
+		pool, we can check for the next condition for new allocation 
+		requirement; if there are occupied manifolds in the desired grow 
+		region */
+	{
+		for(KgtBodyColliderManifoldId m = mid + body->manifoldArrayCapacity; 
+			m < mid + manifoldCount; m++)
+		{
+			if(bc->manifoldSlots[m].occupied)
+			{
+				newAllocationRequired = true;
+				break;
+			}
+		}
+	}
+	if(newAllocationRequired)
+	/* alloc -> copy -> free.  This will probably happen most of the time... */
+	{
+		KgtBodyColliderBody bodyOld = *body;
+		/* create a new allocation */
+		kgtBodyColliderAllocManifolds(bc, body, manifoldCount);
+		/* copy the manifolds from the old allocation */
+		KgtBodyColliderManifoldId midNew;
+		u16 manifoldArraySaltNew;
+		if(!kgtBodyColliderParseManifoldHandle(
+			   body->hManifoldArray, &midNew, &manifoldArraySaltNew)
+			|| bc->manifoldSlots[midNew].salt != manifoldArraySaltNew)
+		{
+			KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
+			     body->hManifoldArray);
+		}
+		for(KgtBodyColliderManifoldId m = 0; m < bodyOld.manifoldArraySize; m++)
+		{
+			bc->manifoldPool[midNew + m] = bc->manifoldPool[mid + m];
+		}
+		/* update the new allocation's handles, since they are overwritten by 
+			the old manifolds' data */
+		for(KgtBodyColliderManifoldId m = 0; 
+			m < body->manifoldArrayCapacity; m++)
+		{
+			bc->manifoldPool[midNew + m].handle = body->hManifoldArray;
+		}
+		/* erase the old allocation */
+		kgtBodyColliderBodyReleaseManifolds(bc, &bodyOld);
+	}
+	else
+	/* simply expand the manifold array in-place */
+	{
+		for(KgtBodyColliderManifoldId m = mid + body->manifoldArrayCapacity; 
+			m < mid + manifoldCount; m++)
+		{
+			bc->manifoldSlots[m].occupied = true;
+			bc->manifoldSlots[m].salt     = bc->manifoldSlots[mid].salt;
+			bc->manifoldPool[m].handle = bc->manifoldPool[mid].handle;
+		}
+		bc->manifoldAllocCount += manifoldCount - body->manifoldArrayCapacity;
+		body->manifoldArrayCapacity = manifoldCount;
+	}
+}
+internal void 
 	kgtBodyColliderBodyAddManifold(
 		KgtBodyCollider* bc, KgtBodyColliderBody* b, KgtBodyColliderManifold m)
 {
-	/* place the manifold into b's manifold array in the body collider's 
-		manifold pool */
-	if(  !b->hManifoldArray 
-	   || b->manifoldArraySize >= b->manifoldArrayCapacity)
-	/* (re)allocate a manifold array from the manifold pool */
+	/* first, we need to ensure that the manifold array can hold another 
+		manifold */
+	if(!b->hManifoldArray)
 	{
-		const u32 newArrayCapacity = (b->manifoldArrayCapacity == 0
-			? 8
-			: 2*b->manifoldArrayCapacity);
-		/* check to see if we can just expand our array in-place (realloc) */
-		bool allocRequired = true;
-		if(b->manifoldArrayCapacity > 0)
-		{
-			KgtBodyColliderManifoldId mid;
-			u16 manifoldArraySalt;
-			if(!kgtBodyColliderParseManifoldHandle(
-					b->hManifoldArray, &mid, &manifoldArraySalt)
-				|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
-			{
-				KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
-				     b->hManifoldArray);
-			}
-			kassert(!"TODO: iterate past the manifold pool array (if possible) and check if newArrayCapacity can be satisfied");
-		}
-		if(allocRequired)
-		{
-			kassert(!"TODO: allocate a manifold array from the pool without modifying b yet");
-			if(b->manifoldArrayCapacity)
-			{
-				kassert(!"TODO: copy the manifolds of the old pool to the new one");
-			}
-			kassert(!"TODO: update b's internal manifold pool state here");
-		}
+		kgtBodyColliderAllocManifolds(bc, b, 8);
+	}
+	else if(b->manifoldArraySize >= b->manifoldArrayCapacity)
+	{
+		kgtBodyColliderReallocManifolds(bc, b, 2*b->manifoldArrayCapacity);
 	}
 	/* add the new manifold to the body's manifold array */
 	{
@@ -442,14 +609,6 @@ internal void
 	SOLVERS[u8(shape0->type)][u8(shape1->type)](
 		&manifold, shape0, shape1, b0, b1);
 	kgtBodyColliderBodyAddManifold(bc, b0, manifold);
-}
-internal void 
-	kgtBodyColliderBodyReleaseManifolds(
-		KgtBodyCollider* bc, KgtBodyColliderBody* body)
-{
-	if(!body->hManifoldArray)
-		return;
-	kassert(!"TODO");
 }
 internal void 
 	kgtBodyColliderUpdateManifolds(

@@ -16,8 +16,8 @@ struct KgtBodyColliderBody
 	/* all elements of the body's manifold array should possess the SAME 
 		HANDLE */
 	KgtBodyColliderManifoldHandle hManifoldArray;
-	u32 manifoldArraySize;
-	u32 manifoldArrayCapacity;
+	KgtBodyColliderManifoldId manifoldArraySize;
+	KgtBodyColliderManifoldId manifoldArrayCapacity;
 } FORCE_SYMBOL_EXPORT;
 /** A manifold describes data about a collision between two 
  * `KgtBodyColliderBody` objects.  The minimum translation vector described 
