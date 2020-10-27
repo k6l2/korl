@@ -273,8 +273,9 @@ internal size_t
 				kgtBodyColliderGetShape(bc, &bc->bodyPool[b].hShape);
 			kassert(shape);
 			/* color the vertices based on collision state */
-			const v4f32 color = {1,1,1,1};
-			///@TODO
+			const v4f32 color = (bc->bodyPool[b].hManifoldArray 
+				? v4f32{1,0,0,1} 
+				: v4f32{1,1,1,1});
 			/* output the wireframe representation of the shape */
 			const size_t shapeVertexCount = 
 				kgtBodyColliderShapeVertexCount(shape);
@@ -675,4 +676,31 @@ internal void
 		}
 		kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
 	}
+}
+/** @return true if the param `hb` is valid */
+internal bool 
+	kgtBodyColliderParseBodyHandle(
+		KgtBodyColliderBodyHandle hb, 
+		KgtBodyColliderBodyId* o_bid, u16* o_salt)
+{
+	const u64 rawId = hb >> 16;
+	if(rawId == 0)
+		return false;
+	*o_bid  = static_cast<KgtBodyColliderBodyId>(rawId - 1);
+	*o_salt = hb & 0xFFFF;
+	return true;
+}
+internal KgtBodyColliderBody* 
+	kgtBodyColliderGetBody(
+		KgtBodyCollider* bc, KgtBodyColliderBodyHandle* hBcb)
+{
+	KgtBodyColliderBodyId bid;
+	u16 bodySalt;
+	if(!kgtBodyColliderParseBodyHandle(*hBcb, &bid, &bodySalt)
+		|| bc->bodySlots[bid].salt != bodySalt)
+	{
+		*hBcb = 0;
+		return nullptr;
+	}
+	return &bc->bodyPool[bid];
 }
