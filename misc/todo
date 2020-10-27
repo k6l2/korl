@@ -758,10 +758,10 @@
 			- velocity
 			- orientation
 			- angularVelocity
-		[ ] step: solve which bodies are colliding
-		[ ] calculate minimum translation vector
-		[ ] calculate MTV penetration distance
-		[ ] calculate contact manifold
+		[x] step: solve which bodies are colliding
+		[x] calculate minimum translation vector
+		[x] calculate MTV penetration distance
+		[x] calculate contact manifold
 		[ ] provide an interface for user code to perform work when bodies 
 			collide
 			- callback API sucks, it would probably be easier for user code to 

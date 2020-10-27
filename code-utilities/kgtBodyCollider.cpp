@@ -236,6 +236,19 @@ internal void
 		*o_position = body->orient.transform(*o_position) + body->position;
 	}
 }
+/** @return true if the param `hm` is valid */
+internal bool 
+	kgtBodyColliderParseManifoldHandle(
+		KgtBodyColliderManifoldHandle hm, 
+		KgtBodyColliderManifoldId* o_mid, u16* o_salt)
+{
+	const u64 rawId = hm >> 16;
+	if(rawId == 0)
+		return false;
+	*o_mid  = static_cast<KgtBodyColliderManifoldId>(rawId - 1);
+	*o_salt = hm & 0xFFFF;
+	return true;
+}
 internal size_t 
 	kgtBodyColliderGenerateDrawLinesBuffer(
 		KgtBodyCollider* bc, void* o_vertexData, size_t vertexDataBytes, 
@@ -273,8 +286,32 @@ internal size_t
 				kgtBodyColliderGetShape(bc, &bc->bodyPool[b].hShape);
 			kassert(shape);
 			/* color the vertices based on collision state */
+			bool atLeastOneContactingManifold = false;
+			if(bc->bodyPool[b].hManifoldArray)
+			{
+				KgtBodyColliderManifoldId mid;
+				u16 manifoldSalt;
+				if(!kgtBodyColliderParseManifoldHandle(
+						bc->bodyPool[b].hManifoldArray, &mid, &manifoldSalt)
+					|| bc->manifoldSlots[mid].salt != manifoldSalt)
+				{
+					KLOG(ERROR, "Invalid manifold handle (%li)!", 
+					     bc->bodyPool[b].hManifoldArray);
+				}
+				for(KgtBodyColliderManifoldId m = mid; 
+					m < mid + bc->bodyPool[b].manifoldArraySize; m++)
+				{
+					if(bc->manifoldPool[m].worldContactPointsSize > 0)
+					{
+						atLeastOneContactingManifold = true;
+						break;
+					}
+				}
+			}
 			const v4f32 color = (bc->bodyPool[b].hManifoldArray 
-				? v4f32{1,0,0,1} 
+				? (atLeastOneContactingManifold
+					? v4f32{1,0,0,1} 
+					: v4f32{1,1,0,1}) 
 				: v4f32{1,1,1,1});
 			/* output the wireframe representation of the shape */
 			const size_t shapeVertexCount = 
@@ -361,19 +398,6 @@ internal KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
 	{
 		o_manifold->worldContactPointsSize = 0;
 	}
-}
-/** @return true if the param `hm` is valid */
-internal bool 
-	kgtBodyColliderParseManifoldHandle(
-		KgtBodyColliderManifoldHandle hm, 
-		KgtBodyColliderManifoldId* o_mid, u16* o_salt)
-{
-	const u64 rawId = hm >> 16;
-	if(rawId == 0)
-		return false;
-	*o_mid  = static_cast<KgtBodyColliderManifoldId>(rawId - 1);
-	*o_salt = hm & 0xFFFF;
-	return true;
 }
 internal void 
 	kgtBodyColliderBodyReleaseManifolds(
