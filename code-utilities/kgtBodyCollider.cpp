@@ -604,8 +604,12 @@ internal void
 	KgtBodyColliderManifold manifold = {};
 	manifold.hBodyA = b0->handle;
 	manifold.hBodyB = b1->handle;
-	local_persist KgtBodyColliderManifoldSolverFunction*const SOLVERS[1][1] = 
-		{ { kgtBodyColliderMsf_S_S } };
+	local_persist const u8 SHAPE_TYPE_COUNT = 1;
+	local_persist KgtBodyColliderManifoldSolverFunction*const 
+		SOLVERS[SHAPE_TYPE_COUNT][SHAPE_TYPE_COUNT] = 
+			{ { kgtBodyColliderMsf_S_S } };
+	kassert(u8(shape0->type) <= SHAPE_TYPE_COUNT);
+	kassert(u8(shape1->type) <= SHAPE_TYPE_COUNT);
 	SOLVERS[u8(shape0->type)][u8(shape1->type)](
 		&manifold, shape0, shape1, b0, b1);
 	kgtBodyColliderBodyAddManifold(bc, b0, manifold);
