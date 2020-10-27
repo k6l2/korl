@@ -649,4 +649,26 @@ internal void
 		}
 		kassert(bCount == bc->bodyAllocCount);
 	}
+	/* for safety, verify the integrity of our memory pools */
+	{
+		KgtBodyColliderManifoldId manifoldTotalOccupied = 0;
+		for(KgtBodyColliderManifoldId m = 0; 
+			m < bc->memoryReqs.maxCollisionManifolds; m++)
+		{
+			if(bc->manifoldSlots[m].occupied)
+				manifoldTotalOccupied++;
+		}
+		kassert(manifoldTotalOccupied == bc->manifoldAllocCount);
+		KgtBodyColliderManifoldId manifoldTotalCapacity = 0;
+		size_t bCount = 0;
+		for(size_t b = 0; 
+			b < bc->memoryReqs.maxBodies && bCount < bc->bodyAllocCount; b++)
+		{
+			if(!bc->bodySlots[b].occupied)
+				continue;
+			manifoldTotalCapacity += bc->bodyPool[b].manifoldArrayCapacity;
+			bCount++;
+		}
+		kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
+	}
 }
