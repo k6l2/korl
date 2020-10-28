@@ -1549,13 +1549,14 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);
 	g_cursorSizeNeSw       = LoadCursorA(NULL, IDC_SIZENESW);
 	g_cursorSizeNwSe       = LoadCursorA(NULL, IDC_SIZENWSE);
-	const WNDCLASS wndClass = {
-		.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
-		.lpfnWndProc   = w32MainWindowCallback,
-		.hInstance     = hInstance,
-		.hIcon         = LoadIcon(hInstance, TEXT("kml-application-icon")),
-		.hCursor       = g_cursorArrow,
-		.lpszClassName = "KmlWindowClass" };
+	const WNDCLASS wndClass = 
+		{ .style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC
+		, .lpfnWndProc   = w32MainWindowCallback
+		, .hInstance     = hInstance
+		, .hIcon         = LoadIcon(hInstance, TEXT("kml-application-icon"))
+		, .hCursor       = g_cursorArrow
+		, .hbrBackground = CreateSolidBrush(RGB(0, 0, 0))
+		, .lpszClassName = "KmlWindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)
 	{
