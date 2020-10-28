@@ -777,7 +777,7 @@ KgtBodyColliderManifoldIterator&
 		const KgtBodyColliderManifoldId nextManifoldArrayId = (firstBody
 			? mid + manifoldArrayId + 1
 			: mid);
-		if(nextManifoldArrayId < body->manifoldArraySize)
+		if(nextManifoldArrayId < mid + body->manifoldArraySize)
 		{
 			/* simply set the next manifold to the next element of this 
 				body's dynamic manifold array */
