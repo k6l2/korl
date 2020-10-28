@@ -66,12 +66,15 @@ struct KgtBodyCollider
 };
 struct KgtBodyColliderManifoldIterator
 {
-#if 0
+	KgtBodyColliderManifold* manifold;
+	/* internal iteration state */
 	KgtBodyCollider* kbc;
-	KgtBodyColliderManifoldId kbcManifoldId;
+	KgtBodyColliderBodyId bodyIndex;
+	KgtBodyColliderManifoldId manifoldArrayId;
+//	KgtBodyColliderManifoldId visitedManifoldCount;
+public:
 	operator bool() const;
 	KgtBodyColliderManifoldIterator& operator++();
-#endif //0
 };
 internal void 
 	kgtBodyColliderMemoryRequirements(
@@ -85,14 +88,14 @@ internal KgtBodyColliderShapeHandle
 internal KgtBodyColliderBody* 
 	kgtBodyColliderAddBody(
 		KgtBodyCollider* bc, KgtBodyColliderShapeHandle* hBcs);
+internal KgtBodyColliderBody* 
+	kgtBodyColliderGetBody(
+		KgtBodyCollider* bc, KgtBodyColliderBodyHandle* hBcb);
 internal void 
 	kgtBodyColliderUpdateManifolds(
 		KgtBodyCollider* bc, KgtAllocatorHandle hKal);
 internal KgtBodyColliderManifoldIterator 
 	kgtBodyColliderGetManifoldIterator(KgtBodyCollider* bc);
-internal KgtBodyColliderBody* 
-	kgtBodyColliderGetBody(
-		KgtBodyCollider* bc, KgtBodyColliderBodyHandle* hBcb);
 /** @return the # of vertices output to `o_vertexData` */
 internal size_t 
 	kgtBodyColliderGenerateDrawLinesBuffer(

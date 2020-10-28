@@ -728,3 +728,102 @@ internal KgtBodyColliderBody*
 	}
 	return &bc->bodyPool[bid];
 }
+KgtBodyColliderManifoldIterator::operator bool() const
+{
+	return manifold != nullptr;
+}
+KgtBodyColliderManifoldIterator& 
+	KgtBodyColliderManifoldIterator::operator++()
+{
+#if 0// this wont work because I don't currently keep track of COLLIDING manifolds
+	visitedManifoldCount++;
+	if(visitedManifoldCount >= kbc->manifoldAllocCount)
+	/* early escape case; we've visited all the manifolds */
+	{
+		manifold = nullptr;
+		/* @TODO(speed): move the memory pool integrity check code from 
+			`kgtBodyColliderUpdateManifolds` into here to eliminate at least one 
+			unnecessary loop through the pools */
+	}
+	else
+#endif// 0
+	/* so actually, in order to loop over all the ACTIVE collision 
+		manifolds, we MUST loop over all the bodies, because each body 
+		stores the value of how many manifold array elements they are 
+		attached to */
+	bool firstBody = true;
+	for(KgtBodyColliderBodyId bid = bodyIndex; 
+		bid < kbc->memoryReqs.maxBodies; bid++)
+	{
+		if(!kbc->bodySlots[bid].occupied)
+			continue;
+		KgtBodyColliderBody*const body = &kbc->bodyPool[bid];
+		if(!body->hManifoldArray)
+			continue;
+		KgtBodyColliderManifoldId mid;
+		u16 salt;
+		if(!kgtBodyColliderParseManifoldHandle(
+			body->hManifoldArray, &mid, &salt))
+		{
+			KLOG(ERROR, "Invalid manifold handle (%li)!", 
+			     body->hManifoldArray);
+			manifold = nullptr;
+			return *this;
+		}
+		/* update the internal iteration state to point to this body */
+		bodyIndex = bid;
+		/* conditionally use the first manifold in the body's dynamic manifold 
+			array */
+		const KgtBodyColliderManifoldId nextManifoldArrayId = (firstBody
+			? mid + manifoldArrayId + 1
+			: mid);
+		if(nextManifoldArrayId < body->manifoldArraySize)
+		{
+			/* simply set the next manifold to the next element of this 
+				body's dynamic manifold array */
+			manifold = &kbc->manifoldPool[nextManifoldArrayId];
+			/* update the internal iteration state to point to this 
+				manifold */
+			manifoldArrayId = nextManifoldArrayId;
+			return *this;
+		}
+		firstBody = false;
+	}
+	/* if we failed to find another active manifold, end of iteration */
+	manifold = nullptr;
+	return *this;
+}
+internal KgtBodyColliderManifoldIterator 
+	kgtBodyColliderGetManifoldIterator(KgtBodyCollider* bc)
+{
+	KgtBodyColliderManifoldIterator result;
+	result.manifold             = nullptr;
+	result.kbc                  = bc;
+//	result.visitedManifoldCount = 0;
+	result.manifoldArrayId      = 0;
+	result.bodyIndex            = bc->memoryReqs.maxBodies;
+	for(KgtBodyColliderBodyId bid = 0; bid < bc->memoryReqs.maxBodies; bid++)
+	{
+		if(!bc->bodySlots[bid].occupied)
+			continue;
+		if(!bc->bodyPool[bid].hManifoldArray)
+			continue;
+		kassert(bc->bodyPool[bid].manifoldArraySize > 0);
+		kassert(bc->bodyPool[bid].manifoldArrayCapacity >= 
+		            bc->bodyPool[bid].manifoldArraySize);
+		result.bodyIndex = bid;
+		break;
+	}
+	if(result.bodyIndex >= bc->memoryReqs.maxBodies)
+	{
+		return result;
+	}
+	KgtBodyColliderManifoldId mid;
+	u16 salt;
+	if(!kgtBodyColliderParseManifoldHandle(
+			bc->bodyPool[result.bodyIndex].hManifoldArray, &mid, &salt))
+		KLOG(ERROR, "Invalid manifold handle (%li)!", 
+		     bc->bodyPool[result.bodyIndex].hManifoldArray);
+	result.manifold = &bc->manifoldPool[mid];
+	return result;
+}
