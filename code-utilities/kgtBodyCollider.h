@@ -88,6 +88,9 @@ internal KgtBodyColliderShapeHandle
 internal KgtBodyColliderBody* 
 	kgtBodyColliderAddBody(
 		KgtBodyCollider* bc, KgtBodyColliderShapeHandle* hBcs);
+internal void 
+	kgtBodyColliderRemoveBody(
+		KgtBodyCollider* bc, KgtBodyColliderBodyHandle* hBcb);
 internal KgtBodyColliderBody* 
 	kgtBodyColliderGetBody(
 		KgtBodyCollider* bc, KgtBodyColliderBodyHandle* hBcb);

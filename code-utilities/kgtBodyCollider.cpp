@@ -164,6 +164,78 @@ internal KgtBodyColliderBody*
 	bc->bodyAllocCount++;
 	return &bc->bodyPool[bc->bodyAllocNext];
 }
+/** @return true if the param `hb` is valid */
+internal bool 
+	kgtBodyColliderParseBodyHandle(
+		KgtBodyColliderBodyHandle hb, 
+		KgtBodyColliderBodyId* o_bid, u16* o_salt)
+{
+	const u64 rawId = hb >> 16;
+	if(rawId == 0)
+		return false;
+	*o_bid  = static_cast<KgtBodyColliderBodyId>(rawId - 1);
+	*o_salt = hb & 0xFFFF;
+	return true;
+}
+/** @return true if the param `hm` is valid */
+internal bool 
+	kgtBodyColliderParseManifoldHandle(
+		KgtBodyColliderManifoldHandle hm, 
+		KgtBodyColliderManifoldId* o_mid, u16* o_salt)
+{
+	const u64 rawId = hm >> 16;
+	if(rawId == 0)
+		return false;
+	*o_mid  = static_cast<KgtBodyColliderManifoldId>(rawId - 1);
+	*o_salt = hm & 0xFFFF;
+	return true;
+}
+internal void 
+	kgtBodyColliderBodyReleaseManifolds(
+		KgtBodyCollider* bc, KgtBodyColliderBody* body)
+{
+	if(!body->hManifoldArray)
+		return;
+	KgtBodyColliderManifoldId mid;
+	u16 manifoldArraySalt;
+	if(!kgtBodyColliderParseManifoldHandle(
+		   body->hManifoldArray, &mid, &manifoldArraySalt)
+		|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
+	{
+		KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
+		     body->hManifoldArray);
+	}
+	kassert(mid + body->manifoldArrayCapacity <= 
+	            bc->memoryReqs.maxCollisionManifolds);
+	for(KgtBodyColliderManifoldId m = mid; 
+		m < mid + body->manifoldArrayCapacity; m++)
+	{
+		bc->manifoldSlots[m].occupied = false;
+	}
+	bc->manifoldAllocCount -= body->manifoldArrayCapacity;
+	body->hManifoldArray        = 0;
+	body->manifoldArrayCapacity = 0;
+	body->manifoldArraySize     = 0;
+}
+internal void 
+	kgtBodyColliderRemoveBody(
+		KgtBodyCollider* bc, KgtBodyColliderBodyHandle* hBcb)
+{
+	defer(*hBcb = 0);
+	KgtBodyColliderBodyId bid;
+	u16 bodySalt;
+	if(!kgtBodyColliderParseBodyHandle(*hBcb, &bid, &bodySalt)
+		|| bc->bodySlots[bid].salt != bodySalt)
+	{
+		return;
+	}
+	if(bc->bodyPool[bid].hManifoldArray)
+	{
+		kgtBodyColliderBodyReleaseManifolds(bc, &bc->bodyPool[bid]);
+	}
+	bc->bodySlots[bid].occupied = false;
+	bc->bodyAllocCount--;
+}
 internal KgtShape*
 	kgtBodyColliderGetShape(
 		KgtBodyCollider* bc, KgtBodyColliderShapeHandle* hBcs)
@@ -235,19 +307,6 @@ internal void
 			o_positions + v*vertexByteStride);
 		*o_position = body->orient.transform(*o_position) + body->position;
 	}
-}
-/** @return true if the param `hm` is valid */
-internal bool 
-	kgtBodyColliderParseManifoldHandle(
-		KgtBodyColliderManifoldHandle hm, 
-		KgtBodyColliderManifoldId* o_mid, u16* o_salt)
-{
-	const u64 rawId = hm >> 16;
-	if(rawId == 0)
-		return false;
-	*o_mid  = static_cast<KgtBodyColliderManifoldId>(rawId - 1);
-	*o_salt = hm & 0xFFFF;
-	return true;
 }
 internal size_t 
 	kgtBodyColliderGenerateDrawLinesBuffer(
@@ -398,33 +457,6 @@ internal KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
 	{
 		o_manifold->worldContactPointsSize = 0;
 	}
-}
-internal void 
-	kgtBodyColliderBodyReleaseManifolds(
-		KgtBodyCollider* bc, KgtBodyColliderBody* body)
-{
-	if(!body->hManifoldArray)
-		return;
-	KgtBodyColliderManifoldId mid;
-	u16 manifoldArraySalt;
-	if(!kgtBodyColliderParseManifoldHandle(
-		   body->hManifoldArray, &mid, &manifoldArraySalt)
-		|| bc->manifoldSlots[mid].salt != manifoldArraySalt)
-	{
-		KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
-		     body->hManifoldArray);
-	}
-	kassert(mid + body->manifoldArrayCapacity <= 
-	            bc->memoryReqs.maxCollisionManifolds);
-	for(KgtBodyColliderManifoldId m = mid; 
-		m < mid + body->manifoldArrayCapacity; m++)
-	{
-		bc->manifoldSlots[m].occupied = false;
-	}
-	bc->manifoldAllocCount -= body->manifoldArrayCapacity;
-	body->hManifoldArray        = 0;
-	body->manifoldArrayCapacity = 0;
-	body->manifoldArraySize     = 0;
 }
 /** combine the 32-bit manifold Id with the 16-bit slot salt into a 64-bit 
  * handle */
@@ -700,19 +732,6 @@ internal void
 		}
 		kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
 	}
-}
-/** @return true if the param `hb` is valid */
-internal bool 
-	kgtBodyColliderParseBodyHandle(
-		KgtBodyColliderBodyHandle hb, 
-		KgtBodyColliderBodyId* o_bid, u16* o_salt)
-{
-	const u64 rawId = hb >> 16;
-	if(rawId == 0)
-		return false;
-	*o_bid  = static_cast<KgtBodyColliderBodyId>(rawId - 1);
-	*o_salt = hb & 0xFFFF;
-	return true;
 }
 internal KgtBodyColliderBody* 
 	kgtBodyColliderGetBody(
