@@ -309,6 +309,27 @@ internal void
 	}
 }
 internal size_t 
+	kgtBodyColliderManifoldVertexCount(
+		KgtBodyCollider* bc, KgtBodyColliderManifoldId m)
+{
+	kassert(!"TODO");
+	return 0;
+}
+internal void 
+	kgtBodyColliderEmitManifoldWireframe(
+		KgtBodyCollider* bc, KgtBodyColliderManifoldId m, 
+		size_t vertexByteStride, u8*const o_positions, u8*const o_colors)
+{
+	/* iterate over each manifold:
+		iterate over each contact point:
+			- draw a line starting at the contact point ending at the MTV 
+				relative to that point
+			- color the line vertices cyan-magenta so we can tell where the line 
+				begins and in what direction it is going */
+	///@TODO
+	kassert(!"TODO");
+}
+internal size_t 
 	kgtBodyColliderGenerateDrawLinesBuffer(
 		KgtBodyCollider* bc, void* o_vertexData, size_t vertexDataBytes, 
 		size_t vertexByteStride, size_t vertexOffsetPositionV3f32, 
@@ -360,11 +381,25 @@ internal size_t
 				for(KgtBodyColliderManifoldId m = mid; 
 					m < mid + bc->bodyPool[b].manifoldArraySize; m++)
 				{
-					if(bc->manifoldPool[m].worldContactPointsSize > 0)
+					if(bc->manifoldPool[m].worldContactPointsSize <= 0)
+						continue;
+					atLeastOneContactingManifold = true;
+					/* emit some line segments representing the collision 
+						manifold */
+					const size_t manifoldVertexCount = 
+						kgtBodyColliderManifoldVertexCount(bc, m);
+					kassert(manifoldVertexCount > 0);
+					if(vertexCount + manifoldVertexCount > maxVertexCount)
 					{
-						atLeastOneContactingManifold = true;
-						break;
+						KLOG(WARNING, "Supplied vertex buffer array size (%i) "
+						     "is not large enough!", maxVertexCount);
+						return vertexCount;
 					}
+					kgtBodyColliderEmitManifoldWireframe(
+						bc, m, vertexByteStride, o_positions, o_colors);
+					o_positions += manifoldVertexCount*vertexByteStride;
+					o_colors    += manifoldVertexCount*vertexByteStride;
+					vertexCount += manifoldVertexCount;
 				}
 			}
 			const v4f32 color = (bc->bodyPool[b].hManifoldArray 
@@ -391,13 +426,6 @@ internal size_t
 		}
 		kassert(bCount == bc->bodyAllocCount);
 	}
-	/* iterate over each manifold:
-		iterate over each contact point:
-			- draw a line starting at the contact point ending at the MTV 
-				relative to that point
-			- color the line vertices cyan-magenta so we can tell where the line 
-				begins and in what direction it is going */
-	///@TODO
 	return vertexCount;
 }
 struct KgtBodyColliderBodyAabb

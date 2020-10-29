@@ -762,7 +762,7 @@
 		[x] calculate minimum translation vector
 		[x] calculate MTV penetration distance
 		[x] calculate contact manifold
-		[ ] provide an interface for user code to perform work when bodies 
+		[x] provide an interface for user code to perform work when bodies 
 			collide
 			- callback API sucks, it would probably be easier for user code to 
 				perform queries like "get all collision manifolds for body X"
@@ -770,6 +770,12 @@
 				stores a pointer to a dynamic array of manifolds
 			- limit the maximum # of total active manifolds
 			- initialize the array of manifolds per body to a minimum #
+		[x] spheres
+		[ ] debug draw collision manifold contact points
+		[ ] capsules
+		[ ] hulls
+			[ ] implement vertex/face pools in the BodyCollider
+		[ ] mesh
 	[ ] utility: generic Actor interface
 		[ ] is there some way of automatically constructing an "Actor" interface 
 			with virtual dispatch functions without using C++ class 
