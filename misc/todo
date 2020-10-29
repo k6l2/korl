@@ -772,8 +772,10 @@
 			- initialize the array of manifolds per body to a minimum #
 		[x] spheres
 		[x] debug draw collision manifold contact points
-		[ ] fix corruption with manifold pool
+		[x] fix corruption with manifold pool
 			- reproduce by spawning a bunch of spheres on top of each other
+		[x] fix bug in realloc manifolds where body's new manifold array doesn't 
+			properly update its size
 		[ ] capsules
 		[ ] hulls
 			[ ] implement vertex/face pools in the BodyCollider

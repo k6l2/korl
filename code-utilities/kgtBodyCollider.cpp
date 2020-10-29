@@ -2,6 +2,29 @@
 /* for custom stb_ds implementation */
 #include "kgtGameState.h"
 internal void 
+	kgtBodyColliderVerifyPoolIntegrity(KgtBodyCollider* bc)
+{
+	KgtBodyColliderManifoldId manifoldTotalOccupied = 0;
+	for(KgtBodyColliderManifoldId m = 0; 
+		m < bc->memoryReqs.maxCollisionManifolds; m++)
+	{
+		if(bc->manifoldSlots[m].occupied)
+			manifoldTotalOccupied++;
+	}
+	kassert(manifoldTotalOccupied == bc->manifoldAllocCount);
+	KgtBodyColliderManifoldId manifoldTotalCapacity = 0;
+	size_t bCount = 0;
+	for(size_t b = 0; 
+		b < bc->memoryReqs.maxBodies && bCount < bc->bodyAllocCount; b++)
+	{
+		if(!bc->bodySlots[b].occupied)
+			continue;
+		manifoldTotalCapacity += bc->bodyPool[b].manifoldArrayCapacity;
+		bCount++;
+	}
+	kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
+}
+internal void 
 	kgtBodyColliderMemoryRequirements(
 		const KgtBodyColliderMemoryRequirements& memReqs, 
 		size_t* o_requiredBytes)
@@ -177,6 +200,15 @@ internal bool
 	*o_salt = hb & 0xFFFF;
 	return true;
 }
+/** combine the 32-bit manifold Id with the 16-bit slot salt into a 64-bit 
+ * handle */
+internal KgtBodyColliderManifoldHandle 
+	kgtBodyColliderMakeManifoldHandle(
+		KgtBodyCollider* bc, KgtBodyColliderManifoldId mid)
+{
+	kassert(mid < 0xFFFFFFFF - 1);
+	return (u64(mid + 1) << 16) | bc->manifoldSlots[mid].salt;
+}
 /** @return true if the param `hm` is valid */
 internal bool 
 	kgtBodyColliderParseManifoldHandle(
@@ -196,6 +228,7 @@ internal void
 {
 	if(!body->hManifoldArray)
 		return;
+	KgtBodyColliderBody oldBody = *body;
 	KgtBodyColliderManifoldId mid;
 	u16 manifoldArraySalt;
 	if(!kgtBodyColliderParseManifoldHandle(
@@ -207,15 +240,22 @@ internal void
 	}
 	kassert(mid + body->manifoldArrayCapacity <= 
 	            bc->memoryReqs.maxCollisionManifolds);
+	kassert(kgtBodyColliderMakeManifoldHandle(bc, mid) == 
+	            body->hManifoldArray);
 	for(KgtBodyColliderManifoldId m = mid; 
 		m < mid + body->manifoldArrayCapacity; m++)
 	{
+		kassert(bc->manifoldPool[m].handle == body->hManifoldArray);
+		kassert(bc->manifoldSlots[m].occupied);
 		bc->manifoldSlots[m].occupied = false;
 	}
 	bc->manifoldAllocCount -= body->manifoldArrayCapacity;
 	body->hManifoldArray        = 0;
 	body->manifoldArrayCapacity = 0;
 	body->manifoldArraySize     = 0;
+#ifdef DEBUG_MANIFOLD_POOL_CORRUPTION
+	kgtBodyColliderVerifyPoolIntegrity(bc);
+#endif// DEBUG_MANIFOLD_POOL_CORRUPTION
 }
 internal void 
 	kgtBodyColliderRemoveBody(
@@ -502,15 +542,6 @@ internal KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
 		o_manifold->worldContactPointsSize = 0;
 	}
 }
-/** combine the 32-bit manifold Id with the 16-bit slot salt into a 64-bit 
- * handle */
-internal KgtBodyColliderManifoldHandle 
-	kgtBodyColliderMakeManifoldHandle(
-		KgtBodyCollider* bc, KgtBodyColliderManifoldId mid)
-{
-	kassert(mid < 0xFFFFFFFF - 1);
-	return (u64(mid + 1) << 16) | bc->manifoldSlots[mid].salt;
-}
 internal void 
 	kgtBodyColliderAllocManifolds(
 		KgtBodyCollider* bc, KgtBodyColliderBody* body, 
@@ -546,7 +577,7 @@ internal void
 		for(KgtBodyColliderManifoldId mu = mMod + 1; 
 			mu < mMod + manifoldCount; mu++)
 		{
-			if(bc->manifoldSlots[mMod].occupied)
+			if(bc->manifoldSlots[mu].occupied)
 				break;
 			unoccupiedCount++;
 		}
@@ -560,13 +591,13 @@ internal void
 	/* at this point we have a valid location to allocate an array of manifolds 
 		in the manifold pool, so let's initialize them and update allocation 
 		book keeping */
-	bc->manifoldSlots[mid].occupied = true;
 	bc->manifoldSlots[mid].salt++;
 	const KgtBodyColliderManifoldHandle hManifoldArray = 
 		kgtBodyColliderMakeManifoldHandle(bc, mid);
 	for(KgtBodyColliderManifoldId m = mid; m < mid + manifoldCount; m++)
 	/* make sure that all the manifolds in the array have the SAME HANDLE */
 	{
+		kassert(!bc->manifoldSlots[m].occupied);
 		bc->manifoldSlots[m].occupied = true;
 		bc->manifoldSlots[m].salt     = bc->manifoldSlots[mid].salt;
 		bc->manifoldPool[m].handle = hManifoldArray;
@@ -622,12 +653,31 @@ internal void
 			}
 		}
 	}
+	KgtBodyColliderBody bodyOld;
+	KgtBodyCollider bcOld = *bc;
 	if(newAllocationRequired)
 	/* alloc -> copy -> free.  This will probably happen most of the time... */
 	{
-		KgtBodyColliderBody bodyOld = *body;
+		bodyOld = *body;
+#ifdef DEBUG_MANIFOLD_POOL_CORRUPTION
+		kgtBodyColliderVerifyPoolIntegrity(bc);
+#endif// DEBUG_MANIFOLD_POOL_CORRUPTION
 		/* create a new allocation */
 		kgtBodyColliderAllocManifolds(bc, body, manifoldCount);
+#ifdef DEBUG_MANIFOLD_POOL_CORRUPTION
+		/* debug verify manifold count */
+		{
+			KgtBodyColliderManifoldId manifoldTotalOccupied = 0;
+			for(KgtBodyColliderManifoldId m = 0; 
+				m < bc->memoryReqs.maxCollisionManifolds; m++)
+			{
+				if(bc->manifoldSlots[m].occupied)
+					manifoldTotalOccupied++;
+			}
+			kassert(manifoldTotalOccupied == 
+			            bcOld.manifoldAllocCount + manifoldCount);
+		}
+#endif// DEBUG_MANIFOLD_POOL_CORRUPTION
 		/* copy the manifolds from the old allocation */
 		KgtBodyColliderManifoldId midNew;
 		u16 manifoldArraySaltNew;
@@ -640,7 +690,8 @@ internal void
 		}
 		for(KgtBodyColliderManifoldId m = 0; m < bodyOld.manifoldArraySize; m++)
 		{
-			bc->manifoldPool[midNew + m] = bc->manifoldPool[mid + m];
+			bc->manifoldPool[midNew + body->manifoldArraySize++] = 
+				bc->manifoldPool[mid + m];
 		}
 		/* update the new allocation's handles, since they are overwritten by 
 			the old manifolds' data */
@@ -694,6 +745,9 @@ internal void
 		m.handle = b->hManifoldArray;
 		bc->manifoldPool[mid + b->manifoldArraySize++] = m;
 	}
+#ifdef DEBUG_MANIFOLD_POOL_CORRUPTION
+	kgtBodyColliderVerifyPoolIntegrity(bc);
+#endif// DEBUG_MANIFOLD_POOL_CORRUPTION
 }
 internal void 
 	kgtBodyColliderMakeManifold(
@@ -755,27 +809,7 @@ internal void
 		kassert(bCount == bc->bodyAllocCount);
 	}
 	/* for safety, verify the integrity of our memory pools */
-	{
-		KgtBodyColliderManifoldId manifoldTotalOccupied = 0;
-		for(KgtBodyColliderManifoldId m = 0; 
-			m < bc->memoryReqs.maxCollisionManifolds; m++)
-		{
-			if(bc->manifoldSlots[m].occupied)
-				manifoldTotalOccupied++;
-		}
-		kassert(manifoldTotalOccupied == bc->manifoldAllocCount);
-		KgtBodyColliderManifoldId manifoldTotalCapacity = 0;
-		size_t bCount = 0;
-		for(size_t b = 0; 
-			b < bc->memoryReqs.maxBodies && bCount < bc->bodyAllocCount; b++)
-		{
-			if(!bc->bodySlots[b].occupied)
-				continue;
-			manifoldTotalCapacity += bc->bodyPool[b].manifoldArrayCapacity;
-			bCount++;
-		}
-		kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
-	}
+	kgtBodyColliderVerifyPoolIntegrity(bc);
 }
 internal KgtBodyColliderBody* 
 	kgtBodyColliderGetBody(
