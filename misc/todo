@@ -771,7 +771,9 @@
 			- limit the maximum # of total active manifolds
 			- initialize the array of manifolds per body to a minimum #
 		[x] spheres
-		[ ] debug draw collision manifold contact points
+		[x] debug draw collision manifold contact points
+		[ ] fix corruption with manifold pool
+			- reproduce by spawning a bunch of spheres on top of each other
 		[ ] capsules
 		[ ] hulls
 			[ ] implement vertex/face pools in the BodyCollider

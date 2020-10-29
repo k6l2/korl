@@ -312,22 +312,37 @@ internal size_t
 	kgtBodyColliderManifoldVertexCount(
 		KgtBodyCollider* bc, KgtBodyColliderManifoldId m)
 {
-	kassert(!"TODO");
-	return 0;
+	kassert(bc->manifoldSlots[m].occupied);
+	return bc->manifoldPool[m].worldContactPointsSize * 2u;
 }
 internal void 
 	kgtBodyColliderEmitManifoldWireframe(
 		KgtBodyCollider* bc, KgtBodyColliderManifoldId m, 
 		size_t vertexByteStride, u8*const o_positions, u8*const o_colors)
 {
-	/* iterate over each manifold:
-		iterate over each contact point:
-			- draw a line starting at the contact point ending at the MTV 
-				relative to that point
-			- color the line vertices cyan-magenta so we can tell where the line 
-				begins and in what direction it is going */
-	///@TODO
-	kassert(!"TODO");
+	kassert(bc->manifoldSlots[m].occupied);
+	const KgtBodyColliderManifold& manifold = bc->manifoldPool[m];
+	/* iterate over each contact point:
+		- draw a line starting at the contact point ending at the MTV 
+			relative to that point
+		- color the line vertices cyan-magenta so we can tell where the line 
+			begins and in what direction it is going */
+	for(u8 c = 0; c < manifold.worldContactPointsSize; c++)
+	{
+		v3f32*const p0 = reinterpret_cast<v3f32*>(
+			o_positions + (2*c + 0)*vertexByteStride);
+		v3f32*const p1 = reinterpret_cast<v3f32*>(
+			o_positions + (2*c + 1)*vertexByteStride);
+		v4f32*const c0 = reinterpret_cast<v4f32*>(
+			o_colors + (2*c + 0)*vertexByteStride);
+		v4f32*const c1 = reinterpret_cast<v4f32*>(
+			o_colors + (2*c + 1)*vertexByteStride);
+		*p0 = manifold.worldContactPoints[c];
+		*p1 = *p0 + manifold.minTranslateDistance * 
+			manifold.minTranslateNormal;
+		*c0 = {1,0,1,1};
+		*c1 = {0,1,1,1};
+	}
 }
 internal size_t 
 	kgtBodyColliderGenerateDrawLinesBuffer(
@@ -472,8 +487,9 @@ internal KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
 	if(colliding)
 	{
 		local_persist const v3f32 DEGENERATE_NORMAL = v3f32::Z;
+		const v3f32 degenNorm = (b0 < b1 ? 1.f : -1.f) * DEGENERATE_NORMAL;
 		if(kmath::isNearlyZero(distance))
-			o_manifold->minTranslateNormal = DEGENERATE_NORMAL;
+			o_manifold->minTranslateNormal = degenNorm;
 		else
 			o_manifold->minTranslateNormal = b1ToB0;
 		o_manifold->minTranslateDistance   = sumOfRadii - distance;
