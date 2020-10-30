@@ -1,7 +1,5 @@
 @echo off
 rem prerequisites: shell.bat has been run successfully
-rem                KML_HOME environment variable
-rem                KMD5_HOME environment variable
 setlocal
 
 

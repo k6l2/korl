@@ -1,10 +1,9 @@
 @echo off
-rem prerequisites: VISUAL_C_BUILD_SCRIPTS_HOME environment variable set
-rem                KML_HOME environment variable set
+rem prerequisites: install.bat has been run
 set oneFolderBelowProjectRoot=%1
 rem setup necessary environment variables to build the project, and switch our
 rem current working directory to be the project's root folder
-call "%VISUAL_C_BUILD_SCRIPTS_HOME%\vcvarsall.bat" x64
+call "%VsDevCmd_Path%" -arch=amd64
 echo navigating to batch file's directory "%oneFolderBelowProjectRoot%"...
 cd %oneFolderBelowProjectRoot%
 cd ..

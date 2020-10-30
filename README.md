@@ -2,18 +2,11 @@
 Currently, only the Windows platform is a thing.
 
 ## Installation Procedures
-- Install Visual Studio w/ C++ to get all the required build tools.
+### Windows
+- [Install Visual Studio w/ C++ to get all the required build tools.](https://visualstudio.microsoft.com/vs/community/)
+- [Install Git for Windows.](https://git-scm.com/download/win)
 - Clone this repository somewhere.
-- [Clone the `kasset` repository somewhere.](https://github.com/k6l2/kasset)
-- [Clone the `kmd5` repository somewhere.](https://github.com/k6l2/kmd5)
-- Set the `VISUAL_C_BUILD_SCRIPTS_HOME` environment variable to point to the
-	location of `vcvarsall.bat`.
-- Set the `KML_HOME` environment variable to point to the root directory of this
-	repository.
-- Set the `KASSET_HOME` environment variable to point to the root directory of 
-	the `kasset` repository.
-- Set the `KMD5_HOME` environment variable to point to the root directory of 
-	the `kmd5` repository.
+- Run `misc/install.bat`!
 
 ## Build Procedures
 - Run `%KML_HOME%\samples\*\misc\shell.bat`.

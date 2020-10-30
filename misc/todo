@@ -787,11 +787,15 @@
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
-[ ] installer batch script
-	[ ] automatically locate visual studio build tools
+[x] installer batch script
+	[x] prompt the user for a toolchain install directory
+		https://stackoverflow.com/a/50115044/4526664
+	[x] automatically locate visual studio build tools
 		https://renenyffenegger.ch/notes/development/tools/scripts/personal/vsenv_bat
-	[ ] automatically clone build tools if they don't exist
-	[ ] automatically set environment variables permanently
+	[x] automatically clone build tools if they don't exist
+		[x] kmd5
+		[x] kasset
+	[x] automatically set environment variables permanently
 		https://stackoverflow.com/questions/5898131/set-a-persistent-environment-variable-from-cmd-exe
 [ ] create new project batch script
 	[ ] take input for project name from the user
