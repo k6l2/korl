@@ -34,17 +34,13 @@ struct KgtBodyColliderManifold
 	v3f32 worldContactPoints[4];
 	u8    worldContactPointsSize;
 } FORCE_SYMBOL_EXPORT;
-struct KgtBodyColliderPoolSlot
-{
-	u16 salt;
-	bool occupied;
-} FORCE_SYMBOL_EXPORT;
 struct KgtBodyColliderMemoryRequirements
 {
 	KgtBodyColliderShapeId    maxShapes;
 	KgtBodyColliderBodyId     maxBodies;
 	KgtBodyColliderManifoldId maxCollisionManifolds;
 };
+struct KgtBodyColliderPoolSlot;
 struct KgtBodyCollider
 {
 	/* internal storage pool addresses */
@@ -76,10 +72,9 @@ public:
 	operator bool() const;
 	KgtBodyColliderManifoldIterator& operator++();
 };
-internal void 
-	kgtBodyColliderMemoryRequirements(
-		const KgtBodyColliderMemoryRequirements& memReqs, 
-		size_t* o_requiredBytes);
+internal size_t 
+	kgtBodyColliderRequiredBytes(
+		const KgtBodyColliderMemoryRequirements& memReqs);
 internal KgtBodyCollider* 
 	kgtBodyColliderConstruct(
 		void* address, const KgtBodyColliderMemoryRequirements& memReqs);

@@ -1,6 +1,11 @@
 #include "kgtBodyCollider.h"
 /* for custom stb_ds implementation */
 #include "kgtGameState.h"
+struct KgtBodyColliderPoolSlot
+{
+	u16 salt;
+	bool occupied;
+} FORCE_SYMBOL_EXPORT;
 internal void 
 	kgtBodyColliderVerifyPoolIntegrity(KgtBodyCollider* bc)
 {
@@ -24,12 +29,11 @@ internal void
 	}
 	kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
 }
-internal void 
-	kgtBodyColliderMemoryRequirements(
-		const KgtBodyColliderMemoryRequirements& memReqs, 
-		size_t* o_requiredBytes)
+internal size_t 
+	kgtBodyColliderRequiredBytes(
+		const KgtBodyColliderMemoryRequirements& memReqs)
 {
-	*o_requiredBytes = sizeof(KgtBodyCollider) + 
+	return sizeof(KgtBodyCollider) + 
 		memReqs.maxShapes*(sizeof(KgtBodyColliderPoolSlot) + sizeof(KgtShape)) + 
 		memReqs.maxBodies*(sizeof(KgtBodyColliderPoolSlot) + 
 		                   sizeof(KgtBodyColliderBody)) + 
