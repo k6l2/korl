@@ -749,7 +749,7 @@
 			kQuaternion::IDENTITY???
 		- it's because I need to NOT DEFINE STATIC CONSTANTS in header files 
 			EVER!!!
-	[ ] utility: BodyCollider
+	[~] utility: BodyCollider
 		http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 		[x] use general-purpose Shape structure (make generic in the future?)
 		[x] save handles to user-defined Shapes
@@ -776,10 +776,10 @@
 			- reproduce by spawning a bunch of spheres on top of each other
 		[x] fix bug in realloc manifolds where body's new manifold array doesn't 
 			properly update its size
-		[ ] capsules
-		[ ] hulls
-			[ ] implement vertex/face pools in the BodyCollider
-		[ ] mesh
+		[~] capsules
+		[~] hulls
+			[~] implement vertex/face pools in the BodyCollider
+		[~] mesh
 	[ ] utility: generic Actor interface
 		[ ] is there some way of automatically constructing an "Actor" interface 
 			with virtual dispatch functions without using C++ class 
@@ -809,6 +809,9 @@
 	http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 	https://archive.org/details/GDC2013Gregorius
 	http://twvideo01.ubm-us.net/o1/vault/gdc10/slides/Catto_Erin_PhysicsForProgrammers_ComputingDistance.pdf
+[ ] samples: render TTF
+	[ ] integrate stb_truetype
+	[ ] utility: font cache dynamic asset
 [ ] attempt to initialize GJK with 3 iterations with intelligently selected 
 	search directions in an attempt to create a simplex pointing directly at the 
 	origin in the perfect sphere case
@@ -820,9 +823,6 @@
 	[x] apply all necessary simplifications to other kgt code utilities
 [ ] prevent application from hanging when the asset manager can't find an asset 
 	file
-[ ] samples: render TTF
-	[ ] integrate stb_truetype
-	[ ] utility: font cache dynamic asset
 [x] figure out how to automatically debug launch a program in Visual Studio 
 	without having to actually swap to it and press the stupid button
 	https://stackoverflow.com/a/46243064/4526664
@@ -864,12 +864,19 @@
 	- when the mouse exits relative mode and the cursor is in the title bar, the 
 		right-click menu should not pop up
 [ ] samples: constrained physics simulation
+	VERY useful resource I used to create Dennistar!
+		https://gafferongames.com/categories/virtual-go/
+	Which references this wikipedia page for impulse collision reactions:
+		https://en.wikipedia.org/wiki/Collision_response#Impulse-Based_Reaction_Model
+	Additional Dennistar resources:
+		https://www.gamedev.net/forums/topic/547002-debugging-my-physics-engine--how-to-transform-inertia-tensor-correctly/
+		http://www.kwon3d.com/theory/moi/triten.html
 	https://box2d.org/publications/
 		https://box2d.org/files/ErinCatto_IterativeDynamics_GDC2005.pdf
 		https://box2d.org/files/ErinCatto_IterativeDynamicsSlides_GDC2005.pdf
 	verbose source, but maybe useful:
 		http://www.kuffner.org/james/software/dynamics/mirtich/mirtichThesis.pdf
-	[ ] contact point calculation
+	[x] contact point calculation
 	[ ] compute Jacobian for non-penetration & friction constraints
 	[ ] Gauss-Seidel solver
 	[ ] update rigid-body position/velocity
