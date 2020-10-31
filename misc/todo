@@ -798,12 +798,15 @@
 	[x] automatically set environment variables permanently
 		https://stackoverflow.com/questions/5898131/set-a-persistent-environment-variable-from-cmd-exe
 [ ] create new project batch script
-	[ ] take input for project name from the user
-	[ ] take input for project directory from the user
-		[ ] create a GUI dialog box for this?
+	[x] take input for project name from the user
+	[x] take input for project directory from the user
+		[x] create a GUI dialog box for this?
 			https://stackoverflow.com/a/61741362/4526664
-	[ ] create this directory
+	[x] create this directory
+	[ ] create custom `misc/shell.bat`
 	[ ] copy necessary samples 000 files into this folder
+		[ ] code
+		[ ] assets
 	[ ] generate a vscode .code-workspace file for this project
 	[ ] copy .vscode folder stuff into this directory
 	[ ] copy git dotfiles into this directory
