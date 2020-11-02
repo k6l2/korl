@@ -76,8 +76,8 @@ if not exist ".gitattributes" (
 	xcopy "%korl_home%\.gitattributes" "."
 )
 
-
-
+rem convert korl_home path to forward slashes to prevent JSON errors
+set "korl_home=%korl_home:\=/%"
 rem generate a VSCode `*.code-workspace` file
 if not exist "%projectName%.code-workspace" (
 	echo {> "%projectName%.code-workspace"
