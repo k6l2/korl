@@ -7,34 +7,34 @@ Currently, only the Windows platform is a thing.
 - [Install Git for Windows.](https://git-scm.com/download/win)
 - Clone this repository somewhere.
 - Run `misc/install.bat`!
+- [Optionally, install VSCode.](https://code.visualstudio.com/)
 
 ## Build Procedures
+### Windows
 - Run `%KML_HOME%\samples\*\misc\shell.bat`.
 - Execute `build` from this windows shell.
 
-## Visual Studio Debugger
-- Run `devenv build\Win32-KML.exe` to debug the project in Visual Studio.
+## Visual Studio Debugger (Windows)
+- Run `debug` from the KML environment shell to debug the project in Visual 
+	Studio.
+
+## Create a New Project Procedures
+### Windows
+- Follow `Installation Procedures` above to install KML somewhere.
+- Run `%kml_home%/misc/create-project.bat`!
+- Optionally, edit the contents of `misc\shell.bat` in the new project directory 
+	as you see fit.
 
 ## Optional Editor
 - Run `code %KML_HOME%` to use VSCode, conveniently configured to build & debug 
 	in-editor.
 
-## Create a New Game Project Procedures
-- Follow `Installation Procedures` above to install KML somewhere.
-- Create a new directory anywhere.
-- Copy the `%KML_HOME%\samples\000-minimal-template` directory contents into 
-	this new directory.
-- Edit the contents of `misc\shell.bat` in the new directory as you see fit.
-- Optionally, copy the `%KML_HOME%\.vscode` folder into the new directory.
-
-## Developing a New Game Project Procedures
-- Follow `Build Procedures` using the new directory instead of 
-	`%KML_HOME%\game`.
-- Follow `Visual Studio Debugger` using whatever you set `kmlApplicationName` in 
-	`misc\shell.bat` instead of `Win32-KML`.exe.
+## Developing a New Project
+- Follow `Build Procedures` using the new project directory instead of 
+	`%KML_HOME%\samples\*`.
 - Explore `%KML_HOME%\samples` for code samples performing various common tasks, 
 	such as drawing things to the window, playing sounds/music, networking & 
 	more!
-- Optionally, follow `Optional Editor` for this new directory using `.` instead 
-	of `%KML_HOME%`.
+- Optionally, follow `Optional Editor` for this new directory using 
+	`%kmlApplicationName%.code-workspace` instead of `%KML_HOME%`.
 - We gucci, fam'.

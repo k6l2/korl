@@ -797,19 +797,20 @@
 		[x] kasset
 	[x] automatically set environment variables permanently
 		https://stackoverflow.com/questions/5898131/set-a-persistent-environment-variable-from-cmd-exe
-[ ] create new project batch script
+[x] create new project batch script
 	[x] take input for project name from the user
 	[x] take input for project directory from the user
 		[x] create a GUI dialog box for this?
 			https://stackoverflow.com/a/61741362/4526664
 	[x] create this directory
-	[ ] create custom `misc/shell.bat`
-	[ ] copy necessary samples 000 files into this folder
-		[ ] code
-		[ ] assets
-	[ ] generate a vscode .code-workspace file for this project
-	[ ] copy .vscode folder stuff into this directory
-	[ ] copy git dotfiles into this directory
+	[x] create custom `misc/shell.bat`
+	[x] copy necessary samples 000 files into this folder
+		[x] code
+		[x] assets
+	[x] generate a vscode .code-workspace file for this project
+	[x] copy .vscode folder stuff into this directory
+	[x] copy git dotfiles into this directory
+[ ] rebrand project to KORL (Kyle's OS Resource Layer)
 [ ] samples: shape collision manifold
 	http://www.dyn4j.org/2011/11/contact-points-using-clipping/
 	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf
@@ -933,7 +934,6 @@
 [ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators
-[ ] rebrand project to KORL (Kyle's OS Resource Layer)
 [ ] separate kmath into core & geometry
 	[ ] remove the need to compile stb_ds on the win32 platform translation unit
 [ ] continuous collision detection

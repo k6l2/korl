@@ -59,7 +59,7 @@ rem @param %~1 name of build tool to install
 		git clone https://github.com/k6l2/%~1
 		echo %~1 install complete!
 	)
-	echo Setting environment variable '%~1_home=%toolchain_install_path%/%~1'
-	setx %~1_home "%toolchain_install_path%/%~1"
+	echo Setting environment variable '%~1_home=%toolchain_install_path%\%~1'
+	setx %~1_home "%toolchain_install_path%\%~1"
 	endlocal
 	exit /b 0
