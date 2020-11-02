@@ -1,21 +1,21 @@
 #pragma once
-#include "TemplateGameState.h"
-#include "camera3d.h"
-#include "kShape.h"
+#include "kgtGameState.h"
+#include "kgtCamera3d.h"
+#include "kgtShape.h"
 struct Actor
 {
 	v3f32 position;
-	kQuaternion orientation = kQuaternion::IDENTITY;
-	Shape shape;
+	q32 orientation = q32::IDENTITY;
+	KgtShape shape;
 };
 struct GameState
 {
-	KmlTemplateGameState templateGameState;
-	Camera3d camera;
+	KgtGameState kgtGameState;
+	KgtCamera3d camera;
 	Actor actors[2];
 	/* GJK + EPA visualizations */
 	v3f32 minkowskiDifferencePosition;
-	Vertex minkowskiDifferencePointCloud[1000];
+	KgtVertex minkowskiDifferencePointCloud[1000];
 	u16 minkowskiDifferencePointCloudCount = 1000;
 	kmath::GjkState gjkState;
 	kmath::EpaState epaState;

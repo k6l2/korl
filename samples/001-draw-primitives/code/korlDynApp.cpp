@@ -1,4 +1,4 @@
-#include "KmlDynApp.h"
+#include "korlDynApp.h"
 /* In order to draw primitives, we must define a structure to pack the vertex 
 	data of our choice, as well as the memory layout instructions for KRB.  This 
 	utility header provides definitions of such constructs for your 
@@ -6,7 +6,7 @@
 //#include "kgtVertex.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 	g_gs->seconds += deltaSeconds;// animate the sample scene
 	/* Initialize backend renderer for drawing.   This must occur before ANY 
@@ -41,16 +41,16 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
+	kgtGameStateInitialize(memory, sizeof(GameState));
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
+	kgtGameStateRenderAudio(audioBuffer, sampleBlocksConsumed);
 }
 #include "kgtGameState.cpp"

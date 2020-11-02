@@ -1,7 +1,7 @@
 /*
  * User code must define the following global variables to use this module:
  *  - KrbApi*          g_krb
- *  - KmlPlatformApi*  g_kpl
+ *  - KorlPlatformApi* g_kpl
  */
 #pragma once
 #include "kutil.h"

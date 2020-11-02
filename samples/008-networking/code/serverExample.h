@@ -6,7 +6,7 @@
 #include "exampleGameNet.h"
 struct ServerState
 {
-	/* KML interface */
+	/* KORL interface */
 	enum class RunState : u8
 		{ STOP
 		, RUN

@@ -4,14 +4,14 @@
 		{
 			"name": "C++",
 			"defines": 
-				[ "INTERNAL_BUILD=1;SLOW_BUILD=1;KML_MINIMUM_FRAME_RATE=30"
+				[ "INTERNAL_BUILD=1;SLOW_BUILD=1;KORL_MINIMUM_FRAME_RATE=30"
 			],
 			"cppStandard": "c++20",
 			"includePath": 
 				[ "${env:project_root}/code"
 				, "${env:project_root}/build/code"
-				, "${env:KML_HOME}/code-utilities"
-				, "${env:KML_HOME}/code"
+				, "${env:korl_home}/code-utilities"
+				, "${env:korl_home}/code"
 			]
 		}
 	]

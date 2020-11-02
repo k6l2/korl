@@ -1,7 +1,7 @@
-#include "KmlDynApp.h"
+#include "korlDynApp.h"
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 	/* display GUI window containing sample instructions */
 	ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -43,7 +43,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			they are changed on disk! */
 	{
 		const size_t meshBoxBytes = 36*sizeof(KgtVertex);
-		KgtVertex* meshBox = ALLOC_FRAME_ARRAY(KgtVertex, 36);
+		KgtVertex* meshBox = KGT_ALLOC_FRAME_ARRAY(KgtVertex, 36);
 		kmath::generateMeshBox(
 			{2,2,2}, meshBox, meshBoxBytes, sizeof(meshBox[0]), 
 			offsetof(KgtVertex, position), offsetof(KgtVertex, textureNormal));
@@ -60,17 +60,17 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
+	kgtGameStateRenderAudio(audioBuffer, sampleBlocksConsumed);
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
+	kgtGameStateInitialize(memory, sizeof(GameState));
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {

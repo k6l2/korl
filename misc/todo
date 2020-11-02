@@ -810,7 +810,16 @@
 	[x] generate a vscode .code-workspace file for this project
 	[x] copy .vscode folder stuff into this directory
 	[x] copy git dotfiles into this directory
-[ ] rebrand project to KORL (Kyle's OS Resource Layer)
+[x] rebrand project to KORL (Kyle's OS Resource Layer)
+[ ] massage KORL code
+	[ ] unify source naming (prefix all source files with korl)
+	[ ] unify korl-platform-interface API
+		[ ] remove notion of "game"
+		[ ] prefix everything with KORL or some variation
+	[ ] kmath  => korlMath/kgtMath?
+	[ ] kutil  => korlUtilities
+	[ ] krb*   => korlGpu
+	[ ] win32* => korl-win32*
 [ ] samples: shape collision manifold
 	http://www.dyn4j.org/2011/11/contact-points-using-clipping/
 	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf

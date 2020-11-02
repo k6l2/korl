@@ -1,6 +1,6 @@
 #include "exampleGameNet.h"
 #include "serverExample.h"
-#include "KmlDynApp.h"
+#include "korlDynApp.h"
 #include "kgtNetCommon.h"
 internal u16 reliableMessageAnsiTextPack(
 	const char* nullTerminatedAnsiText, u8* dataBuffer, const u8* dataBufferEnd)

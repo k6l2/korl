@@ -1,4 +1,4 @@
-#include "KmlDynApp.h"
+#include "korlDynApp.h"
 /** @return NAN32 if the ray doesn't intersect with actor */
 f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 {
@@ -7,8 +7,7 @@ f32 testRay(const v3f32& rayOrigin, const v3f32& rayNormal, const Actor& actor)
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!kgtGameStateUpdateAndDraw(&g_gs->kgtGameState, gameKeyboard, 
-	                              windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 	bool lockedMouse = false;
 	const v3f32 cameraWorldForward = kgtCamera3dWorldForward(&g_gs->camera);
@@ -378,19 +377,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kgtGameStateRenderAudio(&g_gs->kgtGameState, audioBuffer, 
-	                        sampleBlocksConsumed);
+	kgtGameStateRenderAudio(audioBuffer, sampleBlocksConsumed);
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	kgtGameStateOnReloadCode(memory);
+	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
-	g_gs->camera.position     = {10,11,12};
+	kgtGameStateInitialize(memory, sizeof(GameState));
+	g_gs->camera.position = {10,11,12};
 	kgtCamera3dLookAt(&g_gs->camera, v3f32::ZERO);
 	/* initialize dynamic array of actors */
 	g_gs->actors = arrinit(Actor, g_gs->kgtGameState.hKalPermanent);

@@ -235,7 +235,7 @@ typedef PLATFORM_LOCK(fnSig_platformLock);
 typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
 typedef PLATFORM_MOUSE_SET_HIDDEN(fnSig_platformMouseSetHidden);
 typedef PLATFORM_MOUSE_SET_RELATIVE_MODE(fnSig_platformMouseSetRelativeMode);
-struct KmlPlatformApi
+struct KorlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
 	fnSig_platformJobValid* jobValid;
@@ -279,7 +279,7 @@ struct GameMemory
 	u64   permanentMemoryBytes;
 	void* transientMemory;
 	u64   transientMemoryBytes;
-	KmlPlatformApi kpl;
+	KorlPlatformApi kpl;
 	KrbApi krb;
 	void* imguiContext;
 	fnSig_platformImguiAlloc* platformImguiAlloc;

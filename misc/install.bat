@@ -36,8 +36,8 @@ popd
 rem @TODO: check to see if anything didn't work
 cd %~dp0
 cd ..
-echo Setting environment variable 'kml_home=%cd%'
-setx kml_home "%cd%"
+echo Setting environment variable 'korl_home=%cd%'
+setx korl_home "%cd%"
 pause
 endlocal
 exit /b 0

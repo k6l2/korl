@@ -28,7 +28,7 @@ struct KgtGameState
 	KgtAudioMixer* audioMixer;
 };
 /* useful global variables */
-global_variable KmlPlatformApi* g_kpl;
+global_variable KorlPlatformApi* g_kpl;
 global_variable KrbApi* g_krb;
 global_variable KgtAssetManager* g_kam;
 global_variable KgtGameState* g_kgs;

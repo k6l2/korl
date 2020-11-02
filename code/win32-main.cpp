@@ -24,12 +24,12 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #define _DEFINE_TO_CSTR(define) #define
 #define DEFINE_TO_CSTR(d) _DEFINE_TO_CSTR(d)
 global_variable const TCHAR APPLICATION_NAME[] = 
-                                    TEXT(DEFINE_TO_CSTR(KML_APP_NAME));
+                                    TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
 global_variable const TCHAR APPLICATION_VERSION[] = 
-                                    TEXT(DEFINE_TO_CSTR(KML_APP_VERSION));
+                                    TEXT(DEFINE_TO_CSTR(KORL_APP_VERSION));
 global_variable const TCHAR FILE_NAME_GAME_DLL[] = 
-                                    TEXT(DEFINE_TO_CSTR(KML_GAME_DLL_FILENAME));
-global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KML_MINIMUM_FRAME_RATE;
+                                    TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));
+global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KORL_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_isFocused;
 /* this variable exists because mysterious COM incantations require us to check 
@@ -1445,7 +1445,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 	}
 	/* allocate a single large chunk of memory - this is the MINIMUM required 
-		memory for the entire KML application to run!!! */
+		memory for the entire KORL application to run!!! */
 	VOID* minimumApplicationMemory = nullptr;
 	size_t staticMemoryAllocOffsets[
 		static_cast<u8>(StaticMemoryAllocationIndex::ENUM_SIZE)];
@@ -1553,10 +1553,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		{ .style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC
 		, .lpfnWndProc   = w32MainWindowCallback
 		, .hInstance     = hInstance
-		, .hIcon         = LoadIcon(hInstance, TEXT("kml-application-icon"))
+		, .hIcon         = LoadIcon(hInstance, TEXT("korl-application-icon"))
 		, .hCursor       = g_cursorArrow
 		, .hbrBackground = CreateSolidBrush(RGB(0, 0, 0))
-		, .lpszClassName = "KmlWindowClass" };
+		, .lpszClassName = "KorlWindowClass" };
 	const ATOM atomWindowClass = RegisterClassA(&wndClass);
 	if(atomWindowClass == 0)
 	{
@@ -1655,7 +1655,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		gameMemory.transientMemory = reinterpret_cast<u8*>(
 			minimumApplicationMemory) + staticMemoryAllocOffsets[
 				static_cast<u8>(StaticMemoryAllocationIndex::GAME_TRANSIENT)];
-		gameMemory.kpl                 = KML_PLATFORM_API_WIN32;
+		gameMemory.kpl                 = KORL_PLATFORM_API_WIN32;
 		gameMemory.krb                 = {};
 		gameMemory.imguiContext        = ImGui::GetCurrentContext();
 		gameMemory.platformImguiAlloc  = w32PlatformImguiAlloc;

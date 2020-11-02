@@ -1,8 +1,8 @@
-#include "KmlDynApp.h"
+#include "korlDynApp.h"
 #include <algorithm>
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!kgtGameStateUpdateAndDraw(g_kgs, gameKeyboard, windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 	g_gs->seconds += deltaSeconds;
 	/* display GUI window containing sample instructions */
@@ -69,7 +69,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		/* we can sort a separate array of actors using a linear frame allocator 
 			for temp storage, allowing us to preserve the original actor array's 
 			order for demonstration purposes */
-		v3f32* actorTempArray = ALLOC_FRAME_ARRAY(v3f32, actorTempArrayLength);
+		v3f32* actorTempArray = 
+			KGT_ALLOC_FRAME_ARRAY(v3f32, actorTempArrayLength);
 		for(size_t a = 0; a < actorTempArrayLength; a++)
 			actorTempArray[a] = g_gs->dynamicArrayActorPositions[a];
 		const auto actorSort = 
@@ -93,19 +94,19 @@ GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 }
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
+	kgtGameStateInitialize(memory, sizeof(GameState));
 	/* initialize a dynamic array of actor positions using STB_DS */
 	g_gs->dynamicArrayActorPositions = 
 		arrinit(v3f32, g_gs->kgtGameState.hKalPermanent);
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kgtGameStateRenderAudio(g_kgs, audioBuffer, sampleBlocksConsumed);
+	kgtGameStateRenderAudio(audioBuffer, sampleBlocksConsumed);
 }
 #include "kgtGameState.cpp"

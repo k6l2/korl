@@ -70,7 +70,7 @@ internal PLATFORM_LOCK(w32PlatformLock);
 internal PLATFORM_UNLOCK(w32PlatformUnlock);
 internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden);
 internal PLATFORM_MOUSE_SET_RELATIVE_MODE(w32PlatformMouseSetRelativeMode);
-const global_variable KmlPlatformApi KML_PLATFORM_API_WIN32 = 
+const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 = 
 	{ .postJob                = w32PlatformPostJob
 	, .jobValid               = w32PlatformJobValid
 	, .jobDone                = w32PlatformJobDone

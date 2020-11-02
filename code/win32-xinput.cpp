@@ -132,7 +132,7 @@ global_variable const WORD XINPUT_BUTTONS[] =
 	, XINPUT_GAMEPAD_LEFT_THUMB
 	, XINPUT_GAMEPAD_RIGHT_THUMB
 };
-global_variable const size_t KML_GAMEPAD_BUTTONS[] =
+global_variable const size_t KORL_GAMEPAD_BUTTONS[] =
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 	/* skip 12 & 13 because those are the L2 & R2 buttons */
 	, 14, 15
@@ -141,7 +141,7 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
                                         GamePad* gamePadArrayPreviousFrame)
 {
 	static_assert(CARRAY_SIZE(XINPUT_BUTTONS) == 
-	              CARRAY_SIZE(KML_GAMEPAD_BUTTONS));
+	              CARRAY_SIZE(KORL_GAMEPAD_BUTTONS));
 	for(u32 ci = 0; ci < XUSER_MAX_COUNT; ci++)
 	{
 		XINPUT_STATE controllerState;
@@ -168,8 +168,8 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
 		{
 			w32ProcessXInputButton(
 				pad.wButtons & XINPUT_BUTTONS[b],
-				gamePadArrayPreviousFrame[ci].buttons[KML_GAMEPAD_BUTTONS[b]],
-				&gamePadArrayCurrentFrame[ci].buttons[KML_GAMEPAD_BUTTONS[b]]);
+				gamePadArrayPreviousFrame[ci].buttons[KORL_GAMEPAD_BUTTONS[b]],
+				&gamePadArrayCurrentFrame[ci].buttons[KORL_GAMEPAD_BUTTONS[b]]);
 		}
 		w32ProcessXInputTrigger(
 			pad.bLeftTrigger,

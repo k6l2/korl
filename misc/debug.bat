@@ -1,1 +1,1 @@
-devenv build/%kmlApplicationName%.exe
+devenv build/%korlApplicationName%.exe

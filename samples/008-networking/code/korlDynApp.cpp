@@ -1,9 +1,9 @@
-#include "KmlDynApp.h"
+#include "korlDynApp.h"
 #include "exampleGameNet.h"
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	kgtGameStateOnReloadCode(memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 	if(gameMemoryIsInitialized)
 	{
 		serverOnReload(&g_gs->serverState);
@@ -12,7 +12,7 @@ GAME_ON_RELOAD_CODE(gameOnReloadCode)
 GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
-	kgtGameStateInitialize(&g_gs->kgtGameState, memory, sizeof(GameState));
+	kgtGameStateInitialize(memory, sizeof(GameState));
 	/* initialize server state */
 	serverInitialize(&g_gs->serverState, 1.f/60, 
 	                 g_gs->kgtGameState.hKalPermanent, 
@@ -28,13 +28,11 @@ GAME_INITIALIZE(gameInitialize)
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
 {
-	kgtGameStateRenderAudio(
-		&g_gs->kgtGameState, audioBuffer, sampleBlocksConsumed);
+	kgtGameStateRenderAudio(audioBuffer, sampleBlocksConsumed);
 }
 GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
-	if(!kgtGameStateUpdateAndDraw(
-			&g_gs->kgtGameState, gameKeyboard, windowIsFocused))
+	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 	/* TESTING SERVER EXAMPLE */
 	if(ImGui::Begin("TESTING SERVER EXAMPLE"))

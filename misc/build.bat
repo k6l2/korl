@@ -100,11 +100,11 @@ rem --- hash the EXE source to see if it requires a rebuild -----------------{{{
 set hashFilePrefixExe=source-hash-exe
 set hashFileCurrentExe=%hashFilePrefixExe%-current.txt
 if "%buildOptionDisableKmd5%"=="FALSE" (
-	call %KMD5_HOME%\build\kmd5.exe "%KML_HOME%\code" "%project_root%\build" ^
+	call %KMD5_HOME%\build\kmd5.exe "%korl_home%\code" "%project_root%\build" ^
 		"%hashFileCurrentExe%"
 	rem append the build files (including this one) to the EXE build 
 	rem dependency hash
-	call %KMD5_HOME%\build\kmd5.exe "%KML_HOME%\misc" "%project_root%\build" ^
+	call %KMD5_HOME%\build\kmd5.exe "%korl_home%\misc" "%project_root%\build" ^
 		"%hashFileCurrentExe%" --append
 	echo buildOptionRelease==%buildOptionRelease%>>^
 "%project_root%\build\%hashFileCurrentExe%"
@@ -146,7 +146,7 @@ call :checkHash %hashFileExistingDll%, %hashFileCurrentDll%, codeIsDifferentDll
 rem --- Compile the win32 application's resource file in release mode -------{{{
 rem ---    The resource file contains the application icon ---
 if "%buildOptionRelease%"=="TRUE" (
-	rc /fo win32.res %KML_HOME%\default-assets\win32.rc
+	rc /fo win32.res %korl_home%\default-assets\win32.rc
 )
 rem }}}----- compile win32 app resource file
 
@@ -154,15 +154,15 @@ rem }}}----- compile win32 app resource file
 
 
 
-rem --- We can only skip the game code build if BOTH the game code tree AND KML
+rem --- We can only skip the game code build if BOTH the game code tree AND KORL 
 rem --- are unchanged! ---
 IF "%codeIsDifferentDll%"=="TRUE" (
-	echo %kmlGameDllFileName% code has changed!  Continuing build...
+	echo %korlGameDllFileName% code has changed!  Continuing build...
 ) ELSE (
 	if "%codeIsDifferentExe%"=="TRUE" (
-		echo %kmlGameDllFileName% code is unchanged, but EXE differs! Continuing build...
+		echo %korlGameDllFileName% code is unchanged, but EXE differs! Continuing build...
 	) ELSE (
-		echo %kmlGameDllFileName% code and EXE are unchanged!  Skipping all builds...
+		echo %korlGameDllFileName% code and EXE are unchanged!  Skipping all builds...
 		GOTO :SKIP_ALL_BUILDS
 	)
 )
@@ -184,16 +184,16 @@ rem }}}----- generate a filename-safe timestamp
 
 rem --- Choose the compiler options -----------------------------------------{{{
 rem --- DEFINES ---
-rem     KML_APP_NAME = A string representing the name of the application,
-rem                    which is used in operating-system specific features
-rem                    such as determining app temporary data folders, etc.
-rem     KML_APP_VERSION = A string representing the application version.  This
-rem                       is useful for things such as mini dump analysis, as
-rem                       this string should be printed into the minidump's file
-rem                       name string.
-rem     KML_GAME_DLL_FILENAME = A string representing what the name of the game
-rem                             code's DLL should be (EXCLUDING the .dll file
-rem                             extension!)
+rem     KORL_APP_NAME = A string representing the name of the application,
+rem                     which is used in operating-system specific features
+rem                     such as determining app temporary data folders, etc.
+rem     KORL_APP_VERSION = A string representing the application version.  This
+rem                        is useful for things such as mini dump analysis, as
+rem                        this string should be printed into the minidump's 
+rem                        file name string.
+rem     KORL_GAME_DLL_FILENAME = A string representing what the name of the game
+rem                              code's DLL should be (EXCLUDING the .dll file
+rem                              extension!)
 rem     INTERNAL_BUILD = set to 0 to disable all code which should never be 
 rem                      shipped to the end-user, such as debug functions etc...
 rem     SLOW_BUILD = set to 0 to disable code which typically has the following
@@ -301,8 +301,8 @@ rem }}}----- choose compiler options
 rem --- Clean up old DLL binaries from the build directory ---
 set statusFileDll=status-build-dll.txt
 del %statusFileDll% > NUL 2> NUL
-del *%kmlGameDllFileName%*.pdb > NUL 2> NUL
-del %kmlGameDllFileName%*.dll > NUL 2> NUL
+del *%korlGameDllFileName%*.pdb > NUL 2> NUL
+del %korlGameDllFileName%*.dll > NUL 2> NUL
 
 
 
@@ -317,16 +317,16 @@ type NUL >> "%lockFileDll%"
 
 
 rem --- generate the DLL build command string -----
-set              cmdBuildDll=cl %project_root%\code\%kmlGameDllFileName%.cpp 
-set cmdBuildDll=%cmdBuildDll%/Fe%kmlGameDllFileName% 
-set cmdBuildDll=%cmdBuildDll%/Fm%kmlGameDllFileName%.map 
+set              cmdBuildDll=cl %project_root%\code\%korlGameDllFileName%.cpp 
+set cmdBuildDll=%cmdBuildDll%/Fe%korlGameDllFileName% 
+set cmdBuildDll=%cmdBuildDll%/Fm%korlGameDllFileName%.map 
 set cmdBuildDll=%cmdBuildDll%^
-/FdVC_%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb 
+/FdVC_%korlGameDllFileName%%fileNameSafeTimestamp%.pdb 
 set cmdBuildDll=%cmdBuildDll%/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 ^
 /wd4820 /LDd 
 set cmdBuildDll=%cmdBuildDll%/link %CommonLinkerFlags% 
 set cmdBuildDll=%cmdBuildDll%^
-/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb 
+/PDB:%korlGameDllFileName%%fileNameSafeTimestamp%.pdb 
 set cmdBuildDll=%cmdBuildDll%/EXPORT:gameInitialize /EXPORT:gameOnReloadCode 
 set cmdBuildDll=%cmdBuildDll%/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw ^
 /EXPORT:gameOnPreUnload
@@ -352,16 +352,16 @@ if "%buildOptionNoThreads%"=="TRUE" (
 
 
 rem --- Compile game code module ---
-rem cl %project_root%\code\%kmlGameDllFileName%.cpp ^
-rem 	/Fe%kmlGameDllFileName% /Fm%kmlGameDllFileName%.map ^
-rem 	/FdVC_%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
+rem cl %project_root%\code\%korlGameDllFileName%.cpp ^
+rem 	/Fe%korlGameDllFileName% /Fm%korlGameDllFileName%.map ^
+rem 	/FdVC_%korlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
 rem 	/Wall %CommonCompilerFlagsChosen% /wd4710 /wd4577 /wd4820 /LDd ^
 rem 	/link %CommonLinkerFlags% ^
-rem 	/PDB:%kmlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
+rem 	/PDB:%korlGameDllFileName%%fileNameSafeTimestamp%.pdb ^
 rem 	/EXPORT:gameInitialize /EXPORT:gameOnReloadCode ^
 rem 	/EXPORT:gameRenderAudio /EXPORT:gameUpdateAndDraw /EXPORT:gameOnPreUnload
 rem IF %ERRORLEVEL% NEQ 0 (
-rem 	echo %kmlGameDllFileName% build failed!
+rem 	echo %korlGameDllFileName% build failed!
 rem 	GOTO :ON_FAILURE_GAME
 rem )
 rem :SKIP_GAME_BUILD
@@ -370,7 +370,7 @@ rem :SKIP_GAME_BUILD
 
 
 
-rem --- If the KML code tree is unchanged, skip the build ---
+rem --- If the KORL code tree is unchanged, skip the build ---
 IF "%codeIsDifferentExe%"=="TRUE" (
 	echo EXE Code tree has changed!  Continuing build...
 ) ELSE (
@@ -384,11 +384,11 @@ IF "%codeIsDifferentExe%"=="TRUE" (
 
 rem Before building the win32 platform application, check to see if it's already
 rem running...
-if exist %kmlApplicationName%.exe (
-	del %kmlApplicationName%.exe >NUL 2>NUL
-	IF exist %kmlApplicationName%.exe (
-		echo %kmlApplicationName%.exe is locked! Skipping build...
-		del %codeTreeFileNamePrefixKml%-existing.txt
+if exist %korlApplicationName%.exe (
+	del %korlApplicationName%.exe >NUL 2>NUL
+	IF exist %korlApplicationName%.exe (
+		echo %korlApplicationName%.exe is locked! Skipping build...
+		del %codeTreeFileNamePrefixKorl%-existing.txt
 		GOTO :SKIP_WIN32_BUILD
 	)
 )
@@ -398,21 +398,21 @@ if exist %kmlApplicationName%.exe (
 
 
 rem --- Clean up old EXE binaries from the build directory ---
-del *%kmlApplicationName%*.pdb > NUL 2> NUL
-del %kmlApplicationName%*.pdb > NUL 2> NUL
-del %kmlApplicationName%*.dll > NUL 2> NUL
+del *%korlApplicationName%*.pdb > NUL 2> NUL
+del %korlApplicationName%*.pdb > NUL 2> NUL
+del %korlApplicationName%*.dll > NUL 2> NUL
 
 
 
 
 
 rem --- Compile Windows Executable ---
-cl %KML_HOME%\code\win32-main.cpp /Fe%kmlApplicationName% ^
-	/FdVC_%kmlApplicationName%.pdb /Fm%kmlApplicationName%.map ^
-	/DKML_APP_NAME=%kmlApplicationName% ^
-	/DKML_APP_VERSION=%kmlApplicationVersion% ^
-	/DKML_GAME_DLL_FILENAME=%kmlGameDllFileName% ^
-	/DKML_MINIMUM_FRAME_RATE=%kmlMinimumFrameRate% ^
+cl %KORL_HOME%\code\win32-main.cpp /Fe%korlApplicationName% ^
+	/FdVC_%korlApplicationName%.pdb /Fm%korlApplicationName%.map ^
+	/DKORL_APP_NAME=%korlApplicationName% ^
+	/DKORL_APP_VERSION=%korlApplicationVersion% ^
+	/DKORL_GAME_DLL_FILENAME=%korlGameDllFileName% ^
+	/DKORL_MINIMUM_FRAME_RATE=%korlMinimumFrameRate% ^
 	/W4 %CommonCompilerFlagsChosen% /link %Win32LinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib ^
 	dinput8.lib dxguid.lib ole32.lib oleaut32.lib Hid.lib ws2_32.lib 
@@ -478,7 +478,7 @@ del %hashFileExistingDll%
 del %hashFileExistingExe%
 rem ----- LEAVE THE BUILD DIRECTORY -----
 popd
-echo KML build failed! 1>&2
+echo KORL build failed! 1>&2
 endlocal
 exit /B %ERRORLEVEL%
 
