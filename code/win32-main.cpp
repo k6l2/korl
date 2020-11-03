@@ -134,7 +134,7 @@ internal void w32WriteLogToFile()
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
 		///TODO: handle GetLastError
-		kassert(!"Failed to create log file handle!");
+		korlAssert(!"Failed to create log file handle!");
 		return;
 	}
 	// write the beginning log buffer //
@@ -146,13 +146,13 @@ internal void w32WriteLogToFile()
 		              nullptr))
 		{
 			///TODO: handle GetLastError (close fileHandle)
-			kassert(!"Failed to write log beginning!");
+			korlAssert(!"Failed to write log beginning!");
 			return;
 		}
 		if(bytesWritten != byteWriteCount)
 		{
 			///TODO: handle this error case(close fileHandle)
-			kassert(!"Failed to complete write log beginning!");
+			korlAssert(!"Failed to complete write log beginning!");
 			return;
 		}
 	}
@@ -175,13 +175,13 @@ internal void w32WriteLogToFile()
 				              &bytesWritten, nullptr))
 				{
 					///TODO: handle GetLastError (close fileHandle)
-					kassert(!"Failed to write log cut string!");
+					korlAssert(!"Failed to write log cut string!");
 					return;
 				}
 				if(bytesWritten != byteWriteCount)
 				{
 					///TODO: handle this error case (close fileHandle)
-					kassert(!"Failed to complete write log cut string!");
+					korlAssert(!"Failed to complete write log cut string!");
 					return;
 				}
 			}
@@ -198,13 +198,14 @@ internal void w32WriteLogToFile()
 				              &bytesWritten, nullptr))
 				{
 					///TODO: handle GetLastError (close fileHandle)
-					kassert(!"Failed to write log circular buffer old!");
+					korlAssert(!"Failed to write log circular buffer old!");
 					return;
 				}
 				if(bytesWritten != byteWriteCount)
 				{
 					///TODO: handle this error case (close fileHandle)
-					kassert(!"Failed to complete write circular buffer old!");
+					korlAssert(!"Failed to complete write circular buffer "
+					            "old!");
 					return;
 				}
 			}
@@ -218,13 +219,13 @@ internal void w32WriteLogToFile()
 			              &bytesWritten, nullptr))
 			{
 				///TODO: handle GetLastError (close fileHandle)
-				kassert(!"Failed to write log circular buffer new!");
+				korlAssert(!"Failed to write log circular buffer new!");
 				return;
 			}
 			if(bytesWritten != byteWriteCount)
 			{
 				///TODO: handle this error case (close fileHandle)
-				kassert(!"Failed to complete write circular buffer new!");
+				korlAssert(!"Failed to complete write circular buffer new!");
 				return;
 			}
 		}
@@ -232,13 +233,13 @@ internal void w32WriteLogToFile()
 	if(!CloseHandle(fileHandle))
 	{
 		///TODO: handle GetLastError
-		kassert(!"Failed to close new log file handle!");
+		korlAssert(!"Failed to close new log file handle!");
 		return;
 	}
 	// Copy the new log file into the finalized file name //
 	if(!CopyFileA(fullPathToNewLog, fullPathToLog, false))
 	{
-		kassert(!"Failed to rename new log file!");
+		korlAssert(!"Failed to rename new log file!");
 		return;
 	}
 	platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
@@ -696,7 +697,7 @@ internal LARGE_INTEGER w32QueryPerformanceCounter()
 internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount, 
                                const LARGE_INTEGER& performanceCount)
 {
-	kassert(performanceCount.QuadPart > previousPerformanceCount.QuadPart);
+	korlAssert(performanceCount.QuadPart > previousPerformanceCount.QuadPart);
 	const LONGLONG perfCountDiff = 
 		performanceCount.QuadPart - previousPerformanceCount.QuadPart;
 	const f32 elapsedSeconds = 
@@ -1134,12 +1135,12 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 				strstr(findFileData.cFileName, "_temp_");
 			const char*const cStrDll = 
 				strstr(findFileData.cFileName, ".dll");
-			kassert(cStrPostfix && cStrDll);
+			korlAssert(cStrPostfix && cStrDll);
 			cStrPostfix += 6;
 			char cStrUlBuffer[32];
 			const size_t filePostfixCharCount = 
 				((cStrDll - cStrPostfix) / sizeof(cStrPostfix[0]));
-			kassert(CARRAY_SIZE(cStrUlBuffer) >= filePostfixCharCount + 1);
+			korlAssert(CARRAY_SIZE(cStrUlBuffer) >= filePostfixCharCount + 1);
 			for(size_t c = 0; c < filePostfixCharCount; c++)
 			{
 				cStrUlBuffer[c] = cStrPostfix[c];
@@ -1192,8 +1193,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	///      failed probably?
 	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
 	/* initialize global assert & log function pointers */
-	platformAssert = w32PlatformAssert;
-	platformLog    = w32PlatformLog;
+	korlPlatformAssertFailure = w32PlatformAssertFailure;
+	platformLog               = w32PlatformLog;
 	// Initialize locks to ensure thread safety for various systems //
 	{
 		InitializeCriticalSection(&g_logCsLock);
@@ -1537,7 +1538,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	GameCode game = w32LoadGameCode(fullPathToGameDll, 
 	                                fullPathToGameDllTemp);
-	kassert(game.isValid);
+	korlAssert(game.isValid);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
 		KLOG(ERROR, "Failed to query for performance frequency! "
@@ -1596,24 +1597,24 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #if INTERNAL_BUILD
 	// ensure that the size of the mouse's vKeys array matches the size of
 	//	the anonymous struct which defines the names of all the game keys //
-	kassert( static_cast<size_t>(&gameMouseA.DUMMY_LAST_BUTTON_STATE - 
-	                             &gameMouseA.vKeys[0]) ==
-	         CARRAY_SIZE(gameMouseA.vKeys) );
+	korlAssert( static_cast<size_t>(&gameMouseA.DUMMY_LAST_BUTTON_STATE - 
+	                                &gameMouseA.vKeys[0]) ==
+	            CARRAY_SIZE(gameMouseA.vKeys) );
 	// ensure that the size of the keyboard's vKeys array matches the size of
 	//	the anonymous struct which defines the names of all the game keys //
-	kassert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
-	                             &gameKeyboardA.vKeys[0]) ==
-	         CARRAY_SIZE(gameKeyboardA.vKeys) );
+	korlAssert( static_cast<size_t>(&gameKeyboardA.DUMMY_LAST_BUTTON_STATE - 
+	                                &gameKeyboardA.vKeys[0]) ==
+	            CARRAY_SIZE(gameKeyboardA.vKeys) );
 	// ensure that the size of the gamepad's axis array matches the size of
 	//	the anonymous struct which defines the names of all the axes //
-	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_AXIS - 
-	                             &g_gamePadArrayA[0].axes[0]) ==
-	         CARRAY_SIZE(g_gamePadArrayA[0].axes) );
+	korlAssert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_AXIS - 
+	                                &g_gamePadArrayA[0].axes[0]) ==
+	            CARRAY_SIZE(g_gamePadArrayA[0].axes) );
 	// ensure that the size of the gamepad's button array matches the size of
 	//	the anonymous struct which defines the names of all the buttons //
-	kassert( static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
-	                             &g_gamePadArrayA[0].buttons[0]) ==
-	         CARRAY_SIZE(g_gamePadArrayA[0].buttons) );
+	korlAssert(static_cast<size_t>(&g_gamePadArrayA[0].DUMMY_LAST_BUTTON_STATE - 
+	                               &g_gamePadArrayA[0].buttons[0]) ==
+	           CARRAY_SIZE(g_gamePadArrayA[0].buttons) );
 #endif// INTERNAL_BUILD
 	DWORD gameSoundCursorWritePrev;
 	/* assign a pre-allocated memory arena for the game sound buffer */
@@ -1950,7 +1951,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 		}
 	}
-	kassert(kgtAllocUsedBytes(g_genAllocStbImage) == 0);
+	korlAssert(kgtAllocUsedBytes(g_genAllocStbImage) == 0);
 	KLOG(INFO, "END! :)");
 	return RETURN_CODE_SUCCESS;
 }
@@ -1965,7 +1966,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 #include "z85.cpp"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
-#define STBI_ASSERT(x) kassert(x)
+#define STBI_ASSERT(x) korlAssert(x)
 #define DEBUG_PRINT_STBI_MEMORY 0
 internal void* stbiMalloc(size_t allocationByteCount)
 {
@@ -2034,17 +2035,17 @@ internal void* kStbDsRealloc(
 	void* allocatedAddress, size_t newAllocationSize, void* context)
 {
 	KLOG(ERROR, "Win32 platform layer should not be using STB_DS!");
-	kassert(context);
+	korlAssert(context);
 	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
 	void*const result = 
 		kgtAllocRealloc(hKal, allocatedAddress, newAllocationSize);
-	kassert(result);
+	korlAssert(result);
 	return result;
 }
 internal void kStbDsFree(void* allocatedAddress, void* context)
 {
 	KLOG(ERROR, "Win32 platform layer should not be using STB_DS!");
-	kassert(context);
+	korlAssert(context);
 	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
 	kgtAllocFree(hKal, allocatedAddress);
 }

@@ -9,7 +9,7 @@ internal KgtAllocatorLinear* kgtAllocLinearInit(
 {
 	KgtAllocatorLinear*const kal = 
 		static_cast<KgtAllocatorLinear*>(allocatorMemoryStart);
-	kassert(allocatorByteCount > sizeof(*kal));
+	korlAssert(allocatorByteCount > sizeof(*kal));
 	*kal = 
 		{ .type            = KgtAllocatorType::LINEAR
 		, .memoryStart     = kal + 1
@@ -63,8 +63,8 @@ internal void* kgtAllocLinearRealloc(
 	{
 		const void*const kalMemoryEnd = 
 			reinterpret_cast<u8*>(kal->memoryStart) + kal->memoryByteCount;
-		kassert(   allocatedAddress >= kal->memoryStart 
-		        && allocatedAddress <  kalMemoryEnd);
+		korlAssert(   allocatedAddress >= kal->memoryStart 
+		           && allocatedAddress <  kalMemoryEnd);
 	}
 	if(allocatedAddress)
 	{

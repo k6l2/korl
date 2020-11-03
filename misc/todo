@@ -785,6 +785,8 @@
 			with virtual dispatch functions without using C++ class 
 			inheritance?..
 		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
+			- this requires having a separate pool allocator for each 
+				subclass... which is not desireable in my opinion
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
 [x] installer batch script

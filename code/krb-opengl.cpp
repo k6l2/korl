@@ -159,8 +159,8 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 	glViewport(0, 0, windowDimensions->x, windowDimensions->y);
 	const f32 aspectRatio = 
 		static_cast<f32>(windowDimensions->x)/windowDimensions->y;
-	kassert(!kmath::isNearlyZero(aspectRatio));
-	kassert(!kmath::isNearlyEqual(clipNear, clipFar) && clipFar > clipNear);
+	korlAssert(!kmath::isNearlyZero(aspectRatio));
+	korlAssert(!kmath::isNearlyEqual(clipNear, clipFar) && clipFar > clipNear);
 	const f32 horizonFovRadians = horizonFovDegrees*PI32/180;
 	const f32 tanHalfFov = tanf(horizonFovRadians / 2);
 	m4x4f32 projectionMatrix = {};
@@ -212,8 +212,8 @@ internal KRB_LOOK_AT(krbLookAt)
 }
 internal KRB_DRAW_POINTS(krbDrawPoints)
 {
-	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
-	kassert(vertexAttribOffsets.texCoord_2f32 >= vertexStride);
+	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
+	korlAssert(vertexAttribOffsets.texCoord_2f32 >= vertexStride);
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -242,8 +242,8 @@ internal KRB_DRAW_POINTS(krbDrawPoints)
 }
 internal KRB_DRAW_LINES(krbDrawLines)
 {
-	kassert(vertexCount % 2 == 0);
-	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
+	korlAssert(vertexCount % 2 == 0);
+	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
 	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
 		glDisable(GL_TEXTURE_2D);
 	else
@@ -275,8 +275,8 @@ internal KRB_DRAW_LINES(krbDrawLines)
 }
 internal KRB_DRAW_TRIS(krbDrawTris)
 {
-	kassert(vertexCount % 3 == 0);
-	kassert(vertexAttribOffsets.position_3f32 < vertexStride);
+	korlAssert(vertexCount % 3 == 0);
+	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
 	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
 		glDisable(GL_TEXTURE_2D);
 	else
@@ -569,7 +569,7 @@ internal KRB_USE_TEXTURE(krbUseTexture)
 }
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 {
-	kassert(worldPositionDimension < 4);
+	korlAssert(worldPositionDimension < 4);
 	/* obtain VP matrix from opengl driver */
 	glMatrixMode(GL_MODELVIEW);
 	GLint modelViewStackDepth;
@@ -661,7 +661,7 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 	/* We can determine if a projection matrix is orthographic or frustum based 
 		on the last element of the W row.  See: 
 		http://www.songho.ca/opengl/gl_projectionmatrix.html */
-	kassert(mProjection.r3c3 == 1 || mProjection.r3c3 == 0);
+	korlAssert(mProjection.r3c3 == 1 || mProjection.r3c3 == 0);
 	const bool isOrthographic = mProjection.r3c3 == 1;
 	/* viewport-space          => normalized-device-space */
 	const v2f32 eyeRayNds = 

@@ -70,7 +70,7 @@ internal bool kgtAllocGeneralVerifyFreeBytes(const KgtAllocatorGeneral* kga)
 	size_t freeBytes = 0;
 	for(size_t c = 0; c < kga->totalChunks; c++)
 	{
-		kassert(chunk);
+		korlAssert(chunk);
 		if(!chunk->allocated)
 			freeBytes += chunk->bytes;
 		chunk = chunk->chunkNext;
@@ -82,7 +82,7 @@ internal KgtAllocatorGeneral* kgtAllocGeneralInit(
 {
 	local_persist const size_t MIN_ALLOC_OVERHEAD =
 		sizeof(KgtAllocatorGeneral) + sizeof(KgtAllocatorGeneralChunk);
-	kassert(allocatorByteCount > MIN_ALLOC_OVERHEAD);
+	korlAssert(allocatorByteCount > MIN_ALLOC_OVERHEAD);
 	KgtAllocatorGeneral*const kga = 
 		reinterpret_cast<KgtAllocatorGeneral*>(allocatorMemoryLocation);
 	*kga = {};
@@ -96,8 +96,8 @@ internal KgtAllocatorGeneral* kgtAllocGeneralInit(
 	kga->firstChunk->chunkNext = kga->firstChunk;
 	kga->firstChunk->bytes     = allocatorByteCount - MIN_ALLOC_OVERHEAD;
 	kga->firstChunk->allocated = false;
-	kassert(kgtAllocGeneralVerifyChunk(kga, kga->firstChunk));
-	kassert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kgtAllocGeneralVerifyChunk(kga, kga->firstChunk));
+	korlAssert(kga->freeBytes <= kga->totalBytes);
 	return kga;
 }
 internal void* kgtAllocGeneralAlloc(
@@ -105,14 +105,14 @@ internal void* kgtAllocGeneralAlloc(
 {
 	if(allocationByteCount == 0)
 	{
-		kassert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kga->freeBytes <= kga->totalBytes);
 		return nullptr;
 	}
 	local_persist const size_t MIN_ALLOC_OVERHEAD = 
 		sizeof(KgtAllocatorGeneralChunk);
 	if(kga->freeBytes < allocationByteCount)
 	{
-		kassert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kga->freeBytes <= kga->totalBytes);
 		return nullptr;
 	}
 	// First, we need to find the first unallocated chunk that satisfies our
@@ -131,10 +131,10 @@ internal void* kgtAllocGeneralAlloc(
 	} while (nextChunk != kga->firstChunk);
 	if(!firstAvailableChunk)
 	{
-		kassert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kga->freeBytes <= kga->totalBytes);
 		return nullptr;
 	}
-	kassert(kgtAllocGeneralVerifyChunk(kga, firstAvailableChunk));
+	korlAssert(kgtAllocGeneralVerifyChunk(kga, firstAvailableChunk));
 	// Mark the available chunk as allocated & create a new empty chunk adjacent
 	//	in the double-linked list of memory //
 	if(firstAvailableChunk->bytes > 
@@ -161,7 +161,7 @@ internal void* kgtAllocGeneralAlloc(
 		firstAvailableChunk->bytes     = allocationByteCount;
 		kga->freeBytes -= (MIN_ALLOC_OVERHEAD + allocationByteCount);
 		kga->totalChunks++;
-		kassert(kgtAllocGeneralVerifyChunk(kga, firstAvailableChunk));
+		korlAssert(kgtAllocGeneralVerifyChunk(kga, firstAvailableChunk));
 	}
 	else
 	{
@@ -173,8 +173,8 @@ internal void* kgtAllocGeneralAlloc(
 	// Clear the newly allocated space to zero for safety //
 	memset(reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD, 
 	       0x0, firstAvailableChunk->bytes);
-	kassert(kga->freeBytes <= kga->totalBytes);
-	kassert(kgtAllocGeneralVerifyFreeBytes(kga));
+	korlAssert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kgtAllocGeneralVerifyFreeBytes(kga));
 	return reinterpret_cast<u8*>(firstAvailableChunk) + MIN_ALLOC_OVERHEAD;
 }
 internal void* kgtAllocGeneralRealloc(
@@ -187,8 +187,8 @@ internal void* kgtAllocGeneralRealloc(
 		{
 			kgtAllocGeneralFree(kga, allocatedAddress);
 		}
-		kassert(kga->freeBytes <= kga->totalBytes);
-		kassert(kgtAllocGeneralVerifyFreeBytes(kga));
+		korlAssert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kgtAllocGeneralVerifyFreeBytes(kga));
 		return nullptr;
 	}
 	if(allocatedAddress)
@@ -197,14 +197,14 @@ internal void* kgtAllocGeneralRealloc(
 			reinterpret_cast<KgtAllocatorGeneralChunk*>(
 				reinterpret_cast<u8*>(allocatedAddress) - 
 				sizeof(KgtAllocatorGeneralChunk));
-		kassert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
+		korlAssert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
 		const size_t bytesToCopy = allocatedChunk->bytes < newAllocationSize
 			? allocatedChunk->bytes : newAllocationSize;
 		memcpy(newAllocation, allocatedAddress, bytesToCopy);
 		kgtAllocGeneralFree(kga, allocatedAddress);
 	}
-	kassert(kga->freeBytes <= kga->totalBytes);
-	kassert(kgtAllocGeneralVerifyFreeBytes(kga));
+	korlAssert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kgtAllocGeneralVerifyFreeBytes(kga));
 	return newAllocation;
 	///TODO:
 	// If new size is smaller than chunk size
@@ -225,15 +225,15 @@ internal void kgtAllocGeneralFree(
 {
 	if(!allocatedAddress)
 	{
-		kassert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kga->freeBytes <= kga->totalBytes);
 		return;
 	}
-	kassert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kga->freeBytes <= kga->totalBytes);
 	KgtAllocatorGeneralChunk* allocatedChunk = 
 		reinterpret_cast<KgtAllocatorGeneralChunk*>(
 			reinterpret_cast<u8*>(allocatedAddress) - 
 			sizeof(KgtAllocatorGeneralChunk));
-	kassert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
+	korlAssert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
 	allocatedChunk->allocated = false;
 	kga->freeBytes += allocatedChunk->bytes;
 	// destroy this chunk & merge with the previous chunk if it is also free //
@@ -243,7 +243,7 @@ internal void kgtAllocGeneralFree(
 		allocatedChunk != kga->firstChunk)
 	{
 		kga->freeBytes += sizeof(KgtAllocatorGeneralChunk);
-		kassert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kga->freeBytes <= kga->totalBytes);
 		allocatedChunk->chunkPrev->chunkNext = allocatedChunk->chunkNext;
 		allocatedChunk->chunkNext->chunkPrev = allocatedChunk->chunkPrev;
 		allocatedChunk->chunkPrev->bytes += 
@@ -251,7 +251,7 @@ internal void kgtAllocGeneralFree(
 		kga->totalChunks--;
 		KgtAllocatorGeneralChunk*const chunkToClear = allocatedChunk;
 		allocatedChunk = allocatedChunk->chunkPrev;
-		kassert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
+		korlAssert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
 		// fill cleared memory space with some value for safety //
 		memset(reinterpret_cast<u8*>(chunkToClear), 0xFE, 
 		       sizeof(KgtAllocatorGeneralChunk) + chunkToClear->bytes);
@@ -263,31 +263,31 @@ internal void kgtAllocGeneralFree(
 		allocatedChunk->chunkNext != kga->firstChunk)
 	{
 		kga->freeBytes += sizeof(KgtAllocatorGeneralChunk);
-		kassert(kga->freeBytes <= kga->totalBytes);
+		korlAssert(kga->freeBytes <= kga->totalBytes);
 		allocatedChunk->chunkNext->chunkNext->chunkPrev = allocatedChunk;
 		allocatedChunk->bytes +=
 			allocatedChunk->chunkNext->bytes + sizeof(KgtAllocatorGeneralChunk);
 		kga->totalChunks--;
 		KgtAllocatorGeneralChunk*const chunkToClear = allocatedChunk->chunkNext;
 		allocatedChunk->chunkNext = allocatedChunk->chunkNext->chunkNext;
-		kassert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
+		korlAssert(kgtAllocGeneralVerifyChunk(kga, allocatedChunk));
 		// fill cleared memory space with some value for safety //
 		//	Here, we only have to clear the chunk header because free'd chunk
 		//	contents are assumed to already be cleared.
 		memset(reinterpret_cast<u8*>(chunkToClear), 0xFE, 
 		       sizeof(KgtAllocatorGeneralChunk));
 	}
-	kassert(kga->freeBytes <= kga->totalBytes);
-	kassert(kgtAllocGeneralVerifyFreeBytes(kga));
+	korlAssert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kgtAllocGeneralVerifyFreeBytes(kga));
 	///TODO: verify the integrity of `kga`'s double-linked list of chunks
 }
 internal size_t kgtAllocGeneralUsedBytes(KgtAllocatorGeneral* kga)
 {
-	kassert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kga->freeBytes <= kga->totalBytes);
 	return kga->totalBytes - kga->freeBytes;
 }
 internal size_t kgtAllocGeneralMaxTotalUsableBytes(KgtAllocatorGeneral* kga)
 {
-	kassert(kga->freeBytes <= kga->totalBytes);
+	korlAssert(kga->freeBytes <= kga->totalBytes);
 	return kga->totalBytes;
 }

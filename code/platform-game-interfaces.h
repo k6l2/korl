@@ -241,7 +241,7 @@ struct KorlPlatformApi
 	fnSig_platformJobValid* jobValid;
 	fnSig_platformJobDone* jobDone;
 	fnSig_platformLog* log;
-	fnSig_platformAssert* assert;
+	fnSig_korlPlatformAssertFailure* assertFailure;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
 	fnSig_platformGetAssetByteSize* getAssetByteSize;

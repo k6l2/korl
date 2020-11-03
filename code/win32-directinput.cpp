@@ -692,7 +692,7 @@ internal void w32DInputGetGamePadStates(GamePad* gpArrCurrFrame,
 		const size_t gamePadMapIndex = g_dInputDeviceGamePadMapIndices[d];
 		const char* nextGamePadMapChar = 
 			strrchr(DIRECT_INPUT_TO_GAMEPAD_MAPS[gamePadMapIndex], '}');
-		kassert(nextGamePadMapChar);
+		korlAssert(nextGamePadMapChar);
 		nextGamePadMapChar++;// skip the '}' character 
 		DirectInputPadInput 
 			diJoyStateGamePadButtonInputs[CARRAY_SIZE(GamePad::buttons)];
@@ -991,7 +991,7 @@ internal void w32DInputGetMouseStates(GameMouse* gameMouseFrameCurrent)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
 	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 		return INVALID_PLATFORM_BUTTON_INDEX;
 	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
@@ -1074,7 +1074,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32DInputGetGamePadActiveButton)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
 	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 		return {INVALID_PLATFORM_AXIS_INDEX};
 	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
@@ -1142,7 +1142,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32DInputGetGamePadActiveAxis)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32DInputGetGamePadProductName)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
 	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 	{
 		StringCchPrintf(o_buffer, bufferSize, 
@@ -1150,7 +1150,7 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32DInputGetGamePadProductName)
 		return;
 	}
 	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
-	kassert(dInput8Device);
+	korlAssert(dInput8Device);
 	if(!dInput8Device)
 	{
 		StringCchPrintf(o_buffer, bufferSize, 
@@ -1170,7 +1170,7 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32DInputGetGamePadProductName)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32DInputGetGamePadProductGuid)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_dInputDevices));
 	if(gamePadIndex >= CARRAY_SIZE(g_dInputDevices))
 	{
 		StringCchPrintf(o_buffer, bufferSize, 
@@ -1178,7 +1178,7 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32DInputGetGamePadProductGuid)
 		return;
 	}
 	LPDIRECTINPUTDEVICE8 dInput8Device = g_dInputDevices[gamePadIndex];
-	kassert(dInput8Device);
+	korlAssert(dInput8Device);
 	if(!dInput8Device)
 	{
 		StringCchPrintf(o_buffer, bufferSize, 

@@ -14,7 +14,7 @@ const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,
                                    0,0,0,1};
 inline v2u32 v2u32::operator/(u32 discreteScalar) const
 {
-	kassert(discreteScalar != 0);
+	korlAssert(discreteScalar != 0);
 	return {x / discreteScalar, y / discreteScalar};
 }
 v2i32::v2i32()
@@ -138,7 +138,7 @@ inline v3f32& v3f32::operator*=(f32 scalar)
 }
 inline v3f32& v3f32::operator/=(f32 scalar)
 {
-	kassert(!kmath::isNearlyZero(scalar));
+	korlAssert(!kmath::isNearlyZero(scalar));
 	x /= scalar;
 	y /= scalar;
 	z /= scalar;
@@ -476,64 +476,64 @@ internal inline u64 kmath::terabytes(u64 t)
 }
 internal inline u64 kmath::safeTruncateU64(i64 value)
 {
-	kassert(value >= 0);
+	korlAssert(value >= 0);
 	return static_cast<u64>(value);
 }
 internal inline u32 kmath::safeTruncateU32(u64 value)
 {
-	kassert(value <= std::numeric_limits<u32>::max());
+	korlAssert(value <= std::numeric_limits<u32>::max());
 	return static_cast<u32>(value);
 }
 internal inline u32 kmath::safeTruncateU32(i32 value)
 {
-	kassert(value >= 0);
+	korlAssert(value >= 0);
 	return static_cast<u32>(value);
 }
 internal inline u32 kmath::safeTruncateU32(i64 value)
 {
-	kassert(value >= 0 && value <= std::numeric_limits<u32>::max());
+	korlAssert(value >= 0 && value <= std::numeric_limits<u32>::max());
 	return static_cast<u32>(value);
 }
 internal inline i32 kmath::safeTruncateI32(u64 value)
 {
-	kassert(value <= static_cast<u64>(std::numeric_limits<i32>::max()));
+	korlAssert(value <= static_cast<u64>(std::numeric_limits<i32>::max()));
 	return static_cast<i32>(value);
 }
 internal inline u16 kmath::safeTruncateU16(i32 value)
 {
-	kassert(value >= 0 && value <= std::numeric_limits<u16>::max());
+	korlAssert(value >= 0 && value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
 internal inline u16 kmath::safeTruncateU16(i64 value)
 {
-	kassert(value >= 0 && value <= std::numeric_limits<u16>::max());
+	korlAssert(value >= 0 && value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
 internal inline u16 kmath::safeTruncateU16(u32 value)
 {
-	kassert(value <= std::numeric_limits<u16>::max());
+	korlAssert(value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
 internal inline u16 kmath::safeTruncateU16(u64 value)
 {
-	kassert(value <= std::numeric_limits<u16>::max());
+	korlAssert(value <= std::numeric_limits<u16>::max());
 	return static_cast<u16>(value);
 }
 internal inline i16 kmath::safeTruncateI16(i32 value)
 {
-	kassert(value <= std::numeric_limits<i16>::max() && 
-	        value >= std::numeric_limits<i16>::min());
+	korlAssert(value <= std::numeric_limits<i16>::max() && 
+	           value >= std::numeric_limits<i16>::min());
 	return static_cast<i16>(value);
 }
 internal inline u8 kmath::safeTruncateU8(u64 value)
 {
-	kassert(value <= std::numeric_limits<u8>::max());
+	korlAssert(value <= std::numeric_limits<u8>::max());
 	return static_cast<u8>(value);
 }
 internal inline i8 kmath::safeTruncateI8(i32 value)
 {
-	kassert(value <= std::numeric_limits<i8>::max() 
-	     && value >= std::numeric_limits<i8>::min());
+	korlAssert(value <= std::numeric_limits<i8>::max() 
+	        && value >= std::numeric_limits<i8>::min());
 	return static_cast<i8>(value);
 }
 internal inline f32 kmath::v2Radians(const v2f32& v)
@@ -564,12 +564,12 @@ internal inline f32 kmath::radiansBetween(
 	//	to go far beyond this range!
 	if(dot < -1)
 	{
-		kassert(isNearlyEqual(dot, -1));
+		korlAssert(isNearlyEqual(dot, -1));
 		dot = -1;
 	}
 	if(dot > 1)
 	{
-		kassert(isNearlyEqual(dot, 1));
+		korlAssert(isNearlyEqual(dot, 1));
 		dot = 1;
 	}
 	return acosf(dot);
@@ -594,12 +594,12 @@ internal inline f32 kmath::radiansBetween(
 	//	to go far beyond this range!
 	if(dot < -1)
 	{
-		kassert(isNearlyEqual(dot, -1));
+		korlAssert(isNearlyEqual(dot, -1));
 		dot = -1;
 	}
 	if(dot > 1)
 	{
-		kassert(isNearlyEqual(dot, 1));
+		korlAssert(isNearlyEqual(dot, 1));
 		dot = 1;
 	}
 	return acosf(dot);
@@ -740,7 +740,7 @@ internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
 			: -0.5f * (b - sqrtf(discriminant));
 		/* given the cases handled above, it should not be possible for q to 
 			approach zero, but just in case let's check that here... */
-		kassert(!isNearlyZero(q));
+		korlAssert(!isNearlyZero(q));
 		o_roots[0] = q/a;
 		o_roots[1] = c/q;
 		if(o_roots[0] > o_roots[1])
@@ -758,8 +758,8 @@ internal inline f32 kmath::collideRayPlane(
 	bool cullPlaneBackFace)
 {
 #if INTERNAL_BUILD
-	kassert(isNearlyEqual(rayNormal  .magnitudeSquared(), 1));
-	kassert(isNearlyEqual(planeNormal.magnitudeSquared(), 1));
+	korlAssert(isNearlyEqual(rayNormal  .magnitudeSquared(), 1));
+	korlAssert(isNearlyEqual(planeNormal.magnitudeSquared(), 1));
 #endif// INTERNAL_BUILD
 	const v3f32 planeOrigin = planeDistanceFromOrigin*planeNormal;
 	const f32 denominator   = rayNormal.dot(planeNormal);
@@ -972,18 +972,18 @@ internal inline void kmath::generateMeshBox(
 		, {0,1}, {1,1}, {1,0}, {1,0}, {0,0}, {0,1}
 		// bottom (-Z) low-right, up-left
 		, {0,1}, {1,1}, {1,0}, {1,0}, {0,0}, {0,1} };
-	const size_t requiredVertexCount = CARRAY_SIZE(triPositions);
-	kassert(requiredVertexCount == CARRAY_SIZE(TRI_TEX_NORMS));
+	local_persist const size_t requiredVertexCount = CARRAY_SIZE(triPositions);
+	static_assert(requiredVertexCount == CARRAY_SIZE(TRI_TEX_NORMS));
 	/* ensure that the data buffer passed to us contains enough memory */
 	u8*const o_vertexDataU8 = reinterpret_cast<u8*>(o_vertexData);
 	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
 	u8*const o_texNormals = o_vertexDataU8 + vertexTextureNormalOffset;
 	/* sizeof(position) + sizeof(textureNormal) */
 	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(v2f32);
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset      <= vertexByteStride - sizeof(v3f32));
-	kassert(vertexTextureNormalOffset <= vertexByteStride - sizeof(v2f32));
-	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset      <= vertexByteStride - sizeof(v3f32));
+	korlAssert(vertexTextureNormalOffset <= vertexByteStride - sizeof(v2f32));
+	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* finally, actually write the data to the output buffer */
 	for(size_t v = 0; v < CARRAY_SIZE(triPositions); v++)
 	{
@@ -1010,13 +1010,13 @@ internal inline void kmath::generateMeshCircleSphere(
 	u8*const o_texNormals = o_vertexDataU8 + vertexTextureNormalOffset;
 	/* sizeof(position) + sizeof(textureNormal) */
 	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(v2f32);
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset      <= vertexByteStride - sizeof(v3f32));
-	kassert(vertexTextureNormalOffset <= vertexByteStride - sizeof(v2f32));
-	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset      <= vertexByteStride - sizeof(v3f32));
+	korlAssert(vertexTextureNormalOffset <= vertexByteStride - sizeof(v2f32));
+	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* calculate the sphere mesh on-the-fly */
-	kassert(latitudeSegments  >= 2);
-	kassert(longitudeSegments >= 3);
+	korlAssert(latitudeSegments  >= 2);
+	korlAssert(longitudeSegments >= 3);
 	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
 	const f32 radiansPerLatitude      = PI32 / latitudeSegments;
 	const v3f32 verticalRadius        = v3f32::Z * radius;
@@ -1081,7 +1081,7 @@ internal inline void kmath::generateMeshCircleSphere(
 				latStripTopPrevious;
 		}
 	}
-	kassert(currentVertex == requiredVertexCount);
+	korlAssert(currentVertex == requiredVertexCount);
 	/* calculate proper texture normals based on cylindrical projection 
 		Source: https://gamedev.stackexchange.com/a/114416 */
 	/* @TODO: figure out how to improve this at some point?  it seems very 
@@ -1120,12 +1120,12 @@ internal void
 	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
 	/* sizeof(position) */
 	const size_t requiredVertexBytes = sizeof(v3f32);
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
-	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* calculate the sphere mesh on-the-fly */
-	kassert(latitudeSegments  >= 2);
-	kassert(longitudeSegments >= 3);
+	korlAssert(latitudeSegments  >= 2);
+	korlAssert(longitudeSegments >= 3);
 	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
 	const f32 radiansPerLatitude      =   PI32 / latitudeSegments;
 	const v3f32 verticalRadius        = v3f32::Z * radius;
@@ -1162,7 +1162,7 @@ internal void
 				q1.transform(latitudeVector, true);
 		}
 	}
-	kassert(currentVertex == requiredVertexCount);
+	korlAssert(currentVertex == requiredVertexCount);
 }
 internal void kmath::generateUniformSpherePoints(
 	u32 pointCount, void* o_vertexData, size_t vertexDataBytes, 
@@ -1173,9 +1173,9 @@ internal void kmath::generateUniformSpherePoints(
 	u8*const o_positions  = o_vertexDataU8 + vertexPositionOffset;
 	/* sizeof(position) */
 	const size_t requiredVertexBytes = sizeof(v3f32);
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
-	kassert(requiredVertexBytes*pointCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	korlAssert(requiredVertexBytes*pointCount <= vertexDataBytes);
 	/* generate the points */
 	for(u32 p = 0; p < pointCount; p++)
 	{

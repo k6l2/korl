@@ -21,7 +21,7 @@ internal KgtTapeHandle
 	{
 		return trackIndex;
 	}
-	kassert(trackIndex < audioMixer->trackCount);
+	korlAssert(trackIndex < audioMixer->trackCount);
 	KgtAudioTrack*const tracks = 
 		reinterpret_cast<KgtAudioTrack*>(audioMixer + 1);
 	return (static_cast<u64>(tracks[trackIndex].kaiRawSound) << 32) |
@@ -117,8 +117,8 @@ internal void
 			{
 				continue;
 			}
-			kassert(tracks[t].volumeRatio >= 0.f && 
-			        tracks[t].volumeRatio <= 1.f);
+			korlAssert(tracks[t].volumeRatio >= 0.f && 
+			           tracks[t].volumeRatio <= 1.f);
 			const RawSound tRawSound = kgtAssetManagerGetRawSound(
 				g_kam, tracks[t].kaiRawSound);
 			u32 currTapeSampleBlock = s + tracks[t].currentSampleBlock;

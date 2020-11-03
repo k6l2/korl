@@ -28,7 +28,7 @@ internal u32 netPackCommon(const u8* dataBytes, size_t dataSize,
 {
 	/* first, ensure that we aren't about to go out-of-bounds of the 
 		dataBuffer */
-	kassert(*bufferCursor + dataSize <= bufferEnd);
+	korlAssert(*bufferCursor + dataSize <= bufferEnd);
 	/* now that it's safe to do so, pack the bytes in big-endian order (network 
 		byte order) */
 	if(isBigEndian())
@@ -99,7 +99,7 @@ internal u32 netUnpackCommon(u8* resultBytes, size_t resultSize,
 {
 	/* first, ensure that we aren't about to go out-of-bounds of the 
 		dataBuffer */
-	kassert(*bufferCursor + resultSize <= bufferEnd);
+	korlAssert(*bufferCursor + resultSize <= bufferEnd);
 	/* now that it's safe to do so, unpack the bytes from big-endian order 
 		(network byte order) to our native byte order */
 	if(isBigEndian())

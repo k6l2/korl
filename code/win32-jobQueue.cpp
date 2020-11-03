@@ -30,7 +30,7 @@ internal void jobQueueDestroy(JobQueue* jobQueue)
 internal JobQueueTicket jobQueuePrintTicket(JobQueue* jobQueue, 
                                             size_t jobIndex)
 {
-	kassert(jobIndex < CARRAY_SIZE(jobQueue->jobs));
+	korlAssert(jobIndex < CARRAY_SIZE(jobQueue->jobs));
 	return (static_cast<u32>(jobQueue->jobs[jobIndex].salt)<<16) | 
 		static_cast<u32>(jobIndex);
 }
@@ -61,7 +61,7 @@ internal JobQueueTicket jobQueuePostJob(JobQueue* jobQueue,
 			break;
 		}
 	}
-	kassert(newJobIndex < CARRAY_SIZE(jobQueue->jobs));
+	korlAssert(newJobIndex < CARRAY_SIZE(jobQueue->jobs));
 	if(jobQueue->incompleteJobCount == 0)
 		jobQueue->nextJobIndex = newJobIndex;
 	jobQueue->jobs[newJobIndex].taken     = false;
@@ -177,7 +177,7 @@ internal void jobQueueMarkJobCompleted(JobQueue* jobQueue, JobQueueJob* job)
 	defer(LeaveCriticalSection(&jobQueue->lock));
 	job->taken     = false;
 	job->completed = true;
-	kassert(jobQueue->incompleteJobCount > 0);
+	korlAssert(jobQueue->incompleteJobCount > 0);
 	jobQueue->incompleteJobCount--;
 }
 internal bool jobQueuePerformWork(JobQueue* jobQueue, u32 threadId)

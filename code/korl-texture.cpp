@@ -27,7 +27,7 @@ internal bool
 	*o_texMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(fileData);
 	const char*const fileCStrEnd = fileCStr + fileBytes;
-	kassert(fileCStr[fileBytes] == '\0');
+	korlAssert(fileCStr[fileBytes] == '\0');
 	u32 foundEntryBitFlags = 0;
 	u8  foundEntryCount    = 0;
 	char* currLine = fileCStr;

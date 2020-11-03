@@ -22,7 +22,7 @@ internal void kgtCamera3dStep(
 	bool moveLeft, bool moveUp, bool moveDown, f32 deltaSeconds)
 {
 	local_persist const f32 CAMERA_SPEED_MAX = 25;
-	local_persist const f32 CAMERA_ACCELERATION = 10;
+	local_persist const f32 CAMERA_ACCELERATION = 20;
 	local_persist const f32 CAMERA_DECELERATION = 50;
 	const v3f32 cameraWorldForward = kgtCamera3dWorldForward(cam);
 	const v3f32 cameraWorldRight   = kgtCamera3dWorldRight(cam);

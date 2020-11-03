@@ -78,11 +78,11 @@ internal void kgtNetClientStep(
 		{
 			const size_t packetSize = 
 				kmath::safeTruncateU64(dataCursor - knc->packetBuffer);
-			kassert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
+			korlAssert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
 			const i32 bytesSent = 
 				g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
 				                  knc->addressServer, knc->serverListenPort);
-			kassert(bytesSent >= 0);
+			korlAssert(bytesSent >= 0);
 		}
 		/* if we're connected to the server & we have reliable messages to send, 
 			attempt to send everything in our queue of reliable messages to the 
@@ -99,11 +99,11 @@ internal void kgtNetClientStep(
 				kgtNetReliableDataBufferNetPack(
 					&knc->reliableDataBuffer, &dataCursor, kncPacketBufferEnd);
 			/* send the packetBuffer which now contains the reliable messages */
-			kassert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
+			korlAssert(packetSize <= CARRAY_SIZE(knc->packetBuffer));
 			const i32 bytesSent = 
 				g_kpl->socketSend(knc->socket, knc->packetBuffer, packetSize, 
 				                  knc->addressServer, knc->serverListenPort);
-			kassert(bytesSent >= 0);
+			korlAssert(bytesSent >= 0);
 		}
 	}
 	/* process CLIENT <= SERVER communication */
@@ -133,7 +133,7 @@ internal void kgtNetClientStep(
 			                     knc->packetBuffer, 
 			                     CARRAY_SIZE(knc->packetBuffer), 
 			                     &netAddress, &netPort);
-		kassert(bytesReceived >= 0);
+		korlAssert(bytesReceived >= 0);
 		if(bytesReceived == 0)
 		/* there's no more data being sent to us; we're done. */
 		{
@@ -235,7 +235,7 @@ internal void kgtNetClientStep(
 					/* at this point, we know that the client's server rolling 
 						index MUST lie in the range of [front - 1, last) if 
 						we've been reliably reading all the messages so far */
-					kassert(knc->latestReceivedReliableMessageIndex >= 
+					korlAssert(knc->latestReceivedReliableMessageIndex >= 
 					            static_cast<i64>(frontMessageRollingIndex) - 1);
 					/* we must iterate over the reliable messages until we get 
 						to a rolling index greater than the client's server 
@@ -263,7 +263,7 @@ internal void kgtNetClientStep(
 							fnReadReliableMessage(
 								packetBuffer, 
 								packetBuffer + reliableMessageBytes);
-						kassert(bytesRead == reliableMessageBytes);
+						korlAssert(bytesRead == reliableMessageBytes);
 						packetBuffer += reliableMessageBytes;
 					}
 					/* record the last reliable rolling index we have 

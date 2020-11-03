@@ -23,7 +23,7 @@ internal bool kgtFlipBookDecodeMeta(
 	*o_fbMeta = {};
 	char*const fileCStr = reinterpret_cast<char*>(fileData);
 	const char*const fileCStrEnd = fileCStr + fileBytes;
-	kassert(fileCStr[fileBytes] == '\0');
+	korlAssert(fileCStr[fileBytes] == '\0');
 	u32 fbPropertiesFoundBitflags = 0;
 	u8  fbPropertiesFoundCount    = 0;
 	// destructively read the file line by line //
@@ -234,7 +234,7 @@ internal void kgtFlipBookGetPageProperties(
 		*o_pageCount = 
 			kmath::safeTruncateU16((*o_pageRows) * (*o_pageCols));
 	}
-	kassert(*o_pageCount >= 1);
+	korlAssert(*o_pageCount >= 1);
 }
 internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 {
@@ -269,8 +269,8 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 		frameCount);
 	const u32 pageRow = pageIndex / flipbookPageCols;
 	const u32 pageCol = pageIndex % flipbookPageCols;
-	kassert(pageRow < flipbookPageRows);
-	kassert(pageCol < flipbookPageCols);
+	korlAssert(pageRow < flipbookPageRows);
+	korlAssert(pageCol < flipbookPageCols);
 	const f32 pageTexCoordUp    = 
 	                           static_cast<f32>( pageRow     )/flipbookPageRows;
 	const f32 pageTexCoordDown  = 

@@ -137,7 +137,7 @@ internal void
 	kgtAssetManagerFreeAsset(KgtAssetManager* kam, KgtAssetHandle assetHandle)
 {
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(!asset->loaded)
 	{
@@ -205,13 +205,13 @@ internal void
 		KgtAssetManager* kam, KgtAssetHandle kah)
 {
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
-	kassert(kah < kam->maxAssetHandles);
+	korlAssert(kah < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + kah;
 	switch(asset->type)
 	{
 		case KgtAssetType::RAW_IMAGE:
 		{
-			kassert(asset->assetData.image.krbTextureHandle == 
+			korlAssert(asset->assetData.image.krbTextureHandle == 
 				krb::INVALID_TEXTURE_HANDLE);
 			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
 				asset->assetData.image.rawImage.sizeX,
@@ -269,7 +269,7 @@ internal RawSound
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -277,7 +277,7 @@ internal RawSound
 	}
 	if(asset->loaded)
 	{
-		kassert(asset->type == KgtAssetType::RAW_SOUND);
+		korlAssert(asset->type == KgtAssetType::RAW_SOUND);
 		return asset->assetData.sound;
 	}
 	else
@@ -285,7 +285,7 @@ internal RawSound
 		if(g_kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
-			kassert(asset->type == KgtAssetType::RAW_SOUND);
+			korlAssert(asset->type == KgtAssetType::RAW_SOUND);
 			return asset->assetData.sound;
 		}
 		return kam->defaultAssetSound.assetData.sound;
@@ -301,7 +301,7 @@ internal KrbTextureHandle
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -309,7 +309,7 @@ internal KrbTextureHandle
 	}
 	if(asset->loaded)
 	{
-		kassert(asset->type == KgtAssetType::RAW_IMAGE);
+		korlAssert(asset->type == KgtAssetType::RAW_IMAGE);
 		return asset->assetData.image.krbTextureHandle;
 	}
 	else
@@ -317,7 +317,7 @@ internal KrbTextureHandle
 		if(g_kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
-			kassert(asset->type == KgtAssetType::RAW_IMAGE);
+			korlAssert(asset->type == KgtAssetType::RAW_IMAGE);
 			return asset->assetData.image.krbTextureHandle;
 		}
 		return kam->defaultAssetImage.assetData.image.krbTextureHandle;
@@ -332,7 +332,7 @@ internal KrbTextureHandle
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -380,7 +380,7 @@ internal KorlTextureMetaData
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -429,7 +429,7 @@ internal v2u32
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -437,7 +437,7 @@ internal v2u32
 	}
 	if(asset->loaded)
 	{
-		kassert(asset->type == KgtAssetType::RAW_IMAGE);
+		korlAssert(asset->type == KgtAssetType::RAW_IMAGE);
 		return {asset->assetData.image.rawImage.sizeX,
 		        asset->assetData.image.rawImage.sizeY};
 	}
@@ -446,7 +446,7 @@ internal v2u32
 		if(g_kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
-			kassert(asset->type == KgtAssetType::RAW_IMAGE);
+			korlAssert(asset->type == KgtAssetType::RAW_IMAGE);
 			return {asset->assetData.image.rawImage.sizeX,
 			        asset->assetData.image.rawImage.sizeY};
 		}
@@ -464,7 +464,7 @@ internal v2u32
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -515,7 +515,7 @@ internal KgtFlipBookMetaData
 	}
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	{
@@ -523,7 +523,7 @@ internal KgtFlipBookMetaData
 	}
 	if(asset->loaded)
 	{
-		kassert(asset->type == KgtAssetType::FLIPBOOK_META);
+		korlAssert(asset->type == KgtAssetType::FLIPBOOK_META);
 		return asset->assetData.flipbook.metaData;
 	}
 	else
@@ -531,7 +531,7 @@ internal KgtFlipBookMetaData
 		if(g_kpl->jobDone(&asset->jqTicketLoading))
 		{
 			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
-			kassert(asset->type == KgtAssetType::FLIPBOOK_META);
+			korlAssert(asset->type == KgtAssetType::FLIPBOOK_META);
 			return asset->assetData.flipbook.metaData;
 		}
 		return kam->defaultAssetFlipbookMetaData.assetData.flipbook.metaData;
@@ -596,7 +596,7 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadFlipbookMeta)
 	void*const rawFileMemory = 
 		kgtAllocAlloc(asset->kam->hKgaRawFiles, 
 		              kmath::safeTruncateU32(assetByteSize) + 1);
-	kassert(rawFileMemory);
+	korlAssert(rawFileMemory);
 	g_kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* defer cleanup of the raw file memory until after we utilize it */
 	defer({
@@ -652,7 +652,7 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 	void*const rawFileMemory = 
 		kgtAllocAlloc(asset->kam->hKgaRawFiles, 
 		            kmath::safeTruncateU32(assetByteSize) + 1);
-	kassert(rawFileMemory);
+	korlAssert(rawFileMemory);
 	g_kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* defer cleanup of the raw file memory until after we utilize it */
 	defer({
@@ -722,7 +722,7 @@ internal KgtAssetHandle
 {
 	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
 	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	kassert(assetHandle < kam->maxAssetHandles);
+	korlAssert(assetHandle < kam->maxAssetHandles);
 	KgtAsset*const asset = assets + assetHandle;
 	if(asset->type == KgtAssetType::UNUSED)
 	/* load the asset from the platform layer */

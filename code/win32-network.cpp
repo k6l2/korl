@@ -89,8 +89,8 @@ internal PLATFORM_SOCKET_CLOSE(w32PlatformNetworkCloseSocket)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
-	kassert(socketIndex < CARRAY_SIZE(g_sockets));
-	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
+	korlAssert(socketIndex < CARRAY_SIZE(g_sockets));
+	korlAssert(g_sockets[socketIndex] != INVALID_SOCKET);
 	const int resultCloseSocket = closesocket(g_sockets[socketIndex]);
 	if(resultCloseSocket != 0)
 	{
@@ -125,8 +125,8 @@ internal PLATFORM_SOCKET_SEND(w32PlatformNetworkSend)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
-	kassert(socketIndex < CARRAY_SIZE(g_sockets));
-	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
+	korlAssert(socketIndex < CARRAY_SIZE(g_sockets));
+	korlAssert(g_sockets[socketIndex] != INVALID_SOCKET);
 	if(dataBufferSize > KPL_MAX_DATAGRAM_SIZE)
 	{
 		KLOG(WARNING, "Attempting to send %i bytes of data where the max is "
@@ -155,8 +155,8 @@ internal PLATFORM_SOCKET_RECEIVE(w32PlatformNetworkReceive)
 {
 	EnterCriticalSection(&g_csLockNetworking);
 	defer(LeaveCriticalSection(&g_csLockNetworking));
-	kassert(socketIndex < CARRAY_SIZE(g_sockets));
-	kassert(g_sockets[socketIndex] != INVALID_SOCKET);
+	korlAssert(socketIndex < CARRAY_SIZE(g_sockets));
+	korlAssert(g_sockets[socketIndex] != INVALID_SOCKET);
 	/* receive data from the socket */
 	WinSockAddress winSockAddressFrom = {};
 	int winSockAddressFromLength = sizeof(winSockAddressFrom);
@@ -184,7 +184,7 @@ internal PLATFORM_SOCKET_RECEIVE(w32PlatformNetworkReceive)
 	/* since we actually received data, we can now populate o_netAddressSender & 
 		o_netPortSender with the proper address data */
 	/*	@robustness: create a 'ipv4_to_kpl' conversion function */
-	kassert(winSockAddressFromLength == sizeof(winSockAddressFrom.s4));
+	korlAssert(winSockAddressFromLength == sizeof(winSockAddressFrom.s4));
 	memset(o_netAddressSender, 0, sizeof(*o_netAddressSender));
 	o_netAddressSender->uInts[0] = ntohl(winSockAddressFrom.s4.sin_addr.s_addr);
 	*o_netPortSender = ntohs(winSockAddressFrom.s4.sin_port);

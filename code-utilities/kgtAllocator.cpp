@@ -34,7 +34,7 @@ internal void kgtAllocReset(KgtAllocatorHandle hKal)
 			kgtAllocLinearReset(&kAlloc->linear);
 			break;
 		case KgtAllocatorType::GENERAL:
-			kassert(!"NOT IMPLEMENTED");
+			korlAssert(!"NOT IMPLEMENTED");
 			break;
 		default:
 			KLOG(ERROR, "Invalid allocator type (%i)", 

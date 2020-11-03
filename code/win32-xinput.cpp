@@ -204,7 +204,7 @@ internal void w32XInputGetGamePadStates(GamePad* gamePadArrayCurrentFrame,
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton)
 {
-	kassert(gamePadIndex < XUSER_MAX_COUNT);
+	korlAssert(gamePadIndex < XUSER_MAX_COUNT);
 	if(gamePadIndex >= XUSER_MAX_COUNT)
 		return INVALID_PLATFORM_BUTTON_INDEX;
 	XINPUT_STATE controllerState;
@@ -230,7 +230,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32XInputGetGamePadActiveButton)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32XInputGetGamePadActiveAxis)
 {
-	kassert(gamePadIndex < XUSER_MAX_COUNT);
+	korlAssert(gamePadIndex < XUSER_MAX_COUNT);
 	if(gamePadIndex >= XUSER_MAX_COUNT)
 		return {INVALID_PLATFORM_AXIS_INDEX};
 	XINPUT_STATE controllerState;

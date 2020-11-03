@@ -2,7 +2,7 @@
 internal bool kgtNetServerStart(
 	KgtNetServer* kns, KgtAllocatorHandle hKal, u8 maxClients)
 {
-	kassert(kns->socket == KPL_INVALID_SOCKET_INDEX);
+	korlAssert(kns->socket == KPL_INVALID_SOCKET_INDEX);
 	kns->socket = g_kpl->socketOpenUdp(kns->port);
 	if(kns->socket == KPL_INVALID_SOCKET_INDEX)
 	{
@@ -15,7 +15,7 @@ internal bool kgtNetServerStart(
 }
 internal void kgtNetServerStop(KgtNetServer* kns)
 {
-	kassert(kns->socket != KPL_INVALID_SOCKET_INDEX);
+	korlAssert(kns->socket != KPL_INVALID_SOCKET_INDEX);
 	g_kpl->socketClose(kns->socket);
 	kns->socket = KPL_INVALID_SOCKET_INDEX;
 	arrfree(kns->clientArray);
@@ -40,7 +40,7 @@ internal void kgtNetServerStep(
 		const i32 bytesReceived = 
 			g_kpl->socketReceive(kns->socket, netBuffer, CARRAY_SIZE(netBuffer), 
 			                     &netAddressClient, &netPortClient);
-		kassert(bytesReceived >= 0);
+		korlAssert(bytesReceived >= 0);
 		if(bytesReceived == 0)
 			/* if the server socket has no more data on it, we're done with 
 				network data for this frame */
@@ -81,7 +81,7 @@ internal void kgtNetServerStep(
 					const i32 bytesSent = 
 						g_kpl->socketSend(kns->socket, netBuffer, 1, 
 						                  netAddressClient, netPortClient);
-					kassert(bytesSent >= 0);
+					korlAssert(bytesSent >= 0);
 					break;
 				}
 				/* choose a unique id # to identify this client because the 
@@ -106,7 +106,7 @@ internal void kgtNetServerStep(
 						break;
 					}
 				}
-				kassert(cid < kgtNet::SERVER_INVALID_CLIENT_ID);
+				korlAssert(cid < kgtNet::SERVER_INVALID_CLIENT_ID);
 				/* add this new client to the client array */
 				KLOG(INFO, "SERVER: accepting new client (cid==%i)...", cid);
 				const KgtNetServerClientEntry newClient = 
@@ -240,9 +240,9 @@ internal void kgtNetServerStep(
 				/* at this point, we know that the server client's rolling index 
 					MUST lie in the range of [front - 1, last) if we've been 
 					reliably reading all the messages so far */
-				kassert(kns->clientArray[clientIndex]
-				        .latestReceivedReliableMessageIndex >= 
-				            static_cast<i64>(frontMessageRollingIndex) - 1);
+				korlAssert(kns->clientArray[clientIndex]
+				           .latestReceivedReliableMessageIndex >= 
+				               static_cast<i64>(frontMessageRollingIndex) - 1);
 				/* we must iterate over the reliable messages until we get to a 
 					rolling index greater than the server client's rolling 
 					index */
@@ -269,7 +269,7 @@ internal void kgtNetServerStep(
 						fnReadReliableMessage(
 							kns->clientArray[clientIndex].id, packetBuffer, 
 							packetBuffer + reliableMessageBytes, userPointer);
-					kassert(bytesRead == reliableMessageBytes);
+					korlAssert(bytesRead == reliableMessageBytes);
 					packetBuffer += reliableMessageBytes;
 				}
 				/* record the last reliable rolling index we have successfully 
@@ -315,7 +315,7 @@ internal void kgtNetServerStep(
 	for(size_t c = 0; c < arrlenu(kns->clientArray); c++)
 	/* process connected clients */
 	{
-		kassert(kns->clientArray[c].netAddress != KPL_INVALID_ADDRESS);
+		korlAssert(kns->clientArray[c].netAddress != KPL_INVALID_ADDRESS);
 		kns->clientArray[c].timeSinceLastPacket += deltaSeconds;
 		if(kns->clientArray[c].timeSinceLastPacket >= 
 			kgtNet::VIRTUAL_CONNECTION_TIMEOUT_SECONDS)
@@ -331,7 +331,7 @@ internal void kgtNetServerStep(
 					g_kpl->socketSend(kns->socket, netBuffer, 1, 
 					                  kns->clientArray[c].netAddress, 
 					                  kns->clientArray[c].netPort);
-				kassert(bytesSent >= 0);
+				korlAssert(bytesSent >= 0);
 			}
 			if(kns->clientArray[c].connectionState != 
 				kgtNet::ConnectionState::DISCONNECTING)
@@ -360,7 +360,7 @@ internal void kgtNetServerStep(
 					g_kpl->socketSend(kns->socket, netBuffer, 1, 
 					                  kns->clientArray[c].netAddress, 
 					                  kns->clientArray[c].netPort);
-				kassert(bytesSent >= 0);
+				korlAssert(bytesSent >= 0);
 			}break;
 			case kgtNet::ConnectionState::ACCEPTING: {
 				u8*            packetBuffer    = netBuffer;
@@ -377,7 +377,7 @@ internal void kgtNetServerStep(
 					g_kpl->socketSend(kns->socket, netBuffer, packetSize, 
 					                  kns->clientArray[c].netAddress, 
 					                  kns->clientArray[c].netPort);
-				kassert(bytesSent >= 0);
+				korlAssert(bytesSent >= 0);
 			}break;
 			case kgtNet::ConnectionState::CONNECTED: {
 				/* send the server's unreliable state each frame */
@@ -404,7 +404,7 @@ internal void kgtNetServerStep(
 					g_kpl->socketSend(kns->socket, netBuffer, packetSize, 
 					                  kns->clientArray[c].netAddress, 
 					                  kns->clientArray[c].netPort);
-				kassert(bytesSent >= 0);
+				korlAssert(bytesSent >= 0);
 				/* if this client has reliable messages queued up, then we need 
 					to attempt to send a reliable datagram */
 				if(kns->clientArray[c].reliableDataBuffer.messageCount > 0)
@@ -420,13 +420,13 @@ internal void kgtNetServerStep(
 							&packetBuffer, packetBufferEnd);
 					/* send the packetBuffer which now contains the reliable 
 						messages */
-					kassert(reliablePacketSize <= CARRAY_SIZE(netBuffer));
+					korlAssert(reliablePacketSize <= CARRAY_SIZE(netBuffer));
 					const i32 reliableBytesSent = 
 						g_kpl->socketSend(kns->socket, netBuffer, 
 						                  reliablePacketSize, 
 						                  kns->clientArray[c].netAddress, 
 						                  kns->clientArray[c].netPort);
-					kassert(reliableBytesSent >= 0);
+					korlAssert(reliableBytesSent >= 0);
 				}
 			}break;
 		}

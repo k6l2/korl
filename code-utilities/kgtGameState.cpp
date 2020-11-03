@@ -1,12 +1,12 @@
 #include "kgtGameState.h"
 internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 {
-	g_kpl          = &memory.kpl;
-	g_krb          = &memory.krb;
-	g_kgs          = kgs;
-	g_kam          = kgs->assetManager;
-	platformLog    = memory.kpl.log;
-	platformAssert = memory.kpl.assert;
+	g_kpl                     = &memory.kpl;
+	g_krb                     = &memory.krb;
+	g_kgs                     = kgs;
+	g_kam                     = kgs->assetManager;
+	platformLog               = memory.kpl.log;
+	korlPlatformAssertFailure = memory.kpl.assertFailure;
 	/* ImGui support */
 	ImGui::SetCurrentContext(
 		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
@@ -17,7 +17,7 @@ internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 internal void 
 	kgtGameStateInitialize(GameMemory& memory, size_t totalGameStateSize)
 {
-	kassert(totalGameStateSize <= memory.permanentMemoryBytes);
+	korlAssert(totalGameStateSize <= memory.permanentMemoryBytes);
 	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
 		ever need to do this one time because *tgs should be in an immutable 
 		spot in memory forever */
@@ -109,16 +109,16 @@ internal bool
 internal void* kStbDsRealloc(
 	void* allocatedAddress, size_t newAllocationSize, void* context)
 {
-	kassert(context);
+	korlAssert(context);
 	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
 	void*const result = 
 		kgtAllocRealloc(hKal, allocatedAddress, newAllocationSize);
-	kassert(result);
+	korlAssert(result);
 	return result;
 }
 internal void kStbDsFree(void* allocatedAddress, void* context)
 {
-	kassert(context);
+	korlAssert(context);
 	KgtAllocatorHandle hKal = reinterpret_cast<KgtAllocatorHandle>(context);
 	kgtAllocFree(hKal, allocatedAddress);
 }

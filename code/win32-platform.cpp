@@ -114,7 +114,7 @@ internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
 		stbi_load_from_memory(reinterpret_cast<const u8*>(fileMemory), 
 		                      kmath::safeTruncateI32(fileBytes), &imgW, &imgH, 
 		                      &imgNumByteChannels, 4);
-	kassert(img);
+	korlAssert(img);
 	if(!img)
 	{
 		KLOG(ERROR, "stbi_load_from_memory failure!");
@@ -539,7 +539,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 	// god help us all if we ever have to deal with a 6-figure source file...
 	if(!g_hasReceivedException)
 	{
-		kassert(sourceFileLineNumber >= 0 && sourceFileLineNumber < 100000);
+		korlAssert(sourceFileLineNumber >= 0 && sourceFileLineNumber < 100000);
 	}
 	const int logLineMetaCharsWritten = 
 		_snprintf_s(logLineBuffer, MAX_LOG_LINE_SIZE, _TRUNCATE, 
@@ -547,7 +547,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 		            kutil::fileName(sourceFileName), sourceFileLineNumber);
 	if(!g_hasReceivedException)
 	{
-		kassert(logLineMetaCharsWritten > 0);
+		korlAssert(logLineMetaCharsWritten > 0);
 	}
 	const size_t remainingLogLineSize = (logLineMetaCharsWritten < 0 ||
 		logLineMetaCharsWritten >= MAX_LOG_LINE_SIZE) ? 0
@@ -592,7 +592,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 	//	soon as possible!
 	if(logCategory == PlatformLogCategory::K_ERROR && !g_hasReceivedException)
 	{
-		kassert(!"ERROR HAS BEEN LOGGED!");
+		korlAssert(!"ERROR HAS BEEN LOGGED!");
 	}
 	//	Everything past this point modifies global log buffer state ////////////
 	// Ensure writes to the global log buffer states are thread-safe! //
@@ -615,7 +615,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 		// we should have written the total log line + "\n". \0 isn't counted!
 		if(!g_hasReceivedException)
 		{
-			kassert(charsWritten == totalLogLineSize + 1);
+			korlAssert(charsWritten == totalLogLineSize + 1);
 		}
 		g_logCurrentBeginningChar += charsWritten;
 	}
@@ -628,7 +628,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 			MAX_LOG_BUFFER_SIZE - g_logCurrentCircularBufferChar;
 		if(!g_hasReceivedException)
 		{
-			kassert(remainingLogCircularBuffer > 0);
+			korlAssert(remainingLogCircularBuffer > 0);
 		}
 		// I use `min` here as the second parameter to prevent _snprintf_s from 
 		//	preemptively destroying earlier buffer data!
@@ -641,7 +641,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 		if(errno && !g_hasReceivedException)
 		{
 			const int error = errno;
-			kassert(!"log circular buffer part 1 string print error!");
+			korlAssert(!"log circular buffer part 1 string print error!");
 		}
 		else if(charsWritten < 0)
 		// If no errors have occurred, it means we have truncated the 
@@ -657,8 +657,8 @@ internal PLATFORM_LOG(w32PlatformLog)
 		{
 			if(!g_hasReceivedException)
 			{
-				kassert(g_logCurrentCircularBufferChar == 
-				            MAX_LOG_BUFFER_SIZE - 1);
+				korlAssert(g_logCurrentCircularBufferChar == 
+				               MAX_LOG_BUFFER_SIZE - 1);
 			}
 			g_logCurrentCircularBufferChar = 0;
 			// +2 here because we need to make sure to write the \n\0 at the end
@@ -677,11 +677,11 @@ internal PLATFORM_LOG(w32PlatformLog)
 				              _TRUNCATE, "%s\n", logLineBuffer + charsWritten);
 			if(errno && !g_hasReceivedException)
 			{
-				kassert(!"log circular buffer part 2 string print error!");
+				korlAssert(!"log circular buffer part 2 string print error!");
 			}
 			if(!g_hasReceivedException)
 			{
-				kassert(charsWrittenClipped >= 0);
+				korlAssert(charsWrittenClipped >= 0);
 			}
 			g_logCurrentCircularBufferChar += charsWrittenClipped;
 #if INTERNAL_BUILD && 0
@@ -696,7 +696,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 					nullCharCount++;
 				if(!g_hasReceivedException)
 				{
-					kassert(nullCharCount < 2);
+					korlAssert(nullCharCount < 2);
 				}
 			}
 #endif
@@ -705,10 +705,8 @@ internal PLATFORM_LOG(w32PlatformLog)
 		g_logCircularBufferRunningTotal += totalLogLineSize + 1;
 	}
 }
-internal PLATFORM_ASSERT(w32PlatformAssert)
+internal KORL_PLATFORM_ASSERT_FAILURE(w32PlatformAssertFailure)
 {
-	if(expression)
-		return;
 	if(IsDebuggerPresent())
 	{
 		DebugBreak();
@@ -891,7 +889,7 @@ internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* the gamepad is an Xinput controller */
 	{
@@ -905,7 +903,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton)
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32PlatformGetGamePadActiveAxis)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* the gamepad is an Xinput controller */
 	{
@@ -919,7 +917,7 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32PlatformGetGamePadActiveAxis)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32PlatformGetGamePadProductName)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* Xinput controller */
 	{
@@ -934,7 +932,7 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32PlatformGetGamePadProductName)
 }
 internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32PlatformGetGamePadProductGuid)
 {
-	kassert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
+	korlAssert(gamePadIndex < CARRAY_SIZE(g_gamePadArrayA));
 	if(gamePadIndex < XUSER_MAX_COUNT)
 	/* Xinput controller */
 	{
@@ -1008,8 +1006,8 @@ internal PLATFORM_SECONDS_SINCE_TIMESTAMP(w32PlatformSecondsSinceTimeStamp)
 	platformTimeStampUnion.largeInt = w32QueryPerformanceCounter();
 	/* calculate the # of seconds between the previous timestamp and the current 
 		timestamp */
-	kassert(platformTimeStampUnion.largeInt.QuadPart >= 
-	        platformTimeStampUnionPrevious.largeInt.QuadPart);
+	korlAssert(platformTimeStampUnion.largeInt.QuadPart >= 
+	           platformTimeStampUnionPrevious.largeInt.QuadPart);
 	const LONGLONG perfCountDiff = 
 		platformTimeStampUnion.largeInt.QuadPart - 
 		platformTimeStampUnionPrevious.largeInt.QuadPart;
@@ -1042,14 +1040,14 @@ internal PLATFORM_RESERVE_LOCK(w32PlatformReserveLock)
 }
 internal PLATFORM_LOCK(w32PlatformLock)
 {
-	kassert(hLock > 0);
-	kassert(g_platformExposedLocks[hLock - 1].allocated);
+	korlAssert(hLock > 0);
+	korlAssert(g_platformExposedLocks[hLock - 1].allocated);
 	EnterCriticalSection(&g_platformExposedLocks[hLock - 1].csLock);
 }
 internal PLATFORM_UNLOCK(w32PlatformUnlock)
 {
-	kassert(hLock > 0);
-	kassert(g_platformExposedLocks[hLock - 1].allocated);
+	korlAssert(hLock > 0);
+	korlAssert(g_platformExposedLocks[hLock - 1].allocated);
 	LeaveCriticalSection(&g_platformExposedLocks[hLock - 1].csLock);
 }
 internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden)
@@ -1063,7 +1061,7 @@ internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden)
 		const LRESULT resultSetCursor = 
 			w32MainWindowCallback(g_mainWindow, WM_SETCURSOR, 
 			                      0, MAKEWORD(HTCLIENT,0));
-		kassert(resultSetCursor == 0);
+		korlAssert(resultSetCursor == 0);
 	}
 #else
 	if(g_displayCursor != displayCursor && !g_mouseRelativeMode)

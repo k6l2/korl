@@ -37,9 +37,9 @@ privDefer<F> defer_func(F f) {
 #define FORCE_SYMBOL_EXPORT \
 	CONCAT(hack_force_symbol_export_DO_NOT_USE_,__COUNTER__)
 /* Custom assert support. platform implementation required! */
-#define kassert(expression) \
+#define korlAssert(expression) \
 	do {\
-		platformAssert(static_cast<bool>(expression));\
+		if(!(expression)) korlPlatformAssertFailure();\
 	}while(0)
 /* Logging support.  platform implementation required! */
 #define KLOG(platformLogCategory, formattedString, ...) \
@@ -67,18 +67,18 @@ enum class PlatformLogCategory : u8
 #define PLATFORM_LOG(name) \
 	void name(const char* sourceFileName, u32 sourceFileLineNumber, \
 	          PlatformLogCategory logCategory, const char* formattedString, ...)
-#define PLATFORM_ASSERT(name) \
-	void name(bool expression)
+#define KORL_PLATFORM_ASSERT_FAILURE(name) \
+	void name()
 typedef PLATFORM_LOG(fnSig_platformLog);
-typedef PLATFORM_ASSERT(fnSig_platformAssert);
+typedef KORL_PLATFORM_ASSERT_FAILURE(fnSig_korlPlatformAssertFailure);
 /* these function pointers are declared at a global scope to allow all code the 
 	ability to log & assert */
 global_variable fnSig_platformLog* platformLog;
-global_variable fnSig_platformAssert* platformAssert;
+global_variable fnSig_korlPlatformAssertFailure* korlPlatformAssertFailure;
 /* STB_DS API.  translation unit specific implementation required! */
 #define STBDS_REALLOC(context,ptr,size) kStbDsRealloc(ptr,size,context)
 #define STBDS_FREE(context,ptr)         kStbDsFree(ptr,context)
-#define STBDS_ASSERT(x)                 platformAssert(x)
+#define STBDS_ASSERT(x)                 korlAssert(x)
 #include "stb/stb_ds.h"
 /* @TODO: allow the game to define the SoundSample size in the build script? */
 using SoundSample = i16;

@@ -25,7 +25,7 @@ internal u16 kgtNetReliableDataBufferUsedBytes(
 			kutil::netUnpack(&messageByteCount, &messageBytesBufferCursor, 
 			                 messageBytesBuffer + 
 			                     CARRAY_SIZE(messageBytesBuffer));
-		kassert(bytesUnpacked == sizeof(messageByteCount));
+		korlAssert(bytesUnpacked == sizeof(messageByteCount));
 		/* move buffer cursor to next possible message location & add this 
 			message size to the total used byte count */
 		usedBytes += 
@@ -33,10 +33,10 @@ internal u16 kgtNetReliableDataBufferUsedBytes(
 		dataCursor += messageByteCount;
 		if(dataCursor >= dataEnd)
 			dataCursor -= CARRAY_SIZE(rdb->data);
-		kassert(dataCursor >= rdb->data);
-		kassert(dataCursor < dataEnd);
+		korlAssert(dataCursor >= rdb->data);
+		korlAssert(dataCursor < dataEnd);
 	}
-	kassert(usedBytes <= CARRAY_SIZE(rdb->data));
+	korlAssert(usedBytes <= CARRAY_SIZE(rdb->data));
 	if(o_reliableDataBufferCursor)
 		*o_reliableDataBufferCursor = dataCursor;
 	return usedBytes;
@@ -62,8 +62,8 @@ internal void kgtNetReliableDataBufferDequeue(
 	}
 	/* remove reliable messages that the server has reported to have obtained so 
 		that we stop sending copies to the server */
-	kassert(remoteReportedReliableMessageRollingIndex < 
-	            rdb->frontMessageRollingIndex + rdb->messageCount);
+	korlAssert(remoteReportedReliableMessageRollingIndex < 
+	               rdb->frontMessageRollingIndex + rdb->messageCount);
 	const u8*      dataCursor = rdb->data + rdb->frontMessageByteOffset;
 	const u8*const dataEnd    = rdb->data + CARRAY_SIZE(rdb->data);
 	for(u32 rmi = rdb->frontMessageRollingIndex; 
@@ -78,8 +78,8 @@ internal void kgtNetReliableDataBufferDequeue(
 			dataCursor++;
 			if(dataCursor >= dataEnd)
 				dataCursor -= CARRAY_SIZE(rdb->data);
-			kassert(dataCursor >= rdb->data);
-			kassert(dataCursor < dataEnd);
+			korlAssert(dataCursor >= rdb->data);
+			korlAssert(dataCursor < dataEnd);
 		}
 		const u8* netPackedMessageSizeBufferCursor = netPackedMessageSizeBuffer;
 		u16 messageSize;
@@ -87,14 +87,14 @@ internal void kgtNetReliableDataBufferDequeue(
 			kutil::netUnpack(&messageSize, &netPackedMessageSizeBufferCursor, 
 			                 netPackedMessageSizeBuffer + 
 			                     CARRAY_SIZE(netPackedMessageSizeBuffer));
-		kassert(bytesUnpacked == sizeof(messageSize));
+		korlAssert(bytesUnpacked == sizeof(messageSize));
 		/* now that we have the message size we can move the data cursor to the 
 			next message location */
 		dataCursor += messageSize;
 		if(dataCursor >= dataEnd)
 			dataCursor -= CARRAY_SIZE(rdb->data);
-		kassert(dataCursor >= rdb->data);
-		kassert(dataCursor < dataEnd);
+		korlAssert(dataCursor >= rdb->data);
+		korlAssert(dataCursor < dataEnd);
 		rdb->frontMessageByteOffset = 
 			kmath::safeTruncateU16(dataCursor - rdb->data);
 		rdb->messageCount--;
@@ -136,8 +136,8 @@ internal u32 kgtNetReliableDataBufferNetPack(
 			reliableDataBufferEnd - reliableDataBufferFront);
 		const u32 reliableBufferCopyBytesB = kmath::safeTruncateU32(
 			reliableDataBufferCursor - rdb->data);
-		kassert(reliableBufferCopyBytesA + reliableBufferCopyBytesB == 
-		        reliableDataBufferUsedBytes);
+		korlAssert(reliableBufferCopyBytesA + reliableBufferCopyBytesB == 
+		               reliableDataBufferUsedBytes);
 		memcpy(*dataCursor, reliableDataBufferFront, reliableBufferCopyBytesA);
 		*dataCursor  += reliableBufferCopyBytesA;
 		bytesPacked += reliableBufferCopyBytesA;
@@ -186,7 +186,7 @@ internal void kgtNetReliableDataBufferQueueMessage(
 		kutil::netPack(netPackedDataBytes, &netPackedDataBytesBufferCursor, 
 		               netPackedDataBytesBuffer + 
 		                   CARRAY_SIZE(netPackedDataBytesBuffer));
-	kassert(packedDataBytesBytes == 2);
+	korlAssert(packedDataBytesBytes == 2);
 	/* now that we have `dataBytes` in network-byte-order, we can add them all 
 		to the circular buffer queue */
 	for(size_t c = 0; c < CARRAY_SIZE(netPackedDataBytesBuffer); c++)
@@ -195,8 +195,8 @@ internal void kgtNetReliableDataBufferQueueMessage(
 		reliableDataBufferCursor++;
 		if(reliableDataBufferCursor >= reliableDataBufferEnd)
 			reliableDataBufferCursor -= CARRAY_SIZE(rdb->data);
-		kassert(reliableDataBufferCursor >= rdb->data);
-		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
+		korlAssert(reliableDataBufferCursor >= rdb->data);
+		korlAssert(reliableDataBufferCursor < reliableDataBufferEnd);
 	}
 	for(u16 b = 0; b < netPackedDataBytes; b++)
 	{
@@ -204,8 +204,8 @@ internal void kgtNetReliableDataBufferQueueMessage(
 		reliableDataBufferCursor++;
 		if(reliableDataBufferCursor >= reliableDataBufferEnd)
 			reliableDataBufferCursor -= CARRAY_SIZE(rdb->data);
-		kassert(reliableDataBufferCursor >= rdb->data);
-		kassert(reliableDataBufferCursor < reliableDataBufferEnd);
+		korlAssert(reliableDataBufferCursor >= rdb->data);
+		korlAssert(reliableDataBufferCursor < reliableDataBufferEnd);
 	}
 	/* finally, update the rest of the KgtNetClient's reliable message queue 
 		state to reflect our newly added message.  For now, all we have to do is 

@@ -16,7 +16,7 @@ internal void
 		if(bc->manifoldSlots[m].occupied)
 			manifoldTotalOccupied++;
 	}
-	kassert(manifoldTotalOccupied == bc->manifoldAllocCount);
+	korlAssert(manifoldTotalOccupied == bc->manifoldAllocCount);
 	KgtBodyColliderManifoldId manifoldTotalCapacity = 0;
 	size_t bCount = 0;
 	for(size_t b = 0; 
@@ -27,7 +27,7 @@ internal void
 		manifoldTotalCapacity += bc->bodyPool[b].manifoldArrayCapacity;
 		bCount++;
 	}
-	kassert(manifoldTotalCapacity == bc->manifoldAllocCount);
+	korlAssert(manifoldTotalCapacity == bc->manifoldAllocCount);
 }
 internal size_t 
 	kgtBodyColliderRequiredBytes(
@@ -78,7 +78,7 @@ internal KgtBodyColliderShapeHandle
 	kgtBodyColliderMakeShapeHandle(
 		KgtBodyCollider* bc, KgtBodyColliderShapeId sid)
 {
-	kassert(sid < 0xFFFF - 1);
+	korlAssert(sid < 0xFFFF - 1);
 	return (u32(sid + 1) << 16) | bc->shapeSlots[sid].salt;
 }
 /** @return true if the param `hs` is valid */
@@ -138,7 +138,7 @@ internal KgtBodyColliderBodyHandle
 	kgtBodyColliderMakeBodyHandle(
 		KgtBodyCollider* bc, KgtBodyColliderBodyId bid)
 {
-	kassert(bid < 0xFFFFFFFF - 1);
+	korlAssert(bid < 0xFFFFFFFF - 1);
 	return (u32(bid + 1) << 16) | bc->bodySlots[bid].salt;
 }
 internal KgtBodyColliderBody* 
@@ -210,7 +210,7 @@ internal KgtBodyColliderManifoldHandle
 	kgtBodyColliderMakeManifoldHandle(
 		KgtBodyCollider* bc, KgtBodyColliderManifoldId mid)
 {
-	kassert(mid < 0xFFFFFFFF - 1);
+	korlAssert(mid < 0xFFFFFFFF - 1);
 	return (u64(mid + 1) << 16) | bc->manifoldSlots[mid].salt;
 }
 /** @return true if the param `hm` is valid */
@@ -242,15 +242,15 @@ internal void
 		KLOG(ERROR, "Invalid manifold array! handle=0x%li", 
 		     body->hManifoldArray);
 	}
-	kassert(mid + body->manifoldArrayCapacity <= 
-	            bc->memoryReqs.maxCollisionManifolds);
-	kassert(kgtBodyColliderMakeManifoldHandle(bc, mid) == 
-	            body->hManifoldArray);
+	korlAssert(mid + body->manifoldArrayCapacity <= 
+	               bc->memoryReqs.maxCollisionManifolds);
+	korlAssert(kgtBodyColliderMakeManifoldHandle(bc, mid) == 
+	               body->hManifoldArray);
 	for(KgtBodyColliderManifoldId m = mid; 
 		m < mid + body->manifoldArrayCapacity; m++)
 	{
-		kassert(bc->manifoldPool[m].handle == body->hManifoldArray);
-		kassert(bc->manifoldSlots[m].occupied);
+		korlAssert(bc->manifoldPool[m].handle == body->hManifoldArray);
+		korlAssert(bc->manifoldSlots[m].occupied);
 		bc->manifoldSlots[m].occupied = false;
 	}
 	bc->manifoldAllocCount -= body->manifoldArrayCapacity;
@@ -356,7 +356,7 @@ internal size_t
 	kgtBodyColliderManifoldVertexCount(
 		KgtBodyCollider* bc, KgtBodyColliderManifoldId m)
 {
-	kassert(bc->manifoldSlots[m].occupied);
+	korlAssert(bc->manifoldSlots[m].occupied);
 	return bc->manifoldPool[m].worldContactPointsSize * 2u;
 }
 internal void 
@@ -364,7 +364,7 @@ internal void
 		KgtBodyCollider* bc, KgtBodyColliderManifoldId m, 
 		size_t vertexByteStride, u8*const o_positions, u8*const o_colors)
 {
-	kassert(bc->manifoldSlots[m].occupied);
+	korlAssert(bc->manifoldSlots[m].occupied);
 	const KgtBodyColliderManifold& manifold = bc->manifoldPool[m];
 	/* iterate over each contact point:
 		- draw a line starting at the contact point ending at the MTV 
@@ -403,9 +403,9 @@ internal size_t
 	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(v4f32);
 	/* make some reasonable sanity checks about the output vertex data 
 		specifications */
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexOffsetPositionV3f32 <= vertexByteStride - sizeof(v3f32));
-	kassert(vertexOffsetColorV4f32    <= vertexByteStride - sizeof(v4f32));
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexOffsetPositionV3f32 <= vertexByteStride - sizeof(v3f32));
+	korlAssert(vertexOffsetColorV4f32    <= vertexByteStride - sizeof(v4f32));
 	/* iterate over each body:
 		- generate a wireframe mesh for the appropriate shape
 		- perform a model=>world space transformation on the vertices
@@ -423,7 +423,7 @@ internal size_t
 			/* get the shape of the body reliably */
 			KgtShape*const shape = 
 				kgtBodyColliderGetShape(bc, &bc->bodyPool[b].hShape);
-			kassert(shape);
+			korlAssert(shape);
 			/* color the vertices based on collision state */
 			bool atLeastOneContactingManifold = false;
 			if(bc->bodyPool[b].hManifoldArray)
@@ -447,7 +447,7 @@ internal size_t
 						manifold */
 					const size_t manifoldVertexCount = 
 						kgtBodyColliderManifoldVertexCount(bc, m);
-					kassert(manifoldVertexCount > 0);
+					korlAssert(manifoldVertexCount > 0);
 					if(vertexCount + manifoldVertexCount > maxVertexCount)
 					{
 						KLOG(WARNING, "Supplied vertex buffer array size (%i) "
@@ -483,7 +483,7 @@ internal size_t
 			vertexCount += shapeVertexCount;
 			bCount++;
 		}
-		kassert(bCount == bc->bodyAllocCount);
+		korlAssert(bCount == bc->bodyAllocCount);
 	}
 	return vertexCount;
 }
@@ -497,7 +497,7 @@ internal KgtBodyColliderBodyAabb
 {
 	KgtBodyColliderBodyAabb result = {};
 	KgtShape*const shape = kgtBodyColliderGetShape(bc, &body->hShape);
-	kassert(shape);
+	korlAssert(shape);
 	kgtShapeCalculateAabb(
 		*shape, &result.min, &result.max, body->position, body->orient);
 	return result;
@@ -522,8 +522,8 @@ typedef KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
 internal KGT_BODY_COLLIDER_MANIFOLD_SOLVER_FUNCTION(
 	kgtBodyColliderMsf_S_S)
 {
-	kassert(shape0->type == KgtShapeType::SPHERE);
-	kassert(shape1->type == KgtShapeType::SPHERE);
+	korlAssert(shape0->type == KgtShapeType::SPHERE);
+	korlAssert(shape1->type == KgtShapeType::SPHERE);
 	v3f32 b1ToB0         = b0->position - b1->position;
 	const f32 distance   = b1ToB0.normalize();
 	const f32 sumOfRadii = shape0->sphere.radius + shape1->sphere.radius;
@@ -551,8 +551,8 @@ internal void
 		KgtBodyCollider* bc, KgtBodyColliderBody* body, 
 		KgtBodyColliderManifoldId manifoldCount)
 {
-	kassert(bc->memoryReqs.maxCollisionManifolds >= 
-	            bc->manifoldAllocCount + manifoldCount);
+	korlAssert(bc->memoryReqs.maxCollisionManifolds >= 
+	               bc->manifoldAllocCount + manifoldCount);
 	/* search for a contiguous array of unoccupied manifold pool slots */
 	KgtBodyColliderManifoldId mid = bc->memoryReqs.maxCollisionManifolds;
 	for(KgtBodyColliderManifoldId m = 0; 
@@ -569,7 +569,7 @@ internal void
 		{
 			const KgtBodyColliderManifoldId mAdvance = 
 				bc->memoryReqs.maxCollisionManifolds - mMod - 1;
-			kassert(mAdvance > 0);
+			korlAssert(mAdvance > 0);
 			m += mAdvance;
 			continue;
 		}
@@ -601,7 +601,7 @@ internal void
 	for(KgtBodyColliderManifoldId m = mid; m < mid + manifoldCount; m++)
 	/* make sure that all the manifolds in the array have the SAME HANDLE */
 	{
-		kassert(!bc->manifoldSlots[m].occupied);
+		korlAssert(!bc->manifoldSlots[m].occupied);
 		bc->manifoldSlots[m].occupied = true;
 		bc->manifoldSlots[m].salt     = bc->manifoldSlots[mid].salt;
 		bc->manifoldPool[m].handle = hManifoldArray;
@@ -678,8 +678,8 @@ internal void
 				if(bc->manifoldSlots[m].occupied)
 					manifoldTotalOccupied++;
 			}
-			kassert(manifoldTotalOccupied == 
-			            bcOld.manifoldAllocCount + manifoldCount);
+			korlAssert(manifoldTotalOccupied == 
+			               bcOld.manifoldAllocCount + manifoldCount);
 		}
 #endif// DEBUG_MANIFOLD_POOL_CORRUPTION
 		/* copy the manifolds from the old allocation */
@@ -759,7 +759,7 @@ internal void
 {
 	const KgtShape*const shape0 = kgtBodyColliderGetShape(bc, &b0->hShape);
 	const KgtShape*const shape1 = kgtBodyColliderGetShape(bc, &b1->hShape);
-	kassert(shape0 && shape1);
+	korlAssert(shape0 && shape1);
 	KgtBodyColliderManifold manifold = {};
 	manifold.hBodyA = b0->handle;
 	manifold.hBodyB = b1->handle;
@@ -767,8 +767,8 @@ internal void
 	local_persist KgtBodyColliderManifoldSolverFunction*const 
 		SOLVERS[SHAPE_TYPE_COUNT][SHAPE_TYPE_COUNT] = 
 			{ { kgtBodyColliderMsf_S_S } };
-	kassert(u8(shape0->type) <= SHAPE_TYPE_COUNT);
-	kassert(u8(shape1->type) <= SHAPE_TYPE_COUNT);
+	korlAssert(u8(shape0->type) <= SHAPE_TYPE_COUNT);
+	korlAssert(u8(shape1->type) <= SHAPE_TYPE_COUNT);
 	SOLVERS[u8(shape0->type)][u8(shape1->type)](
 		&manifold, shape0, shape1, b0, b1);
 	kgtBodyColliderBodyAddManifold(bc, b0, manifold);
@@ -810,7 +810,7 @@ internal void
 			arrpush(bodyPointerArray, &bc->bodyPool[b]);
 			bCount++;
 		}
-		kassert(bCount == bc->bodyAllocCount);
+		korlAssert(bCount == bc->bodyAllocCount);
 	}
 	/* for safety, verify the integrity of our memory pools */
 	kgtBodyColliderVerifyPoolIntegrity(bc);
@@ -909,9 +909,9 @@ internal KgtBodyColliderManifoldIterator
 			continue;
 		if(!bc->bodyPool[bid].hManifoldArray)
 			continue;
-		kassert(bc->bodyPool[bid].manifoldArraySize > 0);
-		kassert(bc->bodyPool[bid].manifoldArrayCapacity >= 
-		            bc->bodyPool[bid].manifoldArraySize);
+		korlAssert(bc->bodyPool[bid].manifoldArraySize > 0);
+		korlAssert(bc->bodyPool[bid].manifoldArrayCapacity >= 
+		               bc->bodyPool[bid].manifoldArraySize);
 		result.bodyIndex = bid;
 		break;
 	}

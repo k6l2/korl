@@ -224,9 +224,9 @@ internal u8 kmath::gjk_buildSimplexLines(
 	/* sizeof(vertexPosition) */
 	const size_t requiredVertexBytes = sizeof(v3f32);
 	const size_t requiredVertexCount = 12;// maximum emitted vertex count
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
-	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* cases: 
 		- gjkState->simplexSize == 0?
 			do nothing; return 0
@@ -238,7 +238,7 @@ internal u8 kmath::gjk_buildSimplexLines(
 			draw a triangle; return 6
 		- gjkState->simplexSize == 4?
 			draw a tetrahedron wireframe; return 12 */
-	kassert(gjkState->simplexSize <= 4);
+	korlAssert(gjkState->simplexSize <= 4);
 	u8 lineVertexPositionsWritten = 0;
 	switch(gjkState->simplexSize)
 	{
@@ -337,7 +337,7 @@ internal void kmath::epa_initialize(
 }
 internal u32 epa_hashEdge(u16 vertexIndex0, u16 vertexIndex1)
 {
-	kassert(vertexIndex0 != vertexIndex1);
+	korlAssert(vertexIndex0 != vertexIndex1);
 	if(vertexIndex0 > vertexIndex1)
 	{
 		u16 temp = vertexIndex0;
@@ -368,7 +368,7 @@ internal bool epa_verifyTriListIntegrity(kmath::EpaState* epaState)
 				if(tri.vertexPositionIndices[v0] == 
 						tri.vertexPositionIndices[v1])
 				{
-					kassert(false);
+					korlAssert(false);
 					return false;
 				}
 	}
@@ -514,10 +514,10 @@ internal u16 kmath::epa_buildPolytopeTriangles(
 	u8*const o_vertexColors    = o_vertexDataU8 + vertexColorOffset;
 	/* sizeof(vertexPosition) + sizeof(vertexColor) */
 	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(Color4f32);
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
-	kassert(vertexColorOffset    <= vertexByteStride - sizeof(Color4f32));
-	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	korlAssert(vertexColorOffset    <= vertexByteStride - sizeof(Color4f32));
+	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* iterate over the polytope triangles and emit the vertex positions */
 	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
 	{
@@ -569,9 +569,9 @@ internal u16 kmath::epa_buildPolytopeEdges(
 	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
 	/* sizeof(vertexPosition) */
 	const size_t requiredVertexBytes = sizeof(v3f32);
-	kassert(vertexByteStride >= requiredVertexBytes);
-	kassert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
-	kassert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
+	korlAssert(vertexByteStride >= requiredVertexBytes);
+	korlAssert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
+	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	for(size_t e = 0; e < hmlenu(edgeSet); e++)
 	{
 		u16 vertexIndices[2];
