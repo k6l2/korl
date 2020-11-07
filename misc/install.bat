@@ -29,6 +29,7 @@ if not exist "%toolchain_install_path%" (
 pushd "%toolchain_install_path%"
 call :installTool kmd5
 call :installTool kasset
+call :installTool kcpp
 popd
 
 

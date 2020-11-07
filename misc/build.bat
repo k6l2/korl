@@ -57,6 +57,19 @@ rem }}}----- run KAsset
 
 
 
+rem --- generate additional C++ using `kcpp` --------------{{{
+rem     NOTE: this also creates the build directory in the process
+pushd %kcpp_home%
+echo Building kcpp.exe...
+call build.bat
+popd
+call %kcpp_home%\build\kcpp.exe %KCPP_INCLUDE% %project_root%\build\code
+rem }}}----- run kcpp
+
+
+
+
+
 rem --- create the build directory ------------------------------------------{{{
 if not exist "%project_root%\build" mkdir "%project_root%\build"
 rem }}}----- create build directory
