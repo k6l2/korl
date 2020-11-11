@@ -789,6 +789,10 @@
 				subclass... which is not desireable in my opinion
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+	[ ] loading/saving (for levels, save data, etc...)
+		[ ] serialization/deserialization of arbitrary data
+			- probably a good idea to use KCPP for this, since C++ has no 
+				introspection capabilities...
 [x] installer batch script
 	[x] prompt the user for a toolchain install directory
 		https://stackoverflow.com/a/50115044/4526664
@@ -942,7 +946,7 @@
 [x] kassert: open a dialog box to allow option of continuing execution
 [x] kassert: optionally generate a minidump
 [ ] kassert: optionally generate a memory dump
-[ ] Add a simple gameplay RNG utility with small well-defined state, like maybe 
+[x] Add a simple gameplay RNG utility with small well-defined state, like maybe 
 	Wichmann–Hill for the memes since it was apparently used in Windwaker.
 	https://en.wikipedia.org/wiki/List_of_random_number_generators
 [ ] separate kmath into core & geometry
