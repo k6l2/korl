@@ -1,8 +1,7 @@
 #pragma once
 #include "kutil.h"
 #include "kgtBodyCollider.h"
-using KgtActorType   = u16;
-using KgtActorHandle = u64;
+using KgtActorHandle = u32;
 enum class KgtActorRootType : u8
 	/* a root type of BODY means the actor's world position is determined by a 
 		handle to a KgtBodyColliderBody */
@@ -11,15 +10,16 @@ enum class KgtActorRootType : u8
 		position/orientation vectors.  In other words, the actor has no geometry 
 		associated with it */
 	, RAW };
-#define KGT_POLYMORPHIC_TAGGED_UNION()
-#define KGT_POLYMORPHIC_TAGGED_UNION_EXTENDS(superStruct)
+#define KCPP_POLYMORPHIC_TAGGED_UNION
+#define KCPP_POLYMORPHIC_TAGGED_UNION_EXTENDS(superStruct)
+#define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL
+#define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL_OVERRIDE
 /* we need to include the headers of the datatypes which belong to the 
 	polymorphic tagged union defined below */
 #include "gen_ptu_KgtActor_includes.h"
-KGT_POLYMORPHIC_TAGGED_UNION()
-struct KgtActor
+KCPP_POLYMORPHIC_TAGGED_UNION struct KgtActor
 {
-	/** KgtActorType:u16 << 48 | pool_index:u32 << 16 | salt:u16 */
+	/** pool_index:u16 << 16 | salt:u16 */
 	KgtActorHandle handle;
 #if 0
 	/* This should probably just be handled & queried separately from the 
@@ -55,3 +55,5 @@ struct KgtActor
 	tagged union declared above, as well as "derived" structs.  Perhaps such a 
 	system should only support one level of inheritance for the sake of 
 	simplicity? */
+KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
+	kgtActorInitialize(KgtActor* a, KgtActor::Type at, void* directorData);
