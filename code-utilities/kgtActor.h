@@ -13,7 +13,7 @@ enum class KgtActorRootType : u8
 #define KCPP_POLYMORPHIC_TAGGED_UNION
 #define KCPP_POLYMORPHIC_TAGGED_UNION_EXTENDS(superStruct)
 #define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL
-#define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL_OVERRIDE
+#define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL_OVERRIDE(dispatchFunctionId)
 /* we need to include the headers of the datatypes which belong to the 
 	polymorphic tagged union defined below */
 #include "gen_ptu_KgtActor_includes.h"
