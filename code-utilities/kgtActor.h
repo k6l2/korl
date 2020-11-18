@@ -10,10 +10,7 @@ enum class KgtActorRootType : u8
 		position/orientation vectors.  In other words, the actor has no geometry 
 		associated with it */
 	, RAW };
-#define KCPP_POLYMORPHIC_TAGGED_UNION
-#define KCPP_POLYMORPHIC_TAGGED_UNION_EXTENDS(superStruct)
-#define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL
-#define KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL_OVERRIDE(dispatchFunctionId)
+#include "kcppPolymorphicTaggedUnion.h"
 /* we need to include the headers of the datatypes which belong to the 
 	polymorphic tagged union defined below */
 #include "gen_ptu_KgtActor_includes.h"
@@ -56,4 +53,10 @@ KCPP_POLYMORPHIC_TAGGED_UNION struct KgtActor
 	system should only support one level of inheritance for the sake of 
 	simplicity? */
 KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
-	kgtActorInitialize(KgtActor* a, KgtActor::Type at, void* directorData);
+	kgtActorInitialize(KgtActor* a, void* directorData);
+KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
+	kgtActorOnDestroy(KgtActor* a, void* directorData);
+KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
+	kgtActorStep(KgtActor* a, void* directorData);
+KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
+	kgtActorDraw(KgtActor* a, void* directorData);

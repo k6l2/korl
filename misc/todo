@@ -780,11 +780,11 @@
 		[~] hulls
 			[~] implement vertex/face pools in the BodyCollider
 		[~] mesh
-	[ ] utility: generic Actor interface
-		[ ] is there some way of automatically constructing an "Actor" interface 
+	[x] utility: generic Actor interface
+		[x] is there some way of automatically constructing an "Actor" interface 
 			with virtual dispatch functions without using C++ class 
 			inheritance?..
-		[ ] maybe this is actually a REASONABLE place to implement C++ classes??
+		[-] maybe this is actually a REASONABLE place to implement C++ classes??
 			- this requires having a separate pool allocator for each 
 				subclass... which is not desireable in my opinion
 	[ ] utility: generic Director
