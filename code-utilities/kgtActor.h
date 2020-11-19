@@ -1,6 +1,7 @@
 #pragma once
 #include "kutil.h"
 #include "kgtBodyCollider.h"
+/** pool_index:u16 << 16 | salt:u16 */
 using KgtActorHandle = u32;
 enum class KgtActorRootType : u8
 	/* a root type of BODY means the actor's world position is determined by a 
@@ -16,7 +17,6 @@ enum class KgtActorRootType : u8
 #include "gen_ptu_KgtActor_includes.h"
 KCPP_POLYMORPHIC_TAGGED_UNION struct KgtActor
 {
-	/** pool_index:u16 << 16 | salt:u16 */
 	KgtActorHandle handle;
 #if 0
 	/* This should probably just be handled & queried separately from the 

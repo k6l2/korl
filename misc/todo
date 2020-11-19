@@ -789,6 +789,19 @@
 				subclass... which is not desireable in my opinion
 	[ ] utility: generic Director
 		[ ] is such a thing even possible/worth making?...
+			- hiring & memory management seems easy enough to do
+			- actor access is pretty straight forward
+			- step
+				- generic camera management seems too inflexible.  Perhaps it 
+					makes more sense to extend the struct & handle camera in a 
+					super struct?
+				- colliding geometry is pretty straight forward
+				- iterating over all the actors and stepping them seems fine
+				- fire/hire actors at the end of the frame
+				- actor drawing at the end of the frame seems fine, but I'm not 
+					really sure about how to adjust for draw ordering yet.
+					- possible draw order solutions:
+						- provide a callback function to step to sort actors
 	[ ] loading/saving (for levels, save data, etc...)
 		[ ] serialization/deserialization of arbitrary data
 			- probably a good idea to use KCPP for this, since C++ has no 
