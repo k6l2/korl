@@ -806,6 +806,11 @@
 		[ ] serialization/deserialization of arbitrary data
 			- probably a good idea to use KCPP for this, since C++ has no 
 				introspection capabilities...
+[ ] win32: pass a parameter to the application indicating that we don't want to 
+	send log output again via debug console ouptut
+	- this should solve the issue of output being duplicated in VSCode
+	- the only reason we are doing this in the first place is because VS doesn't 
+		actually display the output streams in the output console by default :|
 [x] installer batch script
 	[x] prompt the user for a toolchain install directory
 		https://stackoverflow.com/a/50115044/4526664
