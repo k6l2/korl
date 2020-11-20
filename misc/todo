@@ -811,6 +811,7 @@
 	- this should solve the issue of output being duplicated in VSCode
 	- the only reason we are doing this in the first place is because VS doesn't 
 		actually display the output streams in the output console by default :|
+[ ] KRB: push/pop MVP matrices
 [x] installer batch script
 	[x] prompt the user for a toolchain install directory
 		https://stackoverflow.com/a/50115044/4526664

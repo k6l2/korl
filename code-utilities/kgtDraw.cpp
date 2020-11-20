@@ -1,8 +1,9 @@
 #include "kgtDraw.h"
 #include "kgtVertex.h"
-internal void kgtDrawTexture2d(
-	KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
-	f32 counterClockwiseRadians, const v2f32& scale)
+internal void 
+	kgtDrawTexture2d(
+		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
+		f32 counterClockwiseRadians, const v2f32& scale)
 {
 	g_krb->setModelXform2d(
 		position, q32{v3f32::Z, counterClockwiseRadians}, scale);
@@ -16,7 +17,8 @@ internal void kgtDrawTexture2d(
 	g_krb->drawQuadTextured(quadSize, ratioAnchor, 
 	                        QUAD_DEFAULT_TEX_NORMS, QUAD_WHITE);
 }
-internal void kgtDrawOrigin(const v3f32& scale)
+internal void 
+	kgtDrawAxes(const v3f32& scale)
 {
 	g_krb->setModelXform(v3f32::ZERO, q32::IDENTITY, scale);
 	local_persist const KgtVertex MESH[] = 
@@ -24,4 +26,61 @@ internal void kgtDrawOrigin(const v3f32& scale)
 		, {{0,0,0}, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}
 		, {{0,0,0}, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
 	DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+}
+internal void 
+	kgtDrawOrigin(
+		const v2u32& windowDimensions, const v3f32& camForward, 
+		const v3f32& camPosition)
+{
+	const v2f32 originScreenPos = 
+		g_krb->worldToScreen(v3f32::ZERO.elements, 3);
+	v2f32 originScreenPosYUp = 
+		{originScreenPos.x, windowDimensions.y - originScreenPos.y};
+	/* check to see if the origin wrt the camera position is facing in the 
+		opposite direction of the camera's forward vector */
+	if(camForward.dot(-camPosition) < 0)
+	{
+		/* if this is the case, then the nearest spot on the screen to the 
+			origin is GUARANTEED to be the edge of the screen, with inverted 
+			coordinates with respect to the center of the screen */
+		originScreenPosYUp.x = windowDimensions.x - originScreenPosYUp.x;
+		originScreenPosYUp.y = windowDimensions.y - originScreenPosYUp.y;
+		/* force the inverted screen position to the edge of the window by 
+			multiplying the normal by the largest window dimension & adding 
+			that to the inverted screen position */
+		v2f32 originScreenPosYUpFromCenter = 
+			kmath::normal(originScreenPosYUp - 
+			v2f32{windowDimensions.x/2.f, windowDimensions.y/2.f});
+		if(originScreenPosYUpFromCenter.isNearlyZero())
+			originScreenPosYUpFromCenter = {0,1};
+		originScreenPosYUpFromCenter *= static_cast<f32>(
+			kmath::max(windowDimensions.x, windowDimensions.y));
+		originScreenPosYUp += originScreenPosYUpFromCenter;
+	}
+	/* clamp the screen position to the border so the origin indicator is 
+		always visible */
+	if(originScreenPosYUp.x < 0)
+		originScreenPosYUp.x = 0;
+	if(originScreenPosYUp.y < 0)
+		originScreenPosYUp.y = 0;
+	if(originScreenPosYUp.x > windowDimensions.x)
+		originScreenPosYUp.x = static_cast<f32>(windowDimensions.x);
+	if(originScreenPosYUp.y > windowDimensions.y)
+		originScreenPosYUp.y = static_cast<f32>(windowDimensions.y);
+	/* set ortho with y+ pointing UP */
+	g_krb->setProjectionOrtho(windowDimensions.x, windowDimensions.y, 1);
+	/* adjust the view such that the bottom-left corner of the window is the 
+		screen-space origin */
+	g_krb->viewTranslate({windowDimensions.x/-2.f, windowDimensions.y/-2.f});
+	g_krb->setModelXform2d(originScreenPosYUp, q32::IDENTITY, {1,1});
+	g_krb->drawCircle(10, 0, krb::TRANSPARENT, krb::WHITE, 32);
+}
+internal void 
+	kgtDrawCompass(u32 squareSize, const v3f32& camForward)
+{
+	g_krb->setProjectionOrtho(
+		squareSize, squareSize, static_cast<f32>(squareSize));
+	g_krb->lookAt(
+		v3f32::ZERO.elements, camForward.elements, v3f32::Z.elements);
+	kgtDrawAxes({squareSize/2.f, squareSize/2.f, squareSize/2.f});
 }

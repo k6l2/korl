@@ -15,7 +15,17 @@ internal void
 		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale);
 internal void 
-	kgtDrawOrigin(const v3f32& scale);
+	kgtDrawAxes(const v3f32& scale);
+/**
+ * draw a small circle on the screen at the closest point of the world-space 
+ * origin 
+ */
+internal void 
+	kgtDrawOrigin(
+		const v2u32& windowDimensions, const v3f32& camForward, 
+		const v3f32& camPosition);
+internal void 
+	kgtDrawCompass(u32 squareSize, const v3f32& camForward);
 #define USE_IMAGE(kgtAssetIndex) \
 	g_krb->useTexture(\
 		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \

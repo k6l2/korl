@@ -63,6 +63,11 @@ inline v2f32& v2f32::operator+=(const v2f32& other)
 	y += other.y;
 	return *this;
 }
+inline bool v2f32::isNearlyZero() const
+{
+	return kmath::isNearlyZero(x)
+	    && kmath::isNearlyZero(y);
+}
 inline f32 v2f32::magnitude() const
 {
 	return sqrtf(powf(x,2) + powf(y,2));
@@ -703,6 +708,18 @@ internal inline f32 kmath::clamp(f32 x, f32 min, f32 max)
 	if(x > max)
 		return max;
 	return x;
+}
+internal inline f32 kmath::max(f32 a, f32 b)
+{
+	if(a >= b)
+		return a;
+	return b;
+}
+internal inline u32 kmath::max(u32 a, u32 b)
+{
+	if(a >= b)
+		return a;
+	return b;
 }
 internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
 {

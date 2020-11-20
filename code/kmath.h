@@ -54,6 +54,7 @@ public:
 	inline v2f32 operator-(const v2f32& other) const;
 	inline v2f32& operator*=(const f32 scalar);
 	inline v2f32& operator+=(const v2f32& other);
+	inline bool isNearlyZero() const;
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
 	/** @return the magnitude of the vector before normalization */
@@ -222,6 +223,8 @@ namespace kmath
 	 */
 	internal inline f32 sine_0_1(f32 radians);
 	internal inline f32 clamp(f32 x, f32 min, f32 max);
+	internal inline f32 max(f32 a, f32 b);
+	internal inline u32 max(u32 a, u32 b);
 	/**
 	 * Find the roots of a given quadratic formula which satisfies the form 
 	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
