@@ -1275,6 +1275,10 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 						return RETURN_CODE_FAILURE;
 					}
 				}
+				else if(arg == 2)
+				{
+					g_echoLogToDebug = (wcscmp(argv[arg], L"0") != 0);
+				}
 			}
 			LocalFree(argv);
 		}

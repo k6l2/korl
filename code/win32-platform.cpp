@@ -582,7 +582,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 #if SLOW_BUILD
 		fflush(duplicatedOutput);
 #endif
-		if(IsDebuggerPresent())
+		if(IsDebuggerPresent() && g_echoLogToDebug)
 		{
 			OutputDebugStringA(logLineBuffer);
 			OutputDebugStringA("\n");

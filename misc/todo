@@ -806,12 +806,50 @@
 		[ ] serialization/deserialization of arbitrary data
 			- probably a good idea to use KCPP for this, since C++ has no 
 				introspection capabilities...
-[ ] win32: pass a parameter to the application indicating that we don't want to 
+[x] win32: pass a parameter to the application indicating that we don't want to 
 	send log output again via debug console ouptut
 	- this should solve the issue of output being duplicated in VSCode
 	- the only reason we are doing this in the first place is because VS doesn't 
 		actually display the output streams in the output console by default :|
+[ ] win32: fix `relativeAssetDir` code so that the parameter passed to the 
+	application doesn't need the trailing '\' character
+[ ] korlTimeProbe macro
+	- getPreviousFrameTimeProbeCount : u32
+	- getPreviousFrameTimeProbe(u32 index)
+	- timeProbeAdd(i8* cStrLabel)
+	- timeProbeStop(i8* cStrLabel)
+	- TimeProbe
+		- u64 timeStart
+		- u64 timeEnd
+		- f32 cachedDurationSeconds
+		- ??? threadId
+		- i8[?] label
+	[ ] KPL: api to add & stop a probe w/ a given label
+		- assumption: there are PROBABLY going to be very FEW probes, maybe on 
+			the order of a couple hundred at the max??  Therefore, I think it 
+			should be ok to just store them in a dynamic monotonically growing 
+			array w/ linear search/access API implementation...
+	[ ] create a macro which is passed a label to probe the current scope
+		- kpl->addTimeProbe(label)
+		- defer(kpl->stopTimeProbe(label))
+	[ ] save probes from the previous frame
+	[ ] clear previous frame probes & swap to new buffer at end of frame
+	[ ] w32: auto probe the following code segments:
+		[ ] total frame
+		[ ] used frame
+		[ ] windows: message processing
+		[ ] dyn app update
+		[ ] windows: total audio
+		[ ] dyn app audio
+	[ ] create a KGT utility function to display (used_frame / total_frame)
+		- probably just using ImGui
+	[ ] create a KGT utility function to log all probes from the previous frame
 [ ] KRB: push/pop MVP matrices
+[ ] KRB: upgrade to modern OpenGL 4.5ish programmable pipeline
+	[ ] process shader programs in assets folder
+		[ ] compile to spir-v
+		[ ] output to build/assets folder
+		[ ] modify kasset pipeline to scan this folder for shaders
 [x] installer batch script
 	[x] prompt the user for a toolchain install directory
 		https://stackoverflow.com/a/50115044/4526664

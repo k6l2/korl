@@ -32,6 +32,7 @@ global_variable GamePad g_gamePadArrayA[XUSER_MAX_COUNT +
                                             CARRAY_SIZE(g_dInputDevices)] = {};
 global_variable GamePad g_gamePadArrayB[XUSER_MAX_COUNT + 
                                             CARRAY_SIZE(g_dInputDevices)] = {};
+global_variable bool g_echoLogToDebug = true;
 struct Win32LockResource
 {
 	bool allocated;
