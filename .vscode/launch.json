@@ -8,7 +8,7 @@
 			"program": "${env:project_root}/build/${env:korlApplicationName}.exe",
 			"args": ["..", "0"],
 			"stopAtEntry": false,
-			"cwd": "${workspaceRoot}",
+			"cwd": "${env:project_root}",
 			"environment": [],
 			"externalConsole": false,
 			"preLaunchTask": "win32 build"
@@ -20,7 +20,7 @@
 			"program": "${env:project_root}/build/${env:korlApplicationName}.exe",
 			"args": ["..", "0"],
 			"stopAtEntry": false,
-			"cwd": "${workspaceRoot}",
+			"cwd": "${env:project_root}",
 			"environment": [],
 			"externalConsole": false,
 			"preLaunchTask": "win32 build release"
