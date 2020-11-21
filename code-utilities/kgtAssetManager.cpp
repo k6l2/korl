@@ -537,6 +537,7 @@ internal KgtFlipBookMetaData
 		return kam->defaultAssetFlipbookMetaData.assetData.flipbook.metaData;
 	}
 }
+global_variable const f32 KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS = 0.25f;
 JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadPng)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
@@ -544,6 +545,8 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadPng)
 	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
 	{
 		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	asset->assetData.image.rawImage = 
 		g_kpl->loadPng(kgtAssetFileNames[kai], 
@@ -556,6 +559,8 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadWav)
 	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
 	{
 		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	asset->assetData.sound = 
 		g_kpl->loadWav(kgtAssetFileNames[kai], 
@@ -568,6 +573,8 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadOgg)
 	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
 	{
 		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	asset->assetData.sound = 
 		g_kpl->loadOgg(kgtAssetFileNames[kai], 
@@ -580,6 +587,8 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadFlipbookMeta)
 	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
 	{
 		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	const i32 assetByteSize = 
 		g_kpl->getAssetByteSize(kgtAssetFileNames[kai]);
@@ -636,6 +645,8 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
 	{
 		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	const i32 assetByteSize = 
 		g_kpl->getAssetByteSize(kgtAssetFileNames[kai]);
@@ -823,8 +834,19 @@ internal u32 kgtAssetManagerUnloadChangedAssets(KgtAssetManager* kam)
 	for(KgtAssetHandle kah = 0; kah < kam->maxAssetHandles; kah++)
 	{
 		KgtAsset*const asset = assets + kah;
-		if(asset->type != KgtAssetType::UNUSED && asset->loaded)
+		if(asset->type != KgtAssetType::UNUSED)
 		{
+			if(!asset->loaded)
+			{
+				if(g_kpl->jobDone(&asset->jqTicketLoading))
+				{
+					kgtAssetManagerOnLoadingJobFinished(kam, kah);
+				}
+				else
+				{
+					continue;
+				}
+			}
 			if(g_kpl->isAssetChanged(kgtAssetFileNames[kah], 
 			                         asset->lastWriteTime))
 			{

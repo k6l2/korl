@@ -901,7 +901,7 @@
 [x] simplify code utility asset manager usage
 	[x] kgtGameState: define a pointer to a global asset manager (g_kam)
 	[x] apply all necessary simplifications to other kgt code utilities
-[ ] prevent application from hanging when the asset manager can't find an asset 
+[x] prevent application from hanging when the asset manager can't find an asset 
 	file
 [x] figure out how to automatically debug launch a program in Visual Studio 
 	without having to actually swap to it and press the stupid button
