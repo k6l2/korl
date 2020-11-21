@@ -811,7 +811,7 @@
 	- this should solve the issue of output being duplicated in VSCode
 	- the only reason we are doing this in the first place is because VS doesn't 
 		actually display the output streams in the output console by default :|
-[ ] win32: fix `relativeAssetDir` code so that the parameter passed to the 
+[x] win32: fix `relativeAssetDir` code so that the parameter passed to the 
 	application doesn't need the trailing '\' character
 [ ] korlTimeProbe macro
 	- getPreviousFrameTimeProbeCount : u32

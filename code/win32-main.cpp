@@ -1415,7 +1415,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	// Locate what directory we should look in for assets //
 	{
 		if(FAILED(StringCchPrintf(g_pathToAssets, MAX_PATH, 
-		                          TEXT("%s\\%wsassets"), 
+		                          TEXT("%s\\%ws\\assets"), 
 		                          g_pathToExe, relativeAssetDir)))
 		{
 			KLOG(ERROR, "Failed to build g_pathToAssets!  g_pathToExe='%s'", 
