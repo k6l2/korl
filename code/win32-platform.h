@@ -71,6 +71,7 @@ internal PLATFORM_LOCK(w32PlatformLock);
 internal PLATFORM_UNLOCK(w32PlatformUnlock);
 internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden);
 internal PLATFORM_MOUSE_SET_RELATIVE_MODE(w32PlatformMouseSetRelativeMode);
+internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows);
 const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 = 
 	{ .postJob                = w32PlatformPostJob
 	, .jobValid               = w32PlatformJobValid
@@ -106,4 +107,5 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .unlock                 = w32PlatformUnlock
 	, .mouseSetHidden         = w32PlatformMouseSetHidden
 	, .mouseSetRelativeMode   = w32PlatformMouseSetRelativeMode
+	, .enumerateWindows       = w32PlatformEnumerateWindows
 };

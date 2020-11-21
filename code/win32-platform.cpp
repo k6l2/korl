@@ -1114,3 +1114,75 @@ internal PLATFORM_MOUSE_SET_CAPTURED(w32PlatformMouseSetCaptured)
 	g_captureMouse = value;
 }
 #endif//0
+struct KorlW32EnumWindowCallbackResources
+{
+	KplWindowMetaData* metaArray;
+	u32 metaArrayCapacity;
+	u32 metaArraySize;
+};
+internal BOOL CALLBACK 
+	korlW32EnumWindowsProc(_In_ HWND   hwnd, _In_ LPARAM lParam)
+{
+	KorlW32EnumWindowCallbackResources*const callbackResources = 
+		reinterpret_cast<KorlW32EnumWindowCallbackResources*>(lParam);
+	/* ensure that we have enough room in the metaArray to put window meta data 
+		for this hwnd into */
+	if(callbackResources->metaArraySize >= callbackResources->metaArrayCapacity)
+	{
+		SetLastError(1);
+		return FALSE;
+	}
+	KplWindowMetaData& o_meta = 
+		callbackResources->metaArray[callbackResources->metaArraySize++];
+	/* get the title text length of the hwnd */
+	SetLastError(0);
+	const int windowTextLength = GetWindowTextLength(hwnd);
+	const DWORD errorGetWindowTextLength = GetLastError();
+	if(windowTextLength == 0 && errorGetWindowTextLength != 0)
+	{
+		SetLastError(2);
+		return FALSE;
+	}
+	/* put the title text into the callbackResources metaArray at the next 
+		position */
+	const int windowTextLengthCopied = 
+		GetWindowText(
+			hwnd, reinterpret_cast<LPSTR>(o_meta.cStrTitle), 
+			CARRAY_SIZE(o_meta.cStrTitle));
+	if(windowTextLengthCopied <= 0)
+	{
+		const DWORD errorGetWindowText = GetLastError();
+		/* if nothing was copied and no error occurred, then we can't really use 
+			this window because there is nothing to identify it, so let's just 
+			not include it... */
+		if(errorGetWindowText == ERROR_SUCCESS)
+		{
+			callbackResources->metaArraySize--;
+			return TRUE;
+		}
+		/* otherwise, something must have gone wrong! ⚰ */
+		KLOG(ERROR, "GetWindowText failed! getlasterror=%i", 
+		     errorGetWindowText);
+		SetLastError(3);
+		return FALSE;
+	}
+	/* finally, we can safely copy the hwnd into the output meta data struct */
+	o_meta.handle = hwnd;
+	return TRUE;
+}
+internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows)
+{
+	KorlW32EnumWindowCallbackResources callbackResources = {};
+	callbackResources.metaArray         = o_metaArray;
+	callbackResources.metaArrayCapacity = metaArrayCapacity;
+	const BOOL resultEnumWindows = 
+		EnumWindows(
+			korlW32EnumWindowsProc, 
+			reinterpret_cast<LPARAM>(&callbackResources));
+	if(!resultEnumWindows)
+	{
+		KLOG(ERROR, "EnumWindows failure! getlasterror=%i", GetLastError());
+		return -1;
+	}
+	return callbackResources.metaArraySize;
+}

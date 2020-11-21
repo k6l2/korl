@@ -199,6 +199,18 @@ using KplLockHandle = u8;
  */
 #define PLATFORM_MOUSE_SET_RELATIVE_MODE(name) \
 	void name(bool value)
+using KplWindowHandle = void*;
+struct KplWindowMetaData
+{
+	i8 cStrTitle[128];
+	KplWindowHandle handle;
+};
+/**
+ * @return The # of KplWindowMetaData elements obtained from the platform.  
+ *         If an error occurs, a number < 0 is returned.
+ */
+#define PLATFORM_ENUMERATE_WINDOWS(name) \
+	i32 name(KplWindowMetaData* o_metaArray, u32 metaArrayCapacity)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -235,6 +247,7 @@ typedef PLATFORM_LOCK(fnSig_platformLock);
 typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
 typedef PLATFORM_MOUSE_SET_HIDDEN(fnSig_platformMouseSetHidden);
 typedef PLATFORM_MOUSE_SET_RELATIVE_MODE(fnSig_platformMouseSetRelativeMode);
+typedef PLATFORM_ENUMERATE_WINDOWS(fnSig_platformEnumerateWindows);
 struct KorlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -271,6 +284,7 @@ struct KorlPlatformApi
 	fnSig_platformUnlock* unlock;
 	fnSig_platformMouseSetHidden* mouseSetHidden;
 	fnSig_platformMouseSetRelativeMode* mouseSetRelativeMode;
+	fnSig_platformEnumerateWindows* enumerateWindows;
 };
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory
