@@ -15,7 +15,9 @@ internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 	                             memory.imguiAllocUserData);
 }
 internal void 
-	kgtGameStateInitialize(GameMemory& memory, size_t totalGameStateSize)
+	kgtGameStateInitialize(
+		GameMemory& memory, size_t totalGameStateSize, 
+		size_t frameAllocatorBytes)
 {
 	korlAssert(totalGameStateSize <= memory.permanentMemoryBytes);
 	/* Tell KRB where it can safely store its CPU-side internal state.  We only 
@@ -32,11 +34,12 @@ internal void
 		memory.transientMemory, memory.transientMemoryBytes);
 	// construct a linear frame allocator //
 	{
-		local_persist const size_t FRAME_ALLOC_BYTES = kmath::megabytes(5);
 		void*const kalFrameStartAddress = 
-			kgtAllocAlloc(g_kgs->hKalPermanent, FRAME_ALLOC_BYTES);
-		g_kgs->hKalFrame = kgtAllocInit(
-			KgtAllocatorType::LINEAR, kalFrameStartAddress, FRAME_ALLOC_BYTES);
+			kgtAllocAlloc(g_kgs->hKalPermanent, frameAllocatorBytes);
+		g_kgs->hKalFrame = 
+			kgtAllocInit(
+				KgtAllocatorType::LINEAR, kalFrameStartAddress, 
+				frameAllocatorBytes);
 	}
 	// Contruct/Initialize the game's AssetManager //
 	g_kgs->assetManager = kgtAssetManagerConstruct(

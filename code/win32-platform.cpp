@@ -1189,8 +1189,8 @@ internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows)
 internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
 	w32PlatformGetWindowRawImageMetaData)
 {
-	korlAssert(hWindow);
 	RawImage result = {};
+	/* obtain the device context of the target window */
 	if(!(*hWindow))
 		return result;
 	HWND hwnd = reinterpret_cast<HWND>(*hWindow);
@@ -1207,6 +1207,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
 		return result;
 	}
 	defer(ReleaseDC(hwnd, hdcHwnd));
+	/* extract the size of the target window */
 	RECT rectHwnd;
 	const BOOL successGetClientRect = GetClientRect(hwnd, &rectHwnd);
 	if(!successGetClientRect)
@@ -1223,4 +1224,108 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
 }
 internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 {
+	/* obtain a device context to the window */
+	if(!(*hWindow))
+		return;
+	HWND hwnd = reinterpret_cast<HWND>(*hWindow);
+	if(!hwnd)
+	{
+		KLOG(ERROR, "null hwnd!");
+		return;
+	}
+	HDC hdcHwnd = GetDC(hwnd);
+	if(!hdcHwnd)
+	{
+		KLOG(ERROR, "GetDC failed!");
+		*hWindow = nullptr;
+		return;
+	}
+	defer(ReleaseDC(hwnd, hdcHwnd));
+	/* extract the size of the target window & verify that the dimensions of 
+		`*io_rawImage` match these values */
+	RECT rectHwnd;
+	const BOOL successGetClientRect = GetClientRect(hwnd, &rectHwnd);
+	if(!successGetClientRect)
+	{
+		KLOG(ERROR, "GetClientRect failed! getlasterror=%i", GetLastError());
+		return;
+	}
+	/* according to MSDN, left & top are always 0, so I don't actually need to 
+		do this subtraction here, but w/e... */
+	const u32 hwndSizeX = 
+		kmath::safeTruncateU32(rectHwnd.right  - rectHwnd.left);
+	const u32 hwndSizeY = 
+		kmath::safeTruncateU32(rectHwnd.bottom - rectHwnd.top);
+	if(   io_rawImage->sizeX != hwndSizeX
+	   || io_rawImage->sizeY != hwndSizeY)
+	{
+		KLOG(ERROR, "rawImage size {%i,%i} != hwnd size {%i, %i}!", 
+		     io_rawImage->sizeX, io_rawImage->sizeY, hwndSizeX, hwndSizeY);
+		return;
+	}
+	/* @simplify: If `GetPixel` only requires a HDC, do we even need to do all 
+		this bitmap BitBlt nonsense??... */
+	/* create a device context to perform bitblt operations on a bitmap */
+	HDC hdcBitmap = CreateCompatibleDC(hdcHwnd);
+	if(!hdcBitmap)
+	{
+		KLOG(ERROR, "CreateCompatibleDC failed!");
+		return;
+	}
+	defer(DeleteDC(hdcBitmap));
+	/* create a bitmap handle with the same dimensions as the target window */
+	HBITMAP hbmHwnd = 
+		CreateCompatibleBitmap(
+			hdcHwnd, io_rawImage->sizeX, io_rawImage->sizeY);
+	if(!hbmHwnd)
+	{
+		KLOG(ERROR, "CreateCompatibleBitmap failed!");
+		return;
+	}
+	defer(DeleteObject(hbmHwnd));
+	/* select the bitmap into the designated device context */
+	const HGDIOBJ resultSelectObject = SelectObject(hdcBitmap, hbmHwnd);
+	if(resultSelectObject == HGDI_ERROR || !resultSelectObject)
+	{
+		KLOG(ERROR, "SelectObject failed!");
+		return;
+	}
+	/* copy the window gfx into the bitmap handle */
+	const BOOL successBitBlt = 
+		BitBlt(
+			hdcBitmap, 0, 0, io_rawImage->sizeX, io_rawImage->sizeY, 
+			hdcHwnd, 0, 0, SRCCOPY | CAPTUREBLT);
+	if(!successBitBlt)
+	{
+		KLOG(ERROR, "BitBlt failure! getlasterror=%i", GetLastError());
+		return;
+	}
+#if 1
+	/* obtain a bitmap from the bitmap handle */
+	BITMAP bmpHwnd;
+	const int bytesWrittenGetBmp = 
+		GetObject(hbmHwnd, sizeof(bmpHwnd), &bmpHwnd);
+	if(bytesWrittenGetBmp == 0)
+	{
+		KLOG(ERROR, "GetObject failure!");
+		return;
+	}
+	/* obtain the bits from the bitmap */
+#endif// 0
+	/* copy the bits from the bitmap into the provided RawImage */
+	for(u32 y = 0; y < hwndSizeY; y++)
+	{
+		for(u32 x = 0; x < hwndSizeX; x++)
+		{
+			const COLORREF bitmapColor = GetPixel(hdcBitmap, x, y);
+			const size_t rawPixelIndex = y*hwndSizeX + x;
+			io_rawImage->pixelData[4*rawPixelIndex + 0] = 
+				GetRValue(bitmapColor);
+			io_rawImage->pixelData[4*rawPixelIndex + 1] = 
+				GetGValue(bitmapColor);
+			io_rawImage->pixelData[4*rawPixelIndex + 2] = 
+				GetBValue(bitmapColor);
+			io_rawImage->pixelData[4*rawPixelIndex + 3] = 0xFF;
+		}
+	}
 }

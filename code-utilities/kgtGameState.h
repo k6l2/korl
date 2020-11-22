@@ -40,7 +40,9 @@ internal void
  * occupied by `tgs` BEFORE calling this function!!!
  */
 internal void 
-	kgtGameStateInitialize(GameMemory& memory, size_t totalGameStateSize);
+	kgtGameStateInitialize(
+		GameMemory& memory, size_t totalGameStateSize, 
+		size_t frameAllocatorBytes = kmath::megabytes(5));
 internal void 
 	kgtGameStateRenderAudio(
 		GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed);
