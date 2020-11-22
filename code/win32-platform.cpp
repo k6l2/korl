@@ -1186,3 +1186,41 @@ internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows)
 	}
 	return callbackResources.metaArraySize;
 }
+internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
+	w32PlatformGetWindowRawImageMetaData)
+{
+	korlAssert(hWindow);
+	RawImage result = {};
+	if(!(*hWindow))
+		return result;
+	HWND hwnd = reinterpret_cast<HWND>(*hWindow);
+	if(!hwnd)
+	{
+		KLOG(ERROR, "null hwnd!");
+		return result;
+	}
+	HDC hdcHwnd = GetDC(hwnd);
+	if(!hdcHwnd)
+	{
+		KLOG(ERROR, "GetDC failed!");
+		*hWindow = nullptr;
+		return result;
+	}
+	defer(ReleaseDC(hwnd, hdcHwnd));
+	RECT rectHwnd;
+	const BOOL successGetClientRect = GetClientRect(hwnd, &rectHwnd);
+	if(!successGetClientRect)
+	{
+		KLOG(ERROR, "GetClientRect failed! getlasterror=%i", GetLastError());
+		*hWindow = nullptr;
+		return result;
+	}
+	/* according to MSDN, left & top are always 0, so I don't actually need to 
+		do this subtraction here, but w/e... */
+	result.sizeX = rectHwnd.right  - rectHwnd.left;
+	result.sizeY = rectHwnd.bottom - rectHwnd.top;
+	return result;
+}
+internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
+{
+}

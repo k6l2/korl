@@ -72,40 +72,45 @@ internal PLATFORM_UNLOCK(w32PlatformUnlock);
 internal PLATFORM_MOUSE_SET_HIDDEN(w32PlatformMouseSetHidden);
 internal PLATFORM_MOUSE_SET_RELATIVE_MODE(w32PlatformMouseSetRelativeMode);
 internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows);
+internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
+	w32PlatformGetWindowRawImageMetaData);
+internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage);
 const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 = 
-	{ .postJob                = w32PlatformPostJob
-	, .jobValid               = w32PlatformJobValid
-	, .jobDone                = w32PlatformJobDone
-	, .log                    = w32PlatformLog
-	, .assertFailure          = w32PlatformAssertFailure
-	, .decodeZ85Png           = w32PlatformDecodeZ85Png
-	, .decodeZ85Wav           = w32PlatformDecodeZ85Wav
-	, .getAssetByteSize       = w32PlatformGetAssetByteSize
-	, .readEntireAsset        = w32PlatformReadEntireAsset
-	, .loadWav                = w32PlatformLoadWav
-	, .loadOgg                = w32PlatformLoadOgg
-	, .loadPng                = w32PlatformLoadPng
-	, .getAssetWriteTime      = w32PlatformGetAssetWriteTime
-	, .isAssetChanged         = w32PlatformIsAssetChanged
-	, .isAssetAvailable       = w32PlatformIsAssetAvailable
-	, .isFullscreen           = w32PlatformIsFullscreen
-	, .setFullscreen          = w32PlatformSetFullscreen
-	, .getGamePadActiveButton = w32PlatformGetGamePadActiveButton
-	, .getGamePadActiveAxis   = w32PlatformGetGamePadActiveAxis
-	, .getGamePadProductName  = w32PlatformGetGamePadProductName
-	, .getGamePadProductGuid  = w32PlatformGetGamePadProductGuid
-	, .getTimeStamp           = w32PlatformGetTimeStamp
-	, .sleepFromTimeStamp     = w32PlatformSleepFromTimeStamp
-	, .secondsSinceTimeStamp  = w32PlatformSecondsSinceTimeStamp
-	, .netResolveAddress      = w32PlatformNetworkResolveAddress
-	, .socketOpenUdp          = w32PlatformNetworkOpenSocketUdp
-	, .socketClose            = w32PlatformNetworkCloseSocket
-	, .socketSend             = w32PlatformNetworkSend
-	, .socketReceive          = w32PlatformNetworkReceive
-	, .reserveLock            = w32PlatformReserveLock
-	, .lock                   = w32PlatformLock
-	, .unlock                 = w32PlatformUnlock
-	, .mouseSetHidden         = w32PlatformMouseSetHidden
-	, .mouseSetRelativeMode   = w32PlatformMouseSetRelativeMode
-	, .enumerateWindows       = w32PlatformEnumerateWindows
+	{ .postJob                   = w32PlatformPostJob
+	, .jobValid                  = w32PlatformJobValid
+	, .jobDone                   = w32PlatformJobDone
+	, .log                       = w32PlatformLog
+	, .assertFailure             = w32PlatformAssertFailure
+	, .decodeZ85Png              = w32PlatformDecodeZ85Png
+	, .decodeZ85Wav              = w32PlatformDecodeZ85Wav
+	, .getAssetByteSize          = w32PlatformGetAssetByteSize
+	, .readEntireAsset           = w32PlatformReadEntireAsset
+	, .loadWav                   = w32PlatformLoadWav
+	, .loadOgg                   = w32PlatformLoadOgg
+	, .loadPng                   = w32PlatformLoadPng
+	, .getAssetWriteTime         = w32PlatformGetAssetWriteTime
+	, .isAssetChanged            = w32PlatformIsAssetChanged
+	, .isAssetAvailable          = w32PlatformIsAssetAvailable
+	, .isFullscreen              = w32PlatformIsFullscreen
+	, .setFullscreen             = w32PlatformSetFullscreen
+	, .getGamePadActiveButton    = w32PlatformGetGamePadActiveButton
+	, .getGamePadActiveAxis      = w32PlatformGetGamePadActiveAxis
+	, .getGamePadProductName     = w32PlatformGetGamePadProductName
+	, .getGamePadProductGuid     = w32PlatformGetGamePadProductGuid
+	, .getTimeStamp              = w32PlatformGetTimeStamp
+	, .sleepFromTimeStamp        = w32PlatformSleepFromTimeStamp
+	, .secondsSinceTimeStamp     = w32PlatformSecondsSinceTimeStamp
+	, .netResolveAddress         = w32PlatformNetworkResolveAddress
+	, .socketOpenUdp             = w32PlatformNetworkOpenSocketUdp
+	, .socketClose               = w32PlatformNetworkCloseSocket
+	, .socketSend                = w32PlatformNetworkSend
+	, .socketReceive             = w32PlatformNetworkReceive
+	, .reserveLock               = w32PlatformReserveLock
+	, .lock                      = w32PlatformLock
+	, .unlock                    = w32PlatformUnlock
+	, .mouseSetHidden            = w32PlatformMouseSetHidden
+	, .mouseSetRelativeMode      = w32PlatformMouseSetRelativeMode
+	, .enumerateWindows          = w32PlatformEnumerateWindows
+	, .getWindowRawImageMetaData = w32PlatformGetWindowRawImageMetaData
+	, .getWindowRawImage         = w32PlatformGetWindowRawImage
 };

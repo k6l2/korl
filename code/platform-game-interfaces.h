@@ -211,6 +211,13 @@ struct KplWindowMetaData
  */
 #define PLATFORM_ENUMERATE_WINDOWS(name) \
 	i32 name(KplWindowMetaData* o_metaArray, u32 metaArrayCapacity)
+/**
+ * If an error occurs, *hWindow will be automatically nullified.
+ */
+#define PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(name) \
+	RawImage name(KplWindowHandle* hWindow)
+#define PLATFORM_GET_WINDOW_RAW_IMAGE(name) \
+	void name(KplWindowHandle* hWindow, RawImage* io_rawImage)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -227,7 +234,7 @@ typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
 typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
 typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
-	                                      fnSig_platformGetGamePadActiveButton);
+	fnSig_platformGetGamePadActiveButton);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_NAME(fnSig_platformGetGamePadProductName);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
@@ -248,6 +255,9 @@ typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
 typedef PLATFORM_MOUSE_SET_HIDDEN(fnSig_platformMouseSetHidden);
 typedef PLATFORM_MOUSE_SET_RELATIVE_MODE(fnSig_platformMouseSetRelativeMode);
 typedef PLATFORM_ENUMERATE_WINDOWS(fnSig_platformEnumerateWindows);
+typedef PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
+	fnSig_platformGetWindowRawImageMetaData);
+typedef PLATFORM_GET_WINDOW_RAW_IMAGE(fnSig_platformGetWindowRawImage);
 struct KorlPlatformApi
 {
 	fnSig_platformPostJob* postJob;
@@ -285,6 +295,8 @@ struct KorlPlatformApi
 	fnSig_platformMouseSetHidden* mouseSetHidden;
 	fnSig_platformMouseSetRelativeMode* mouseSetRelativeMode;
 	fnSig_platformEnumerateWindows* enumerateWindows;
+	fnSig_platformGetWindowRawImageMetaData* getWindowRawImageMetaData;
+	fnSig_platformGetWindowRawImage* getWindowRawImage;
 };
 /***************************************************** END PLATFORM INTERFACE */
 struct GameMemory
