@@ -1219,8 +1219,8 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
 	}
 	/* according to MSDN, left & top are always 0, so I don't actually need to 
 		do this subtraction here, but w/e... */
-	result.sizeX = rectHwnd.right  - rectHwnd.left;
-	result.sizeY = rectHwnd.bottom - rectHwnd.top;
+	result.sizeX           = rectHwnd.right  - rectHwnd.left;
+	result.sizeY           = rectHwnd.bottom - rectHwnd.top;
 	result.pixelDataFormat = KorlPixelDataFormat::BGR;
 	return result;
 }
@@ -1265,8 +1265,6 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		     io_rawImage->sizeX, io_rawImage->sizeY, hwndSizeX, hwndSizeY);
 		return;
 	}
-	/* @simplify: If `GetPixel` only requires a HDC, do we even need to do all 
-		this bitmap BitBlt nonsense??... */
 	/* create a device context to perform bitblt operations on a bitmap */
 	HDC hdcBitmap = CreateCompatibleDC(hdcHwnd);
 	if(!hdcBitmap)
@@ -1306,7 +1304,6 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		KLOG(ERROR, "BitBlt failure! getlasterror=%i", GetLastError());
 		return;
 	}
-#if 1
 	/* obtain a bitmap from the bitmap handle */
 	BITMAP bmpHwnd;
 	const int bytesWrittenGetBmp = 
@@ -1316,35 +1313,14 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		KLOG(ERROR, "GetObject failure!");
 		return;
 	}
-	/* obtain the bits from the bitmap */
-#endif// 0
 	/* copy the bits from the bitmap into the provided RawImage */
-#if 1
-#if 1
 	BITMAPINFO bitmapInfo = {};
-#else
-	/* to extract uncompressed bitmap pixel data in an arbitrary byte order for 
-		each of the color components, we must allocate enough size for 3 bitmask 
-		DWORDs which are referenced by the bmiColors member 
-		See: https://docs.microsoft.com/en-us/previous-versions/dd183376(v=vs.85) */
-	local_persist const size_t BMP_INFO_BYTES = 
-		sizeof(BITMAPINFO) + 3*sizeof(DWORD);
-	u8 bmpInfoBuffer[BMP_INFO_BYTES];
-	BITMAPINFO& bitmapInfo = *reinterpret_cast<BITMAPINFO*>(bmpInfoBuffer);
-	bitmapInfo = {};
-#endif// 0
 	bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
 	bitmapInfo.bmiHeader.biWidth       =       io_rawImage->sizeX;
 	bitmapInfo.bmiHeader.biHeight      = -LONG(io_rawImage->sizeY);
 	bitmapInfo.bmiHeader.biPlanes      = 1;
 	bitmapInfo.bmiHeader.biBitCount    = 24;
 	bitmapInfo.bmiHeader.biCompression = BI_RGB;
-#if 0
-	static_assert(sizeof(*bitmapInfo.bmiColors) == sizeof(DWORD));
-	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[0]) = 0x00FF0000;
-	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[1]) = 0x0000FF00;
-	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[2]) = 0x000000FF;
-#endif// 0
 	/* MSDN: hbmp parameter must not be selected into a device context when the 
 		application calls GetDIBits */
 	SelectObject(hdcBitmap, resultSelectObject);
@@ -1361,43 +1337,4 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		KLOG(ERROR, "GetDIBits failed!");
 		return;
 	}
-#if 0
-	/* set alpha component to opaque */
-	/* @speed: this is completely unnecessary, as is allocating an extra byte 
-		per pixel for an alpha component!  Remove this after modifying KRB to 
-		accept RGB-only RawImages! */
-	u32*const pixelsRawImg = reinterpret_cast<u32*>(io_rawImage->pixelData);
-	for(u32 y = 0; y < hwndSizeY; y++)
-	{
-		for(u32 x = 0; x < hwndSizeX; x++)
-		{
-			const size_t pixelIndex = y*hwndSizeX + x;
-			/* functionally equivilant methods of setting opaque alpha: */
-			//pixelsRawImg[pixelIndex] |= 0xFF000000;
-			io_rawImage->pixelData[4*pixelIndex + 3] = 0xFF;
-			/* swap R & B components: */
-			const u8 tempRed = io_rawImage->pixelData[4*pixelIndex + 0];
-			io_rawImage->pixelData[4*pixelIndex + 0] = 
-				io_rawImage->pixelData[4*pixelIndex + 2];
-			io_rawImage->pixelData[4*pixelIndex + 2] = tempRed;
-		}
-	}
-#endif// 0
-#else
-	for(u32 y = 0; y < hwndSizeY; y++)
-	{
-		for(u32 x = 0; x < hwndSizeX; x++)
-		{
-			const COLORREF bitmapColor = GetPixel(hdcBitmap, x, y);
-			const size_t rawPixelIndex = y*hwndSizeX + x;
-			io_rawImage->pixelData[4*rawPixelIndex + 0] = 
-				GetRValue(bitmapColor);
-			io_rawImage->pixelData[4*rawPixelIndex + 1] = 
-				GetGValue(bitmapColor);
-			io_rawImage->pixelData[4*rawPixelIndex + 2] = 
-				GetBValue(bitmapColor);
-			io_rawImage->pixelData[4*rawPixelIndex + 3] = 0xFF;
-		}
-	}
-#endif// 0
 }
