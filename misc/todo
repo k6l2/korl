@@ -888,7 +888,9 @@
 	https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/previousinformation/physics5collisionmanifolds/2017%20Tutorial%205%20-%20Collision%20Manifolds.pdf
 	http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 	https://archive.org/details/GDC2013Gregorius
+	http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 	http://twvideo01.ubm-us.net/o1/vault/gdc10/slides/Catto_Erin_PhysicsForProgrammers_ComputingDistance.pdf
+	https://andysomogyi.github.io/mechanica/bullet.html
 [ ] samples: render TTF
 	[ ] integrate stb_truetype
 	[ ] utility: font cache dynamic asset
@@ -946,6 +948,7 @@
 [ ] samples: constrained physics simulation
 	VERY useful resource I used to create Dennistar!
 		https://gafferongames.com/categories/virtual-go/
+		https://www.codecogs.com/latex/eqneditor.php
 	Which references this wikipedia page for impulse collision reactions:
 		https://en.wikipedia.org/wiki/Collision_response#Impulse-Based_Reaction_Model
 	Additional Dennistar resources:

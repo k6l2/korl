@@ -1290,11 +1290,15 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		KLOG(ERROR, "SelectObject failed!");
 		return;
 	}
+	/* With GDI, we must ALWAYS restore the previously selected object before 
+		deleting the object/DC! 
+		See: https://stackoverflow.com/a/27434450/4526664 */
+	defer(SelectObject(hdcBitmap, resultSelectObject));
 	/* copy the window gfx into the bitmap handle */
 	const BOOL successBitBlt = 
 		BitBlt(
 			hdcBitmap, 0, 0, io_rawImage->sizeX, io_rawImage->sizeY, 
-			hdcHwnd, 0, 0, SRCCOPY | CAPTUREBLT);
+			hdcHwnd, 0, 0, SRCCOPY);// | CAPTUREBLT);
 	if(!successBitBlt)
 	{
 		KLOG(ERROR, "BitBlt failure! getlasterror=%i", GetLastError());
@@ -1313,6 +1317,41 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	/* obtain the bits from the bitmap */
 #endif// 0
 	/* copy the bits from the bitmap into the provided RawImage */
+#if 1
+	BITMAPINFO bitmapInfo = {};
+	bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+	bitmapInfo.bmiHeader.biWidth       =      io_rawImage->sizeX;
+	bitmapInfo.bmiHeader.biHeight      = LONG(io_rawImage->sizeY);
+	bitmapInfo.bmiHeader.biPlanes      = 1;
+	bitmapInfo.bmiHeader.biBitCount    = 32;
+	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	/* MSDN: hbmp parameter must not be selected into a device context when the 
+		application calls GetDIBits */
+	SelectObject(hdcBitmap, resultSelectObject);
+	const int copiedScanLines = 
+		GetDIBits(hdcHwnd, hbmHwnd, 0, bmpHwnd.bmHeight, 
+		          io_rawImage->pixelData, &bitmapInfo, DIB_RGB_COLORS);
+	if(copiedScanLines == ERROR_INVALID_PARAMETER)
+	{
+		KLOG(ERROR, "GetDIBits: ERROR_INVALID_PARAMETER!");
+		return;
+	}
+	if(copiedScanLines == 0)
+	{
+		KLOG(ERROR, "GetDIBits failed!");
+		return;
+	}
+	//u32*const pixelsRawImg = reinterpret_cast<u32*>(io_rawImage->pixelData);
+	//u32*const pixelsBmp    = reinterpret_cast<u32*>(bmpHwnd.bmBits);
+	//for(u32 y = 0; y < hwndSizeY; y++)
+	//{
+	//	for(u32 x = 0; x < hwndSizeX; x++)
+	//	{
+	//		const size_t pixelIndex = y*hwndSizeX + x;
+	//		pixelsRawImg[pixelIndex] = pixelsBmp[pixelIndex];
+	//	}
+	//}
+#else
 	for(u32 y = 0; y < hwndSizeY; y++)
 	{
 		for(u32 x = 0; x < hwndSizeX; x++)
@@ -1328,4 +1367,5 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 			io_rawImage->pixelData[4*rawPixelIndex + 3] = 0xFF;
 		}
 	}
+#endif// 0
 }
