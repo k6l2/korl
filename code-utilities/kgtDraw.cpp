@@ -84,3 +84,19 @@ internal void
 		v3f32::ZERO.elements, camForward.elements, v3f32::Z.elements);
 	kgtDrawAxes({squareSize/2.f, squareSize/2.f, squareSize/2.f});
 }
+internal void 
+	kgtDrawBoxLines2d(
+		const v2f32& cornerA, const v2f32& cornerB, const Color4f32& color)
+{
+	const KgtVertex mesh[] = 
+		{ {{cornerA.x, cornerA.y, 0}, {}, color}
+		, {{cornerA.x, cornerB.y, 0}, {}, color}
+		, {{cornerA.x, cornerA.y, 0}, {}, color}
+		, {{cornerB.x, cornerA.y, 0}, {}, color}
+		, {{cornerB.x, cornerB.y, 0}, {}, color}
+		, {{cornerB.x, cornerA.y, 0}, {}, color}
+		, {{cornerB.x, cornerB.y, 0}, {}, color}
+		, {{cornerA.x, cornerB.y, 0}, {}, color} };
+	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
+	                 KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+}

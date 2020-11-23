@@ -17,6 +17,10 @@ inline v2u32 v2u32::operator/(u32 discreteScalar) const
 	korlAssert(discreteScalar != 0);
 	return {x / discreteScalar, y / discreteScalar};
 }
+inline v2u32 v2u32::operator*(const v2u32& other) const
+{
+	return {x*other.x, y*other.y};
+}
 v2i32::v2i32()
 {
 }

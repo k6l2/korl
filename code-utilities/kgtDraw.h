@@ -26,6 +26,9 @@ internal void
 		const v3f32& camPosition);
 internal void 
 	kgtDrawCompass(u32 squareSize, const v3f32& camForward);
+internal void 
+	kgtDrawBoxLines2d(
+		const v2f32& cornerA, const v2f32& cornerB, const Color4f32& color);
 #define USE_IMAGE(kgtAssetIndex) \
 	g_krb->useTexture(\
 		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \
