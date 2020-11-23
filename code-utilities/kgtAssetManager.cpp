@@ -91,9 +91,10 @@ internal KgtAssetManager*
 		                    assetDataAllocator);
 	defaultAssetImage.assetData.image.krbTextureHandle = krbApi
 		? krbApi->loadImage(
-			defaultAssetImage.assetData.image.rawImage.sizeX,
-			defaultAssetImage.assetData.image.rawImage.sizeY,
-			defaultAssetImage.assetData.image.rawImage.pixelData)
+			defaultAssetImage.assetData.image.rawImage.sizeX, 
+			defaultAssetImage.assetData.image.rawImage.sizeY, 
+			defaultAssetImage.assetData.image.rawImage.pixelData, 
+			defaultAssetImage.assetData.image.rawImage.pixelDataFormat )
 		: krb::INVALID_TEXTURE_HANDLE;
 	KgtAsset defaultAssetSound;
 	defaultAssetSound.type = KgtAssetType::RAW_SOUND;
@@ -214,9 +215,10 @@ internal void
 			korlAssert(asset->assetData.image.krbTextureHandle == 
 				krb::INVALID_TEXTURE_HANDLE);
 			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
-				asset->assetData.image.rawImage.sizeX,
-				asset->assetData.image.rawImage.sizeY,
-				asset->assetData.image.rawImage.pixelData);
+				asset->assetData.image.rawImage.sizeX, 
+				asset->assetData.image.rawImage.sizeY, 
+				asset->assetData.image.rawImage.pixelData ,
+				asset->assetData.image.rawImage.pixelDataFormat );
 		}break;
 		case KgtAssetType::RAW_SOUND:
 		{

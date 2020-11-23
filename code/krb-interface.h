@@ -105,8 +105,16 @@ struct KrbVertexAttributeOffsets
 	void name(const f32 rowMajorMatrix4x4[16])
 #define KRB_SET_MODEL_XFORM_BILLBOARD(name) \
 	void name(bool lockX, bool lockY, bool lockZ)
+enum class KorlPixelDataFormat : u8
+	{ RGBA
+	, BGR };
+global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] = 
+	{ 32
+	, 24 };
 #define KRB_LOAD_IMAGE(name) \
-	KrbTextureHandle name(u32 imageSizeX, u32 imageSizeY, u8* imageDataRGBA)
+	KrbTextureHandle name(\
+		u32 imageSizeX, u32 imageSizeY, u8* pixelData, \
+		KorlPixelDataFormat pixelDataFormat)
 #define KRB_DELETE_TEXTURE(name) \
 	void name(KrbTextureHandle krbTextureHandle)
 #define KRB_USE_TEXTURE(name) \

@@ -505,13 +505,42 @@ internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard)
 	glLoadTransposeMatrixf(modelView.elements);
 	GL_CHECK_ERROR();
 }
+internal GLint 
+	korlRenderBackendDecodeImageInternalFormat(KorlPixelDataFormat pdf)
+{
+	switch(pdf)
+	{
+		case KorlPixelDataFormat::RGBA:
+			break;
+		case KorlPixelDataFormat::BGR:
+			return GL_RGB8;
+	}
+	return GL_RGBA8;
+}
+internal GLenum 
+	korlRenderBackendDecodeImageFormat(KorlPixelDataFormat pdf)
+{
+	switch(pdf)
+	{
+		case KorlPixelDataFormat::RGBA:
+			break;
+		case KorlPixelDataFormat::BGR:
+			return GL_BGR;
+	}
+	return GL_RGBA;
+}
 internal KRB_LOAD_IMAGE(krbLoadImage)
 {
 	GLuint texName;
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageSizeX, imageSizeY, 0, 
-	             GL_RGBA, GL_UNSIGNED_BYTE, imageDataRGBA);
+	const GLint internalFormat = 
+		korlRenderBackendDecodeImageInternalFormat(pixelDataFormat);
+	const GLenum format = 
+		korlRenderBackendDecodeImageFormat(pixelDataFormat);
+	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, 
+	             imageSizeX, imageSizeY, 0, 
+	             format, GL_UNSIGNED_BYTE, pixelData);
 	GL_CHECK_ERROR();
 	return texName;
 }

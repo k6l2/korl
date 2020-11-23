@@ -132,10 +132,11 @@ internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
 		return {};
 	}
 	memcpy(pixelData, img, imgW*imgH*4);
-	return RawImage{
-		.sizeX     = kmath::safeTruncateU32(imgW),
-		.sizeY     = kmath::safeTruncateU32(imgH), 
-		.pixelData = pixelData };
+	return RawImage
+		{ .sizeX           = kmath::safeTruncateU32(imgW) 
+		, .sizeY           = kmath::safeTruncateU32(imgH) 
+		, .pixelDataFormat = KorlPixelDataFormat::RGBA 
+		, .pixelData       = pixelData };
 }
 internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 {
@@ -1220,6 +1221,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
 		do this subtraction here, but w/e... */
 	result.sizeX = rectHwnd.right  - rectHwnd.left;
 	result.sizeY = rectHwnd.bottom - rectHwnd.top;
+	result.pixelDataFormat = KorlPixelDataFormat::BGR;
 	return result;
 }
 internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
@@ -1318,8 +1320,9 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 #endif// 0
 	/* copy the bits from the bitmap into the provided RawImage */
 #if 1
-	//memset(io_rawImage->pixelData, 0xFF, 
-	//       4*(io_rawImage->sizeX*io_rawImage->sizeY));
+#if 1
+	BITMAPINFO bitmapInfo = {};
+#else
 	/* to extract uncompressed bitmap pixel data in an arbitrary byte order for 
 		each of the color components, we must allocate enough size for 3 bitmask 
 		DWORDs which are referenced by the bmiColors member 
@@ -1329,16 +1332,19 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	u8 bmpInfoBuffer[BMP_INFO_BYTES];
 	BITMAPINFO& bitmapInfo = *reinterpret_cast<BITMAPINFO*>(bmpInfoBuffer);
 	bitmapInfo = {};
+#endif// 0
 	bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
 	bitmapInfo.bmiHeader.biWidth       =       io_rawImage->sizeX;
 	bitmapInfo.bmiHeader.biHeight      = -LONG(io_rawImage->sizeY);
 	bitmapInfo.bmiHeader.biPlanes      = 1;
-	bitmapInfo.bmiHeader.biBitCount    = 32;
-	bitmapInfo.bmiHeader.biCompression = BI_BITFIELDS;
+	bitmapInfo.bmiHeader.biBitCount    = 24;
+	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+#if 0
 	static_assert(sizeof(*bitmapInfo.bmiColors) == sizeof(DWORD));
-	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[0]) = 0x000000FF;
+	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[0]) = 0x00FF0000;
 	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[1]) = 0x0000FF00;
-	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[2]) = 0x00FF0000;
+	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[2]) = 0x000000FF;
+#endif// 0
 	/* MSDN: hbmp parameter must not be selected into a device context when the 
 		application calls GetDIBits */
 	SelectObject(hdcBitmap, resultSelectObject);
@@ -1355,6 +1361,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		KLOG(ERROR, "GetDIBits failed!");
 		return;
 	}
+#if 0
 	/* set alpha component to opaque */
 	/* @speed: this is completely unnecessary, as is allocating an extra byte 
 		per pixel for an alpha component!  Remove this after modifying KRB to 
@@ -1375,6 +1382,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 			io_rawImage->pixelData[4*pixelIndex + 2] = tempRed;
 		}
 	}
+#endif// 0
 #else
 	for(u32 y = 0; y < hwndSizeY; y++)
 	{
