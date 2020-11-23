@@ -1318,13 +1318,27 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 #endif// 0
 	/* copy the bits from the bitmap into the provided RawImage */
 #if 1
-	BITMAPINFO bitmapInfo = {};
+	//memset(io_rawImage->pixelData, 0xFF, 
+	//       4*(io_rawImage->sizeX*io_rawImage->sizeY));
+	/* to extract uncompressed bitmap pixel data in an arbitrary byte order for 
+		each of the color components, we must allocate enough size for 3 bitmask 
+		DWORDs which are referenced by the bmiColors member 
+		See: https://docs.microsoft.com/en-us/previous-versions/dd183376(v=vs.85) */
+	local_persist const size_t BMP_INFO_BYTES = 
+		sizeof(BITMAPINFO) + 3*sizeof(DWORD);
+	u8 bmpInfoBuffer[BMP_INFO_BYTES];
+	BITMAPINFO& bitmapInfo = *reinterpret_cast<BITMAPINFO*>(bmpInfoBuffer);
+	bitmapInfo = {};
 	bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-	bitmapInfo.bmiHeader.biWidth       =      io_rawImage->sizeX;
-	bitmapInfo.bmiHeader.biHeight      = LONG(io_rawImage->sizeY);
+	bitmapInfo.bmiHeader.biWidth       =       io_rawImage->sizeX;
+	bitmapInfo.bmiHeader.biHeight      = -LONG(io_rawImage->sizeY);
 	bitmapInfo.bmiHeader.biPlanes      = 1;
 	bitmapInfo.bmiHeader.biBitCount    = 32;
-	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	bitmapInfo.bmiHeader.biCompression = BI_BITFIELDS;
+	static_assert(sizeof(*bitmapInfo.bmiColors) == sizeof(DWORD));
+	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[0]) = 0x000000FF;
+	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[1]) = 0x0000FF00;
+	*reinterpret_cast<DWORD*>(&bitmapInfo.bmiColors[2]) = 0x00FF0000;
 	/* MSDN: hbmp parameter must not be selected into a device context when the 
 		application calls GetDIBits */
 	SelectObject(hdcBitmap, resultSelectObject);
@@ -1341,16 +1355,26 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 		KLOG(ERROR, "GetDIBits failed!");
 		return;
 	}
-	//u32*const pixelsRawImg = reinterpret_cast<u32*>(io_rawImage->pixelData);
-	//u32*const pixelsBmp    = reinterpret_cast<u32*>(bmpHwnd.bmBits);
-	//for(u32 y = 0; y < hwndSizeY; y++)
-	//{
-	//	for(u32 x = 0; x < hwndSizeX; x++)
-	//	{
-	//		const size_t pixelIndex = y*hwndSizeX + x;
-	//		pixelsRawImg[pixelIndex] = pixelsBmp[pixelIndex];
-	//	}
-	//}
+	/* set alpha component to opaque */
+	/* @speed: this is completely unnecessary, as is allocating an extra byte 
+		per pixel for an alpha component!  Remove this after modifying KRB to 
+		accept RGB-only RawImages! */
+	u32*const pixelsRawImg = reinterpret_cast<u32*>(io_rawImage->pixelData);
+	for(u32 y = 0; y < hwndSizeY; y++)
+	{
+		for(u32 x = 0; x < hwndSizeX; x++)
+		{
+			const size_t pixelIndex = y*hwndSizeX + x;
+			/* functionally equivilant methods of setting opaque alpha: */
+			//pixelsRawImg[pixelIndex] |= 0xFF000000;
+			io_rawImage->pixelData[4*pixelIndex + 3] = 0xFF;
+			/* swap R & B components: */
+			const u8 tempRed = io_rawImage->pixelData[4*pixelIndex + 0];
+			io_rawImage->pixelData[4*pixelIndex + 0] = 
+				io_rawImage->pixelData[4*pixelIndex + 2];
+			io_rawImage->pixelData[4*pixelIndex + 2] = tempRed;
+		}
+	}
 #else
 	for(u32 y = 0; y < hwndSizeY; y++)
 	{

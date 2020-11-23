@@ -9,7 +9,9 @@ struct RawImage
 {
 	u32 sizeX;
 	u32 sizeY;
-	// pixel data layout: 0xRrGgBbAa
+	/* pixelData layout: {R, G, B, A}
+		NOTE: when interpreting pixels as u32 values, this order depends on the 
+			endian-ness of the system! */
 	u8* pixelData;
 };
 struct RawSound
