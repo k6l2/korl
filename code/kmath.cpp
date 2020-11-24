@@ -540,6 +540,11 @@ internal inline u8 kmath::safeTruncateU8(i32 value)
 	        && value <= std::numeric_limits<u8>::max());
 	return static_cast<u8>(value);
 }
+internal inline u8 kmath::safeTruncateU8(u32 value)
+{
+	korlAssert(value <= std::numeric_limits<u8>::max());
+	return static_cast<u8>(value);
+}
 internal inline u8 kmath::safeTruncateU8(u64 value)
 {
 	korlAssert(value <= std::numeric_limits<u8>::max());

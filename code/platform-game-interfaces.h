@@ -14,6 +14,14 @@ struct RawImage
 			endian-ness of the system! */
 	u8* pixelData;
 };
+internal u8 
+	korlRawImageGetRed(const RawImage& rawImg, u64 pixelIndex);
+internal u8 
+	korlRawImageGetGreen(const RawImage& rawImg, u64 pixelIndex);
+internal u8 
+	korlRawImageGetBlue(const RawImage& rawImg, u64 pixelIndex);
+internal void 
+	korlRawImageSetPixel(RawImage* rawImg, u64 pixelIndex, u8 r, u8 g, u8 b);
 struct RawSound
 {
 	u32 sampleHz;

@@ -194,6 +194,7 @@ namespace kmath
 	internal inline u16 safeTruncateU16(u64 value);
 	internal inline i16 safeTruncateI16(i32 value);
 	internal inline u8 safeTruncateU8(i32 value);
+	internal inline u8 safeTruncateU8(u32 value);
 	internal inline u8 safeTruncateU8(u64 value);
 	internal inline i8 safeTruncateI8(i32 value);
 	internal inline f32 v2Radians(const v2f32& v);

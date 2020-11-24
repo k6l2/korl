@@ -134,6 +134,7 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
+#include "platform-game-interfaces.cpp"
 #include "kgtNetClient.cpp"
 #include "kgtNetServer.cpp"
 #include "KgtNetReliableDataBuffer.cpp"
