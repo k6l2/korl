@@ -39,7 +39,8 @@ internal KorlTextureMetaData
  * This function can be called successfully for RAW_IMAGE & TEXTURE_META assets.
  */
 internal v2u32 
-	kgtAssetManagerGetImageSize(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+	kgtAssetManagerGetRawImageSize(
+		KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal KgtFlipBookMetaData 
 	kgtAssetManagerGetFlipBookMetaData(
 		KgtAssetManager* kam, KgtAssetIndex assetIndex);
