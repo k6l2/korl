@@ -293,6 +293,53 @@ internal RawSound
 		return kam->defaultAssetSound.assetData.sound;
 	}
 }
+internal RawImage 
+	kgtAssetManagerGetRawImage(KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	if(assetIndex >= KgtAssetIndex::ENUM_SIZE)
+	{
+		return kam->defaultAssetImage.assetData.image.rawImage;
+	}
+	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset*const asset = assets + assetHandle;
+	if(asset->type == KgtAssetType::UNUSED)
+	{
+		kgtAssetManagerPushAsset(kam, assetIndex);
+	}
+	if(asset->loaded)
+	{
+		if(asset->type == KgtAssetType::TEXTURE_META)
+			return kgtAssetManagerGetRawImage(
+				kam, asset->assetData.texture.kaiImage);
+		else if(asset->type == KgtAssetType::RAW_IMAGE)
+			return asset->assetData.image.rawImage;
+		else
+		{
+			KLOG(ERROR, "Invalid asset type (%i)!", asset->type);
+			return {};
+		}
+	}
+	else
+	{
+		if(g_kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
+			if(asset->type == KgtAssetType::TEXTURE_META)
+				return kgtAssetManagerGetRawImage(
+					kam, asset->assetData.texture.kaiImage);
+			else if(asset->type == KgtAssetType::RAW_IMAGE)
+				return asset->assetData.image.rawImage;
+			else
+			{
+				KLOG(ERROR, "Invalid asset type (%i)!", asset->type);
+				return {};
+			}
+		}
+		return kam->defaultAssetImage.assetData.image.rawImage;
+	}
+}
 internal KrbTextureHandle 
 	kgtAssetManagerGetRawImageTexture(
 		KgtAssetManager* kam, KgtAssetIndex assetIndex)

@@ -21,6 +21,8 @@ internal void
 	kgtAssetManagerFreeAsset(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal RawSound 
 	kgtAssetManagerGetRawSound(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal RawImage 
+	kgtAssetManagerGetRawImage(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 /**
  * This function can be called successfully for RAW_IMAGE & TEXTURE_META assets.
  */
