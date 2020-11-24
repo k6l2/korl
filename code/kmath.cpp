@@ -21,6 +21,10 @@ inline v2u32 v2u32::operator*(const v2u32& other) const
 {
 	return {x*other.x, y*other.y};
 }
+inline v2u32 v2u32::operator+(const v2u32& other) const
+{
+	return {x + other.x, y + other.y};
+}
 v2i32::v2i32()
 {
 }

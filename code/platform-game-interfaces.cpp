@@ -50,6 +50,21 @@ internal u8
 	}
 	return rawImg.pixelData[pixelIndex*pixelByteStride + componentByteOffset];
 }
+internal u8 
+	korlRawImageGetRed(const RawImage& rawImg, const v2u32& coord)
+{
+	return korlRawImageGetRed(rawImg, coord.y * rawImg.sizeX + coord.x);
+}
+internal u8 
+	korlRawImageGetGreen(const RawImage& rawImg, const v2u32& coord)
+{
+	return korlRawImageGetGreen(rawImg, coord.y * rawImg.sizeX + coord.x);
+}
+internal u8 
+	korlRawImageGetBlue(const RawImage& rawImg, const v2u32& coord)
+{
+	return korlRawImageGetBlue(rawImg, coord.y * rawImg.sizeX + coord.x);
+}
 internal void 
 	korlRawImageSetPixel(RawImage* rawImg, u64 pixelIndex, u8 r, u8 g, u8 b)
 {
