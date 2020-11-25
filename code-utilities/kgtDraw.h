@@ -24,6 +24,14 @@ internal void
 	kgtDrawOrigin(
 		const v2u32& windowDimensions, const v3f32& camForward, 
 		const v3f32& camPosition);
+/**
+ * draw a small circle on the screen at the closest point of the world-space 
+ * origin 
+ */
+internal void 
+	kgtDrawOrigin(
+		const v2u32& windowDimensions, const v3f32& camForward, 
+		const v2f32& camPosition2d);
 internal void 
 	kgtDrawCompass(u32 squareSize, const v3f32& camForward);
 internal void 

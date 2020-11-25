@@ -76,6 +76,15 @@ internal void
 	g_krb->drawCircle(10, 0, krb::TRANSPARENT, krb::WHITE, 32);
 }
 internal void 
+	kgtDrawOrigin(
+		const v2u32& windowDimensions, const v3f32& camForward, 
+		const v2f32& camPosition2d)
+{
+	kgtDrawOrigin(
+		windowDimensions, camForward, 
+		v3f32{camPosition2d.x, camPosition2d.y, 0});
+}
+internal void 
 	kgtDrawCompass(u32 squareSize, const v3f32& camForward)
 {
 	g_krb->setProjectionOrtho(
