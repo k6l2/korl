@@ -37,6 +37,10 @@ internal void
 internal void 
 	kgtDrawBoxLines2d(
 		const v2f32& cornerA, const v2f32& cornerB, const Color4f32& color);
+internal void 
+	kgtDrawBox2d(
+		const v2f32& cornerMinusXPlusY, const v2f32& size, 
+		const Color4f32& color);
 #define USE_IMAGE(kgtAssetIndex) \
 	g_krb->useTexture(\
 		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \

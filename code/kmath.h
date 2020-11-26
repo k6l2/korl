@@ -33,8 +33,6 @@ struct v2i32
 		};
 	};
 public:
-	v2i32();
-	v2i32(const v2u32& value);
 	inline v2i32& operator=(const v2u32& value);
 };
 struct v2f32

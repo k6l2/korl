@@ -109,3 +109,22 @@ internal void
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
 	                 KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }
+internal void 
+	kgtDrawBox2d(
+		const v2f32& cornerMinusXPlusY, const v2f32& size, 
+		const Color4f32& color)
+{
+	const KgtVertex mesh[] = 
+		// upper-left triangle //
+		{ {{cornerMinusXPlusY.x,cornerMinusXPlusY.y,0}, {}, color} 
+		, {{cornerMinusXPlusY.x,cornerMinusXPlusY.y - size.y,0}, {}, color} 
+		, {{cornerMinusXPlusY.x + size.x,cornerMinusXPlusY.y,0}, {}, color} 
+		// lower-right triangle //
+		, {{cornerMinusXPlusY.x + size.x,cornerMinusXPlusY.y - size.y,0}, 
+			{}, color} 
+		, {{cornerMinusXPlusY.x + size.x,cornerMinusXPlusY.y,0}, {}, color} 
+		, {{cornerMinusXPlusY.x,cornerMinusXPlusY.y - size.y,0}, {}, color} 
+		};
+	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
+	                KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+}

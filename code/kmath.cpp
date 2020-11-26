@@ -25,14 +25,6 @@ inline v2u32 v2u32::operator+(const v2u32& other) const
 {
 	return {x + other.x, y + other.y};
 }
-v2i32::v2i32()
-{
-}
-v2i32::v2i32(const v2u32& value)
-{
-	x = kmath::safeTruncateI32(value.x);
-	y = kmath::safeTruncateI32(value.y);
-}
 inline v2i32& v2i32::operator=(const v2u32& value)
 {
 	x = kmath::safeTruncateI32(value.x);
