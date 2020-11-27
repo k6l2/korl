@@ -6,6 +6,39 @@
 #include "z85.h"
 #include "stb/stb_image.h"
 global_variable WINDOWPLACEMENT g_lastKnownWindowedPlacement;
+internal bool 
+	korlW32BuildFullFilePath(
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, 
+		char* o_buffer, size_t bufferBytes)
+{
+	TCHAR* strPathOrigin = nullptr;
+	switch(pathOrigin)
+	{
+	case KorlApplicationDirectory::CURRENT:
+		strPathOrigin = g_pathCurrentDirectory;
+		break;
+	case KorlApplicationDirectory::LOCAL:
+		strPathOrigin = g_pathLocalAppData;
+		break;
+	case KorlApplicationDirectory::TEMPORARY:
+		strPathOrigin = g_pathTemp;
+		break;
+	}
+	const HRESULT resultBuildPath = 
+		StringCchPrintfA(o_buffer, bufferBytes, TEXT("%s\\%s"), 
+		                 strPathOrigin, ansiFilePath);
+	if(resultBuildPath == STRSAFE_E_INVALID_PARAMETER)
+	{
+		KLOG(ERROR, "StringCchPrintf INVALID PARAM!");
+		return false;
+	}
+	if(resultBuildPath == STRSAFE_E_INSUFFICIENT_BUFFER)
+	{
+		KLOG(ERROR, "StringCchPrintf INSUFFICIENT BUFFER!");
+		return false;
+	}
+	return true;
+}
 internal PLATFORM_IS_FULLSCREEN(w32PlatformIsFullscreen)
 {
 	const DWORD windowStyle = GetWindowLong(g_mainWindow, GWL_STYLE);
@@ -140,10 +173,11 @@ internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
 }
 internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 {
-	const i32 rawAssetBytes = w32PlatformGetAssetByteSize(fileName);
+	const i32 rawAssetBytes = 
+		w32PlatformGetFileByteSize(ansiFilePath, pathOrigin);
 	if(rawAssetBytes < 0)
 	{
-		KLOG(ERROR, "Failed to get asset byte size '%s'!", fileName);
+		KLOG(ERROR, "Failed to get asset byte size '%s'!", ansiFilePath);
 		return {};
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
@@ -160,10 +194,11 @@ internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	const bool assetReadResult = 
-		w32PlatformReadEntireAsset(fileName, rawFileMemory, rawAssetBytes);
+		w32PlatformReadEntireFile(
+			ansiFilePath, pathOrigin, rawFileMemory, rawAssetBytes);
 	if(!assetReadResult)
 	{
-		KLOG(ERROR, "Failed to read entire asset '%s'!", fileName);
+		KLOG(ERROR, "Failed to read entire asset '%s'!", ansiFilePath);
 		return {};
 	}
 	return w32DecodePng(rawFileMemory, rawAssetBytes, pixelDataAllocator);
@@ -172,10 +207,12 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 {
 	// Load the entire OGG file into memory //
 	RawSound result = {};
-	const i32 rawAssetBytes = w32PlatformGetAssetByteSize(fileName);
+	const i32 rawAssetBytes = 
+		w32PlatformGetFileByteSize(ansiFilePath, pathOrigin);
 	if(rawAssetBytes < 0)
 	{
-		KLOG(ERROR, "Failed to get file byte size '%s'!", fileName);
+		KLOG(ERROR, "Failed to get file byte size '%s'!", 
+		     ansiFilePath, pathOrigin);
 		return result;
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
@@ -192,10 +229,12 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	const bool assetReadResult = 
-		w32PlatformReadEntireAsset(fileName, rawFileMemory, rawAssetBytes);
+		w32PlatformReadEntireFile(
+			ansiFilePath, pathOrigin, rawFileMemory, rawAssetBytes);
 	if(!assetReadResult)
 	{
-		KLOG(ERROR, "Failed to read entire asset '%s'!", fileName);
+		KLOG(ERROR, "Failed to read entire asset '%s'!", 
+		     ansiFilePath, pathOrigin);
 		return result;
 	}
 	// Decode the OGG file into a RawSound //
@@ -215,14 +254,14 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "vorbisInfo.channels==%i invalid/unsupported for '%s'!",
-		     vorbisInfo.channels, fileName);
+		     vorbisInfo.channels, ansiFilePath, pathOrigin);
 		return result;
 	}
 	if(vorbisInfo.sample_rate != 44100)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "vorbisInfo.sample_rate==%i invalid/unsupported for '%s'!", 
-		     vorbisInfo.sample_rate, fileName);
+		     vorbisInfo.sample_rate, ansiFilePath, pathOrigin);
 		return result;
 	}
 	const i32 vorbisSampleLength = stb_vorbis_stream_length_in_samples(vorbis);
@@ -248,7 +287,8 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	LeaveCriticalSection(&g_vorbisAllocationCsLock);
 	if(samplesDecoded != vorbisSampleLength)
 	{
-		KLOG(ERROR, "Failed to get samples for '%s'!", fileName);
+		KLOG(ERROR, "Failed to get samples for '%s'!", 
+		     ansiFilePath, pathOrigin);
 		EnterCriticalSection(&g_assetAllocationCsLock);
 		kgtAllocFree(sampleDataAllocator, sampleData);
 		LeaveCriticalSection(&g_assetAllocationCsLock);
@@ -412,10 +452,11 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
 {
 	// Load the entire WAV file into memory //
-	const i32 rawAssetBytes = w32PlatformGetAssetByteSize(fileName);
+	const i32 rawAssetBytes = 
+		w32PlatformGetFileByteSize(ansiFilePath, pathOrigin);
 	if(rawAssetBytes < 0)
 	{
-		KLOG(ERROR, "Failed to get asset byte size '%s'!", fileName);
+		KLOG(ERROR, "Failed to get asset byte size '%s'!", ansiFilePath);
 		return {};
 	}
 	EnterCriticalSection(&g_csLockAllocatorRawFiles);
@@ -432,14 +473,15 @@ internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
 		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
 	});
 	const bool assetReadResult = 
-		w32PlatformReadEntireAsset(fileName, rawFileMemory, rawAssetBytes);
+		w32PlatformReadEntireFile(
+			ansiFilePath, pathOrigin, rawFileMemory, rawAssetBytes);
 	if(!assetReadResult)
 	{
-		KLOG(ERROR, "Failed to read entire asset '%s'!", fileName);
+		KLOG(ERROR, "Failed to read entire asset '%s'!", ansiFilePath);
 		return {};
 	}
 	return w32DecodeWav(rawFileMemory, rawAssetBytes, 
-	                    sampleDataAllocator, fileName);
+	                    sampleDataAllocator, ansiFilePath);
 }
 internal PLATFORM_IMGUI_ALLOC(w32PlatformImguiAlloc)
 {
@@ -749,12 +791,18 @@ internal KORL_PLATFORM_ASSERT_FAILURE(w32PlatformAssertFailure)
 		}
 	}
 }
-internal PLATFORM_GET_ASSET_BYTE_SIZE(w32PlatformGetAssetByteSize)
+internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize)
 {
 	i32 resultFileByteSize = 0;
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, ansiAssetName);
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+		     ansiFilePath, pathOrigin);
+		return -1;
+	}
 	const HANDLE fileHandle = 
 		CreateFileA(szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
 		            OPEN_EXISTING, 
@@ -787,14 +835,20 @@ internal PLATFORM_GET_ASSET_BYTE_SIZE(w32PlatformGetAssetByteSize)
 	}
 	return resultFileByteSize;
 }
-internal PLATFORM_READ_ENTIRE_ASSET(w32PlatformReadEntireAsset)
+internal PLATFORM_READ_ENTIRE_FILE(w32PlatformReadEntireFile)
 {
 	/* use a variable for the return value so we can update it in defer 
 		statements if needed */
 	bool deferredResult = true;
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, ansiAssetName);
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+		     ansiFilePath, pathOrigin);
+		return false;
+	}
 	const HANDLE fileHandle = 
 		CreateFileA(szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
 		            OPEN_EXISTING, 
@@ -853,14 +907,23 @@ internal PLATFORM_READ_ENTIRE_ASSET(w32PlatformReadEntireAsset)
 }
 internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile)
 {
+	char szFileFullPath[MAX_PATH];
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+		     ansiFilePath, pathOrigin);
+		return false;
+	}
 	const HANDLE fileHandle = 
-		CreateFileA(ansiFileName, GENERIC_WRITE, 0, nullptr, 
+		CreateFileA(szFileFullPath, GENERIC_WRITE, 0, nullptr, 
 		            CREATE_ALWAYS, 
 		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
 	if(fileHandle == INVALID_HANDLE_VALUE)
 	{
 		KLOG(ERROR, "Failed to create write file handle '%s'! GetLastError=%i", 
-		     ansiFileName, GetLastError());
+		     szFileFullPath, GetLastError());
 		return false;
 	}
 	bool result = true;
@@ -868,7 +931,7 @@ internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile)
 		if(!CloseHandle(fileHandle))
 		{
 			KLOG(ERROR, "Failed to close file handle '%s'! GetLastError=%i", 
-			     ansiFileName, GetLastError());
+			     szFileFullPath, GetLastError());
 			result = false;
 		}
 	});
@@ -876,14 +939,14 @@ internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile)
 	if(!WriteFile(fileHandle, data, dataBytes, &bytesWritten, nullptr))
 	{
 		KLOG(ERROR, "Failed to write to file '%s'! GetLastError=%i", 
-		     ansiFileName, GetLastError());
+		     szFileFullPath, GetLastError());
 		return false;
 	}
 	if(bytesWritten != dataBytes)
 	{
 		KLOG(ERROR, "Failed to completely write to file '%s'! "
 		     "Bytes written: %i / %i", 
-		     ansiFileName, bytesWritten, dataBytes);
+		     szFileFullPath, bytesWritten, dataBytes);
 		return false;
 	}
 	return result;
@@ -946,22 +1009,34 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32PlatformGetGamePadProductGuid)
 		                               bufferSize);
 	}
 }
-internal PLATFORM_GET_ASSET_WRITE_TIME(w32PlatformGetAssetWriteTime)
+internal PLATFORM_GET_FILE_WRITE_TIME(w32PlatformGetFileWriteTime)
 {
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, assetFileName);
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+		     ansiFilePath, pathOrigin);
+		return {};
+	}
 	FILETIME fileWriteTime = w32GetLastWriteTime(szFileFullPath);
 	ULARGE_INTEGER largeInt;
 	largeInt.HighPart = fileWriteTime.dwHighDateTime;
 	largeInt.LowPart  = fileWriteTime.dwLowDateTime;
 	return largeInt.QuadPart;
 }
-internal PLATFORM_IS_ASSET_CHANGED(w32PlatformIsAssetChanged)
+internal PLATFORM_IS_FILE_CHANGED(w32PlatformIsFileChanged)
 {
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, assetFileName);
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+		     ansiFilePath, pathOrigin);
+		return false;
+	}
 	FILETIME fileWriteTime = w32GetLastWriteTime(szFileFullPath);
 	ULARGE_INTEGER largeInt;
 	largeInt.QuadPart = lastWriteTime;
@@ -970,11 +1045,17 @@ internal PLATFORM_IS_ASSET_CHANGED(w32PlatformIsAssetChanged)
 	fileWriteTimePrev.dwLowDateTime  = largeInt.LowPart;
 	return CompareFileTime(&fileWriteTime, &fileWriteTimePrev) != 0;
 }
-internal PLATFORM_IS_ASSET_AVAILABLE(w32PlatformIsAssetAvailable)
+internal PLATFORM_IS_FILE_AVAILABLE(w32PlatformIsFileAvailable)
 {
 	char szFileFullPath[MAX_PATH];
-	StringCchPrintfA(szFileFullPath, MAX_PATH, TEXT("%s\\%s"), 
-	                 g_pathToAssets, assetFileName);
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+		     ansiFilePath, pathOrigin);
+		return false;
+	}
 	// Check to see if the file is open exclusively by another program by 
 	//	attempting to open it in exclusive mode.
 	// https://stackoverflow.com/a/12821767

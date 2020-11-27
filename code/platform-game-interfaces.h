@@ -67,37 +67,54 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
 #define PLATFORM_DECODE_Z85_WAV(name) \
 	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
 	              KgtAllocatorHandle sampleDataAllocator)
+enum class KorlApplicationDirectory : u8
+	{ CURRENT     // same directory as the platform executable; assume READ-ONLY
+	, LOCAL       // platform-defined; READ + WRITE access, safe storage!
+	, TEMPORARY };// platform-defined; READ + WRITE access, LOSSY storage!
 /** @return a value < 0 if an error occurs */
-#define PLATFORM_GET_ASSET_BYTE_SIZE(name) \
-	i32 name(const char* ansiAssetName)
-#define PLATFORM_READ_ENTIRE_ASSET(name) \
-	bool name(const char* ansiAssetName, void* o_data, u32 dataBytes)
+#define PLATFORM_GET_FILE_BYTE_SIZE(name) \
+	i32 name(const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
+#define PLATFORM_READ_ENTIRE_FILE(name) \
+	bool name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+		void* o_data, u32 dataBytes)
 #define PLATFORM_WRITE_ENTIRE_FILE(name) \
-	bool name(const char* ansiFileName, void* data, u32 dataBytes)
+	bool name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+		void* data, u32 dataBytes)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
  */
 #define PLATFORM_LOAD_WAV(name) \
-	RawSound name(const char* fileName, KgtAllocatorHandle sampleDataAllocator)
+	RawSound name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+		KgtAllocatorHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
  */
 #define PLATFORM_LOAD_OGG(name) \
-	RawSound name(const char* fileName, KgtAllocatorHandle sampleDataAllocator)
+	RawSound name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+		KgtAllocatorHandle sampleDataAllocator)
 /**
  * @return If there is a failure loading the file, an invalid RawImage 
  *         containing pixelData==nullptr is returned.
  */
 #define PLATFORM_LOAD_PNG(name) \
-	RawImage name(const char* fileName, KgtAllocatorHandle pixelDataAllocator)
-#define PLATFORM_GET_ASSET_WRITE_TIME(name) \
-	FileWriteTime name(const char* assetFileName)
-#define PLATFORM_IS_ASSET_CHANGED(name) \
-	bool name(const char* assetFileName, FileWriteTime lastWriteTime)
-#define PLATFORM_IS_ASSET_AVAILABLE(name) \
-	bool name(const char* assetFileName)
+	RawImage name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+		KgtAllocatorHandle pixelDataAllocator)
+#define PLATFORM_GET_FILE_WRITE_TIME(name) \
+	FileWriteTime name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
+#define PLATFORM_IS_FILE_CHANGED(name) \
+	bool name(\
+		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+		FileWriteTime lastWriteTime)
+#define PLATFORM_IS_FILE_AVAILABLE(name) \
+	bool name(const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
 #define PLATFORM_IS_FULLSCREEN(name) \
 	bool name()
 global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
@@ -244,9 +261,9 @@ typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
-typedef PLATFORM_GET_ASSET_WRITE_TIME(fnSig_platformGetAssetWriteTime);
-typedef PLATFORM_IS_ASSET_CHANGED(fnSig_platformIsAssetChanged);
-typedef PLATFORM_IS_ASSET_AVAILABLE(fnSig_platformIsAssetAvailable);
+typedef PLATFORM_GET_FILE_WRITE_TIME(fnSig_platformGetFileWriteTime);
+typedef PLATFORM_IS_FILE_CHANGED(fnSig_platformIsFileChanged);
+typedef PLATFORM_IS_FILE_AVAILABLE(fnSig_platformIsFileAvailable);
 typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
 typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
@@ -254,8 +271,8 @@ typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_NAME(fnSig_platformGetGamePadProductName);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
-typedef PLATFORM_GET_ASSET_BYTE_SIZE(fnSig_platformGetAssetByteSize);
-typedef PLATFORM_READ_ENTIRE_ASSET(fnSig_platformReadEntireAsset);
+typedef PLATFORM_GET_FILE_BYTE_SIZE(fnSig_platformGetFileByteSize);
+typedef PLATFORM_READ_ENTIRE_FILE(fnSig_platformReadEntireFile);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_platformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
@@ -283,14 +300,15 @@ struct KorlPlatformApi
 	fnSig_korlPlatformAssertFailure* assertFailure;
 	fnSig_platformDecodeZ85Png* decodeZ85Png;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
-	fnSig_platformGetAssetByteSize* getAssetByteSize;
-	fnSig_platformReadEntireAsset* readEntireAsset;
+	fnSig_platformGetFileByteSize* getFileByteSize;
+	fnSig_platformReadEntireFile* readEntireFile;
+	fnSig_platformWriteEntireFile* writeEntireFile;
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;
-	fnSig_platformGetAssetWriteTime* getAssetWriteTime;
-	fnSig_platformIsAssetChanged* isAssetChanged;
-	fnSig_platformIsAssetAvailable* isAssetAvailable;
+	fnSig_platformGetFileWriteTime* getFileWriteTime;
+	fnSig_platformIsFileChanged* isFileChanged;
+	fnSig_platformIsFileAvailable* isFileAvailable;
 	fnSig_platformIsFullscreen* isFullscreen;
 	fnSig_platformSetFullscreen* setFullscreen;
 	fnSig_platformGetGamePadActiveButton* getGamePadActiveButton;

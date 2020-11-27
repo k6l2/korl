@@ -1256,8 +1256,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 #endif// 0
 	// parse command line arguments //
-	WCHAR relativeAssetDir[MAX_PATH];
-	relativeAssetDir[0] = '\0';
 	{
 		int argc;
 		LPWSTR*const argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -1267,15 +1265,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			{
 				KLOG(INFO, "arg[%i]=='%ws'", arg, argv[arg]);
 				if(arg == 1)
-				{
-					if(FAILED(StringCchPrintfW(relativeAssetDir, MAX_PATH, 
-					                           L"%ws", argv[arg])))
-					{
-						KLOG(ERROR, "Failed to extract relative asset path!");
-						return RETURN_CODE_FAILURE;
-					}
-				}
-				else if(arg == 2)
 				{
 					g_echoLogToDebug = (wcscmp(argv[arg], L"0") != 0);
 				}
@@ -1412,16 +1401,17 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		}
 		*(lastBackslash + 1) = 0;
 	}
-	// Locate what directory we should look in for assets //
+	/* obtain the current working directory from the operating system */
 	{
-		if(FAILED(StringCchPrintf(g_pathToAssets, MAX_PATH, 
-		                          TEXT("%s\\%ws\\assets"), 
-		                          g_pathToExe, relativeAssetDir)))
+		const DWORD bytesWrittenGetCurrDir = 
+			GetCurrentDirectory(MAX_PATH, g_pathCurrentDirectory);
+		if(bytesWrittenGetCurrDir < 1)
 		{
-			KLOG(ERROR, "Failed to build g_pathToAssets!  g_pathToExe='%s'", 
-			     g_pathToExe);
+			KLOG(ERROR, "GetCurrentDirectory failed! getlasterror=%i", 
+			     GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
+		KLOG(INFO, "g_pathCurrentDirectory='%s'", g_pathCurrentDirectory);
 	}
 	///TODO: handle file paths longer than MAX_PATH in the future...
 	TCHAR fullPathToGameDll    [MAX_PATH] = {};

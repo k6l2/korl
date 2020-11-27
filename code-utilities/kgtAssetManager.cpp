@@ -55,6 +55,26 @@ struct KgtAssetManager
 	KrbApi* krb;
 	//KgtAsset assets[];
 };
+/**
+ * Construct a string in the provided buffer which represents the asset file 
+ * path relative to the platform's current working directory.  The expectation 
+ * is that the final deployed project is stored in the same directory as a 
+ * folder called "assets" which contains all the files in the `kasset` database.  
+ * By default, the `CURRENT` platform directory is always the same directory as 
+ * the platform executable!  However, the caller can configure it to be whatever 
+ * they want it to be.  For example, when debugging we can use the project 
+ * directory instead, since this contains the original asset folder!
+ */
+internal bool 
+	kgtAssetManagerBuildCurrentRelativeFilePath(
+		char* o_filePathBuffer, u32 filePathBufferBytes, 
+		const char* assetFileName)
+{
+	const int charactersWritten = 
+		sprintf_s(o_filePathBuffer, filePathBufferBytes, 
+		          "assets/%s", assetFileName);
+	return charactersWritten > 0;
+}
 internal KgtAssetManager* 
 	kgtAssetManagerConstruct(
 		KgtAllocatorHandle allocator, u32 maxAssetHandles, 
@@ -259,7 +279,15 @@ internal void
 			return;
 		}break;
 	}
-	asset->lastWriteTime = g_kpl->getAssetWriteTime(kgtAssetFileNames[kah]);
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kah]);
+	korlAssert(successBuildExeFilePath);
+	asset->lastWriteTime = 
+		g_kpl->getFileWriteTime(
+			filePathBuffer, KorlApplicationDirectory::CURRENT);
 	asset->loaded = true;
 }
 internal RawSound 
@@ -591,60 +619,89 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadPng)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
 	const size_t kai = asset->kgtAssetIndex;
-	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
 		g_kpl->sleepFromTimeStamp(
 			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	asset->assetData.image.rawImage = 
-		g_kpl->loadPng(kgtAssetFileNames[kai], 
+		g_kpl->loadPng(filePathBuffer, KorlApplicationDirectory::CURRENT, 
 		               asset->kam->assetDataAllocator);
 }
 JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadWav)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
 	const size_t kai = asset->kgtAssetIndex;
-	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
 		g_kpl->sleepFromTimeStamp(
 			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	asset->assetData.sound = 
-		g_kpl->loadWav(kgtAssetFileNames[kai], 
+		g_kpl->loadWav(filePathBuffer, KorlApplicationDirectory::CURRENT, 
 		               asset->kam->assetDataAllocator);
 }
 JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadOgg)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
 	const size_t kai = asset->kgtAssetIndex;
-	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
 		g_kpl->sleepFromTimeStamp(
 			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	asset->assetData.sound = 
-		g_kpl->loadOgg(kgtAssetFileNames[kai], 
+		g_kpl->loadOgg(filePathBuffer, KorlApplicationDirectory::CURRENT, 
 		               asset->kam->assetDataAllocator);
 }
 JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadFlipbookMeta)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
 	const size_t kai = asset->kgtAssetIndex;
-	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
 		g_kpl->sleepFromTimeStamp(
 			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	const i32 assetByteSize = 
-		g_kpl->getAssetByteSize(kgtAssetFileNames[kai]);
+		g_kpl->getFileByteSize(
+			filePathBuffer, KorlApplicationDirectory::CURRENT);
 	if(assetByteSize < 0)
 	{
 		KLOG(ERROR, "Failed to get asset byte size of \"%s\"", 
-		     kgtAssetFileNames[kai]);
+		     filePathBuffer);
 		return;
 	}
 	/* lock the asset manager's asset data allocator so we can safely allocate 
@@ -664,12 +721,12 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadFlipbookMeta)
 	});
 	/* load the entire raw file into a `fileByteSize` chunk */
 	const bool assetReadSuccess = 
-		g_kpl->readEntireAsset(
-			kgtAssetFileNames[kai], rawFileMemory, 
+		g_kpl->readEntireFile(
+			filePathBuffer, KorlApplicationDirectory::CURRENT, rawFileMemory, 
 			kmath::safeTruncateU32(assetByteSize));
 	if(!assetReadSuccess)
 	{
-		KLOG(ERROR, "Failed to read asset \"%s\"!", kgtAssetFileNames[kai]);
+		KLOG(ERROR, "Failed to read asset \"%s\"!", filePathBuffer);
 		return;
 	}
 	reinterpret_cast<u8*>(rawFileMemory)[assetByteSize] = 0;
@@ -677,13 +734,13 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadFlipbookMeta)
 	const bool flipbookMetaDecodeSuccess = 
 		kgtFlipBookDecodeMeta(
 			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
-			kgtAssetFileNames[kai], &asset->assetData.flipbook.metaData, 
+			filePathBuffer, &asset->assetData.flipbook.metaData, 
 			asset->assetData.flipbook.textureAssetFileName, 
 			CARRAY_SIZE(asset->assetData.flipbook.textureAssetFileName));
 	if(!flipbookMetaDecodeSuccess)
 	{
 		KLOG(ERROR, "Failed to decode flipbook meta data \"%s\"!", 
-		     kgtAssetFileNames[kai]);
+		     filePathBuffer);
 		return;
 	}
 }
@@ -691,18 +748,26 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
 	const size_t kai = asset->kgtAssetIndex;
-	while(!g_kpl->isAssetAvailable(kgtAssetFileNames[kai]))
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
 	{
-		KLOG(INFO, "Waiting for asset '%s'...", kgtAssetFileNames[kai]);
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
 		g_kpl->sleepFromTimeStamp(
 			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
 	const i32 assetByteSize = 
-		g_kpl->getAssetByteSize(kgtAssetFileNames[kai]);
+		g_kpl->getFileByteSize(
+			filePathBuffer, KorlApplicationDirectory::CURRENT);
 	if(assetByteSize < 0)
 	{
 		KLOG(ERROR, "Failed to get asset byte size of \"%s\"", 
-		     kgtAssetFileNames[kai]);
+		     filePathBuffer);
 		return;
 	}
 	/* lock the asset manager's asset data allocator so we can safely allocate 
@@ -722,12 +787,12 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 	});
 	/* load the entire raw file into a `fileByteSize` chunk */
 	const bool assetReadSuccess = 
-		g_kpl->readEntireAsset(
-			kgtAssetFileNames[kai], rawFileMemory, 
+		g_kpl->readEntireFile(
+			filePathBuffer, KorlApplicationDirectory::CURRENT, rawFileMemory, 
 			kmath::safeTruncateU32(assetByteSize));
 	if(!assetReadSuccess)
 	{
-		KLOG(ERROR, "Failed to read asset \"%s\"!", kgtAssetFileNames[kai]);
+		KLOG(ERROR, "Failed to read asset \"%s\"!", filePathBuffer);
 		return;
 	}
 	/* null-terminate the file buffer */
@@ -736,13 +801,13 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 	const bool textureMetaDecodeSuccess = 
 		korlTextureMetaDecode(
 			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
-			kgtAssetFileNames[kai], &asset->assetData.texture.metaData, 
+			filePathBuffer, &asset->assetData.texture.metaData, 
 			asset->assetData.texture.imageAssetName, 
 			CARRAY_SIZE(asset->assetData.texture.imageAssetName));
 	if(!textureMetaDecodeSuccess)
 	{
 		KLOG(ERROR, "Failed to decode texture meta data \"%s\"!", 
-		     kgtAssetFileNames[kai]);
+		     filePathBuffer);
 		return;
 	}
 }
@@ -896,10 +961,17 @@ internal u32 kgtAssetManagerUnloadChangedAssets(KgtAssetManager* kam)
 					continue;
 				}
 			}
-			if(g_kpl->isAssetChanged(kgtAssetFileNames[kah], 
-			                         asset->lastWriteTime))
+			char filePathBuffer[256];
+			const bool successBuildExeFilePath = 
+				kgtAssetManagerBuildCurrentRelativeFilePath(
+					filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+					kgtAssetFileNames[kah]);
+			korlAssert(successBuildExeFilePath);
+			if(g_kpl->isFileChanged(
+					filePathBuffer, KorlApplicationDirectory::CURRENT, 
+					asset->lastWriteTime))
 			{
-				KLOG(INFO, "Unloading asset '%s'...", kgtAssetFileNames[kah]);
+				KLOG(INFO, "Unloading asset '%s'...", filePathBuffer);
 				kgtAssetManagerFreeAsset(kam, kah);
 				unloadedAssetCount++;
 			}
