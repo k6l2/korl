@@ -49,8 +49,6 @@ global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
 global_variable bool g_hasWrittenCrashDump;
 ///TODO: handle file paths longer than MAX_PATH in the future...
 global_variable TCHAR g_pathToExe[MAX_PATH];
-global_variable TCHAR g_pathTemp[MAX_PATH];
-global_variable TCHAR g_pathLocalAppData[MAX_PATH];
 global_variable GamePad* g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 global_variable GamePad* g_gamePadArrayPreviousFrame = g_gamePadArrayB;
 global_variable const u8 SOUND_CHANNELS = 2;

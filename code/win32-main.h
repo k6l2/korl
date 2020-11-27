@@ -27,3 +27,5 @@ struct GameCode
 internal LARGE_INTEGER w32QueryPerformanceCounter();
 internal FILETIME w32GetLastWriteTime(const char* fileName);
 global_variable HWND g_mainWindow;
+global_variable TCHAR g_pathTemp[MAX_PATH];
+global_variable TCHAR g_pathLocalAppData[MAX_PATH];
