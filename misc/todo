@@ -1034,9 +1034,12 @@
 		it graphically
 [ ] vscode: set defines in c_cpp_properties.json using environment variables so 
 	that they can be set per project dynamically
+[ ] get rid of KAssetHandle entirely since we use `kasset` build tool now?  
+	Unless there actually is a good use-case for runtime-generated KAssets...
 [ ] refactor handle collections to interpret the handle value == `0` to mean the 
 	handle is invalid, eliminating the need to define an `INVALID_HANDLE` value 
-	[ ] KAssetHandle
+	[x] JobQueueTicket
+	[-] KAssetHandle
 	[ ] INVALID_PLATFORM_AXIS_INDEX
 [ ] Pay TODO debt.
 [ ] KAU: master volume control, default to like ~80% or something...

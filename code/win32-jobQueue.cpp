@@ -1,11 +1,31 @@
 #include "win32-jobQueue.h"
-global_variable const u16 JOB_QUEUE_INVALID_JOB_ID = 0xFFFF;
-global_variable const JobQueueTicket JOB_QUEUE_INVALID_TICKET = 
-                                                       JOB_QUEUE_INVALID_JOB_ID;
-internal bool jobQueueInit(JobQueue* jobQueue)
+internal JobQueueTicket 
+	jobQueuePrintTicket(JobQueue* jobQueue, size_t jobIndex)
+{
+	korlAssert(jobIndex < CARRAY_SIZE(jobQueue->jobs));
+	return (static_cast<u32>(jobQueue->jobs[jobIndex].salt)<<16) | 
+	        static_cast<u32>(jobIndex + 1);
+}
+internal bool 
+	jobQueueParseTicket(JobQueueTicket* ticket, u16* o_salt, u16* o_jobIndex)
+{
+	u16 rawJobIndex = (*ticket) & 0xFFFF;
+	if(!rawJobIndex)
+	{
+		*ticket = 0;
+		return false;
+	}
+	*o_salt     = (*ticket) >> 16;
+	*o_jobIndex = rawJobIndex - 1;
+	return true;
+}
+internal bool 
+	jobQueueInit(JobQueue* jobQueue)
 {
 	*jobQueue = {};
-	static_assert(CARRAY_SIZE(jobQueue->jobs) < JOB_QUEUE_INVALID_JOB_ID);
+	/* ensure that the job queue index + 1 can fit in the # of bits required to 
+		fit the index into a JobQueueTicket */
+	static_assert(CARRAY_SIZE(jobQueue->jobs) < 0xFFFF);
 	InitializeCriticalSection(&jobQueue->lock);
 	jobQueue->hSemaphore = 
 		CreateSemaphore(nullptr, 0, CARRAY_SIZE(jobQueue->jobs), nullptr);
@@ -21,32 +41,26 @@ internal bool jobQueueInit(JobQueue* jobQueue)
 	}
 	return true;
 }
-internal void jobQueueDestroy(JobQueue* jobQueue)
+internal void 
+	jobQueueDestroy(JobQueue* jobQueue)
 {
 	DeleteCriticalSection(&jobQueue->lock);
 	CloseHandle(jobQueue->hSemaphore);
 	jobQueue->hSemaphore = NULL;
 }
-internal JobQueueTicket jobQueuePrintTicket(JobQueue* jobQueue, 
-                                            size_t jobIndex)
-{
-	korlAssert(jobIndex < CARRAY_SIZE(jobQueue->jobs));
-	return (static_cast<u32>(jobQueue->jobs[jobIndex].salt)<<16) | 
-		static_cast<u32>(jobIndex);
-}
-internal JobQueueTicket jobQueuePostJob(JobQueue* jobQueue, 
-                                        fnSig_jobQueueFunction* function, 
-                                        void* data)
+internal JobQueueTicket 
+	jobQueuePostJob(
+		JobQueue* jobQueue, fnSig_jobQueueFunction* function, void* data)
 {
 	if(!function)
-		return JOB_QUEUE_INVALID_TICKET;
+		return 0;
 	EnterCriticalSection(&jobQueue->lock);
 	defer(LeaveCriticalSection(&jobQueue->lock));
 	if(jobQueue->incompleteJobCount >= CARRAY_SIZE(jobQueue->jobs))
 	/* if the # of incomplete jobs is the size of the array, that means the job 
 		queue is full & is working on them */
 	{
-		return JOB_QUEUE_INVALID_TICKET;
+		return 0;
 	}
 	/* iterate over all job slots and find the first one which has been 
 		completed */
@@ -80,14 +94,12 @@ internal JobQueueTicket jobQueuePostJob(JobQueue* jobQueue,
 }
 internal bool jobQueueTicketIsValid(JobQueue* jobQueue, JobQueueTicket* ticket)
 {
-	const size_t ticketJobId = (*ticket) & JOB_QUEUE_INVALID_JOB_ID;
-	if(ticketJobId == JOB_QUEUE_INVALID_JOB_ID 
-		|| ticketJobId >= CARRAY_SIZE(jobQueue->jobs))
+	u16 ticketSalt, ticketJobId;
+	if(!jobQueueParseTicket(ticket, &ticketSalt, &ticketJobId))
 	{
-		*ticket = JOB_QUEUE_INVALID_TICKET;
+		*ticket = 0;
 		return false;
 	}
-	const u16 ticketSalt = (*ticket) >> 16;
 	EnterCriticalSection(&jobQueue->lock);
 	defer(LeaveCriticalSection(&jobQueue->lock));
 	if(jobQueue->jobs[ticketJobId].salt == ticketSalt 
@@ -95,26 +107,24 @@ internal bool jobQueueTicketIsValid(JobQueue* jobQueue, JobQueueTicket* ticket)
 	{
 		return true;
 	}
-	*ticket = JOB_QUEUE_INVALID_TICKET;
+	*ticket = 0;
 	return false;
 }
 internal bool jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket)
 {
-	const size_t ticketJobId = (*ticket) & JOB_QUEUE_INVALID_JOB_ID;
-	if(ticketJobId == JOB_QUEUE_INVALID_JOB_ID 
-		|| ticketJobId >= CARRAY_SIZE(jobQueue->jobs))
+	u16 ticketSalt, ticketJobId;
+	if(!jobQueueParseTicket(ticket, &ticketSalt, &ticketJobId))
 	{
-		*ticket = JOB_QUEUE_INVALID_TICKET;
+		*ticket = 0;
 		return false;
 	}
-	const u16 ticketSalt = (*ticket) >> 16;
 	EnterCriticalSection(&jobQueue->lock);
 	defer(LeaveCriticalSection(&jobQueue->lock));
 	if(jobQueue->jobs[ticketJobId].salt == ticketSalt)
 	{
 		if(jobQueue->jobs[ticketJobId].completed)
 		{
-			*ticket = JOB_QUEUE_INVALID_TICKET;
+			*ticket = 0;
 			return true;
 		}
 		else
@@ -122,12 +132,12 @@ internal bool jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket)
 			return false;
 		}
 	}
-	// If the job's salt is different from the ticket's salt we can pretty 
-	//	safely assume that the job was completed since we check to see if the 
-	//	ticket was the universal invalid ticket earlier in this function.
-	// What most likely has happened is that enough time has passed that this 
-	//	job slot was completed and replaced with another new job.
-	*ticket = JOB_QUEUE_INVALID_TICKET;
+	/* If the job's salt is different from the ticket's salt we can pretty 
+		safely assume that the job was completed since we check to see if the 
+		ticket was the universal invalid ticket earlier in this function.
+	 What most likely has happened is that enough time has passed that this 
+		job slot was completed and replaced with another new job. */
+	*ticket = 0;
 	return true;
 }
 internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)

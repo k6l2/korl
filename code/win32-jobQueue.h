@@ -22,23 +22,29 @@ struct JobQueue
 	CRITICAL_SECTION lock;
 	HANDLE hSemaphore;
 };
-internal bool jobQueueInit(JobQueue* jobQueue);
+internal bool 
+	jobQueueInit(JobQueue* jobQueue);
 /** 
  * @return Invalid JobQueueTicket if the job could not be added to the queue 
  *         (queue too full), or if `function` is nullptr.
  * */
-internal JobQueueTicket jobQueuePostJob(JobQueue* jobQueue, 
-                                        fnSig_jobQueueFunction* function, 
-                                        void* data);
+internal JobQueueTicket 
+	jobQueuePostJob(
+		JobQueue* jobQueue, fnSig_jobQueueFunction* function, void* data);
 /** If the *ticket is found to be invalid, it is set to be a specific internal
  * 	value that is ALWAYS invalid to prevent it from ever becoming valid again.
  */
-internal bool jobQueueTicketIsValid(JobQueue* jobQueue, JobQueueTicket* ticket);
+internal bool 
+	jobQueueTicketIsValid(JobQueue* jobQueue, JobQueueTicket* ticket);
 /** If this function returns true, the ticket is automatically invalidated. 
  * @return true only if the ticket is valid AND the job is indeed done.
 */
-internal bool jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket);
-internal bool jobQueueHasIncompleteJobs(JobQueue* jobQueue);
-internal void jobQueueWaitForWork(JobQueue* jobQueue);
+internal bool 
+	jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket);
+internal bool 
+	jobQueueHasIncompleteJobs(JobQueue* jobQueue);
+internal void 
+	jobQueueWaitForWork(JobQueue* jobQueue);
 /** @return true if work was performed */
-internal bool jobQueuePerformWork(JobQueue* jobQueue, u32 threadId);
+internal bool 
+	jobQueuePerformWork(JobQueue* jobQueue, u32 threadId);
