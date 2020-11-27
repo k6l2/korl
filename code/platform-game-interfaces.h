@@ -81,7 +81,7 @@ enum class KorlApplicationDirectory : u8
 #define PLATFORM_WRITE_ENTIRE_FILE(name) \
 	bool name(\
 		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		void* data, u32 dataBytes)
+		const void* data, u32 dataBytes)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
