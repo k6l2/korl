@@ -13,7 +13,7 @@ using KgtAssetHandle = u32;
 struct KgtAssetManager;
 struct KgtAssetManagerByteArray
 {
-	u8* data;
+	const u8* data;
 	u32 bytes;
 };
 internal KgtAssetManager* 
