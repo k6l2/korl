@@ -304,6 +304,39 @@ internal void
 			filePathBuffer, KorlApplicationDirectory::CURRENT);
 	asset->loaded = true;
 }
+internal KgtAssetManagerByteArray 
+	kgtAssetManagerGetBinary(KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	if(assetIndex >= KgtAssetIndex::ENUM_SIZE)
+	{
+		return { .data = nullptr, .bytes = 0 };
+	}
+	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset*const asset = assets + assetHandle;
+	if(asset->type == KgtAssetType::UNUSED)
+	{
+		kgtAssetManagerPushAsset(kam, assetIndex);
+	}
+	if(asset->loaded)
+	{
+		korlAssert(asset->type == KgtAssetType::BINARY_DATA);
+		return { .data  = asset->assetData.binary.data
+		       , .bytes = asset->assetData.binary.bytes };
+	}
+	else
+	{
+		if(g_kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
+			korlAssert(asset->type == KgtAssetType::BINARY_DATA);
+			return { .data  = asset->assetData.binary.data
+			       , .bytes = asset->assetData.binary.bytes };
+		}
+		return { .data = nullptr, .bytes = 0 };
+	}
+}
 internal RawSound 
 	kgtAssetManagerGetRawSound(KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {

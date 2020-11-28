@@ -11,6 +11,11 @@
 #include "kgtFlipBook.h"
 using KgtAssetHandle = u32;
 struct KgtAssetManager;
+struct KgtAssetManagerByteArray
+{
+	u8* data;
+	u32 bytes;
+};
 internal KgtAssetManager* 
 	kgtAssetManagerConstruct(
 		KgtAllocatorHandle allocator, u32 maxAssetHandles, 
@@ -19,6 +24,8 @@ internal void
 	kgtAssetManagerFreeAsset(KgtAssetManager* kam, KgtAssetHandle assetHandle);
 internal void 
 	kgtAssetManagerFreeAsset(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal KgtAssetManagerByteArray 
+	kgtAssetManagerGetBinary(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal RawSound 
 	kgtAssetManagerGetRawSound(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal RawImage 
