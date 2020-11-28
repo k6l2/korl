@@ -8,7 +8,8 @@ enum class KgtAssetType : u8
 	, RAW_IMAGE
 	, RAW_SOUND
 	, FLIPBOOK_META
-	, TEXTURE_META };
+	, TEXTURE_META
+	, BINARY_DATA };
 struct KgtAsset
 {
 	FileWriteTime lastWriteTime;
@@ -34,6 +35,11 @@ struct KgtAsset
 			char imageAssetName[128];
 			KgtAssetIndex kaiImage;
 		} texture;
+		struct 
+		{
+			u8* data;
+			u32 bytes;
+		} binary;
 	} assetData;
 	/* async job function convenience data */
 	KgtAssetManager* kam;
@@ -167,32 +173,30 @@ internal void
 	}
 	switch(asset->type)
 	{
-		case KgtAssetType::RAW_IMAGE:
-		{
-			kam->krb->deleteTexture(asset->assetData.image.krbTextureHandle);
-			kgtAllocFree(kam->assetDataAllocator, 
-			             asset->assetData.image.rawImage.pixelData);
+	case KgtAssetType::RAW_IMAGE: {
+		kam->krb->deleteTexture(asset->assetData.image.krbTextureHandle);
+		kgtAllocFree(kam->assetDataAllocator, 
+		             asset->assetData.image.rawImage.pixelData);
 		} break;
-		case KgtAssetType::RAW_SOUND:
-		{
-			kgtAllocFree(kam->assetDataAllocator, 
-			             asset->assetData.sound.sampleData);
+	case KgtAssetType::RAW_SOUND: {
+		kgtAllocFree(kam->assetDataAllocator, 
+		             asset->assetData.sound.sampleData);
 		} break;
-		case KgtAssetType::FLIPBOOK_META:
-		{
-			KgtAssetHandle kahTexture = static_cast<KgtAssetHandle>(
-				asset->assetData.flipbook.metaData.kaiTexture);
-			kgtAssetManagerFreeAsset(kam, kahTexture);
+	case KgtAssetType::FLIPBOOK_META: {
+		KgtAssetHandle kahTexture = static_cast<KgtAssetHandle>(
+			asset->assetData.flipbook.metaData.kaiTexture);
+		kgtAssetManagerFreeAsset(kam, kahTexture);
 		} break;
-		case KgtAssetType::TEXTURE_META:
-		{
-			kgtAssetManagerFreeAsset(kam, asset->assetData.texture.kaiImage);
+	case KgtAssetType::TEXTURE_META: {
+		kgtAssetManagerFreeAsset(kam, asset->assetData.texture.kaiImage);
 		} break;
-		case KgtAssetType::UNUSED: 
-		default:
-		{
-			KLOG(ERROR, "Attempted to free an unused asset handle!");
-			return;
+	case KgtAssetType::BINARY_DATA: {
+		kgtAllocFree(kam->assetDataAllocator, asset->assetData.binary.data);
+		} break;
+	case KgtAssetType::UNUSED: 
+	default: {
+		KLOG(ERROR, "Attempted to free an unused asset handle!");
+		return;
 		} break;
 	}
 	asset->type   = KgtAssetType::UNUSED;
@@ -230,54 +234,64 @@ internal void
 	KgtAsset*const asset = assets + kah;
 	switch(asset->type)
 	{
-		case KgtAssetType::RAW_IMAGE:
-		{
-			korlAssert(asset->assetData.image.krbTextureHandle == 
-				krb::INVALID_TEXTURE_HANDLE);
-			asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
-				asset->assetData.image.rawImage.sizeX, 
-				asset->assetData.image.rawImage.sizeY, 
-				asset->assetData.image.rawImage.pixelData ,
-				asset->assetData.image.rawImage.pixelDataFormat );
-		}break;
-		case KgtAssetType::RAW_SOUND:
-		{
-		}break;
-		case KgtAssetType::FLIPBOOK_META:
-		{
-			const KgtAssetIndex kgtAssetIdTex = 
-				kgtAssetManagerFindKgtAssetIndex(
-					asset->assetData.flipbook.textureAssetFileName);
-			if(kgtAssetIdTex >= KgtAssetIndex::ENUM_SIZE)
-				KLOG(ERROR, 
-				     "Flipbook meta textureAssetFileName='%s' not found!", 
-				     asset->assetData.flipbook.textureAssetFileName);
-			else
-			{
-				asset->assetData.flipbook.metaData.kaiTexture = 
-					kgtAssetIdTex;
-				kgtAssetManagerPushAsset(kam, kgtAssetIdTex);
-			}
-		}break;
-		case KgtAssetType::TEXTURE_META:
-		{
-			const KgtAssetIndex kgtAssetIdImage = 
-				kgtAssetManagerFindKgtAssetIndex(
-					asset->assetData.texture.imageAssetName);
-			if(kgtAssetIdImage >= KgtAssetIndex::ENUM_SIZE)
-				KLOG(ERROR, "texture meta image asset name ('%s') not found!", 
-				     asset->assetData.texture.imageAssetName);
-			else
-			{
-				asset->assetData.texture.kaiImage = kgtAssetIdImage;
-				kgtAssetManagerPushAsset(kam, kgtAssetIdImage);
-			}
+	case KgtAssetType::RAW_IMAGE: {
+		korlAssert(asset->assetData.image.krbTextureHandle == 
+			krb::INVALID_TEXTURE_HANDLE);
+		asset->assetData.image.krbTextureHandle = kam->krb->loadImage(
+			asset->assetData.image.rawImage.sizeX, 
+			asset->assetData.image.rawImage.sizeY, 
+			asset->assetData.image.rawImage.pixelData, 
+			asset->assetData.image.rawImage.pixelDataFormat );
 		} break;
-		case KgtAssetType::UNUSED:
+	case KgtAssetType::RAW_SOUND: {
+		} break;
+	case KgtAssetType::FLIPBOOK_META: {
+		const KgtAssetIndex kgtAssetIdTex = 
+			kgtAssetManagerFindKgtAssetIndex(
+				asset->assetData.flipbook.textureAssetFileName);
+		if(kgtAssetIdTex >= KgtAssetIndex::ENUM_SIZE)
+			KLOG(ERROR, 
+			     "Flipbook meta textureAssetFileName='%s' not found!", 
+			     asset->assetData.flipbook.textureAssetFileName);
+		else
 		{
-			KLOG(ERROR, "UNUSED asset!");
-			return;
+			asset->assetData.flipbook.metaData.kaiTexture = 
+				kgtAssetIdTex;
+			kgtAssetManagerPushAsset(kam, kgtAssetIdTex);
+		}
 		}break;
+	case KgtAssetType::TEXTURE_META: {
+		const KgtAssetIndex kgtAssetIdImage = 
+			kgtAssetManagerFindKgtAssetIndex(
+				asset->assetData.texture.imageAssetName);
+		if(kgtAssetIdImage >= KgtAssetIndex::ENUM_SIZE)
+			KLOG(ERROR, "texture meta image asset name ('%s') not found!", 
+			     asset->assetData.texture.imageAssetName);
+		else
+		{
+			asset->assetData.texture.kaiImage = kgtAssetIdImage;
+			kgtAssetManagerPushAsset(kam, kgtAssetIdImage);
+		}
+		} break;
+	case KgtAssetType::BINARY_DATA: {
+		/* allocate storage from assetDataAllocator */
+		u8*const assetData = reinterpret_cast<u8*>(
+			kgtAllocAlloc(kam->assetDataAllocator, 
+			              asset->assetData.binary.bytes));
+		/* copy the data over */
+		memcpy(assetData, asset->assetData.binary.data, 
+		       asset->assetData.binary.bytes);
+		/* safely deallocate the hKgaRawFiles data */
+		g_kpl->lock(kam->hLockAssetDataAllocator);
+		kgtAllocFree(kam->hKgaRawFiles, asset->assetData.binary.data);
+		g_kpl->unlock(kam->hLockAssetDataAllocator);
+		/* set the new asset binary data pointer */
+		asset->assetData.binary.data = assetData;
+		} break;
+	case KgtAssetType::UNUSED: {
+		KLOG(ERROR, "UNUSED asset!");
+		return;
+		} break;
 	}
 	char filePathBuffer[256];
 	const bool successBuildExeFilePath = 
@@ -776,7 +790,7 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 	g_kpl->lock(asset->kam->hLockAssetDataAllocator);
 	void*const rawFileMemory = 
 		kgtAllocAlloc(asset->kam->hKgaRawFiles, 
-		            kmath::safeTruncateU32(assetByteSize) + 1);
+		              kmath::safeTruncateU32(assetByteSize) + 1);
 	korlAssert(rawFileMemory);
 	g_kpl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* defer cleanup of the raw file memory until after we utilize it */
@@ -811,12 +825,61 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 		return;
 	}
 }
+JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadBinary)
+{
+	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
+	const size_t kai = asset->kgtAssetIndex;
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
+	}
+	const i32 assetByteSize = 
+		g_kpl->getFileByteSize(
+			filePathBuffer, KorlApplicationDirectory::CURRENT);
+	if(assetByteSize < 0)
+	{
+		KLOG(ERROR, "Failed to get asset byte size of \"%s\"", 
+		     filePathBuffer);
+		return;
+	}
+	/* lock the asset manager's asset data allocator so we can safely allocate 
+		data for the raw file.  The decoded asset structure is stored entirely 
+		in the KgtAsset */
+	g_kpl->lock(asset->kam->hLockAssetDataAllocator);
+	void*const rawFileMemory = 
+		kgtAllocAlloc(asset->kam->hKgaRawFiles, 
+		              kmath::safeTruncateU32(assetByteSize) + 1);
+	korlAssert(rawFileMemory);
+	g_kpl->unlock(asset->kam->hLockAssetDataAllocator);
+	/* load the entire raw file into a `fileByteSize` chunk */
+	const bool assetReadSuccess = 
+		g_kpl->readEntireFile(
+			filePathBuffer, KorlApplicationDirectory::CURRENT, rawFileMemory, 
+			kmath::safeTruncateU32(assetByteSize));
+	if(!assetReadSuccess)
+	{
+		KLOG(ERROR, "Failed to read asset \"%s\"!", filePathBuffer);
+		return;
+	}
+	/* null-terminate the file buffer */
+	reinterpret_cast<u8*>(rawFileMemory)[assetByteSize] = 0;
+	/* save a copy to this pointer in the asset so the main thread can copy this 
+		data & deallocate the raw file pool memory when this job completes */
+	asset->assetData.binary.data  = reinterpret_cast<u8*>(rawFileMemory);
+	asset->assetData.binary.bytes = kmath::safeTruncateU32(assetByteSize + 1);
+}
 // @optimization (minor): just bake this info using `kasset`
 enum class KgtAssetFileType
-{
-	PNG, WAV, OGG, FLIPBOOK_META, TEXTURE_META, 
-	UNKNOWN
-};
+	{ PNG, WAV, OGG, FLIPBOOK_META, TEXTURE_META, UNKNOWN };
 internal KgtAssetFileType 
 	kgtAssetManagerAssetFileType(KgtAssetIndex assetIndex)
 {
@@ -853,56 +916,47 @@ internal KgtAssetHandle
 	/* load the asset from the platform layer */
 	{
 		KLOG(INFO, "Loading asset '%s'...", kgtAssetFileNames[assetHandle]);
-		asset->loaded        = false;
-		asset->kgtAssetIndex = assetHandle;
 		const KgtAssetFileType assetFileType = 
 			kgtAssetManagerAssetFileType(assetIndex);
+		KgtAssetType assetType = KgtAssetType::UNUSED;
+		fnSig_jobQueueFunction* jobQueueFunc = nullptr;
 		switch(assetFileType)
 		{
-			case KgtAssetFileType::PNG:
-			{
-				asset->type            = KgtAssetType::RAW_IMAGE;
-				asset->kam             = kam;
-				asset->assetData.image = {};
-				asset->jqTicketLoading = 
-					g_kpl->postJob(kgtAssetManagerAsyncLoadPng, asset);
-			}break;
-			case KgtAssetFileType::WAV:
-			{
-				asset->type            = KgtAssetType::RAW_SOUND;
-				asset->kam             = kam;
-				asset->jqTicketLoading = 
-					g_kpl->postJob(kgtAssetManagerAsyncLoadWav, asset);
-			}break;
-			case KgtAssetFileType::OGG:
-			{
-				asset->type            = KgtAssetType::RAW_SOUND;
-				asset->kam             = kam;
-				asset->jqTicketLoading = 
-					g_kpl->postJob(kgtAssetManagerAsyncLoadOgg, asset);
-			}break;
-			case KgtAssetFileType::FLIPBOOK_META:
-			{
-				asset->type            = KgtAssetType::FLIPBOOK_META;
-				asset->kam             = kam;
-				asset->jqTicketLoading = 
-					g_kpl->postJob(kgtAssetManagerAsyncLoadFlipbookMeta, asset);
-			}break;
-			case KgtAssetFileType::TEXTURE_META:
-			{
-				asset->type            = KgtAssetType::TEXTURE_META;
-				asset->kam             = kam;
-				asset->jqTicketLoading = 
-					g_kpl->postJob(kgtAssetManagerAsyncLoadTextureMeta, asset);
-			}break;
-			case KgtAssetFileType::UNKNOWN:
-			default:
-			{
-				KLOG(ERROR, "Unknown KgtAssetFileType==%i for assetIndex==%i!",
-				     static_cast<i32>(assetFileType), assetIndex);
-				return kam->maxAssetHandles;
-			}break;
+		case KgtAssetFileType::PNG: {
+			asset->assetData.image = {};
+			assetType = KgtAssetType::RAW_IMAGE;
+			jobQueueFunc = kgtAssetManagerAsyncLoadPng;
+			} break;
+		case KgtAssetFileType::WAV: {
+			assetType = KgtAssetType::RAW_SOUND;
+			jobQueueFunc = kgtAssetManagerAsyncLoadWav;
+			} break;
+		case KgtAssetFileType::OGG: {
+			assetType = KgtAssetType::RAW_SOUND;
+			jobQueueFunc = kgtAssetManagerAsyncLoadOgg;
+			} break;
+		case KgtAssetFileType::FLIPBOOK_META: {
+			assetType = KgtAssetType::FLIPBOOK_META;
+			jobQueueFunc = kgtAssetManagerAsyncLoadFlipbookMeta;
+			} break;
+		case KgtAssetFileType::TEXTURE_META: {
+			assetType = KgtAssetType::TEXTURE_META;
+			jobQueueFunc = kgtAssetManagerAsyncLoadTextureMeta;
+			} break;
+		case KgtAssetFileType::UNKNOWN:
+		default: {
+			/* if an asset file type is not known, we can just assume the 
+				contents will be interpreted as raw binary data & load it as 
+				such */
+			assetType = KgtAssetType::BINARY_DATA;
+			jobQueueFunc = kgtAssetManagerAsyncLoadBinary;
+			} break;
 		}
+		asset->loaded          = false;
+		asset->kgtAssetIndex   = assetHandle;
+		asset->kam             = kam;
+		asset->type            = assetType;
+		asset->jqTicketLoading = g_kpl->postJob(jobQueueFunc, asset);
 	}
 	else
 	{

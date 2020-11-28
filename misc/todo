@@ -813,6 +813,8 @@
 		actually display the output streams in the output console by default :|
 [x] win32: fix `relativeAssetDir` code so that the parameter passed to the 
 	application doesn't need the trailing '\' character
+[ ] win32: fix application throwing an error when the app loses mouse focus 
+	before enumerating devices when the app is first starting up
 [ ] korlTimeProbe macro
 	- getPreviousFrameTimeProbeCount : u32
 	- getPreviousFrameTimeProbe(u32 index)
