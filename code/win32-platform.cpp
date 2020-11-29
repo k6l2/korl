@@ -1284,7 +1284,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
 	HDC hdcHwnd = GetDC(hwnd);
 	if(!hdcHwnd)
 	{
-		KLOG(ERROR, "GetDC failed!");
+		KLOG(WARNING, "GetDC failed!");
 		*hWindow = nullptr;
 		return result;
 	}
