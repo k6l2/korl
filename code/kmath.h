@@ -171,6 +171,7 @@ namespace kmath
 	/* Thanks, Bruce Dawson!  Source: 
 		https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ */
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
+	internal inline bool isNearlyEqual(f64 fA, f64 fB, f64 epsilon = 1e-5f);
 	internal inline bool isNearlyZero(f32 f, f32 epsilon = 1e-5f);
 	internal inline f32    min(f32    a, f32    b);
 	internal inline size_t min(size_t a, size_t b);
@@ -182,6 +183,7 @@ namespace kmath
 	internal inline u64 gigabytes(u64 g);
 	/** @return the # of bytes which represent `t` terabytes */
 	internal inline u64 terabytes(u64 t);
+	internal inline f32 safeTruncateF32(f64 value);
 	internal inline u64 safeTruncateU64(i64 value);
 	internal inline u32 safeTruncateU32(u64 value);
 	internal inline u32 safeTruncateU32(i32 value);

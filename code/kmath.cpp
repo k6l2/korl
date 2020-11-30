@@ -451,6 +451,14 @@ internal inline bool kmath::isNearlyEqual(f32 fA, f32 fB, f32 epsilon)
 	const f32 largest = (fB > fA) ? fB : fA;
 	return (diff <= largest * epsilon);
 }
+internal inline bool kmath::isNearlyEqual(f64 fA, f64 fB, f64 epsilon)
+{
+	const f64 diff = fabs(fA - fB);
+	fA = fabs(fA);
+	fB = fabs(fB);
+	const f64 largest = (fB > fA) ? fB : fA;
+	return (diff <= largest * epsilon);
+}
 internal inline bool kmath::isNearlyZero(f32 f, f32 epsilon)
 {
 	return isNearlyEqual(f, 0.f, epsilon);
@@ -478,6 +486,13 @@ internal inline u64 kmath::gigabytes(u64 g)
 internal inline u64 kmath::terabytes(u64 t)
 {
 	return gigabytes(t)*1024;
+}
+internal inline f32 kmath::safeTruncateF32(f64 value)
+{
+	/* @correctness: figure out if there is a better way to do this later... */
+	const f32 result = static_cast<f32>(value);
+	korlAssert(isNearlyEqual(static_cast<f64>(result), value));
+	return result;
 }
 internal inline u64 kmath::safeTruncateU64(i64 value)
 {
