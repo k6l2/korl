@@ -1415,7 +1415,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	}
 	if(copiedScanLines == 0)
 	{
-		KLOG(ERROR, "GetDIBits failed!");
+		KLOG(WARNING, "GetDIBits failed!");
 		return;
 	}
 }
