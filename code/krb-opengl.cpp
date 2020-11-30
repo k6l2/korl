@@ -315,6 +315,36 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 	glEnd();
 	GL_CHECK_ERROR();
 }
+internal KRB_DRAW_QUAD(krbDrawQuad)
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+	glDisable(GL_TEXTURE_2D);
+	glBegin(GL_TRIANGLES);
+	const v2f32 quadMeshOffset = {-ratioAnchor.x*size.x, ratioAnchor.y*size.y};
+	// draw the bottom-left triangle //
+	// up-left vertex
+	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
+	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
+	// down-left vertex
+	glColor4f(colors[1].r, colors[1].g, colors[1].b, colors[1].a);
+	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + -size.y);
+	// down-right vertex
+	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
+	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
+	// draw the upper-right triangle //
+	// up-left vertex
+	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
+	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
+	// down-right vertex
+	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
+	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
+	// up-right vertex
+	glColor4f(colors[3].r, colors[3].g, colors[3].b, colors[3].a);
+	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + 0);
+	glEnd();
+	GL_CHECK_ERROR();
+}
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 {
 	glEnable(GL_BLEND);

@@ -90,6 +90,9 @@ struct KrbVertexAttributeOffsets
 #define KRB_DRAW_QUAD_TEXTURED(name) \
 	void name(const v2f32& size, const v2f32& ratioAnchor, \
 	          const v2f32 texCoords[4], const Color4f32 colors[4])
+#define KRB_DRAW_QUAD(name) \
+	void name(const v2f32& size, const v2f32& ratioAnchor, \
+	          const Color4f32 colors[4])
 #define KRB_DRAW_CIRCLE(name) \
 	void name(f32 radius, f32 outlineThickness, const Color4f32& colorFill, \
 	          const Color4f32& colorOutline, u16 vertexCount)
@@ -151,6 +154,7 @@ typedef KRB_LOOK_AT(fnSig_krbLookAt);
 typedef KRB_DRAW_POINTS(fnSig_krbDrawPoints);
 typedef KRB_DRAW_LINES(fnSig_krbDrawLines);
 typedef KRB_DRAW_TRIS(fnSig_krbDrawTris);
+typedef KRB_DRAW_QUAD(fnSig_krbDrawQuad);
 typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
 typedef KRB_DRAW_CIRCLE(fnSig_krbDrawCircle);
 typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
@@ -177,6 +181,7 @@ internal KRB_LOOK_AT(krbLookAt);
 internal KRB_DRAW_POINTS(krbDrawPoints);
 internal KRB_DRAW_LINES(krbDrawLines);
 internal KRB_DRAW_TRIS(krbDrawTris);
+internal KRB_DRAW_QUAD(krbDrawQuad);
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
 internal KRB_DRAW_CIRCLE(krbDrawCircle);
 internal KRB_VIEW_TRANSLATE(krbViewTranslate);
@@ -205,6 +210,7 @@ struct KrbApi
 	fnSig_krbDrawPoints*         drawPoints         = krbDrawPoints;
 	fnSig_krbDrawLines*          drawLines          = krbDrawLines;
 	fnSig_krbDrawTris*           drawTris           = krbDrawTris;
+	fnSig_krbDrawQuad*           drawQuad           = krbDrawQuad;
 	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;
 	fnSig_krbDrawCircle*         drawCircle         = krbDrawCircle;
 	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
