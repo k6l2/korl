@@ -2,7 +2,9 @@
 /* Disambiguation of C++ static keyword.  Good idea, Casey! */
 #define internal        static
 #define local_persist   static
+#define local_const     static const
 #define global_variable static
+#define global_const    static const
 #define class_namespace static
 /* Utility macro for getting the size of a C array */
 #define CARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
