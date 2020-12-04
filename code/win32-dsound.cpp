@@ -135,7 +135,11 @@ internal void w32WriteDSoundAudio(u32 soundBufferBytes,
 			g_dsBufferSecondary->GetCurrentPosition(&cursorPlay, &cursorWrite);
 		if(result != DS_OK)
 		{
-			KLOG(ERROR, "Failed to get current position! result=%li", result);
+			/* @todo: this code is reached when the user switches audio devices!  
+				Instead of just issuing a warning here, maybe we should actually 
+				gracefully switch audio devices for them under the hood so that 
+				everything just works??? */
+			KLOG(WARNING, "Failed to get current position! result=%li", result);
 			return;
 		}
 	}
