@@ -14,6 +14,13 @@ internal u8
 			componentByteOffset = 2;
 		break;
 	}
+	if(rawImg.rowByteStride)
+	{
+		const u32 row    = kmath::safeTruncateU32(pixelIndex / rawImg.sizeX);
+		const u32 column = kmath::safeTruncateU32(pixelIndex % rawImg.sizeX);
+		componentByteOffset += row*rawImg.rowByteStride;
+		pixelIndex = column;
+	}
 	return rawImg.pixelData[pixelIndex*pixelByteStride + componentByteOffset];
 }
 internal u8 
@@ -31,6 +38,13 @@ internal u8
 			componentByteOffset = 1;
 		break;
 	}
+	if(rawImg.rowByteStride)
+	{
+		const u32 row    = kmath::safeTruncateU32(pixelIndex / rawImg.sizeX);
+		const u32 column = kmath::safeTruncateU32(pixelIndex % rawImg.sizeX);
+		componentByteOffset += row*rawImg.rowByteStride;
+		pixelIndex = column;
+	}
 	return rawImg.pixelData[pixelIndex*pixelByteStride + componentByteOffset];
 }
 internal u8 
@@ -47,6 +61,13 @@ internal u8
 			pixelByteStride = 3;
 			componentByteOffset = 0;
 		break;
+	}
+	if(rawImg.rowByteStride)
+	{
+		const u32 row    = kmath::safeTruncateU32(pixelIndex / rawImg.sizeX);
+		const u32 column = kmath::safeTruncateU32(pixelIndex % rawImg.sizeX);
+		componentByteOffset += row*rawImg.rowByteStride;
+		pixelIndex = column;
 	}
 	return rawImg.pixelData[pixelIndex*pixelByteStride + componentByteOffset];
 }
@@ -68,18 +89,26 @@ internal u8
 internal void 
 	korlRawImageSetPixel(RawImage* rawImg, u64 pixelIndex, u8 r, u8 g, u8 b)
 {
+	u32 rowStrideByteOffset = 0;
+	if(rawImg->rowByteStride)
+	{
+		const u32 row    = kmath::safeTruncateU32(pixelIndex / rawImg->sizeX);
+		const u32 column = kmath::safeTruncateU32(pixelIndex % rawImg->sizeX);
+		rowStrideByteOffset = row*rawImg->rowByteStride;
+		pixelIndex = column;
+	}
 	switch(rawImg->pixelDataFormat)
 	{
 		case KorlPixelDataFormat::RGBA:
-			rawImg->pixelData[4*pixelIndex + 0] = r;
-			rawImg->pixelData[4*pixelIndex + 1] = g;
-			rawImg->pixelData[4*pixelIndex + 2] = b;
-			rawImg->pixelData[4*pixelIndex + 3] = 0xFF;
+			rawImg->pixelData[rowStrideByteOffset + 4*pixelIndex + 0] = r;
+			rawImg->pixelData[rowStrideByteOffset + 4*pixelIndex + 1] = g;
+			rawImg->pixelData[rowStrideByteOffset + 4*pixelIndex + 2] = b;
+			rawImg->pixelData[rowStrideByteOffset + 4*pixelIndex + 3] = 0xFF;
 		break;
 		case KorlPixelDataFormat::BGR:
-			rawImg->pixelData[3*pixelIndex + 0] = b;
-			rawImg->pixelData[3*pixelIndex + 1] = g;
-			rawImg->pixelData[3*pixelIndex + 2] = r;
+			rawImg->pixelData[rowStrideByteOffset + 3*pixelIndex + 0] = b;
+			rawImg->pixelData[rowStrideByteOffset + 3*pixelIndex + 1] = g;
+			rawImg->pixelData[rowStrideByteOffset + 3*pixelIndex + 2] = r;
 		break;
 	}
 }

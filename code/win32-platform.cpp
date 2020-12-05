@@ -1268,60 +1268,24 @@ internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows)
 	}
 	return callbackResources.metaArraySize;
 }
-internal PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
-	w32PlatformGetWindowRawImageMetaData)
-{
-	RawImage result = {};
-	/* obtain the device context of the target window */
-	if(!(*hWindow))
-		return result;
-	HWND hwnd = reinterpret_cast<HWND>(*hWindow);
-	if(!hwnd)
-	{
-		KLOG(ERROR, "null hwnd!");
-		return result;
-	}
-	HDC hdcHwnd = GetDC(hwnd);
-	if(!hdcHwnd)
-	{
-		KLOG(WARNING, "GetDC failed!");
-		*hWindow = nullptr;
-		return result;
-	}
-	defer(ReleaseDC(hwnd, hdcHwnd));
-	/* extract the size of the target window */
-	RECT rectHwnd;
-	const BOOL successGetClientRect = GetClientRect(hwnd, &rectHwnd);
-	if(!successGetClientRect)
-	{
-		KLOG(ERROR, "GetClientRect failed! getlasterror=%i", GetLastError());
-		*hWindow = nullptr;
-		return result;
-	}
-	/* according to MSDN, left & top are always 0, so I don't actually need to 
-		do this subtraction here, but w/e... */
-	result.sizeX           = rectHwnd.right  - rectHwnd.left;
-	result.sizeY           = rectHwnd.bottom - rectHwnd.top;
-	result.pixelDataFormat = KorlPixelDataFormat::BGR;
-	return result;
-}
 internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 {
+	RawImage result = {};
 	/* obtain a device context to the window */
 	if(!(*hWindow))
-		return;
+		return result;
 	HWND hwnd = reinterpret_cast<HWND>(*hWindow);
 	if(!hwnd)
 	{
 		KLOG(ERROR, "null hwnd!");
-		return;
+		return result;
 	}
 	HDC hdcHwnd = GetDC(hwnd);
 	if(!hdcHwnd)
 	{
 		KLOG(ERROR, "GetDC failed!");
 		*hWindow = nullptr;
-		return;
+		return result;
 	}
 	defer(ReleaseDC(hwnd, hdcHwnd));
 	/* extract the size of the target window & verify that the dimensions of 
@@ -1331,37 +1295,44 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	if(!successGetClientRect)
 	{
 		KLOG(ERROR, "GetClientRect failed! getlasterror=%i", GetLastError());
-		return;
+		return result;
 	}
-	/* according to MSDN, left & top are always 0, so I don't actually need to 
-		do this subtraction here, but w/e... */
-	const u32 hwndSizeX = 
-		kmath::safeTruncateU32(rectHwnd.right  - rectHwnd.left);
-	const u32 hwndSizeY = 
-		kmath::safeTruncateU32(rectHwnd.bottom - rectHwnd.top);
-	if(   io_rawImage->sizeX != hwndSizeX
-	   || io_rawImage->sizeY != hwndSizeY)
+	/* Now that we know how big the client rect is, we know how much memory is 
+		required to store the bitmap!  Let's prepare our result RawImage with 
+		the appropriate details: */
+	result.sizeX           = rectHwnd.right  - rectHwnd.left;
+	result.sizeY           = rectHwnd.bottom - rectHwnd.top;
+	result.pixelDataFormat = KorlPixelDataFormat::BGR;
+	/* for 24-bit bitmaps, we must account for padding on each row, since 
+		GetDIBits documentation via MSDN states: 
+			"The scan lines must be aligned on a DWORD except for RLE compressed 
+			bitmaps."
+		https://stackoverflow.com/a/3688558 */
+	result.rowByteStride   = ((3*result.sizeX + 3) & ~3);
+	const u32 pixelDataBytesRequired = result.rowByteStride * result.sizeY;
+	result.pixelData = reinterpret_cast<u8*>(
+		callbackRequestMemory(pixelDataBytesRequired));
+	if(!result.pixelData)
 	{
-		KLOG(ERROR, "rawImage size {%i,%i} != hwnd size {%i, %i}!", 
-		     io_rawImage->sizeX, io_rawImage->sizeY, hwndSizeX, hwndSizeY);
-		return;
+		KLOG(ERROR, "Request for %i bytes from the caller failed!", 
+		     pixelDataBytesRequired);
+		return result;
 	}
 	/* create a device context to perform bitblt operations on a bitmap */
 	HDC hdcBitmap = CreateCompatibleDC(hdcHwnd);
 	if(!hdcBitmap)
 	{
 		KLOG(ERROR, "CreateCompatibleDC failed!");
-		return;
+		return result;
 	}
 	defer(DeleteDC(hdcBitmap));
 	/* create a bitmap handle with the same dimensions as the target window */
 	HBITMAP hbmHwnd = 
-		CreateCompatibleBitmap(
-			hdcHwnd, io_rawImage->sizeX, io_rawImage->sizeY);
+		CreateCompatibleBitmap(hdcHwnd, result.sizeX, result.sizeY);
 	if(!hbmHwnd)
 	{
 		KLOG(ERROR, "CreateCompatibleBitmap failed!");
-		return;
+		return result;
 	}
 	defer(DeleteObject(hbmHwnd));
 	/* select the bitmap into the designated device context */
@@ -1369,7 +1340,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	if(resultSelectObject == HGDI_ERROR || !resultSelectObject)
 	{
 		KLOG(ERROR, "SelectObject failed!");
-		return;
+		return result;
 	}
 	/* With GDI, we must ALWAYS restore the previously selected object before 
 		deleting the object/DC! 
@@ -1378,12 +1349,12 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	/* copy the window gfx into the bitmap handle */
 	const BOOL successBitBlt = 
 		BitBlt(
-			hdcBitmap, 0, 0, io_rawImage->sizeX, io_rawImage->sizeY, 
+			hdcBitmap, 0, 0, result.sizeX, result.sizeY, 
 			hdcHwnd, 0, 0, SRCCOPY);// | CAPTUREBLT);
 	if(!successBitBlt)
 	{
 		KLOG(ERROR, "BitBlt failure! getlasterror=%i", GetLastError());
-		return;
+		return result;
 	}
 	/* obtain a bitmap from the bitmap handle */
 	BITMAP bmpHwnd;
@@ -1392,13 +1363,13 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	if(bytesWrittenGetBmp == 0)
 	{
 		KLOG(ERROR, "GetObject failure!");
-		return;
+		return result;
 	}
 	/* copy the bits from the bitmap into the provided RawImage */
 	BITMAPINFO bitmapInfo = {};
 	bitmapInfo.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-	bitmapInfo.bmiHeader.biWidth       =       io_rawImage->sizeX;
-	bitmapInfo.bmiHeader.biHeight      = -LONG(io_rawImage->sizeY);
+	bitmapInfo.bmiHeader.biWidth       =       result.sizeX;
+	bitmapInfo.bmiHeader.biHeight      = -LONG(result.sizeY);
 	bitmapInfo.bmiHeader.biPlanes      = 1;
 	bitmapInfo.bmiHeader.biBitCount    = 24;
 	bitmapInfo.bmiHeader.biCompression = BI_RGB;
@@ -1407,15 +1378,16 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	SelectObject(hdcBitmap, resultSelectObject);
 	const int copiedScanLines = 
 		GetDIBits(hdcHwnd, hbmHwnd, 0, bmpHwnd.bmHeight, 
-		          io_rawImage->pixelData, &bitmapInfo, DIB_RGB_COLORS);
+		          result.pixelData, &bitmapInfo, DIB_RGB_COLORS);
 	if(copiedScanLines == ERROR_INVALID_PARAMETER)
 	{
 		KLOG(ERROR, "GetDIBits: ERROR_INVALID_PARAMETER!");
-		return;
+		return result;
 	}
 	if(copiedScanLines == 0)
 	{
 		KLOG(WARNING, "GetDIBits failed!");
-		return;
+		return result;
 	}
+	return result;
 }

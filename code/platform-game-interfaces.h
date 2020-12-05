@@ -9,9 +9,20 @@ struct RawImage
 {
 	u32 sizeX;
 	u32 sizeY;
+	/** If this member is 0, then each row of pixelData is fully packed.  
+	 * Otherwise, there is a non-zero amount of padding at the end of each row 
+	 * 	and therefore, the TOTAL BYTE SIZE of a row of pixelData is indicated by 
+	 * 	this value!  For example, if a RawImage has a sizeX==7, and 
+	 * 	pixelDataFormat==BGR, and rowByteStride==28, then a single row of this 
+	 * 	RawImage will consist of 7 BGR pixels 
+	 * 	(7_pixels * 3_bytes_per_pixel == 21_bytes), followed by 7 bytes of 
+	 * 	unused padding!
+	 */
+	u32 rowByteStride;
 	KorlPixelDataFormat pixelDataFormat;
-	/* NOTE: when interpreting pixels as u32 values, this order depends on the 
-			endian-ness of the system! */
+	/* NOTE: when interpreting pixels as u32 values, color order depends on the 
+			endian-ness of the system!  USE THE HELPER FUNCTIONS DECLARED BELOW 
+			for pixel access if you want to remain sane. */
 	u8* pixelData;
 };
 internal u8 
@@ -244,13 +255,16 @@ struct KplWindowMetaData
  */
 #define PLATFORM_ENUMERATE_WINDOWS(name) \
 	i32 name(KplWindowMetaData* o_metaArray, u32 metaArrayCapacity)
+#define KORL_CALLBACK_REQUEST_MEMORY(name) \
+	void* name(u32 requestedByteCount)
+typedef KORL_CALLBACK_REQUEST_MEMORY(fnSig_korlCallbackRequestMemory);
 /**
  * If an error occurs, *hWindow will be automatically nullified.
  */
-#define PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(name) \
-	RawImage name(KplWindowHandle* hWindow)
 #define PLATFORM_GET_WINDOW_RAW_IMAGE(name) \
-	void name(KplWindowHandle* hWindow, RawImage* io_rawImage)
+	RawImage name(\
+		KplWindowHandle* hWindow, \
+		fnSig_korlCallbackRequestMemory* callbackRequestMemory)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
@@ -288,8 +302,6 @@ typedef PLATFORM_UNLOCK(fnSig_platformUnlock);
 typedef PLATFORM_MOUSE_SET_HIDDEN(fnSig_platformMouseSetHidden);
 typedef PLATFORM_MOUSE_SET_RELATIVE_MODE(fnSig_platformMouseSetRelativeMode);
 typedef PLATFORM_ENUMERATE_WINDOWS(fnSig_platformEnumerateWindows);
-typedef PLATFORM_GET_WINDOW_RAW_IMAGE_META_DATA(
-	fnSig_platformGetWindowRawImageMetaData);
 typedef PLATFORM_GET_WINDOW_RAW_IMAGE(fnSig_platformGetWindowRawImage);
 struct KorlPlatformApi
 {
@@ -329,7 +341,6 @@ struct KorlPlatformApi
 	fnSig_platformMouseSetHidden* mouseSetHidden;
 	fnSig_platformMouseSetRelativeMode* mouseSetRelativeMode;
 	fnSig_platformEnumerateWindows* enumerateWindows;
-	fnSig_platformGetWindowRawImageMetaData* getWindowRawImageMetaData;
 	fnSig_platformGetWindowRawImage* getWindowRawImage;
 };
 /***************************************************** END PLATFORM INTERFACE */
