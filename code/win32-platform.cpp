@@ -1283,8 +1283,9 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	HDC hdcHwnd = GetDC(hwnd);
 	if(!hdcHwnd)
 	{
-		KLOG(ERROR, "GetDC failed!");
-		*hWindow = nullptr;
+		/* @todo: this condition occurs when the window is minimized.  Instead 
+			of reporting an error, let's give the caller this information */
+		KLOG(WARNING, "GetDC failed!");
 		return result;
 	}
 	defer(ReleaseDC(hwnd, hdcHwnd));
@@ -1303,6 +1304,10 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	result.sizeX           = rectHwnd.right  - rectHwnd.left;
 	result.sizeY           = rectHwnd.bottom - rectHwnd.top;
 	result.pixelDataFormat = KorlPixelDataFormat::BGR;
+	if(result.sizeX == 0 || result.sizeY == 0)
+	{
+		return result;
+	}
 	/* for 24-bit bitmaps, we must account for padding on each row, since 
 		GetDIBits documentation via MSDN states: 
 			"The scan lines must be aligned on a DWORD except for RLE compressed 
