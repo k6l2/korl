@@ -37,6 +37,10 @@ internal u8
 	korlRawImageGetBlue(const RawImage& rawImg, u64 pixelIndex);
 internal u8 
 	korlRawImageGetBlue(const RawImage& rawImg, const v2u32& coord);
+internal u8 
+	korlRawImageGetAlpha(const RawImage& rawImg, u64 pixelIndex);
+internal u8 
+	korlRawImageGetAlpha(const RawImage& rawImg, const v2u32& coord);
 internal void 
 	korlRawImageSetPixel(RawImage* rawImg, u64 pixelIndex, u8 r, u8 g, u8 b);
 struct RawSound

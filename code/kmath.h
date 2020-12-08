@@ -22,6 +22,7 @@ public:
 	inline v2u32 operator/(u32 discreteScalar) const;
 	inline v2u32 operator*(const v2u32& other) const;
 	inline v2u32 operator+(const v2u32& other) const;
+	inline v2u32 operator-(const v2u32& other) const;
 	inline bool operator==(const v2u32& other) const;
 };
 struct v2i32
