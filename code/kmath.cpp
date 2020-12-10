@@ -51,6 +51,14 @@ inline v2f32 v2f32::operator/(f32 scalar) const
 {
 	return {x/scalar, y/scalar};
 }
+inline v2f32 v2f32::operator*(const v2f32& other) const
+{
+	return {x * other.x, y * other.y};
+}
+inline v2f32 v2f32::operator/(const v2f32& other) const
+{
+	return {x / other.x, y / other.y};
+}
 inline v2f32 v2f32::operator+(const v2f32& other) const
 {
 	return {x + other.x, y + other.y};
@@ -552,6 +560,13 @@ internal inline i16 kmath::safeTruncateI16(i32 value)
 	korlAssert(value <= std::numeric_limits<i16>::max() && 
 	           value >= std::numeric_limits<i16>::min());
 	return static_cast<i16>(value);
+}
+internal inline u8 kmath::safeTruncateU8(f32 value)
+{
+	value = roundf(value);
+	korlAssert(value >= 0 
+	        && value <= std::numeric_limits<u8>::max());
+	return static_cast<u8>(value);
 }
 internal inline u8 kmath::safeTruncateU8(i32 value)
 {

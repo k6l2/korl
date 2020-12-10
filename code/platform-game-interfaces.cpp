@@ -139,3 +139,9 @@ internal void
 		break;
 	}
 }
+internal void 
+	korlRawImageSetPixel(
+		RawImage* rawImg, const v2u32& coord, u8 r, u8 g, u8 b)
+{
+	korlRawImageSetPixel(rawImg, coord.y * rawImg->sizeX + coord.x, r, g, b);
+}

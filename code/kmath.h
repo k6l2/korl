@@ -53,6 +53,8 @@ public:
 	inline v2f32 operator-() const;
 	inline v2f32 operator*(f32 scalar) const;
 	inline v2f32 operator/(f32 scalar) const;
+	inline v2f32 operator*(const v2f32& other) const;
+	inline v2f32 operator/(const v2f32& other) const;
 	inline v2f32 operator+(const v2f32& other) const;
 	inline v2f32 operator-(const v2f32& other) const;
 	inline v2f32& operator*=(const f32 scalar);
@@ -197,6 +199,7 @@ namespace kmath
 	internal inline u16 safeTruncateU16(u32 value);
 	internal inline u16 safeTruncateU16(u64 value);
 	internal inline i16 safeTruncateI16(i32 value);
+	internal inline u8 safeTruncateU8(f32 value);
 	internal inline u8 safeTruncateU8(i32 value);
 	internal inline u8 safeTruncateU8(u32 value);
 	internal inline u8 safeTruncateU8(u64 value);
