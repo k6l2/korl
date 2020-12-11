@@ -3,6 +3,13 @@
 #include "krb-interface.h"
 #include "kgtAllocator.h"
 #include "kmath.h"
+//#include <immintrin.h> // AVX, AVX2, FMA
+//#include <zmmintrin.h> // AVX512?
+/* define hardware-specific intrinsics (AVX, etc...) */
+/* @todo: define hardware-specific intrinsics for non-windows platforms */
+#if defined(_MSC_VER)
+	#include <intrin.h>
+#endif
 // Data structures which must be the same for the Platform & Game layers ///////
 /* PLATFORM INTERFACE *********************************************************/
 struct RawImage
