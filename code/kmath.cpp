@@ -461,9 +461,9 @@ inline v3f32 q32::transform(const v3f32& v3d, bool quatIsNormalized)
 }
 internal inline bool kmath::isNearlyEqual(f32 fA, f32 fB, f32 epsilon)
 {
-	const f32 diff = fabsf(fA - fB);
-	fA = fabsf(fA);
-	fB = fabsf(fB);
+	const f32 diff = kmath::abs(fA - fB);
+	fA = kmath::abs(fA);
+	fB = kmath::abs(fB);
 	const f32 largest = (fB > fA) ? fB : fA;
 	return (diff <= largest * epsilon);
 }
@@ -478,6 +478,13 @@ internal inline bool kmath::isNearlyEqual(f64 fA, f64 fB, f64 epsilon)
 internal inline bool kmath::isNearlyZero(f32 f, f32 epsilon)
 {
 	return isNearlyEqual(f, 0.f, epsilon);
+}
+internal inline f32 kmath::abs(f32 f)
+{
+	if(f > 0)
+		return f;
+	else
+		return f * -1.f;
 }
 internal inline f32 kmath::min(f32 a, f32 b)
 {

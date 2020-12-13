@@ -178,6 +178,7 @@ namespace kmath
 	internal inline bool isNearlyEqual(f32 fA, f32 fB, f32 epsilon = 1e-5f);
 	internal inline bool isNearlyEqual(f64 fA, f64 fB, f64 epsilon = 1e-5f);
 	internal inline bool isNearlyZero(f32 f, f32 epsilon = 1e-5f);
+	internal inline f32 abs(f32 f);
 	internal inline f32    min(f32    a, f32    b);
 	internal inline size_t min(size_t a, size_t b);
 	/** @return the # of bytes which represent `k` kilobytes */
