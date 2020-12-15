@@ -15,6 +15,11 @@ internal void
 		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale);
 internal void 
+	kgtDrawTexture2d(
+		KrbTextureHandle kth, const v2u32& imageSize, 
+		const v2f32& position, const v2f32& ratioAnchor, 
+		f32 counterClockwiseRadians, const v2f32& scale);
+internal void 
 	kgtDrawAxes(const v3f32& scale);
 /**
  * draw a small circle on the screen at the closest point of the world-space 
