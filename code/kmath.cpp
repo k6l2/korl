@@ -132,6 +132,14 @@ internal inline v3f32 operator/(const v3f32& lhs, f32 rhs)
 {
 	return {lhs.x / rhs, lhs.y / rhs, lhs.z / rhs};
 }
+internal inline v2f32 operator/(const v2f32& lhs, const v2u32& rhs)
+{
+	return {lhs.x / rhs.x, lhs.y / rhs.y};
+}
+internal inline v2f32 operator/(const v2u32& lhs, const v2f32& rhs)
+{
+	return {lhs.x / rhs.x, lhs.y / rhs.y};
+}
 internal inline v2f32 operator*(const v2u32& lhs, const v2f32& rhs)
 {
 	return { lhs.x * rhs.x, lhs.y * rhs.y };

@@ -384,6 +384,8 @@ namespace kmath
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
 internal inline v3f32 operator/(const v3f32& lhs, f32 rhs);
+internal inline v2f32 operator/(const v2f32& lhs, const v2u32& rhs);
+internal inline v2f32 operator/(const v2u32& lhs, const v2f32& rhs);
 internal inline v2f32 operator*(const v2u32& lhs, const v2f32& rhs);
 internal inline v2f32 operator*(const v2f32& lhs, const v2u32& rhs);
 internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
