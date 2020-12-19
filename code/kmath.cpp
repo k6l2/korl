@@ -132,6 +132,14 @@ internal inline v3f32 operator/(const v3f32& lhs, f32 rhs)
 {
 	return {lhs.x / rhs, lhs.y / rhs, lhs.z / rhs};
 }
+internal inline v2f32 operator*(const v2u32& lhs, const v2f32& rhs)
+{
+	return { lhs.x * rhs.x, lhs.y * rhs.y };
+}
+internal inline v2f32 operator*(const v2f32& lhs, const v2u32& rhs)
+{
+	return { lhs.x * rhs.x, lhs.y * rhs.y };
+}
 inline v3f32 v3f32::operator+(const v3f32& other) const
 {
 	return {x + other.x, y + other.y, z + other.z};
@@ -409,6 +417,14 @@ internal inline q32 operator*(const q32& lhs, const q32& rhs)
 {
 	return q32::hamilton(lhs, rhs);
 }
+internal inline v2f32 operator-(const v2f32& lhs, const v2u32& rhs)
+{
+	return v2f32{lhs.x - rhs.x, lhs.y - rhs.y};
+}
+internal inline v2f32 operator-(const v2u32& lhs, const v2f32& rhs)
+{
+	return v2f32{lhs.x - rhs.x, lhs.y - rhs.y};
+}
 inline q32 q32::hamilton(const q32& q0, const q32& q1)
 {
 	return { q0.qw*q1.qw - q0.qx*q1.qx - q0.qy*q1.qy - q0.qz*q1.qz, 
@@ -483,8 +499,13 @@ internal inline f32 kmath::abs(f32 f)
 {
 	if(f > 0)
 		return f;
-	else
-		return f * -1.f;
+	return -f;
+}
+internal inline i32 kmath::abs(i32 x)
+{
+	if(x >= 0)
+		return x;
+	return -x;
 }
 internal inline f32 kmath::min(f32 a, f32 b)
 {
@@ -765,6 +786,14 @@ internal inline f32 kmath::clamp(f32 x, f32 min, f32 max)
 		return max;
 	return x;
 }
+internal inline i32 kmath::clamp(i32 x, i32 min, i32 max)
+{
+	if(x < min)
+		return min;
+	if(x > max)
+		return max;
+	return x;
+}
 internal inline f32 kmath::max(f32 a, f32 b)
 {
 	if(a >= b)
@@ -776,6 +805,14 @@ internal inline u32 kmath::max(u32 a, u32 b)
 	if(a >= b)
 		return a;
 	return b;
+}
+internal inline i32 kmath::roundToI32(f32 x)
+{
+	if(x >= 0)
+		x += 0.5f;
+	else
+		x -= 0.5f;
+	return static_cast<i32>(x);
 }
 internal inline u8 kmath::solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2])
 {

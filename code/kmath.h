@@ -179,6 +179,7 @@ namespace kmath
 	internal inline bool isNearlyEqual(f64 fA, f64 fB, f64 epsilon = 1e-5f);
 	internal inline bool isNearlyZero(f32 f, f32 epsilon = 1e-5f);
 	internal inline f32 abs(f32 f);
+	internal inline i32 abs(i32 x);
 	internal inline f32    min(f32    a, f32    b);
 	internal inline size_t min(size_t a, size_t b);
 	/** @return the # of bytes which represent `k` kilobytes */
@@ -234,8 +235,10 @@ namespace kmath
 	 */
 	internal inline f32 sine_0_1(f32 radians);
 	internal inline f32 clamp(f32 x, f32 min, f32 max);
+	internal inline i32 clamp(i32 x, i32 min, i32 max);
 	internal inline f32 max(f32 a, f32 b);
 	internal inline u32 max(u32 a, u32 b);
+	internal inline i32 roundToI32(f32 x);
 	/**
 	 * Find the roots of a given quadratic formula which satisfies the form 
 	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
@@ -381,5 +384,9 @@ namespace kmath
 internal inline v2f32 operator*(f32 lhs, const v2f32& rhs);
 internal inline v3f32 operator*(f32 lhs, const v3f32& rhs);
 internal inline v3f32 operator/(const v3f32& lhs, f32 rhs);
+internal inline v2f32 operator*(const v2u32& lhs, const v2f32& rhs);
+internal inline v2f32 operator*(const v2f32& lhs, const v2u32& rhs);
 internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
 internal inline q32 operator*(const q32& lhs, const q32& rhs);
+internal inline v2f32 operator-(const v2f32& lhs, const v2u32& rhs);
+internal inline v2f32 operator-(const v2u32& lhs, const v2f32& rhs);
