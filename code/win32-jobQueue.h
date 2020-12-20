@@ -15,7 +15,7 @@ struct JobQueue
 {
 	/* @config: Setting a jobs array size >= 0xFFFF will require a bunch of code 
 		changes elsewhere due to the size of JobQueueTicket! */
-	JobQueueJob jobs[16];
+	JobQueueJob jobs[256];
 	size_t nextJobIndex;
 	size_t availableJobCount;
 	size_t incompleteJobCount;

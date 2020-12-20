@@ -61,7 +61,7 @@ global_variable const size_t STATIC_MEMORY_ALLOC_SIZES[] =
 	{ kmath::megabytes(64)
 	, SOUND_BUFFER_BYTES
 	, kmath::megabytes(128)
-	, kmath::megabytes(1)
+	, kmath::megabytes(2)
 	, kmath::megabytes(1)
 	, kmath::megabytes(1)
 	, kmath::megabytes(16)
