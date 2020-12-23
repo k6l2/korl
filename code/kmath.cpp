@@ -73,6 +73,12 @@ inline v2f32& v2f32::operator*=(const f32 scalar)
 	y *= scalar;
 	return *this;
 }
+inline v2f32& v2f32::operator/=(const f32 scalar)
+{
+	x /= scalar;
+	y /= scalar;
+	return *this;
+}
 inline v2f32& v2f32::operator+=(const v2f32& other)
 {
 	x += other.x;

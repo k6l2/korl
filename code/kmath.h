@@ -58,6 +58,7 @@ public:
 	inline v2f32 operator+(const v2f32& other) const;
 	inline v2f32 operator-(const v2f32& other) const;
 	inline v2f32& operator*=(const f32 scalar);
+	inline v2f32& operator/=(const f32 scalar);
 	inline v2f32& operator+=(const v2f32& other);
 	inline bool isNearlyZero() const;
 	inline f32 magnitude() const;
