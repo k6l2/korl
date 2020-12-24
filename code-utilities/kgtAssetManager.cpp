@@ -848,7 +848,7 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 	const bool textureMetaDecodeSuccess = 
 		korlTextureMetaDecode(
 			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
-			filePathBuffer, &asset->assetData.texture.metaData, 
+			kgtAssetFileNames[kai], &asset->assetData.texture.metaData, 
 			asset->assetData.texture.imageAssetName, 
 			CARRAY_SIZE(asset->assetData.texture.imageAssetName));
 	if(!textureMetaDecodeSuccess)
