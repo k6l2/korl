@@ -181,6 +181,9 @@ struct PlatformGamePadActiveAxis
 	void name(PlatformTimeStamp pts, f32 desiredDeltaSeconds)
 #define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) \
 	f32 name(PlatformTimeStamp pts)
+/** It doesn't matter what order the PlatformTimeStamp parameters are in. */
+#define PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(name) \
+	f32 name(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
 const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;
@@ -305,6 +308,8 @@ typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_platformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
 typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_platformSecondsSinceTimestamp);
+typedef PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
+	fnSig_platformSecondsBetweenTimestamps);
 typedef PLATFORM_NET_RESOLVE_ADDRESS(fnSig_platformNetResolveAddress);
 typedef PLATFORM_SOCKET_OPEN_UDP(fnSig_platformSocketOpenUdp);
 typedef PLATFORM_SOCKET_CLOSE(fnSig_platformSocketClose);
@@ -344,6 +349,7 @@ struct KorlPlatformApi
 	fnSig_platformGetTimeStamp* getTimeStamp;
 	fnSig_platformSleepFromTimestamp* sleepFromTimeStamp;
 	fnSig_platformSecondsSinceTimestamp* secondsSinceTimeStamp;
+	fnSig_platformSecondsBetweenTimestamps* secondsBetweenTimeStamps;
 	fnSig_platformNetResolveAddress* netResolveAddress;
 	fnSig_platformSocketOpenUdp* socketOpenUdp;
 	fnSig_platformSocketClose* socketClose;

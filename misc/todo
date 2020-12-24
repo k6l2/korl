@@ -813,6 +813,19 @@
 		actually display the output streams in the output console by default :|
 [x] win32: fix `relativeAssetDir` code so that the parameter passed to the 
 	application doesn't need the trailing '\' character
+[ ] bitmap font utility
+	[ ] store meta data about the font in a text asset
+		[ ] the name of the font sprite sheet asset
+		[ ] the name of the font outline sprite sheet asset
+		[ ] font size
+		[ ] sprite sheet padding
+		[ ] ansi character array representing all included characters in the 
+			font sprite sheet
+	[ ] simple 2D drawing API (choose position, scale, anchor)
+	[ ] simple size calculation API (given text, output AABB)
+[ ] win32: prevent application from freezing when the window is being moved 
+	around or resized
+	https://stackoverflow.com/q/3102074
 [ ] win32-jobQ: crash faster when the job queue overflows
 [ ] win32-jobQ: log more warnings/errors on failures, such as when the post job 
 	function receives nullptr as a function

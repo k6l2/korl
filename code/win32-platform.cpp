@@ -1097,6 +1097,26 @@ internal PLATFORM_SECONDS_SINCE_TIMESTAMP(w32PlatformSecondsSinceTimeStamp)
 		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
 	return elapsedSeconds;
 }
+internal PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
+	w32PlatformSecondsBetweenTimeStamps)
+{
+	PlatformTimeStampUnion platformTimeStampUnionA;
+	platformTimeStampUnionA.timeStamp = ptsA;
+	PlatformTimeStampUnion platformTimeStampUnionB;
+	platformTimeStampUnionB.timeStamp = ptsB;
+	/* calculate the # of seconds between the previous timestamp and the current 
+		timestamp */
+	const LONGLONG perfCountDiff = 
+		(platformTimeStampUnionA.largeInt.QuadPart > 
+			platformTimeStampUnionB.largeInt.QuadPart
+		? platformTimeStampUnionA.largeInt.QuadPart - 
+			platformTimeStampUnionB.largeInt.QuadPart
+		: platformTimeStampUnionB.largeInt.QuadPart - 
+			platformTimeStampUnionA.largeInt.QuadPart);
+	const f32 elapsedSeconds = 
+		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
+	return elapsedSeconds;
+}
 internal PLATFORM_SLEEP_FROM_TIMESTAMP(w32PlatformSleepFromTimeStamp)
 {
 	const f32 elapsedSeconds = w32PlatformSecondsSinceTimeStamp(pts);

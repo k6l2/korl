@@ -65,6 +65,8 @@ internal PLATFORM_IS_FILE_CHANGED(w32PlatformIsFileChanged);
 internal PLATFORM_IS_FILE_AVAILABLE(w32PlatformIsFileAvailable);
 internal PLATFORM_GET_TIMESTAMP(w32PlatformGetTimeStamp);
 internal PLATFORM_SECONDS_SINCE_TIMESTAMP(w32PlatformSecondsSinceTimeStamp);
+internal PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
+	w32PlatformSecondsBetweenTimeStamps);
 internal PLATFORM_SLEEP_FROM_TIMESTAMP(w32PlatformSleepFromTimeStamp);
 internal PLATFORM_RESERVE_LOCK(w32PlatformReserveLock);
 internal PLATFORM_LOCK(w32PlatformLock);
@@ -99,6 +101,7 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .getTimeStamp              = w32PlatformGetTimeStamp
 	, .sleepFromTimeStamp        = w32PlatformSleepFromTimeStamp
 	, .secondsSinceTimeStamp     = w32PlatformSecondsSinceTimeStamp
+	, .secondsBetweenTimeStamps  = w32PlatformSecondsBetweenTimeStamps
 	, .netResolveAddress         = w32PlatformNetworkResolveAddress
 	, .socketOpenUdp             = w32PlatformNetworkOpenSocketUdp
 	, .socketClose               = w32PlatformNetworkCloseSocket
