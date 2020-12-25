@@ -123,6 +123,7 @@ internal void
 		, {{cornerB.x, cornerA.y, 0}, {}, color}
 		, {{cornerB.x, cornerB.y, 0}, {}, color}
 		, {{cornerA.x, cornerB.y, 0}, {}, color} };
+	g_krb->setModelXform2d(v2f32::ZERO, q32::IDENTITY, {1.f, 1.f});
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
 	                 KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }

@@ -184,7 +184,7 @@ internal void
 		if(*cStrText == '\n')
 		{
 			currentPosition.x = position.x;
-			currentPosition.y += scale.y * sfm.monospaceSize.y;
+			currentPosition.y -= scale.y * sfm.monospaceSize.y;
 			continue;
 		}
 		/* advance to the next space at the end of this iteration */
@@ -232,10 +232,34 @@ internal void
 	}
 }
 internal v2f32 
-	kgtSpriteFontComputeAabb(
+	kgtSpriteFontComputeAabbSize(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& scale, KgtAssetManager*const kam)
 {
-	korlAssert(!"@todo");
-	return {};
+	const KgtSpriteFontMetaData& sfm = 
+		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+	v2f32 resultAabbSize = {0, scale.y * sfm.monospaceSize.y};
+	f32 currentLineSizeX = 0;
+	for(; *cStrText; cStrText++)
+	{
+		if(*cStrText == '\n')
+		{
+			currentLineSizeX = 0;
+			resultAabbSize.y += scale.y * sfm.monospaceSize.y;
+			continue;
+		}
+		currentLineSizeX += scale.x * sfm.monospaceSize.x;
+		if(currentLineSizeX > resultAabbSize.x)
+			resultAabbSize.x = currentLineSizeX;
+	}
+	return resultAabbSize;
+}
+internal v2f32 
+	kgtSpriteFontComputeAabbTopLeft(
+		KgtAssetIndex kaiSpriteFontMeta, const v2f32& position, 
+		const v2f32& scale, KgtAssetManager*const kam)
+{
+	const KgtSpriteFontMetaData& sfm = 
+		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+	return position + scale*v2u32{0, sfm.monospaceSize.y};
 }

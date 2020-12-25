@@ -28,6 +28,10 @@ internal void
 		const Color4f32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam);
 internal v2f32 
-	kgtSpriteFontComputeAabb(
+	kgtSpriteFontComputeAabbSize(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
+		const v2f32& scale, KgtAssetManager*const kam);
+internal v2f32 
+	kgtSpriteFontComputeAabbTopLeft(
+		KgtAssetIndex kaiSpriteFontMeta, const v2f32& position, 
 		const v2f32& scale, KgtAssetManager*const kam);
