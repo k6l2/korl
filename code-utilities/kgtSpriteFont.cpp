@@ -152,8 +152,8 @@ internal bool
 internal void 
 	kgtSpriteFontDraw(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
-		const v2f32& position, const v2f32& scale, const Color4f32& color, 
-		const Color4f32& colorOutline, 
+		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
+		const Color4f32& color, const Color4f32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
@@ -178,7 +178,13 @@ internal void
 		the characters into a single mesh and call draw once per texture.  We 
 		can just take a memory allocation callback as a parameter to allocate a 
 		temporary buffer to build the mesh data in */
+	const v2f32 textAabbSize = 
+		kgtSpriteFontComputeAabbSize(kaiSpriteFontMeta, cStrText, scale, kam);
+	const v2f32 anchorOffset = 
+		{ -anchor.x * textAabbSize.x
+		,  anchor.y * textAabbSize.y };
 	v2f32 currentPosition = position;
+	currentPosition.y -= scale.y * sfm.monospaceSize.y;
 	for(; *cStrText; cStrText++)
 	{
 		if(*cStrText == '\n')
@@ -221,7 +227,8 @@ internal void
 		charTriMesh[4].textureNormal = {charTexNormUL.x, charTexNormDR.y};
 		charTriMesh[5].textureNormal = {charTexNormDR.x, charTexNormDR.y};
 		/* draw the outline mesh first */
-		krb->setModelXform2d(currentPosition, q32::IDENTITY, scale);
+		krb->setModelXform2d(
+			currentPosition + anchorOffset, q32::IDENTITY, scale);
 		krb->setDefaultColor(colorOutline);
 		USE_IMAGE(sfm.kaiTextureOutline);
 		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);

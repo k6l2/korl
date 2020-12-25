@@ -21,11 +21,15 @@ internal bool
 struct Color4f32;
 struct KrbApi;
 struct KgtAssetManager;
+/**
+ * @param anchor
+ * 	Normalized.  Relative to the upper-left corner of the resulting text AABB.
+ */
 internal void 
 	kgtSpriteFontDraw(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
-		const v2f32& position, const v2f32& scale, const Color4f32& color, 
-		const Color4f32& colorOutline, 
+		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
+		const Color4f32& color, const Color4f32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam);
 internal v2f32 
 	kgtSpriteFontComputeAabbSize(
