@@ -151,10 +151,91 @@ internal bool
 }
 internal void 
 	kgtSpriteFontDraw(
-		const KgtSpriteFontMetaData*const sfm, const char* cStrText, 
+		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& position, const v2f32& scale, const Color4f32& color, 
 		const Color4f32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {
+	const KgtSpriteFontMetaData& sfm = 
+		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+	const v2u32 fontSpriteSheetSize = 
+		kgtAssetManagerGetImageSize(kam, sfm.kaiTexture);
+	/* build the triangle mesh to draw each character */
+	KgtVertex charTriMesh[6];
+	// upper-left triangle //
+	charTriMesh[0].position = v3f32::ZERO;
+	charTriMesh[1].position = 
+		{ static_cast<f32>(sfm.monospaceSize.x)
+		, static_cast<f32>(sfm.monospaceSize.y), 0};
+	charTriMesh[2].position = {0, static_cast<f32>(sfm.monospaceSize.y), 0};
+	// lower-right triangle //
+	charTriMesh[3].position = 
+		{ static_cast<f32>(sfm.monospaceSize.x)
+		, static_cast<f32>(sfm.monospaceSize.y), 0};
+	charTriMesh[4].position = v3f32::ZERO;
+	charTriMesh[5].position = {static_cast<f32>(sfm.monospaceSize.x), 0, 0};
+	/* @speed: instead of doing one draw call per character, we can batch all 
+		the characters into a single mesh and call draw once per texture.  We 
+		can just take a memory allocation callback as a parameter to allocate a 
+		temporary buffer to build the mesh data in */
+	v2f32 currentPosition = position;
+	for(; *cStrText; cStrText++)
+	{
+		if(*cStrText == '\n')
+		{
+			currentPosition.x = position.x;
+			currentPosition.y += scale.y * sfm.monospaceSize.y;
+			continue;
+		}
+		/* advance to the next space at the end of this iteration */
+		defer(currentPosition.x += scale.x * sfm.monospaceSize.x);
+		/* determine which character in the font sprite sheet we need to use */
+		u8 c = 0;
+		for(; c < sfm.charactersSize; c++)
+		{
+			if(sfm.characters[c] == *cStrText)
+				break;
+		}
+		if(c >= sfm.charactersSize)
+			continue;
+		/* calculate the UV coordinates to use for this character */
+		const v2u32 charPixelUL = 
+			{ sfm.texturePadding.x + 
+				c*(sfm.monospaceSize.x + 2*sfm.texturePadding.x)
+			// @assumption: there is only a single row of characters
+			, sfm.texturePadding.y };
+		const v2u32 charPixelDR = charPixelUL + sfm.monospaceSize;
+		const v2f32 charTexNormUL = 
+			{ static_cast<f32>(charPixelUL.x) / fontSpriteSheetSize.x
+			, static_cast<f32>(charPixelUL.y) / fontSpriteSheetSize.y };
+		const v2f32 charTexNormDR = 
+			{ static_cast<f32>(charPixelDR.x) / fontSpriteSheetSize.x
+			, static_cast<f32>(charPixelDR.y) / fontSpriteSheetSize.y };
+		/* update the character mesh with these UV normals */
+		// upper-left triangle //
+		charTriMesh[0].textureNormal = {charTexNormUL.x, charTexNormDR.y};
+		charTriMesh[1].textureNormal = {charTexNormDR.x, charTexNormUL.y};
+		charTriMesh[2].textureNormal = {charTexNormUL.x, charTexNormUL.y};
+		// down-right triangle //
+		charTriMesh[3].textureNormal = {charTexNormDR.x, charTexNormUL.y};
+		charTriMesh[4].textureNormal = {charTexNormUL.x, charTexNormDR.y};
+		charTriMesh[5].textureNormal = {charTexNormDR.x, charTexNormDR.y};
+		/* draw the outline mesh first */
+		krb->setModelXform2d(currentPosition, q32::IDENTITY, scale);
+		krb->setDefaultColor(colorOutline);
+		USE_IMAGE(sfm.kaiTextureOutline);
+		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
+		/* draw the normal text texture on top of the outline */
+		krb->setDefaultColor(color);
+		USE_IMAGE(sfm.kaiTexture);
+		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
+	}
+}
+internal v2f32 
+	kgtSpriteFontComputeAabb(
+		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
+		const v2f32& scale, KgtAssetManager*const kam)
+{
 	korlAssert(!"@todo");
+	return {};
 }

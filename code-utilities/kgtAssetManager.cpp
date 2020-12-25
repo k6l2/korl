@@ -319,6 +319,9 @@ internal void
 		korlAssert(kaiTextureOutline < KgtAssetIndex::ENUM_SIZE);
 		asset->assetData.spriteFont.kaiTex        = kaiTexture;
 		asset->assetData.spriteFont.kaiTexOutline = kaiTextureOutline;
+		asset->assetData.spriteFont.metaData.kaiTexture = kaiTexture;
+		asset->assetData.spriteFont.metaData.kaiTextureOutline = 
+			kaiTextureOutline;
 		kgtAssetManagerPushAsset(kam, kaiTexture);
 		kgtAssetManagerPushAsset(kam, kaiTextureOutline);
 		} break;

@@ -23,7 +23,11 @@ struct KrbApi;
 struct KgtAssetManager;
 internal void 
 	kgtSpriteFontDraw(
-		const KgtSpriteFontMetaData*const sfm, const char* cStrText, 
+		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& position, const v2f32& scale, const Color4f32& color, 
 		const Color4f32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam);
+internal v2f32 
+	kgtSpriteFontComputeAabb(
+		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
+		const v2f32& scale, KgtAssetManager*const kam);
