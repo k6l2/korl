@@ -12,6 +12,10 @@ const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,
                                    0,1,0,0,
                                    0,0,1,0,
                                    0,0,0,1};
+inline v2u32 v2u32::operator*(u32 discreteScalar) const
+{
+	return {x * discreteScalar, y * discreteScalar};
+}
 inline v2u32 v2u32::operator/(u32 discreteScalar) const
 {
 	korlAssert(discreteScalar != 0);
