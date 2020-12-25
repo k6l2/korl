@@ -9,6 +9,7 @@
 #include "platform-game-interfaces.h"
 #include "gen_kgtAssets.h"
 #include "kgtFlipBook.h"
+#include "kgtSpriteFont.h"
 using KgtAssetHandle = u32;
 struct KgtAssetManager;
 struct KgtAssetManagerByteArray
@@ -50,6 +51,9 @@ internal v2u32
 		KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal KgtFlipBookMetaData 
 	kgtAssetManagerGetFlipBookMetaData(
+		KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal const KgtSpriteFontMetaData& 
+	kgtAssetManagerGetSpriteFontMetaData(
 		KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal KgtAssetHandle 
 	kgtAssetManagerPushAsset(KgtAssetManager* kam, KgtAssetIndex assetIndex);

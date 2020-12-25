@@ -814,12 +814,12 @@
 [x] win32: fix `relativeAssetDir` code so that the parameter passed to the 
 	application doesn't need the trailing '\' character
 [ ] bitmap font utility
-	[ ] store meta data about the font in a text asset
-		[ ] the name of the font sprite sheet asset
-		[ ] the name of the font outline sprite sheet asset
-		[ ] font size
-		[ ] sprite sheet padding
-		[ ] ansi character array representing all included characters in the 
+	[x] store meta data about the font in a text asset
+		[x] the name of the font sprite sheet asset
+		[x] the name of the font outline sprite sheet asset
+		[x] font size
+		[x] sprite sheet padding
+		[x] ansi character array representing all included characters in the 
 			font sprite sheet
 	[ ] simple 2D drawing API (choose position, scale, anchor)
 	[ ] simple size calculation API (given text, output AABB)

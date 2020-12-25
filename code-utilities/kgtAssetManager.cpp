@@ -9,6 +9,7 @@ enum class KgtAssetType : u8
 	, RAW_SOUND
 	, FLIPBOOK_META
 	, TEXTURE_META
+	, SPRITE_FONT_META
 	, BINARY_DATA };
 struct KgtAsset
 {
@@ -35,6 +36,14 @@ struct KgtAsset
 			char imageAssetName[128];
 			KgtAssetIndex kaiImage;
 		} texture;
+		struct
+		{
+			KgtSpriteFontMetaData metaData;
+			char texAssetName[128];
+			char texAssetNameOutline[128];
+			KgtAssetIndex kaiTex;
+			KgtAssetIndex kaiTexOutline;
+		} spriteFont;
 		struct 
 		{
 			u8* data;
@@ -55,6 +64,7 @@ struct KgtAssetManager
 	KgtAsset defaultAssetSound;
 	KgtAsset defaultAssetFlipbookMetaData;
 	KgtAsset defaultAssetTextureMetaData;
+	KgtAsset defaultAssetSpriteFont;
 	KgtAllocatorHandle assetDataAllocator;
 	KgtAllocatorHandle hKgaRawFiles;
 	KplLockHandle hLockAssetDataAllocator;
@@ -143,6 +153,25 @@ internal KgtAssetManager*
 	strcpy_s(defaultAssetTexture.assetData.texture.imageAssetName, 
 		CARRAY_SIZE(defaultAssetTexture.assetData.texture.imageAssetName),
 		"texture-default");
+	KgtAsset defaultAssetSpriteFont;
+	defaultAssetSpriteFont.type = KgtAssetType::TEXTURE_META;
+	defaultAssetSpriteFont.assetData.spriteFont.metaData = 
+		{ .kaiTexture        = KgtAssetIndex::ENUM_SIZE
+		, .kaiTextureOutline = KgtAssetIndex::ENUM_SIZE
+		, .monospaceSize     = {8,8}
+		, .texturePadding    = {0,0}
+		, .charactersSize    = 0 };
+	defaultAssetSpriteFont.assetData.spriteFont.kaiTex = 
+		KgtAssetIndex::ENUM_SIZE;
+	defaultAssetSpriteFont.assetData.spriteFont.kaiTexOutline = 
+		KgtAssetIndex::ENUM_SIZE;
+	strcpy_s(defaultAssetTexture.assetData.spriteFont.texAssetName, 
+		CARRAY_SIZE(defaultAssetTexture.assetData.spriteFont.texAssetName),
+		"texture-default");
+	strcpy_s(defaultAssetTexture.assetData.spriteFont.texAssetNameOutline, 
+		CARRAY_SIZE(
+			defaultAssetTexture.assetData.spriteFont.texAssetNameOutline),
+		"texture-default");
 	/* request access to a spinlock from the platform layer so we can keep 
 		the asset data allocator safe between asset loading job threads */
 	const KplLockHandle hLockAssetDataAllocator = g_kpl->reserveLock();
@@ -154,6 +183,7 @@ internal KgtAssetManager*
 		, .defaultAssetSound            = defaultAssetSound
 		, .defaultAssetFlipbookMetaData = defaultAssetFlipbook
 		, .defaultAssetTextureMetaData  = defaultAssetTexture
+		, .defaultAssetSpriteFont       = defaultAssetSpriteFont
 		, .assetDataAllocator           = assetDataAllocator
 		, .hKgaRawFiles                 = hKalRawFiles
 		, .hLockAssetDataAllocator      = hLockAssetDataAllocator
@@ -189,6 +219,11 @@ internal void
 		} break;
 	case KgtAssetType::TEXTURE_META: {
 		kgtAssetManagerFreeAsset(kam, asset->assetData.texture.kaiImage);
+		} break;
+	case KgtAssetType::SPRITE_FONT_META: {
+		kgtAssetManagerFreeAsset(kam, asset->assetData.spriteFont.kaiTex);
+		kgtAssetManagerFreeAsset(
+			kam, asset->assetData.spriteFont.kaiTexOutline);
 		} break;
 	case KgtAssetType::BINARY_DATA: {
 		kgtAllocFree(kam->assetDataAllocator, asset->assetData.binary.data);
@@ -272,6 +307,20 @@ internal void
 			asset->assetData.texture.kaiImage = kgtAssetIdImage;
 			kgtAssetManagerPushAsset(kam, kgtAssetIdImage);
 		}
+		} break;
+	case KgtAssetType::SPRITE_FONT_META: {
+		const KgtAssetIndex kaiTexture = 
+			kgtAssetManagerFindKgtAssetIndex(
+				asset->assetData.spriteFont.texAssetName);
+		const KgtAssetIndex kaiTextureOutline = 
+			kgtAssetManagerFindKgtAssetIndex(
+				asset->assetData.spriteFont.texAssetNameOutline);
+		korlAssert(kaiTexture        < KgtAssetIndex::ENUM_SIZE);
+		korlAssert(kaiTextureOutline < KgtAssetIndex::ENUM_SIZE);
+		asset->assetData.spriteFont.kaiTex        = kaiTexture;
+		asset->assetData.spriteFont.kaiTexOutline = kaiTextureOutline;
+		kgtAssetManagerPushAsset(kam, kaiTexture);
+		kgtAssetManagerPushAsset(kam, kaiTextureOutline);
 		} break;
 	case KgtAssetType::BINARY_DATA: {
 		/* allocate storage from assetDataAllocator */
@@ -661,6 +710,38 @@ internal KgtFlipBookMetaData
 		return kam->defaultAssetFlipbookMetaData.assetData.flipbook.metaData;
 	}
 }
+internal const KgtSpriteFontMetaData& 
+	kgtAssetManagerGetSpriteFontMetaData(
+		KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	if(assetIndex >= KgtAssetIndex::ENUM_SIZE)
+	{
+		return kam->defaultAssetSpriteFont.assetData.spriteFont.metaData;
+	}
+	KgtAsset*const assets = reinterpret_cast<KgtAsset*>(kam + 1);
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset*const asset = assets + assetHandle;
+	if(asset->type == KgtAssetType::UNUSED)
+	{
+		kgtAssetManagerPushAsset(kam, assetIndex);
+	}
+	if(asset->loaded)
+	{
+		korlAssert(asset->type == KgtAssetType::SPRITE_FONT_META);
+		return asset->assetData.spriteFont.metaData;
+	}
+	else
+	{
+		if(g_kpl->jobDone(&asset->jqTicketLoading))
+		{
+			kgtAssetManagerOnLoadingJobFinished(kam, assetHandle);
+			korlAssert(asset->type == KgtAssetType::SPRITE_FONT_META);
+			return asset->assetData.spriteFont.metaData;
+		}
+		return kam->defaultAssetSpriteFont.assetData.spriteFont.metaData;
+	}
+}
 global_variable const f32 KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS = 0.25f;
 JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadPng)
 {
@@ -858,6 +939,74 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadTextureMeta)
 		return;
 	}
 }
+JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadSpriteFontMeta)
+{
+	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
+	const size_t kai = asset->kgtAssetIndex;
+	char filePathBuffer[256];
+	const bool successBuildExeFilePath = 
+		kgtAssetManagerBuildCurrentRelativeFilePath(
+			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+			kgtAssetFileNames[kai]);
+	korlAssert(successBuildExeFilePath);
+	while(!g_kpl->isFileAvailable(
+			filePathBuffer, KorlApplicationDirectory::CURRENT))
+	{
+		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
+		g_kpl->sleepFromTimeStamp(
+			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
+	}
+	const i32 assetByteSize = 
+		g_kpl->getFileByteSize(
+			filePathBuffer, KorlApplicationDirectory::CURRENT);
+	if(assetByteSize < 0)
+	{
+		KLOG(ERROR, "Failed to get asset byte size of \"%s\"", 
+		     filePathBuffer);
+		return;
+	}
+	/* lock the asset manager's asset data allocator so we can safely allocate 
+		data for the raw file.  The decoded asset structure is stored entirely 
+		in the KgtAsset */
+	g_kpl->lock(asset->kam->hLockAssetDataAllocator);
+	void*const rawFileMemory = 
+		kgtAllocAlloc(asset->kam->hKgaRawFiles, 
+		              kmath::safeTruncateU32(assetByteSize) + 1);
+	korlAssert(rawFileMemory);
+	g_kpl->unlock(asset->kam->hLockAssetDataAllocator);
+	/* defer cleanup of the raw file memory until after we utilize it */
+	defer({
+		g_kpl->lock(asset->kam->hLockAssetDataAllocator);
+		kgtAllocFree(asset->kam->hKgaRawFiles, rawFileMemory);
+		g_kpl->unlock(asset->kam->hLockAssetDataAllocator);
+	});
+	/* load the entire raw file into a `fileByteSize` chunk */
+	const bool assetReadSuccess = 
+		g_kpl->readEntireFile(
+			filePathBuffer, KorlApplicationDirectory::CURRENT, rawFileMemory, 
+			kmath::safeTruncateU32(assetByteSize));
+	if(!assetReadSuccess)
+	{
+		KLOG(ERROR, "Failed to read asset \"%s\"!", filePathBuffer);
+		return;
+	}
+	/* null-terminate the file buffer */
+	reinterpret_cast<u8*>(rawFileMemory)[assetByteSize] = 0;
+	/* decode the file data into a struct we can use */
+	const bool decodeSuccess = 
+		kgtSpriteFontDecodeMeta(
+			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
+			kgtAssetFileNames[kai], &asset->assetData.spriteFont.metaData, 
+			asset->assetData.spriteFont.texAssetName, 
+			CARRAY_SIZE(asset->assetData.spriteFont.texAssetName), 
+			asset->assetData.spriteFont.texAssetNameOutline, 
+			CARRAY_SIZE(asset->assetData.spriteFont.texAssetNameOutline));
+	if(!decodeSuccess)
+	{
+		KLOG(ERROR, "Failed to decode asset \"%s\"!", filePathBuffer);
+		return;
+	}
+}
 JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadBinary)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
@@ -912,7 +1061,7 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadBinary)
 }
 // @optimization (minor): just bake this info using `kasset`
 enum class KgtAssetFileType
-	{ PNG, WAV, OGG, FLIPBOOK_META, TEXTURE_META, UNKNOWN };
+	{ PNG, WAV, OGG, FLIPBOOK_META, TEXTURE_META, SPRITE_FONT_META, UNKNOWN };
 internal KgtAssetFileType 
 	kgtAssetManagerAssetFileType(KgtAssetIndex assetIndex)
 {
@@ -936,6 +1085,10 @@ internal KgtAssetFileType
 	{
 		return KgtAssetFileType::TEXTURE_META;
 	}
+	else if(strstr(kgtAssetFileNames[static_cast<size_t>(assetIndex)], ".sfm"))
+	{
+		return KgtAssetFileType::SPRITE_FONT_META;
+	}
 	return KgtAssetFileType::UNKNOWN;
 }
 internal KgtAssetHandle 
@@ -957,24 +1110,28 @@ internal KgtAssetHandle
 		{
 		case KgtAssetFileType::PNG: {
 			asset->assetData.image = {};
-			assetType = KgtAssetType::RAW_IMAGE;
+			assetType    = KgtAssetType::RAW_IMAGE;
 			jobQueueFunc = kgtAssetManagerAsyncLoadPng;
 			} break;
 		case KgtAssetFileType::WAV: {
-			assetType = KgtAssetType::RAW_SOUND;
+			assetType    = KgtAssetType::RAW_SOUND;
 			jobQueueFunc = kgtAssetManagerAsyncLoadWav;
 			} break;
 		case KgtAssetFileType::OGG: {
-			assetType = KgtAssetType::RAW_SOUND;
+			assetType    = KgtAssetType::RAW_SOUND;
 			jobQueueFunc = kgtAssetManagerAsyncLoadOgg;
 			} break;
 		case KgtAssetFileType::FLIPBOOK_META: {
-			assetType = KgtAssetType::FLIPBOOK_META;
+			assetType    = KgtAssetType::FLIPBOOK_META;
 			jobQueueFunc = kgtAssetManagerAsyncLoadFlipbookMeta;
 			} break;
 		case KgtAssetFileType::TEXTURE_META: {
-			assetType = KgtAssetType::TEXTURE_META;
+			assetType    = KgtAssetType::TEXTURE_META;
 			jobQueueFunc = kgtAssetManagerAsyncLoadTextureMeta;
+			} break;
+		case KgtAssetFileType::SPRITE_FONT_META: {
+			assetType    = KgtAssetType::SPRITE_FONT_META;
+			jobQueueFunc = kgtAssetManagerAsyncLoadSpriteFontMeta;
 			} break;
 		case KgtAssetFileType::UNKNOWN:
 		default: {

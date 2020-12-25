@@ -149,3 +149,4 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #include "kgtDraw.cpp"
+#include "kgtSpriteFont.cpp"
