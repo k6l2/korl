@@ -277,7 +277,7 @@ internal void
 		const Color4f32& color, const Color4f32& colorOutline, 
 		KgtAssetManager*const kam, 
 		kgtSpriteFontCallbackAddVertex* callbackAddVertex, 
-		void* callbackAddVertexUserData)
+		void* callbackAddVertexUserData, v2f32* io_aabbMin, v2f32* io_aabbMax)
 {
 	const KgtSpriteFontMetaData& sfm = 
 		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
@@ -306,6 +306,22 @@ internal void
 	const v2f32 anchorOffset = 
 		{ -anchor.x * textAabbSize.x
 		,  anchor.y * textAabbSize.y };
+	if(io_aabbMin)
+	{
+		const v2f32 aabbMin = position;
+		if(aabbMin.x < io_aabbMin->x)
+			io_aabbMin->x = aabbMin.x;
+		if(aabbMin.y < io_aabbMin->y)
+			io_aabbMin->y = aabbMin.y;
+	}
+	if(io_aabbMax)
+	{
+		const v2f32 aabbMax = position + textAabbSize;
+		if(aabbMax.x > io_aabbMax->x)
+			io_aabbMax->x = aabbMax.x;
+		if(aabbMax.y > io_aabbMax->y)
+			io_aabbMax->y = aabbMax.y;
+	}
 	v2f32 currentPosition = position;
 	currentPosition.y -= scale.y * sfm.monospaceSize.y;
 	for(; *cStrText; cStrText++)
@@ -349,7 +365,6 @@ internal void
 		charTriMesh[3].textureNormal = {charTexNormDR.x, charTexNormUL.y};
 		charTriMesh[4].textureNormal = {charTexNormUL.x, charTexNormDR.y};
 		charTriMesh[5].textureNormal = {charTexNormDR.x, charTexNormDR.y};
-#if 1
 		/* batch the vertices for this character */
 		for(u32 v = 0; v < 6; v++)
 		{
@@ -359,18 +374,6 @@ internal void
 				callbackAddVertexUserData, position2d, 
 				charTriMesh[v].textureNormal, color, colorOutline);
 		}
-#else
-		/* draw the outline mesh first */
-		krb->setModelXform2d(
-			currentPosition + anchorOffset, q32::IDENTITY, scale);
-		krb->setDefaultColor(colorOutline);
-		USE_IMAGE(sfm.kaiTextureOutline);
-		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
-		/* draw the normal text texture on top of the outline */
-		krb->setDefaultColor(color);
-		USE_IMAGE(sfm.kaiTexture);
-		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
-#endif//0
 	}
 }
 internal void 

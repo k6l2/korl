@@ -51,4 +51,4 @@ internal void
 		const Color4f32& color, const Color4f32& colorOutline, 
 		KgtAssetManager*const kam, 
 		kgtSpriteFontCallbackAddVertex* callbackAddVertex, 
-		void* callbackAddVertexUserData);
+		void* callbackAddVertexUserData, v2f32* io_aabbMin, v2f32* io_aabbMax);
