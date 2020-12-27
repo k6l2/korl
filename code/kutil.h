@@ -173,6 +173,7 @@ namespace kutil
 	 */
 	size_t extractNonWhitespaceToken(char** pCStr, size_t cStrSize);
 	void cStrToLowercase(char* cStr, size_t cStrSize);
+	void cStrToUppercase(char* cStr, size_t cStrSize);
 	/**
 	 * Convert all '_' characters in `cStr` into '-' characters.
 	 */

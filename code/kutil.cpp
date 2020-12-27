@@ -197,6 +197,13 @@ void kutil::cStrToLowercase(char* cStr, size_t cStrSize)
 		cStr[c] = kmath::safeTruncateI8(tolower(cStr[c]));
 	}
 }
+void kutil::cStrToUppercase(char* cStr, size_t cStrSize)
+{
+	for(size_t c = 0; c < cStrSize; c++)
+	{
+		cStr[c] = kmath::safeTruncateI8(toupper(cStr[c]));
+	}
+}
 void kutil::cStrRaiseUnderscores(char* cStr, size_t cStrSize)
 {
 	for(size_t c = 0; c < cStrSize; c++)

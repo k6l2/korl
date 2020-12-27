@@ -39,3 +39,16 @@ internal v2f32
 	kgtSpriteFontComputeAabbTopLeft(
 		KgtAssetIndex kaiSpriteFontMeta, const v2f32& position, 
 		const v2f32& scale, KgtAssetManager*const kam);
+#define KGT_SPRITE_FONT_CALLBACK_ADD_VERTEX(name) \
+	void name(\
+		void* userData, const v2f32& position, const v2f32& textureNormals, \
+		const Color4f32& color, const Color4f32& colorOutline)
+typedef KGT_SPRITE_FONT_CALLBACK_ADD_VERTEX(kgtSpriteFontCallbackAddVertex);
+internal void
+	kgtSpriteFontBatch(
+		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
+		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
+		const Color4f32& color, const Color4f32& colorOutline, 
+		KgtAssetManager*const kam, 
+		kgtSpriteFontCallbackAddVertex* callbackAddVertex, 
+		void* callbackAddVertexUserData);
