@@ -378,15 +378,16 @@ internal void
 }
 internal void 
 	kgtSpriteFontDrawBatch(
-		KgtAssetIndex kaiSpriteFontMeta, const void* vertices, 
-		const void* verticesOutline, size_t vertexCount, size_t vertexStride, 
+		KgtAssetIndex kaiSpriteFontMeta, const v2f32& positionOffset, 
+		const void* vertices, const void* verticesOutline, 
+		size_t vertexCount, size_t vertexStride, 
 		const KrbVertexAttributeOffsets& vertexAttribOffsets, 
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
 		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
 	/* draw the outline mesh first */
-	krb->setModelXform2d(v2f32::ZERO, q32::IDENTITY, {1,1});
+	krb->setModelXform2d(positionOffset, q32::IDENTITY, {1,1});
 	USE_IMAGE(sfm.kaiTextureOutline);
 	g_krb->drawTris(
 		verticesOutline, vertexCount, vertexStride, vertexAttribOffsets);

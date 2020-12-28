@@ -52,3 +52,10 @@ internal void
 		KgtAssetManager*const kam, 
 		kgtSpriteFontCallbackAddVertex* callbackAddVertex, 
 		void* callbackAddVertexUserData, v2f32* io_aabbMin, v2f32* io_aabbMax);
+internal void 
+	kgtSpriteFontDrawBatch(
+		KgtAssetIndex kaiSpriteFontMeta, const v2f32& positionOffset, 
+		const void* vertices, const void* verticesOutline, 
+		size_t vertexCount, size_t vertexStride, 
+		const KrbVertexAttributeOffsets& vertexAttribOffsets, 
+		const KrbApi*const krb, KgtAssetManager*const kam);
