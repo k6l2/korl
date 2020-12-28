@@ -823,7 +823,7 @@
 			font sprite sheet
 	[x] simple 2D drawing API (choose position, scale, anchor)
 	[x] simple size calculation API (given text, output AABB)
-[ ] win32: demote GetCursorPos failure to a warning in w32GetMouseStates 
+[x] win32: demote GetCursorPos failure to a warning in w32GetMouseStates 
 	- ERROR_ACCESS_DENIED after putting computer to sleep & waking back up
 [ ] win32: prevent application from freezing when the window is being moved 
 	around or resized

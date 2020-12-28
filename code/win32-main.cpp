@@ -521,18 +521,30 @@ internal void w32GetMouseStates(GameMouse* gmCurrent, GameMouse* gmPrevious)
 		/* first, get the mouse cursor position in screen-space */
 		if(!GetCursorPos(&pointMouseCursor))
 		{
-			KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
-			     GetLastError());
+			const DWORD error = GetLastError();
+			if(error == ERROR_ACCESS_DENIED)
+			{
+				KLOG(WARNING, "GetCursorPos: access denied!");
+			}
+			else
+			{
+				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
+				     GetLastError());
+			}
 		}
-		/* convert mouse position screen-space => window-space */
-		if(!ScreenToClient(g_mainWindow, &pointMouseCursor))
+		else
 		{
-			/* for whatever reason, MSDN doesn't say there is any kind of error 
-				code obtainable for this failure condition... ¯\_(ツ)_/¯ */
-			KLOG(ERROR, "ScreenToClient failure!");
+			/* convert mouse position screen-space => window-space */
+			if(!ScreenToClient(g_mainWindow, &pointMouseCursor))
+			{
+				/* for whatever reason, MSDN doesn't say there is any kind of 
+					error code obtainable for this failure condition... 
+					¯\_(ツ)_/¯ */
+				KLOG(ERROR, "ScreenToClient failure!");
+			}
+			gmCurrent->windowPosition.x = pointMouseCursor.x;
+			gmCurrent->windowPosition.y = pointMouseCursor.y;
 		}
-		gmCurrent->windowPosition.x = pointMouseCursor.x;
-		gmCurrent->windowPosition.y = pointMouseCursor.y;
 	}
 	/* get async mouse button states */
 	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
