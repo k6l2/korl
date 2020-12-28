@@ -143,6 +143,7 @@ internal void
 		, {{cornerMinusXPlusY.x + size.x,cornerMinusXPlusY.y,0}, {}, color} 
 		, {{cornerMinusXPlusY.x,cornerMinusXPlusY.y - size.y,0}, {}, color} 
 		};
+	g_krb->setModelXform2d(v2f32::ZERO, q32::IDENTITY, {1,1});
 	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
 	                KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }
