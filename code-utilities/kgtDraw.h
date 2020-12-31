@@ -13,7 +13,8 @@ global_variable const Color4f32 QUAD_WHITE[]  =
 internal void 
 	kgtDrawTexture2d(
 		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
-		f32 counterClockwiseRadians, const v2f32& scale);
+		f32 counterClockwiseRadians, const v2f32& scale, 
+		const Color4f32 colors[4] = QUAD_WHITE);
 internal void 
 	kgtDrawTexture2d(
 		KrbTextureHandle kth, const v2u32& imageSize, 
