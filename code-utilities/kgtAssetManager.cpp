@@ -865,7 +865,7 @@ JOB_QUEUE_FUNCTION(kgtAssetManagerAsyncLoadFlipbookMeta)
 	const bool flipbookMetaDecodeSuccess = 
 		kgtFlipBookDecodeMeta(
 			rawFileMemory, kmath::safeTruncateU32(assetByteSize), 
-			filePathBuffer, &asset->assetData.flipbook.metaData, 
+			kgtAssetFileNames[kai], &asset->assetData.flipbook.metaData, 
 			asset->assetData.flipbook.textureAssetFileName, 
 			CARRAY_SIZE(asset->assetData.flipbook.textureAssetFileName));
 	if(!flipbookMetaDecodeSuccess)
