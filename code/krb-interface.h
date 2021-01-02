@@ -142,6 +142,13 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
 	void name(krb::Context* context)
 #define KRB_SET_DEFAULT_COLOR(name) \
 	void name(const Color4f32& color)
+/** The origin of clip box coordinates is the bottom-left corner of the window, 
+ * with both axes moving toward the upper-right corner of the window.
+ */
+#define KRB_SET_CLIP_BOX(name) \
+	void name(i32 left, i32 bottom, u32 width, u32 height)
+#define KRB_DISABLE_CLIP_BOX(name) \
+	void name()
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
@@ -169,6 +176,8 @@ typedef KRB_WORLD_TO_SCREEN(fnSig_krbWorldToScreen);
 typedef KRB_SCREEN_TO_WORLD(fnSig_krbScreenToWorld);
 typedef KRB_SET_CURRENT_CONTEXT(fnSig_krbSetCurrentContext);
 typedef KRB_SET_DEFAULT_COLOR(fnSig_krbSetDefaultColor);
+typedef KRB_SET_CLIP_BOX(fnSig_krbSetClipBox);
+typedef KRB_DISABLE_CLIP_BOX(fnSig_krbDisableClipBox);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
@@ -196,6 +205,8 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen);
 internal KRB_SCREEN_TO_WORLD(krbScreenToWorld);
 internal KRB_SET_CURRENT_CONTEXT(krbSetCurrentContext);
 internal KRB_SET_DEFAULT_COLOR(krbSetDefaultColor);
+internal KRB_SET_CLIP_BOX(krbSetClipBox);
+internal KRB_DISABLE_CLIP_BOX(krbDisableClipBox);
 struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
@@ -226,4 +237,6 @@ struct KrbApi
 	fnSig_krbScreenToWorld*      screenToWorld      = krbScreenToWorld;
 	fnSig_krbSetCurrentContext*  setCurrentContext  = krbSetCurrentContext;
 	fnSig_krbSetDefaultColor*    setDefaultColor    = krbSetDefaultColor;
+	fnSig_krbSetClipBox*         setClipBox         = krbSetClipBox;
+	fnSig_krbDisableClipBox*     disableClipBox     = krbDisableClipBox;
 };

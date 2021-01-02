@@ -26,6 +26,9 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 #define GL_CHECK_ERROR() krbOglCheckErrors(__FILE__, __LINE__)
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
+	/* Disable the scissor test BEFORE clearing the color buffer so we can 
+		guarantee the ENTIRE window gets cleared! */
+	glDisable(GL_SCISSOR_TEST);
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
 	/* I use right-handed homogeneous clip space, so depth buffer values 
 		farthest away from the camera are -1, instead of the default OpenGL 
@@ -86,6 +89,7 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
 	glMatrixMode(GL_PROJECTION);
 	glViewport(0, 0, windowSizeX, windowSizeY);
+	glDisable(GL_SCISSOR_TEST);
 	const f32 left  = -static_cast<f32>(windowSizeX)/2;
 	const f32 right =  static_cast<f32>(windowSizeX)/2;
 	const f32 bottom = -static_cast<f32>(windowSizeY)/2;
@@ -130,6 +134,7 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
 	glViewport(0, 0, windowSizeX, windowSizeY);
+	glDisable(GL_SCISSOR_TEST);
 	glMatrixMode(GL_PROJECTION);
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
 	m4x4f32 projectionMatrix = m4x4f32::IDENTITY;
@@ -157,6 +162,7 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 {
 	const v2u32* windowDimensions = reinterpret_cast<const v2u32*>(windowSize);
 	glViewport(0, 0, windowDimensions->x, windowDimensions->y);
+	glDisable(GL_SCISSOR_TEST);
 	const f32 aspectRatio = 
 		static_cast<f32>(windowDimensions->x)/windowDimensions->y;
 	korlAssert(!kmath::isNearlyZero(aspectRatio));
@@ -774,4 +780,15 @@ internal KRB_SET_CURRENT_CONTEXT(krbSetCurrentContext)
 internal KRB_SET_DEFAULT_COLOR(krbSetDefaultColor)
 {
 	krb::g_context->defaultColor = color;
+}
+internal KRB_SET_CLIP_BOX(krbSetClipBox)
+{
+	glEnable(GL_SCISSOR_TEST);
+	glScissor(left, bottom, width, height);
+	GL_CHECK_ERROR();
+}
+internal KRB_DISABLE_CLIP_BOX(krbDisableClipBox)
+{
+	glDisable(GL_SCISSOR_TEST);
+	GL_CHECK_ERROR();
 }
