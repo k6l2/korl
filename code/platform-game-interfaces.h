@@ -107,6 +107,25 @@ enum class KorlApplicationDirectory : u8
 	bool name(\
 		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
 		const void* data, u32 dataBytes)
+#define PLATFORM_CREATE_DIRECTORY(name) \
+	bool name(\
+		const char*const ansiDirectoryPath, KorlApplicationDirectory pathOrigin)
+#define KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(name) \
+	void name(const char*const ansiEntryName, bool isFile, bool isDirectory)
+typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
+	fnSig_korlCallbackDirectoryEntryFound);
+/**
+ * @return false if the `pathOrigin`+`ansiDirectoryPath` directory doesn't exist
+ */
+#define PLATFORM_GET_DIRECTORY_ENTRIES(name) \
+	bool name(\
+		const char*const ansiDirectoryPath, \
+		KorlApplicationDirectory pathOrigin, \
+		fnSig_korlCallbackDirectoryEntryFound* callbackEntryFound)
+#define PLATFORM_DESTROY_DIRECTORY_ENTRY(name) \
+	bool name(\
+		const char*const ansiDirectoryEntryPath, \
+		KorlApplicationDirectory pathOrigin)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
@@ -305,6 +324,9 @@ typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
 typedef PLATFORM_GET_FILE_BYTE_SIZE(fnSig_platformGetFileByteSize);
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_platformReadEntireFile);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
+typedef PLATFORM_CREATE_DIRECTORY(fnSig_platformCreateDirectory);
+typedef PLATFORM_GET_DIRECTORY_ENTRIES(fnSig_platformGetDirectoryEntries);
+typedef PLATFORM_DESTROY_DIRECTORY_ENTRY(fnSig_platformDestroyDirectoryEntry);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_platformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
 typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_platformSecondsSinceTimestamp);
@@ -334,6 +356,9 @@ struct KorlPlatformApi
 	fnSig_platformGetFileByteSize* getFileByteSize;
 	fnSig_platformReadEntireFile* readEntireFile;
 	fnSig_platformWriteEntireFile* writeEntireFile;
+	fnSig_platformCreateDirectory* createDirectory;
+	fnSig_platformGetDirectoryEntries* getDirectoryEntries;
+	fnSig_platformDestroyDirectoryEntry* destroyDirectoryEntry;
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;

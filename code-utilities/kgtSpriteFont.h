@@ -44,6 +44,10 @@ internal v2f32
 		void* userData, const v2f32& position, const v2f32& textureNormals, \
 		const Color4f32& color, const Color4f32& colorOutline)
 typedef KGT_SPRITE_FONT_CALLBACK_ADD_VERTEX(kgtSpriteFontCallbackAddVertex);
+/** Note: because the SpriteFont text mesh is identical to the outline's mesh, 
+ * `callbackAddVertex` is only called ONCE per vertex, passing both color & 
+ * colorOutline for the same vertex, to be handled as needed by the caller.
+ */
 internal void
 	kgtSpriteFontBatch(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 

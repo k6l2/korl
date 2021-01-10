@@ -3,6 +3,23 @@
 #include "win32-xinput.h"
 #include "win32-directinput.h"
 #include <strsafe.h>
+/* xiosbase declares an identifier called "internal" somewhere in its code, so I 
+	have to temporarily disable my disambiguation of the static keyword before 
+	including this crap.. THANKS, STD! */
+#pragma push_macro("internal")
+	#ifdef internal
+		#undef internal
+	#endif
+	/* C++ filesystem uses exception handling, and KORL does not give a shit 
+		about exception handling, so I have to ignore the compiler warning for 
+		not telling the compiler to generate stack unwinding code.  HORRAY! */
+	#pragma warning( push )
+		/* warning C4530: C++ exception handler used, but unwind semantics are 
+			not enabled. Specify /EHsc */
+		#pragma warning( disable : 4530 )
+		#include <filesystem>
+	#pragma warning( pop )
+#pragma pop_macro("internal")
 #include "z85.h"
 #include "stb/stb_image.h"
 global_variable WINDOWPLACEMENT g_lastKnownWindowedPlacement;
@@ -950,6 +967,57 @@ internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile)
 		return false;
 	}
 	return result;
+}
+internal PLATFORM_CREATE_DIRECTORY(w32PlatformCreateDirectory)
+{
+	char fullPathBuffer[256];
+	const bool successBuildFullPath = 
+		korlW32BuildFullFilePath(
+			ansiDirectoryPath, pathOrigin, 
+			fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
+	korlAssert(successBuildFullPath);
+	const bool successCreateDirectories = 
+		std::filesystem::create_directories(fullPathBuffer);
+	return successCreateDirectories;
+}
+internal PLATFORM_GET_DIRECTORY_ENTRIES(w32PlatformGetDirectoryEntries)
+{
+	char fullPathBuffer[256];
+	const bool successBuildFullPath = 
+		korlW32BuildFullFilePath(
+			ansiDirectoryPath, pathOrigin, 
+			fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
+	/* save the size of the full path so we can send the caller only the name of 
+		the filesystem entries relative to the full path */
+	const size_t fullPathLength = 
+		strnlen_s(fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
+	korlAssert(successBuildFullPath);
+	if(   !std::filesystem::exists      (fullPathBuffer) 
+	   || !std::filesystem::is_directory(fullPathBuffer))
+		return false;
+	for(const std::filesystem::directory_entry& p : 
+		std::filesystem::directory_iterator(fullPathBuffer))
+	{
+		callbackEntryFound(
+			/* instead of sending the caller the full path of the entry, we only 
+				have to send them the relative name of the entry itself with 
+				respect to `pathOrigin`+`ansiDirectoryPath` */
+			p.path().string().c_str() + fullPathLength, 
+			p.is_regular_file(), p.is_directory());
+	}
+	return true;
+}
+internal PLATFORM_DESTROY_DIRECTORY_ENTRY(w32PlatformDestroyDirectoryEntry)
+{
+	char fullPathBuffer[256];
+	const bool successBuildFullPath = 
+		korlW32BuildFullFilePath(
+			ansiDirectoryEntryPath, pathOrigin, 
+			fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
+	korlAssert(successBuildFullPath);
+	const uintmax_t deletedEntries = 
+		std::filesystem::remove_all(fullPathBuffer);
+	return deletedEntries > 0;
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton)
 {

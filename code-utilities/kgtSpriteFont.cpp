@@ -297,10 +297,6 @@ internal void
 		, static_cast<f32>(sfm.monospaceSize.y), 0};
 	charTriMesh[4].position = v3f32::ZERO;
 	charTriMesh[5].position = {static_cast<f32>(sfm.monospaceSize.x), 0, 0};
-	/* @speed: instead of doing one draw call per character, we can batch all 
-		the characters into a single mesh and call draw once per texture.  We 
-		can just take a memory allocation callback as a parameter to allocate a 
-		temporary buffer to build the mesh data in */
 	const v2f32 textAabbSize = 
 		kgtSpriteFontComputeAabbSize(kaiSpriteFontMeta, cStrText, scale, kam);
 	const v2f32 anchorOffset = 
