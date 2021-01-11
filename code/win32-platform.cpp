@@ -1015,9 +1015,28 @@ internal PLATFORM_DESTROY_DIRECTORY_ENTRY(w32PlatformDestroyDirectoryEntry)
 			ansiDirectoryEntryPath, pathOrigin, 
 			fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
 	korlAssert(successBuildFullPath);
+	std::error_code errorCode;
 	const uintmax_t deletedEntries = 
-		std::filesystem::remove_all(fullPathBuffer);
-	return deletedEntries > 0;
+		std::filesystem::remove_all(fullPathBuffer, errorCode);
+	return deletedEntries > 0 && !errorCode;
+}
+internal PLATFORM_RENAME_DIRECTORY_ENTRY(w32PlatformRenameDirectoryEntry)
+{
+	char fullPathBuffer[256];
+	const bool successBuildFullPath = 
+		korlW32BuildFullFilePath(
+			ansiDirectoryEntryPath, pathOrigin, 
+			fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
+	korlAssert(successBuildFullPath);
+	char fullPathBufferNew[256];
+	const bool successBuildFullPathNew = 
+		korlW32BuildFullFilePath(
+			ansiDirectoryEntryPathNew, pathOrigin, 
+			fullPathBufferNew, CARRAY_SIZE(fullPathBufferNew));
+	korlAssert(successBuildFullPathNew);
+	std::error_code errorCode;
+	std::filesystem::rename(fullPathBuffer, fullPathBufferNew, errorCode);
+	return !errorCode;
 }
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton)
 {

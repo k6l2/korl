@@ -126,6 +126,11 @@ typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 	bool name(\
 		const char*const ansiDirectoryEntryPath, \
 		KorlApplicationDirectory pathOrigin)
+#define PLATFORM_RENAME_DIRECTORY_ENTRY(name) \
+	bool name(\
+		const char*const ansiDirectoryEntryPath, \
+		KorlApplicationDirectory pathOrigin, \
+		const char*const ansiDirectoryEntryPathNew)
 /**
  * @return If there is a failure loading the file, an invalid RawSound 
  *         containing sampleData==nullptr is returned.
@@ -327,6 +332,7 @@ typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
 typedef PLATFORM_CREATE_DIRECTORY(fnSig_platformCreateDirectory);
 typedef PLATFORM_GET_DIRECTORY_ENTRIES(fnSig_platformGetDirectoryEntries);
 typedef PLATFORM_DESTROY_DIRECTORY_ENTRY(fnSig_platformDestroyDirectoryEntry);
+typedef PLATFORM_RENAME_DIRECTORY_ENTRY(fnSig_platformRenameDirectoryEntry);
 typedef PLATFORM_GET_TIMESTAMP(fnSig_platformGetTimeStamp);
 typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
 typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_platformSecondsSinceTimestamp);
@@ -359,6 +365,7 @@ struct KorlPlatformApi
 	fnSig_platformCreateDirectory* createDirectory;
 	fnSig_platformGetDirectoryEntries* getDirectoryEntries;
 	fnSig_platformDestroyDirectoryEntry* destroyDirectoryEntry;
+	fnSig_platformRenameDirectoryEntry* renameDirectoryEntry;
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;

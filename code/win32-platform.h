@@ -59,6 +59,7 @@ internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile);
 internal PLATFORM_CREATE_DIRECTORY(w32PlatformCreateDirectory);
 internal PLATFORM_GET_DIRECTORY_ENTRIES(w32PlatformGetDirectoryEntries);
 internal PLATFORM_DESTROY_DIRECTORY_ENTRY(w32PlatformDestroyDirectoryEntry);
+internal PLATFORM_RENAME_DIRECTORY_ENTRY(w32PlatformRenameDirectoryEntry);
 internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton);
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32PlatformGetGamePadActiveAxis);
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32PlatformGetGamePadProductName);
@@ -92,6 +93,7 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .createDirectory           = w32PlatformCreateDirectory
 	, .getDirectoryEntries       = w32PlatformGetDirectoryEntries
 	, .destroyDirectoryEntry     = w32PlatformDestroyDirectoryEntry
+	, .renameDirectoryEntry      = w32PlatformRenameDirectoryEntry
 	, .loadWav                   = w32PlatformLoadWav
 	, .loadOgg                   = w32PlatformLoadOgg
 	, .loadPng                   = w32PlatformLoadPng
