@@ -1003,7 +1003,7 @@ internal PLATFORM_GET_DIRECTORY_ENTRIES(w32PlatformGetDirectoryEntries)
 				have to send them the relative name of the entry itself with 
 				respect to `pathOrigin`+`ansiDirectoryPath` */
 			p.path().string().c_str() + fullPathLength, 
-			p.is_regular_file(), p.is_directory());
+			p.is_regular_file(), p.is_directory(), callbackEntryFoundUserData);
 	}
 	return true;
 }
@@ -1016,6 +1016,12 @@ internal PLATFORM_DESTROY_DIRECTORY_ENTRY(w32PlatformDestroyDirectoryEntry)
 			fullPathBuffer, CARRAY_SIZE(fullPathBuffer));
 	korlAssert(successBuildFullPath);
 	std::error_code errorCode;
+	const bool entryExists = std::filesystem::exists(fullPathBuffer, errorCode);
+	korlAssert(!errorCode);
+	/* If the directory entry doesn't even exist, just return true and do 
+		nothing; the entry is already destroyed anyway! */
+	if(!entryExists)
+		return true;
 	const uintmax_t deletedEntries = 
 		std::filesystem::remove_all(fullPathBuffer, errorCode);
 	return deletedEntries > 0 && !errorCode;

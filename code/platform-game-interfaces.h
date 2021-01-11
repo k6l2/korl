@@ -111,7 +111,9 @@ enum class KorlApplicationDirectory : u8
 	bool name(\
 		const char*const ansiDirectoryPath, KorlApplicationDirectory pathOrigin)
 #define KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(name) \
-	void name(const char*const ansiEntryName, bool isFile, bool isDirectory)
+	void name(\
+		const char*const ansiEntryName, bool isFile, bool isDirectory, \
+		void* userData)
 typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 	fnSig_korlCallbackDirectoryEntryFound);
 /**
@@ -121,7 +123,8 @@ typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 	bool name(\
 		const char*const ansiDirectoryPath, \
 		KorlApplicationDirectory pathOrigin, \
-		fnSig_korlCallbackDirectoryEntryFound* callbackEntryFound)
+		fnSig_korlCallbackDirectoryEntryFound* callbackEntryFound, \
+		void* callbackEntryFoundUserData)
 #define PLATFORM_DESTROY_DIRECTORY_ENTRY(name) \
 	bool name(\
 		const char*const ansiDirectoryEntryPath, \
