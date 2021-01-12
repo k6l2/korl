@@ -1210,10 +1210,40 @@ internal PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
 		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
 	return elapsedSeconds;
 }
-internal PLATFORM_GENERATE_TIME_STRING(w32PlatformGenerateTimeString)
+union PlatformDateStampUnion
 {
+	static_assert(sizeof(PlatformDateStamp) <= sizeof(FILETIME));
+	FILETIME fileTime;
+	PlatformDateStamp dateStamp;
+};
+internal PLATFORM_GET_DATESTAMP(w32PlatformGetDateStamp)
+{
+	PlatformDateStampUnion dsu;
+	GetSystemTimeAsFileTime(&dsu.fileTime);
+	return dsu.dateStamp;
+}
+internal PLATFORM_GENERATE_DATESTAMP_STRING(w32PlatformGenerateDateStampString)
+{
+	/* convert platform date stamp to UTC-synchronized file time */
+	PlatformDateStampUnion dsu;
+	dsu.dateStamp = pds;
+	/* convert UTC-synchronized file time to local time */
+	FILETIME fileTimeLocal;
+	const BOOL successUtcToLocal = 
+		FileTimeToLocalFileTime(&dsu.fileTime, &fileTimeLocal);
+	if(!successUtcToLocal)
+		KLOG(ERROR, "FileTimeToLocalFileTime failed! GetLastError=%i", 
+		     GetLastError());
+	korlAssert(successUtcToLocal);
+	/* break the local time into individual components */
 	SYSTEMTIME st;
-	GetLocalTime(&st);
+	const BOOL successFileTileToSystemTime = 
+		FileTimeToSystemTime(&fileTimeLocal, &st);
+	if(!successFileTileToSystemTime)
+		KLOG(ERROR, "FileTimeToSystemTime failed! GetLastError=%i", 
+		     GetLastError());
+	korlAssert(successFileTileToSystemTime);
+	/* write the local time to the provided string buffer */
 	const HRESULT resultPrintString = StringCchPrintfA(
 		o_cStrBuffer, cStrBufferSize, 
 		// 4+1 + 2+1 + 2+1 + 2+1 + 2+1 + 2+1 + 3 = 23 characters!

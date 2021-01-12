@@ -66,8 +66,19 @@ struct RawSound
 };
 using FileWriteTime = u64;
 /** Do not use this value directly, since the meaning of this data is 
- * platform-dependent.  Instead, use the platform APIs which uses this type. */
+ * platform-dependent.  Instead, use the platform APIs which uses this type.  
+ * This value should represent the highest possible time resolution 
+ * (microseconds) of the platform, but it should only be valid for the current 
+ * session of the underlying hardware.  (Do NOT save this value to disk and then 
+ * expect it to be correct when you load it from disk on another 
+ * session/machine!) */
 using PlatformTimeStamp = u64;
+/** Do not use this value directly, since the meaning of this data is 
+ * platform-dependent.  Instead, use the platform APIs which uses this type.  
+ * This value should be considered lower resolution (milliseconds) than 
+ * PlatformTimeStamp, but is synchronized to a machine-independent time 
+ * reference (UTC), so it should remain valid between application runs. */
+using PlatformDateStamp = u64;
 using JobQueueTicket = u32;
 #define JOB_QUEUE_FUNCTION(name) \
 	void name(void* data, u32 threadId)
@@ -211,14 +222,17 @@ struct PlatformGamePadActiveAxis
 /** It doesn't matter what order the PlatformTimeStamp parameters are in. */
 #define PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(name) \
 	f32 name(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
+#define PLATFORM_GET_DATESTAMP(name) \
+	PlatformDateStamp name()
 /**
  * @param cStrBufferSize 
  * 	A size of 32 is recommended.  Current implementation prints out the maximum 
  * 	of 23 characters to represent the local time (yyyy-MM-dd-hh:mm'ss"uuu) plus 
  * 	the null-terminator character, bringing the total to 24.
  */
-#define PLATFORM_GENERATE_TIME_STRING(name) \
-	void name(char*const o_cStrBuffer, u32 cStrBufferSize)
+#define PLATFORM_GENERATE_DATESTAMP_STRING(name) \
+	void name(\
+		PlatformDateStamp pds, char*const o_cStrBuffer, u32 cStrBufferSize)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
 const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;
@@ -349,7 +363,9 @@ typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
 typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_platformSecondsSinceTimestamp);
 typedef PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
 	fnSig_platformSecondsBetweenTimestamps);
-typedef PLATFORM_GENERATE_TIME_STRING(fnSig_platformGenerateTimeString);
+typedef PLATFORM_GET_DATESTAMP(fnSig_platformGetDateStamp);
+typedef PLATFORM_GENERATE_DATESTAMP_STRING(
+	fnSig_platformGenerateDateStampString);
 typedef PLATFORM_NET_RESOLVE_ADDRESS(fnSig_platformNetResolveAddress);
 typedef PLATFORM_SOCKET_OPEN_UDP(fnSig_platformSocketOpenUdp);
 typedef PLATFORM_SOCKET_CLOSE(fnSig_platformSocketClose);
@@ -394,7 +410,8 @@ struct KorlPlatformApi
 	fnSig_platformSleepFromTimestamp* sleepFromTimeStamp;
 	fnSig_platformSecondsSinceTimestamp* secondsSinceTimeStamp;
 	fnSig_platformSecondsBetweenTimestamps* secondsBetweenTimeStamps;
-	fnSig_platformGenerateTimeString* generateTimeString;
+	fnSig_platformGetDateStamp* getDateStamp;
+	fnSig_platformGenerateDateStampString* generateDateStampString;
 	fnSig_platformNetResolveAddress* netResolveAddress;
 	fnSig_platformSocketOpenUdp* socketOpenUdp;
 	fnSig_platformSocketClose* socketClose;
