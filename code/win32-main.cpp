@@ -719,18 +719,19 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 	// copy-pasta from MSDN basically:
 	//	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
 	///TODO: maybe make this a little more robust in the future...
-	TCHAR szFileName[MAX_PATH]; 
+	TCHAR szFileName[MAX_PATH];
 	SYSTEMTIME stLocalTime;
 	GetLocalTime( &stLocalTime );
 	// Create a companion folder to store PDB files specifically for this 
 	//	dump! //
 	TCHAR szPdbDirectory[MAX_PATH];
-	StringCchPrintf(szPdbDirectory, MAX_PATH, 
-				TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld"), 
-				g_pathTemp, APPLICATION_VERSION, 
-				stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
-				stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
-				GetCurrentProcessId(), GetCurrentThreadId());
+	StringCchPrintf(
+		szPdbDirectory, MAX_PATH, 
+		TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld"), 
+		g_pathTemp, APPLICATION_VERSION, 
+		stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
+		stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
+		GetCurrentProcessId(), GetCurrentThreadId());
 	if(!CreateDirectory(szPdbDirectory, NULL))
 	{
 		platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,

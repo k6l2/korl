@@ -825,6 +825,10 @@
 	[x] simple size calculation API (given text, output AABB)
 [x] win32: demote GetCursorPos failure to a warning in w32GetMouseStates 
 	- ERROR_ACCESS_DENIED after putting computer to sleep & waking back up
+[ ] remove `jobValid` API
+	- everything it does is handled by `jobDone`
+	- we already know if a job ticket is valid just by checking if it is 
+		non-zero
 [ ] win32: prevent application from freezing when the window is being moved 
 	around or resized
 	https://stackoverflow.com/q/3102074
