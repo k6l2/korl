@@ -185,4 +185,5 @@ namespace kutil
 	 */
 	size_t cStrCompareArray(
 		const char* cStr, const char*const* cStrArray, size_t cStrArraySize);
+	void cStrMakeFilesystemSafe(char* cStr, size_t cStrSize);
 }

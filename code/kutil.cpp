@@ -221,3 +221,22 @@ size_t kutil::cStrCompareArray(
 			return a;
 	return cStrArraySize;
 }
+void kutil::cStrMakeFilesystemSafe(char* cStr, size_t cStrSize)
+{
+	const char*const cStrEnd = cStr + cStrSize;
+	for(; cStr < cStrEnd; cStr++)
+	{
+		switch(*cStr)
+		{
+		case '\\': *cStr = '['; break;
+		case '/':  *cStr = ']'; break;
+		case ':':  *cStr = ';'; break;
+		case '*':  *cStr = '.'; break;
+		case '?':  *cStr = '~'; break;
+		case '<':  *cStr = '{'; break;
+		case '>':  *cStr = '}'; break;
+		case '|':  *cStr = '`'; break;
+		case '\"': *cStr = ','; break;
+		}
+	}
+}
