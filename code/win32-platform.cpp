@@ -1210,6 +1210,26 @@ internal PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
 		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
 	return elapsedSeconds;
 }
+internal PLATFORM_MICROSECONDS_BETWEEN_TIMESTAMPS(
+	w32PlatformMicroSecondsBetweenTimeStamps)
+{
+	PlatformTimeStampUnion platformTimeStampUnionA;
+	platformTimeStampUnionA.timeStamp = ptsA;
+	PlatformTimeStampUnion platformTimeStampUnionB;
+	platformTimeStampUnionB.timeStamp = ptsB;
+	/* calculate the # of seconds between the previous timestamp and the current 
+		timestamp */
+	const LONGLONG perfCountDiff = 
+		(platformTimeStampUnionA.largeInt.QuadPart > 
+			platformTimeStampUnionB.largeInt.QuadPart
+		? platformTimeStampUnionA.largeInt.QuadPart - 
+			platformTimeStampUnionB.largeInt.QuadPart
+		: platformTimeStampUnionB.largeInt.QuadPart - 
+			platformTimeStampUnionA.largeInt.QuadPart);
+	const u64 elapsedMicroSeconds = 
+		(perfCountDiff * 1000000) / g_perfCounterHz.QuadPart;
+	return elapsedMicroSeconds;
+}
 union PlatformDateStampUnion
 {
 	static_assert(sizeof(PlatformDateStamp) <= sizeof(FILETIME));

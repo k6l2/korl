@@ -222,6 +222,9 @@ struct PlatformGamePadActiveAxis
 /** It doesn't matter what order the PlatformTimeStamp parameters are in. */
 #define PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(name) \
 	f32 name(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
+/** It doesn't matter what order the PlatformTimeStamp parameters are in. */
+#define PLATFORM_MICROSECONDS_BETWEEN_TIMESTAMPS(name) \
+	u64 name(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
 #define PLATFORM_GET_DATESTAMP(name) \
 	PlatformDateStamp name()
 /**
@@ -364,6 +367,8 @@ typedef PLATFORM_SLEEP_FROM_TIMESTAMP(fnSig_platformSleepFromTimestamp);
 typedef PLATFORM_SECONDS_SINCE_TIMESTAMP(fnSig_platformSecondsSinceTimestamp);
 typedef PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
 	fnSig_platformSecondsBetweenTimestamps);
+typedef PLATFORM_MICROSECONDS_BETWEEN_TIMESTAMPS(
+	fnSig_platformMicroSecondsBetweenTimestamps);
 typedef PLATFORM_GET_DATESTAMP(fnSig_platformGetDateStamp);
 typedef PLATFORM_GENERATE_DATESTAMP_STRING(
 	fnSig_platformGenerateDateStampString);
@@ -411,6 +416,7 @@ struct KorlPlatformApi
 	fnSig_platformSleepFromTimestamp* sleepFromTimeStamp;
 	fnSig_platformSecondsSinceTimestamp* secondsSinceTimeStamp;
 	fnSig_platformSecondsBetweenTimestamps* secondsBetweenTimeStamps;
+	fnSig_platformMicroSecondsBetweenTimestamps* microSecondsBetweenTimeStamps;
 	fnSig_platformGetDateStamp* getDateStamp;
 	fnSig_platformGenerateDateStampString* generateDateStampString;
 	fnSig_platformNetResolveAddress* netResolveAddress;

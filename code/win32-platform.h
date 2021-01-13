@@ -71,6 +71,8 @@ internal PLATFORM_GET_TIMESTAMP(w32PlatformGetTimeStamp);
 internal PLATFORM_SECONDS_SINCE_TIMESTAMP(w32PlatformSecondsSinceTimeStamp);
 internal PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
 	w32PlatformSecondsBetweenTimeStamps);
+internal PLATFORM_MICROSECONDS_BETWEEN_TIMESTAMPS(
+	w32PlatformMicroSecondsBetweenTimeStamps);
 internal PLATFORM_GET_DATESTAMP(w32PlatformGetDateStamp);
 internal PLATFORM_GENERATE_DATESTAMP_STRING(w32PlatformGenerateDateStampString);
 internal PLATFORM_SLEEP_FROM_TIMESTAMP(w32PlatformSleepFromTimeStamp);
@@ -82,48 +84,49 @@ internal PLATFORM_MOUSE_SET_RELATIVE_MODE(w32PlatformMouseSetRelativeMode);
 internal PLATFORM_ENUMERATE_WINDOWS(w32PlatformEnumerateWindows);
 internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage);
 const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 = 
-	{ .postJob                   = w32PlatformPostJob
-	, .jobValid                  = w32PlatformJobValid
-	, .jobDone                   = w32PlatformJobDone
-	, .log                       = w32PlatformLog
-	, .assertFailure             = w32PlatformAssertFailure
-	, .decodeZ85Png              = w32PlatformDecodeZ85Png
-	, .decodeZ85Wav              = w32PlatformDecodeZ85Wav
-	, .getFileByteSize           = w32PlatformGetFileByteSize
-	, .readEntireFile            = w32PlatformReadEntireFile
-	, .writeEntireFile           = w32PlatformWriteEntireFile
-	, .createDirectory           = w32PlatformCreateDirectory
-	, .getDirectoryEntries       = w32PlatformGetDirectoryEntries
-	, .destroyDirectoryEntry     = w32PlatformDestroyDirectoryEntry
-	, .renameDirectoryEntry      = w32PlatformRenameDirectoryEntry
-	, .loadWav                   = w32PlatformLoadWav
-	, .loadOgg                   = w32PlatformLoadOgg
-	, .loadPng                   = w32PlatformLoadPng
-	, .getFileWriteTime          = w32PlatformGetFileWriteTime
-	, .isFileChanged             = w32PlatformIsFileChanged
-	, .isFileAvailable           = w32PlatformIsFileAvailable
-	, .isFullscreen              = w32PlatformIsFullscreen
-	, .setFullscreen             = w32PlatformSetFullscreen
-	, .getGamePadActiveButton    = w32PlatformGetGamePadActiveButton
-	, .getGamePadActiveAxis      = w32PlatformGetGamePadActiveAxis
-	, .getGamePadProductName     = w32PlatformGetGamePadProductName
-	, .getGamePadProductGuid     = w32PlatformGetGamePadProductGuid
-	, .getTimeStamp              = w32PlatformGetTimeStamp
-	, .sleepFromTimeStamp        = w32PlatformSleepFromTimeStamp
-	, .secondsSinceTimeStamp     = w32PlatformSecondsSinceTimeStamp
-	, .secondsBetweenTimeStamps  = w32PlatformSecondsBetweenTimeStamps
-	, .getDateStamp              = w32PlatformGetDateStamp
-	, .generateDateStampString   = w32PlatformGenerateDateStampString
-	, .netResolveAddress         = w32PlatformNetworkResolveAddress
-	, .socketOpenUdp             = w32PlatformNetworkOpenSocketUdp
-	, .socketClose               = w32PlatformNetworkCloseSocket
-	, .socketSend                = w32PlatformNetworkSend
-	, .socketReceive             = w32PlatformNetworkReceive
-	, .reserveLock               = w32PlatformReserveLock
-	, .lock                      = w32PlatformLock
-	, .unlock                    = w32PlatformUnlock
-	, .mouseSetHidden            = w32PlatformMouseSetHidden
-	, .mouseSetRelativeMode      = w32PlatformMouseSetRelativeMode
-	, .enumerateWindows          = w32PlatformEnumerateWindows
-	, .getWindowRawImage         = w32PlatformGetWindowRawImage
+	{ .postJob                       = w32PlatformPostJob
+	, .jobValid                      = w32PlatformJobValid
+	, .jobDone                       = w32PlatformJobDone
+	, .log                           = w32PlatformLog
+	, .assertFailure                 = w32PlatformAssertFailure
+	, .decodeZ85Png                  = w32PlatformDecodeZ85Png
+	, .decodeZ85Wav                  = w32PlatformDecodeZ85Wav
+	, .getFileByteSize               = w32PlatformGetFileByteSize
+	, .readEntireFile                = w32PlatformReadEntireFile
+	, .writeEntireFile               = w32PlatformWriteEntireFile
+	, .createDirectory               = w32PlatformCreateDirectory
+	, .getDirectoryEntries           = w32PlatformGetDirectoryEntries
+	, .destroyDirectoryEntry         = w32PlatformDestroyDirectoryEntry
+	, .renameDirectoryEntry          = w32PlatformRenameDirectoryEntry
+	, .loadWav                       = w32PlatformLoadWav
+	, .loadOgg                       = w32PlatformLoadOgg
+	, .loadPng                       = w32PlatformLoadPng
+	, .getFileWriteTime              = w32PlatformGetFileWriteTime
+	, .isFileChanged                 = w32PlatformIsFileChanged
+	, .isFileAvailable               = w32PlatformIsFileAvailable
+	, .isFullscreen                  = w32PlatformIsFullscreen
+	, .setFullscreen                 = w32PlatformSetFullscreen
+	, .getGamePadActiveButton        = w32PlatformGetGamePadActiveButton
+	, .getGamePadActiveAxis          = w32PlatformGetGamePadActiveAxis
+	, .getGamePadProductName         = w32PlatformGetGamePadProductName
+	, .getGamePadProductGuid         = w32PlatformGetGamePadProductGuid
+	, .getTimeStamp                  = w32PlatformGetTimeStamp
+	, .sleepFromTimeStamp            = w32PlatformSleepFromTimeStamp
+	, .secondsSinceTimeStamp         = w32PlatformSecondsSinceTimeStamp
+	, .secondsBetweenTimeStamps      = w32PlatformSecondsBetweenTimeStamps
+	, .microSecondsBetweenTimeStamps = w32PlatformMicroSecondsBetweenTimeStamps
+	, .getDateStamp                  = w32PlatformGetDateStamp
+	, .generateDateStampString       = w32PlatformGenerateDateStampString
+	, .netResolveAddress             = w32PlatformNetworkResolveAddress
+	, .socketOpenUdp                 = w32PlatformNetworkOpenSocketUdp
+	, .socketClose                   = w32PlatformNetworkCloseSocket
+	, .socketSend                    = w32PlatformNetworkSend
+	, .socketReceive                 = w32PlatformNetworkReceive
+	, .reserveLock                   = w32PlatformReserveLock
+	, .lock                          = w32PlatformLock
+	, .unlock                        = w32PlatformUnlock
+	, .mouseSetHidden                = w32PlatformMouseSetHidden
+	, .mouseSetRelativeMode          = w32PlatformMouseSetRelativeMode
+	, .enumerateWindows              = w32PlatformEnumerateWindows
+	, .getWindowRawImage             = w32PlatformGetWindowRawImage
 };
