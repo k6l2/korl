@@ -229,9 +229,10 @@ struct PlatformGamePadActiveAxis
  * 	A size of 32 is recommended.  Current implementation prints out the maximum 
  * 	of 23 characters to represent the local time (yyyy-MM-dd-hh:mm'ss"uuu) plus 
  * 	the null-terminator character, bringing the total to 24.
+ * @return the # of characters written to `o_cStrBuffer`
  */
 #define PLATFORM_GENERATE_DATESTAMP_STRING(name) \
-	void name(\
+	u32 name(\
 		PlatformDateStamp pds, char*const o_cStrBuffer, u32 cStrBufferSize)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */

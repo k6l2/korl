@@ -1251,6 +1251,7 @@ internal PLATFORM_GENERATE_DATESTAMP_STRING(w32PlatformGenerateDateStampString)
 		st.wYear, st.wMonth, st.wDay, 
 		st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 	korlAssert(resultPrintString == S_OK);
+	return kmath::safeTruncateU32(strlen(o_cStrBuffer));
 }
 internal PLATFORM_SLEEP_FROM_TIMESTAMP(w32PlatformSleepFromTimeStamp)
 {
