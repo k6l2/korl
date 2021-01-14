@@ -1001,9 +1001,11 @@ internal PLATFORM_GET_DIRECTORY_ENTRIES(w32PlatformGetDirectoryEntries)
 		callbackEntryFound(
 			/* instead of sending the caller the full path of the entry, we only 
 				have to send them the relative name of the entry itself with 
-				respect to `pathOrigin`+`ansiDirectoryPath` */
-			p.path().string().c_str() + fullPathLength, 
-			p.is_regular_file(), p.is_directory(), callbackEntryFoundUserData);
+				respect to `pathOrigin`+`ansiDirectoryPath`, +1 for the 
+				additional '\\' character */
+			p.path().string().c_str() + fullPathLength + 1, ansiDirectoryPath, 
+			pathOrigin, p.is_regular_file(), p.is_directory(), 
+			callbackEntryFoundUserData);
 	}
 	return true;
 }

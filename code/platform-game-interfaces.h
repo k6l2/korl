@@ -123,8 +123,9 @@ enum class KorlApplicationDirectory : u8
 		const char*const ansiDirectoryPath, KorlApplicationDirectory pathOrigin)
 #define KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(name) \
 	void name(\
-		const char*const ansiEntryName, bool isFile, bool isDirectory, \
-		void* userData)
+		const char*const ansiEntryName, const char*const ansiDirectoryPath, \
+		KorlApplicationDirectory pathOrigin, \
+		bool isFile, bool isDirectory, void* userData)
 typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 	fnSig_korlCallbackDirectoryEntryFound);
 /**
