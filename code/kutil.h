@@ -60,6 +60,7 @@ using i32 = int32_t;  static_assert(sizeof(i32) == 4);
 using i64 = int64_t;  static_assert(sizeof(i64) == 8);
 using f32 = float;    static_assert(sizeof(f32) == 4);
 using f64 = double;   static_assert(sizeof(f64) == 8);
+#define U32_MAX 0xFFFFFFFFui32
 /* platform function addresses required to exist by kutil macros */
 enum class PlatformLogCategory : u8
 	{ K_INFO
