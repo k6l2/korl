@@ -19,6 +19,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #include "imgui/imgui_impl_opengl2.h"
 #include "stb/stb_image.h"
 #include "stb/stb_vorbis.h"
+#include "win32loopl-code/LooplessSizeMove.h"
 // Allow the pre-processor to store compiler definitions as string literals //
 //	Source: https://stackoverflow.com/a/39108392
 #define _DEFINE_TO_CSTR(define) #define
@@ -611,7 +612,7 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 			{
 				break;
 			}
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+			result = LSMProc(hwnd, uMsg, wParam, lParam);
 		}break;
 #if 0
 		case WM_MENUCHAR:
@@ -682,14 +683,14 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 					g_deviceChangeDetected = true;
 				} break;
 			}
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+			result = LSMProc(hwnd, uMsg, wParam, lParam);
 		} break;
 		default:
 		{
 #if 0
 			KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
 #endif // 0
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+			result = LSMProc(hwnd, uMsg, wParam, lParam);
 		}break;
 	}
 	return result;
@@ -901,8 +902,8 @@ internal LONG WINAPI w32VectoredExceptionHandler(
 	            "Vectored Exception! 0x%x", 
 	            pExceptionInfo->ExceptionRecord->ExceptionCode);
 	w32WriteLogToFile();
-	///TODO: cleanup system-wide settings/handles, such as the OS timer 
-	///      granularity setting!
+	///@todo: cleanup system-wide settings/handles
+	///	- OS timer granularity setting
 	ExitProcess(0xDEADC0DE);
 	// return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -1255,6 +1256,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	defer(w32WriteLogToFile());
 	KLOG(INFO, "START!");
+	/* @todo: do I REALLY need to call LSMCleanup?  I'm going to guess no... */
 	if(!w32InitializeNetwork())
 	{
 		KLOG(ERROR, "Failed to initialize network!");
@@ -1776,6 +1778,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					default:
 					{
 						TranslateMessage(&windowMessage);
+						SizingCheck(&windowMessage);
 						DispatchMessageA(&windowMessage);
 					} break;
 				}
@@ -2016,6 +2019,10 @@ internal void stbiFree(void* allocatedAddress)
 #define STBI_REALLOC(p,newsz) stbiRealloc(p,newsz)
 #define STBI_FREE(p)          stbiFree(p)
 #include "stb/stb_image.h"
+/* we need to include VersionHelpers.h here so that ImGui knows not to declare 
+	its own versions of this API, since it is included in later code (such as in 
+	win32loopl-code/*) */
+#include <VersionHelpers.h>
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
 	#pragma warning( disable : 4127 )
@@ -2067,3 +2074,4 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kmath.cpp"
 #include "kutil.cpp"
 #include "kgtAllocator.cpp"
+#include "win32loopl-code/LooplessSizeMove.c"
