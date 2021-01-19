@@ -272,13 +272,15 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 	korlAssert(pageRow < flipbookPageRows);
 	korlAssert(pageCol < flipbookPageCols);
 	const f32 pageTexCoordUp    = 
-	                           static_cast<f32>( pageRow     )/flipbookPageRows;
+		static_cast<f32>( pageRow     ) / static_cast<f32>(flipbookPageRows);
 	const f32 pageTexCoordDown  = 
-	                           static_cast<f32>((pageRow + 1))/flipbookPageRows;
+		static_cast<f32>((pageRow + 1)) / static_cast<f32>(flipbookPageRows);
 	const f32 pageTexCoordLeft  = 
-	          static_cast<f32>(pageCol + (kfb->flipH ? 1 : 0))/flipbookPageCols;
+		static_cast<f32>(pageCol + (kfb->flipH ? 1 : 0)) / 
+			static_cast<f32>(flipbookPageCols);
 	const f32 pageTexCoordRight = 
-	          static_cast<f32>(pageCol + (kfb->flipH ? 0 : 1))/flipbookPageCols;
+		static_cast<f32>(pageCol + (kfb->flipH ? 0 : 1)) / 
+			static_cast<f32>(flipbookPageCols);
 	// Submit draw commands to the render backend. //
 	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
 	g_krb->useTexture(kgtAssetManagerGetTexture        (g_kam, kaiTex), 
@@ -302,7 +304,8 @@ internal void kgtFlipBookStep(KgtFlipBook* kfb, f32 deltaSeconds)
 	kgtFlipBookGetPageProperties(
 		kfb, &frameSizeX, &frameSizeY, &frameCount, 
 		&flipbookPageRows, &flipbookPageCols);
-	const f32 animationLoopTotalSeconds = frameCount * kfb->secondsPerFrame;
+	const f32 animationLoopTotalSeconds = 
+		static_cast<f32>(frameCount) * kfb->secondsPerFrame;
 	if(kmath::isNearlyZero(animationLoopTotalSeconds))
 	{
 		return;

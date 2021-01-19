@@ -501,6 +501,7 @@ extern void stbds_unit_tests(void* memory_context = NULL);
 
 extern void * stbds_arrinit_func(size_t elemsize, void *memory_context, size_t min_cap);
 extern void * stbds_arrgrowf(void *a, size_t elemsize, size_t addlen, size_t min_cap);
+extern void * stbds_hminit_ctx(void *a, size_t elemsize, void *memory_context);
 extern void   stbds_hmfree_func(void *p, size_t elemsize);
 extern void * stbds_hmget_key(void *a, size_t elemsize, void *key, size_t keysize, int mode);
 extern void * stbds_hmget_key_ts(void *a, size_t elemsize, void *key, size_t keysize, ptrdiff_t *temp, int mode);

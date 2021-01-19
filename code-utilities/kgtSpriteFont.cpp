@@ -184,17 +184,19 @@ internal void
 		{ -anchor.x * textAabbSize.x
 		,  anchor.y * textAabbSize.y };
 	v2f32 currentPosition = position;
-	currentPosition.y -= scale.y * sfm.monospaceSize.y;
+	currentPosition.y -= scale.y * static_cast<f32>(sfm.monospaceSize.y);
 	for(; *cStrText; cStrText++)
 	{
 		if(*cStrText == '\n')
 		{
 			currentPosition.x = position.x;
-			currentPosition.y -= scale.y * sfm.monospaceSize.y;
+			currentPosition.y -= 
+				scale.y * static_cast<f32>(sfm.monospaceSize.y);
 			continue;
 		}
 		/* advance to the next space at the end of this iteration */
-		defer(currentPosition.x += scale.x * sfm.monospaceSize.x);
+		defer(currentPosition.x += 
+			scale.x * static_cast<f32>(sfm.monospaceSize.x));
 		/* determine which character in the font sprite sheet we need to use */
 		u8 c = 0;
 		for(; c < sfm.charactersSize; c++)
@@ -212,11 +214,15 @@ internal void
 			, sfm.texturePadding.y };
 		const v2u32 charPixelDR = charPixelUL + sfm.monospaceSize;
 		const v2f32 charTexNormUL = 
-			{ static_cast<f32>(charPixelUL.x) / fontSpriteSheetSize.x
-			, static_cast<f32>(charPixelUL.y) / fontSpriteSheetSize.y };
+			{ static_cast<f32>(charPixelUL.x) / 
+				static_cast<f32>(fontSpriteSheetSize.x)
+			, static_cast<f32>(charPixelUL.y) / 
+				static_cast<f32>(fontSpriteSheetSize.y) };
 		const v2f32 charTexNormDR = 
-			{ static_cast<f32>(charPixelDR.x) / fontSpriteSheetSize.x
-			, static_cast<f32>(charPixelDR.y) / fontSpriteSheetSize.y };
+			{ static_cast<f32>(charPixelDR.x) / 
+				static_cast<f32>(fontSpriteSheetSize.x)
+			, static_cast<f32>(charPixelDR.y) / 
+				static_cast<f32>(fontSpriteSheetSize.y) };
 		/* update the character mesh with these UV normals */
 		// upper-left triangle //
 		charTriMesh[0].textureNormal = {charTexNormUL.x, charTexNormDR.y};
@@ -245,17 +251,17 @@ internal v2f32
 {
 	const KgtSpriteFontMetaData& sfm = 
 		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
-	v2f32 resultAabbSize = {0, scale.y * sfm.monospaceSize.y};
+	v2f32 resultAabbSize = {0, scale.y * static_cast<f32>(sfm.monospaceSize.y)};
 	f32 currentLineSizeX = 0;
 	for(; *cStrText; cStrText++)
 	{
 		if(*cStrText == '\n')
 		{
 			currentLineSizeX = 0;
-			resultAabbSize.y += scale.y * sfm.monospaceSize.y;
+			resultAabbSize.y += scale.y * static_cast<f32>(sfm.monospaceSize.y);
 			continue;
 		}
-		currentLineSizeX += scale.x * sfm.monospaceSize.x;
+		currentLineSizeX += scale.x * static_cast<f32>(sfm.monospaceSize.x);
 		if(currentLineSizeX > resultAabbSize.x)
 			resultAabbSize.x = currentLineSizeX;
 	}
@@ -319,17 +325,19 @@ internal void
 			io_aabbMax->y = aabbMax.y;
 	}
 	v2f32 currentPosition = position;
-	currentPosition.y -= scale.y * sfm.monospaceSize.y;
+	currentPosition.y -= scale.y * static_cast<f32>(sfm.monospaceSize.y);
 	for(; *cStrText; cStrText++)
 	{
 		if(*cStrText == '\n')
 		{
 			currentPosition.x = position.x;
-			currentPosition.y -= scale.y * sfm.monospaceSize.y;
+			currentPosition.y -= 
+				scale.y * static_cast<f32>(sfm.monospaceSize.y);
 			continue;
 		}
 		/* advance to the next space at the end of this iteration */
-		defer(currentPosition.x += scale.x * sfm.monospaceSize.x);
+		defer(currentPosition.x += 
+			scale.x * static_cast<f32>(sfm.monospaceSize.x));
 		/* determine which character in the font sprite sheet we need to use */
 		u8 c = 0;
 		for(; c < sfm.charactersSize; c++)
@@ -347,11 +355,15 @@ internal void
 			, sfm.texturePadding.y };
 		const v2u32 charPixelDR = charPixelUL + sfm.monospaceSize;
 		const v2f32 charTexNormUL = 
-			{ static_cast<f32>(charPixelUL.x) / fontSpriteSheetSize.x
-			, static_cast<f32>(charPixelUL.y) / fontSpriteSheetSize.y };
+			{ static_cast<f32>(charPixelUL.x) / 
+				static_cast<f32>(fontSpriteSheetSize.x)
+			, static_cast<f32>(charPixelUL.y) / 
+				static_cast<f32>(fontSpriteSheetSize.y) };
 		const v2f32 charTexNormDR = 
-			{ static_cast<f32>(charPixelDR.x) / fontSpriteSheetSize.x
-			, static_cast<f32>(charPixelDR.y) / fontSpriteSheetSize.y };
+			{ static_cast<f32>(charPixelDR.x) / 
+				static_cast<f32>(fontSpriteSheetSize.x)
+			, static_cast<f32>(charPixelDR.y) / 
+				static_cast<f32>(fontSpriteSheetSize.y) };
 		/* update the character mesh with these UV normals */
 		// upper-left triangle //
 		charTriMesh[0].textureNormal = {charTexNormUL.x, charTexNormDR.y};

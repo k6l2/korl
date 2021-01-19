@@ -140,7 +140,8 @@ internal void
 				const u8 rawSoundChannel = static_cast<u8>(
 					c % tRawSound.channelCount);
 				const SoundSample sample = static_cast<SoundSample>(
-					*(rawSoundSampleBlockStart + rawSoundChannel) * 
+					static_cast<f32>(
+						*(rawSoundSampleBlockStart + rawSoundChannel)) * 
 					tracks[t].volumeRatio);
 				*(sampleBlockStart + c) += sample;
 			}

@@ -144,19 +144,19 @@ internal inline v3f32 operator/(const v3f32& lhs, f32 rhs)
 }
 internal inline v2f32 operator/(const v2f32& lhs, const v2u32& rhs)
 {
-	return {lhs.x / rhs.x, lhs.y / rhs.y};
+	return {lhs.x / static_cast<f32>(rhs.x), lhs.y / static_cast<f32>(rhs.y)};
 }
 internal inline v2f32 operator/(const v2u32& lhs, const v2f32& rhs)
 {
-	return {lhs.x / rhs.x, lhs.y / rhs.y};
+	return {static_cast<f32>(lhs.x) / rhs.x, static_cast<f32>(lhs.y) / rhs.y};
 }
 internal inline v2f32 operator*(const v2u32& lhs, const v2f32& rhs)
 {
-	return { lhs.x * rhs.x, lhs.y * rhs.y };
+	return { static_cast<f32>(lhs.x) * rhs.x, static_cast<f32>(lhs.y) * rhs.y };
 }
 internal inline v2f32 operator*(const v2f32& lhs, const v2u32& rhs)
 {
-	return { lhs.x * rhs.x, lhs.y * rhs.y };
+	return { lhs.x * static_cast<f32>(rhs.x), lhs.y * static_cast<f32>(rhs.y) };
 }
 inline v3f32 v3f32::operator+(const v3f32& other) const
 {
@@ -437,11 +437,13 @@ internal inline q32 operator*(const q32& lhs, const q32& rhs)
 }
 internal inline v2f32 operator-(const v2f32& lhs, const v2u32& rhs)
 {
-	return v2f32{lhs.x - rhs.x, lhs.y - rhs.y};
+	return v2f32{
+		lhs.x - static_cast<f32>(rhs.x), lhs.y - static_cast<f32>(rhs.y)};
 }
 internal inline v2f32 operator-(const v2u32& lhs, const v2f32& rhs)
 {
-	return v2f32{lhs.x - rhs.x, lhs.y - rhs.y};
+	return v2f32{
+		static_cast<f32>(lhs.x) - rhs.x, static_cast<f32>(lhs.y) - rhs.y};
 }
 inline q32 q32::hamilton(const q32& q0, const q32& q1)
 {
@@ -610,8 +612,8 @@ internal inline i16 kmath::safeTruncateI16(i32 value)
 internal inline u8 kmath::safeTruncateU8(f32 value)
 {
 	value = roundf(value);
-	korlAssert(value >= 0 
-	        && value <= std::numeric_limits<u8>::max());
+	korlAssert(value >= 0.f 
+	        && value <= static_cast<f32>(std::numeric_limits<u8>::max()));
 	return static_cast<u8>(value);
 }
 internal inline u8 kmath::safeTruncateU8(i32 value)
@@ -1145,8 +1147,10 @@ internal inline void kmath::generateMeshCircleSphere(
 	/* calculate the sphere mesh on-the-fly */
 	korlAssert(latitudeSegments  >= 2);
 	korlAssert(longitudeSegments >= 3);
-	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
-	const f32 radiansPerLatitude      = PI32 / latitudeSegments;
+	const f32 radiansPerSemiLongitude = 
+		2*PI32 / static_cast<f32>(longitudeSegments);
+	const f32 radiansPerLatitude      = 
+		PI32 / static_cast<f32>(latitudeSegments);
 	const v3f32 verticalRadius        = v3f32::Z * radius;
 	size_t currentVertex = 0;
 	for(u32 longitude = 1; longitude <= longitudeSegments; longitude++)
@@ -1156,11 +1160,13 @@ internal inline void kmath::generateMeshCircleSphere(
 			q32(v3f32::Y, radiansPerLatitude, true)
 				.transform(verticalRadius, true);
 		q32 quatLongitude(
-			v3f32::Z, longitude*radiansPerSemiLongitude, true);
+			v3f32::Z, static_cast<f32>(longitude)*radiansPerSemiLongitude, 
+			true);
 		const v3f32 capTopLongitudeCurrent = 
 			quatLongitude.transform(capTopZeroLongitude, true);
 		q32 quatLongitudePrevious(
-			v3f32::Z, (longitude - 1)*radiansPerSemiLongitude, true);
+			v3f32::Z, (static_cast<f32>(longitude) - 1)*radiansPerSemiLongitude, 
+			true);
 		const v3f32 capTopLongitudePrevious = 
 			quatLongitudePrevious.transform(capTopZeroLongitude, true);
 		*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
@@ -1182,9 +1188,10 @@ internal inline void kmath::generateMeshCircleSphere(
 		for(u32 latitude = 1; latitude < latitudeSegments - 1; latitude++)
 		{
 			q32 quatLatitudePrevious(
-				v3f32::Y, latitude*radiansPerLatitude, true);
+				v3f32::Y, static_cast<f32>(latitude)*radiansPerLatitude, true);
 			q32 quatLatitude(
-				v3f32::Y, (latitude + 1)*radiansPerLatitude, true);
+				v3f32::Y, (static_cast<f32>(latitude) + 1)*radiansPerLatitude, 
+				true);
 			const v3f32 latStripTopPrevious = 
 				(quatLongitudePrevious * quatLatitudePrevious)
 					.transform(verticalRadius, true);
@@ -1254,8 +1261,10 @@ internal void
 	/* calculate the sphere mesh on-the-fly */
 	korlAssert(latitudeSegments  >= 2);
 	korlAssert(longitudeSegments >= 3);
-	const f32 radiansPerSemiLongitude = 2*PI32 / longitudeSegments;
-	const f32 radiansPerLatitude      =   PI32 / latitudeSegments;
+	const f32 radiansPerSemiLongitude = 
+		2*PI32 / static_cast<f32>(longitudeSegments);
+	const f32 radiansPerLatitude      = 
+		PI32 / static_cast<f32>(latitudeSegments);
 	const v3f32 verticalRadius        = v3f32::Z * radius;
 	size_t currentVertex = 0;
 	/* build a list of line segments that go from the top of the sphere 
@@ -1263,12 +1272,17 @@ internal void
 		starting at the semi-longitude that faces the +X axis */
 	for(u32 longitude = 0; longitude < longitudeSegments; longitude++)
 	{
-		q32 qLongitude = q32(v3f32::Z, longitude*radiansPerSemiLongitude);
+		q32 qLongitude(
+			v3f32::Z, static_cast<f32>(longitude)*radiansPerSemiLongitude);
 		const v3f32 longitudeRotAxis = qLongitude.transform(v3f32::Y, true);
 		for(u32 latitude = 0; latitude < latitudeSegments; latitude++)
 		{
-			q32 q0 = q32(longitudeRotAxis,  latitude    * radiansPerLatitude);
-			q32 q1 = q32(longitudeRotAxis, (latitude+1) * radiansPerLatitude);
+			q32 q0(
+				longitudeRotAxis, 
+				 static_cast<f32>(latitude)    * radiansPerLatitude);
+			q32 q1(
+				longitudeRotAxis, 
+				(static_cast<f32>(latitude)+1) * radiansPerLatitude);
 			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
 				q0.transform(verticalRadius, true);
 			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
@@ -1278,12 +1292,17 @@ internal void
 	/* build a list of line segments around each latitude circle */
 	for(u32 latitude = 1; latitude < latitudeSegments; latitude++)
 	{
-		q32 qLatitude = q32(v3f32::Y, latitude*radiansPerLatitude);
+		q32 qLatitude(
+			v3f32::Y, static_cast<f32>(latitude)*radiansPerLatitude);
 		const v3f32 latitudeVector = qLatitude.transform(verticalRadius, true);
 		for(u32 longitude = 0; longitude <= longitudeSegments; longitude++)
 		{
-			q32 q0 = q32(v3f32::Z,  longitude    * radiansPerSemiLongitude);
-			q32 q1 = q32(v3f32::Z, (longitude+1) * radiansPerSemiLongitude);
+			q32 q0(
+				v3f32::Z, 
+				 static_cast<f32>(longitude)    * radiansPerSemiLongitude);
+			q32 q1(
+				v3f32::Z, 
+				(static_cast<f32>(longitude)+1) * radiansPerSemiLongitude);
 			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
 				q0.transform(latitudeVector, true);
 			*V3F32_STRIDE(o_positions, vertexByteStride, currentVertex++) = 
@@ -1307,8 +1326,10 @@ internal void kmath::generateUniformSpherePoints(
 	/* generate the points */
 	for(u32 p = 0; p < pointCount; p++)
 	{
-		const f32 phi   = acosf(1.f - 2.f*(p + 0.5f) / pointCount);
-		const f32 theta = 2*PI32 * PHI32 * (p + 0.5f);
+		const f32 phi   = 
+			acosf(1.f - 2.f*(static_cast<f32>(p) + 0.5f) / 
+			      static_cast<f32>(pointCount));
+		const f32 theta = 2*PI32 * PHI32 * (static_cast<f32>(p) + 0.5f);
 		*V3F32_STRIDE(o_positions, vertexByteStride, p) = 
 			{cosf(theta)*sinf(phi), sinf(theta)*sinf(phi), cosf(phi)};
 	}

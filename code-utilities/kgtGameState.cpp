@@ -101,6 +101,9 @@ internal bool
 	// warning C4774: 'sscanf' : format string expected in argument 2 is not a 
 	//                string literal
 	#pragma warning( disable : 4774 )
+	/* warning C5219: implicit conversion from 'int' to 'float', possible loss 
+		of data */
+	#pragma warning( disable : 5219 )
 	#define NOGDI
 	#include "imgui/imgui_demo.cpp"
 	#include "imgui/imgui_draw.cpp"

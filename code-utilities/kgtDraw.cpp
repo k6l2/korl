@@ -54,7 +54,8 @@ internal void
 	const v2f32 originScreenPos = 
 		g_krb->worldToScreen(v3f32::ZERO.elements, 3);
 	v2f32 originScreenPosYUp = 
-		{originScreenPos.x, windowDimensions.y - originScreenPos.y};
+		{ originScreenPos.x
+		, static_cast<f32>(windowDimensions.y) - originScreenPos.y};
 	/* check to see if the origin wrt the camera position is facing in the 
 		opposite direction of the camera's forward vector */
 	if(camForward.dot(-camPosition) < 0)
@@ -62,14 +63,17 @@ internal void
 		/* if this is the case, then the nearest spot on the screen to the 
 			origin is GUARANTEED to be the edge of the screen, with inverted 
 			coordinates with respect to the center of the screen */
-		originScreenPosYUp.x = windowDimensions.x - originScreenPosYUp.x;
-		originScreenPosYUp.y = windowDimensions.y - originScreenPosYUp.y;
+		originScreenPosYUp.x = 
+			static_cast<f32>(windowDimensions.x) - originScreenPosYUp.x;
+		originScreenPosYUp.y = 
+			static_cast<f32>(windowDimensions.y) - originScreenPosYUp.y;
 		/* force the inverted screen position to the edge of the window by 
 			multiplying the normal by the largest window dimension & adding 
 			that to the inverted screen position */
 		v2f32 originScreenPosYUpFromCenter = 
 			kmath::normal(originScreenPosYUp - 
-			v2f32{windowDimensions.x/2.f, windowDimensions.y/2.f});
+			v2f32{ static_cast<f32>(windowDimensions.x) / 2
+			     , static_cast<f32>(windowDimensions.y) / 2});
 		if(originScreenPosYUpFromCenter.isNearlyZero())
 			originScreenPosYUpFromCenter = {0,1};
 		originScreenPosYUpFromCenter *= static_cast<f32>(
@@ -82,15 +86,17 @@ internal void
 		originScreenPosYUp.x = 0;
 	if(originScreenPosYUp.y < 0)
 		originScreenPosYUp.y = 0;
-	if(originScreenPosYUp.x > windowDimensions.x)
+	if(originScreenPosYUp.x > static_cast<f32>(windowDimensions.x))
 		originScreenPosYUp.x = static_cast<f32>(windowDimensions.x);
-	if(originScreenPosYUp.y > windowDimensions.y)
+	if(originScreenPosYUp.y > static_cast<f32>(windowDimensions.y))
 		originScreenPosYUp.y = static_cast<f32>(windowDimensions.y);
 	/* set ortho with y+ pointing UP */
 	g_krb->setProjectionOrtho(windowDimensions.x, windowDimensions.y, 1);
 	/* adjust the view such that the bottom-left corner of the window is the 
 		screen-space origin */
-	g_krb->viewTranslate({windowDimensions.x/-2.f, windowDimensions.y/-2.f});
+	g_krb->viewTranslate(
+		{ static_cast<f32>(windowDimensions.x) / -2
+		, static_cast<f32>(windowDimensions.y) / -2});
 	g_krb->setModelXform2d(originScreenPosYUp, q32::IDENTITY, {1,1});
 	g_krb->drawCircle(10, 0, krb::TRANSPARENT, krb::WHITE, 32);
 }
@@ -110,7 +116,10 @@ internal void
 		squareSize, squareSize, static_cast<f32>(squareSize));
 	g_krb->lookAt(
 		v3f32::ZERO.elements, camForward.elements, v3f32::Z.elements);
-	kgtDrawAxes({squareSize/2.f, squareSize/2.f, squareSize/2.f});
+	kgtDrawAxes(
+		{ static_cast<f32>(squareSize) / 2
+		, static_cast<f32>(squareSize) / 2
+		, static_cast<f32>(squareSize) / 2});
 }
 internal void 
 	kgtDrawBoxLines2d(

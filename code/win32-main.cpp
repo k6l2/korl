@@ -2019,6 +2019,9 @@ internal void stbiFree(void* allocatedAddress)
 #pragma warning( push )
 	// warning C4127: conditional expression is constant
 	#pragma warning( disable : 4127 )
+	/* warning C5219: implicit conversion from 'int' to 'float', possible loss 
+		of data */
+	#pragma warning( disable : 5219 )
 	#include "imgui/imgui_demo.cpp"
 	#include "imgui/imgui_draw.cpp"
 	#include "imgui/imgui_impl_opengl2.cpp"
