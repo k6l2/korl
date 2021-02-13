@@ -883,24 +883,21 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 	}
     return EXCEPTION_EXECUTE_HANDLER;
 }
-internal LONG WINAPI w32VectoredExceptionHandler(
-                                             PEXCEPTION_POINTERS pExceptionInfo)
+internal LONG WINAPI 
+	w32VectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 {
 	g_hasReceivedException = true;
-	if(!g_hasWrittenCrashDump)
-	{
-		w32GenerateDump(pExceptionInfo);
-	}
 	// break debugger to give us a chance to figure out what the hell happened
 	if(IsDebuggerPresent())
-	{
 		DebugBreak();
-	}
+	if(!g_hasWrittenCrashDump)
+		w32GenerateDump(pExceptionInfo);
 	// I don't use the KLOG macro here because `strrchr` from the 
 	//	__FILENAME__ macro seems to just break everything :(
-	platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-	            "Vectored Exception! 0x%x", 
-	            pExceptionInfo->ExceptionRecord->ExceptionCode);
+	platformLog(
+		"win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+		"Vectored Exception! 0x%x", 
+		pExceptionInfo->ExceptionRecord->ExceptionCode);
 	w32WriteLogToFile();
 	///@todo: cleanup system-wide settings/handles
 	///	- OS timer granularity setting
