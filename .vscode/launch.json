@@ -10,7 +10,7 @@
 			"stopAtEntry": false,
 			"cwd": "${env:project_root}",
 			"environment": [],
-			"externalConsole": false,
+			"console": "internalConsole",
 			"preLaunchTask": "win32 build"
 		},
 		{
@@ -22,7 +22,7 @@
 			"stopAtEntry": false,
 			"cwd": "${env:project_root}",
 			"environment": [],
-			"externalConsole": false,
+			"console": "internalConsole",
 			"preLaunchTask": "win32 build release"
 		}
 	]
