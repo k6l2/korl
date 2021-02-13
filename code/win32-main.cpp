@@ -612,7 +612,7 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 			{
 				break;
 			}
-			result = LSMProc(hwnd, uMsg, wParam, lParam);
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}break;
 #if 0
 		case WM_MENUCHAR:
@@ -683,14 +683,14 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 					g_deviceChangeDetected = true;
 				} break;
 			}
-			result = LSMProc(hwnd, uMsg, wParam, lParam);
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 		default:
 		{
 #if 0
 			KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
 #endif // 0
-			result = LSMProc(hwnd, uMsg, wParam, lParam);
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}break;
 	}
 	return result;
@@ -1276,6 +1276,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				KLOG(INFO, "arg[%i]=='%ws'", arg, argv[arg]);
 				if(arg == 1)
 				{
+					/* @todo: make this less CRYPTIC */
 					g_echoLogToDebug = (wcscmp(argv[arg], L"0") != 0);
 				}
 			}
@@ -1775,7 +1776,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 					default:
 					{
 						TranslateMessage(&windowMessage);
-						SizingCheck(&windowMessage);
+						//SizingCheck(&windowMessage);
 						DispatchMessageA(&windowMessage);
 					} break;
 				}

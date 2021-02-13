@@ -829,9 +829,10 @@
 	- everything it does is handled by `jobDone`
 	- we already know if a job ticket is valid just by checking if it is 
 		non-zero
-[x] win32: prevent application from freezing when the window is being moved 
+[ ] win32: prevent application from freezing when the window is being moved 
 	around or resized
 	https://stackoverflow.com/q/3102074
+	- don't use nfries88's solution out of the box: it's quite buggy it seems...
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
 [ ] win32-jobQ: crash faster when the job queue overflows
