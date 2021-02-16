@@ -521,7 +521,9 @@ internal void w32DInputEnumerateDevices()
 		const HRESULT resultMouseAcquire = g_diMouse->Acquire();
 		if(resultMouseAcquire != DI_OK)
 		{
-			KLOG(ERROR, "Failed to acquire mouse! result=%li", 
+			/* it's OKAY if we can't acquire the mouse here, because we can just 
+				attempt to acquire it later */
+			KLOG(WARNING, "Failed to acquire mouse! result=%li", 
 			     resultMouseAcquire);
 		}
 	}
