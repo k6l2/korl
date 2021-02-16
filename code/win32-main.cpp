@@ -269,8 +269,8 @@ internal FILETIME w32GetLastWriteTime(const char* fileName)
 	result = fileAttributeData.ftLastWriteTime;
 	return result;
 }
-internal GameCode w32LoadGameCode(const char* fileNameDll, 
-                                  const char* fileNameDllTemp)
+internal GameCode 
+	w32LoadGameCode(const char* fileNameDll, const char* fileNameDllTemp)
 {
 	GameCode result = {};
 	result.initialize       = gameInitializeStub;
@@ -475,8 +475,9 @@ internal ButtonState* w32DecodeVirtualKey(GameKeyboard* gk, WPARAM vKeyCode)
 	}
 	return buttonState;
 }
-internal void w32GetKeyboardKeyStates(
-	GameKeyboard* gkCurrFrame, GameKeyboard* gkPrevFrame)
+internal void 
+	w32GetKeyboardKeyStates(
+		GameKeyboard* gkCurrFrame, GameKeyboard* gkPrevFrame)
 {
 	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
 	{
@@ -596,84 +597,80 @@ internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
 	}
 	return monitorDevMode.dmDisplayFrequency;
 }
-internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg, 
-                                                WPARAM wParam, LPARAM lParam)
+internal LRESULT CALLBACK 
+	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam);
 	LRESULT result = 0;
 	switch(uMsg)
 	{
-		case WM_SYSCOMMAND:
+	case WM_CREATE:{
+		w32KrbOglInitialize(hwnd);
+		w32KrbOglSetVSyncPreference(true);
+		} break;
+	case WM_SYSCOMMAND: {
+		KLOG(INFO, "WM_SYSCOMMAND: type=0x%x", wParam);
+		if(wParam == SC_KEYMENU)
+		// These window messages need to be captured in order to stop 
+		//	windows from needlessly beeping when we use ALT+KEY combinations 
 		{
-			KLOG(INFO, "WM_SYSCOMMAND: type=0x%x", wParam);
-			if(wParam == SC_KEYMENU)
-			// These window messages need to be captured in order to stop 
-			//	windows from needlessly beeping when we use ALT+KEY combinations 
-			{
-				break;
-			}
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+			break;
+		}
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}break;
 #if 0
-		case WM_MENUCHAR:
-		{
-			KLOG(INFO, "WM_MENUCHAR");
-			result = MAKELRESULT(0, MNC_IGNORE);
+	case WM_MENUCHAR: {
+		KLOG(INFO, "WM_MENUCHAR");
+		result = MAKELRESULT(0, MNC_IGNORE);
 		}break;
 #endif // 0
-		case WM_SETCURSOR:
+	case WM_SETCURSOR: {
+		HCURSOR cursor = NULL;
+		switch(LOWORD(lParam))
 		{
-			HCURSOR cursor = NULL;
-			switch(LOWORD(lParam))
-			{
-				case HTBOTTOM:
-				case HTTOP:
-					cursor = g_cursorSizeVertical;
-				break;
-				case HTLEFT:
-				case HTRIGHT:
-					cursor = g_cursorSizeHorizontal;
-				break;
-				case HTBOTTOMLEFT:
-				case HTTOPRIGHT:
-					cursor = g_cursorSizeNeSw;
-				break;
-				case HTBOTTOMRIGHT:
-				case HTTOPLEFT:
-					cursor = g_cursorSizeNwSe;
-				break;
-				case HTCLIENT:
-				default:
-					cursor = g_cursorArrow;
-				break;
-			}
-			SetCursor(cursor);
+		case HTBOTTOM:
+		case HTTOP:
+			cursor = g_cursorSizeVertical;
+			break;
+		case HTLEFT:
+		case HTRIGHT:
+			cursor = g_cursorSizeHorizontal;
+			break;
+		case HTBOTTOMLEFT:
+		case HTTOPRIGHT:
+			cursor = g_cursorSizeNeSw;
+			break;
+		case HTBOTTOMRIGHT:
+		case HTTOPLEFT:
+			cursor = g_cursorSizeNwSe;
+			break;
+		case HTCLIENT:
+		default:
+			cursor = g_cursorArrow;
+			break;
+		}
+		SetCursor(cursor);
 		} break;
-		case WM_SIZE:
-		{
+	case WM_SIZE: {
 			KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
 			     wParam, LOWORD(lParam), HIWORD(lParam));
 		} break;
-		case WM_DESTROY:
-		{
+	case WM_DESTROY: {
 			///TODO: handle this error: recreate window?
 			g_running = false;
 			KLOG(INFO, "WM_DESTROY");
 		} break;
-		case WM_CLOSE:
-		{
+	case WM_CLOSE: {
 			///TODO: ask user first before destroying
 			g_running = false;
 			KLOG(INFO, "WM_CLOSE");
 		} break;
-		case WM_ACTIVATEAPP:
-		{
+	case WM_ACTIVATEAPP: {
 			g_isFocused = wParam;
 			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
 			     (wParam ? "TRUE" : "FALSE"), lParam);
 		} break;
-		case WM_DEVICECHANGE:
-		{
+	case WM_DEVICECHANGE: {
 			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
 			switch(wParam)
 			{
@@ -685,14 +682,13 @@ internal LRESULT CALLBACK w32MainWindowCallback(HWND hwnd, UINT uMsg,
 			}
 			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
-		default:
-		{
+	default: {
 #if 0
-			KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
+		KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
 #endif // 0
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}break;
-	}
+	}/* switch(uMsg) */
 	return result;
 }
 internal LARGE_INTEGER w32QueryPerformanceCounter()
@@ -705,8 +701,10 @@ internal LARGE_INTEGER w32QueryPerformanceCounter()
 	}
 	return result;
 }
-internal f32 w32ElapsedSeconds(const LARGE_INTEGER& previousPerformanceCount, 
-                               const LARGE_INTEGER& performanceCount)
+internal f32 
+	w32ElapsedSeconds(
+		const LARGE_INTEGER& previousPerformanceCount, 
+		const LARGE_INTEGER& performanceCount)
 {
 	korlAssert(performanceCount.QuadPart > previousPerformanceCount.QuadPart);
 	const LONGLONG perfCountDiff = 
@@ -905,8 +903,8 @@ internal LONG WINAPI
 	// return EXCEPTION_CONTINUE_SEARCH;
 }
 #if 0
-internal LONG WINAPI w32TopLevelExceptionHandler(
-                                             PEXCEPTION_POINTERS pExceptionInfo)
+internal LONG WINAPI 
+	w32TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 {
 	g_hasReceivedException = true;
 	fprintf_s(stderr, "Exception! 0x%x\n", 
@@ -1194,8 +1192,10 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	}
 	return lowestUnusedPostfix;
 }
-extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
-                           PWSTR /*pCmdLine*/, int /*nCmdShow*/)
+extern int WINAPI 
+	wWinMain(
+		HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
+		PWSTR /*pCmdLine*/, int /*nCmdShow*/)
 {
 	local_persist const int RETURN_CODE_SUCCESS = 0;
 	///TODO: OR the failure code with a more specific # to indicate why it 
@@ -1541,8 +1541,8 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 		g_oggVorbisAlloc.alloc_buffer = reinterpret_cast<char*>(
 			memoryAddressStart);
 	}
-	GameCode game = w32LoadGameCode(fullPathToGameDll, 
-	                                fullPathToGameDllTemp);
+	GameCode game = 
+		w32LoadGameCode(fullPathToGameDll, fullPathToGameDllTemp);
 	korlAssert(game.isValid);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
@@ -1585,8 +1585,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	}
 	w32LoadDInput(hInstance);
 	w32LoadXInput();
-	w32KrbOglInitialize(g_mainWindow);
-	w32KrbOglSetVSyncPreference(true);
 	///TODO: update the monitorRefreshHz and dependent variable realtime when 
 	///      the window gets moved around to another monitor.
 	u32 monitorRefreshHz = w32QueryNearestMonitorRefreshRate(g_mainWindow);
@@ -1632,6 +1630,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		gameSoundMemory = memoryAddressStart;
 	}
+#if 0
 	// Initialize ImGui~~~ //
 	{
 		ImGui::SetAllocatorFunctions(
@@ -1648,6 +1647,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			return RETURN_CODE_FAILURE;
 		}
 	}
+#endif//0
 	GameMemory gameMemory = {};
 	/* initialize GameMemory */
 	{
@@ -1672,12 +1672,6 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	game.initialize(gameMemory);
 	w32InitDSound(g_mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, gameSoundCursorWritePrev);
-	const HDC hdc = GetDC(g_mainWindow);
-	if(!hdc)
-	{
-		KLOG(ERROR, "Failed to get main window device context!");
-		return RETURN_CODE_FAILURE;
-	}
 	local_persist const UINT DESIRED_OS_TIMER_GRANULARITY_MS = 1;
 	// Determine if the system is capable of our desired timer granularity //
 	bool systemSupportsDesiredTimerGranularity = false;
@@ -1833,10 +1827,11 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			                              XUSER_MAX_COUNT);
 			w32XInputGetGamePadStates(g_gamePadArrayCurrentFrame,
 			                          g_gamePadArrayPreviousFrame);
+			const v2u32 windowDims = w32GetWindowDimensions(g_mainWindow);
+#if 0
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
-			const v2u32 windowDims = w32GetWindowDimensions(g_mainWindow);
 			if(!game.isValid)
 			// display a "loading" message while we wait for cl.exe to 
 			//	relinquish control of the game binary //
@@ -1866,6 +1861,7 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 				}
 				ImGui::End();
 			}
+#endif//0
 			const f32 deltaSeconds = kmath::min(
 				MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
 			if(!game.updateAndDraw(
@@ -1895,12 +1891,20 @@ extern int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			}
 #endif // 0
 			// update window graphics //
+#if 0
 			ImGui::Render();
 			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+#endif//0
+			const HDC hdc = wglGetCurrentDC();//GetDC(g_mainWindow);
+			if(!hdc)
+			{
+				KLOG(ERROR, "Failed to get main window device context!");
+				return RETURN_CODE_FAILURE;
+			}
 			if(!SwapBuffers(hdc))
 			{
-				KLOG(ERROR, "Failed to SwapBuffers! GetLastError=%i", 
-				     GetLastError());
+				KLOG(WARNING, "Failed to SwapBuffers! GetLastError=%i", 
+					GetLastError());
 			}
 			// enforce targetSecondsElapsedPerFrame //
 			// we still have to Sleep/wait when VSync is on if SwapBuffers

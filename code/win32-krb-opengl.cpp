@@ -1,6 +1,15 @@
 #include "win32-krb-opengl.h"
 #include <GL/GL.h>
 #include "krb-opengl-extensions.h"
+/* On machines w/ multiple graphics cards, such as laptops, the default behavior 
+	of nvidia drivers is to select the integrated graphics card.  In order to 
+	force the computer to use the dedicated graphics card, we need to export 
+	the `NvOptimusEnablement` symbol with the appropriate value.  See: 
+	https://stackoverflow.com/a/39047129 */
+extern "C" 
+{
+//	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+}
 #define WGL_GET_EXTENSIONS_STRING_ARB(name) const char* WINAPI name(HDC hdc)
 #define WGL_SWAP_INTERVAL(name) BOOL WINAPI name(int interval)
 #define WGL_GET_SWAP_INTERVAL(name) int WINAPI name(void)
@@ -58,6 +67,17 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG(ERROR, "Failed to set the current OpenGL render context! "
 		     "GetLastError=%i", GetLastError());
 	}
+	/* Our OpenGL context should now be set up, so let's print out some info 
+		about it to the log. */
+	{
+		KLOG(INFO, "----- OpenGL Context -----");
+		KLOG(INFO, "vendor: %s", glGetString(GL_VENDOR));
+		KLOG(INFO, "renderer: %s", glGetString(GL_RENDERER));
+		KLOG(INFO, "version: %s", glGetString(GL_VERSION));
+		KLOG(INFO, "glsl version: %s", 
+			glGetString(GL_SHADING_LANGUAGE_VERSION));
+		KLOG(INFO, "--------------------------");
+	}
 	wglGetExtensionsStringARB = 
 		reinterpret_cast<fnSig_wglGetExtensionsStringARB*>(
 			wglGetProcAddress("wglGetExtensionsStringARB"));
@@ -67,7 +87,7 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		     "GetLastError=%i", GetLastError());
 	}
 	const char*const wglExtensionsString = wglGetExtensionsStringARB(windowDc);
-	ReleaseDC(hwnd, windowDc);
+	//ReleaseDC(hwnd, windowDc);
 	if(!wglExtensionsString)
 	{
 		KLOG(ERROR, "Failed to get wgl extensions string! "
