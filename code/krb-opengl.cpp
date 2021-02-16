@@ -35,19 +35,6 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 		value of 1 */
 	glClearDepth(-1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glMatrixMode(GL_MODELVIEW);
-	// empty the modelview stack //
-	{
-		GLint modelViewStackDepth;
-		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-		for(; modelViewStackDepth > 1; modelViewStackDepth--)
-		{
-			glPopMatrix();
-		}
-	}
-	glLoadIdentity();
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

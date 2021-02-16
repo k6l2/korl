@@ -1192,6 +1192,110 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	}
 	return lowestUnusedPostfix;
 }
+#if 0 /* minimal test: can I even just get an OpenGL context spawned? */
+global_variable HDC g_ourWindowHandleToDeviceContext = NULL;
+internal LRESULT CALLBACK 
+	w32MainWindowCallback_test(
+		HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch(uMsg)
+	{
+	case WM_DESTROY: {
+		g_running = false;
+		} break;
+	case WM_CLOSE: {
+		g_running = false;
+		} break;
+	case WM_CREATE: {
+		PIXELFORMATDESCRIPTOR pfd =
+		{
+			sizeof(PIXELFORMATDESCRIPTOR),
+			1,
+			PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, //Flags
+			PFD_TYPE_RGBA,        // The kind of framebuffer. RGBA or palette.
+			32,                   // Colordepth of the framebuffer.
+			0, 0, 0, 0, 0, 0,
+			0,
+			0,
+			0,
+			0, 0, 0, 0,
+			24,                   // Number of bits for the depthbuffer
+			8,                    // Number of bits for the stencilbuffer
+			0,                    // Number of Aux buffers in the framebuffer.
+			PFD_MAIN_PLANE,
+			0,
+			0, 0, 0
+		};
+		g_ourWindowHandleToDeviceContext = GetDC(hWnd);
+		int  letWindowsChooseThisPixelFormat;
+		letWindowsChooseThisPixelFormat = ChoosePixelFormat(g_ourWindowHandleToDeviceContext, &pfd); 
+		SetPixelFormat(g_ourWindowHandleToDeviceContext,letWindowsChooseThisPixelFormat, &pfd);
+		HGLRC ourOpenGLRenderingContext = wglCreateContext(g_ourWindowHandleToDeviceContext);
+		wglMakeCurrent (g_ourWindowHandleToDeviceContext, ourOpenGLRenderingContext);
+//		MessageBoxA(0,(char*)glGetString(GL_VERSION), "OPENGL VERSION",0);
+		//wglMakeCurrent(ourWindowHandleToDeviceContext, NULL); Unnecessary; wglDeleteContext will make the context not current
+//		wglDeleteContext(ourOpenGLRenderingContext);
+//		PostQuitMessage(0);
+		} break;
+	default:
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
+	}
+	return 0;
+}
+extern int WINAPI 
+	wWinMain(
+		HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
+		PWSTR /*pCmdLine*/, int /*nCmdShow*/)
+{
+	local_persist const int RETURN_CODE_SUCCESS = 0;
+	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
+	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
+	const WNDCLASS wndClass = 
+		{ .style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC
+		, .lpfnWndProc   = w32MainWindowCallback_test
+		, .hInstance     = hInstance
+		, .hIcon         = LoadIcon(hInstance, TEXT("korl-application-icon"))
+		, .hCursor       = g_cursorArrow
+		, .hbrBackground = CreateSolidBrush(RGB(0, 0, 0))
+		, .lpszClassName = "KorlWindowClass" };
+	const ATOM atomWindowClass = RegisterClassA(&wndClass);
+	if(atomWindowClass == 0)
+		return RETURN_CODE_FAILURE;
+	g_mainWindow = CreateWindowExA(
+		0,
+		wndClass.lpszClassName,
+		APPLICATION_NAME,
+		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		NULL, NULL, hInstance, NULL );
+	if(!g_mainWindow)
+		return RETURN_CODE_FAILURE;
+	// main window loop //
+	g_running = true;
+	while(g_running)
+	{
+		MSG windowMessage;
+		while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
+		{
+			switch(windowMessage.message)
+			{
+			case WM_QUIT: {
+				g_running = false;
+				} break;
+			default: {
+				TranslateMessage(&windowMessage);
+				DispatchMessageA(&windowMessage);
+				} break;
+			}
+		}// while(PeekMessageA(...))
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		SwapBuffers(g_ourWindowHandleToDeviceContext);
+	}// while(g_running)
+	return RETURN_CODE_SUCCESS;
+}
+#else
 extern int WINAPI 
 	wWinMain(
 		HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
@@ -1901,11 +2005,15 @@ extern int WINAPI
 				KLOG(ERROR, "Failed to get main window device context!");
 				return RETURN_CODE_FAILURE;
 			}
+#if 0
+			if(!wglSwapLayerBuffers(hdc, WGL_SWAP_MAIN_PLANE))
+				KLOG(ERROR, "wglSwapLayerBuffers failed! GetLastError=%i", 
+					GetLastError());
+#else
 			if(!SwapBuffers(hdc))
-			{
 				KLOG(WARNING, "Failed to SwapBuffers! GetLastError=%i", 
 					GetLastError());
-			}
+#endif//0
 			// enforce targetSecondsElapsedPerFrame //
 			// we still have to Sleep/wait when VSync is on if SwapBuffers
 			//      completes too early!!! (like when the double-buffer is not
@@ -1965,6 +2073,7 @@ extern int WINAPI
 	KLOG(INFO, "END! :)");
 	return RETURN_CODE_SUCCESS;
 }
+#endif//0
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
 #include "win32-directinput.cpp"
