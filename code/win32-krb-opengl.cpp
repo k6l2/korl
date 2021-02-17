@@ -32,6 +32,54 @@ global_variable fnSig_wglGetExtensionsStringARB* wglGetExtensionsStringARB;
 global_variable fnSig_wglCreateContextAttribsARB* wglCreateContextAttribsARB;
 global_variable fnSig_wglSwapIntervalEXT* wglSwapIntervalEXT;
 global_variable fnSig_wglGetSwapIntervalEXT* wglGetSwapIntervalEXT;
+#define KORL_OGL_GET_EXTENSION_API(name, functionName) \
+	name = reinterpret_cast<functionName>(wglGetProcAddress(#name));\
+	if(!name)\
+		KLOG(ERROR, "Failed to get "#name"! GetLastError=%i", GetLastError());
+internal void APIENTRY 
+	korl_w32_krb_openGl_debugCallback(
+		GLenum source, GLenum type, unsigned int id, GLenum severity, 
+		GLsizei length, const char* message, const void* userParam)
+{
+	const char* cStrSource = nullptr;
+	const char* cStrType   = nullptr;
+	switch (source)
+	{
+	case GL_DEBUG_SOURCE_API:             cStrSource = "API"; break;
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   cStrSource = "Window System"; break;
+	case GL_DEBUG_SOURCE_SHADER_COMPILER: cStrSource = "Shader Compiler"; break;
+	case GL_DEBUG_SOURCE_THIRD_PARTY:     cStrSource = "Third Party"; break;
+	case GL_DEBUG_SOURCE_APPLICATION:     cStrSource = "Application"; break;
+	case GL_DEBUG_SOURCE_OTHER:           cStrSource = "Other"; break;
+	default:                              cStrSource = "???"; break;
+	}
+	switch (type)
+	{
+	case GL_DEBUG_TYPE_ERROR:               cStrType = "Error"; break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: cStrType = "Deprecated"; break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  cStrType = "Undefined"; break; 
+	case GL_DEBUG_TYPE_PORTABILITY:         cStrType = "Portability"; break;
+	case GL_DEBUG_TYPE_PERFORMANCE:         cStrType = "Performance"; break;
+	case GL_DEBUG_TYPE_MARKER:              cStrType = "Marker"; break;
+	case GL_DEBUG_TYPE_PUSH_GROUP:          cStrType = "Push Group"; break;
+	case GL_DEBUG_TYPE_POP_GROUP:           cStrType = "Pop Group"; break;
+	case GL_DEBUG_TYPE_OTHER:               cStrType = "Other"; break;
+	default:                                cStrType = "???"; break;
+	}
+	switch(severity)
+	{
+	case GL_DEBUG_SEVERITY_HIGH: {
+		KLOG(ERROR, "[%i | %s | %s] %s", id, cStrSource, cStrType, message);
+		} break;
+	case GL_DEBUG_SEVERITY_MEDIUM: {
+		KLOG(WARNING, "[%i | %s | %s] %s", id, cStrSource, cStrType, message);
+		} break;
+	case GL_DEBUG_SEVERITY_LOW: 
+	case GL_DEBUG_SEVERITY_NOTIFICATION: {
+		KLOG(INFO, "[%i | %s | %s] %s", id, cStrSource, cStrType, message);
+		} break;
+	}
+}
 internal void w32KrbOglInitialize(HWND hwnd)
 {
 	PIXELFORMATDESCRIPTOR desiredPixelFormat = {};
@@ -158,24 +206,11 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG(ERROR, "Failed to delete dummy OpenGL render context! "
 			"GetLastError=%i", GetLastError());
 	/* get CORE OpenGL extensions */
-	glGetStringi = 
-		reinterpret_cast<PFNGLGETSTRINGIPROC>(
-			wglGetProcAddress("glGetStringi"));
-	if(!glGetStringi)
-		KLOG(ERROR, "Failed to get glGetStringi! "
-			"GetLastError=%i", GetLastError());
-	glLoadTransposeMatrixf = 
-		reinterpret_cast<PFNGLLOADTRANSPOSEMATRIXFPROC>(
-			wglGetProcAddress("glLoadTransposeMatrixf"));
-	if(!glLoadTransposeMatrixf)
-		KLOG(ERROR, "Failed to get glLoadTransposeMatrixf! "
-			"GetLastError=%i", GetLastError());
-	glMultTransposeMatrixf = 
-		reinterpret_cast<PFNGLMULTTRANSPOSEMATRIXFPROC>(
-			wglGetProcAddress("glMultTransposeMatrixf"));
-	if(!glMultTransposeMatrixf)
-		KLOG(ERROR, "Failed to get glMultTransposeMatrixf! "
-			"GetLastError=%i", GetLastError());
+	KORL_OGL_GET_EXTENSION_API(glGetStringi, PFNGLGETSTRINGIPROC);
+	KORL_OGL_GET_EXTENSION_API(
+		glLoadTransposeMatrixf, PFNGLLOADTRANSPOSEMATRIXFPROC);
+	KORL_OGL_GET_EXTENSION_API(
+		glMultTransposeMatrixf, PFNGLMULTTRANSPOSEMATRIXFPROC);
 	/* Our OpenGL context should now be set up, so let's print out some info 
 		about it to the log. */
 	{
@@ -204,20 +239,34 @@ internal void w32KrbOglInitialize(HWND hwnd)
 			/* since we're logging extensions, we might as well obtain advanced 
 				extensions that are not guaranteed to be available by the core 
 				implementation */
-			/* @todo: obtain and implement GL_ARB_debug_output */
-#if 0/* OpenGL extension compatibility check example */
-			if ( strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0 )
+			if(0 == strcmp(
+				reinterpret_cast<const char*>(cStrExtension), 
+				"GL_ARB_debug_output"))
 			{
-				// The extension is supported by our hardware and driver
-				// Try to get the "glDebugMessageCallbackARB" function :
-				glDebugMessageCallbackARB  = 
-					(PFNGLDEBUGMESSAGECALLBACKARBPROC) 
-						wglGetProcAddress("glDebugMessageCallbackARB");
+				KORL_OGL_GET_EXTENSION_API(
+					glDebugMessageCallback, PFNGLDEBUGMESSAGECALLBACKPROC);
+				KORL_OGL_GET_EXTENSION_API(
+					glDebugMessageControl, PFNGLDEBUGMESSAGECONTROLPROC);
 			}
-#endif//0
 		}
 		KLOG(INFO, "extensions: %s", oglExtensionCStrBuffer);
 		KLOG(INFO, "--------------------------");
+	}
+	/* if this is a debug context, we should use more modern OpenGL debugging 
+		features */
+	{
+		int contextFlags;
+		glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
+		const bool isDebugContext = contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT;
+		if(isDebugContext && glDebugMessageCallback && glDebugMessageControl)
+		{
+			KLOG(INFO, "Enabling debug OpenGL message callback...");
+			glEnable(GL_DEBUG_OUTPUT);
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+			glDebugMessageCallback(korl_w32_krb_openGl_debugCallback, nullptr);
+			glDebugMessageControl(
+				GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+		}
 	}
 }
 internal void w32KrbOglSetVSyncPreference(bool value)
