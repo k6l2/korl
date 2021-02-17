@@ -17,17 +17,6 @@ global_variable bool g_hasReceivedException;
 global_variable bool g_displayCursor = true;
 global_variable bool g_mouseRelativeMode;
 global_variable POINT g_mouseRelativeModeCachedScreenPosition;
-global_variable LARGE_INTEGER g_perfCounterHz;
-// Remember, there are two log buffers: one beginning & a circular buffer.  So,
-//	the total # of characters used for logging is 2*MAX_LOG_BUFFER_SIZE.
-global_variable const size_t MAX_LOG_BUFFER_SIZE = 32768;
-global_variable char g_logBeginning[MAX_LOG_BUFFER_SIZE];
-global_variable char g_logCircularBuffer[MAX_LOG_BUFFER_SIZE] = {};
-global_variable size_t g_logCurrentBeginningChar;
-global_variable size_t g_logCurrentCircularBufferChar;
-// This represents the total # of character sent to the circular buffer, 
-//	including characters that are overwritten!
-global_variable size_t g_logCircularBufferRunningTotal;
 global_variable GamePad g_gamePadArrayA[XUSER_MAX_COUNT + 
                                             CARRAY_SIZE(g_dInputDevices)] = {};
 global_variable GamePad g_gamePadArrayB[XUSER_MAX_COUNT + 

@@ -1,12 +1,14 @@
 #include "win32-dsound.h"
 #include <dsound.h>
 global_variable LPDIRECTSOUNDBUFFER g_dsBufferSecondary;
-#define DSOUND_CREATE(name) HRESULT WINAPI name(LPGUID lpGuid, \
-                                                LPDIRECTSOUND* ppDS, \
-                                                LPUNKNOWN pUnkOuter)
+#define DSOUND_CREATE(name) \
+	HRESULT WINAPI name(\
+		LPGUID lpGuid, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
 typedef DSOUND_CREATE(fnSig_DirectSoundCreate);
-internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
-                            u8 numChannels, DWORD& o_cursorWritePrev)
+internal void 
+	w32InitDSound(
+		HWND hwnd, u32 samplesPerSecond, u32 bufferBytes, u8 numChannels, 
+		DWORD& o_cursorWritePrev)
 {
 	const HMODULE LibDSound = LoadLibraryA("dsound.dll");
 	if(!LibDSound)
@@ -118,12 +120,11 @@ internal void w32InitDSound(HWND hwnd, u32 samplesPerSecond, u32 bufferBytes,
 		o_cursorWritePrev = cursorWrite;
 	}
 }
-internal void w32WriteDSoundAudio(u32 soundBufferBytes, 
-                                  u32 soundSampleHz,
-                                  u8 numSoundChannels,
-                                  VOID* gameSoundBufferMemory,
-                                  DWORD& io_cursorWritePrev,
-                                  GameCode& game)
+internal void 
+	w32WriteDSoundAudio(
+		u32 soundBufferBytes, u32 soundSampleHz, u8 numSoundChannels, 
+		VOID* gameSoundBufferMemory, DWORD& io_cursorWritePrev, 
+		Korl_Win32_DynamicApplicationModule& game)
 {
 	const u32 bytesPerSampleBlock = sizeof(SoundSample)*numSoundChannels;
 	// Determine the region in the audio buffer which is "volatile" and 

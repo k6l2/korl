@@ -5,32 +5,32 @@
 #include "win32-krb-opengl.h"
 #include "win32-network.h"
 #include "win32-platform.h"
+#include "win32-dynApp.h"
+#include "win32-log.h"
+#include "win32-time.h"
+#include "win32-crash.h"
+#include "win32-window.h"
+#include "win32-input.h"
 #include "kgtAllocator.h"
 #include <cstdio>
 #include <ctime>
-#include <dbghelp.h>
 #include <strsafe.h>
 #include <ShlObj.h>
 #include <Dbt.h>
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
-                             HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #include "imgui/imgui_impl_opengl2.h"
 #include "stb/stb_image.h"
 #include "stb/stb_vorbis.h"
 #include "win32loopl-code/LooplessSizeMove.h"
-// Allow the pre-processor to store compiler definitions as string literals //
-//	Source: https://stackoverflow.com/a/39108392
-#define _DEFINE_TO_CSTR(define) #define
-#define DEFINE_TO_CSTR(d) _DEFINE_TO_CSTR(d)
 global_variable const TCHAR APPLICATION_NAME[] = 
-                                    TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
-global_variable const TCHAR APPLICATION_VERSION[] = 
-                                    TEXT(DEFINE_TO_CSTR(KORL_APP_VERSION));
+	TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
 global_variable const TCHAR FILE_NAME_GAME_DLL[] = 
-                                    TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));
-global_variable const f32 MAX_GAME_DELTA_SECONDS = 1.f / KORL_MINIMUM_FRAME_RATE;
+	TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));
+global_variable const f32 MAX_GAME_DELTA_SECONDS = 
+	1.f / KORL_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_isFocused;
 /* this variable exists because mysterious COM incantations require us to check 
@@ -56,7 +56,7 @@ global_variable const u8 SOUND_CHANNELS = 2;
 global_variable const u32 SOUND_SAMPLE_HZ = 44100;
 global_variable const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
 global_variable const u32 SOUND_BUFFER_BYTES = 
-                                     SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
+	SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
 /* @TODO: make these memory quantities configurable per-project */
 global_variable const size_t STATIC_MEMORY_ALLOC_SIZES[] = 
 	{ kmath::megabytes(64)
@@ -65,8 +65,7 @@ global_variable const size_t STATIC_MEMORY_ALLOC_SIZES[] =
 	, kmath::megabytes(2)
 	, kmath::megabytes(1)
 	, kmath::megabytes(1)
-	, kmath::megabytes(16)
-};
+	, kmath::megabytes(16) };
 enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	{ GAME_PERMANENT
 	, GAME_SOUND
@@ -75,847 +74,13 @@ enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	, STB_VORBIS
 	, IMGUI
 	, RAW_FILES
-	, ENUM_SIZE// obviously, this value does not have a matching allocation size
-};
+	/* obviously, this value does not have a matching allocation size */
+	, ENUM_SIZE };
 struct W32ThreadInfo
 {
 	u32 index;
 	JobQueue* jobQueue;
 };
-internal GAME_INITIALIZE(gameInitializeStub)
-{
-}
-internal GAME_ON_RELOAD_CODE(gameOnReloadCodeStub)
-{
-}
-internal GAME_RENDER_AUDIO(gameRenderAudioStub)
-{
-}
-internal GAME_UPDATE_AND_DRAW(gameUpdateAndDrawStub)
-{
-	// continue running the application to keep attempting to reload game code!
-	return true;
-}
-internal GAME_ON_PRE_UNLOAD(gameOnPreUnloadStub)
-{
-}
-internal void w32WriteLogToFile()
-{
-	local_persist const TCHAR fileNameLog[] = TEXT("log.txt");
-	local_persist const DWORD MAX_DWORD = ~DWORD(1<<(sizeof(DWORD)*8-1));
-	static_assert(MAX_LOG_BUFFER_SIZE < MAX_DWORD);
-	///TODO: change this to use a platform-determined write directory
-	TCHAR fullPathToNewLog[MAX_PATH] = {};
-	TCHAR fullPathToLog   [MAX_PATH] = {};
-	// determine full path to log files using platform-determined write 
-	//	directory //
-	{
-		if(FAILED(StringCchPrintf(fullPathToNewLog, MAX_PATH, 
-		                          TEXT("%s\\%s.new"), g_pathTemp, fileNameLog)))
-		{
-			KLOG(ERROR, "Failed to build fullPathToNewLog!  "
-			     "g_pathTemp='%s' fileNameLog='%s'", 
-			     g_pathTemp, fileNameLog);
-			return;
-		}
-		if(FAILED(StringCchPrintf(fullPathToLog, MAX_PATH, 
-		                          TEXT("%s\\%s"), g_pathTemp, fileNameLog)))
-		{
-			KLOG(ERROR, "Failed to build fullPathToLog!  "
-			     "g_pathTemp='%s' fileNameLog='%s'", 
-			     g_pathTemp, fileNameLog);
-			return;
-		}
-	}
-	const HANDLE fileHandle = 
-		CreateFileA(fullPathToNewLog, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 
-		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
-	if(fileHandle == INVALID_HANDLE_VALUE)
-	{
-		///TODO: handle GetLastError
-		korlAssert(!"Failed to create log file handle!");
-		return;
-	}
-	// write the beginning log buffer //
-	{
-		const DWORD byteWriteCount = 
-			static_cast<DWORD>(strnlen_s(g_logBeginning, MAX_LOG_BUFFER_SIZE));
-		DWORD bytesWritten;
-		if(!WriteFile(fileHandle, g_logBeginning, byteWriteCount, &bytesWritten, 
-		              nullptr))
-		{
-			///TODO: handle GetLastError (close fileHandle)
-			korlAssert(!"Failed to write log beginning!");
-			return;
-		}
-		if(bytesWritten != byteWriteCount)
-		{
-			///TODO: handle this error case(close fileHandle)
-			korlAssert(!"Failed to complete write log beginning!");
-			return;
-		}
-	}
-	// If the log's beginning buffer is full, that means we have stuff in the 
-	//	circular buffer to write out.
-	if(g_logCurrentBeginningChar == MAX_LOG_BUFFER_SIZE)
-	{
-		// If the total bytes written to the circular buffer exceed the buffer
-		//	size, that means we have to indicate a discontinuity in the log file
-		if(g_logCircularBufferRunningTotal >= MAX_LOG_BUFFER_SIZE - 1)
-		{
-			// write the log cut string //
-			{
-				local_persist const char CSTR_LOG_CUT[] = 
-					"- - - - - - LOG CUT - - - - - - - -\n";
-				const DWORD byteWriteCount = static_cast<DWORD>(
-					strnlen_s(CSTR_LOG_CUT, sizeof(CSTR_LOG_CUT)));
-				DWORD bytesWritten;
-				if(!WriteFile(fileHandle, CSTR_LOG_CUT, byteWriteCount, 
-				              &bytesWritten, nullptr))
-				{
-					///TODO: handle GetLastError (close fileHandle)
-					korlAssert(!"Failed to write log cut string!");
-					return;
-				}
-				if(bytesWritten != byteWriteCount)
-				{
-					///TODO: handle this error case (close fileHandle)
-					korlAssert(!"Failed to complete write log cut string!");
-					return;
-				}
-			}
-			if(g_logCurrentCircularBufferChar < MAX_LOG_BUFFER_SIZE)
-			// write the oldest contents of the circular buffer //
-			{
-				const char*const data = 
-					g_logCircularBuffer + g_logCurrentCircularBufferChar + 1;
-				const DWORD byteWriteCount = static_cast<DWORD>(
-					strnlen_s(data, MAX_LOG_BUFFER_SIZE - 
-					                g_logCurrentCircularBufferChar));
-				DWORD bytesWritten;
-				if(!WriteFile(fileHandle, data, byteWriteCount, 
-				              &bytesWritten, nullptr))
-				{
-					///TODO: handle GetLastError (close fileHandle)
-					korlAssert(!"Failed to write log circular buffer old!");
-					return;
-				}
-				if(bytesWritten != byteWriteCount)
-				{
-					///TODO: handle this error case (close fileHandle)
-					korlAssert(!"Failed to complete write circular buffer "
-					            "old!");
-					return;
-				}
-			}
-		}
-		// write the newest contents of the circular buffer //
-		{
-			const DWORD byteWriteCount = static_cast<DWORD>(
-				strnlen_s(g_logCircularBuffer, MAX_LOG_BUFFER_SIZE));
-			DWORD bytesWritten;
-			if(!WriteFile(fileHandle, g_logCircularBuffer, byteWriteCount, 
-			              &bytesWritten, nullptr))
-			{
-				///TODO: handle GetLastError (close fileHandle)
-				korlAssert(!"Failed to write log circular buffer new!");
-				return;
-			}
-			if(bytesWritten != byteWriteCount)
-			{
-				///TODO: handle this error case (close fileHandle)
-				korlAssert(!"Failed to complete write circular buffer new!");
-				return;
-			}
-		}
-	}
-	if(!CloseHandle(fileHandle))
-	{
-		///TODO: handle GetLastError
-		korlAssert(!"Failed to close new log file handle!");
-		return;
-	}
-	// Copy the new log file into the finalized file name //
-	if(!CopyFileA(fullPathToNewLog, fullPathToLog, false))
-	{
-		korlAssert(!"Failed to rename new log file!");
-		return;
-	}
-	platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
-	            "Log successfully wrote to '%s'!", fullPathToLog);
-	// Once the log file has been finalized, we can delete the temporary file //
-	if(!DeleteFileA(fullPathToNewLog))
-	{
-		platformLog("win32-main", __LINE__, PlatformLogCategory::K_WARNING,
-		            "Failed to delete '%s'!", fullPathToNewLog);
-	}
-}
-internal FILETIME w32GetLastWriteTime(const char* fileName)
-{
-	FILETIME result = {};
-	WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
-	if(!GetFileAttributesExA(fileName, GetFileExInfoStandard, 
-	                         &fileAttributeData))
-	{
-		if(GetLastError() == ERROR_FILE_NOT_FOUND)
-		/* if the file can't be found, just silently return a zero FILETIME */
-		{
-			return result;
-		}
-		KLOG(WARNING, "Failed to get last write time of file '%s'! "
-		     "GetLastError=%i", fileName, GetLastError());
-		return result;
-	}
-	result = fileAttributeData.ftLastWriteTime;
-	return result;
-}
-internal GameCode 
-	w32LoadGameCode(const char* fileNameDll, const char* fileNameDllTemp)
-{
-	GameCode result = {};
-	result.initialize       = gameInitializeStub;
-	result.onReloadCode     = gameOnReloadCodeStub;
-	result.renderAudio      = gameRenderAudioStub;
-	result.updateAndDraw    = gameUpdateAndDrawStub;
-	result.onPreUnload      = gameOnPreUnloadStub;
-	result.dllLastWriteTime = w32GetLastWriteTime(fileNameDll);
-	if(result.dllLastWriteTime.dwHighDateTime == 0 &&
-		result.dllLastWriteTime.dwLowDateTime == 0)
-	{
-		return result;
-	}
-	if(!CopyFileA(fileNameDll, fileNameDllTemp, false))
-	{
-		if(GetLastError() == ERROR_SHARING_VIOLATION)
-		{
-			/* if the file is being used by another program, just silently do 
-				nothing since it's very likely the other program is cl.exe */
-		}
-		else
-			KLOG(WARNING, "Failed to copy file '%s' to '%s'! GetLastError=%i", 
-			     fileNameDll, fileNameDllTemp, GetLastError());
-	}
-	else
-	{
-		result.hLib = LoadLibraryA(fileNameDllTemp);
-		if(!result.hLib)
-		{
-			KLOG(ERROR, "Failed to load library '%s'! GetLastError=%i", 
-			     fileNameDllTemp, GetLastError());
-		}
-	}
-	if(result.hLib)
-	{
-		result.initialize = reinterpret_cast<fnSig_gameInitialize*>(
-			GetProcAddress(result.hLib, "gameInitialize"));
-		if(!result.initialize)
-		{
-			KLOG(ERROR, "Failed to get proc address 'gameInitialize'! "
-			     "GetLastError=%i", GetLastError());
-		}
-		result.onReloadCode = reinterpret_cast<fnSig_gameOnReloadCode*>(
-			GetProcAddress(result.hLib, "gameOnReloadCode"));
-		if(!result.onReloadCode)
-		{
-			// This is only a warning because the game can optionally just not
-			//	implement the hot-reload callback. //
-			///TODO: detect if `GameCode` has the ability to hot-reload and 
-			///      don't perform hot-reloading if this is not the case.
-			KLOG(WARNING, "Failed to get proc address 'gameOnReloadCode'! "
-			     "GetLastError=%i", GetLastError());
-		}
-		result.onPreUnload = reinterpret_cast<fnSig_gameOnPreUnload*>(
-			GetProcAddress(result.hLib, "gameOnPreUnload"));
-		if(!result.onPreUnload)
-		{
-			// This is only a warning because the game can optionally just not
-			//	implement the hot-reload callback. //
-			///TODO: detect if `GameCode` has the ability to hot-reload and 
-			///      don't perform hot-reloading if this is not the case.
-			KLOG(WARNING, "Failed to get proc address 'gameOnPreUnload'! "
-			     "GetLastError=%i", GetLastError());
-		}
-		result.renderAudio = reinterpret_cast<fnSig_gameRenderAudio*>(
-			GetProcAddress(result.hLib, "gameRenderAudio"));
-		if(!result.renderAudio)
-		{
-			KLOG(ERROR, "Failed to get proc address 'gameRenderAudio'! "
-			     "GetLastError=%i", GetLastError());
-		}
-		result.updateAndDraw = reinterpret_cast<fnSig_gameUpdateAndDraw*>(
-			GetProcAddress(result.hLib, "gameUpdateAndDraw"));
-		if(!result.updateAndDraw)
-		{
-			KLOG(ERROR, "Failed to get proc address 'gameUpdateAndDraw'! "
-			     "GetLastError=%i", GetLastError());
-		}
-		result.isValid = (result.initialize && result.renderAudio && 
-		                  result.updateAndDraw);
-	}
-	if(!result.isValid)
-	{
-//		KLOG(WARNING, "Game code is invalid!");
-		result.initialize    = gameInitializeStub;
-		result.onReloadCode  = gameOnReloadCodeStub;
-		result.renderAudio   = gameRenderAudioStub;
-		result.updateAndDraw = gameUpdateAndDrawStub;
-		result.onPreUnload   = gameOnPreUnloadStub;
-	}
-	return result;
-}
-internal void w32UnloadGameCode(GameCode& gameCode)
-{
-	if(gameCode.hLib)
-	{
-		if(!FreeLibrary(gameCode.hLib))
-		{
-			KLOG(ERROR, "Failed to free game code dll! GetLastError=", 
-			     GetLastError());
-		}
-		gameCode.hLib = NULL;
-	}
-	gameCode.isValid = false;
-	gameCode.renderAudio   = gameRenderAudioStub;
-	gameCode.updateAndDraw = gameUpdateAndDrawStub;
-}
-internal v2u32 w32GetWindowDimensions(HWND hwnd)
-{
-	RECT clientRect;
-	if(GetClientRect(hwnd, &clientRect))
-	{
-		const u32 w = clientRect.right  - clientRect.left;
-		const u32 h = clientRect.bottom - clientRect.top;
-		return {w, h};
-	}
-	else
-	{
-		KLOG(ERROR, "Failed to get window dimensions! GetLastError=%i", 
-		     GetLastError());
-		return {0, 0};
-	}
-}
-internal ButtonState* w32DecodeVirtualKey(GameMouse* gm, WPARAM vKeyCode)
-{
-	ButtonState* buttonState = nullptr;
-	// Virtual-Key Codes: 
-	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	switch(vKeyCode)
-	{
-		case VK_LBUTTON:  buttonState = &gm->left; break;
-		case VK_RBUTTON:  buttonState = &gm->right; break;
-		case VK_MBUTTON:  buttonState = &gm->middle; break;
-		case VK_XBUTTON1: buttonState = &gm->back; break;
-		case VK_XBUTTON2: buttonState = &gm->forward; break;
-	}
-	return buttonState;
-}
-internal ButtonState* w32DecodeVirtualKey(GameKeyboard* gk, WPARAM vKeyCode)
-{
-	ButtonState* buttonState = nullptr;
-	// Virtual-Key Codes: 
-	//	https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	switch(vKeyCode)
-	{
-		case VK_OEM_COMMA:  buttonState = &gk->comma; break;
-		case VK_OEM_PERIOD: buttonState = &gk->period; break;
-		case VK_OEM_2:      buttonState = &gk->slashForward; break;
-		case VK_OEM_5:      buttonState = &gk->slashBack; break;
-		case VK_OEM_4:      buttonState = &gk->curlyBraceLeft; break;
-		case VK_OEM_6:      buttonState = &gk->curlyBraceRight; break;
-		case VK_OEM_1:      buttonState = &gk->semicolon; break;
-		case VK_OEM_7:      buttonState = &gk->quote; break;
-		case VK_OEM_3:      buttonState = &gk->grave; break;
-		case VK_OEM_MINUS:  buttonState = &gk->tenkeyless_minus; break;
-		case VK_OEM_PLUS:   buttonState = &gk->equals; break;
-		case VK_BACK:       buttonState = &gk->backspace; break;
-		case VK_ESCAPE:     buttonState = &gk->escape; break;
-		case VK_RETURN:     buttonState = &gk->enter; break;
-		case VK_SPACE:      buttonState = &gk->space; break;
-		case VK_TAB:        buttonState = &gk->tab; break;
-		case VK_LSHIFT:     buttonState = &gk->shiftLeft; break;
-		case VK_RSHIFT:     buttonState = &gk->shiftRight; break;
-		case VK_LCONTROL:   buttonState = &gk->controlLeft; break;
-		case VK_RCONTROL:   buttonState = &gk->controlRight; break;
-		case VK_LMENU:      buttonState = &gk->altLeft; break;
-		case VK_RMENU:      buttonState = &gk->altRight; break;
-		case VK_UP:         buttonState = &gk->arrowUp; break;
-		case VK_DOWN:       buttonState = &gk->arrowDown; break;
-		case VK_LEFT:       buttonState = &gk->arrowLeft; break;
-		case VK_RIGHT:      buttonState = &gk->arrowRight; break;
-		case VK_INSERT:     buttonState = &gk->insert; break;
-		case VK_DELETE:     buttonState = &gk->deleteKey; break;
-		case VK_HOME:       buttonState = &gk->home; break;
-		case VK_END:        buttonState = &gk->end; break;
-		case VK_PRIOR:      buttonState = &gk->pageUp; break;
-		case VK_NEXT:       buttonState = &gk->pageDown; break;
-		case VK_DECIMAL:    buttonState = &gk->numpad_period; break;
-		case VK_DIVIDE:     buttonState = &gk->numpad_divide; break;
-		case VK_MULTIPLY:   buttonState = &gk->numpad_multiply; break;
-		case VK_SEPARATOR:  buttonState = &gk->numpad_minus; break;
-		case VK_ADD:        buttonState = &gk->numpad_add; break;
-		default:
-		{
-			if(vKeyCode >= 0x41 && vKeyCode <= 0x5A)
-			{
-				buttonState = &gk->a + (vKeyCode - 0x41);
-			}
-			else if(vKeyCode >= 0x30 && vKeyCode <= 0x39)
-			{
-				buttonState = &gk->tenkeyless_0 + (vKeyCode - 0x30);
-			}
-			else if(vKeyCode >= 0x70 && vKeyCode <= 0x7B)
-			{
-				buttonState = &gk->f1 + (vKeyCode - 0x70);
-			}
-			else if(vKeyCode >= 0x60 && vKeyCode <= 0x69)
-			{
-				buttonState = &gk->numpad_0 + (vKeyCode - 0x60);
-			}
-		} break;
-	}
-	return buttonState;
-}
-internal void 
-	w32GetKeyboardKeyStates(
-		GameKeyboard* gkCurrFrame, GameKeyboard* gkPrevFrame)
-{
-	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
-	{
-		ButtonState* buttonState = w32DecodeVirtualKey(gkCurrFrame, vKeyCode);
-		if(!buttonState)
-		continue;
-		const SHORT asyncKeyState = 
-			GetAsyncKeyState(static_cast<int>(vKeyCode));
-		// do NOT use the least-significant bit to determine key state!
-		//	Why? See documentation on the GetAsyncKeyState function:
-		// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
-		const bool keyDown = (asyncKeyState & ~1) != 0;
-		const size_t buttonIndex = buttonState - gkCurrFrame->vKeys;
-		*buttonState = keyDown
-			? (gkPrevFrame->vKeys[buttonIndex] >= ButtonState::PRESSED
-				? ButtonState::HELD
-				: ButtonState::PRESSED)
-			: ButtonState::NOT_PRESSED;
-	}
-	// update the game keyboard modifier states //
-	gkCurrFrame->modifiers.shift =
-		(gkCurrFrame->shiftLeft  > ButtonState::NOT_PRESSED ||
-		 gkCurrFrame->shiftRight > ButtonState::NOT_PRESSED);
-	gkCurrFrame->modifiers.control =
-		(gkCurrFrame->controlLeft  > ButtonState::NOT_PRESSED ||
-		 gkCurrFrame->controlRight > ButtonState::NOT_PRESSED);
-	gkCurrFrame->modifiers.alt =
-		(gkCurrFrame->altLeft  > ButtonState::NOT_PRESSED ||
-		 gkCurrFrame->altRight > ButtonState::NOT_PRESSED);
-}
-internal void w32GetMouseStates(GameMouse* gmCurrent, GameMouse* gmPrevious)
-{
-	if(g_mouseRelativeMode)
-	{
-		/* in mouse relative mode, we the mouse should remain in the same 
-			position in window-space forever */
-		gmCurrent->windowPosition = gmPrevious->windowPosition;
-	}
-	else
-	/* get the mouse cursor position in window-space */
-	{
-		POINT pointMouseCursor;
-		/* first, get the mouse cursor position in screen-space */
-		if(!GetCursorPos(&pointMouseCursor))
-		{
-			const DWORD error = GetLastError();
-			if(error == ERROR_ACCESS_DENIED)
-			{
-				KLOG(WARNING, "GetCursorPos: access denied!");
-			}
-			else
-			{
-				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
-				     GetLastError());
-			}
-		}
-		else
-		{
-			/* convert mouse position screen-space => window-space */
-			if(!ScreenToClient(g_mainWindow, &pointMouseCursor))
-			{
-				/* for whatever reason, MSDN doesn't say there is any kind of 
-					error code obtainable for this failure condition... 
-					¯\_(ツ)_/¯ */
-				KLOG(ERROR, "ScreenToClient failure!");
-			}
-			gmCurrent->windowPosition.x = pointMouseCursor.x;
-			gmCurrent->windowPosition.y = pointMouseCursor.y;
-		}
-	}
-	/* get async mouse button states */
-	for(WPARAM vKeyCode = 0; vKeyCode <= 0xFF; vKeyCode++)
-	{
-		ButtonState* buttonState = w32DecodeVirtualKey(gmCurrent, vKeyCode);
-		if(!buttonState)
-			continue;
-		const SHORT asyncKeyState = 
-			GetAsyncKeyState(static_cast<int>(vKeyCode));
-		// do NOT use the least-significant bit to determine key state!
-		//	Why? See documentation on the GetAsyncKeyState function:
-		// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
-		const bool keyDown = (asyncKeyState & ~1) != 0;
-		const size_t buttonIndex = buttonState - gmCurrent->vKeys;
-		*buttonState = keyDown
-			? (gmPrevious->vKeys[buttonIndex] >= ButtonState::PRESSED
-				? ButtonState::HELD
-				: ButtonState::PRESSED)
-			: ButtonState::NOT_PRESSED;
-	}
-}
-internal DWORD w32QueryNearestMonitorRefreshRate(HWND hwnd)
-{
-	local_persist const DWORD DEFAULT_RESULT = 60;
-	const HMONITOR nearestMonitor = 
-		MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-	MONITORINFOEXA monitorInfo;
-	monitorInfo.cbSize = sizeof(MONITORINFOEXA);
-	if(!GetMonitorInfoA(nearestMonitor, &monitorInfo))
-	{
-		KLOG(ERROR, "Failed to get monitor info!");
-		return DEFAULT_RESULT;
-	}
-	DEVMODEA monitorDevMode;
-	monitorDevMode.dmSize = sizeof(DEVMODEA);
-	monitorDevMode.dmDriverExtra = 0;
-	if(!EnumDisplaySettingsA(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, 
-	                         &monitorDevMode))
-	{
-		KLOG(ERROR, "Failed to enum display settings!");
-		return DEFAULT_RESULT;
-	}
-	if(monitorDevMode.dmDisplayFrequency < 2)
-	{
-		KLOG(WARNING, "Unknown hardware-defined refresh rate! "
-		     "Defaulting to %ihz...", DEFAULT_RESULT);
-		return DEFAULT_RESULT;
-	}
-	return monitorDevMode.dmDisplayFrequency;
-}
-internal LRESULT CALLBACK 
-	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam);
-	LRESULT result = 0;
-	switch(uMsg)
-	{
-	case WM_CREATE:{
-		w32KrbOglInitialize(hwnd);
-		w32KrbOglSetVSyncPreference(true);
-		} break;
-	case WM_SYSCOMMAND: {
-		KLOG(INFO, "WM_SYSCOMMAND: type=0x%x", wParam);
-		if(wParam == SC_KEYMENU)
-		// These window messages need to be captured in order to stop 
-		//	windows from needlessly beeping when we use ALT+KEY combinations 
-		{
-			break;
-		}
-		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
-		}break;
-#if 0
-	case WM_MENUCHAR: {
-		KLOG(INFO, "WM_MENUCHAR");
-		result = MAKELRESULT(0, MNC_IGNORE);
-		}break;
-#endif // 0
-	case WM_SETCURSOR: {
-		HCURSOR cursor = NULL;
-		switch(LOWORD(lParam))
-		{
-		case HTBOTTOM:
-		case HTTOP:
-			cursor = g_cursorSizeVertical;
-			break;
-		case HTLEFT:
-		case HTRIGHT:
-			cursor = g_cursorSizeHorizontal;
-			break;
-		case HTBOTTOMLEFT:
-		case HTTOPRIGHT:
-			cursor = g_cursorSizeNeSw;
-			break;
-		case HTBOTTOMRIGHT:
-		case HTTOPLEFT:
-			cursor = g_cursorSizeNwSe;
-			break;
-		case HTCLIENT:
-		default:
-			cursor = g_cursorArrow;
-			break;
-		}
-		SetCursor(cursor);
-		} break;
-	case WM_SIZE: {
-			KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
-			     wParam, LOWORD(lParam), HIWORD(lParam));
-		} break;
-	case WM_DESTROY: {
-			///TODO: handle this error: recreate window?
-			g_running = false;
-			KLOG(INFO, "WM_DESTROY");
-		} break;
-	case WM_CLOSE: {
-			///TODO: ask user first before destroying
-			g_running = false;
-			KLOG(INFO, "WM_CLOSE");
-		} break;
-	case WM_ACTIVATEAPP: {
-			g_isFocused = wParam;
-			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
-			     (wParam ? "TRUE" : "FALSE"), lParam);
-		} break;
-	case WM_DEVICECHANGE: {
-			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
-			switch(wParam)
-			{
-				case DBT_DEVNODES_CHANGED:
-				{
-					KLOG(INFO, "\tA device has been added or removed!");
-					g_deviceChangeDetected = true;
-				} break;
-			}
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
-		} break;
-	default: {
-#if 0
-		KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
-#endif // 0
-		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
-		}break;
-	}/* switch(uMsg) */
-	return result;
-}
-internal LARGE_INTEGER w32QueryPerformanceCounter()
-{
-	LARGE_INTEGER result;
-	if(!QueryPerformanceCounter(&result))
-	{
-		KLOG(ERROR, "Failed to query performance counter! GetLastError=%i", 
-		     GetLastError());
-	}
-	return result;
-}
-internal f32 
-	w32ElapsedSeconds(
-		const LARGE_INTEGER& previousPerformanceCount, 
-		const LARGE_INTEGER& performanceCount)
-{
-	korlAssert(performanceCount.QuadPart > previousPerformanceCount.QuadPart);
-	const LONGLONG perfCountDiff = 
-		performanceCount.QuadPart - previousPerformanceCount.QuadPart;
-	const f32 elapsedSeconds = 
-		static_cast<f32>(perfCountDiff) / g_perfCounterHz.QuadPart;
-	return elapsedSeconds;
-}
-internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
-{
-	// copy-pasta from MSDN basically:
-	//	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
-	///TODO: maybe make this a little more robust in the future...
-	TCHAR szFileName[MAX_PATH];
-	SYSTEMTIME stLocalTime;
-	GetLocalTime( &stLocalTime );
-	// Create a companion folder to store PDB files specifically for this 
-	//	dump! //
-	TCHAR szPdbDirectory[MAX_PATH];
-	StringCchPrintf(
-		szPdbDirectory, MAX_PATH, 
-		TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld"), 
-		g_pathTemp, APPLICATION_VERSION, 
-		stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
-		stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
-		GetCurrentProcessId(), GetCurrentThreadId());
-	if(!CreateDirectory(szPdbDirectory, NULL))
-	{
-		platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-					"Failed to create dir '%s'!  GetLastError=%i",
-					szPdbDirectory, GetLastError());
-		return EXCEPTION_EXECUTE_HANDLER;
-	}
-	// Create the mini dump! //
-	StringCchPrintf(szFileName, MAX_PATH, 
-	                TEXT("%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp"), 
-	                szPdbDirectory, APPLICATION_VERSION, 
-	                stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
-	                stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
-	                GetCurrentProcessId(), GetCurrentThreadId());
-	const HANDLE hDumpFile = CreateFile(szFileName, GENERIC_READ|GENERIC_WRITE, 
-	                                    FILE_SHARE_WRITE|FILE_SHARE_READ, 
-	                                    0, CREATE_ALWAYS, 0, 0);
-	MINIDUMP_EXCEPTION_INFORMATION ExpParam = {
-		.ThreadId          = GetCurrentThreadId(),
-		.ExceptionPointers = pExceptionPointers,
-		.ClientPointers    = TRUE,
-	};
-	const BOOL bMiniDumpSuccessful = 
-		MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
-		                  hDumpFile, MiniDumpWithDataSegs, &ExpParam, 
-		                  NULL, NULL);
-	if(bMiniDumpSuccessful)
-	{
-		g_hasWrittenCrashDump = true;
-#if defined(UNICODE) || defined(_UNICODE)
-		char ansiFileName[MAX_PATH];
-		size_t convertedCharCount;
-		wcstombs_s(&convertedCharCount, ansiFileName, sizeof(ansiFileName), 
-		           szFileName, sizeof(szFileName));
-		///TODO: U16 platformLog
-#else
-		platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
-		            "Successfully wrote mini dump to: '%s'", szFileName);
-#endif
-		// Attempt to copy the win32 application's pdb file to the dump 
-		//	location //
-		TCHAR szFileNameCopySource[MAX_PATH];
-		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s.pdb"),
-		                g_pathToExe, APPLICATION_NAME);
-		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s.pdb"), 
-		                szPdbDirectory, APPLICATION_NAME);
-		if(!CopyFile(szFileNameCopySource, szFileName, false))
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
-			            szFileNameCopySource, szFileName, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-		/* Attempt to copy the win32 application's VC_*.pdb file to the dump 
-			location */
-		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\VC_%s.pdb"),
-		                g_pathToExe, APPLICATION_NAME);
-		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\VC_%s.pdb"), 
-		                szPdbDirectory, APPLICATION_NAME);
-		if(!CopyFile(szFileNameCopySource, szFileName, false))
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
-			            szFileNameCopySource, szFileName, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-		// Find the most recent game*.pdb file, then place the filename into 
-		//	`szFileNameCopySource` //
-		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s*.pdb"),
-		                g_pathToExe, FILE_NAME_GAME_DLL);
-		WIN32_FIND_DATA findFileData;
-		HANDLE findHandleGameDll = 
-			FindFirstFile(szFileNameCopySource, &findFileData);
-		if(findHandleGameDll == INVALID_HANDLE_VALUE)
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to begin search for '%s'!  GetLastError=%i",
-			            szFileNameCopySource, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-		FILETIME creationTimeLatest = findFileData.ftCreationTime;
-		TCHAR fileNameGamePdb[MAX_PATH];
-		StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
-		                findFileData.cFileName);
-		while(BOOL findNextFileResult = 
-			FindNextFile(findHandleGameDll, &findFileData))
-		{
-			if(!findNextFileResult && GetLastError() != ERROR_NO_MORE_FILES)
-			{
-				platformLog("win32-main", __LINE__, 
-				            PlatformLogCategory::K_ERROR,
-				            "Failed to find next for '%s'!  GetLastError=%i",
-				            szFileNameCopySource, GetLastError());
-				return EXCEPTION_EXECUTE_HANDLER;
-			}
-			if(CompareFileTime(&findFileData.ftCreationTime, 
-			                   &creationTimeLatest) > 0)
-			{
-				creationTimeLatest = findFileData.ftCreationTime;
-				StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
-				                findFileData.cFileName);
-			}
-		}
-		if(!FindClose(findHandleGameDll))
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to close search for '%s*.pdb'!  "
-			            "GetLastError=%i",
-			            FILE_NAME_GAME_DLL, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-		// attempt to copy game's pdb file //
-		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s"),
-		                g_pathToExe, fileNameGamePdb);
-		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s"), 
-		                szPdbDirectory, fileNameGamePdb);
-		if(!CopyFile(szFileNameCopySource, szFileName, false))
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
-			            szFileNameCopySource, szFileName, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-		/* attempt to copy the game's VC_*.pdb file */
-		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\VC_%s"),
-		                g_pathToExe, fileNameGamePdb);
-		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\VC_%s"), 
-		                szPdbDirectory, fileNameGamePdb);
-		if(!CopyFile(szFileNameCopySource, szFileName, false))
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
-			            szFileNameCopySource, szFileName, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-		// Attempt to copy the win32 EXE file into the dump location //
-		StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s.exe"),
-		                g_pathToExe, APPLICATION_NAME);
-		StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s.exe"), 
-		                szPdbDirectory, APPLICATION_NAME);
-		if(!CopyFile(szFileNameCopySource, szFileName, false))
-		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
-			            szFileNameCopySource, szFileName, GetLastError());
-			return EXCEPTION_EXECUTE_HANDLER;
-		}
-	}
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-internal LONG WINAPI 
-	w32VectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
-{
-	g_hasReceivedException = true;
-	// break debugger to give us a chance to figure out what the hell happened
-	if(IsDebuggerPresent())
-		DebugBreak();
-	if(!g_hasWrittenCrashDump)
-		w32GenerateDump(pExceptionInfo);
-	// I don't use the KLOG macro here because `strrchr` from the 
-	//	__FILENAME__ macro seems to just break everything :(
-	platformLog(
-		"win32-main", __LINE__, PlatformLogCategory::K_ERROR,
-		"Vectored Exception! 0x%x", 
-		pExceptionInfo->ExceptionRecord->ExceptionCode);
-	w32WriteLogToFile();
-	///@todo: cleanup system-wide settings/handles
-	///	- OS timer granularity setting
-	ExitProcess(0xDEADC0DE);
-	// return EXCEPTION_CONTINUE_SEARCH;
-}
-#if 0
-internal LONG WINAPI 
-	w32TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
-{
-	g_hasReceivedException = true;
-	fprintf_s(stderr, "Exception! 0x%x\n", 
-	          pExceptionInfo->ExceptionRecord->ExceptionCode);
-	fflush(stderr);
-	//KLOG(ERROR, "Exception! 0x%x", 
-	//     pExceptionInfo->ExceptionRecord->ExceptionCode);
-	w32WriteLogToFile();
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-#endif
 DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 {
 	W32ThreadInfo*const threadInfo = 
@@ -930,6 +95,7 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 	}
 	return 0;
 }
+#if 0
 #include <hidsdi.h>
 internal bool w32RawInputEnumerateDevices()
 {
@@ -1028,6 +194,7 @@ internal bool w32RawInputEnumerateDevices()
 	}
 	return true;
 }
+#endif//0
 internal u32 w32FindUnusedTempGameDllPostfix()
 {
 	TCHAR fileQueryString[MAX_PATH];
@@ -1192,110 +359,102 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	}
 	return lowestUnusedPostfix;
 }
-#if 0 /* minimal test: can I even just get an OpenGL context spawned? */
-global_variable HDC g_ourWindowHandleToDeviceContext = NULL;
 internal LRESULT CALLBACK 
-	w32MainWindowCallback_test(
-		HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#if 0
+	ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam);
+#endif//0
+	LRESULT result = 0;
 	switch(uMsg)
 	{
+	case WM_CREATE:{
+		w32KrbOglInitialize(hwnd);
+		w32KrbOglSetVSyncPreference(true);
+		} break;
+	case WM_SYSCOMMAND: {
+		KLOG(INFO, "WM_SYSCOMMAND: type=0x%x", wParam);
+		if(wParam == SC_KEYMENU)
+		// These window messages need to be captured in order to stop 
+		//	windows from needlessly beeping when we use ALT+KEY combinations 
+		{
+			break;
+		}
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}break;
+#if 0
+	case WM_MENUCHAR: {
+		KLOG(INFO, "WM_MENUCHAR");
+		result = MAKELRESULT(0, MNC_IGNORE);
+		}break;
+#endif // 0
+	case WM_SETCURSOR: {
+		HCURSOR cursor = NULL;
+		switch(LOWORD(lParam))
+		{
+		case HTBOTTOM:
+		case HTTOP:
+			cursor = g_cursorSizeVertical;
+			break;
+		case HTLEFT:
+		case HTRIGHT:
+			cursor = g_cursorSizeHorizontal;
+			break;
+		case HTBOTTOMLEFT:
+		case HTTOPRIGHT:
+			cursor = g_cursorSizeNeSw;
+			break;
+		case HTBOTTOMRIGHT:
+		case HTTOPLEFT:
+			cursor = g_cursorSizeNwSe;
+			break;
+		case HTCLIENT:
+		default:
+			cursor = g_cursorArrow;
+			break;
+		}
+		SetCursor(cursor);
+		} break;
+	case WM_SIZE: {
+			KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
+			     wParam, LOWORD(lParam), HIWORD(lParam));
+		} break;
 	case WM_DESTROY: {
-		g_running = false;
+			///TODO: handle this error: recreate window?
+			g_running = false;
+			KLOG(INFO, "WM_DESTROY");
 		} break;
 	case WM_CLOSE: {
-		g_running = false;
+			///TODO: ask user first before destroying
+			g_running = false;
+			KLOG(INFO, "WM_CLOSE");
 		} break;
-	case WM_CREATE: {
-		PIXELFORMATDESCRIPTOR pfd =
-		{
-			sizeof(PIXELFORMATDESCRIPTOR),
-			1,
-			PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, //Flags
-			PFD_TYPE_RGBA,        // The kind of framebuffer. RGBA or palette.
-			32,                   // Colordepth of the framebuffer.
-			0, 0, 0, 0, 0, 0,
-			0,
-			0,
-			0,
-			0, 0, 0, 0,
-			24,                   // Number of bits for the depthbuffer
-			8,                    // Number of bits for the stencilbuffer
-			0,                    // Number of Aux buffers in the framebuffer.
-			PFD_MAIN_PLANE,
-			0,
-			0, 0, 0
-		};
-		g_ourWindowHandleToDeviceContext = GetDC(hWnd);
-		int  letWindowsChooseThisPixelFormat;
-		letWindowsChooseThisPixelFormat = ChoosePixelFormat(g_ourWindowHandleToDeviceContext, &pfd); 
-		SetPixelFormat(g_ourWindowHandleToDeviceContext,letWindowsChooseThisPixelFormat, &pfd);
-		HGLRC ourOpenGLRenderingContext = wglCreateContext(g_ourWindowHandleToDeviceContext);
-		wglMakeCurrent (g_ourWindowHandleToDeviceContext, ourOpenGLRenderingContext);
-//		MessageBoxA(0,(char*)glGetString(GL_VERSION), "OPENGL VERSION",0);
-		//wglMakeCurrent(ourWindowHandleToDeviceContext, NULL); Unnecessary; wglDeleteContext will make the context not current
-//		wglDeleteContext(ourOpenGLRenderingContext);
-//		PostQuitMessage(0);
+	case WM_ACTIVATEAPP: {
+			g_isFocused = wParam;
+			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
+			     (wParam ? "TRUE" : "FALSE"), lParam);
 		} break;
-	default:
-		return DefWindowProc(hWnd, uMsg, wParam, lParam);
-	}
-	return 0;
-}
-extern int WINAPI 
-	wWinMain(
-		HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
-		PWSTR /*pCmdLine*/, int /*nCmdShow*/)
-{
-	local_persist const int RETURN_CODE_SUCCESS = 0;
-	local_persist const int RETURN_CODE_FAILURE = 0xBADC0DE0;
-	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
-	const WNDCLASS wndClass = 
-		{ .style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC
-		, .lpfnWndProc   = w32MainWindowCallback_test
-		, .hInstance     = hInstance
-		, .hIcon         = LoadIcon(hInstance, TEXT("korl-application-icon"))
-		, .hCursor       = g_cursorArrow
-		, .hbrBackground = CreateSolidBrush(RGB(0, 0, 0))
-		, .lpszClassName = "KorlWindowClass" };
-	const ATOM atomWindowClass = RegisterClassA(&wndClass);
-	if(atomWindowClass == 0)
-		return RETURN_CODE_FAILURE;
-	g_mainWindow = CreateWindowExA(
-		0,
-		wndClass.lpszClassName,
-		APPLICATION_NAME,
-		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		NULL, NULL, hInstance, NULL );
-	if(!g_mainWindow)
-		return RETURN_CODE_FAILURE;
-	// main window loop //
-	g_running = true;
-	while(g_running)
-	{
-		MSG windowMessage;
-		while(PeekMessageA(&windowMessage, NULL, 0, 0, PM_REMOVE))
-		{
-			switch(windowMessage.message)
+	case WM_DEVICECHANGE: {
+			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
+			switch(wParam)
 			{
-			case WM_QUIT: {
-				g_running = false;
-				} break;
-			default: {
-				TranslateMessage(&windowMessage);
-				DispatchMessageA(&windowMessage);
+				case DBT_DEVNODES_CHANGED:
+				{
+					KLOG(INFO, "\tA device has been added or removed!");
+					g_deviceChangeDetected = true;
 				} break;
 			}
-		}// while(PeekMessageA(...))
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		SwapBuffers(g_ourWindowHandleToDeviceContext);
-	}// while(g_running)
-	return RETURN_CODE_SUCCESS;
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	default: {
+#if 0
+		KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
+#endif // 0
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}break;
+	}/* switch(uMsg) */
+	return result;
 }
-#else
 extern int WINAPI 
 	wWinMain(
 		HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, 
@@ -1645,9 +804,9 @@ extern int WINAPI
 		g_oggVorbisAlloc.alloc_buffer = reinterpret_cast<char*>(
 			memoryAddressStart);
 	}
-	GameCode game = 
-		w32LoadGameCode(fullPathToGameDll, fullPathToGameDllTemp);
-	korlAssert(game.isValid);
+	Korl_Win32_DynamicApplicationModule dynApp = 
+		korl_w32_dynApp_load(fullPathToGameDll, fullPathToGameDllTemp);
+	korlAssert(dynApp.isValid);
 	if(!QueryPerformanceFrequency(&g_perfCounterHz))
 	{
 		KLOG(ERROR, "Failed to query for performance frequency! "
@@ -1772,8 +931,8 @@ extern int WINAPI
 		gameMemory.platformImguiFree   = w32PlatformImguiFree;
 		gameMemory.imguiAllocUserData  = g_genAllocImgui;
 	}
-	game.onReloadCode(gameMemory, false);
-	game.initialize(gameMemory);
+	dynApp.onReloadCode(gameMemory, false);
+	dynApp.initialize(gameMemory);
 	w32InitDSound(g_mainWindow, SOUND_SAMPLE_HZ, SOUND_BUFFER_BYTES, 
 	              SOUND_CHANNELS, gameSoundCursorWritePrev);
 	local_persist const UINT DESIRED_OS_TIMER_GRANULARITY_MS = 1;
@@ -1840,25 +999,25 @@ extern int WINAPI
 				//	last write time of the dll, since it means the dll is 
 				//	probably in the process of getting recompiled!
 				{
-					if(game.isValid)
+					if(dynApp.isValid)
 					{
-						KLOG(INFO, "Unloading game code...");
-						game.onPreUnload();
+						KLOG(INFO, "Unloading dynApp...");
+						dynApp.onPreUnload();
 					}
-					game.isValid = false;
+					dynApp.isValid = false;
 				}
 				if((CompareFileTime(&gameCodeLastWriteTime, 
-				                    &game.dllLastWriteTime) 
-				    || !game.isValid) 
+				                    &dynApp.dllLastWriteTime) 
+				    || !dynApp.isValid) 
 				    && !jobQueueHasIncompleteJobs(&g_jobQueue))
 				{
-					w32UnloadGameCode(game);
-					game = w32LoadGameCode(fullPathToGameDll, 
-					                       fullPathToGameDllTemp);
-					if(game.isValid)
+					korl_w32_dynApp_unload(&dynApp);
+					dynApp = korl_w32_dynApp_load(
+						fullPathToGameDll, fullPathToGameDllTemp);
+					if(dynApp.isValid)
 					{
-						KLOG(INFO, "Game code hot-reload complete!");
-						game.onReloadCode(gameMemory, true);
+						KLOG(INFO, "dynApp hot-reload complete!");
+						dynApp.onReloadCode(gameMemory, true);
 					}
 				}
 			}
@@ -1968,7 +1127,7 @@ extern int WINAPI
 #endif//0
 			const f32 deltaSeconds = kmath::min(
 				MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
-			if(!game.updateAndDraw(
+			if(!dynApp.updateAndDraw(
 					deltaSeconds, windowDims, 
 					*gameMouseFrameCurrent, *gameKeyboardCurrentFrame,
 					g_gamePadArrayCurrentFrame, CARRAY_SIZE(g_gamePadArrayA), 
@@ -1978,7 +1137,7 @@ extern int WINAPI
 			}
 			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
 			                    SOUND_CHANNELS, gameSoundMemory, 
-			                    gameSoundCursorWritePrev, game);
+			                    gameSoundCursorWritePrev, dynApp);
 #if 0
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
@@ -2073,7 +1232,6 @@ extern int WINAPI
 	KLOG(INFO, "END! :)");
 	return RETURN_CODE_SUCCESS;
 }
-#endif//0
 #include "win32-dsound.cpp"
 #include "win32-xinput.cpp"
 #include "win32-directinput.cpp"
@@ -2081,6 +1239,12 @@ extern int WINAPI
 #include "win32-jobQueue.cpp"
 #include "win32-network.cpp"
 #include "win32-platform.cpp"
+#include "win32-dynApp.cpp"
+#include "win32-log.cpp"
+#include "win32-time.cpp"
+#include "win32-crash.cpp"
+#include "win32-window.cpp"
+#include "win32-input.cpp"
 #include "krb-opengl.cpp"
 #include "z85.cpp"
 #define STB_IMAGE_IMPLEMENTATION

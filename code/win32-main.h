@@ -13,19 +13,12 @@
 	#define NOMINMAX
 #endif
 #include <windows.h>
-struct GameCode
-{
-	fnSig_gameInitialize* initialize;
-	fnSig_gameOnReloadCode* onReloadCode;
-	fnSig_gameRenderAudio* renderAudio;
-	fnSig_gameUpdateAndDraw* updateAndDraw;
-	fnSig_gameOnPreUnload* onPreUnload;
-	HMODULE hLib;
-	FILETIME dllLastWriteTime;
-	bool isValid;
-};
-internal LARGE_INTEGER w32QueryPerformanceCounter();
-internal FILETIME w32GetLastWriteTime(const char* fileName);
 global_variable HWND g_mainWindow;
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+/* Allow the pre-processor to store compiler definitions as string literals
+	Source: https://stackoverflow.com/a/39108392 */
+#define _DEFINE_TO_CSTR(define) #define
+#define DEFINE_TO_CSTR(d) _DEFINE_TO_CSTR(d)
+global_variable const TCHAR APPLICATION_VERSION[] =	 
+	TEXT(DEFINE_TO_CSTR(KORL_APP_VERSION));
