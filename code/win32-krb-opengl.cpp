@@ -45,6 +45,9 @@ internal void w32KrbOglInitialize(HWND hwnd)
 	desiredPixelFormat.cStencilBits = 8;
 	desiredPixelFormat.iLayerType   = PFD_MAIN_PLANE;
 	HDC windowDc = GetDC(hwnd);
+	if(!windowDc)
+		KLOG(ERROR, "Failed to get window DC!");
+	defer(ReleaseDC(hwnd, windowDc));
 	const int pixelFormatIndex = 
 		ChoosePixelFormat(windowDc, &desiredPixelFormat);
 	if(pixelFormatIndex == 0)
@@ -87,12 +90,6 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG(ERROR, "Failed to get wglGetExtensionsStringARB! "
 			"GetLastError=%i", GetLastError());
 	const char*const wglExtensionsString = wglGetExtensionsStringARB(windowDc);
-#if 0 /* for some reason, even though MSDN says that you should always call 
-		ReleaseDC after a call to GetDC, if I do that here the program poops 
-		itself later on and I'm not entirely sure why... */
-	/* at this point, we're done with the windowDc so we can release it */
-	ReleaseDC(hwnd, windowDc);
-#endif//0
 	if(!wglExtensionsString)
 		KLOG(ERROR, "Failed to get wgl extensions string! "
 		     "GetLastError=%i", GetLastError());
@@ -131,6 +128,16 @@ internal void w32KrbOglInitialize(HWND hwnd)
 	/* now that we have the wglCreateContextAttribsARB function, we can create 
 		the REAL OpenGL context and discard the dummy context used to just get 
 		these WGL extensions */
+	/* @todo: If we ever want to change more advanced settings with respect to 
+		the window's pixel format (using WGL_ARB_pixel_format, etc), we're going 
+		to have to do some bs where we destroy the window and create a new one 
+		after using the pixel format WGL extensions and storing the output.  
+		This is because windows can only set the pixel format ONCE in their 
+		entire lifetime!  Perhaps we can have code in win32-krb-opengl which 
+		creates a window in the smallest amount of code which then extracts WGL 
+		extensions & passes the results of pixel format extension calls on the 
+		dummy hdc back to this thread.  See:
+		https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#Proper_Context_Creation */
 	const int realGlRcAttributeList[] = 
 		{ WGL_CONTEXT_MAJOR_VERSION_ARB, 3
 		, WGL_CONTEXT_MINOR_VERSION_ARB, 3
