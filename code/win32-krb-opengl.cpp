@@ -142,6 +142,9 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		{ WGL_CONTEXT_MAJOR_VERSION_ARB, 3
 		, WGL_CONTEXT_MINOR_VERSION_ARB, 3
 		, WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB
+#if SLOW_BUILD
+		, WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB
+#endif//SLOW_BUILD
 		, 0 };
 	HGLRC realGlRc = 
 		wglCreateContextAttribsARB(windowDc, NULL, realGlRcAttributeList);
@@ -154,19 +157,25 @@ internal void w32KrbOglInitialize(HWND hwnd)
 	if(!wglDeleteContext(dummyGlRc))
 		KLOG(ERROR, "Failed to delete dummy OpenGL render context! "
 			"GetLastError=%i", GetLastError());
-	/* get OpenGL extensions */
+	/* get CORE OpenGL extensions */
+	glGetStringi = 
+		reinterpret_cast<PFNGLGETSTRINGIPROC>(
+			wglGetProcAddress("glGetStringi"));
+	if(!glGetStringi)
+		KLOG(ERROR, "Failed to get glGetStringi! "
+			"GetLastError=%i", GetLastError());
 	glLoadTransposeMatrixf = 
 		reinterpret_cast<PFNGLLOADTRANSPOSEMATRIXFPROC>(
 			wglGetProcAddress("glLoadTransposeMatrixf"));
 	if(!glLoadTransposeMatrixf)
 		KLOG(ERROR, "Failed to get glLoadTransposeMatrixf! "
-		     "GetLastError=%i", GetLastError());
+			"GetLastError=%i", GetLastError());
 	glMultTransposeMatrixf = 
 		reinterpret_cast<PFNGLMULTTRANSPOSEMATRIXFPROC>(
 			wglGetProcAddress("glMultTransposeMatrixf"));
 	if(!glMultTransposeMatrixf)
 		KLOG(ERROR, "Failed to get glMultTransposeMatrixf! "
-		     "GetLastError=%i", GetLastError());
+			"GetLastError=%i", GetLastError());
 	/* Our OpenGL context should now be set up, so let's print out some info 
 		about it to the log. */
 	{
@@ -176,6 +185,38 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG(INFO, "version: %s", glGetString(GL_VERSION));
 		KLOG(INFO, "glsl version: %s", 
 			glGetString(GL_SHADING_LANGUAGE_VERSION));
+		GLubyte oglExtensionCStrBuffer[16*1024] = {};
+		int oglExtensionCStrBufferSize = 0;
+		GLint oglExtensions;
+		glGetIntegerv(GL_NUM_EXTENSIONS, &oglExtensions);
+		for(GLint e = 0; e < oglExtensions; e++) 
+		{
+			const GLubyte*const cStrExtension = 
+				glGetStringi(GL_EXTENSIONS, e);
+			const int charsWritten = sprintf_s(
+				reinterpret_cast<char*>(
+					oglExtensionCStrBuffer + oglExtensionCStrBufferSize), 
+				CARRAY_SIZE(oglExtensionCStrBuffer) - 
+					oglExtensionCStrBufferSize, 
+				"%s ", cStrExtension);
+			if(charsWritten > 0)
+				oglExtensionCStrBufferSize += charsWritten;
+			/* since we're logging extensions, we might as well obtain advanced 
+				extensions that are not guaranteed to be available by the core 
+				implementation */
+			/* @todo: obtain and implement GL_ARB_debug_output */
+#if 0/* OpenGL extension compatibility check example */
+			if ( strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0 )
+			{
+				// The extension is supported by our hardware and driver
+				// Try to get the "glDebugMessageCallbackARB" function :
+				glDebugMessageCallbackARB  = 
+					(PFNGLDEBUGMESSAGECALLBACKARBPROC) 
+						wglGetProcAddress("glDebugMessageCallbackARB");
+			}
+#endif//0
+		}
+		KLOG(INFO, "extensions: %s", oglExtensionCStrBuffer);
 		KLOG(INFO, "--------------------------");
 	}
 }

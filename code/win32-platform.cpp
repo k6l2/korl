@@ -589,7 +589,7 @@ internal PLATFORM_LOG(w32PlatformLog)
 	                stLocalTime.wSecond );
 #endif// INTERNAL_BUILD
 	// First, we build the new text to add to the log using a local buffer. //
-	local_persist const size_t MAX_LOG_LINE_SIZE = 1024;
+	local_persist const size_t MAX_LOG_LINE_SIZE = 16*1024;
 	char logLineBuffer[MAX_LOG_LINE_SIZE];
 	const char*const strCategory = 
 		   logCategory == PlatformLogCategory::K_INFO    ? "INFO"
