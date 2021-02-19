@@ -12,6 +12,20 @@ global_variable PFNGLBUFFERSUBDATAPROC glBufferSubData;
 global_variable PFNGLBINDBUFFERPROC glBindBuffer;
 global_variable PFNGLGETBUFFERPARAMETERIVPROC glGetBufferParameteriv;
 global_variable PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+/* core since 2.0 */
+global_variable PFNGLCREATESHADERPROC glCreateShader;
+global_variable PFNGLSHADERSOURCEPROC glShaderSource;
+global_variable PFNGLCOMPILESHADERPROC glCompileShader;
+global_variable PFNGLGETSHADERIVPROC glGetShaderiv;
+global_variable PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
+global_variable PFNGLCREATEPROGRAMPROC glCreateProgram;
+global_variable PFNGLATTACHSHADERPROC glAttachShader;
+global_variable PFNGLLINKPROGRAMPROC glLinkProgram;
+global_variable PFNGLGETPROGRAMIVPROC glGetProgramiv;
+global_variable PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
+global_variable PFNGLUSEPROGRAMPROC glUseProgram;
+global_variable PFNGLDELETESHADERPROC glDeleteShader;
+global_variable PFNGLDELETEPROGRAMPROC glDeleteProgram;
 /* core since 3.0 */
 global_variable PFNGLGETSTRINGIPROC glGetStringi;
 /* core since 3.1 */

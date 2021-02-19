@@ -31,11 +31,16 @@ namespace krb
 	struct Context
 	{
 		bool frameInProgress = false;
+		bool initialized = false;
 		Color4f32 defaultColor;
 		/* buffer for holding vertex data of "immediate" draw geometry */
 		u32 vboVertices = 0;
 		u32 vboVerticesSize;
 		u32 vboVerticesCapacity;
+		/* internal shaders for use with "immediate" draw API */
+		u32 shaderImmediateVertex;
+		u32 shaderImmediateFragment;
+		u32 programImmediate;
 	};
 	global_variable Context* g_context;
 }

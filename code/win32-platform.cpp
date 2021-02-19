@@ -3,6 +3,7 @@
 #include "win32-xinput.h"
 #include "win32-directinput.h"
 #include "win32-log.h"
+#include "win32-time.h"
 #include <strsafe.h>
 /* xiosbase declares an identifier called "internal" somewhere in its code, so I 
 	have to temporarily disable my disambiguation of the static keyword before 

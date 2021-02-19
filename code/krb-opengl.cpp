@@ -24,6 +24,19 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 	return errorCode;
 }
 #define GL_CHECK_ERROR() krbOglCheckErrors(__FILE__, __LINE__)
+#define KRB_COMPILE_SHADER(shader, src, logBuffer) \
+	glShaderSource(shader, 1, &src, nullptr);\
+	glCompileShader(shader);\
+	{\
+		GLint successCompile = GL_FALSE;\
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &successCompile);\
+		if(successCompile != GL_TRUE)\
+		{\
+			glGetShaderInfoLog(\
+				shader, CARRAY_SIZE(logBuffer), nullptr, logBuffer);\
+			KLOG(ERROR, "shader compile failure! '%s'", logBuffer);\
+		}\
+	}
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	korlAssert(!krb::g_context->frameInProgress);
@@ -39,9 +52,57 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	/* prepare vertex data buffers if they have not yet been prepared */
-	if(!krb::g_context->vboVertices)
+	/* lazy-initialize the global KRB context */
+	if(!krb::g_context->initialized)
 	{
+		/* prepare immediate-mode draw API shaders */
+		GLchar bufferShaderInfoLog[512];
+		const GLchar*const sourceShaderImmediateVertex = 
+			"#version 330 core\n"
+			"layout(location = 0) in vec3 attribute_position;\n"
+			"void main()\n"
+			"{\n"
+			"	gl_Position = vec4(attribute_position, 1.0);\n"
+			"}\0";
+		const GLchar*const sourceShaderImmediateFragment = 
+			"#version 330 core\n"
+			"out vec4 fragmentColor;\n"
+			"void main()\n"
+			"{\n"
+			"	fragmentColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+			"}\0";
+		krb::g_context->shaderImmediateVertex = 
+			glCreateShader(GL_VERTEX_SHADER);
+		krb::g_context->shaderImmediateFragment = 
+			glCreateShader(GL_FRAGMENT_SHADER);
+		KRB_COMPILE_SHADER(
+			krb::g_context->shaderImmediateVertex, 
+			sourceShaderImmediateVertex, bufferShaderInfoLog);
+		KRB_COMPILE_SHADER(
+			krb::g_context->shaderImmediateFragment, 
+			sourceShaderImmediateFragment, bufferShaderInfoLog);
+		krb::g_context->programImmediate = glCreateProgram();
+		glAttachShader(
+			krb::g_context->programImmediate, 
+			krb::g_context->shaderImmediateVertex);
+		glAttachShader(
+			krb::g_context->programImmediate, 
+			krb::g_context->shaderImmediateFragment);
+		glLinkProgram(krb::g_context->programImmediate);
+		{
+			GLint successLink = GL_FALSE;
+			glGetProgramiv(
+				krb::g_context->programImmediate, GL_LINK_STATUS, &successLink);
+			if(successLink != GL_TRUE)
+			{
+				glGetProgramInfoLog(
+					krb::g_context->programImmediate, 
+					CARRAY_SIZE(bufferShaderInfoLog), nullptr, 
+					bufferShaderInfoLog);
+				KLOG(ERROR, "link program failed! '%s'", bufferShaderInfoLog);
+			}
+		}
+		/* prepare immediate-mode draw API VBOs */
 		glGenBuffers(1, &krb::g_context->vboVertices);
 		glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboVertices);
 		krb::g_context->vboVerticesCapacity = 
@@ -56,6 +117,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		krb::g_context->vboVerticesSize = 0;
 	}
+	krb::g_context->initialized = true;
 	///@todo
 	GL_CHECK_ERROR();
 	/* clear the krb context */
