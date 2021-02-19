@@ -211,6 +211,14 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		glLoadTransposeMatrixf, PFNGLLOADTRANSPOSEMATRIXFPROC);
 	KORL_OGL_GET_EXTENSION_API(
 		glMultTransposeMatrixf, PFNGLMULTTRANSPOSEMATRIXFPROC);
+	KORL_OGL_GET_EXTENSION_API(glGenBuffers, PFNGLGENBUFFERSPROC);
+	KORL_OGL_GET_EXTENSION_API(glBufferData, PFNGLBUFFERDATAPROC);
+	KORL_OGL_GET_EXTENSION_API(glBufferSubData, PFNGLBUFFERSUBDATAPROC);
+	KORL_OGL_GET_EXTENSION_API(glBindBuffer, PFNGLBINDBUFFERPROC);
+	KORL_OGL_GET_EXTENSION_API(
+		glGetBufferParameteriv, PFNGLGETBUFFERPARAMETERIVPROC);
+	KORL_OGL_GET_EXTENSION_API(glDeleteBuffers, PFNGLDELETEBUFFERSPROC);
+	KORL_OGL_GET_EXTENSION_API(glCopyBufferSubData, PFNGLCOPYBUFFERSUBDATAPROC);
 	/* Our OpenGL context should now be set up, so let's print out some info 
 		about it to the log. */
 	{
@@ -249,7 +257,12 @@ internal void w32KrbOglInitialize(HWND hwnd)
 					glDebugMessageControl, PFNGLDEBUGMESSAGECONTROLPROC);
 			}
 		}
+#if INTERNAL_BUILD /* this is a HUGE log string, and I'm pretty sure we can 
+					derive what extensions are present on a setup based on the 
+					above data alone, so let's just not print this in deployed 
+					builds */
 		KLOG(INFO, "extensions: %s", oglExtensionCStrBuffer);
+#endif//INTERNAL_BUILD
 		KLOG(INFO, "--------------------------");
 	}
 	/* if this is a debug context, we should use more modern OpenGL debugging 

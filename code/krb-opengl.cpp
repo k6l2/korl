@@ -2,11 +2,11 @@
  * the Kyle's Renderer Backend interface.  
 */
 #include "krb-interface.h"
-///@TODO: maybe figure out a more platform-independent way of getting OpenGL
-///       function definitions.
+/* @TODO: maybe figure out a more platform-independent way of getting OpenGL
+	function definitions. */
 #ifdef _WIN32
-       #include "win32-main.h"
-       #include <GL/GL.h>
+	#include "win32-main.h"
+	#include <GL/GL.h>
 #endif
 #include "krb-opengl-extensions.h"
 internal GLenum krbOglCheckErrors(const char* file, int line)
@@ -26,6 +26,7 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 #define GL_CHECK_ERROR() krbOglCheckErrors(__FILE__, __LINE__)
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
+	korlAssert(!krb::g_context->frameInProgress);
 	/* Disable the scissor test BEFORE clearing the color buffer so we can 
 		guarantee the ENTIRE window gets cleared! */
 	glDisable(GL_SCISSOR_TEST);
@@ -38,9 +39,36 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	/* prepare vertex data buffers if they have not yet been prepared */
+	if(!krb::g_context->vboVertices)
+	{
+		glGenBuffers(1, &krb::g_context->vboVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboVertices);
+		krb::g_context->vboVerticesCapacity = 
+#if 1 /* testing dynamic VBO resizing */
+			32;
+#else /* set the VBO capacity to something more sensible to minimize reallocs */
+			kmath::safeTruncateU32(kmath::kilobytes(16));
+#endif
+		glBufferData(
+			GL_ARRAY_BUFFER, krb::g_context->vboVerticesCapacity, 
+			nullptr, GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		krb::g_context->vboVerticesSize = 0;
+	}
+	///@todo
 	GL_CHECK_ERROR();
 	/* clear the krb context */
-	*(krb::g_context) = {};
+	krb::g_context->defaultColor = krb::WHITE;
+	krb::g_context->frameInProgress = true;
+}
+internal KRB_END_FRAME(krbEndFrame)
+{
+	korlAssert(krb::g_context->frameInProgress);
+	/* flush all buffers which have yet to be drawn */
+	///@todo
+	krb::g_context->vboVerticesSize = 0;
+	krb::g_context->frameInProgress = false;
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
@@ -270,12 +298,67 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 {
 	korlAssert(vertexCount % 3 == 0);
 	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
+#if 1
+	korlAssert(vertexStride == 36);// 36 == sizeof(KgtVertex)
+	// 0 == offsetof(KgtVertex, position)
+	korlAssert(vertexAttribOffsets.position_3f32 == 0);
+	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
+		vertex VBO has enough capacity for the vertices! */
+	const u32 vboVerticesRemainingBytes = 
+		krb::g_context->vboVerticesCapacity - krb::g_context->vboVerticesSize;
+	if(vertexCount*vertexStride > vboVerticesRemainingBytes)
+	{
+		/* if not, allocate the next highest power of 2 */
+		const u32 bytesRequired = 
+			krb::g_context->vboVerticesSize + vertexCount*vertexStride;
+		u32 newCap = krb::g_context->vboVerticesCapacity;
+		while(vertexCount*vertexStride > 
+			newCap - krb::g_context->vboVerticesSize)
+		{
+			/* gradually double capacity while making sure that we don't 
+				overflow */
+			const u32 oldCap = newCap;
+			newCap *= 2;
+			korlAssert(newCap > oldCap);
+		}
+		/* create a new buffer with newCap size bytes */
+		GLuint vboNew;
+		glGenBuffers(1, &vboNew);
+		glBindBuffer(GL_ARRAY_BUFFER, vboNew);
+		glBufferData(GL_ARRAY_BUFFER, newCap, nullptr, GL_DYNAMIC_DRAW);
+		/* copy the old buffer data to the new buffer */
+		glBindBuffer(GL_COPY_READ_BUFFER, krb::g_context->vboVertices);
+		glCopyBufferSubData(
+			GL_COPY_READ_BUFFER, GL_ARRAY_BUFFER, 0, 0, 
+			krb::g_context->vboVerticesSize);
+		glBindBuffer(GL_ARRAY_BUFFER    , 0);
+		glBindBuffer(GL_COPY_READ_BUFFER, 0);
+		/* delete the old buffer, replace reference with the new buffer */
+		glDeleteBuffers(1, &krb::g_context->vboVertices);
+		krb::g_context->vboVertices         = vboNew;
+		krb::g_context->vboVerticesCapacity = newCap;
+	}
+	/* append vertices to the end of the VBO */
+	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboVertices);
+	glBufferSubData(
+		GL_ARRAY_BUFFER, krb::g_context->vboVerticesSize, 
+		vertexCount*vertexStride, vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	krb::g_context->vboVerticesSize += vertexCount*vertexStride;
+#else
+	/* support VBOs for all possible permutations/combinations of 
+		vertexAttribOffsets */
+	///@todo
+#endif//0
+#if 0
 	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
 		glDisable(GL_TEXTURE_2D);
 	else
 		glEnable(GL_TEXTURE_2D);
+#endif//0
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#if 0
 	if(vertexAttribOffsets.color_4f32 >= vertexStride)
 		glColor4f(krb::g_context->defaultColor.r, 
 		          krb::g_context->defaultColor.g, 
@@ -306,6 +389,7 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 		glVertex3fv(v3f32_position);
 	}
 	glEnd();
+#endif//0
 	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_QUAD(krbDrawQuad)

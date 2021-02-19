@@ -388,7 +388,7 @@ internal void
 	kgtSpriteFontDrawBatch(
 		KgtAssetIndex kaiSpriteFontMeta, const v2f32& positionOffset, 
 		const void* vertices, const void* verticesOutline, 
-		size_t vertexCount, size_t vertexStride, 
+		u32 vertexCount, u32 vertexStride, 
 		const KrbVertexAttributeOffsets& vertexAttribOffsets, 
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {

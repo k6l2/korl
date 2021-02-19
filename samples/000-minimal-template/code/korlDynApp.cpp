@@ -5,6 +5,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		return false;
 //	ImGui::Text("Hello KORL!");
 	g_krb->beginFrame(0.2f, 0, 0.2f);
+	defer(g_krb->endFrame());
+	/* minimal code to just draw a triangle */
+	KgtVertex triVertices[] = 
+		{ {.position = {-0.5f, -0.5f,  0.f}}
+		, {.position = { 0.5f, -0.5f,  0.f}}
+		, {.position = { 0.5f,  0.5f,  0.f}} };
+	g_krb->drawTris(
+		triVertices, CARRAY_SIZE(triVertices), sizeof(*triVertices), 
+		KGT_VERTEX_ATTRIBS_POSITION_ONLY);
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)

@@ -1,4 +1,5 @@
 #include "win32-dynApp.h"
+#include "win32-time.h"
 internal GAME_INITIALIZE(gameInitializeStub)
 {
 }

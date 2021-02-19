@@ -30,12 +30,23 @@ namespace krb
 	global_variable const Color4f32 YELLOW      = {1,1,0,1};
 	struct Context
 	{
-		Color4f32 defaultColor = WHITE;
+		bool frameInProgress = false;
+		Color4f32 defaultColor;
+		/* buffer for holding vertex data of "immediate" draw geometry */
+		u32 vboVertices = 0;
+		u32 vboVerticesSize;
+		u32 vboVerticesCapacity;
 	};
 	global_variable Context* g_context;
 }
+/** This API MUST be paired with a call to KRB_END_FRAME! */
 #define KRB_BEGIN_FRAME(name) \
 	void name(f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue)
+/** Calling this function ensures that any buffers that are currently being 
+ * filled with data are drawn to the screen if they haven't already been.  This 
+ * API MUST be called for every call to KRB_BEGIN_FRAME! */
+#define KRB_END_FRAME(name) \
+	void name()
 #define KRB_SET_DEPTH_TESTING(name) \
 	void name(bool enable)
 #define KRB_SET_BACKFACE_CULLING(name) \
@@ -66,13 +77,13 @@ struct KrbVertexAttributeOffsets
 	size_t texCoord_2f32;
 };
 #define KRB_DRAW_POINTS(name) \
-	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
+	void name(const void* vertices, u32 vertexCount, u32 vertexStride, \
 	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
 #define KRB_DRAW_LINES(name) \
-	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
+	void name(const void* vertices, u32 vertexCount, u32 vertexStride, \
 	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
 #define KRB_DRAW_TRIS(name) \
-	void name(const void* vertices, size_t vertexCount, size_t vertexStride, \
+	void name(const void* vertices, u32 vertexCount, u32 vertexStride, \
 	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
 /** 
  * @param ratioAnchor is relative to the top-left (-X, Y) most point of the quad 
@@ -150,6 +161,7 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
 #define KRB_DISABLE_CLIP_BOX(name) \
 	void name()
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
+typedef KRB_END_FRAME(fnSig_krbEndFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
 typedef KRB_SET_WIREFRAME(fnSig_krbSetWireframe);
@@ -179,6 +191,7 @@ typedef KRB_SET_DEFAULT_COLOR(fnSig_krbSetDefaultColor);
 typedef KRB_SET_CLIP_BOX(fnSig_krbSetClipBox);
 typedef KRB_DISABLE_CLIP_BOX(fnSig_krbDisableClipBox);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
+internal KRB_END_FRAME(krbEndFrame);
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
 internal KRB_SET_WIREFRAME(krbSetWireframe);
@@ -210,6 +223,7 @@ internal KRB_DISABLE_CLIP_BOX(krbDisableClipBox);
 struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
+	fnSig_krbEndFrame*           endFrame           = krbEndFrame;
 	fnSig_krbSetDepthTesting*    setDepthTesting    = krbSetDepthTesting;
 	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
 	fnSig_krbSetWireframe*       setWireframe       = krbSetWireframe;
