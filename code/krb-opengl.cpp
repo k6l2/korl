@@ -37,6 +37,147 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 			KLOG(ERROR, "shader compile failure! '%s'", logBuffer);\
 		}\
 	}
+/** This must be called whenever the internal immediate mode VBO gets expanded 
+ * to hold more data, since we will create a new VBO with a larger size and copy 
+ * the data from the old VBO to it! */
+internal void korl_rb_resetImmediateModeVertexAttributes()
+{
+	glBindVertexArray(krb::g_context->vaoImmediate);
+#if 1
+	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
+	/* 0 == attribute_position */
+	/* 36 == sizeof(KgtVertex) */
+	/* 0 == offsetof(KgtVertex, position) */
+	glVertexAttribPointer(
+		0, 3, GL_FLOAT, GL_FALSE, 36, static_cast<void*>(0));
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+#else
+	/* allow general vertex layouts/strides */
+	///@todo
+#endif
+	glBindVertexArray(0);
+	GL_CHECK_ERROR();
+}
+internal void korl_rb_reserveImmediateModeVboBytes(u32 additionalBytes)
+{
+#if 1
+	const u32 vertexStride = 36;//36 == sizeof(KgtVertex)
+#else
+	/* support arbitrary vertex sizes */
+	///@todo
+#endif
+	const u32 vboImmediateUsedBytes = 
+		krb::g_context->vboImmediateVertexCount * vertexStride;
+	const u32 vboImmediateRemainingBytes = 
+		krb::g_context->vboImmediateCapacity - vboImmediateUsedBytes;
+	if(additionalBytes > vboImmediateRemainingBytes)
+	{
+		/* if not, allocate the next highest power of 2 */
+		const u32 bytesRequired = vboImmediateUsedBytes + additionalBytes;
+		u32 newCap = krb::g_context->vboImmediateCapacity;
+		while(additionalBytes > newCap - vboImmediateUsedBytes)
+		{
+			/* gradually double capacity while making sure that we don't 
+				overflow */
+			const u32 oldCap = newCap;
+			newCap *= 2;
+			korlAssert(newCap > oldCap);
+		}
+		/* create a new buffer with newCap size bytes */
+		GLuint vboNew;
+		glGenBuffers(1, &vboNew);
+		glBindBuffer(GL_ARRAY_BUFFER, vboNew);
+		glBufferData(GL_ARRAY_BUFFER, newCap, nullptr, GL_DYNAMIC_DRAW);
+		/* copy the old buffer data to the new buffer */
+		glBindBuffer(GL_COPY_READ_BUFFER, krb::g_context->vboImmediate);
+		glCopyBufferSubData(
+			GL_COPY_READ_BUFFER, GL_ARRAY_BUFFER, 0, 0, 
+			vboImmediateUsedBytes);
+		glBindBuffer(GL_ARRAY_BUFFER    , 0);
+		glBindBuffer(GL_COPY_READ_BUFFER, 0);
+		/* delete the old buffer, replace reference with the new buffer */
+		glDeleteBuffers(1, &krb::g_context->vboImmediate);
+		krb::g_context->vboImmediate         = vboNew;
+		krb::g_context->vboImmediateCapacity = newCap;
+		/* update the immediate-mode VAO to use the new buffer */
+		korl_rb_resetImmediateModeVertexAttributes();
+	}
+	GL_CHECK_ERROR();
+}
+internal void korl_rb_lazyInitializeContext()
+{
+	if(krb::g_context->initialized)
+		return;
+	/* prepare immediate-mode draw API shaders */
+	GLchar bufferShaderInfoLog[512];
+	const GLchar*const sourceShaderImmediateVertex = 
+		"#version 330 core\n"
+		"layout(location = 0) in vec3 attribute_position;\n"
+		"void main()\n"
+		"{\n"
+		"	gl_Position = vec4(attribute_position, 1.0);\n"
+		"}\0";
+	const GLchar*const sourceShaderImmediateFragment = 
+		"#version 330 core\n"
+		"out vec4 fragmentColor;\n"
+		"void main()\n"
+		"{\n"
+		"	fragmentColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+		"}\0";
+	krb::g_context->shaderImmediateVertex = 
+		glCreateShader(GL_VERTEX_SHADER);
+	krb::g_context->shaderImmediateFragment = 
+		glCreateShader(GL_FRAGMENT_SHADER);
+	KRB_COMPILE_SHADER(
+		krb::g_context->shaderImmediateVertex, 
+		sourceShaderImmediateVertex, bufferShaderInfoLog);
+	KRB_COMPILE_SHADER(
+		krb::g_context->shaderImmediateFragment, 
+		sourceShaderImmediateFragment, bufferShaderInfoLog);
+	krb::g_context->programImmediate = glCreateProgram();
+	glAttachShader(
+		krb::g_context->programImmediate, 
+		krb::g_context->shaderImmediateVertex);
+	glAttachShader(
+		krb::g_context->programImmediate, 
+		krb::g_context->shaderImmediateFragment);
+	glLinkProgram(krb::g_context->programImmediate);
+	{
+		GLint successLink = GL_FALSE;
+		glGetProgramiv(
+			krb::g_context->programImmediate, GL_LINK_STATUS, &successLink);
+		if(successLink != GL_TRUE)
+		{
+			glGetProgramInfoLog(
+				krb::g_context->programImmediate, 
+				CARRAY_SIZE(bufferShaderInfoLog), nullptr, 
+				bufferShaderInfoLog);
+			KLOG(ERROR, "link program failed! '%s'", bufferShaderInfoLog);
+		}
+	}
+	/* prepare immediate-mode draw API VBOs */
+	glGenBuffers(1, &krb::g_context->vboImmediate);
+	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
+	krb::g_context->vboImmediateCapacity = 
+#if 1 /* testing dynamic VBO resizing */
+		32;
+#else /* set the VBO capacity to something more sensible to minimize reallocs */
+		kmath::safeTruncateU32(kmath::kilobytes(16));
+#endif
+	glBufferData(
+		GL_ARRAY_BUFFER, krb::g_context->vboImmediateCapacity, 
+		nullptr, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	krb::g_context->vboImmediateVertexCount = 0;
+	/* prepare immediate-mode VAO */
+	glGenVertexArrays(1, &krb::g_context->vaoImmediate);
+	glBindVertexArray(krb::g_context->vaoImmediate);
+	glEnableVertexAttribArray(0);// attribute_position
+	glBindVertexArray(0);
+	GL_CHECK_ERROR();
+	korl_rb_resetImmediateModeVertexAttributes();
+	krb::g_context->initialized = true;
+}
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	korlAssert(!krb::g_context->frameInProgress);
@@ -52,74 +193,8 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	/* lazy-initialize the global KRB context */
-	if(!krb::g_context->initialized)
-	{
-		/* prepare immediate-mode draw API shaders */
-		GLchar bufferShaderInfoLog[512];
-		const GLchar*const sourceShaderImmediateVertex = 
-			"#version 330 core\n"
-			"layout(location = 0) in vec3 attribute_position;\n"
-			"void main()\n"
-			"{\n"
-			"	gl_Position = vec4(attribute_position, 1.0);\n"
-			"}\0";
-		const GLchar*const sourceShaderImmediateFragment = 
-			"#version 330 core\n"
-			"out vec4 fragmentColor;\n"
-			"void main()\n"
-			"{\n"
-			"	fragmentColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
-			"}\0";
-		krb::g_context->shaderImmediateVertex = 
-			glCreateShader(GL_VERTEX_SHADER);
-		krb::g_context->shaderImmediateFragment = 
-			glCreateShader(GL_FRAGMENT_SHADER);
-		KRB_COMPILE_SHADER(
-			krb::g_context->shaderImmediateVertex, 
-			sourceShaderImmediateVertex, bufferShaderInfoLog);
-		KRB_COMPILE_SHADER(
-			krb::g_context->shaderImmediateFragment, 
-			sourceShaderImmediateFragment, bufferShaderInfoLog);
-		krb::g_context->programImmediate = glCreateProgram();
-		glAttachShader(
-			krb::g_context->programImmediate, 
-			krb::g_context->shaderImmediateVertex);
-		glAttachShader(
-			krb::g_context->programImmediate, 
-			krb::g_context->shaderImmediateFragment);
-		glLinkProgram(krb::g_context->programImmediate);
-		{
-			GLint successLink = GL_FALSE;
-			glGetProgramiv(
-				krb::g_context->programImmediate, GL_LINK_STATUS, &successLink);
-			if(successLink != GL_TRUE)
-			{
-				glGetProgramInfoLog(
-					krb::g_context->programImmediate, 
-					CARRAY_SIZE(bufferShaderInfoLog), nullptr, 
-					bufferShaderInfoLog);
-				KLOG(ERROR, "link program failed! '%s'", bufferShaderInfoLog);
-			}
-		}
-		/* prepare immediate-mode draw API VBOs */
-		glGenBuffers(1, &krb::g_context->vboVertices);
-		glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboVertices);
-		krb::g_context->vboVerticesCapacity = 
-#if 1 /* testing dynamic VBO resizing */
-			32;
-#else /* set the VBO capacity to something more sensible to minimize reallocs */
-			kmath::safeTruncateU32(kmath::kilobytes(16));
-#endif
-		glBufferData(
-			GL_ARRAY_BUFFER, krb::g_context->vboVerticesCapacity, 
-			nullptr, GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		krb::g_context->vboVerticesSize = 0;
-	}
-	krb::g_context->initialized = true;
-	///@todo
 	GL_CHECK_ERROR();
+	korl_rb_lazyInitializeContext();
 	/* clear the krb context */
 	krb::g_context->defaultColor = krb::WHITE;
 	krb::g_context->frameInProgress = true;
@@ -128,8 +203,16 @@ internal KRB_END_FRAME(krbEndFrame)
 {
 	korlAssert(krb::g_context->frameInProgress);
 	/* flush all buffers which have yet to be drawn */
-	///@todo
-	krb::g_context->vboVerticesSize = 0;
+	if(krb::g_context->vboImmediateVertexCount)
+	{
+		glUseProgram(krb::g_context->programImmediate);
+		glBindVertexArray(krb::g_context->vaoImmediate);
+		/* @todo: move the draw mode out to the context as a "draw state" */
+		glDrawArrays(GL_TRIANGLES, 0, krb::g_context->vboImmediateVertexCount);
+		glBindVertexArray(0);
+		glUseProgram(0);
+		krb::g_context->vboImmediateVertexCount = 0;
+	}
 	krb::g_context->frameInProgress = false;
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
@@ -366,47 +449,14 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 	korlAssert(vertexAttribOffsets.position_3f32 == 0);
 	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
 		vertex VBO has enough capacity for the vertices! */
-	const u32 vboVerticesRemainingBytes = 
-		krb::g_context->vboVerticesCapacity - krb::g_context->vboVerticesSize;
-	if(vertexCount*vertexStride > vboVerticesRemainingBytes)
-	{
-		/* if not, allocate the next highest power of 2 */
-		const u32 bytesRequired = 
-			krb::g_context->vboVerticesSize + vertexCount*vertexStride;
-		u32 newCap = krb::g_context->vboVerticesCapacity;
-		while(vertexCount*vertexStride > 
-			newCap - krb::g_context->vboVerticesSize)
-		{
-			/* gradually double capacity while making sure that we don't 
-				overflow */
-			const u32 oldCap = newCap;
-			newCap *= 2;
-			korlAssert(newCap > oldCap);
-		}
-		/* create a new buffer with newCap size bytes */
-		GLuint vboNew;
-		glGenBuffers(1, &vboNew);
-		glBindBuffer(GL_ARRAY_BUFFER, vboNew);
-		glBufferData(GL_ARRAY_BUFFER, newCap, nullptr, GL_DYNAMIC_DRAW);
-		/* copy the old buffer data to the new buffer */
-		glBindBuffer(GL_COPY_READ_BUFFER, krb::g_context->vboVertices);
-		glCopyBufferSubData(
-			GL_COPY_READ_BUFFER, GL_ARRAY_BUFFER, 0, 0, 
-			krb::g_context->vboVerticesSize);
-		glBindBuffer(GL_ARRAY_BUFFER    , 0);
-		glBindBuffer(GL_COPY_READ_BUFFER, 0);
-		/* delete the old buffer, replace reference with the new buffer */
-		glDeleteBuffers(1, &krb::g_context->vboVertices);
-		krb::g_context->vboVertices         = vboNew;
-		krb::g_context->vboVerticesCapacity = newCap;
-	}
+	korl_rb_reserveImmediateModeVboBytes(vertexCount*vertexStride);
 	/* append vertices to the end of the VBO */
-	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboVertices);
+	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
 	glBufferSubData(
-		GL_ARRAY_BUFFER, krb::g_context->vboVerticesSize, 
+		GL_ARRAY_BUFFER, krb::g_context->vboImmediateVertexCount*vertexStride, 
 		vertexCount*vertexStride, vertices);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	krb::g_context->vboVerticesSize += vertexCount*vertexStride;
+	krb::g_context->vboImmediateVertexCount += vertexCount;
 #else
 	/* support VBOs for all possible permutations/combinations of 
 		vertexAttribOffsets */

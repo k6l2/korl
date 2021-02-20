@@ -26,8 +26,12 @@ global_variable PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
 global_variable PFNGLUSEPROGRAMPROC glUseProgram;
 global_variable PFNGLDELETESHADERPROC glDeleteShader;
 global_variable PFNGLDELETEPROGRAMPROC glDeleteProgram;
+global_variable PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+global_variable PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
 /* core since 3.0 */
 global_variable PFNGLGETSTRINGIPROC glGetStringi;
+global_variable PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
+global_variable PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
 /* core since 3.1 */
 global_variable PFNGLCOPYBUFFERSUBDATAPROC glCopyBufferSubData;
 /* advanced extension API; these might NOT be valid, the caller must check! */

@@ -10,7 +10,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	KgtVertex triVertices[] = 
 		{ {.position = {-0.5f, -0.5f,  0.f}}
 		, {.position = { 0.5f, -0.5f,  0.f}}
-		, {.position = { 0.5f,  0.5f,  0.f}} };
+		, {.position = { 0.0f,  0.5f,  0.f}} };
 	g_krb->drawTris(
 		triVertices, CARRAY_SIZE(triVertices), sizeof(*triVertices), 
 		KGT_VERTEX_ATTRIBS_POSITION_ONLY);

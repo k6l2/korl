@@ -33,10 +33,12 @@ namespace krb
 		bool frameInProgress = false;
 		bool initialized = false;
 		Color4f32 defaultColor;
-		/* buffer for holding vertex data of "immediate" draw geometry */
-		u32 vboVertices = 0;
-		u32 vboVerticesSize;
-		u32 vboVerticesCapacity;
+		/* internal VAO for "immidiate" draw API */
+		u32 vaoImmediate;
+		/* internal buffer for holding vertex data of "immediate" draw API */
+		u32 vboImmediate = 0;
+		u32 vboImmediateVertexCount;
+		u32 vboImmediateCapacity;
 		/* internal shaders for use with "immediate" draw API */
 		u32 shaderImmediateVertex;
 		u32 shaderImmediateFragment;
@@ -81,15 +83,15 @@ struct KrbVertexAttributeOffsets
 	size_t color_4f32;
 	size_t texCoord_2f32;
 };
-#define KRB_DRAW_POINTS(name) \
-	void name(const void* vertices, u32 vertexCount, u32 vertexStride, \
-	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
-#define KRB_DRAW_LINES(name) \
-	void name(const void* vertices, u32 vertexCount, u32 vertexStride, \
-	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
-#define KRB_DRAW_TRIS(name) \
-	void name(const void* vertices, u32 vertexCount, u32 vertexStride, \
-	          const KrbVertexAttributeOffsets& vertexAttribOffsets)
+#define KRB_DRAW_POINTS(name) void name(\
+	const void* vertices, u32 vertexCount, u32 vertexStride, \
+	const KrbVertexAttributeOffsets& vertexAttribOffsets)
+#define KRB_DRAW_LINES(name) void name(\
+	const void* vertices, u32 vertexCount, u32 vertexStride, \
+	const KrbVertexAttributeOffsets& vertexAttribOffsets)
+#define KRB_DRAW_TRIS(name) void name(\
+	const void* vertices, u32 vertexCount, u32 vertexStride, \
+	const KrbVertexAttributeOffsets& vertexAttribOffsets)
 /** 
  * @param ratioAnchor is relative to the top-left (-X, Y) most point of the quad 
  *                    mesh.  Positive values point in the {X,-Y} direction in 
