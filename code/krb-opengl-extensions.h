@@ -28,6 +28,9 @@ global_variable PFNGLDELETESHADERPROC glDeleteShader;
 global_variable PFNGLDELETEPROGRAMPROC glDeleteProgram;
 global_variable PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
 global_variable PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+global_variable PFNGLUNIFORM4FPROC glUniform4f;
+global_variable PFNGLUNIFORM4FVPROC glUniform4fv;
+global_variable PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
 /* core since 3.0 */
 global_variable PFNGLGETSTRINGIPROC glGetStringi;
 global_variable PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;

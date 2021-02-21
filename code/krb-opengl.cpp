@@ -9,6 +9,14 @@
 	#include <GL/GL.h>
 #endif
 #include "krb-opengl-extensions.h"
+bool 
+	KrbVertexAttributeOffsets::operator==(
+		const KrbVertexAttributeOffsets& other) const
+{
+	return position_3f32 == other.position_3f32 
+		&& color_4f32    == other.color_4f32 
+		&& texCoord_2f32 == other.texCoord_2f32;
+}
 internal GLenum krbOglCheckErrors(const char* file, int line)
 {
 	GLenum errorCode;
@@ -37,37 +45,72 @@ internal GLenum krbOglCheckErrors(const char* file, int line)
 			KLOG(ERROR, "shader compile failure! '%s'", logBuffer);\
 		}\
 	}
-/** This must be called whenever the internal immediate mode VBO gets expanded 
- * to hold more data, since we will create a new VBO with a larger size and copy 
- * the data from the old VBO to it! */
-internal void korl_rb_resetImmediateModeVertexAttributes()
+#define KRB_LINK_PROGRAM(program, logBuffer) \
+	glLinkProgram(program);\
+	{\
+		GLint successLink = GL_FALSE;\
+		glGetProgramiv(program, GL_LINK_STATUS, &successLink);\
+		if(successLink != GL_TRUE)\
+		{\
+			glGetProgramInfoLog(\
+				program, CARRAY_SIZE(logBuffer), nullptr, logBuffer);\
+			KLOG(ERROR, "link program failed! '%s'", logBuffer);\
+		}\
+	}
+/** This must be called whenever: 
+ *   - the internal immediate mode VBO gets expanded to hold more data, since we 
+ *     will create a new VBO with a larger size and copy the data from the old 
+ *     VBO to it!
+ *   - the structure of the vertex data being sent to the render backend 
+ *     changes */
+internal void korl_rb_ogl_resetImmediateModeVertexAttributes()
 {
+	/* bind to the internal immediate-mode VAO & VBO used by it */
 	glBindVertexArray(krb::g_context->vaoImmediate);
-#if 1
 	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
-	/* 0 == attribute_position */
-	/* 36 == sizeof(KgtVertex) */
-	/* 0 == offsetof(KgtVertex, position) */
-	glVertexAttribPointer(
-		0, 3, GL_FLOAT, GL_FALSE, 36, static_cast<void*>(0));
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-#else
 	/* allow general vertex layouts/strides */
-	///@todo
-#endif
+	// position is REQUIRED to be a valid attribute within vertex data! //
+	korlAssert(
+		krb::g_context->immediateVertexAttributeOffsets.position_3f32 < 
+		krb::g_context->immediateVertexStride);
+	/* @robustness: ensure that all present vertex attributes do not overlap 
+		each other, or go out-of-bounds of the vertex stride, as these 
+		situations would prove to be VERY annoying to debug... */
+	glVertexAttribPointer(
+		// 0 == hard-coded internal position attribute location
+		0, 3, GL_FLOAT, GL_FALSE, krb::g_context->immediateVertexStride, 
+		// dumb looking cast due to bad OGL API & dumb 64-bit conversion
+		reinterpret_cast<void*>(static_cast<size_t>(
+			krb::g_context->immediateVertexAttributeOffsets.position_3f32)));
+	// optional color vertex attribute //
+	if(krb::g_context->immediateVertexAttributeOffsets.color_4f32 < 
+			krb::g_context->immediateVertexStride)
+		glVertexAttribPointer(
+			// 1 == hard-coded internal color attribute location
+			1, 4, GL_FLOAT, GL_FALSE, krb::g_context->immediateVertexStride, 
+			// dumb looking cast due to bad OGL API & dumb 64-bit conversion
+			reinterpret_cast<void*>(static_cast<size_t>(
+				krb::g_context->immediateVertexAttributeOffsets.color_4f32)));
+	// optional texture normal attribute //
+	if(krb::g_context->immediateVertexAttributeOffsets.texCoord_2f32 < 
+			krb::g_context->immediateVertexStride)
+		glVertexAttribPointer(
+			// 2 == hard-coded internal texture normal attribute location
+			2, 2, GL_FLOAT, GL_FALSE, krb::g_context->immediateVertexStride, 
+			// dumb looking cast due to bad OGL API & dumb 64-bit conversion
+			reinterpret_cast<void*>(static_cast<size_t>(
+				krb::g_context->immediateVertexAttributeOffsets
+					.texCoord_2f32)));
+	/* unbind our internal immediate-mode VAO/VBO; we're done! */
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	GL_CHECK_ERROR();
 }
-internal void korl_rb_reserveImmediateModeVboBytes(u32 additionalBytes)
+internal void korl_rb_ogl_reserveImmediateModeVboBytes(u32 additionalBytes)
 {
-#if 1
-	const u32 vertexStride = 36;//36 == sizeof(KgtVertex)
-#else
-	/* support arbitrary vertex sizes */
-	///@todo
-#endif
 	const u32 vboImmediateUsedBytes = 
-		krb::g_context->vboImmediateVertexCount * vertexStride;
+		krb::g_context->vboImmediateVertexCount * 
+		krb::g_context->immediateVertexStride;
 	const u32 vboImmediateRemainingBytes = 
 		krb::g_context->vboImmediateCapacity - vboImmediateUsedBytes;
 	if(additionalBytes > vboImmediateRemainingBytes)
@@ -100,11 +143,11 @@ internal void korl_rb_reserveImmediateModeVboBytes(u32 additionalBytes)
 		krb::g_context->vboImmediate         = vboNew;
 		krb::g_context->vboImmediateCapacity = newCap;
 		/* update the immediate-mode VAO to use the new buffer */
-		korl_rb_resetImmediateModeVertexAttributes();
+		korl_rb_ogl_resetImmediateModeVertexAttributes();
 	}
 	GL_CHECK_ERROR();
 }
-internal void korl_rb_lazyInitializeContext()
+internal void korl_rb_ogl_lazyInitializeContext()
 {
 	if(krb::g_context->initialized)
 		return;
@@ -113,18 +156,37 @@ internal void korl_rb_lazyInitializeContext()
 	const GLchar*const sourceShaderImmediateVertex = 
 		"#version 330 core\n"
 		"layout(location = 0) in vec3 attribute_position;\n"
+		"uniform vec4 uniform_defaultColor;\n"
+		"out vec4 vertexColor;\n"
 		"void main()\n"
 		"{\n"
 		"	gl_Position = vec4(attribute_position, 1.0);\n"
+//		"	vertexColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+		"	vertexColor = uniform_defaultColor;\n"
+		"}\0";
+	const GLchar*const sourceShaderImmediateVertexColor = 
+		"#version 330 core\n"
+		"layout(location = 0) in vec3 attribute_position;\n"
+		"layout(location = 1) in vec4 attribute_color;\n"
+		"out vec4 vertexColor;\n"
+		"void main()\n"
+		"{\n"
+		"	gl_Position = vec4(attribute_position, 1.0);\n"
+//		"	vertexColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+		"	vertexColor = attribute_color;\n"
 		"}\0";
 	const GLchar*const sourceShaderImmediateFragment = 
 		"#version 330 core\n"
+		"in vec4 vertexColor;\n"
 		"out vec4 fragmentColor;\n"
 		"void main()\n"
 		"{\n"
-		"	fragmentColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+		"	fragmentColor = vertexColor;\n"
 		"}\0";
+	/* compile internal immediate-mode shaders */
 	krb::g_context->shaderImmediateVertex = 
+		glCreateShader(GL_VERTEX_SHADER);
+	krb::g_context->shaderImmediateVertexColor = 
 		glCreateShader(GL_VERTEX_SHADER);
 	krb::g_context->shaderImmediateFragment = 
 		glCreateShader(GL_FRAGMENT_SHADER);
@@ -132,8 +194,12 @@ internal void korl_rb_lazyInitializeContext()
 		krb::g_context->shaderImmediateVertex, 
 		sourceShaderImmediateVertex, bufferShaderInfoLog);
 	KRB_COMPILE_SHADER(
+		krb::g_context->shaderImmediateVertexColor, 
+		sourceShaderImmediateVertexColor, bufferShaderInfoLog);
+	KRB_COMPILE_SHADER(
 		krb::g_context->shaderImmediateFragment, 
 		sourceShaderImmediateFragment, bufferShaderInfoLog);
+	/* link internal immediate-mode programs */
 	krb::g_context->programImmediate = glCreateProgram();
 	glAttachShader(
 		krb::g_context->programImmediate, 
@@ -141,20 +207,16 @@ internal void korl_rb_lazyInitializeContext()
 	glAttachShader(
 		krb::g_context->programImmediate, 
 		krb::g_context->shaderImmediateFragment);
-	glLinkProgram(krb::g_context->programImmediate);
-	{
-		GLint successLink = GL_FALSE;
-		glGetProgramiv(
-			krb::g_context->programImmediate, GL_LINK_STATUS, &successLink);
-		if(successLink != GL_TRUE)
-		{
-			glGetProgramInfoLog(
-				krb::g_context->programImmediate, 
-				CARRAY_SIZE(bufferShaderInfoLog), nullptr, 
-				bufferShaderInfoLog);
-			KLOG(ERROR, "link program failed! '%s'", bufferShaderInfoLog);
-		}
-	}
+	KRB_LINK_PROGRAM(krb::g_context->programImmediate, bufferShaderInfoLog);
+	krb::g_context->programImmediateColor = glCreateProgram();
+	glAttachShader(
+		krb::g_context->programImmediateColor, 
+		krb::g_context->shaderImmediateVertexColor);
+	glAttachShader(
+		krb::g_context->programImmediateColor, 
+		krb::g_context->shaderImmediateFragment);
+	KRB_LINK_PROGRAM(
+		krb::g_context->programImmediateColor, bufferShaderInfoLog);
 	/* prepare immediate-mode draw API VBOs */
 	glGenBuffers(1, &krb::g_context->vboImmediate);
 	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
@@ -173,10 +235,56 @@ internal void korl_rb_lazyInitializeContext()
 	glGenVertexArrays(1, &krb::g_context->vaoImmediate);
 	glBindVertexArray(krb::g_context->vaoImmediate);
 	glEnableVertexAttribArray(0);// attribute_position
+	glEnableVertexAttribArray(1);// attribute_color
 	glBindVertexArray(0);
 	GL_CHECK_ERROR();
-	korl_rb_resetImmediateModeVertexAttributes();
+#if 0/* we don't actually need to update the VAO here, since this will happen 
+		when we attempt to add vertex data for the first time anyway */
+	korl_rb_ogl_resetImmediateModeVertexAttributes();
+#endif//0
 	krb::g_context->initialized = true;
+}
+internal void korl_rb_ogl_flushImmediateBuffer()
+{
+	/* flush all buffers which have yet to be drawn */
+	if(krb::g_context->vboImmediateVertexCount)
+	{
+		/* we need to choose the appropriate program to use based on the vertex 
+			attribute layout & other render states for immediate-mode */
+		GLuint program = krb::g_context->programImmediate;
+		if(krb::g_context->immediateVertexAttributeOffsets.color_4f32 < 
+				krb::g_context->immediateVertexStride)
+			program = krb::g_context->programImmediateColor;
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		/* actually draw the immediate-mode buffer w/ correct render states */
+		glUseProgram(program);
+		/* if we aren't using a 'color' vertex attribute, we must be using a 
+			program which takes a default color */
+		/* @speed: instead of setting this each time we draw, we could 
+			potentially only set this uniform for all relevant programs ONLY 
+			when the default color is changed */
+		if(krb::g_context->immediateVertexAttributeOffsets.color_4f32 >= 
+				krb::g_context->immediateVertexStride)
+		{
+			const GLint uniformLocDefaultColor = 
+				glGetUniformLocation(program, "uniform_defaultColor");
+			glUniform4f(
+				uniformLocDefaultColor, 
+				krb::g_context->defaultColor.r,
+				krb::g_context->defaultColor.g,
+				krb::g_context->defaultColor.b,
+				krb::g_context->defaultColor.a);
+		}
+		glBindVertexArray(krb::g_context->vaoImmediate);
+		glDrawArrays(
+			krb::g_context->immediatePrimitiveType, 0, 
+			krb::g_context->vboImmediateVertexCount);
+		glBindVertexArray(0);
+		glUseProgram(0);
+		krb::g_context->vboImmediateVertexCount = 0;
+	}
+	GL_CHECK_ERROR();
 }
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
@@ -194,7 +302,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
-	korl_rb_lazyInitializeContext();
+	korl_rb_ogl_lazyInitializeContext();
 	/* clear the krb context */
 	krb::g_context->defaultColor = krb::WHITE;
 	krb::g_context->frameInProgress = true;
@@ -202,17 +310,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 internal KRB_END_FRAME(krbEndFrame)
 {
 	korlAssert(krb::g_context->frameInProgress);
-	/* flush all buffers which have yet to be drawn */
-	if(krb::g_context->vboImmediateVertexCount)
-	{
-		glUseProgram(krb::g_context->programImmediate);
-		glBindVertexArray(krb::g_context->vaoImmediate);
-		/* @todo: move the draw mode out to the context as a "draw state" */
-		glDrawArrays(GL_TRIANGLES, 0, krb::g_context->vboImmediateVertexCount);
-		glBindVertexArray(0);
-		glUseProgram(0);
-		krb::g_context->vboImmediateVertexCount = 0;
-	}
+	korl_rb_ogl_flushImmediateBuffer();
 	krb::g_context->frameInProgress = false;
 }
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
@@ -443,13 +541,20 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 {
 	korlAssert(vertexCount % 3 == 0);
 	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
-#if 1
-	korlAssert(vertexStride == 36);// 36 == sizeof(KgtVertex)
-	// 0 == offsetof(KgtVertex, position)
-	korlAssert(vertexAttribOffsets.position_3f32 == 0);
+	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
+		|| krb::g_context->immediateVertexStride != vertexStride 
+		|| krb::g_context->immediateVertexAttributeOffsets != 
+			vertexAttribOffsets)
+	{
+		korl_rb_ogl_flushImmediateBuffer();
+		krb::g_context->immediatePrimitiveType = GL_TRIANGLES;
+		krb::g_context->immediateVertexStride = vertexStride;
+		krb::g_context->immediateVertexAttributeOffsets = vertexAttribOffsets;
+		korl_rb_ogl_resetImmediateModeVertexAttributes();
+	}
 	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
 		vertex VBO has enough capacity for the vertices! */
-	korl_rb_reserveImmediateModeVboBytes(vertexCount*vertexStride);
+	korl_rb_ogl_reserveImmediateModeVboBytes(vertexCount*vertexStride);
 	/* append vertices to the end of the VBO */
 	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
 	glBufferSubData(
@@ -457,57 +562,15 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 		vertexCount*vertexStride, vertices);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	krb::g_context->vboImmediateVertexCount += vertexCount;
-#else
-	/* support VBOs for all possible permutations/combinations of 
-		vertexAttribOffsets */
-	///@todo
-#endif//0
-#if 0
-	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
-		glDisable(GL_TEXTURE_2D);
-	else
-		glEnable(GL_TEXTURE_2D);
-#endif//0
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-#if 0
-	if(vertexAttribOffsets.color_4f32 >= vertexStride)
-		glColor4f(krb::g_context->defaultColor.r, 
-		          krb::g_context->defaultColor.g, 
-		          krb::g_context->defaultColor.b, 
-		          krb::g_context->defaultColor.a);
-	glBegin(GL_TRIANGLES);
-	for(size_t v = 0; v < vertexCount; v++)
-	{
-		const void* vertex = 
-			reinterpret_cast<const u8*>(vertices) + (v*vertexStride);
-		const f32* v3f32_position = reinterpret_cast<const f32*>(
-			reinterpret_cast<const u8*>(vertex) + 
-				vertexAttribOffsets.position_3f32);
-		if(vertexAttribOffsets.color_4f32 < vertexStride)
-		{
-			const f32* v4f32_color = reinterpret_cast<const f32*>(
-				reinterpret_cast<const u8*>(vertex) + 
-					vertexAttribOffsets.color_4f32);
-			glColor4fv(v4f32_color);
-		}
-		if(vertexAttribOffsets.texCoord_2f32 < vertexStride)
-		{
-			const f32* v2f32_texCoord = reinterpret_cast<const f32*>(
-				reinterpret_cast<const u8*>(vertex) + 
-					vertexAttribOffsets.texCoord_2f32);
-			glTexCoord2fv(v2f32_texCoord);
-		}
-		glVertex3fv(v3f32_position);
-	}
-	glEnd();
-#endif//0
 	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_QUAD(krbDrawQuad)
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+#if 1
+	///@todo
+#else
 	glDisable(GL_TEXTURE_2D);
 	glBegin(GL_TRIANGLES);
 	const v2f32 quadMeshOffset = {-ratioAnchor.x*size.x, ratioAnchor.y*size.y};
@@ -532,6 +595,7 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 	glColor4f(colors[3].r, colors[3].g, colors[3].b, colors[3].a);
 	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + 0);
 	glEnd();
+#endif//0
 	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)

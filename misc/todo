@@ -388,6 +388,24 @@
 [x] win32: copy VC_*.pdb files to the minidump file output location
 [x] KAM: when `kamGetRawSound` gets called and the asset is UNUSED, attempt to 
 	load the asset by calling `kamPushAsset` (see `kamGetTexture`)
+[ ] upgrade korl_rb_ogl to use 3.3+ context
+	[x] use more modern WGL context creation extensions
+	[x] use more modern OGL debugging extension support
+	[x] add internal programmable pipeline for drawing with immediate-mode 
+		RB API
+	[x] buffer vertex data for immediate-mode API for as long as the 
+		"render states" don't change
+	[x] arbitrary interleaved vertex attributes
+	[ ] submit context dimensions ONCE to beginFrame, and never again
+		- just store it in the fucking global KRB context!
+	[x] support color vertex attribute
+	[ ] support texture uniforms
+	[ ] support textureNormal vertex attribute
+	[ ] support MVP transformation matrices
+	[ ] custom shader/program API
+	[ ] add shader/program assets to KgtAssetManager
+	[ ] support programmable blend function
+	[ ] support ImGui
 [ ] win32: DirectInput 
 	https://bell0bytes.eu/directinput/
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
@@ -1171,3 +1189,11 @@
 	https://docs.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-interlockedcompareexchange
 [ ] investigate using `gedit` to test for hidden memory errors
 	https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/gflags
+[ ] investigate why the win32 application was crashing due to receiving an 
+	exception from `nvoglv64.dll` called 
+	`ShaderCache::ShaderCacheFileBackedEmptyCacheFileException`
+	- once I stopped intercepting exceptions thru the vectored exception 
+		handler, I stopped getting this error even after enabling the vectored 
+		exception handler again!  Does this mean that some shader cache files 
+		were generated & saved somewhere on my computer?  What even caused this 
+		to happen in the first place?

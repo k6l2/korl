@@ -17,6 +17,18 @@ internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratio)
 	result.a = a.a + ratio*(b.a - a.a);
 	return result;
 }
+struct KrbVertexAttributeOffsets
+{
+	/**
+	 * If one of these values is >= `vertexStride` in the below API, that means 
+	 * the vertex data does not possess the given attribute.
+	 */
+	u32 position_3f32;
+	u32 color_4f32;
+	u32 texCoord_2f32;
+public:
+	bool operator==(const KrbVertexAttributeOffsets& other) const;
+};
 namespace krb
 {
 	global_variable const KrbTextureHandle INVALID_TEXTURE_HANDLE = 0;
@@ -41,8 +53,14 @@ namespace krb
 		u32 vboImmediateCapacity;
 		/* internal shaders for use with "immediate" draw API */
 		u32 shaderImmediateVertex;
+		u32 shaderImmediateVertexColor;
 		u32 shaderImmediateFragment;
 		u32 programImmediate;
+		u32 programImmediateColor;
+		/* immediate-mode render state */
+		KrbVertexAttributeOffsets immediateVertexAttributeOffsets;
+		u32 immediateVertexStride;
+		u32 immediatePrimitiveType;
 	};
 	global_variable Context* g_context;
 }
@@ -72,17 +90,6 @@ namespace krb
 #define KRB_LOOK_AT(name) \
 	void name(const f32 v3f32_eye[3], const f32 v3f32_target[3], \
 	          const f32 v3f32_worldUp[3])
-/**
- * If one of these values is >= `vertexStride` in the below API, that means the 
- * vertex data does not possess the given attribute, so it should be supplied 
- * with some sort of default value.
- */
-struct KrbVertexAttributeOffsets
-{
-	size_t position_3f32;
-	size_t color_4f32;
-	size_t texCoord_2f32;
-};
 #define KRB_DRAW_POINTS(name) void name(\
 	const void* vertices, u32 vertexCount, u32 vertexStride, \
 	const KrbVertexAttributeOffsets& vertexAttribOffsets)
@@ -92,6 +99,16 @@ struct KrbVertexAttributeOffsets
 #define KRB_DRAW_TRIS(name) void name(\
 	const void* vertices, u32 vertexCount, u32 vertexStride, \
 	const KrbVertexAttributeOffsets& vertexAttribOffsets)
+/** 
+ * @param ratioAnchor 
+ * is relative to the top-left (-X, Y) most point of the quad mesh.  Positive 
+ * values point in the {X,-Y} direction in model-space.  Examples: {0.5f,0.5f} 
+ * will set the pivot of the mesh to be in the center.  {0,0} will set the pivot 
+ * of the mesh to be the top-left corner of the mesh.
+ * @param colors [up-left, down-left, down-right, up-right]
+*/
+#define KRB_DRAW_QUAD(name) void name(\
+	const f32 size[2], const f32 ratioAnchor[2], const Color4f32 colors[4])
 /** 
  * @param ratioAnchor is relative to the top-left (-X, Y) most point of the quad 
  *                    mesh.  Positive values point in the {X,-Y} direction in 
@@ -108,9 +125,6 @@ struct KrbVertexAttributeOffsets
 #define KRB_DRAW_QUAD_TEXTURED(name) \
 	void name(const v2f32& size, const v2f32& ratioAnchor, \
 	          const v2f32 texCoords[4], const Color4f32 colors[4])
-#define KRB_DRAW_QUAD(name) \
-	void name(const v2f32& size, const v2f32& ratioAnchor, \
-	          const Color4f32 colors[4])
 #define KRB_DRAW_CIRCLE(name) \
 	void name(f32 radius, f32 outlineThickness, const Color4f32& colorFill, \
 	          const Color4f32& colorOutline, u16 vertexCount)
