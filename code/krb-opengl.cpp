@@ -151,6 +151,10 @@ internal void korl_rb_ogl_lazyInitializeContext()
 {
 	if(krb::g_context->initialized)
 		return;
+	/* I use right-handed homogeneous clip space, so depth buffer values 
+		farthest away from the camera are -1, instead of the default OpenGL 
+		value of 1 */
+	glClearDepth(-1);
 	/* prepare immediate-mode draw API shaders */
 	GLchar bufferShaderInfoLog[512];
 	const GLchar*const sourceShaderImmediateVertex = 
@@ -267,8 +271,13 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 		if(krb::g_context->immediateVertexAttributeOffsets.color_4f32 >= 
 				krb::g_context->immediateVertexStride)
 		{
+			/* @speed: instead of searching for the uniform location every time, 
+				we could just locate it once when the program is linked & then 
+				just use the cached value(s) here depending on the value of 
+				`program` */
 			const GLint uniformLocDefaultColor = 
 				glGetUniformLocation(program, "uniform_defaultColor");
+			korlAssert(uniformLocDefaultColor > -1);
 			glUniform4f(
 				uniformLocDefaultColor, 
 				krb::g_context->defaultColor.r,
@@ -289,21 +298,20 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	korlAssert(!krb::g_context->frameInProgress);
+	korl_rb_ogl_lazyInitializeContext();
 	/* Disable the scissor test BEFORE clearing the color buffer so we can 
 		guarantee the ENTIRE window gets cleared! */
 	glDisable(GL_SCISSOR_TEST);
 	glClearColor(clamped0_1_red, clamped0_1_green, clamped0_1_blue, 1.f);
-	/* I use right-handed homogeneous clip space, so depth buffer values 
-		farthest away from the camera are -1, instead of the default OpenGL 
-		value of 1 */
-	glClearDepth(-1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glViewport(0, 0, windowSize[0], windowSize[1]);
 	GL_CHECK_ERROR();
-	korl_rb_ogl_lazyInitializeContext();
 	/* clear the krb context */
+	krb::g_context->windowSizeX = windowSize[0];
+	krb::g_context->windowSizeY = windowSize[1];
 	krb::g_context->defaultColor = krb::WHITE;
 	krb::g_context->frameInProgress = true;
 }
@@ -346,12 +354,12 @@ internal KRB_SET_WIREFRAME(krbSetWireframe)
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
 	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, windowSizeX, windowSizeY);
+	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
 	glDisable(GL_SCISSOR_TEST);
-	const f32 left  = -static_cast<f32>(windowSizeX)/2;
-	const f32 right =  static_cast<f32>(windowSizeX)/2;
-	const f32 bottom = -static_cast<f32>(windowSizeY)/2;
-	const f32 top    =  static_cast<f32>(windowSizeY)/2;
+	const f32 left  = -static_cast<f32>(krb::g_context->windowSizeX)/2;
+	const f32 right =  static_cast<f32>(krb::g_context->windowSizeX)/2;
+	const f32 bottom = -static_cast<f32>(krb::g_context->windowSizeY)/2;
+	const f32 top    =  static_cast<f32>(krb::g_context->windowSizeY)/2;
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
@@ -381,8 +389,10 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	/*
 		w / fixedHeight == windowAspectRatio
 	*/
-	const f32 windowAspectRatio = windowSizeY == 0
-		? 1.f : static_cast<f32>(windowSizeX) / windowSizeY;
+	const f32 windowAspectRatio = krb::g_context->windowSizeY == 0
+		? 1.f 
+		: static_cast<f32>(krb::g_context->windowSizeX) / 
+			krb::g_context->windowSizeY;
 	const GLsizei viewportWidth = 
 		static_cast<GLsizei>(windowAspectRatio * fixedHeight);
 	const f32 left  = -static_cast<f32>(viewportWidth)/2;
@@ -391,7 +401,7 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	const f32 top    =  static_cast<f32>(fixedHeight)/2;
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
-	glViewport(0, 0, windowSizeX, windowSizeY);
+	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
 	glDisable(GL_SCISSOR_TEST);
 	glMatrixMode(GL_PROJECTION);
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
@@ -418,11 +428,11 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 }
 internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 {
-	const v2u32* windowDimensions = reinterpret_cast<const v2u32*>(windowSize);
-	glViewport(0, 0, windowDimensions->x, windowDimensions->y);
+	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
 	glDisable(GL_SCISSOR_TEST);
 	const f32 aspectRatio = 
-		static_cast<f32>(windowDimensions->x)/windowDimensions->y;
+		static_cast<f32>(krb::g_context->windowSizeX) / 
+		krb::g_context->windowSizeY;
 	korlAssert(!kmath::isNearlyZero(aspectRatio));
 	korlAssert(!kmath::isNearlyEqual(clipNear, clipFar) && clipFar > clipNear);
 	const f32 horizonFovRadians = horizonFovDegrees*PI32/180;
@@ -968,8 +978,6 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 	const v2f32 v2f32WindowPos = 
 		{ static_cast<f32>(v2i32WindowPos.x)
 		, static_cast<f32>(v2i32WindowPos.y) };
-	const v2u32& v2u32WindowSize = 
-		*reinterpret_cast<const v2u32*>(windowSize);
 	/* We can determine if a projection matrix is orthographic or frustum based 
 		on the last element of the W row.  See: 
 		http://www.songho.ca/opengl/gl_projectionmatrix.html */
@@ -977,8 +985,8 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 	const bool isOrthographic = mProjection.r3c3 == 1;
 	/* viewport-space          => normalized-device-space */
 	const v2f32 eyeRayNds = 
-		{  2*v2f32WindowPos.x / v2u32WindowSize.x - 1
-		, -2*v2f32WindowPos.y / v2u32WindowSize.y + 1 };
+		{  2*v2f32WindowPos.x / krb::g_context->windowSizeX - 1
+		, -2*v2f32WindowPos.y / krb::g_context->windowSizeY + 1 };
 	/* normalized-device-space => homogeneous-clip-space */
 	/* arbitrarily set the eye ray direction vector as far to the "back" of the 
 		homogeneous clip space box, which means setting the Z coordinate to a 

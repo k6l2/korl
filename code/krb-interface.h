@@ -44,7 +44,8 @@ namespace krb
 	{
 		bool frameInProgress = false;
 		bool initialized = false;
-		Color4f32 defaultColor;
+		u32 windowSizeX;
+		u32 windowSizeY;
 		/* internal VAO for "immidiate" draw API */
 		u32 vaoImmediate;
 		/* internal buffer for holding vertex data of "immediate" draw API */
@@ -61,12 +62,14 @@ namespace krb
 		KrbVertexAttributeOffsets immediateVertexAttributeOffsets;
 		u32 immediateVertexStride;
 		u32 immediatePrimitiveType;
+		Color4f32 defaultColor;
 	};
 	global_variable Context* g_context;
 }
 /** This API MUST be paired with a call to KRB_END_FRAME! */
-#define KRB_BEGIN_FRAME(name) \
-	void name(f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue)
+#define KRB_BEGIN_FRAME(name) void name(\
+	f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue, \
+	const u32 windowSize[2])
 /** Calling this function ensures that any buffers that are currently being 
  * filled with data are drawn to the screen if they haven't already been.  This 
  * API MUST be called for every call to KRB_BEGIN_FRAME! */
@@ -79,17 +82,15 @@ namespace krb
 #define KRB_SET_WIREFRAME(name) \
 	void name(bool enable)
 /** Setup a right-handed axis where +Y is UP. */
-#define KRB_SET_PROJECTION_ORTHO(name) \
-	void name(u32 windowSizeX, u32 windowSizeY, f32 halfDepth)
+#define KRB_SET_PROJECTION_ORTHO(name) void name(f32 halfDepth)
 /** Setup a right-handed axis where +Y is UP. */
-#define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) \
-	void name(u32 windowSizeX, u32 windowSizeY, u32 fixedHeight, f32 halfDepth)
-#define KRB_SET_PROJECTION_FOV(name) \
-	void name(f32 horizonFovDegrees, const u32* windowSize, \
-	          f32 clipNear, f32 clipFar)
-#define KRB_LOOK_AT(name) \
-	void name(const f32 v3f32_eye[3], const f32 v3f32_target[3], \
-	          const f32 v3f32_worldUp[3])
+#define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) void name(\
+	u32 fixedHeight, f32 halfDepth)
+#define KRB_SET_PROJECTION_FOV(name) void name(\
+	f32 horizonFovDegrees, f32 clipNear, f32 clipFar)
+#define KRB_LOOK_AT(name) void name(\
+	const f32 v3f32_eye[3], const f32 v3f32_target[3], \
+	const f32 v3f32_worldUp[3])
 #define KRB_DRAW_POINTS(name) void name(\
 	const void* vertices, u32 vertexCount, u32 vertexStride, \
 	const KrbVertexAttributeOffsets& vertexAttribOffsets)
@@ -167,9 +168,9 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
  *          - view matrix not being invertable
  *          - projection matrix not being invertable
  */
-#define KRB_SCREEN_TO_WORLD(name) \
-	bool name(const i32 windowPosition[2], const u32 windowSize[2], \
-	          f32 o_worldEyeRayPosition[3], f32 o_worldEyeRayDirection[3])
+#define KRB_SCREEN_TO_WORLD(name) bool name(\
+	const i32 windowPosition[2], \
+	f32 o_worldEyeRayPosition[3], f32 o_worldEyeRayDirection[3])
 #define KRB_SET_CURRENT_CONTEXT(name) \
 	void name(krb::Context* context)
 #define KRB_SET_DEFAULT_COLOR(name) \

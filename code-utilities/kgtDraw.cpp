@@ -91,7 +91,7 @@ internal void
 	if(originScreenPosYUp.y > static_cast<f32>(windowDimensions.y))
 		originScreenPosYUp.y = static_cast<f32>(windowDimensions.y);
 	/* set ortho with y+ pointing UP */
-	g_krb->setProjectionOrtho(windowDimensions.x, windowDimensions.y, 1);
+	g_krb->setProjectionOrtho(1);
 	/* adjust the view such that the bottom-left corner of the window is the 
 		screen-space origin */
 	g_krb->viewTranslate(
@@ -112,8 +112,7 @@ internal void
 internal void 
 	kgtDrawCompass(u32 squareSize, const v3f32& camForward)
 {
-	g_krb->setProjectionOrtho(
-		squareSize, squareSize, static_cast<f32>(squareSize));
+	g_krb->setProjectionOrtho(static_cast<f32>(squareSize));
 	g_krb->lookAt(
 		v3f32::ZERO.elements, camForward.elements, v3f32::Z.elements);
 	kgtDrawAxes(

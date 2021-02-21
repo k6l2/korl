@@ -396,7 +396,7 @@
 	[x] buffer vertex data for immediate-mode API for as long as the 
 		"render states" don't change
 	[x] arbitrary interleaved vertex attributes
-	[ ] submit context dimensions ONCE to beginFrame, and never again
+	[x] submit context dimensions ONCE to beginFrame, and never again
 		- just store it in the fucking global KRB context!
 	[x] support color vertex attribute
 	[ ] support texture uniforms

@@ -4,7 +4,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 //	ImGui::Text("Hello KORL!");
-	g_krb->beginFrame(0.2f, 0, 0.2f);
+	g_krb->beginFrame(0.2f, 0, 0.2f, windowDimensions.elements);
 	defer(g_krb->endFrame());
 	/* minimal code to draw a quad */
 	g_krb->drawQuad(
