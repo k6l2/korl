@@ -236,12 +236,12 @@ internal void
 		krb->setModelXform2d(
 			currentPosition + anchorOffset, q32::IDENTITY, scale);
 		krb->setDefaultColor(colorOutline);
-		USE_IMAGE(sfm.kaiTextureOutline);
-		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
+		KGT_USE_IMAGE(sfm.kaiTextureOutline);
+		KGT_DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
 		/* draw the normal text texture on top of the outline */
 		krb->setDefaultColor(color);
-		USE_IMAGE(sfm.kaiTexture);
-		DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
+		KGT_USE_IMAGE(sfm.kaiTexture);
+		KGT_DRAW_TRIS(charTriMesh, KGT_VERTEX_ATTRIBS_NO_COLOR);
 	}
 }
 internal v2f32 
@@ -396,10 +396,10 @@ internal void
 		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
 	/* draw the outline mesh first */
 	krb->setModelXform2d(positionOffset, q32::IDENTITY, {1,1});
-	USE_IMAGE(sfm.kaiTextureOutline);
+	KGT_USE_IMAGE(sfm.kaiTextureOutline);
 	g_krb->drawTris(
 		verticesOutline, vertexCount, vertexStride, vertexAttribOffsets);
 	/* draw the normal text texture on top of the outline */
-	USE_IMAGE(sfm.kaiTexture);
+	KGT_USE_IMAGE(sfm.kaiTexture);
 	g_krb->drawTris(vertices, vertexCount, vertexStride, vertexAttribOffsets);
 }

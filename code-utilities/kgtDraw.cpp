@@ -17,7 +17,8 @@ internal void
 		{ static_cast<f32>(imageSize.x)
 		, static_cast<f32>(imageSize.y) };
 	g_krb->drawQuadTextured(
-		quadSize, ratioAnchor, QUAD_DEFAULT_TEX_NORMS, colors);
+		quadSize.elements, ratioAnchor.elements, colors, 
+		v2f32::ZERO.elements, v2f32{1,1}.elements);
 }
 internal void 
 	kgtDrawTexture2d(
@@ -34,7 +35,8 @@ internal void
 		{ static_cast<f32>(imageSize.x)
 		, static_cast<f32>(imageSize.y) };
 	g_krb->drawQuadTextured(
-		quadSize, ratioAnchor, QUAD_DEFAULT_TEX_NORMS, QUAD_WHITE);
+		quadSize.elements, ratioAnchor.elements, KGT_DRAW_QUAD_WHITE, 
+		v2f32::ZERO.elements, v2f32{1,1}.elements);
 }
 internal void 
 	kgtDrawAxes(const v3f32& scale)
@@ -44,7 +46,7 @@ internal void
 		{ {{0,0,0}, {}, krb::RED  }, {{1,0,0}, {}, krb::RED  }
 		, {{0,0,0}, {}, krb::GREEN}, {{0,1,0}, {}, krb::GREEN}
 		, {{0,0,0}, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
-	DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+	KGT_DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }
 internal void 
 	kgtDrawOrigin(

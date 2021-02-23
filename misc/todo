@@ -399,8 +399,8 @@
 	[x] submit context dimensions ONCE to beginFrame, and never again
 		- just store it in the fucking global KRB context!
 	[x] support color vertex attribute
-	[ ] support texture uniforms
-	[ ] support textureNormal vertex attribute
+	[x] support texture uniforms
+	[x] support textureNormal vertex attribute
 	[ ] support MVP transformation matrices
 	[ ] custom shader/program API
 	[ ] add shader/program assets to KgtAssetManager

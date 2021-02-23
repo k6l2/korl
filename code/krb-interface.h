@@ -121,21 +121,22 @@ namespace krb
 #define KRB_DRAW_QUAD(name) void name(\
 	const f32 size[2], const f32 ratioAnchor[2], const Color4f32 colors[4])
 /** 
- * @param ratioAnchor is relative to the top-left (-X, Y) most point of the quad 
- *                    mesh.  Positive values point in the {X,-Y} direction in 
- *                    model-space.  Examples: {0.5f,0.5f} will set the pivot of 
- *                    the mesh to be in the center.  {0,0} will set the pivot of 
- *                    the mesh to be the top-left corner of the mesh, which 
- *                    should correspond to the top-left corner of the texture!
- * @param texCoords [up-left, down-left, down-right, up-right] these are 
- *                  NORMALIZED values!  Texture-space origin is the upper-left 
- *                  corner of the texture.
- *                  @TODO: Yes, I should rename this `texNorms`...
+ * @param ratioAnchor 
+ * is relative to the top-left (-X, Y) most point of the quad mesh.  Positive 
+ * values point in the {X,-Y} direction in model-space.  Examples: {0.5f,0.5f} 
+ * will set the pivot of the mesh to be in the center.  {0,0} will set the pivot 
+ * of the mesh to be the top-left corner of the mesh, which should correspond to 
+ * the top-left corner of the texture!
  * @param colors [up-left, down-left, down-right, up-right]
+ * @param texNormalMin 
+ * Texture-space origin is the upper-left corner of the texture.
+ * @param texNormalMax 
+ * Texture-space origin is the upper-left corner of the texture.
 */
 #define KRB_DRAW_QUAD_TEXTURED(name) void name(\
-	const v2f32& size, const v2f32& ratioAnchor, \
-	const v2f32 texCoords[4], const Color4f32 colors[4])
+	const f32 size[2], const f32 ratioAnchor[2], \
+	const Color4f32 colors[4], const f32 texNormalMin[2], \
+	const f32 texNormalMax[2])
 #define KRB_DRAW_CIRCLE(name) void name(\
 	f32 radius, f32 outlineThickness, const Color4f32& colorFill, \
 	const Color4f32& colorOutline, u16 vertexCount)

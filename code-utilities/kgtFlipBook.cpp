@@ -290,10 +290,12 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const Color4f32& color)
 	                      {pageTexCoordRight, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordUp}};
 	Color4f32 colors[4] = {color,color,color,color};
-	g_krb->drawQuadTextured({ static_cast<f32>(frameSizeX), 
-	                          static_cast<f32>(frameSizeY) }, 
-	                        {kfb->anchorRatioX, kfb->anchorRatioY},
-	                        texCoords, colors);
+	g_krb->drawQuadTextured(
+		v2f32{ static_cast<f32>(frameSizeX)
+		     , static_cast<f32>(frameSizeY) }.elements, 
+		v2f32{kfb->anchorRatioX, kfb->anchorRatioY}.elements,
+		colors, v2f32{pageTexCoordLeft, pageTexCoordUp}.elements, 
+		v2f32{pageTexCoordRight, pageTexCoordDown}.elements);
 }
 internal void kgtFlipBookStep(KgtFlipBook* kfb, f32 deltaSeconds)
 {

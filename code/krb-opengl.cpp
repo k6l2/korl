@@ -354,6 +354,8 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 			glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
 			korlAssert(nameTex2dUnit0);
 		}
+#if 0/* we can't actually do this because this flush occurs AFTER we tell the 
+		KORL RB to begin using a texture */
 		else
 		/* likewise, if we're drawing without a 'texCoord', then make sure we 
 			haven't bound anything there to help prevent draw errors */
@@ -363,6 +365,7 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 			glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
 			korlAssert(!nameTex2dUnit0);
 		}
+#endif//0
 		/* actually draw the immediate-mode buffer w/ correct render states */
 		glUseProgram(program);
 		/* if we aren't using a 'color' vertex attribute, we must be using a 
@@ -671,7 +674,6 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 }
 internal KRB_DRAW_QUAD(krbDrawQuad)
 {
-#if 1
 	struct QuadVertex
 	{
 		v3f32 position;
@@ -707,7 +709,7 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 	// bottom-left vertex //
 	quadVertices[1].position = 
 		{quadMeshOffset.x, quadMeshOffset.y - size[1], 0};
-	quadVertices[1].color = colors[0];
+	quadVertices[1].color = colors[1];
 	// bottom-right vertex //
 	quadVertices[2].position = 
 		{quadMeshOffset.x + size[0], quadMeshOffset.y - size[1], 0};
@@ -732,68 +734,75 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	krb::g_context->vboImmediateVertexCount += VERTEX_COUNT;
 	GL_CHECK_ERROR();
-#else
-	glDisable(GL_TEXTURE_2D);
-	glBegin(GL_TRIANGLES);
-	const v2f32 quadMeshOffset = {-ratioAnchor.x*size.x, ratioAnchor.y*size.y};
-	// draw the bottom-left triangle //
-	// up-left vertex
-	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
-	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
-	// down-left vertex
-	glColor4f(colors[1].r, colors[1].g, colors[1].b, colors[1].a);
-	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + -size.y);
-	// down-right vertex
-	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
-	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
-	// draw the upper-right triangle //
-	// up-left vertex
-	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
-	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
-	// down-right vertex
-	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
-	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
-	// up-right vertex
-	glColor4f(colors[3].r, colors[3].g, colors[3].b, colors[3].a);
-	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + 0);
-	glEnd();
-#endif//0
-	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
-	glEnable(GL_TEXTURE_2D);
-	glBegin(GL_TRIANGLES);
-	const v2f32 quadMeshOffset = {-ratioAnchor.x*size.x, ratioAnchor.y*size.y};
-	// draw the bottom-left triangle //
-	// up-left vertex
-	glTexCoord2f(texCoords[0].x, texCoords[0].y);
-	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
-	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
-	// down-left vertex
-	glTexCoord2f(texCoords[1].x, texCoords[1].y); 
-	glColor4f(colors[1].r, colors[1].g, colors[1].b, colors[1].a);
-	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + -size.y);
-	// down-right vertex
-	glTexCoord2f(texCoords[2].x, texCoords[2].y); 
-	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
-	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
-	// draw the upper-right triangle //
-	// up-left vertex
-	glTexCoord2f(texCoords[0].x, texCoords[0].y);
-	glColor4f(colors[0].r, colors[0].g, colors[0].b, colors[0].a);
-	glVertex2f(quadMeshOffset.x + 0, quadMeshOffset.y + 0);
-	// down-right vertex
-	glTexCoord2f(texCoords[2].x, texCoords[2].y); 
-	glColor4f(colors[2].r, colors[2].g, colors[2].b, colors[2].a);
-	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + -size.y);
-	// up-right vertex
-	glTexCoord2f(texCoords[3].x, texCoords[3].y); 
-	glColor4f(colors[3].r, colors[3].g, colors[3].b, colors[3].a);
-	glVertex2f(quadMeshOffset.x + size.x, quadMeshOffset.y + 0);
-	glEnd();
+	struct QuadVertex
+	{
+		v3f32 position;
+		Color4f32 color;
+		v2f32 textureNormal;
+	} quadVertices[6];
+	local_const u32 VERTEX_STRIDE = sizeof(QuadVertex);
+	local_const KrbVertexAttributeOffsets VERTEX_ATTRIB_OFFSETS = 
+		{ .position_3f32 = offsetof(QuadVertex, position)
+		, .color_4f32    = offsetof(QuadVertex, color)
+		, .texCoord_2f32 = offsetof(QuadVertex, textureNormal) };
+	local_const u32 VERTEX_COUNT = CARRAY_SIZE(quadVertices);
+	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
+		|| krb::g_context->immediateVertexStride != VERTEX_STRIDE 
+		|| krb::g_context->immediateVertexAttributeOffsets != 
+			VERTEX_ATTRIB_OFFSETS)
+	{
+		korl_rb_ogl_flushImmediateBuffer();
+		krb::g_context->immediatePrimitiveType = GL_TRIANGLES;
+		krb::g_context->immediateVertexStride = VERTEX_STRIDE;
+		krb::g_context->immediateVertexAttributeOffsets = VERTEX_ATTRIB_OFFSETS;
+		korl_rb_ogl_resetImmediateModeVertexAttributes();
+	}
+	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
+		vertex VBO has enough capacity for the vertices! */
+	korl_rb_ogl_reserveImmediateModeVboBytes(VERTEX_COUNT*VERTEX_STRIDE);
+	/* build the quad vertices */
+	const v2f32 quadMeshOffset = 
+		{-ratioAnchor[0]*size[0], ratioAnchor[1]*size[1]};
+	// bottom-left triangle //
+	// top-left vertex //
+	quadVertices[0].position = {quadMeshOffset.x, quadMeshOffset.y, 0};
+	quadVertices[0].color = colors[0];
+	quadVertices[0].textureNormal = {texNormalMin[0], texNormalMin[1]};
+	// bottom-left vertex //
+	quadVertices[1].position = 
+		{quadMeshOffset.x, quadMeshOffset.y - size[1], 0};
+	quadVertices[1].color = colors[1];
+	quadVertices[1].textureNormal = {texNormalMin[0], texNormalMax[1]};
+	// bottom-right vertex //
+	quadVertices[2].position = 
+		{quadMeshOffset.x + size[0], quadMeshOffset.y - size[1], 0};
+	quadVertices[2].color = colors[2];
+	quadVertices[2].textureNormal = {texNormalMax[0], texNormalMax[1]};
+	// top-right triangle //
+	// top-left vertex //
+	quadVertices[3].position = {quadMeshOffset.x, quadMeshOffset.y, 0};
+	quadVertices[3].color = colors[0];
+	quadVertices[3].textureNormal = {texNormalMin[0], texNormalMin[1]};
+	// bottom-right vertex //
+	quadVertices[4].position = 
+		{quadMeshOffset.x + size[0], quadMeshOffset.y - size[1], 0};
+	quadVertices[4].color = colors[2];
+	quadVertices[4].textureNormal = {texNormalMax[0], texNormalMax[1]};
+	// top-right vertex //
+	quadVertices[5].position = 
+		{quadMeshOffset.x + size[0], quadMeshOffset.y, 0};
+	quadVertices[5].color = colors[3];
+	quadVertices[5].textureNormal = {texNormalMax[0], texNormalMin[1]};
+	/* append vertices to the end of the VBO */
+	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
+	glBufferSubData(
+		GL_ARRAY_BUFFER, krb::g_context->vboImmediateVertexCount*VERTEX_STRIDE, 
+		VERTEX_COUNT*VERTEX_STRIDE, quadVertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	krb::g_context->vboImmediateVertexCount += VERTEX_COUNT;
 	GL_CHECK_ERROR();
 }
 internal KRB_DRAW_CIRCLE(krbDrawCircle)

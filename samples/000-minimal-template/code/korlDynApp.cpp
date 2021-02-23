@@ -32,10 +32,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	/* minimal code to draw a quad */
 	{
-		local_const Color4f32 QUAD_COLOR[4] = 
-			{krb::BLACK, krb::BLACK, krb::BLACK, krb::BLACK};
-		g_krb->drawQuad(
-			v2f32{1.f, 1.f}.elements, v2f32{0.5f, 0.f}.elements, QUAD_COLOR);
+		KGT_USE_IMAGE(KgtAssetIndex::birb_png);
+		g_krb->drawQuadTextured(
+			v2f32{1.f, 1.f}.elements, v2f32{0.5f, 0.5f}.elements, 
+			KGT_DRAW_QUAD_WHITE, v2f32::ZERO.elements, v2f32{1,1}.elements);
 	}
 	return true;
 }

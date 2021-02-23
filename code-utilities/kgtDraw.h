@@ -6,15 +6,13 @@
 #pragma once
 #include "kutil.h"
 #include "krb-interface.h"
-global_variable const v2f32 QUAD_DEFAULT_TEX_NORMS[] = 
-	{ {0,0}, {0,1}, {1,1}, {1,0} };
-global_variable const Color4f32 QUAD_WHITE[]  = 
+global_variable const Color4f32 KGT_DRAW_QUAD_WHITE[]  = 
 	{ krb::WHITE, krb::WHITE, krb::WHITE, krb::WHITE };
 internal void 
 	kgtDrawTexture2d(
 		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale, 
-		const Color4f32 colors[4] = QUAD_WHITE);
+		const Color4f32 colors[4] = KGT_DRAW_QUAD_WHITE);
 internal void 
 	kgtDrawTexture2d(
 		KrbTextureHandle kth, const v2u32& imageSize, 
@@ -47,18 +45,18 @@ internal void
 	kgtDrawBox2d(
 		const v2f32& cornerMinusXPlusY, const v2f32& size, 
 		const Color4f32& color);
-#define USE_IMAGE(kgtAssetIndex) \
+#define KGT_USE_IMAGE(kgtAssetIndex) \
 	g_krb->useTexture(\
 		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \
 		kgtAssetManagerGetTextureMetaData(g_kam, kgtAssetIndex));
 /* useful drawing macros which can work with arbitrarily defined vertex 
  * structures */
-#define DRAW_POINTS(mesh, vertexAttribs) \
+#define KGT_DRAW_POINTS(mesh, vertexAttribs) \
 	g_krb->drawPoints(\
 		mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-#define DRAW_LINES(mesh, vertexAttribs) \
+#define KGT_DRAW_LINES(mesh, vertexAttribs) \
 	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-#define DRAW_TRIS(mesh, vertexAttribs) \
+#define KGT_DRAW_TRIS(mesh, vertexAttribs) \
 	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), vertexAttribs)
-#define DRAW_TRIS_DYNAMIC(mesh, meshSize, vertexAttribs) \
+#define KGT_DRAW_TRIS_DYNAMIC(mesh, meshSize, vertexAttribs) \
 	g_krb->drawTris(mesh, meshSize, sizeof(mesh[0]), vertexAttribs)
