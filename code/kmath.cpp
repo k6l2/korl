@@ -8,10 +8,11 @@ const v3f32 v3f32::Y = {0,1,0};
 const v3f32 v3f32::Z = {0,0,1};
 const v4f32 v4f32::ZERO = {0,0,0,0};
 const q32 q32::IDENTITY = {1,0,0,0};
-const m4x4f32 m4x4f32::IDENTITY = {1,0,0,0,
-                                   0,1,0,0,
-                                   0,0,1,0,
-                                   0,0,0,1};
+const m4f32 m4f32::IDENTITY = 
+	{ 1,0,0,0
+	, 0,1,0,0
+	, 0,0,1,0
+	, 0,0,0,1 };
 inline v2u32 v2u32::operator*(u32 discreteScalar) const
 {
 	return {x * discreteScalar, y * discreteScalar};
@@ -286,9 +287,9 @@ inline v4f32 v4f32::lerp(const v4f32& other, f32 ratio) const
 	result.a = a + ratio*(other.a - a);
 	return result;
 }
-m4x4f32 m4x4f32::transpose(const f32* elements)
+m4f32 m4f32::transpose(const f32* elements)
 {
-	m4x4f32 result = {};
+	m4f32 result = {};
 	for(u8 r = 0; r < 4; r++)
 	{
 		for(u8 c = 0; c < 4; c++)
@@ -298,7 +299,7 @@ m4x4f32 m4x4f32::transpose(const f32* elements)
 	}
 	return result;
 }
-bool m4x4f32::invert(const f32 elements[16], f32 o_elements[16])
+bool m4f32::invert(const f32 elements[16], f32 o_elements[16])
 {
 	/* implementation derived from MESA's GLU lib: 
 		https://stackoverflow.com/a/1148405/4526664 
@@ -410,10 +411,10 @@ bool m4x4f32::invert(const f32 elements[16], f32 o_elements[16])
 		o_elements[i] = inv[i] * det;
 	return true;
 }
-inline m4x4f32 m4x4f32::operator*(const m4x4f32& other) const
+inline m4f32 m4f32::operator*(const m4f32& other) const
 {
-	const m4x4f32 otherTranspose = transpose(other.elements);
-	m4x4f32 result = {};
+	const m4f32 otherTranspose = transpose(other.elements);
+	m4f32 result = {};
 	for(u8 thisRow = 0; thisRow < 4; thisRow++)
 	{
 		for(u8 otherCol = 0; otherCol < 4; otherCol++)
@@ -427,7 +428,7 @@ inline m4x4f32 m4x4f32::operator*(const m4x4f32& other) const
 	}
 	return result;
 }
-internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs)
+internal v4f32 operator*(const m4f32& lhs, const v4f32& rhs)
 {
 	v4f32 result = {};
 	for(u8 r = 0; r < 4; r++)
@@ -765,7 +766,7 @@ internal bool kmath::coplanar(
 	 * perpendicular to the normal of the plane defined by the first two */
 	return isNearlyZero(v2.dot(v0.cross(v1)));
 }
-internal inline void kmath::makeM4f32(const q32& q, m4x4f32* o_m)
+internal inline void kmath::makeM4f32(const q32& q, m4f32* o_m)
 {
 	/* https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix */
 	const f32 sqW = q.qw*q.qw;
@@ -793,11 +794,11 @@ internal inline void kmath::makeM4f32(const q32& q, m4x4f32* o_m)
 	o_m->r3c3 = 1;
 }
 internal inline void kmath::makeM4f32(
-		const q32& q, const v3f32& translation, m4x4f32* o_m)
+		const q32& q, const v3f32& translation, m4f32* o_m)
 {
-	m4x4f32 m4Rotation;
+	m4f32 m4Rotation;
 	makeM4f32(q, &m4Rotation);
-	m4x4f32 m4Translation = m4x4f32::IDENTITY;
+	m4f32 m4Translation = m4f32::IDENTITY;
 	m4Translation.r0c3 = translation.x;
 	m4Translation.r1c3 = translation.y;
 	m4Translation.r2c3 = translation.z;
@@ -971,7 +972,7 @@ internal inline f32 kmath::collideRayBox(
 	/* geometric solution.  Sources:
 		http://www.opengl-tutorial.org/miscellaneous/clicking-on-objects/picking-with-custom-ray-obb-function/ 
 		https://svn.science.uu.nl/repos/edu.3803627.INFOMOV/0AD/docs/ray_intersect.pdf */
-	m4x4f32 boxModelMatrix;
+	m4f32 boxModelMatrix;
 	makeM4f32(boxOrientation, boxWorldPosition, &boxModelMatrix);
 	f32 tMin = 0;
 	f32 tMax = INFINITY32;

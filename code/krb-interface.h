@@ -64,12 +64,14 @@ namespace krb
  * filled with data are drawn to the screen if they haven't already been.  This 
  * API MUST be called for every call to KRB_BEGIN_FRAME! */
 #define KRB_END_FRAME(name) void name()
+#if 0
 #define KRB_SET_DEPTH_TESTING(name) void name(\
 	bool enable)
 #define KRB_SET_BACKFACE_CULLING(name) void name(\
 	bool enable)
 #define KRB_SET_WIREFRAME(name) void name(\
 	bool enable)
+#endif
 /** Setup a right-handed axis where +Y is UP. */
 #define KRB_SET_PROJECTION_ORTHO(name) void name(\
 	f32 halfDepth)
@@ -173,9 +175,11 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
 #define KRB_DISABLE_CLIP_BOX(name) void name()
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_END_FRAME(fnSig_krbEndFrame);
+#if 0
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
 typedef KRB_SET_WIREFRAME(fnSig_krbSetWireframe);
+#endif//0
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	fnSig_krbSetProjectionOrthoFixedHeight);
@@ -203,9 +207,11 @@ typedef KRB_SET_CLIP_BOX(fnSig_krbSetClipBox);
 typedef KRB_DISABLE_CLIP_BOX(fnSig_krbDisableClipBox);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_END_FRAME(krbEndFrame);
+#if 0
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
 internal KRB_SET_WIREFRAME(krbSetWireframe);
+#endif//0
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	krbSetProjectionOrthoFixedHeight);
@@ -235,9 +241,11 @@ struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
 	fnSig_krbEndFrame*           endFrame           = krbEndFrame;
+#if 0
 	fnSig_krbSetDepthTesting*    setDepthTesting    = krbSetDepthTesting;
 	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
 	fnSig_krbSetWireframe*       setWireframe       = krbSetWireframe;
+#endif//0
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
 	fnSig_krbSetProjectionOrthoFixedHeight* 
 		setProjectionOrthoFixedHeight = krbSetProjectionOrthoFixedHeight;

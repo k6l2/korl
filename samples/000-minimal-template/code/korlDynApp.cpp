@@ -20,6 +20,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->drawTris(
 			VERTEX_POSITIONS, 3, VERTEX_STRIDE, VERTEX_ATTRIB_OFFSETS);
 	}
+	/* minimal code to draw a quad */
+	{
+		KGT_USE_IMAGE(KgtAssetIndex::birb_png);
+		g_krb->drawQuadTextured(
+			v2f32{1.f, 1.f}.elements, v2f32{0.5f, 0.5f}.elements, 
+			KGT_DRAW_QUAD_WHITE, v2f32::ZERO.elements, v2f32{1,1}.elements);
+	}
 	/* draw a triangle with color vertex attributes */
 	{
 		local_const KgtVertex TRI_VERTICES[] = 
@@ -29,13 +36,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->drawTris(
 			TRI_VERTICES, CARRAY_SIZE(TRI_VERTICES), sizeof(*TRI_VERTICES), 
 			KGT_VERTEX_ATTRIBS_NO_TEXTURE);
-	}
-	/* minimal code to draw a quad */
-	{
-		KGT_USE_IMAGE(KgtAssetIndex::birb_png);
-		g_krb->drawQuadTextured(
-			v2f32{1.f, 1.f}.elements, v2f32{0.5f, 0.5f}.elements, 
-			KGT_DRAW_QUAD_WHITE, v2f32::ZERO.elements, v2f32{1,1}.elements);
 	}
 	return true;
 }

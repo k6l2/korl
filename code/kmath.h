@@ -132,8 +132,7 @@ public:
 	 * 1: the result is entirely `other` */
 	inline v4f32 lerp(const v4f32& other, f32 ratio) const;
 };
-/* @TODO: rename this to m4f32 since the x4 can just be implied */
-struct m4x4f32
+struct m4f32
 {
 	union 
 	{
@@ -147,10 +146,10 @@ struct m4x4f32
 		};
 	};
 public:
-	global_variable const m4x4f32 IDENTITY;
-	class_namespace m4x4f32 transpose(const f32* elements);
+	global_variable const m4f32 IDENTITY;
+	class_namespace m4f32 transpose(const f32* elements);
 	class_namespace bool invert(const f32 elements[16], f32 o_elements[16]);
-	inline m4x4f32 operator*(const m4x4f32& other) const;
+	inline m4f32 operator*(const m4f32& other) const;
 };
 struct q32 : public v4f32
 {
@@ -233,9 +232,9 @@ namespace kmath
 	internal inline v2f32 rotate(const v2f32& v, f32 radians);
 	internal bool coplanar(
 		const v3f32& p0, const v3f32& p1, const v3f32& p2, const v3f32& p3);
-	internal void makeM4f32(const q32& q, m4x4f32* o_m);
+	internal void makeM4f32(const q32& q, m4f32* o_m);
 	internal void makeM4f32(
-		const q32& q, const v3f32& translation, m4x4f32* o_m);
+		const q32& q, const v3f32& translation, m4f32* o_m);
 	/**
 	 * @return A sine curve that lies in the range [0,1]
 	 */
@@ -394,7 +393,7 @@ internal inline v2f32 operator/(const v2f32& lhs, const v2u32& rhs);
 internal inline v2f32 operator/(const v2u32& lhs, const v2f32& rhs);
 internal inline v2f32 operator*(const v2u32& lhs, const v2f32& rhs);
 internal inline v2f32 operator*(const v2f32& lhs, const v2u32& rhs);
-internal v4f32 operator*(const m4x4f32& lhs, const v4f32& rhs);
+internal v4f32 operator*(const m4f32& lhs, const v4f32& rhs);
 internal inline q32 operator*(const q32& lhs, const q32& rhs);
 internal inline v2f32 operator-(const v2f32& lhs, const v2u32& rhs);
 internal inline v2f32 operator-(const v2u32& lhs, const v2f32& rhs);

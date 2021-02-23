@@ -354,8 +354,6 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 			glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
 			korlAssert(nameTex2dUnit0);
 		}
-#if 0/* we can't actually do this because this flush occurs AFTER we tell the 
-		KORL RB to begin using a texture */
 		else
 		/* likewise, if we're drawing without a 'texCoord', then make sure we 
 			haven't bound anything there to help prevent draw errors */
@@ -365,7 +363,6 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 			glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
 			korlAssert(!nameTex2dUnit0);
 		}
-#endif//0
 		/* actually draw the immediate-mode buffer w/ correct render states */
 		glUseProgram(program);
 		/* if we aren't using a 'color' vertex attribute, we must be using a 
@@ -425,6 +422,7 @@ internal KRB_END_FRAME(krbEndFrame)
 	korl_rb_ogl_flushImmediateBuffer();
 	krb::g_context->frameInProgress = false;
 }
+#if 0
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
 	if(enable)
@@ -449,6 +447,7 @@ internal KRB_SET_WIREFRAME(krbSetWireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
 }
+#endif//0
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
 	glMatrixMode(GL_PROJECTION);
@@ -461,7 +460,7 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
-	m4x4f32 projectionMatrix = m4x4f32::IDENTITY;
+	m4f32 projectionMatrix = m4f32::IDENTITY;
 	projectionMatrix.r0c0 = 2 / (right - left);
 	projectionMatrix.r0c3 = -(right + left) / (right - left);
 	projectionMatrix.r1c1 = 2 / (top - bottom);
@@ -503,7 +502,7 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	glDisable(GL_SCISSOR_TEST);
 	glMatrixMode(GL_PROJECTION);
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
-	m4x4f32 projectionMatrix = m4x4f32::IDENTITY;
+	m4f32 projectionMatrix = m4f32::IDENTITY;
 	projectionMatrix.r0c0 = 2 / (right - left);
 	projectionMatrix.r0c3 = -(right + left) / (right - left);
 	projectionMatrix.r1c1 = 2 / (top - bottom);
@@ -535,7 +534,7 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 	korlAssert(!kmath::isNearlyEqual(clipNear, clipFar) && clipFar > clipNear);
 	const f32 horizonFovRadians = horizonFovDegrees*PI32/180;
 	const f32 tanHalfFov = tanf(horizonFovRadians / 2);
-	m4x4f32 projectionMatrix = {};
+	m4f32 projectionMatrix = {};
 	// http://ogldev.org/www/tutorial12/tutorial12.html
 	// http://www.songho.ca/opengl/gl_projectionmatrix.html
 	projectionMatrix.r0c0 = 1 / (aspectRatio * tanHalfFov);
@@ -570,7 +569,7 @@ internal KRB_LOOK_AT(krbLookAt)
 	const v3f32 camAxisX = kmath::normal(
 		reinterpret_cast<const v3f32*>(v3f32_worldUp)->cross(camAxisZ));
 	const v3f32 camAxisY = camAxisZ.cross(camAxisX);
-	m4x4f32 mView = m4x4f32::IDENTITY;
+	m4f32 mView = m4f32::IDENTITY;
 	mView.r0c0 = camAxisX.x; mView.r0c1 = camAxisX.y; mView.r0c2 = camAxisX.z;
 	mView.r1c0 = camAxisY.x; mView.r1c1 = camAxisY.y; mView.r1c2 = camAxisY.z;
 	mView.r2c0 = camAxisZ.x; mView.r2c1 = camAxisZ.y; mView.r2c2 = camAxisZ.z;
@@ -649,6 +648,7 @@ internal KRB_DRAW_TRIS(krbDrawTris)
 {
 	korlAssert(vertexCount % 3 == 0);
 	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
+	krbUseTexture(krb::INVALID_TEXTURE_HANDLE, {});
 	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
 		|| krb::g_context->immediateVertexStride != vertexStride 
 		|| krb::g_context->immediateVertexAttributeOffsets != 
@@ -685,6 +685,7 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 		, .color_4f32    = offsetof(QuadVertex, color)
 		, .texCoord_2f32 = sizeof(QuadVertex) };
 	local_const u32 VERTEX_COUNT = CARRAY_SIZE(quadVertices);
+	krbUseTexture(krb::INVALID_TEXTURE_HANDLE, {});
 	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
 		|| krb::g_context->immediateVertexStride != VERTEX_STRIDE 
 		|| krb::g_context->immediateVertexAttributeOffsets != 
@@ -935,7 +936,7 @@ internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix)
 }
 internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard)
 {
-	m4x4f32 modelView;
+	m4f32 modelView;
 	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, modelView.elements);
 	if(lockX)
 	{
@@ -1036,19 +1037,31 @@ internal GLint korlRenderBackendDecodeTextureFilterMode(KorlTextureFilterMode m)
 internal KRB_USE_TEXTURE(krbUseTexture)
 {
 	glActiveTexture(GL_TEXTURE0);
+	/* if the texture we are binding differs from the one which is currently 
+		bound, then we need to flush the immediate buffer */
+	{
+		GLint nameTex2dUnit0;
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
+		static_assert(sizeof(KrbTextureHandle) == sizeof(GLint));
+		if(nameTex2dUnit0 != static_cast<GLint>(kth))
+			korl_rb_ogl_flushImmediateBuffer();
+	}
 	glBindTexture(GL_TEXTURE_2D, kth);
-	const GLint paramWrapS = 
-		korlRenderBackendDecodeTextureWrapMode(texMeta.wrapX);
-	const GLint paramWrapT = 
-		korlRenderBackendDecodeTextureWrapMode(texMeta.wrapY);
-	const GLint paramFilterMin = 
-		korlRenderBackendDecodeTextureFilterMode(texMeta.filterMinify);
-	const GLint paramFilterMag = 
-		korlRenderBackendDecodeTextureFilterMode(texMeta.filterMagnify);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, paramWrapS);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, paramWrapT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, paramFilterMin);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, paramFilterMag);
+	if(kth != krb::INVALID_TEXTURE_HANDLE)
+	{
+		const GLint paramWrapS = 
+			korlRenderBackendDecodeTextureWrapMode(texMeta.wrapX);
+		const GLint paramWrapT = 
+			korlRenderBackendDecodeTextureWrapMode(texMeta.wrapY);
+		const GLint paramFilterMin = 
+			korlRenderBackendDecodeTextureFilterMode(texMeta.filterMinify);
+		const GLint paramFilterMag = 
+			korlRenderBackendDecodeTextureFilterMode(texMeta.filterMagnify);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, paramWrapS);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, paramWrapT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, paramFilterMin);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, paramFilterMag);
+	}
 	GL_CHECK_ERROR();
 }
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
@@ -1063,8 +1076,8 @@ internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 		glPopMatrix();
 		modelViewStackDepth--;
 	}
-	m4x4f32 mView;
-	m4x4f32 mProjection;
+	m4f32 mView;
+	m4f32 mProjection;
 	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, mView.elements);
 	glMatrixMode(GL_PROJECTION);
 	glGetFloatv(GL_TRANSPOSE_PROJECTION_MATRIX, mProjection.elements);
@@ -1115,22 +1128,22 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		glPopMatrix();
 		modelViewStackDepth--;
 	}
-	m4x4f32 mView;
-	m4x4f32 mProjection;
+	m4f32 mView;
+	m4f32 mProjection;
 	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, mView.elements);
 	glMatrixMode(GL_PROJECTION);
 	glGetFloatv(GL_TRANSPOSE_PROJECTION_MATRIX, mProjection.elements);
 	GL_CHECK_ERROR();
 	/* at this point, we have everything we need from the GL to calculate the 
 		eye ray: */
-	m4x4f32 mInverseView;
-	m4x4f32 mInverseProjection;
-	if(!m4x4f32::invert(mView.elements, mInverseView.elements))
+	m4f32 mInverseView;
+	m4f32 mInverseProjection;
+	if(!m4f32::invert(mView.elements, mInverseView.elements))
 	{
 		KLOG(WARNING, "Failed to invert the view matrix!");
 		return false;
 	}
-	if(!m4x4f32::invert(mProjection.elements, mInverseProjection.elements))
+	if(!m4f32::invert(mProjection.elements, mInverseProjection.elements))
 	{
 		KLOG(WARNING, "Failed to invert the projection matrix!");
 		return false;
