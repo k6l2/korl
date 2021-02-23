@@ -18,7 +18,6 @@ internal bool
 		char* o_assetFileNameTexture, size_t assetFileNameTextureBufferSize, 
 		char* o_assetFileNameTextureOutline, 
 		size_t assetFileNameTextureOutlineBufferSize);
-struct Color4f32;
 struct KrbApi;
 struct KgtAssetManager;
 /**
@@ -29,7 +28,7 @@ internal void
 	kgtSpriteFontDraw(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
-		const Color4f32& color, const Color4f32& colorOutline, 
+		const ColorRgbaF32& color, const ColorRgbaF32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam);
 internal v2f32 
 	kgtSpriteFontComputeAabbSize(
@@ -42,7 +41,7 @@ internal v2f32
 #define KGT_SPRITE_FONT_CALLBACK_ADD_VERTEX(name) \
 	void name(\
 		void* userData, const v2f32& position, const v2f32& textureNormals, \
-		const Color4f32& color, const Color4f32& colorOutline)
+		const ColorRgbaF32& color, const ColorRgbaF32& colorOutline)
 typedef KGT_SPRITE_FONT_CALLBACK_ADD_VERTEX(kgtSpriteFontCallbackAddVertex);
 /** Note: because the SpriteFont text mesh is identical to the outline's mesh, 
  * `callbackAddVertex` is only called ONCE per vertex, passing both color & 
@@ -52,7 +51,7 @@ internal void
 	kgtSpriteFontBatch(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
-		const Color4f32& color, const Color4f32& colorOutline, 
+		const ColorRgbaF32& color, const ColorRgbaF32& colorOutline, 
 		KgtAssetManager*const kam, 
 		kgtSpriteFontCallbackAddVertex* callbackAddVertex, 
 		void* callbackAddVertexUserData, v2f32* io_aabbMin, v2f32* io_aabbMax);

@@ -3,7 +3,7 @@ struct KgtVertex
 {
 	v3f32 position;
 	v2f32 textureNormal;
-	Color4f32 color;
+	v4f32 color;
 };
 /* KRB vertex attribute specifications */
 const global_variable KrbVertexAttributeOffsets 

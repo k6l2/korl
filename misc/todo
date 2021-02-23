@@ -402,6 +402,8 @@
 	[x] support texture uniforms
 	[x] support textureNormal vertex attribute
 	[ ] support MVP transformation matrices
+	[ ] use uniform block binding for View/Projection matrices
+	[ ] move `defaultColor` into global UBO
 	[ ] custom shader/program API
 	[ ] add shader/program assets to KgtAssetManager
 	[ ] support programmable blend function

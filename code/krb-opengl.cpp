@@ -677,7 +677,7 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 	struct QuadVertex
 	{
 		v3f32 position;
-		Color4f32 color;
+		ColorRgbaF32 color;
 	} quadVertices[6];
 	local_const u32 VERTEX_STRIDE = sizeof(QuadVertex);
 	local_const KrbVertexAttributeOffsets VERTEX_ATTRIB_OFFSETS = 
@@ -740,7 +740,7 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 	struct QuadVertex
 	{
 		v3f32 position;
-		Color4f32 color;
+		ColorRgbaF32 color;
 		v2f32 textureNormal;
 	} quadVertices[6];
 	local_const u32 VERTEX_STRIDE = sizeof(QuadVertex);

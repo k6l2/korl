@@ -127,8 +127,12 @@ public:
 	/** @return the magnitude of the vector before normalization */
 	inline f32 normalize();
 	inline f32 dot(const v4f32& other) const;
+	/** @param ratio 
+	 * 0: the result is entirely `this`
+	 * 1: the result is entirely `other` */
+	inline v4f32 lerp(const v4f32& other, f32 ratio) const;
 };
-/*@TODO: rename this to m4f32 since the x4 can just be implied */
+/* @TODO: rename this to m4f32 since the x4 can just be implied */
 struct m4x4f32
 {
 	union 

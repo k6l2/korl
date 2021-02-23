@@ -6,13 +6,13 @@
 #pragma once
 #include "kutil.h"
 #include "krb-interface.h"
-global_variable const Color4f32 KGT_DRAW_QUAD_WHITE[]  = 
+global_variable const ColorRgbaF32 KGT_DRAW_QUAD_WHITE[]  = 
 	{ krb::WHITE, krb::WHITE, krb::WHITE, krb::WHITE };
 internal void 
 	kgtDrawTexture2d(
 		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale, 
-		const Color4f32 colors[4] = KGT_DRAW_QUAD_WHITE);
+		const ColorRgbaF32 colors[4] = KGT_DRAW_QUAD_WHITE);
 internal void 
 	kgtDrawTexture2d(
 		KrbTextureHandle kth, const v2u32& imageSize, 
@@ -40,11 +40,11 @@ internal void
 	kgtDrawCompass(u32 squareSize, const v3f32& camForward);
 internal void 
 	kgtDrawBoxLines2d(
-		const v2f32& cornerA, const v2f32& cornerB, const Color4f32& color);
+		const v2f32& cornerA, const v2f32& cornerB, const ColorRgbaF32& color);
 internal void 
 	kgtDrawBox2d(
 		const v2f32& cornerMinusXPlusY, const v2f32& size, 
-		const Color4f32& color);
+		const ColorRgbaF32& color);
 #define KGT_USE_IMAGE(kgtAssetIndex) \
 	g_krb->useTexture(\
 		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \

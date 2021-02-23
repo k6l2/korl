@@ -277,6 +277,15 @@ inline f32 v4f32::dot(const v4f32& other) const
 {
 	return w*other.w + x*other.x + y*other.y + z*other.z;
 }
+inline v4f32 v4f32::lerp(const v4f32& other, f32 ratio) const
+{
+	v4f32 result;
+	result.r = r + ratio*(other.r - r);
+	result.g = g + ratio*(other.g - g);
+	result.b = b + ratio*(other.b - b);
+	result.a = a + ratio*(other.a - a);
+	return result;
+}
 m4x4f32 m4x4f32::transpose(const f32* elements)
 {
 	m4x4f32 result = {};
@@ -1023,8 +1032,8 @@ internal inline f32 kmath::collideRayBox(
 			return NAN32;
 	return tMin;
 }
-#define COLOR4F32_STRIDE(pu8,byteStride,index) \
-	reinterpret_cast<Color4f32*>((pu8) + ((index)*(byteStride)))
+#define COLOR_RGBAF32_STRIDE(pu8,byteStride,index) \
+	reinterpret_cast<ColorRgbaF32*>((pu8) + ((index)*(byteStride)))
 #define V3F32_STRIDE(pu8,byteStride,index) \
 	reinterpret_cast<v3f32*>((pu8) + ((index)*(byteStride)))
 #define V2F32_STRIDE(pu8,byteStride,index) \

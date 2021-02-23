@@ -153,7 +153,7 @@ internal void
 	kgtSpriteFontDraw(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
-		const Color4f32& color, const Color4f32& colorOutline, 
+		const ColorRgbaF32& color, const ColorRgbaF32& colorOutline, 
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
@@ -280,7 +280,7 @@ internal void
 	kgtSpriteFontBatch(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
 		const v2f32& position, const v2f32& anchor, const v2f32& scale, 
-		const Color4f32& color, const Color4f32& colorOutline, 
+		const ColorRgbaF32& color, const ColorRgbaF32& colorOutline, 
 		KgtAssetManager*const kam, 
 		kgtSpriteFontCallbackAddVertex* callbackAddVertex, 
 		void* callbackAddVertexUserData, v2f32* io_aabbMin, v2f32* io_aabbMax)

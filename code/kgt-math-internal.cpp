@@ -1,4 +1,5 @@
 #include "kgt-math-internal.h"
+#include "krb-interface.h"
 internal void kmath::gjk_initialize(
 	GjkState* gjkState, fnSig_gjkSupport* support, void* supportUserData, 
 	const v3f32* initialSupportDirection)
@@ -513,23 +514,23 @@ internal u16 kmath::epa_buildPolytopeTriangles(
 	u8*const o_vertexPositions = o_vertexDataU8 + vertexPositionOffset;
 	u8*const o_vertexColors    = o_vertexDataU8 + vertexColorOffset;
 	/* sizeof(vertexPosition) + sizeof(vertexColor) */
-	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(Color4f32);
+	const size_t requiredVertexBytes = sizeof(v3f32) + sizeof(ColorRgbaF32);
 	korlAssert(vertexByteStride >= requiredVertexBytes);
 	korlAssert(vertexPositionOffset <= vertexByteStride - sizeof(v3f32));
-	korlAssert(vertexColorOffset    <= vertexByteStride - sizeof(Color4f32));
+	korlAssert(vertexColorOffset    <= vertexByteStride - sizeof(ColorRgbaF32));
 	korlAssert(requiredVertexBytes*requiredVertexCount <= vertexDataBytes);
 	/* iterate over the polytope triangles and emit the vertex positions */
 	for(size_t t = 0; t < arrlenu(epaState->tris); t++)
 	{
 		const EpaState::RightHandTri& tri = epaState->tris[t];
 		/* draw the triangle nearest to the origin green, and the rest white */
-		const Color4f32 triColor = (t == epaState->nearestTriToOriginIndex
+		const ColorRgbaF32 triColor = (t == epaState->nearestTriToOriginIndex
 			? krb::GREEN : krb::WHITE);
 		for(size_t e = 0; e < 3; e++)
 		{
 			*V3F32_STRIDE(o_vertexPositions, vertexByteStride, 3*t + e) = 
 				epaState->vertexPositions[tri.vertexPositionIndices[e]];
-			*COLOR4F32_STRIDE(o_vertexColors, vertexByteStride, 3*t + e) = 
+			*COLOR_RGBAF32_STRIDE(o_vertexColors, vertexByteStride, 3*t + e) = 
 				triColor;
 		}
 	}
