@@ -4,11 +4,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 //	ImGui::Text("Hello KORL!");
-	g_krb->beginFrame(0.2f, 0, 0.2f, windowDimensions.elements);
+	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
 	defer(g_krb->endFrame());
-	/* minimal code to draw a quad */
-	g_krb->drawQuad(
-		v2f32{0.5f, 0.5f}.elements, v2f32::ZERO.elements, QUAD_WHITE);
 	/* minimal code to just draw a triangle */
 	{
 		local_const f32 VERTEX_POSITIONS[] = 
@@ -32,6 +29,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->drawTris(
 			TRI_VERTICES, CARRAY_SIZE(TRI_VERTICES), sizeof(*TRI_VERTICES), 
 			KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+	}
+	/* minimal code to draw a quad */
+	{
+		local_const Color4f32 QUAD_COLOR[4] = 
+			{krb::BLACK, krb::BLACK, krb::BLACK, krb::BLACK};
+		g_krb->drawQuad(
+			v2f32{1.f, 1.f}.elements, v2f32{0.5f, 0.f}.elements, QUAD_COLOR);
 	}
 	return true;
 }

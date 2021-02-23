@@ -5,6 +5,7 @@
 /* core since 1.3 */
 global_variable PFNGLLOADTRANSPOSEMATRIXFPROC glLoadTransposeMatrixf;
 global_variable PFNGLMULTTRANSPOSEMATRIXFPROC glMultTransposeMatrixf;
+global_variable PFNGLACTIVETEXTUREPROC glActiveTexture;
 /* core since 1.5 */
 global_variable PFNGLGENBUFFERSPROC glGenBuffers;
 global_variable PFNGLBUFFERDATAPROC glBufferData;
@@ -27,7 +28,9 @@ global_variable PFNGLUSEPROGRAMPROC glUseProgram;
 global_variable PFNGLDELETESHADERPROC glDeleteShader;
 global_variable PFNGLDELETEPROGRAMPROC glDeleteProgram;
 global_variable PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+global_variable PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray;
 global_variable PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+global_variable PFNGLUNIFORM1IPROC glUniform1i;
 global_variable PFNGLUNIFORM4FPROC glUniform4f;
 global_variable PFNGLUNIFORM4FVPROC glUniform4fv;
 global_variable PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;

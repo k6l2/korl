@@ -206,11 +206,11 @@ internal void w32KrbOglInitialize(HWND hwnd)
 		KLOG(ERROR, "Failed to delete dummy OpenGL render context! "
 			"GetLastError=%i", GetLastError());
 	/* get CORE OpenGL extensions */
-	KORL_OGL_GET_EXTENSION_API(PFNGLGETSTRINGIPROC, glGetStringi);
 	KORL_OGL_GET_EXTENSION_API(
 		PFNGLLOADTRANSPOSEMATRIXFPROC, glLoadTransposeMatrixf);
 	KORL_OGL_GET_EXTENSION_API(
 		PFNGLMULTTRANSPOSEMATRIXFPROC, glMultTransposeMatrixf);
+	KORL_OGL_GET_EXTENSION_API(PFNGLACTIVETEXTUREPROC, glActiveTexture);
 	KORL_OGL_GET_EXTENSION_API(PFNGLGENBUFFERSPROC, glGenBuffers);
 	KORL_OGL_GET_EXTENSION_API(PFNGLBUFFERDATAPROC, glBufferData);
 	KORL_OGL_GET_EXTENSION_API(PFNGLBUFFERSUBDATAPROC, glBufferSubData);
@@ -218,7 +218,6 @@ internal void w32KrbOglInitialize(HWND hwnd)
 	KORL_OGL_GET_EXTENSION_API(
 		PFNGLGETBUFFERPARAMETERIVPROC, glGetBufferParameteriv);
 	KORL_OGL_GET_EXTENSION_API(PFNGLDELETEBUFFERSPROC, glDeleteBuffers);
-	KORL_OGL_GET_EXTENSION_API(PFNGLCOPYBUFFERSUBDATAPROC, glCopyBufferSubData);
 	KORL_OGL_GET_EXTENSION_API(PFNGLCREATESHADERPROC, glCreateShader);
 	KORL_OGL_GET_EXTENSION_API(PFNGLSHADERSOURCEPROC, glShaderSource);
 	KORL_OGL_GET_EXTENSION_API(PFNGLCOMPILESHADERPROC, glCompileShader);
@@ -235,13 +234,18 @@ internal void w32KrbOglInitialize(HWND hwnd)
 	KORL_OGL_GET_EXTENSION_API(
 		PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray);
 	KORL_OGL_GET_EXTENSION_API(
+		PFNGLDISABLEVERTEXATTRIBARRAYPROC, glDisableVertexAttribArray);
+	KORL_OGL_GET_EXTENSION_API(
 		PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer);
-	KORL_OGL_GET_EXTENSION_API(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays);
-	KORL_OGL_GET_EXTENSION_API(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray);
+	KORL_OGL_GET_EXTENSION_API(PFNGLUNIFORM1IPROC, glUniform1i);
 	KORL_OGL_GET_EXTENSION_API(PFNGLUNIFORM4FPROC, glUniform4f);
 	KORL_OGL_GET_EXTENSION_API(PFNGLUNIFORM4FVPROC, glUniform4fv);
 	KORL_OGL_GET_EXTENSION_API(
 		PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation);
+	KORL_OGL_GET_EXTENSION_API(PFNGLGETSTRINGIPROC, glGetStringi);
+	KORL_OGL_GET_EXTENSION_API(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays);
+	KORL_OGL_GET_EXTENSION_API(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray);
+	KORL_OGL_GET_EXTENSION_API(PFNGLCOPYBUFFERSUBDATAPROC, glCopyBufferSubData);
 	/* Our OpenGL context should now be set up, so let's print out some info 
 		about it to the log. */
 	{
@@ -285,6 +289,16 @@ internal void w32KrbOglInitialize(HWND hwnd)
 					above data alone, so let's just not print this in deployed 
 					builds */
 		KLOG(INFO, "extensions: %s", oglExtensionCStrBuffer);
+		GLint maxFragmentTextureImageUnits;
+		glGetIntegerv(
+			GL_MAX_TEXTURE_IMAGE_UNITS, &maxFragmentTextureImageUnits);
+		KLOG(INFO, "GL_MAX_TEXTURE_IMAGE_UNITS: %i", 
+			maxFragmentTextureImageUnits);
+		GLint maxCombinedTextureImageUnits;
+		glGetIntegerv(
+			GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxCombinedTextureImageUnits);
+		KLOG(INFO, "GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS: %i", 
+			maxCombinedTextureImageUnits);
 #endif//INTERNAL_BUILD
 		KLOG(INFO, "--------------------------");
 	}

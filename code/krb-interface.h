@@ -4,9 +4,17 @@
 #include "kmath.h"
 #include "korl-texture.h"
 using KrbTextureHandle = u32;
+/* @todo: destroy this struct & use v4f32 instead! */
 struct Color4f32
 {
-	f32 r, g, b, a;
+	union
+	{
+		f32 elements[4];
+		struct
+		{
+			f32 r, g, b, a;
+		};
+	};
 };
 internal Color4f32 lerp(const Color4f32& a, const Color4f32& b, f32 ratio)
 {
@@ -55,9 +63,12 @@ namespace krb
 		/* internal shaders for use with "immediate" draw API */
 		u32 shaderImmediateVertex;
 		u32 shaderImmediateVertexColor;
+		u32 shaderImmediateVertexColorTexNormal;
 		u32 shaderImmediateFragment;
+		u32 shaderImmediateFragmentTexture;
 		u32 programImmediate;
 		u32 programImmediateColor;
+		u32 programImmediateColorTexture;
 		/* immediate-mode render state */
 		KrbVertexAttributeOffsets immediateVertexAttributeOffsets;
 		u32 immediateVertexStride;
@@ -68,21 +79,20 @@ namespace krb
 }
 /** This API MUST be paired with a call to KRB_END_FRAME! */
 #define KRB_BEGIN_FRAME(name) void name(\
-	f32 clamped0_1_red, f32 clamped0_1_green, f32 clamped0_1_blue, \
-	const u32 windowSize[2])
+	const f32 clamped_0_1_colorRgb[3], const u32 windowSize[2])
 /** Calling this function ensures that any buffers that are currently being 
  * filled with data are drawn to the screen if they haven't already been.  This 
  * API MUST be called for every call to KRB_BEGIN_FRAME! */
-#define KRB_END_FRAME(name) \
-	void name()
-#define KRB_SET_DEPTH_TESTING(name) \
-	void name(bool enable)
-#define KRB_SET_BACKFACE_CULLING(name) \
-	void name(bool enable)
-#define KRB_SET_WIREFRAME(name) \
-	void name(bool enable)
+#define KRB_END_FRAME(name) void name()
+#define KRB_SET_DEPTH_TESTING(name) void name(\
+	bool enable)
+#define KRB_SET_BACKFACE_CULLING(name) void name(\
+	bool enable)
+#define KRB_SET_WIREFRAME(name) void name(\
+	bool enable)
 /** Setup a right-handed axis where +Y is UP. */
-#define KRB_SET_PROJECTION_ORTHO(name) void name(f32 halfDepth)
+#define KRB_SET_PROJECTION_ORTHO(name) void name(\
+	f32 halfDepth)
 /** Setup a right-handed axis where +Y is UP. */
 #define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) void name(\
 	u32 fixedHeight, f32 halfDepth)
@@ -123,65 +133,63 @@ namespace krb
  *                  @TODO: Yes, I should rename this `texNorms`...
  * @param colors [up-left, down-left, down-right, up-right]
 */
-#define KRB_DRAW_QUAD_TEXTURED(name) \
-	void name(const v2f32& size, const v2f32& ratioAnchor, \
-	          const v2f32 texCoords[4], const Color4f32 colors[4])
-#define KRB_DRAW_CIRCLE(name) \
-	void name(f32 radius, f32 outlineThickness, const Color4f32& colorFill, \
-	          const Color4f32& colorOutline, u16 vertexCount)
-#define KRB_VIEW_TRANSLATE(name) \
-	void name(const v2f32& offset)
-#define KRB_SET_MODEL_XFORM(name) \
-	void name(const v3f32& translation, const q32& orientation, \
-	          const v3f32& scale)
-#define KRB_SET_MODEL_XFORM_2D(name) \
-	void name(const v2f32& translation, const q32& orientation, \
-	          const v2f32& scale)
-#define KRB_SET_MODEL_MATRIX(name) \
-	void name(const f32 rowMajorMatrix4x4[16])
-#define KRB_SET_MODEL_XFORM_BILLBOARD(name) \
-	void name(bool lockX, bool lockY, bool lockZ)
+#define KRB_DRAW_QUAD_TEXTURED(name) void name(\
+	const v2f32& size, const v2f32& ratioAnchor, \
+	const v2f32 texCoords[4], const Color4f32 colors[4])
+#define KRB_DRAW_CIRCLE(name) void name(\
+	f32 radius, f32 outlineThickness, const Color4f32& colorFill, \
+	const Color4f32& colorOutline, u16 vertexCount)
+#define KRB_VIEW_TRANSLATE(name) void name(\
+	const v2f32& offset)
+#define KRB_SET_MODEL_XFORM(name) void name(\
+	const v3f32& translation, const q32& orientation, const v3f32& scale)
+#define KRB_SET_MODEL_XFORM_2D(name) void name(\
+	const v2f32& translation, const q32& orientation, const v2f32& scale)
+#define KRB_SET_MODEL_MATRIX(name) void name(\
+	const f32 rowMajorMatrix4x4[16])
+#define KRB_SET_MODEL_XFORM_BILLBOARD(name) void name(\
+	bool lockX, bool lockY, bool lockZ)
 enum class KorlPixelDataFormat : u8
 	{ RGBA
 	, BGR };
+#if 0/* I'm not sure if this is even being used anywhere anymore... */
 global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] = 
 	{ 32
 	, 24 };
-#define KRB_LOAD_IMAGE(name) \
-	KrbTextureHandle name(\
-		u32 imageSizeX, u32 imageSizeY, u8* pixelData, \
-		KorlPixelDataFormat pixelDataFormat)
-#define KRB_DELETE_TEXTURE(name) \
-	void name(KrbTextureHandle krbTextureHandle)
-#define KRB_USE_TEXTURE(name) \
-	void name(KrbTextureHandle kth, const KorlTextureMetaData& texMeta)
+#endif//0
+#define KRB_LOAD_IMAGE(name) KrbTextureHandle name(\
+	u32 imageSizeX, u32 imageSizeY, u8* pixelData, \
+	KorlPixelDataFormat pixelDataFormat)
+#define KRB_DELETE_TEXTURE(name) void name(\
+	KrbTextureHandle krbTextureHandle)
+#define KRB_USE_TEXTURE(name) void name(\
+	KrbTextureHandle kth, const KorlTextureMetaData& texMeta)
 /** 
  * @return {NAN,NAN} if the provided world position is not contained within the 
- *         camera's clip space.  This does NOT mean that non-{NAN,NAN} values 
- *         are on the screen!
-*/
-#define KRB_WORLD_TO_SCREEN(name) \
-	v2f32 name(const f32* pWorldPosition, u8 worldPositionDimension)
+ * camera's clip space.  This does NOT mean that non-{NAN,NAN} values are on the 
+ * screen!
+ */
+#define KRB_WORLD_TO_SCREEN(name) v2f32 name(\
+	const f32* pWorldPosition, u8 worldPositionDimension)
 /**
- * @return false if the ray could not be computed.  Reasons for this function 
- *         failing include:
- *          - view matrix not being invertable
- *          - projection matrix not being invertable
+ * @return 
+ * false if the ray could not be computed.  Reasons for this function failing 
+ * include:
+ *     - view matrix not being invertable
+ *     - projection matrix not being invertable
  */
 #define KRB_SCREEN_TO_WORLD(name) bool name(\
 	const i32 windowPosition[2], \
 	f32 o_worldEyeRayPosition[3], f32 o_worldEyeRayDirection[3])
-#define KRB_SET_CURRENT_CONTEXT(name) \
-	void name(krb::Context* context)
-#define KRB_SET_DEFAULT_COLOR(name) \
-	void name(const Color4f32& color)
+#define KRB_SET_CURRENT_CONTEXT(name) void name(\
+	krb::Context* context)
+#define KRB_SET_DEFAULT_COLOR(name) void name(\
+	const Color4f32& color)
 /** The origin of clip box coordinates is the bottom-left corner of the window, 
- * with both axes moving toward the upper-right corner of the window.
- */
-#define KRB_SET_CLIP_BOX(name) \
-	void name(i32 left, i32 bottom, u32 width, u32 height)
-#define KRB_DISABLE_CLIP_BOX(name) \
-	void name()
+ * with both axes moving toward the upper-right corner of the window. */
+#define KRB_SET_CLIP_BOX(name) void name(\
+	i32 left, i32 bottom, u32 width, u32 height)
+#define KRB_DISABLE_CLIP_BOX(name) void name()
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_END_FRAME(fnSig_krbEndFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
