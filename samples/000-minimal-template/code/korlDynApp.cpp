@@ -4,13 +4,16 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
 //	ImGui::Text("Hello KORL!");
-	g_kpl->mouseSetRelativeMode(KORL_BUTTON_ON(gameMouse.left));
-	if(KORL_BUTTON_ON(gameMouse.left))
+	if(windowIsFocused)
 	{
-		g_gs->viewPosition.x += 
-			0.001f*static_cast<f32>(gameMouse.deltaPosition.x);
-		g_gs->viewPosition.y -= 
-			0.001f*static_cast<f32>(gameMouse.deltaPosition.y);
+		g_kpl->mouseSetRelativeMode(KORL_BUTTON_ON(gameMouse.left));
+		if(KORL_BUTTON_ON(gameMouse.left))
+		{
+			g_gs->viewPosition.x += 
+				0.001f*static_cast<f32>(gameMouse.deltaPosition.x);
+			g_gs->viewPosition.y -= 
+				0.001f*static_cast<f32>(gameMouse.deltaPosition.y);
+		}
 	}
 	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
 	defer(g_krb->endFrame());
@@ -55,6 +58,56 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->drawQuadTextured(
 			v2f32{1.f, 1.f}.elements, v2f32{0.5f, 0.5f}.elements, 
 			KGT_DRAW_QUAD_WHITE, v2f32::ZERO.elements, v2f32{1,1}.elements);
+	}
+	g_krb->setDefaultColor(krb::CYAN);
+	/* draw some lines around the birb */
+	{
+#if 1
+		const v2f32 fSizeBirb = {1,1};
+#else
+		const v2u32 sizeBirb = 
+			kgtAssetManagerGetRawImageSize(g_kam, KgtAssetIndex::birb_png);
+		const v2f32 fSizeBirb = 
+			{ static_cast<f32>(sizeBirb.x), static_cast<f32>(sizeBirb.y)};
+#endif//0
+		const v3f32 lineVertices[] = 
+			// top line //
+			{ {-0.5f*fSizeBirb.x,  0.5f*fSizeBirb.y, 0}
+			, { 0.5f*fSizeBirb.x,  0.5f*fSizeBirb.y, 0}
+			// left line //
+			, {-0.5f*fSizeBirb.x,  0.5f*fSizeBirb.y, 0}
+			, {-0.5f*fSizeBirb.x, -0.5f*fSizeBirb.y, 0}
+			// bottom line //
+			, { 0.5f*fSizeBirb.x, -0.5f*fSizeBirb.y, 0}
+			, {-0.5f*fSizeBirb.x, -0.5f*fSizeBirb.y, 0}
+			// right line //
+			, { 0.5f*fSizeBirb.x, -0.5f*fSizeBirb.y, 0}
+			, { 0.5f*fSizeBirb.x,  0.5f*fSizeBirb.y, 0} };
+		local_const KrbVertexAttributeOffsets VERTEX_ATTRIB_OFFSETS = 
+			{ .position_3f32 = 0
+			, .color_4f32    = sizeof(*lineVertices)
+			, .texCoord_2f32 = sizeof(*lineVertices) };
+		g_krb->drawLines(
+			lineVertices, CARRAY_SIZE(lineVertices), 
+			sizeof(*lineVertices), VERTEX_ATTRIB_OFFSETS);
+	}
+	/* draw some points */
+	{
+		v3f32 pointVertices[16];
+		for(u32 i = 0; i < CARRAY_SIZE(pointVertices); i++)
+			pointVertices[i] = 
+				q32(
+					v3f32::Z, 
+					static_cast<f32>(i)*
+						(2.f*PI32/static_cast<f32>(CARRAY_SIZE(pointVertices))))
+					.transform({0.25f,0,0});
+		local_const KrbVertexAttributeOffsets VERTEX_ATTRIB_OFFSETS = 
+			{ .position_3f32 = 0
+			, .color_4f32    = sizeof(*pointVertices)
+			, .texCoord_2f32 = sizeof(*pointVertices) };
+		g_krb->drawPoints(
+			pointVertices, CARRAY_SIZE(pointVertices), 
+			sizeof(*pointVertices), VERTEX_ATTRIB_OFFSETS);
 	}
 	return true;
 }

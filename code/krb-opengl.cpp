@@ -409,6 +409,36 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 	}
 	GL_CHECK_ERROR();
 }
+internal void korl_rb_ogl_bufferImmediateVertices(
+	u32 primitiveType, const KrbVertexAttributeOffsets& vertexAttribOffsets, 
+	u32 vertexStride, const void* vertices, u32 vertexCount)
+{
+	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
+	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
+		krbUseTexture(krb::INVALID_TEXTURE_HANDLE, {});
+	if(    krb::g_context->immediatePrimitiveType != primitiveType 
+		|| krb::g_context->immediateVertexStride != vertexStride 
+		|| krb::g_context->immediateVertexAttributeOffsets != 
+			vertexAttribOffsets)
+	{
+		korl_rb_ogl_flushImmediateBuffer();
+		krb::g_context->immediatePrimitiveType = primitiveType;
+		krb::g_context->immediateVertexStride = vertexStride;
+		krb::g_context->immediateVertexAttributeOffsets = vertexAttribOffsets;
+		korl_rb_ogl_resetImmediateModeVertexAttributes();
+	}
+	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
+		vertex VBO has enough capacity for the vertices! */
+	korl_rb_ogl_reserveImmediateModeVboBytes(vertexCount*vertexStride);
+	/* append vertices to the end of the VBO */
+	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
+	glBufferSubData(
+		GL_ARRAY_BUFFER, krb::g_context->vboImmediateVertexCount*vertexStride, 
+		vertexCount*vertexStride, vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	krb::g_context->vboImmediateVertexCount += vertexCount;
+	GL_CHECK_ERROR();
+}
 internal KRB_BEGIN_FRAME(krbBeginFrame)
 {
 	korlAssert(!krb::g_context->frameInProgress);
@@ -582,93 +612,20 @@ internal KRB_LOOK_AT(krbLookAt)
 internal KRB_DRAW_POINTS(krbDrawPoints)
 {
 	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
-	korlAssert(vertexAttribOffsets.texCoord_2f32 >= vertexStride);
-	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	if(vertexAttribOffsets.color_4f32 >= vertexStride)
-		glColor4f(krb::g_context->defaultColor.r, 
-		          krb::g_context->defaultColor.g, 
-		          krb::g_context->defaultColor.b, 
-		          krb::g_context->defaultColor.a);
-	glBegin(GL_POINTS);
-	for(size_t v = 0; v < vertexCount; v++)
-	{
-		const void* vertex = 
-			reinterpret_cast<const u8*>(vertices) + (v*vertexStride);
-		const f32* v3f32_position = reinterpret_cast<const f32*>(
-			reinterpret_cast<const u8*>(vertex) + 
-				vertexAttribOffsets.position_3f32);
-		const f32* v4f32_color = reinterpret_cast<const f32*>(
-			reinterpret_cast<const u8*>(vertex) + 
-				vertexAttribOffsets.color_4f32);
-		if(vertexAttribOffsets.color_4f32 < vertexStride)
-			glColor4fv(v4f32_color);
-		glVertex3fv(v3f32_position);
-	}
-	glEnd();
-	GL_CHECK_ERROR();
+	korl_rb_ogl_bufferImmediateVertices(
+		GL_POINTS, vertexAttribOffsets, vertexStride, vertices, vertexCount);
 }
 internal KRB_DRAW_LINES(krbDrawLines)
 {
 	korlAssert(vertexCount % 2 == 0);
-	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
-	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
-		glDisable(GL_TEXTURE_2D);
-	else
-		glEnable(GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	if(vertexAttribOffsets.color_4f32 >= vertexStride)
-		glColor4f(krb::g_context->defaultColor.r, 
-		          krb::g_context->defaultColor.g, 
-		          krb::g_context->defaultColor.b, 
-		          krb::g_context->defaultColor.a);
-	glBegin(GL_LINES);
-	for(size_t v = 0; v < vertexCount; v++)
-	{
-		const void* vertex = 
-			reinterpret_cast<const u8*>(vertices) + (v*vertexStride);
-		const f32* v3f32_position = reinterpret_cast<const f32*>(
-			reinterpret_cast<const u8*>(vertex) + 
-				vertexAttribOffsets.position_3f32);
-		const f32* v4f32_color = reinterpret_cast<const f32*>(
-			reinterpret_cast<const u8*>(vertex) + 
-				vertexAttribOffsets.color_4f32);
-		if(vertexAttribOffsets.color_4f32 < vertexStride)
-			glColor4fv(v4f32_color);
-		glVertex3fv(v3f32_position);
-	}
-	glEnd();
-	GL_CHECK_ERROR();
+	korl_rb_ogl_bufferImmediateVertices(
+		GL_LINES, vertexAttribOffsets, vertexStride, vertices, vertexCount);
 }
 internal KRB_DRAW_TRIS(krbDrawTris)
 {
 	korlAssert(vertexCount % 3 == 0);
-	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
-	krbUseTexture(krb::INVALID_TEXTURE_HANDLE, {});
-	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
-		|| krb::g_context->immediateVertexStride != vertexStride 
-		|| krb::g_context->immediateVertexAttributeOffsets != 
-			vertexAttribOffsets)
-	{
-		korl_rb_ogl_flushImmediateBuffer();
-		krb::g_context->immediatePrimitiveType = GL_TRIANGLES;
-		krb::g_context->immediateVertexStride = vertexStride;
-		krb::g_context->immediateVertexAttributeOffsets = vertexAttribOffsets;
-		korl_rb_ogl_resetImmediateModeVertexAttributes();
-	}
-	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
-		vertex VBO has enough capacity for the vertices! */
-	korl_rb_ogl_reserveImmediateModeVboBytes(vertexCount*vertexStride);
-	/* append vertices to the end of the VBO */
-	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
-	glBufferSubData(
-		GL_ARRAY_BUFFER, krb::g_context->vboImmediateVertexCount*vertexStride, 
-		vertexCount*vertexStride, vertices);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	krb::g_context->vboImmediateVertexCount += vertexCount;
-	GL_CHECK_ERROR();
+	korl_rb_ogl_bufferImmediateVertices(
+		GL_TRIANGLES, vertexAttribOffsets, vertexStride, vertices, vertexCount);
 }
 internal KRB_DRAW_QUAD(krbDrawQuad)
 {
@@ -683,21 +640,6 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 		, .color_4f32    = offsetof(QuadVertex, color)
 		, .texCoord_2f32 = sizeof(QuadVertex) };
 	local_const u32 VERTEX_COUNT = CARRAY_SIZE(quadVertices);
-	krbUseTexture(krb::INVALID_TEXTURE_HANDLE, {});
-	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
-		|| krb::g_context->immediateVertexStride != VERTEX_STRIDE 
-		|| krb::g_context->immediateVertexAttributeOffsets != 
-			VERTEX_ATTRIB_OFFSETS)
-	{
-		korl_rb_ogl_flushImmediateBuffer();
-		krb::g_context->immediatePrimitiveType = GL_TRIANGLES;
-		krb::g_context->immediateVertexStride = VERTEX_STRIDE;
-		krb::g_context->immediateVertexAttributeOffsets = VERTEX_ATTRIB_OFFSETS;
-		korl_rb_ogl_resetImmediateModeVertexAttributes();
-	}
-	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
-		vertex VBO has enough capacity for the vertices! */
-	korl_rb_ogl_reserveImmediateModeVboBytes(VERTEX_COUNT*VERTEX_STRIDE);
 	/* build the quad vertices */
 	const v2f32 quadMeshOffset = 
 		{-ratioAnchor[0]*size[0], ratioAnchor[1]*size[1]};
@@ -725,14 +667,10 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 	quadVertices[5].position = 
 		{quadMeshOffset.x + size[0], quadMeshOffset.y, 0};
 	quadVertices[5].color = colors[3];
-	/* append vertices to the end of the VBO */
-	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
-	glBufferSubData(
-		GL_ARRAY_BUFFER, krb::g_context->vboImmediateVertexCount*VERTEX_STRIDE, 
-		VERTEX_COUNT*VERTEX_STRIDE, quadVertices);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	krb::g_context->vboImmediateVertexCount += VERTEX_COUNT;
-	GL_CHECK_ERROR();
+	/* submit the quad mesh to the immediate-mode buffer */
+	korl_rb_ogl_bufferImmediateVertices(
+		GL_TRIANGLES, VERTEX_ATTRIB_OFFSETS, VERTEX_STRIDE, 
+		quadVertices, VERTEX_COUNT);
 }
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 {
@@ -748,20 +686,6 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 		, .color_4f32    = offsetof(QuadVertex, color)
 		, .texCoord_2f32 = offsetof(QuadVertex, textureNormal) };
 	local_const u32 VERTEX_COUNT = CARRAY_SIZE(quadVertices);
-	if(    krb::g_context->immediatePrimitiveType != GL_TRIANGLES 
-		|| krb::g_context->immediateVertexStride != VERTEX_STRIDE 
-		|| krb::g_context->immediateVertexAttributeOffsets != 
-			VERTEX_ATTRIB_OFFSETS)
-	{
-		korl_rb_ogl_flushImmediateBuffer();
-		krb::g_context->immediatePrimitiveType = GL_TRIANGLES;
-		krb::g_context->immediateVertexStride = VERTEX_STRIDE;
-		krb::g_context->immediateVertexAttributeOffsets = VERTEX_ATTRIB_OFFSETS;
-		korl_rb_ogl_resetImmediateModeVertexAttributes();
-	}
-	/* check to see if the vertex VBO has enough bytes for vertices; ensure the 
-		vertex VBO has enough capacity for the vertices! */
-	korl_rb_ogl_reserveImmediateModeVboBytes(VERTEX_COUNT*VERTEX_STRIDE);
 	/* build the quad vertices */
 	const v2f32 quadMeshOffset = 
 		{-ratioAnchor[0]*size[0], ratioAnchor[1]*size[1]};
@@ -795,14 +719,10 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 		{quadMeshOffset.x + size[0], quadMeshOffset.y, 0};
 	quadVertices[5].color = colors[3];
 	quadVertices[5].textureNormal = {texNormalMax[0], texNormalMin[1]};
-	/* append vertices to the end of the VBO */
-	glBindBuffer(GL_ARRAY_BUFFER, krb::g_context->vboImmediate);
-	glBufferSubData(
-		GL_ARRAY_BUFFER, krb::g_context->vboImmediateVertexCount*VERTEX_STRIDE, 
-		VERTEX_COUNT*VERTEX_STRIDE, quadVertices);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	krb::g_context->vboImmediateVertexCount += VERTEX_COUNT;
-	GL_CHECK_ERROR();
+	/* submit the quad mesh to the immediate-mode buffer */
+	korl_rb_ogl_bufferImmediateVertices(
+		GL_TRIANGLES, VERTEX_ATTRIB_OFFSETS, VERTEX_STRIDE, 
+		quadVertices, VERTEX_COUNT);
 }
 internal KRB_DRAW_CIRCLE(krbDrawCircle)
 {
