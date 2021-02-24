@@ -75,4 +75,4 @@ internal void
 internal void 
 	kgtFlipBookStep(KgtFlipBook* kfb, f32 deltaSeconds);
 internal void 
-	kgtFlipBookDraw(KgtFlipBook* kfb, const ColorRgbaF32& color);
+	kgtFlipBookDraw(KgtFlipBook* kfb, const RgbaF32& color);

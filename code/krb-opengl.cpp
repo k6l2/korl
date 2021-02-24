@@ -500,19 +500,15 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	/*
 		w / fixedHeight == windowAspectRatio
 	*/
-	/* @todo: fix this; this math is actually just straight up wrong I think??? 
-		- when windowSizeX < windowSizeY, weird stretching occurs
-		- when windowSizeX < 0.5*windowSizeY, even weirder shit happens */
 	const f32 windowAspectRatio = krb::g_context->windowSizeY == 0
 		? 1.f 
 		: static_cast<f32>(krb::g_context->windowSizeX) / 
 			krb::g_context->windowSizeY;
-	const GLsizei viewportWidth = 
-		static_cast<GLsizei>(windowAspectRatio * fixedHeight);
-	const f32 left  = -static_cast<f32>(viewportWidth)/2;
-	const f32 right =  static_cast<f32>(viewportWidth)/2;
-	const f32 bottom = -static_cast<f32>(fixedHeight)/2;
-	const f32 top    =  static_cast<f32>(fixedHeight)/2;
+	const f32 viewportWidth = windowAspectRatio * fixedHeight;
+	const f32 left  = -viewportWidth / 2.f;
+	const f32 right =  viewportWidth / 2.f;
+	const f32 bottom = -fixedHeight / 2.f;
+	const f32 top    =  fixedHeight / 2.f;
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
@@ -679,7 +675,7 @@ internal KRB_DRAW_QUAD(krbDrawQuad)
 	struct QuadVertex
 	{
 		v3f32 position;
-		ColorRgbaF32 color;
+		RgbaF32 color;
 	} quadVertices[6];
 	local_const u32 VERTEX_STRIDE = sizeof(QuadVertex);
 	local_const KrbVertexAttributeOffsets VERTEX_ATTRIB_OFFSETS = 
@@ -743,7 +739,7 @@ internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured)
 	struct QuadVertex
 	{
 		v3f32 position;
-		ColorRgbaF32 color;
+		RgbaF32 color;
 		v2f32 textureNormal;
 	} quadVertices[6];
 	local_const u32 VERTEX_STRIDE = sizeof(QuadVertex);

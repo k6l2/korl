@@ -5,7 +5,7 @@ internal void
 	kgtDrawTexture2d(
 		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
 		f32 counterClockwiseRadians, const v2f32& scale, 
-		const ColorRgbaF32 colors[4])
+		const RgbaF32 colors[4])
 {
 	g_krb->setModelXform2d(
 		position, q32{v3f32::Z, counterClockwiseRadians}, scale);
@@ -124,7 +124,7 @@ internal void
 }
 internal void 
 	kgtDrawBoxLines2d(
-		const v2f32& cornerA, const v2f32& cornerB, const ColorRgbaF32& color)
+		const v2f32& cornerA, const v2f32& cornerB, const RgbaF32& color)
 {
 	const KgtVertex mesh[] = 
 		{ {{cornerA.x, cornerA.y, 0}, {}, color}
@@ -142,7 +142,7 @@ internal void
 internal void 
 	kgtDrawBox2d(
 		const v2f32& cornerMinusXPlusY, const v2f32& size, 
-		const ColorRgbaF32& color)
+		const RgbaF32& color)
 {
 	const KgtVertex mesh[] = 
 		// upper-left triangle //

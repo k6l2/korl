@@ -14,7 +14,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
 	defer(g_krb->endFrame());
-	g_krb->setProjectionOrthoFixedHeight(2, 1.f);
+	g_krb->setProjectionOrthoFixedHeight(1, 1);
 	g_krb->setViewXform2d(g_gs->viewPosition);
 	g_krb->setDefaultColor(krb::BLACK);
 	/* draw a triangle with color vertex attributes */

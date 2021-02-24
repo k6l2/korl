@@ -236,7 +236,7 @@ internal void kgtFlipBookGetPageProperties(
 	}
 	korlAssert(*o_pageCount >= 1);
 }
-internal void kgtFlipBookDraw(KgtFlipBook* kfb, const ColorRgbaF32& color)
+internal void kgtFlipBookDraw(KgtFlipBook* kfb, const RgbaF32& color)
 {
 	// If the flipbook's meta data doesn't match the meta data of the flipbook 
 	//	asset, then initialize the flipbook using the latest asset data. //
@@ -289,7 +289,7 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const ColorRgbaF32& color)
 	                      {pageTexCoordLeft, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordDown},
 	                      {pageTexCoordRight, pageTexCoordUp}};
-	ColorRgbaF32 colors[4] = {color,color,color,color};
+	RgbaF32 colors[4] = {color,color,color,color};
 	g_krb->drawQuadTextured(
 		v2f32{ static_cast<f32>(frameSizeX)
 		     , static_cast<f32>(frameSizeY) }.elements, 

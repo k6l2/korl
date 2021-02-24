@@ -4,7 +4,7 @@
 #include "kmath.h"
 #include "korl-texture.h"
 using KrbTextureHandle = u32;
-using ColorRgbaF32 = v4f32;
+using RgbaF32 = v4f32;
 struct KrbVertexAttributeOffsets
 {
 	/**
@@ -20,14 +20,14 @@ public:
 namespace krb
 {
 	global_variable const KrbTextureHandle INVALID_TEXTURE_HANDLE = 0;
-	global_variable const ColorRgbaF32 TRANSPARENT = {0,0,0,0};
-	global_variable const ColorRgbaF32 BLACK       = {0,0,0,1};
-	global_variable const ColorRgbaF32 WHITE       = {1,1,1,1};
-	global_variable const ColorRgbaF32 RED         = {1,0,0,1};
-	global_variable const ColorRgbaF32 GREEN       = {0,1,0,1};
-	global_variable const ColorRgbaF32 CYAN        = {0,1,1,1};
-	global_variable const ColorRgbaF32 BLUE        = {0,0,1,1};
-	global_variable const ColorRgbaF32 YELLOW      = {1,1,0,1};
+	global_variable const RgbaF32 TRANSPARENT = {0,0,0,0};
+	global_variable const RgbaF32 BLACK       = {0,0,0,1};
+	global_variable const RgbaF32 WHITE       = {1,1,1,1};
+	global_variable const RgbaF32 RED         = {1,0,0,1};
+	global_variable const RgbaF32 GREEN       = {0,1,0,1};
+	global_variable const RgbaF32 CYAN        = {0,1,1,1};
+	global_variable const RgbaF32 BLUE        = {0,0,1,1};
+	global_variable const RgbaF32 YELLOW      = {1,1,0,1};
 	struct Context
 	{
 		bool frameInProgress = false;
@@ -53,7 +53,7 @@ namespace krb
 		KrbVertexAttributeOffsets immediateVertexAttributeOffsets;
 		u32 immediateVertexStride;
 		u32 immediatePrimitiveType;
-		ColorRgbaF32 defaultColor;
+		RgbaF32 defaultColor;
 		m4f32 m4Projection;
 		m4f32 m4View;
 		m4f32 m4Model;
@@ -81,7 +81,7 @@ namespace krb
 	f32 halfDepth)
 /** Setup a right-handed axis where +Y is UP in screen-space. */
 #define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) void name(\
-	u32 fixedHeight, f32 halfDepth)
+	f32 fixedHeight, f32 halfDepth)
 #define KRB_SET_PROJECTION_FOV(name) void name(\
 	f32 horizonFovDegrees, f32 clipNear, f32 clipFar)
 #define KRB_LOOK_AT(name) void name(\
@@ -105,7 +105,7 @@ namespace krb
  * @param colors [up-left, down-left, down-right, up-right]
 */
 #define KRB_DRAW_QUAD(name) void name(\
-	const f32 size[2], const f32 ratioAnchor[2], const ColorRgbaF32 colors[4])
+	const f32 size[2], const f32 ratioAnchor[2], const RgbaF32 colors[4])
 /** 
  * @param ratioAnchor 
  * is relative to the top-left (-X, Y) most point of the quad mesh.  Positive 
@@ -121,11 +121,11 @@ namespace krb
 */
 #define KRB_DRAW_QUAD_TEXTURED(name) void name(\
 	const f32 size[2], const f32 ratioAnchor[2], \
-	const ColorRgbaF32 colors[4], const f32 texNormalMin[2], \
+	const RgbaF32 colors[4], const f32 texNormalMin[2], \
 	const f32 texNormalMax[2])
 #define KRB_DRAW_CIRCLE(name) void name(\
-	f32 radius, f32 outlineThickness, const ColorRgbaF32& colorFill, \
-	const ColorRgbaF32& colorOutline, u16 vertexCount)
+	f32 radius, f32 outlineThickness, const RgbaF32& colorFill, \
+	const RgbaF32& colorOutline, u16 vertexCount)
 #define KRB_SET_VIEW_XFORM_2D(name) void name(\
 	const v2f32& worldPositionCenter)
 #define KRB_SET_MODEL_XFORM(name) void name(\
@@ -173,7 +173,7 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
 #define KRB_SET_CURRENT_CONTEXT(name) void name(\
 	krb::Context* context)
 #define KRB_SET_DEFAULT_COLOR(name) void name(\
-	const ColorRgbaF32& color)
+	const RgbaF32& color)
 /** The origin of clip box coordinates is the bottom-left corner of the window, 
  * with both axes moving toward the upper-right corner of the window. */
 #define KRB_SET_CLIP_BOX(name) void name(\

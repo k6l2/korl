@@ -402,6 +402,9 @@
 	[x] support texture uniforms
 	[x] support textureNormal vertex attribute
 	[x] support MVP transformation matrices
+	[x] fix "projection ortho fixed-height" function since it's apparently just 
+		wrong??
+	[ ] finish implementation of all current API which should carry over
 	[ ] support ImGui
 [ ] rb_ogl: use uniform block binding for View/Projection matrices
 [ ] rb_ogl: move `defaultColor` into global UBO

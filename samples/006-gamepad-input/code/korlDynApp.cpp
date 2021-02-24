@@ -29,11 +29,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	ImGui::End();
 	/* some local state to display a simple HUD of the gamepad inputs */
 	v2f32 hudLeftStick = {};
-	ColorRgbaF32 hudFillColorStickClickLeft = {1,1,1,0.5f};
-	ColorRgbaF32 hudFillColorFaceUp         = krb::TRANSPARENT;
-	ColorRgbaF32 hudFillColorFaceDown       = krb::TRANSPARENT;
-	ColorRgbaF32 hudFillColorFaceLeft       = krb::TRANSPARENT;
-	ColorRgbaF32 hudFillColorFaceRight      = krb::TRANSPARENT;
+	RgbaF32 hudFillColorStickClickLeft = {1,1,1,0.5f};
+	RgbaF32 hudFillColorFaceUp         = krb::TRANSPARENT;
+	RgbaF32 hudFillColorFaceDown       = krb::TRANSPARENT;
+	RgbaF32 hudFillColorFaceLeft       = krb::TRANSPARENT;
+	RgbaF32 hudFillColorFaceRight      = krb::TRANSPARENT;
 	if(windowIsFocused)
 	/* process gamepad input of the first gamepad in the array that is plugged 
 		in, if one exists */

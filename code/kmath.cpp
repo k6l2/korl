@@ -1061,8 +1061,8 @@ internal inline f32 kmath::collideRayBox(
 			return NAN32;
 	return tMin;
 }
-#define COLOR_RGBAF32_STRIDE(pu8,byteStride,index) \
-	reinterpret_cast<ColorRgbaF32*>((pu8) + ((index)*(byteStride)))
+#define RGBAF32_STRIDE(pu8,byteStride,index) \
+	reinterpret_cast<RgbaF32*>((pu8) + ((index)*(byteStride)))
 #define V3F32_STRIDE(pu8,byteStride,index) \
 	reinterpret_cast<v3f32*>((pu8) + ((index)*(byteStride)))
 #define V2F32_STRIDE(pu8,byteStride,index) \
