@@ -402,12 +402,12 @@
 	[x] support texture uniforms
 	[x] support textureNormal vertex attribute
 	[x] support MVP transformation matrices
-	[~] use uniform block binding for View/Projection matrices
-	[~] move `defaultColor` into global UBO
-	[ ] custom shader/program API
-	[ ] add shader/program assets to KgtAssetManager
-	[ ] support programmable blend function
 	[ ] support ImGui
+[ ] rb_ogl: use uniform block binding for View/Projection matrices
+[ ] rb_ogl: move `defaultColor` into global UBO
+[ ] rb_ogl: custom shader/program API
+[ ] rb_ogl: add shader/program assets to KgtAssetManager
+[ ] rb_ogl: support programmable blend function
 [ ] win32: DirectInput 
 	https://bell0bytes.eu/directinput/
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side

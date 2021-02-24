@@ -214,20 +214,21 @@ namespace kmath
 	internal inline u8 safeTruncateU8(u64 value);
 	internal inline i8 safeTruncateI8(i32 value);
 	internal inline f32 v2Radians(const v2f32& v);
-	internal inline f32 radiansBetween(v2f32 v0, v2f32 v1, 
-	                                   bool v0IsNormalized = false, 
-	                                   bool v1IsNormalized = false);
-	internal inline f32 radiansBetween(v3f32 v0, v3f32 v1, 
-	                                   bool v0IsNormalized = false, 
-	                                   bool v1IsNormalized = false);
+	internal inline f32 radiansBetween(
+		v2f32 v0, v2f32 v1, 
+		bool v0IsNormalized = false, bool v1IsNormalized = false);
+	internal inline f32 radiansBetween(
+		v3f32 v0, v3f32 v1, 
+		bool v0IsNormalized = false, bool v1IsNormalized = false);
 	internal inline v3f32 cross(const v2f32& lhs, const v2f32& rhs);
 	internal inline v2f32 normal(v2f32 v);
 	internal inline v3f32 normal(v3f32 v);
-	/** @return The right-handed normal of the triangle defined by the 3 
-	 *          parameters. */
+	/** @return 
+	 * The right-handed normal of the triangle defined by the 3 parameters. */
 	internal inline v3f32 normal(v3f32 p0, v3f32 p1, v3f32 p2);
-	/** @return The right-handed un-normalized normal of the triangle defined by 
-	 *          the 3 parameters. */
+	/** @return 
+	 * The right-handed un-normalized normal of the triangle defined by the 3 
+	 * parameters. */
 	internal inline v3f32 unNormal(
 		const v3f32& p0, const v3f32& p1, const v3f32& p2);
 	internal inline f32 lerp(f32 min, f32 max, f32 ratio);
@@ -254,41 +255,45 @@ namespace kmath
 	 * Find the roots of a given quadratic formula which satisfies the form 
 	 * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
 	 * `f(x) = 0`.  Complex# solutions are ignored.
-	 * @param o_roots The locations in memory where the roots will be stored, if 
-	 *                they exist.  The roots will be stored in ascending order.  
-	 *                Only the first N values will be written to, where N is the 
-	 *                return value of this function.  In the RARE case that the 
-	 *                equation is a line along the x-axis, o_roots[0] is set to 
-	 *                INFINITY32 & a value of 0 is returned.
-	 * @return The number of UNIQUE real# roots found for the given equation.  
-	 *         This value will always be in the range [0,2].
+	 * @param o_roots 
+	 * The locations in memory where the roots will be stored, if they exist.  
+	 * The roots will be stored in ascending order.  Only the first N values 
+	 * will be written to, where N is the return value of this function.  In the 
+	 * RARE case that the equation is a line along the x-axis, o_roots[0] is set 
+	 * to INFINITY32 & a value of 0 is returned.
+	 * @return 
+	 * The number of UNIQUE real# roots found for the given equation.  This 
+	 * value will always be in the range [0,2].
 	 */
 	internal u8 solveQuadratic(f32 a, f32 b, f32 c, f32 o_roots[2]);
 	/**
-	 * @return (1) NAN32 if the ray does not collide with the plane.  
-	 *         (2) INFINITY32 if the ray is co-planar with the plane.  
-	 *         (3) Otherwise, a scalar representing how far from `rayOrigin` in 
-	 *             the direction of `rayNormal` the intersection is.
-	 *         In case (3), the return value will ALWAYS be positive.
+	 * @return 
+	 * (1) NAN32 if the ray does not collide with the plane.  
+	 * (2) INFINITY32 if the ray is co-planar with the plane.  
+	 * (3) Otherwise, a scalar representing how far from `rayOrigin` in the 
+	 *     direction of `rayNormal` the intersection is.
+	 * In case (3), the return value will ALWAYS be positive.
 	 */
 	internal f32 collideRayPlane(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& planeNormal, f32 planeDistanceFromOrigin, 
 		bool cullPlaneBackFace);
 	/**
-	 * @return (1) NAN32 if the ray does not collide with the sphere
-	 *         (2) Otherwise, a scalar representing how far from `rayOrigin` in 
-	 *             the direction of `rayNormal` the intersection is.
-	 *         If the ray origin is contained within the sphere, 0 is returned.
+	 * @return 
+	 * (1) NAN32 if the ray does not collide with the sphere
+	 * (2) Otherwise, a scalar representing how far from `rayOrigin` in 
+	 *     the direction of `rayNormal` the intersection is.
+	 * If the ray origin is contained within the sphere, 0 is returned. 
 	 */
 	internal f32 collideRaySphere(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
 		const v3f32& sphereOrigin, f32 sphereRadius);
 	/**
-	 * @return (1) NAN32 if the ray does not collide with the box
-	 *         (2) Otherwise, a scalar representing how far from `rayOrigin` in 
-	 *             the direction of `rayNormal` the intersection is.
-	 *         If the ray origin is contained within the box, 0 is returned.
+	 * @return 
+	 * (1) NAN32 if the ray does not collide with the box
+	 * (2) Otherwise, a scalar representing how far from `rayOrigin` in 
+	 *     the direction of `rayNormal` the intersection is.
+	 * If the ray origin is contained within the box, 0 is returned.
 	 */
 	internal f32 collideRayBox(
 		const v3f32& rayOrigin, const v3f32& rayNormal, 
@@ -297,14 +302,14 @@ namespace kmath
 	/**
 	 * Generate mesh data for a box centered on the origin with `lengths` widths 
 	 * for each respective dimension of the `lengths` parameter.
-	 * @param lengths The total length in each dimension of the box.  The final 
-	 *                vertex positions of the box will not exceed 
-	 *                `lengths.? / 2`, where `?` is the element in each 
-	 *                respective dimension.
-	 * @param o_buffer Pointer to the array where the vertex data will be 
-	 *                 stored.  Caller must supply an array of >= 36 elements in 
-	 *                 order to contain a complete 3D box!  Output vertices are 
-	 *                 a list of right-handed triangles.
+	 * @param lengths 
+	 * The total length in each dimension of the box.  The final vertex 
+	 * positions of the box will not exceed `lengths.? / 2`, where `?` is the 
+	 * element in each respective dimension.
+	 * @param o_buffer 
+	 * Pointer to the array where the vertex data will be stored.  Caller must 
+	 * supply an array of >= 36 elements in order to contain a complete 3D box!  
+	 * Output vertices are a list of right-handed triangles.
 	 */
 	internal void generateMeshBox(
 		v3f32 lengths, void* o_vertexData, size_t vertexDataBytes, 
@@ -315,19 +320,17 @@ namespace kmath
 	/**
 	 * Generate mesh data for a sphere made of (semi)circles along latitudes and 
 	 * longitudes with the specified respective resolutions.
-	 * @param latitudeSegments The # of latitude circles in the sphere equals 
-	 *                         `latitudeSegments - 1`, as the sphere's "top" and 
-	 *                         "bottom" vertices will define `latitudeSegments` 
-	 *                         strips of solid geometry.  
-	 *                         This value MUST be >= 2.
-	 * @param longitudeSegments The # of longitude semicircles in the sphere.  
-	 *                          This value MUST be >= 3.
-	 * @param o_buffer Pointer to the array where the vertex data will be 
-	 *                 stored.  Caller must supply an array of >= 
-	 *                 `generateMeshCircleSphereVertexCount(...)` elements!  
-	 *                 Output vertices are a list of right-handed triangles.  
-	 *                 Vertex textureNormals are generated using a cylindrical 
-	 *                 projection.
+	 * @param latitudeSegments 
+	 * The # of latitude circles in the sphere equals `latitudeSegments - 1`, as 
+	 * the sphere's "top" and "bottom" vertices will define `latitudeSegments` 
+	 * strips of solid geometry.  This value MUST be >= 2.
+	 * @param longitudeSegments 
+	 * The # of longitude semicircles in the sphere.  This value MUST be >= 3.
+	 * @param o_buffer 
+	 * Pointer to the array where the vertex data will be stored.  Caller must 
+	 * supply an array of >= `generateMeshCircleSphereVertexCount(...)` 
+	 * elements!  Output vertices are a list of right-handed triangles.  Vertex 
+	 * textureNormals are generated using a cylindrical projection.
 	 */
 	internal void generateMeshCircleSphere(
 		f32 radius, u32 latitudeSegments, u32 longitudeSegments, 
@@ -350,41 +353,46 @@ namespace kmath
 		u32 pointCount, void* o_vertexData, size_t vertexDataBytes, 
 		size_t vertexByteStride, size_t vertexPositionOffset);
 	/**
-	 * @return the local position on the shape with the highest dot product with 
-	 *         the supportDirection
+	 * @return 
+	 * the local position on the shape with the highest dot product with the 
+	 * supportDirection
 	 */
 	internal inline v3f32 supportSphere(
 		f32 radius, v3f32 supportDirection, 
 		bool supportDirectionIsNormalized = false);
 	/**
-	 * @return the local position on the shape with the highest dot product with 
-	 *         the supportDirection
+	 * @return 
+	 * the local position on the shape with the highest dot product with the 
+	 * supportDirection
 	 */
 	internal inline v3f32 supportBox(
 		v3f32 lengths, q32 orient, v3f32 supportDirection, 
 		bool supportDirectionIsNormalized = false);
 	/**
 	 * Gilbert–Johnson–Keerthi algorithm implementation.
-	 * @param o_simplex if the return value is true, this will contain the 
-	 *                  vertices of a tetrahedron which contains the origin 
-	 *                  whose vertex indices for each triangle are:
-	 *                  {{2,1,0}, {3,2,0}, {3,0,1}, {3,1,2}}
-	 * @return true if there exists a tetrahedron within the support function's 
-	 *         bounds which contains the origin
+	 * @param o_simplex 
+	 * if the return value is true, this will contain the vertices of a 
+	 * tetrahedron which contains the origin whose vertex indices for each 
+	 * triangle are: {{2,1,0}, {3,2,0}, {3,0,1}, {3,1,2}}
+	 * @return 
+	 * true if there exists a tetrahedron within the support function's bounds 
+	 * which contains the origin
 	 */
 	internal bool gjk(
 		fnSig_gjkSupport* support, void* supportUserData, v3f32 o_simplex[4], 
 		const v3f32* initialSupportDirection = nullptr);
 	/**
 	 * Expanding Polytope algorithm implementation.
-	 * @param simplex The output of the `gjk` function when it returns true.  
-	 *                This set of tetrahedron vertices MUST enclose the origin 
-	 *                of the minkowski space defined by the support function in 
-	 *                order for this algorithm to work!
-	 * @param allocator It's probably a good idea to use a frame allocator here.
-	 * @return true if the algorithm was able to converge on a minimum 
-	 *         translation vector, false otherwise.  If an MTV is found, it will 
-	 *         be stored in the appropriate `o_*` parameters.
+	 * @param simplex 
+	 * The output of the `gjk` function when it returns true.  This set of 
+	 * tetrahedron vertices MUST enclose the origin of the minkowski space 
+	 * defined by the support function in order for this algorithm to work!
+	 * @param allocator 
+	 * It's probably a good idea to use a frame allocator here.
+	 * @return 
+	 * true if the algorithm was able to converge on a minimum translation 
+	 * vector, false otherwise.  If an MTV is found, it will be stored in the 
+	 * appropriate `o_*` parameters.
 	 */
 	internal bool epa(
 		v3f32* o_minimumTranslationNormal, f32* o_minimumTranslationDistance, 
