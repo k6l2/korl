@@ -54,6 +54,10 @@ namespace krb
 		u32 immediateVertexStride;
 		u32 immediatePrimitiveType;
 		ColorRgbaF32 defaultColor;
+		m4f32 m4Projection;
+		m4f32 m4View;
+		m4f32 m4Model;
+		m4f32 m4ModelViewProjection;
 	};
 	global_variable Context* g_context;
 }
@@ -72,10 +76,10 @@ namespace krb
 #define KRB_SET_WIREFRAME(name) void name(\
 	bool enable)
 #endif
-/** Setup a right-handed axis where +Y is UP. */
+/** Setup a right-handed axis where +Y is UP in screen-space. */
 #define KRB_SET_PROJECTION_ORTHO(name) void name(\
 	f32 halfDepth)
-/** Setup a right-handed axis where +Y is UP. */
+/** Setup a right-handed axis where +Y is UP in screen-space. */
 #define KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(name) void name(\
 	u32 fixedHeight, f32 halfDepth)
 #define KRB_SET_PROJECTION_FOV(name) void name(\
@@ -122,16 +126,18 @@ namespace krb
 #define KRB_DRAW_CIRCLE(name) void name(\
 	f32 radius, f32 outlineThickness, const ColorRgbaF32& colorFill, \
 	const ColorRgbaF32& colorOutline, u16 vertexCount)
-#define KRB_VIEW_TRANSLATE(name) void name(\
-	const v2f32& offset)
+#define KRB_SET_VIEW_XFORM_2D(name) void name(\
+	const v2f32& worldPositionCenter)
 #define KRB_SET_MODEL_XFORM(name) void name(\
 	const v3f32& translation, const q32& orientation, const v3f32& scale)
 #define KRB_SET_MODEL_XFORM_2D(name) void name(\
 	const v2f32& translation, const q32& orientation, const v2f32& scale)
 #define KRB_SET_MODEL_MATRIX(name) void name(\
 	const f32 rowMajorMatrix4x4[16])
+#if 0
 #define KRB_SET_MODEL_XFORM_BILLBOARD(name) void name(\
 	bool lockX, bool lockY, bool lockZ)
+#endif//0
 enum class KorlPixelDataFormat : u8
 	{ RGBA
 	, BGR };
@@ -191,11 +197,13 @@ typedef KRB_DRAW_TRIS(fnSig_krbDrawTris);
 typedef KRB_DRAW_QUAD(fnSig_krbDrawQuad);
 typedef KRB_DRAW_QUAD_TEXTURED(fnSig_krbDrawQuadTextured);
 typedef KRB_DRAW_CIRCLE(fnSig_krbDrawCircle);
-typedef KRB_VIEW_TRANSLATE(fnSig_krbViewTranslate);
+typedef KRB_SET_VIEW_XFORM_2D(fnSig_krbSetViewXform2d);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_SET_MODEL_XFORM_2D(fnSig_krbSetModelXform2d);
 typedef KRB_SET_MODEL_MATRIX(fnSig_krbSetModelMatrix);
+#if 0
 typedef KRB_SET_MODEL_XFORM_BILLBOARD(fnSig_krbSetModelXformBillboard);
+#endif//0
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
 typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
@@ -223,11 +231,13 @@ internal KRB_DRAW_TRIS(krbDrawTris);
 internal KRB_DRAW_QUAD(krbDrawQuad);
 internal KRB_DRAW_QUAD_TEXTURED(krbDrawQuadTextured);
 internal KRB_DRAW_CIRCLE(krbDrawCircle);
-internal KRB_VIEW_TRANSLATE(krbViewTranslate);
+internal KRB_SET_VIEW_XFORM_2D(krbSetViewXform2d);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d);
 internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix);
+#if 0
 internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard);
+#endif//0
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_DELETE_TEXTURE(krbDeleteTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
@@ -257,12 +267,14 @@ struct KrbApi
 	fnSig_krbDrawQuad*           drawQuad           = krbDrawQuad;
 	fnSig_krbDrawQuadTextured*   drawQuadTextured   = krbDrawQuadTextured;
 	fnSig_krbDrawCircle*         drawCircle         = krbDrawCircle;
-	fnSig_krbViewTranslate*      viewTranslate      = krbViewTranslate;
+	fnSig_krbSetViewXform2d*     setViewXform2d     = krbSetViewXform2d;
 	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
 	fnSig_krbSetModelXform2d*    setModelXform2d    = krbSetModelXform2d;
 	fnSig_krbSetModelMatrix*     setModelMatrix     = krbSetModelMatrix;
+#if 0
 	fnSig_krbSetModelXformBillboard* 
 		setModelXformBillboard = krbSetModelXformBillboard;
+#endif//0
 	fnSig_krbLoadImage*          loadImage          = krbLoadImage;
 	fnSig_krbDeleteTexture*      deleteTexture      = krbDeleteTexture;
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;

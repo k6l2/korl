@@ -121,6 +121,8 @@ struct v4f32
 	};
 	global_variable const v4f32 ZERO;
 public:
+	/** Threshold equality; NOT an exact bit-for-bit equality! */
+	inline bool operator==(const v4f32& other) const;
 	inline v4f32& operator*=(const f32 scalar);
 	inline f32 magnitude() const;
 	inline f32 magnitudeSquared() const;
@@ -233,8 +235,12 @@ namespace kmath
 	internal bool coplanar(
 		const v3f32& p0, const v3f32& p1, const v3f32& p2, const v3f32& p3);
 	internal void makeM4f32(const q32& q, m4f32* o_m);
-	internal void makeM4f32(
-		const q32& q, const v3f32& translation, m4f32* o_m);
+	internal void 
+		makeM4f32(const q32& q, const v3f32& translation, m4f32* o_m);
+	internal void 
+		makeM4f32(
+			const q32& q, const v3f32& translation, const v3f32& scale, 
+			m4f32* o_m);
 	/**
 	 * @return A sine curve that lies in the range [0,1]
 	 */

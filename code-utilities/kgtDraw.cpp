@@ -96,9 +96,9 @@ internal void
 	g_krb->setProjectionOrtho(1);
 	/* adjust the view such that the bottom-left corner of the window is the 
 		screen-space origin */
-	g_krb->viewTranslate(
-		{ static_cast<f32>(windowDimensions.x) / -2
-		, static_cast<f32>(windowDimensions.y) / -2});
+	g_krb->setViewXform2d(
+		{ static_cast<f32>(windowDimensions.x) / 2
+		, static_cast<f32>(windowDimensions.y) / 2});
 	g_krb->setModelXform2d(originScreenPosYUp, q32::IDENTITY, {1,1});
 	g_krb->drawCircle(10, 0, krb::TRANSPARENT, krb::WHITE, 32);
 }

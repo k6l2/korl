@@ -171,26 +171,29 @@ internal void korl_rb_ogl_lazyInitializeContext()
 	GLchar bufferShaderInfoLog[512];
 	const GLchar*const sourceShaderImmediateVertex = 
 		"#version 330 core\n"
+		"uniform mat4 uniform_xformMvp;\n"
 		"uniform vec4 uniform_defaultColor;\n"
 		"layout(location = 0) in vec3 attribute_position;\n"
 		"out vec4 vertexColor;\n"
 		"void main()\n"
 		"{\n"
-		"	gl_Position = vec4(attribute_position, 1.0);\n"
+		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
 		"	vertexColor = uniform_defaultColor;\n"
 		"}\0";
 	const GLchar*const sourceShaderImmediateVertexColor = 
 		"#version 330 core\n"
+		"uniform mat4 uniform_xformMvp;\n"
 		"layout(location = 0) in vec3 attribute_position;\n"
 		"layout(location = 1) in vec4 attribute_color;\n"
 		"out vec4 vertexColor;\n"
 		"void main()\n"
 		"{\n"
-		"	gl_Position = vec4(attribute_position, 1.0);\n"
+		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
 		"	vertexColor = attribute_color;\n"
 		"}\0";
 	const GLchar*const sourceShaderImmediateVertexColorTexNormal = 
 		"#version 330 core\n"
+		"uniform mat4 uniform_xformMvp;\n"
 		"layout(location = 0) in vec3 attribute_position;\n"
 		"layout(location = 1) in vec4 attribute_color;\n"
 		"layout(location = 2) in vec2 attribute_texNormal;\n"
@@ -198,7 +201,7 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"out vec2 vertexTexNormal;\n"
 		"void main()\n"
 		"{\n"
-		"	gl_Position = vec4(attribute_position, 1.0);\n"
+		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
 		"	vertexColor = attribute_color;\n"
 		"	vertexTexNormal = attribute_texNormal;\n"
 		"}\0";
@@ -212,10 +215,10 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"}\0";
 	const GLchar*const sourceShaderImmediateFragmentTexture = 
 		"#version 330 core\n"
+		"uniform sampler2D textureUnit0;\n"
 		"in vec4 vertexColor;\n"
 		"in vec2 vertexTexNormal;\n"
 		"out vec4 fragmentColor;\n"
-		"uniform sampler2D textureUnit0;\n"
 		"void main()\n"
 		"{\n"
 		"	fragmentColor = \n"
@@ -365,18 +368,30 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 		}
 		/* actually draw the immediate-mode buffer w/ correct render states */
 		glUseProgram(program);
+		/* set context xform state to the shader uniforms */
+		/* @speed: instead of setting this every time we draw, we could upload 
+			xform state to a UBO & use binding points for programs */
+		{
+			const GLint uniformLocXformMvp = 
+				glGetUniformLocation(program, "uniform_xformMvp");
+			korlAssert(uniformLocXformMvp > -1);
+			glUniformMatrix4fv(
+				uniformLocXformMvp, 1, GL_TRUE, 
+				krb::g_context->m4ModelViewProjection.elements);
+		}
 		/* if we aren't using a 'color' vertex attribute, we must be using a 
 			program which takes a default color */
 		/* @speed: instead of setting this each time we draw, we could 
 			potentially only set this uniform for all relevant programs ONLY 
-			when the default color is changed */
+			when the default color is changed (actually, we should just use UBO 
+			binding points) */
 		if(krb::g_context->immediateVertexAttributeOffsets.color_4f32 >= 
 				krb::g_context->immediateVertexStride)
 		{
 			/* @speed: instead of searching for the uniform location every time, 
 				we could just locate it once when the program is linked & then 
 				just use the cached value(s) here depending on the value of 
-				`program` */
+				`program` (actually, we should just use UBO + binding points) */
 			const GLint uniformLocDefaultColor = 
 				glGetUniformLocation(program, "uniform_defaultColor");
 			korlAssert(uniformLocDefaultColor > -1);
@@ -415,6 +430,10 @@ internal KRB_BEGIN_FRAME(krbBeginFrame)
 	krb::g_context->windowSizeY = windowSize[1];
 	krb::g_context->defaultColor = krb::WHITE;
 	krb::g_context->frameInProgress = true;
+	krb::g_context->m4Model               = m4f32::IDENTITY;
+	krb::g_context->m4View                = m4f32::IDENTITY;
+	krb::g_context->m4Projection          = m4f32::IDENTITY;
+	krb::g_context->m4ModelViewProjection = m4f32::IDENTITY;
 }
 internal KRB_END_FRAME(krbEndFrame)
 {
@@ -450,7 +469,7 @@ internal KRB_SET_WIREFRAME(krbSetWireframe)
 #endif//0
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
-	glMatrixMode(GL_PROJECTION);
+	korl_rb_ogl_flushImmediateBuffer();
 	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
 	glDisable(GL_SCISSOR_TEST);
 	const f32 left  = -static_cast<f32>(krb::g_context->windowSizeX)/2;
@@ -460,32 +479,30 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
-	m4f32 projectionMatrix = m4f32::IDENTITY;
-	projectionMatrix.r0c0 = 2 / (right - left);
-	projectionMatrix.r0c3 = -(right + left) / (right - left);
-	projectionMatrix.r1c1 = 2 / (top - bottom);
-	projectionMatrix.r1c3 = -(top + bottom) / (top - bottom);
-	projectionMatrix.r2c2 = -2 / (zFar - zNear);
-	projectionMatrix.r2c3 = -(zFar + zNear) / (zFar - zNear);
-	glLoadTransposeMatrixf(projectionMatrix.elements);
-	// empty the modelview stack //
-	glMatrixMode(GL_MODELVIEW);
-	{
-		GLint modelViewStackDepth;
-		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-		for(; modelViewStackDepth > 1; modelViewStackDepth--)
-		{
-			glPopMatrix();
-		}
-	}
-	glLoadIdentity();
+	krb::g_context->m4Projection = m4f32::IDENTITY;
+	krb::g_context->m4Projection.r0c0 = 2 / (right - left);
+	krb::g_context->m4Projection.r0c3 = -(right + left) / (right - left);
+	krb::g_context->m4Projection.r1c1 = 2 / (top - bottom);
+	krb::g_context->m4Projection.r1c3 = -(top + bottom) / (top - bottom);
+	krb::g_context->m4Projection.r2c2 = -2 / (zFar - zNear);
+	krb::g_context->m4Projection.r2c3 = -(zFar + zNear) / (zFar - zNear);
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 {
+	korl_rb_ogl_flushImmediateBuffer();
+	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
+	glDisable(GL_SCISSOR_TEST);
 	/*
 		w / fixedHeight == windowAspectRatio
 	*/
+	/* @todo: fix this; this math is actually just straight up wrong I think??? 
+		- when windowSizeX < windowSizeY, weird stretching occurs
+		- when windowSizeX < 0.5*windowSizeY, even weirder shit happens */
 	const f32 windowAspectRatio = krb::g_context->windowSizeY == 0
 		? 1.f 
 		: static_cast<f32>(krb::g_context->windowSizeX) / 
@@ -498,33 +515,23 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	const f32 top    =  static_cast<f32>(fixedHeight)/2;
 	const f32 zNear =  halfDepth;
 	const f32 zFar  = -halfDepth;
-	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
-	glDisable(GL_SCISSOR_TEST);
-	glMatrixMode(GL_PROJECTION);
 	/* http://www.songho.ca/opengl/gl_projectionmatrix.html */
-	m4f32 projectionMatrix = m4f32::IDENTITY;
-	projectionMatrix.r0c0 = 2 / (right - left);
-	projectionMatrix.r0c3 = -(right + left) / (right - left);
-	projectionMatrix.r1c1 = 2 / (top - bottom);
-	projectionMatrix.r1c3 = -(top + bottom) / (top - bottom);
-	projectionMatrix.r2c2 = -2 / (zFar - zNear);
-	projectionMatrix.r2c3 = -(zFar + zNear) / (zFar - zNear);
-	glLoadTransposeMatrixf(projectionMatrix.elements);
-	// empty the modelview stack //
-	glMatrixMode(GL_MODELVIEW);
-	{
-		GLint modelViewStackDepth;
-		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-		for(; modelViewStackDepth > 1; modelViewStackDepth--)
-		{
-			glPopMatrix();
-		}
-	}
-	glLoadIdentity();
+	krb::g_context->m4Projection = m4f32::IDENTITY;
+	krb::g_context->m4Projection.r0c0 = 2 / (right - left);
+	krb::g_context->m4Projection.r0c3 = -(right + left) / (right - left);
+	krb::g_context->m4Projection.r1c1 = 2 / (top - bottom);
+	krb::g_context->m4Projection.r1c3 = -(top + bottom) / (top - bottom);
+	krb::g_context->m4Projection.r2c2 = -2 / (zFar - zNear);
+	krb::g_context->m4Projection.r2c3 = -(zFar + zNear) / (zFar - zNear);
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 	GL_CHECK_ERROR();
 }
 internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 {
+	korl_rb_ogl_flushImmediateBuffer();
 	glViewport(0, 0, krb::g_context->windowSizeX, krb::g_context->windowSizeY);
 	glDisable(GL_SCISSOR_TEST);
 	const f32 aspectRatio = 
@@ -534,32 +541,26 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 	korlAssert(!kmath::isNearlyEqual(clipNear, clipFar) && clipFar > clipNear);
 	const f32 horizonFovRadians = horizonFovDegrees*PI32/180;
 	const f32 tanHalfFov = tanf(horizonFovRadians / 2);
-	m4f32 projectionMatrix = {};
+	krb::g_context->m4Projection = {};
 	// http://ogldev.org/www/tutorial12/tutorial12.html
 	// http://www.songho.ca/opengl/gl_projectionmatrix.html
-	projectionMatrix.r0c0 = 1 / (aspectRatio * tanHalfFov);
-	projectionMatrix.r1c1 = 1 / tanHalfFov;
+	krb::g_context->m4Projection.r0c0 = 1 / (aspectRatio * tanHalfFov);
+	krb::g_context->m4Projection.r1c1 = 1 / tanHalfFov;
 	/* I negate the Z row calculation to maintain RIGHT-HANDED coordinates! */
-	projectionMatrix.r2c2 = (clipFar + clipNear) / (clipFar - clipNear);
-	projectionMatrix.r2c3 = 2*clipFar*clipNear   / (clipFar - clipNear);
-	projectionMatrix.r3c2 = -1;
-	glMatrixMode(GL_PROJECTION);
-	glLoadTransposeMatrixf(projectionMatrix.elements);
-	// empty the modelview stack //
-	glMatrixMode(GL_MODELVIEW);
-	{
-		GLint modelViewStackDepth;
-		glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-		for(; modelViewStackDepth > 1; modelViewStackDepth--)
-		{
-			glPopMatrix();
-		}
-	}
-	glLoadIdentity();
+	krb::g_context->m4Projection.r2c2 = 
+		(clipFar + clipNear) / (clipFar - clipNear);
+	krb::g_context->m4Projection.r2c3 = 
+		2*clipFar*clipNear   / (clipFar - clipNear);
+	krb::g_context->m4Projection.r3c2 = -1;
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 	GL_CHECK_ERROR();
 }
 internal KRB_LOOK_AT(krbLookAt)
 {
+	korl_rb_ogl_flushImmediateBuffer();
 	const v3f32*const eye = reinterpret_cast<const v3f32*>(v3f32_eye);
 	// https://www.3dgep.com/understanding-the-view-matrix/
 	/* camera Z-axis points AWAY from the target to maintain RIGHT-HANDED 
@@ -569,17 +570,18 @@ internal KRB_LOOK_AT(krbLookAt)
 	const v3f32 camAxisX = kmath::normal(
 		reinterpret_cast<const v3f32*>(v3f32_worldUp)->cross(camAxisZ));
 	const v3f32 camAxisY = camAxisZ.cross(camAxisX);
-	m4f32 mView = m4f32::IDENTITY;
+	krb::g_context->m4View = m4f32::IDENTITY;
+	m4f32& mView = krb::g_context->m4Projection;
 	mView.r0c0 = camAxisX.x; mView.r0c1 = camAxisX.y; mView.r0c2 = camAxisX.z;
 	mView.r1c0 = camAxisY.x; mView.r1c1 = camAxisY.y; mView.r1c2 = camAxisY.z;
 	mView.r2c0 = camAxisZ.x; mView.r2c1 = camAxisZ.y; mView.r2c2 = camAxisZ.z;
 	mView.r0c3 = -camAxisX.dot(*eye);
 	mView.r1c3 = -camAxisY.dot(*eye);
 	mView.r2c3 = -camAxisZ.dot(*eye);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadTransposeMatrixf(mView.elements);
-	glPushMatrix();
-	GL_CHECK_ERROR();
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 }
 internal KRB_DRAW_POINTS(krbDrawPoints)
 {
@@ -862,78 +864,49 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle)
 	}
 	GL_CHECK_ERROR();
 }
-internal KRB_VIEW_TRANSLATE(krbViewTranslate)
+internal KRB_SET_VIEW_XFORM_2D(krbSetViewXform2d)
 {
-	glMatrixMode(GL_MODELVIEW);
-	glTranslatef(offset.x, offset.y, 0.f);
-	glPushMatrix();
-	GL_CHECK_ERROR();
+	korl_rb_ogl_flushImmediateBuffer();
+	krb::g_context->m4View = m4f32::IDENTITY;
+	krb::g_context->m4View.r0c3 = -worldPositionCenter.x;
+	krb::g_context->m4View.r1c3 = -worldPositionCenter.y;
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 }
 internal KRB_SET_MODEL_XFORM(krbSetModelXform)
 {
-	glMatrixMode(GL_MODELVIEW);
-	GLint modelViewStackDepth;
-	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	if(modelViewStackDepth > 1)
-	{
-		glPopMatrix();
-	}
-	glPushMatrix();
-	glTranslatef(translation.x, translation.y, translation.z);
-	{
-		const f32 orientationRadians = 2 * acosf(orientation.qw);
-		const f32 axisDivisor = 
-			kmath::isNearlyZero(1 - orientation.qw*orientation.qw)
-				? 1
-				: sqrtf(1 - orientation.qw*orientation.qw);
-		const f32 orientationAxisX = orientation.qx / axisDivisor;
-		const f32 orientationAxisY = orientation.qy / axisDivisor;
-		const f32 orientationAxisZ = orientation.qz / axisDivisor;
-		glRotatef(orientationRadians*180/PI32, 
-		          orientationAxisX, orientationAxisY, orientationAxisZ);
-	}
-	glScalef(scale.x, scale.y, scale.z);
-	GL_CHECK_ERROR();
+	korl_rb_ogl_flushImmediateBuffer();
+	kmath::makeM4f32(
+		orientation, translation, scale, &krb::g_context->m4Model);
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 }
 internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d)
 {
-	glMatrixMode(GL_MODELVIEW);
-	GLint modelViewStackDepth;
-	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	if(modelViewStackDepth > 1)
-	{
-		glPopMatrix();
-	}
-	glPushMatrix();
-	glTranslatef(translation.x, translation.y, 0.f);
-	{
-		const f32 orientationRadians = 2 * acosf(orientation.qw);
-		const f32 axisDivisor = 
-			kmath::isNearlyZero(1 - orientation.qw*orientation.qw)
-				? 1
-				: sqrtf(1 - orientation.qw*orientation.qw);
-		const f32 orientationAxisX = orientation.qx / axisDivisor;
-		const f32 orientationAxisY = orientation.qy / axisDivisor;
-		const f32 orientationAxisZ = orientation.qz / axisDivisor;
-		glRotatef(orientationRadians*180/PI32, 
-		          orientationAxisX, orientationAxisY, orientationAxisZ);
-	}
-	glScalef(scale.x, scale.y, 1.f);
-	GL_CHECK_ERROR();
+	korl_rb_ogl_flushImmediateBuffer();
+	kmath::makeM4f32(
+		orientation, {translation.x, translation.y, 0}, {scale.x, scale.y, 1}, 
+		&krb::g_context->m4Model);
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 }
 internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix)
 {
-	glMatrixMode(GL_MODELVIEW);
-	GLint modelViewStackDepth;
-	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	if(modelViewStackDepth > 1)
-	{
-		glPopMatrix();
-	}
-	glPushMatrix();
-	glMultTransposeMatrixf(rowMajorMatrix4x4);
-	GL_CHECK_ERROR();
+	korl_rb_ogl_flushImmediateBuffer();
+	for(u32 i = 0; i < 16; i++)
+		krb::g_context->m4Model.elements[i] = rowMajorMatrix4x4[i];
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
 }
+#if 0
 internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard)
 {
 	m4f32 modelView;
@@ -960,6 +933,7 @@ internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard)
 	glLoadTransposeMatrixf(modelView.elements);
 	GL_CHECK_ERROR();
 }
+#endif//0
 internal GLint 
 	korl_rb_ogl_decodeImageInternalFormat(KorlPixelDataFormat pdf)
 {
@@ -1209,16 +1183,21 @@ internal KRB_SET_CURRENT_CONTEXT(krbSetCurrentContext)
 }
 internal KRB_SET_DEFAULT_COLOR(krbSetDefaultColor)
 {
+	if(color == krb::g_context->defaultColor)
+		return;
+	korl_rb_ogl_flushImmediateBuffer();
 	krb::g_context->defaultColor = color;
 }
 internal KRB_SET_CLIP_BOX(krbSetClipBox)
 {
+	/* @todo: conditionally flush immediate mode buffer */
 	glEnable(GL_SCISSOR_TEST);
 	glScissor(left, bottom, width, height);
 	GL_CHECK_ERROR();
 }
 internal KRB_DISABLE_CLIP_BOX(krbDisableClipBox)
 {
+	/* @todo: conditionally flush immediate mode buffer */
 	glDisable(GL_SCISSOR_TEST);
 	GL_CHECK_ERROR();
 }

@@ -245,6 +245,13 @@ inline v3f32 v3f32::projectOnto(v3f32 other, bool otherIsNormalized) const
 	const f32 scalarProjection = dot(other);
 	return scalarProjection*other;
 }
+inline bool v4f32::operator==(const v4f32& other) const
+{
+	for(u8 i = 0; i < 4; i++)
+		if(!kmath::isNearlyEqual(elements[i], other.elements[i]))
+			return false;
+	return true;
+}
 inline v4f32& v4f32::operator*=(const f32 scalar)
 {
 	x *= scalar;
@@ -793,9 +800,11 @@ internal inline void kmath::makeM4f32(const q32& q, m4f32* o_m)
 	o_m->r3c0 = o_m->r3c1 = o_m->r3c2 = 0;
 	o_m->r3c3 = 1;
 }
-internal inline void kmath::makeM4f32(
-		const q32& q, const v3f32& translation, m4f32* o_m)
+internal void kmath::makeM4f32(
+	const q32& q, const v3f32& translation, m4f32* o_m)
 {
+	/* @speed: most likely there is a MUCH more efficient way to build a matrix 
+		using these parameters */
 	m4f32 m4Rotation;
 	makeM4f32(q, &m4Rotation);
 	m4f32 m4Translation = m4f32::IDENTITY;
@@ -803,6 +812,25 @@ internal inline void kmath::makeM4f32(
 	m4Translation.r1c3 = translation.y;
 	m4Translation.r2c3 = translation.z;
 	*o_m = m4Translation * m4Rotation;
+}
+internal void 
+	kmath::makeM4f32(
+		const q32& q, const v3f32& translation, const v3f32& scale, 
+		m4f32* o_m)
+{
+	/* @speed: most likely there is a MUCH more efficient way to build a matrix 
+		using these parameters */
+	m4f32 m4Translation = m4f32::IDENTITY;
+	m4Translation.r0c3 = translation.x;
+	m4Translation.r1c3 = translation.y;
+	m4Translation.r2c3 = translation.z;
+	m4f32 m4Rotation;
+	makeM4f32(q, &m4Rotation);
+	m4f32 m4Scale = m4f32::IDENTITY;
+	m4Scale.r0c0 = scale.x;
+	m4Scale.r1c1 = scale.y;
+	m4Scale.r2c2 = scale.z;
+	*o_m = m4Translation * m4Rotation * m4Scale;
 }
 internal inline f32 kmath::sine_0_1(f32 radians)
 {

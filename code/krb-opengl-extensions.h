@@ -3,8 +3,10 @@
 #include "opengl/glext.h"
 /* core extension API; these should be GUARANTEED valid! */
 /* core since 1.3 */
+#if 0/* DEPRECATED - we are using uniforms instead of old GL matrix stack */
 global_variable PFNGLLOADTRANSPOSEMATRIXFPROC glLoadTransposeMatrixf;
 global_variable PFNGLMULTTRANSPOSEMATRIXFPROC glMultTransposeMatrixf;
+#endif//0
 global_variable PFNGLACTIVETEXTUREPROC glActiveTexture;
 /* core since 1.5 */
 global_variable PFNGLGENBUFFERSPROC glGenBuffers;
@@ -33,6 +35,7 @@ global_variable PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
 global_variable PFNGLUNIFORM1IPROC glUniform1i;
 global_variable PFNGLUNIFORM4FPROC glUniform4f;
 global_variable PFNGLUNIFORM4FVPROC glUniform4fv;
+global_variable PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
 global_variable PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
 /* core since 3.0 */
 global_variable PFNGLGETSTRINGIPROC glGetStringi;
