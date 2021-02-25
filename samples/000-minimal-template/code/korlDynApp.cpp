@@ -3,7 +3,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
-//	ImGui::Text("Hello KORL!");
+	ImGui::Text("Hello KORL!");
 	if(windowIsFocused)
 	{
 		g_kpl->mouseSetRelativeMode(KORL_BUTTON_ON(gameMouse.left));

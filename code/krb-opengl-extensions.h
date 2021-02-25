@@ -8,6 +8,9 @@ global_variable PFNGLLOADTRANSPOSEMATRIXFPROC glLoadTransposeMatrixf;
 global_variable PFNGLMULTTRANSPOSEMATRIXFPROC glMultTransposeMatrixf;
 #endif//0
 global_variable PFNGLACTIVETEXTUREPROC glActiveTexture;
+/* core since 1.4 */
+global_variable PFNGLBLENDEQUATIONPROC glBlendEquation;
+global_variable PFNGLBLENDFUNCSEPARATEPROC glBlendFuncSeparate;
 /* core since 1.5 */
 global_variable PFNGLGENBUFFERSPROC glGenBuffers;
 global_variable PFNGLBUFFERDATAPROC glBufferData;
@@ -23,6 +26,7 @@ global_variable PFNGLGETSHADERIVPROC glGetShaderiv;
 global_variable PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
 global_variable PFNGLCREATEPROGRAMPROC glCreateProgram;
 global_variable PFNGLATTACHSHADERPROC glAttachShader;
+global_variable PFNGLDETACHSHADERPROC glDetachShader;
 global_variable PFNGLLINKPROGRAMPROC glLinkProgram;
 global_variable PFNGLGETPROGRAMIVPROC glGetProgramiv;
 global_variable PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
@@ -37,12 +41,19 @@ global_variable PFNGLUNIFORM4FPROC glUniform4f;
 global_variable PFNGLUNIFORM4FVPROC glUniform4fv;
 global_variable PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
 global_variable PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
+global_variable PFNGLBLENDEQUATIONSEPARATEPROC glBlendEquationSeparate;
+global_variable PFNGLGETATTRIBLOCATIONPROC glGetAttribLocation;
 /* core since 3.0 */
 global_variable PFNGLGETSTRINGIPROC glGetStringi;
 global_variable PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
 global_variable PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
+global_variable PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
 /* core since 3.1 */
 global_variable PFNGLCOPYBUFFERSUBDATAPROC glCopyBufferSubData;
+/* core since 3.2 */
+global_variable PFNGLDRAWELEMENTSBASEVERTEXPROC glDrawElementsBaseVertex;
+/* core since 3.3 */
+global_variable PFNGLBINDSAMPLERPROC glBindSampler;
 /* advanced extension API; these might NOT be valid, the caller must check! */
 global_variable PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 global_variable PFNGLDEBUGMESSAGECONTROLPROC glDebugMessageControl;

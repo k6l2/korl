@@ -2,13 +2,7 @@
  * the Kyle's Renderer Backend interface.  
 */
 #include "krb-interface.h"
-/* @TODO: maybe figure out a more platform-independent way of getting OpenGL
-	function definitions. */
-#ifdef _WIN32
-	#include "win32-main.h"
-	#include <GL/GL.h>
-#endif
-#include "krb-opengl-extensions.h"
+#include "korl-ogl-loader.h"
 bool 
 	KrbVertexAttributeOffsets::operator==(
 		const KrbVertexAttributeOffsets& other) const
@@ -731,6 +725,9 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle)
 		KLOG(WARNING, "Attempting to draw a degenerate circle!  Ignoring...");
 		return;
 	}
+#if 1
+	korlAssert(!"@todo");
+#else
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
 	glDisable(GL_TEXTURE_2D);
@@ -779,6 +776,7 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle)
 		}
 	}
 	GL_CHECK_ERROR();
+#endif//0
 }
 internal KRB_SET_VIEW_XFORM_2D(krbSetViewXform2d)
 {
@@ -876,6 +874,12 @@ internal GLenum
 }
 internal KRB_LOAD_IMAGE(krbLoadImage)
 {
+	/* save old texture2dUnit0 since we're going to use that slot for uploading 
+		our image */
+	glActiveTexture(GL_TEXTURE0);
+	GLint nameTex2dUnit0;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
+	/* generate a new texture object and upload the image to it */
 	GLuint texName;
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
@@ -886,6 +890,9 @@ internal KRB_LOAD_IMAGE(krbLoadImage)
 	glTexImage2D(
 		GL_TEXTURE_2D, 0, internalFormat, imageSizeX, imageSizeY, 
 		0, format, GL_UNSIGNED_BYTE, pixelData);
+	/* restore the old texture2dUnit0 state */
+	glBindTexture(GL_TEXTURE_2D, nameTex2dUnit0);
+	/* check for errors and return */
 	GL_CHECK_ERROR();
 	return texName;
 }
@@ -894,7 +901,7 @@ internal KRB_DELETE_TEXTURE(krbDeleteTexture)
 	glDeleteTextures(1, &krbTextureHandle);
 	GL_CHECK_ERROR();
 }
-internal GLint korlRenderBackendDecodeTextureWrapMode(KorlTextureWrapMode m)
+internal GLint korl_rb_ogl_decodeTextureWrapMode(KorlTextureWrapMode m)
 {
 	switch(m)
 	{
@@ -910,7 +917,7 @@ internal GLint korlRenderBackendDecodeTextureWrapMode(KorlTextureWrapMode m)
 	}
 	return GL_CLAMP_TO_EDGE;
 }
-internal GLint korlRenderBackendDecodeTextureFilterMode(KorlTextureFilterMode m)
+internal GLint korl_rb_ogl_decodeTextureFilterMode(KorlTextureFilterMode m)
 {
 	switch(m)
 	{
@@ -940,13 +947,13 @@ internal KRB_USE_TEXTURE(krbUseTexture)
 	if(kth != krb::INVALID_TEXTURE_HANDLE)
 	{
 		const GLint paramWrapS = 
-			korlRenderBackendDecodeTextureWrapMode(texMeta.wrapX);
+			korl_rb_ogl_decodeTextureWrapMode(texMeta.wrapX);
 		const GLint paramWrapT = 
-			korlRenderBackendDecodeTextureWrapMode(texMeta.wrapY);
+			korl_rb_ogl_decodeTextureWrapMode(texMeta.wrapY);
 		const GLint paramFilterMin = 
-			korlRenderBackendDecodeTextureFilterMode(texMeta.filterMinify);
+			korl_rb_ogl_decodeTextureFilterMode(texMeta.filterMinify);
 		const GLint paramFilterMag = 
-			korlRenderBackendDecodeTextureFilterMode(texMeta.filterMagnify);
+			korl_rb_ogl_decodeTextureFilterMode(texMeta.filterMagnify);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, paramWrapS);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, paramWrapT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, paramFilterMin);

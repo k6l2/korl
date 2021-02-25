@@ -21,7 +21,10 @@
 #include "imgui/imgui_impl_win32.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-#include "imgui/imgui_impl_opengl2.h"
+/* @todo: define this at the project shell level somewhere so it propagates to 
+	vscode intellisense builds (low priority convenience) */
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM "korl-ogl-loader.h"
+#include "imgui/imgui_impl_opengl3.h"
 #include "stb/stb_image.h"
 #include "stb/stb_vorbis.h"
 #include "win32loopl-code/LooplessSizeMove.h"
@@ -362,9 +365,7 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 internal LRESULT CALLBACK 
 	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#if 0
 	ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam);
-#endif//0
 	LRESULT result = 0;
 	switch(uMsg)
 	{
@@ -770,8 +771,8 @@ extern int WINAPI
 	}
 	/* assign a pre-allocated dynamic memory arena for ImGui */
 	{
-		const u8 allocId = static_cast<u8>(
-			StaticMemoryAllocationIndex::IMGUI);
+		const u8 allocId = 
+			static_cast<u8>(StaticMemoryAllocationIndex::IMGUI);
 		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
 		void*const memoryAddressStart = 
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
@@ -893,15 +894,14 @@ extern int WINAPI
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		gameSoundMemory = memoryAddressStart;
 	}
-#if 0
 	// Initialize ImGui~~~ //
 	{
 		ImGui::SetAllocatorFunctions(
 			w32PlatformImguiAlloc, w32PlatformImguiFree, g_genAllocImgui);
 		ImGui::CreateContext();
-		if(!ImGui_ImplOpenGL2_Init())
+		if(!ImGui_ImplOpenGL3_Init())
 		{
-			KLOG(ERROR, "ImGui_ImplOpenGL2_Init failure!");
+			KLOG(ERROR, "ImGui_ImplOpenGL3_Init failure!");
 			return RETURN_CODE_FAILURE;
 		}
 		if(!ImGui_ImplWin32_Init(g_mainWindow))
@@ -910,7 +910,6 @@ extern int WINAPI
 			return RETURN_CODE_FAILURE;
 		}
 	}
-#endif//0
 	GameMemory gameMemory = {};
 	/* initialize GameMemory */
 	{
@@ -1070,8 +1069,8 @@ extern int WINAPI
 				gameKeyboardCurrentFrame  = &gameKeyboardA;
 				gameKeyboardPreviousFrame = &gameKeyboardB;
 			}
-			w32GetKeyboardKeyStates(gameKeyboardCurrentFrame, 
-			                        gameKeyboardPreviousFrame);
+			w32GetKeyboardKeyStates(
+				gameKeyboardCurrentFrame, gameKeyboardPreviousFrame);
 			// swap game pad arrays & update the current frame //
 			if(g_gamePadArrayCurrentFrame == g_gamePadArrayA)
 			{
@@ -1084,47 +1083,43 @@ extern int WINAPI
 				g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 			}
 			/* read game pads from DirectInput & XInput */
-			w32DInputGetGamePadStates(g_gamePadArrayCurrentFrame  + 
-			                              XUSER_MAX_COUNT, 
-			                          g_gamePadArrayPreviousFrame + 
-			                              XUSER_MAX_COUNT);
-			w32XInputGetGamePadStates(g_gamePadArrayCurrentFrame,
-			                          g_gamePadArrayPreviousFrame);
+			w32DInputGetGamePadStates(
+				g_gamePadArrayCurrentFrame  + XUSER_MAX_COUNT, 
+				g_gamePadArrayPreviousFrame + XUSER_MAX_COUNT);
+			w32XInputGetGamePadStates(
+				g_gamePadArrayCurrentFrame, g_gamePadArrayPreviousFrame);
 			const v2u32 windowDims = w32GetWindowDimensions(g_mainWindow);
-#if 0
-			ImGui_ImplOpenGL2_NewFrame();
+			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
-			if(!game.isValid)
+			if(!dynApp.isValid)
 			// display a "loading" message while we wait for cl.exe to 
 			//	relinquish control of the game binary //
 			{
 				const ImVec2 displayCenter(
 					windowDims.x*0.5f, windowDims.y*0.5f);
-				ImGui::SetNextWindowPos(displayCenter, ImGuiCond_Always, 
-				                        ImVec2(0.5f, 0.5f));
-				ImGui::Begin("Reloading Game Code", nullptr, 
-				             ImGuiWindowFlags_NoTitleBar |
-				             ImGuiWindowFlags_NoResize |
-				             ImGuiWindowFlags_NoMove |
-				             ImGuiWindowFlags_NoScrollbar |
-				             ImGuiWindowFlags_NoScrollWithMouse |
-				             ImGuiWindowFlags_AlwaysAutoResize |
-				             ImGuiWindowFlags_NoSavedSettings |
-				             ImGuiWindowFlags_NoMouseInputs );
+				ImGui::SetNextWindowPos(
+					displayCenter, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+				ImGui::Begin(
+					"Reloading Game Code", nullptr
+					, ImGuiWindowFlags_NoTitleBar 
+					| ImGuiWindowFlags_NoResize 
+					| ImGuiWindowFlags_NoMove 
+					| ImGuiWindowFlags_NoScrollbar 
+					| ImGuiWindowFlags_NoScrollWithMouse 
+					| ImGuiWindowFlags_AlwaysAutoResize 
+					| ImGuiWindowFlags_NoSavedSettings 
+					| ImGuiWindowFlags_NoMouseInputs );
 				if(jobQueueHasIncompleteJobs(&g_jobQueue))
-				{
-					ImGui::Text("Waiting for job queue to finish...%c", 
-					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
-				}
+					ImGui::Text(
+						"Waiting for job queue to finish...%c", 
+						"|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
 				else
-				{
-					ImGui::Text("Loading Game Code...%c", 
-					            "|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
-				}
+					ImGui::Text(
+						"Loading Game Code...%c", 
+						"|/-\\"[(int)(ImGui::GetTime() / 0.05f) & 3]);
 				ImGui::End();
 			}
-#endif//0
 			const f32 deltaSeconds = kmath::min(
 				MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
 			if(!dynApp.updateAndDraw(
@@ -1132,12 +1127,10 @@ extern int WINAPI
 					*gameMouseFrameCurrent, *gameKeyboardCurrentFrame,
 					g_gamePadArrayCurrentFrame, CARRAY_SIZE(g_gamePadArrayA), 
 					g_isFocused))
-			{
 				g_running = false;
-			}
-			w32WriteDSoundAudio(SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, 
-			                    SOUND_CHANNELS, gameSoundMemory, 
-			                    gameSoundCursorWritePrev, dynApp);
+			w32WriteDSoundAudio(
+				SOUND_BUFFER_BYTES, SOUND_SAMPLE_HZ, SOUND_CHANNELS, 
+				gameSoundMemory, gameSoundCursorWritePrev, dynApp);
 #if 0
 			// set XInput state //
 			for(u8 ci = 0; ci < numGamePads; ci++)
@@ -1153,26 +1146,19 @@ extern int WINAPI
 				}
 			}
 #endif // 0
-			// update window graphics //
-#if 0
+			/* flush ImGui graphics */
 			ImGui::Render();
-			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-#endif//0
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			// update window graphics //
 			const HDC hdc = wglGetCurrentDC();//GetDC(g_mainWindow);
 			if(!hdc)
 			{
 				KLOG(ERROR, "Failed to get main window device context!");
 				return RETURN_CODE_FAILURE;
 			}
-#if 0
-			if(!wglSwapLayerBuffers(hdc, WGL_SWAP_MAIN_PLANE))
-				KLOG(ERROR, "wglSwapLayerBuffers failed! GetLastError=%i", 
-					GetLastError());
-#else
 			if(!SwapBuffers(hdc))
 				KLOG(WARNING, "Failed to SwapBuffers! GetLastError=%i", 
 					GetLastError());
-#endif//0
 			// enforce targetSecondsElapsedPerFrame //
 			// we still have to Sleep/wait when VSync is on if SwapBuffers
 			//      completes too early!!! (like when the double-buffer is not
@@ -1306,7 +1292,7 @@ internal void stbiFree(void* allocatedAddress)
 	#pragma warning( disable : 5219 )
 	#include "imgui/imgui_demo.cpp"
 	#include "imgui/imgui_draw.cpp"
-	#include "imgui/imgui_impl_opengl2.cpp"
+	#include "imgui/imgui_impl_opengl3.cpp"
 	#include "imgui/imgui_impl_win32.cpp"
 	#include "imgui/imgui_widgets.cpp"
 	#include "imgui/imgui.cpp"

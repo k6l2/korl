@@ -405,7 +405,10 @@
 	[x] fix "projection ortho fixed-height" function since it's apparently just 
 		wrong??
 	[ ] finish implementation of all current API which should carry over
-	[ ] support ImGui
+		[ ] draw circle
+		[ ] world<->screen coordinates API
+		[ ] clip box API
+	[x] support ImGui
 [ ] rb_ogl: use uniform block binding for View/Projection matrices
 [ ] rb_ogl: move `defaultColor` into global UBO
 [ ] rb_ogl: custom shader/program API

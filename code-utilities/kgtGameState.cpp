@@ -7,14 +7,12 @@ internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 	g_kam                     = kgs->assetManager;
 	platformLog               = memory.kpl.log;
 	korlPlatformAssertFailure = memory.kpl.assertFailure;
-#if 0
 	/* ImGui support */
 	ImGui::SetCurrentContext(
 		reinterpret_cast<ImGuiContext*>(memory.imguiContext));
 	ImGui::SetAllocatorFunctions(
 		memory.platformImguiAlloc, memory.platformImguiFree, 
 		memory.imguiAllocUserData);
-#endif//0
 }
 internal void 
 	kgtGameStateInitialize(
