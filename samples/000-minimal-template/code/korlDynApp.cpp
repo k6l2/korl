@@ -20,6 +20,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->setProjectionOrthoFixedHeight(1, 1);
 	g_krb->setViewXform2d(g_gs->viewPosition);
 	g_krb->setDefaultColor(krb::BLACK);
+	g_krb->setClipBox(static_cast<i32>(windowDimensions.x)*3/4, 0, windowDimensions.x/4, windowDimensions.y);
 	/* draw a triangle with color vertex attributes */
 	{
 		local_const KgtVertex TRI_VERTICES[] = 
@@ -37,6 +38,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			TRI_VERTICES, CARRAY_SIZE(TRI_VERTICES), sizeof(*TRI_VERTICES), 
 			KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 	}
+	g_krb->disableClipBox();
 	g_krb->setModelXform(v3f32::ZERO, q32::IDENTITY, {1,1,1});
 	/* minimal code to just draw a triangle */
 	{

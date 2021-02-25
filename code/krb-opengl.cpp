@@ -1113,14 +1113,23 @@ internal KRB_SET_DEFAULT_COLOR(krbSetDefaultColor)
 }
 internal KRB_SET_CLIP_BOX(krbSetClipBox)
 {
-	/* @todo: conditionally flush immediate mode buffer */
+	const GLboolean isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+	GLint scissorBox[4];
+	glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
+	if(!isScissorEnabled 
+			|| scissorBox[0] != left  || scissorBox[1] != bottom 
+			|| scissorBox[2] != kmath::safeTruncateI32(width) 
+			|| scissorBox[3] != kmath::safeTruncateI32(height))
+		korl_rb_ogl_flushImmediateBuffer();
 	glEnable(GL_SCISSOR_TEST);
 	glScissor(left, bottom, width, height);
 	GL_CHECK_ERROR();
 }
 internal KRB_DISABLE_CLIP_BOX(krbDisableClipBox)
 {
-	/* @todo: conditionally flush immediate mode buffer */
+	const GLboolean isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+	if(isScissorEnabled)
+		korl_rb_ogl_flushImmediateBuffer();
 	glDisable(GL_SCISSOR_TEST);
 	GL_CHECK_ERROR();
 }

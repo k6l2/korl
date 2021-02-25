@@ -407,7 +407,7 @@
 	[ ] finish implementation of all current API which should carry over
 		[ ] draw circle
 		[ ] world<->screen coordinates API
-		[ ] clip box API
+		[x] clip box API
 	[x] support ImGui
 [ ] rb_ogl: use uniform block binding for View/Projection matrices
 [ ] rb_ogl: move `defaultColor` into global UBO
