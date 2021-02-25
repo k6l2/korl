@@ -173,6 +173,26 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 internal LONG WINAPI 
 	w32VectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 {
+	/* Why is this here?  This is some insane shit which I don't understand if 
+		there is even a solution to yet.  As of 25-2-2021, running an OpenGL 3+ 
+		context on Windows 10 FOR THE FIRST TIME will cause several instances of 
+		this exception code to fire from inside of `nvoglv64.dll`, accompanied 
+		by the text: `Microsoft C++ exception: \
+		ShaderCache::ShaderCacheFileBackedEmptyCacheFileException`.  
+		If we tell the program to continue searching for an exception handler 
+		for these exceptions, the program will actually run correctly, AND the 
+		exception never seems to occur ever again if the program is ever 
+		restarted.  I can only imagine what is going on is that the Windows 10 
+		OpenGL driver is attempting to search for some kind of shader cache, 
+		failing to find it since the program has never been run before, and then 
+		subsequently building & saving the shader cache SOMEWHERE on my hard 
+		drive.  It apparently is RELYING on a try/catch block when searching for 
+		the cached files, and building the cache if this exception is thrown and 
+		nothing else handles it. */
+	/* @todo: instead of assuming that jackass library writers all handle this 
+		exception properly, find a better solution to this if possible */
+	if(pExceptionInfo->ExceptionRecord->ExceptionCode == 0xE06D7363)
+		return EXCEPTION_CONTINUE_SEARCH;
 	g_hasReceivedException = true;
 	// break debugger to give us a chance to figure out what the hell happened
 	if(IsDebuggerPresent())
