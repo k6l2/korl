@@ -23,16 +23,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	/* begin drawing the sample */
-	g_krb->beginFrame(0.2f, 0.f, 0.2f);
+	g_krb->beginFrame(
+		v3f32{0.2f, 0.f, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
 	/* setup a 3D projection to draw a textured cube */
 	g_krb->setBackfaceCulling(true);
 	g_krb->setDepthTesting(true);
-	g_krb->setProjectionFov(90.f, windowDimensions.elements, 1.f, 100.f);
+	g_krb->setProjectionFov(90.f, 1.f, 100.f);
 	const v3f32 camPosition = 
 		v3f32{g_gs->camPosition2d.x, g_gs->camPosition2d.y, 7};
-	g_krb->lookAt(camPosition.elements, v3f32::ZERO.elements, 
-	              WORLD_UP.elements);
-	kgtDrawOrigin({10,10,10});
+	g_krb->lookAt(
+		camPosition.elements, v3f32::ZERO.elements, WORLD_UP.elements);
+	kgtDrawAxes({10,10,10});
 	/* draw a textured cube 
 		- the `kasset` build tool automatically generates KAssetIndex entries 
 			for all files (excluding ones that match regex patterns in the 
@@ -48,11 +50,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{2,2,2}, meshBox, meshBoxBytes, sizeof(meshBox[0]), 
 			offsetof(KgtVertex, position), offsetof(KgtVertex, textureNormal));
 		g_krb->setModelXform({0,0,0}, q32::IDENTITY, {4,4,4});
-		USE_IMAGE(KgtAssetIndex::gfx_crate_tex);
-		DRAW_TRIS_DYNAMIC(meshBox, 36, KGT_VERTEX_ATTRIBS_NO_COLOR);
+		KGT_USE_IMAGE(KgtAssetIndex::gfx_crate_tex);
+		KGT_DRAW_TRIS_DYNAMIC(meshBox, 36, KGT_VERTEX_ATTRIBS_NO_COLOR);
 	}
 	/* draw a simple textured quad on the screen */
-	g_krb->setProjectionOrtho(windowDimensions.x, windowDimensions.y, 1);
+	g_krb->setProjectionOrtho(1);
 	kgtDrawTexture2d(KgtAssetIndex::gfx_crate_tex, 
 		{static_cast<f32>(windowDimensions.x)* 0.5f, 
 		 static_cast<f32>(windowDimensions.y)*-0.5f}, {1,1}, 0.f, {4,4});

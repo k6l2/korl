@@ -173,7 +173,7 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"{\n"
 		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
 		"	vertexColor = uniform_defaultColor;\n"
-		"}\0";
+		"}";
 	const GLchar*const sourceShaderImmediateVertexColor = 
 		"#version 330 core\n"
 		"uniform mat4 uniform_xformMvp;\n"
@@ -184,7 +184,21 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"{\n"
 		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
 		"	vertexColor = attribute_color;\n"
-		"}\0";
+		"}";
+	const GLchar*const sourceShaderImmediateVertexTexNormal = 
+		"#version 330 core\n"
+		"uniform mat4 uniform_xformMvp;\n"
+		"uniform vec4 uniform_defaultColor;\n"
+		"layout(location = 0) in vec3 attribute_position;\n"
+		"layout(location = 2) in vec2 attribute_texNormal;\n"
+		"out vec4 vertexColor;\n"
+		"out vec2 vertexTexNormal;\n"
+		"void main()\n"
+		"{\n"
+		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
+		"	vertexColor = uniform_defaultColor;\n"
+		"	vertexTexNormal = attribute_texNormal;\n"
+		"}";
 	const GLchar*const sourceShaderImmediateVertexColorTexNormal = 
 		"#version 330 core\n"
 		"uniform mat4 uniform_xformMvp;\n"
@@ -198,7 +212,7 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"	gl_Position = uniform_xformMvp * vec4(attribute_position, 1.0);\n"
 		"	vertexColor = attribute_color;\n"
 		"	vertexTexNormal = attribute_texNormal;\n"
-		"}\0";
+		"}";
 	const GLchar*const sourceShaderImmediateFragment = 
 		"#version 330 core\n"
 		"in vec4 vertexColor;\n"
@@ -206,7 +220,7 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"void main()\n"
 		"{\n"
 		"	fragmentColor = vertexColor;\n"
-		"}\0";
+		"}";
 	const GLchar*const sourceShaderImmediateFragmentTexture = 
 		"#version 330 core\n"
 		"uniform sampler2D textureUnit0;\n"
@@ -217,10 +231,12 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		"{\n"
 		"	fragmentColor = \n"
 		"		vertexColor * texture(textureUnit0, vertexTexNormal);\n"
-		"}\0";
+		"}";
 	/* compile internal immediate-mode shaders */
 	krb::g_context->shaderImmediateVertex = glCreateShader(GL_VERTEX_SHADER);
 	krb::g_context->shaderImmediateVertexColor = 
+		glCreateShader(GL_VERTEX_SHADER);
+	krb::g_context->shaderImmediateVertexTexNormal = 
 		glCreateShader(GL_VERTEX_SHADER);
 	krb::g_context->shaderImmediateVertexColorTexNormal = 
 		glCreateShader(GL_VERTEX_SHADER);
@@ -234,6 +250,9 @@ internal void korl_rb_ogl_lazyInitializeContext()
 	KRB_COMPILE_SHADER(
 		krb::g_context->shaderImmediateVertexColor, 
 		sourceShaderImmediateVertexColor, bufferShaderInfoLog);
+	KRB_COMPILE_SHADER(
+		krb::g_context->shaderImmediateVertexTexNormal, 
+		sourceShaderImmediateVertexTexNormal, bufferShaderInfoLog);
 	KRB_COMPILE_SHADER(
 		krb::g_context->shaderImmediateVertexColorTexNormal, 
 		sourceShaderImmediateVertexColorTexNormal, bufferShaderInfoLog);
@@ -261,6 +280,15 @@ internal void korl_rb_ogl_lazyInitializeContext()
 		krb::g_context->shaderImmediateFragment);
 	KRB_LINK_PROGRAM(
 		krb::g_context->programImmediateColor, bufferShaderInfoLog);
+	krb::g_context->programImmediateTexture = glCreateProgram();
+	glAttachShader(
+		krb::g_context->programImmediateTexture, 
+		krb::g_context->shaderImmediateVertexTexNormal);
+	glAttachShader(
+		krb::g_context->programImmediateTexture, 
+		krb::g_context->shaderImmediateFragmentTexture);
+	KRB_LINK_PROGRAM(
+		krb::g_context->programImmediateTexture, bufferShaderInfoLog);
 	krb::g_context->programImmediateColorTexture = glCreateProgram();
 	glAttachShader(
 		krb::g_context->programImmediateColorTexture, 
@@ -339,8 +367,9 @@ internal void korl_rb_ogl_flushImmediateBuffer()
 				krb::g_context->immediateVertexStride 
 			&& krb::g_context->immediateVertexAttributeOffsets.texCoord_2f32 < 
 				krb::g_context->immediateVertexStride)
-			korlAssert(!"texNormal without color attrib not yet implemented!");
-		else {/* only position data in vertices, just use default program */}
+			program = krb::g_context->programImmediateTexture;
+		else 
+			{/* only position data in vertices, just use default program */}
 		/* if we're using a 'texCoord', ensure that texture unit 0 contains a 2D 
 			texture */
 		if(krb::g_context->immediateVertexAttributeOffsets.texCoord_2f32 < 
@@ -783,11 +812,22 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle)
 		/* draw the outline as a line if the thickness is set to 0 */
 		if(kmath::isNearlyZero(outlineThickness))
 		{
+			const bool isDepthTestEnabled = 
+				(glIsEnabled(GL_DEPTH_TEST) == GL_TRUE);
+			/* since the outline texels will draw directly on top of the fill 
+				texels, we need to make sure depth testing is turned off before 
+				drawing the outline to make sure they aren't going to z-fight */
+			if(isDepthTestEnabled)
+				krbSetDepthTesting(false);
 			korl_rb_ogl_bufferImmediateVertices(
 				GL_LINE_LOOP, VERTEX_ATTRIB_OFFSETS, VERTEX_STRIDE, 
 				/* we can simply re-use the fill vertices by excluding the 
 					initial vertex placed at the center of the triangle fan */
 				vertexPool + 1, poolVertexCount - 1);
+			/* turn on depth testing again if it was already on before drawing 
+				the outline */
+			if(isDepthTestEnabled)
+				krbSetDepthTesting(true);
 		}
 		/* otherwise, draw the outline as a triangle strip */
 		else

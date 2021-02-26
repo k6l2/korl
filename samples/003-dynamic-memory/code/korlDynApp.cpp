@@ -51,9 +51,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	const v3f32 camPosition = v3f32{camPos2d.x,camPos2d.y,1.5};
 	g_krb->lookAt(
 		camPosition.elements, v3f32::ZERO.elements, WORLD_UP.elements);
-//	kgtDrawAxes({10,10,10});
-//	kgtDrawCompass(128, -camPosition);
-	kgtDrawOrigin(windowDimensions, -camPosition, camPosition);
+	kgtDrawAxes({10,10,10});
 	local_const KgtVertex tetrahedronVerts[] = 
 		{ {{ 1, 1, 1}, {}, {1,0,0,0.75}}
 		, {{-1,-1, 1}, {}, {0,1,0,0.75}}

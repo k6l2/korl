@@ -53,7 +53,6 @@ internal void
 		const v2u32& windowDimensions, const v3f32& camForward, 
 		const v3f32& camPosition)
 {
-	/* @todo: temporarily disable depth testing */
 	const v2f32 originScreenPos = 
 		g_krb->worldToScreen(v3f32::ZERO.elements, 3);
 	v2f32 originScreenPosYUp = 

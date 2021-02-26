@@ -43,11 +43,13 @@ namespace krb
 		/* internal shaders for use with "immediate" draw API */
 		u32 shaderImmediateVertex;
 		u32 shaderImmediateVertexColor;
+		u32 shaderImmediateVertexTexNormal;
 		u32 shaderImmediateVertexColorTexNormal;
 		u32 shaderImmediateFragment;
 		u32 shaderImmediateFragmentTexture;
 		u32 programImmediate;
 		u32 programImmediateColor;
+		u32 programImmediateTexture;
 		u32 programImmediateColorTexture;
 		/* immediate-mode render state */
 		KrbVertexAttributeOffsets immediateVertexAttributeOffsets;
