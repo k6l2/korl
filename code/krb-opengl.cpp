@@ -465,9 +465,12 @@ internal KRB_END_FRAME(krbEndFrame)
 	korl_rb_ogl_flushImmediateBuffer();
 	krb::g_context->frameInProgress = false;
 }
-#if 0
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 {
+	const bool isDepthTestEnabled = (glIsEnabled(GL_DEPTH_TEST) == GL_TRUE);
+	if(isDepthTestEnabled == enable)
+		return;
+	korl_rb_ogl_flushImmediateBuffer();
 	if(enable)
 		glEnable(GL_DEPTH_TEST);
 	else
@@ -476,12 +479,17 @@ internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting)
 }
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling)
 {
+	const bool isFaceCullingEnabled = (glIsEnabled(GL_CULL_FACE) == GL_TRUE);
+	if(isFaceCullingEnabled == enable)
+		return;
+	korl_rb_ogl_flushImmediateBuffer();
 	if(enable)
 		glEnable(GL_CULL_FACE);
 	else
 		glDisable(GL_CULL_FACE);
 	GL_CHECK_ERROR();
 }
+#if 0
 internal KRB_SET_WIREFRAME(krbSetWireframe)
 {
 	if(enable)
@@ -510,6 +518,9 @@ internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 	krb::g_context->m4Projection.r1c3 = -(top + bottom) / (top - bottom);
 	krb::g_context->m4Projection.r2c2 = -2 / (zFar - zNear);
 	krb::g_context->m4Projection.r2c3 = -(zFar + zNear) / (zFar - zNear);
+	/* clear MV matrix */
+	krb::g_context->m4Model = m4f32::IDENTITY;
+	krb::g_context->m4View  = m4f32::IDENTITY;
 	/* cache MVP matrix */
 	krb::g_context->m4ModelViewProjection = 
 		krb::g_context->m4Projection * krb::g_context->m4View * 
@@ -543,6 +554,9 @@ internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(krbSetProjectionOrthoFixedHeight)
 	krb::g_context->m4Projection.r1c3 = -(top + bottom) / (top - bottom);
 	krb::g_context->m4Projection.r2c2 = -2 / (zFar - zNear);
 	krb::g_context->m4Projection.r2c3 = -(zFar + zNear) / (zFar - zNear);
+	/* clear MV matrix */
+	krb::g_context->m4Model = m4f32::IDENTITY;
+	krb::g_context->m4View  = m4f32::IDENTITY;
 	/* cache MVP matrix */
 	krb::g_context->m4ModelViewProjection = 
 		krb::g_context->m4Projection * krb::g_context->m4View * 
@@ -572,6 +586,9 @@ internal KRB_SET_PROJECTION_FOV(krbSetProjectionFov)
 	krb::g_context->m4Projection.r2c3 = 
 		2*clipFar*clipNear   / (clipFar - clipNear);
 	krb::g_context->m4Projection.r3c2 = -1;
+	/* clear MV matrix */
+	krb::g_context->m4Model = m4f32::IDENTITY;
+	krb::g_context->m4View  = m4f32::IDENTITY;
 	/* cache MVP matrix */
 	krb::g_context->m4ModelViewProjection = 
 		krb::g_context->m4Projection * krb::g_context->m4View * 
@@ -591,7 +608,7 @@ internal KRB_LOOK_AT(krbLookAt)
 		reinterpret_cast<const v3f32*>(v3f32_worldUp)->cross(camAxisZ));
 	const v3f32 camAxisY = camAxisZ.cross(camAxisX);
 	krb::g_context->m4View = m4f32::IDENTITY;
-	m4f32& mView = krb::g_context->m4Projection;
+	m4f32& mView = krb::g_context->m4View;
 	mView.r0c0 = camAxisX.x; mView.r0c1 = camAxisX.y; mView.r0c2 = camAxisX.z;
 	mView.r1c0 = camAxisY.x; mView.r1c1 = camAxisY.y; mView.r1c2 = camAxisY.z;
 	mView.r2c0 = camAxisZ.x; mView.r2c1 = camAxisZ.y; mView.r2c2 = camAxisZ.z;
@@ -725,58 +742,72 @@ internal KRB_DRAW_CIRCLE(krbDrawCircle)
 		KLOG(WARNING, "Attempting to draw a degenerate circle!  Ignoring...");
 		return;
 	}
-#if 1
-	korlAssert(!"@todo");
-#else
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
-	glDisable(GL_TEXTURE_2D);
-	const f32 deltaRadians = 2*PI32 / vertexCount;
-	if(!kmath::isNearlyZero(colorFill.a))
-	// Draw the fill region //
+	struct CircleVertex
 	{
-		glColor4f(colorFill.r, colorFill.g, colorFill.b, colorFill.a);
-		glBegin(GL_TRIANGLE_FAN);
-		glVertex2f(0,0);
-		for(u16 v = 0; v <= vertexCount; v++)
-		{
-			const f32 radians = v*deltaRadians;
-			glVertex2f(radius*cosf(radians), radius*sinf(radians));
-		}
-		glEnd();
+		v3f32 position;
+	} vertexPool[128];
+	/* in order to draw a circle, we require at minimum a vertex buffer of 
+		2*(vertexCount + 1) because that is how many vertices are required to 
+		draw an outline for the circle with non-zero thickness 
+		(triangle strip) */
+	if((2*(vertexCount + 1)) > CARRAY_SIZE(vertexPool))
+	{
+		KLOG(WARNING, "vertexCount(2 * (%u + 1)) > %u! Unable to draw circle.", 
+			vertexCount, CARRAY_SIZE(vertexPool));
+		return;
 	}
-	if(!kmath::isNearlyZero(colorOutline.a))
-	// Draw the outline region //
+	local_const u32 VERTEX_STRIDE = sizeof(CircleVertex);
+	local_const KrbVertexAttributeOffsets VERTEX_ATTRIB_OFFSETS = 
+		{ .position_3f32 = offsetof(CircleVertex, position)
+		, .color_4f32    = sizeof(CircleVertex)
+		, .texCoord_2f32 = sizeof(CircleVertex) };
+	const f32 deltaRadians = 2*PI32 / vertexCount;
+	u32 poolVertexCount;
+	/* draw the fill primitives */
+	krbSetDefaultColor(colorFill);
+	poolVertexCount = 0;
+	vertexPool[poolVertexCount++] = {v3f32::ZERO};
+	for(u16 v = 0; v <= vertexCount; v++)
 	{
-		glColor4f(colorOutline.r, colorOutline.g, colorOutline.b, 
-		          colorOutline.a);
+		const f32 radians = v*deltaRadians;
+		vertexPool[poolVertexCount++] = 
+			{v3f32{radius*cosf(radians), radius*sinf(radians), 0}};
+	}
+	korl_rb_ogl_bufferImmediateVertices(
+		GL_TRIANGLE_FAN, VERTEX_ATTRIB_OFFSETS, VERTEX_STRIDE, 
+		vertexPool, poolVertexCount);
+	/* draw the outline primitives IFF the outline color is NON-ZERO! */
+	if(!kmath::isNearlyZero(colorOutline.a))
+	{
+		krbSetDefaultColor(colorOutline);
+		/* draw the outline as a line if the thickness is set to 0 */
 		if(kmath::isNearlyZero(outlineThickness))
-		// Draw the outline as a LINE_LOOP primitive //
 		{
-			glBegin(GL_LINE_LOOP);
-			for(u16 v = 0; v < vertexCount; v++)
-			{
-				const f32 radians = v*deltaRadians;
-				glVertex2f(radius*cosf(radians), radius*sinf(radians));
-			}
-			glEnd();
+			korl_rb_ogl_bufferImmediateVertices(
+				GL_LINE_LOOP, VERTEX_ATTRIB_OFFSETS, VERTEX_STRIDE, 
+				/* we can simply re-use the fill vertices by excluding the 
+					initial vertex placed at the center of the triangle fan */
+				vertexPool + 1, poolVertexCount - 1);
 		}
+		/* otherwise, draw the outline as a triangle strip */
 		else
-		// Draw the outline as a TRIANGLE_STRIP primitive //
 		{
-			glBegin(GL_TRIANGLE_STRIP);
+			poolVertexCount = 0;
 			for(u16 v = 0; v <= vertexCount; v++)
 			{
 				const f32 radians = v*deltaRadians;
-				glVertex2f(radius*cosf(radians), radius*sinf(radians));
-				glVertex2f((radius+outlineThickness)*cosf(radians), 
-				           (radius+outlineThickness)*sinf(radians));
+				vertexPool[poolVertexCount++] = 
+					{v3f32{radius*cosf(radians), radius*sinf(radians), 0}};
+				vertexPool[poolVertexCount++] = 
+					{ v3f32
+						{ (radius+outlineThickness)*cosf(radians)
+						, (radius+outlineThickness)*sinf(radians), 0 } };
+				korl_rb_ogl_bufferImmediateVertices(
+					GL_TRIANGLE_STRIP, VERTEX_ATTRIB_OFFSETS, VERTEX_STRIDE, 
+					vertexPool, poolVertexCount);
 			}
-			glEnd();
 		}
 	}
-	GL_CHECK_ERROR();
-#endif//0
 }
 internal KRB_SET_VIEW_XFORM_2D(krbSetViewXform2d)
 {
@@ -815,6 +846,38 @@ internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix)
 	korl_rb_ogl_flushImmediateBuffer();
 	for(u32 i = 0; i < 16; i++)
 		krb::g_context->m4Model.elements[i] = rowMajorMatrix4x4[i];
+	/* cache MVP matrix */
+	krb::g_context->m4ModelViewProjection = 
+		krb::g_context->m4Projection * krb::g_context->m4View * 
+		krb::g_context->m4Model;
+}
+internal KRB_GET_MATRICES_MVP(krbGetMatricesMvp)
+{
+	if(o_model)
+		for(u32 i = 0; i < 16; i++)
+			o_model[i] = krb::g_context->m4Model.elements[i];
+	if(o_view)
+		for(u32 i = 0; i < 16; i++)
+			o_view[i] = krb::g_context->m4View.elements[i];
+	if(o_projection)
+		for(u32 i = 0; i < 16; i++)
+			o_projection[i] = krb::g_context->m4Projection.elements[i];
+}
+internal KRB_SET_MATRICES_MVP(krbSetMatricesMvp)
+{
+	if(model || view || projection)
+		korl_rb_ogl_flushImmediateBuffer();
+	else
+		return;
+	if(model)
+		for(u32 i = 0; i < 16; i++)
+			krb::g_context->m4Model.elements[i] = model[i];
+	if(view)
+		for(u32 i = 0; i < 16; i++)
+			krb::g_context->m4View.elements[i] = view[i];
+	if(projection)
+		for(u32 i = 0; i < 16; i++)
+			krb::g_context->m4Projection.elements[i] = projection[i];
 	/* cache MVP matrix */
 	krb::g_context->m4ModelViewProjection = 
 		krb::g_context->m4Projection * krb::g_context->m4View * 
@@ -963,84 +1026,49 @@ internal KRB_USE_TEXTURE(krbUseTexture)
 }
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)
 {
+	local_const v2f32 INVALID_RESULT = {nanf(""), nanf("")};
 	korlAssert(worldPositionDimension < 4);
-	/* obtain VP matrix from opengl driver */
-	glMatrixMode(GL_MODELVIEW);
-	GLint modelViewStackDepth;
-	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	while(modelViewStackDepth > 1)
-	{
-		glPopMatrix();
-		modelViewStackDepth--;
-	}
-	m4f32 mView;
-	m4f32 mProjection;
-	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, mView.elements);
-	glMatrixMode(GL_PROJECTION);
-	glGetFloatv(GL_TRANSPOSE_PROJECTION_MATRIX, mProjection.elements);
-	GL_CHECK_ERROR();
 	/* obtain viewport size & viewport offset from driver */
 	GLint viewportValues[4];// [x,y, width,height]
 	glGetIntegerv(GL_VIEWPORT, viewportValues);
 	GL_CHECK_ERROR();
 	/* calculate clip-space */
-	v4f32 worldPoint = {};
-	worldPoint.elements[3] = 1.f;
+	v4f32 worldPoint = {0,0,0,1};
 	for(u8 d = 0; d < worldPositionDimension; d++)
-	{
 		worldPoint.elements[d] = pWorldPosition[d];
-	}
-	const v4f32 cameraSpacePoint = mView * worldPoint;
-	const v4f32 clipSpacePoint   = mProjection * cameraSpacePoint;
+	const v4f32 cameraSpacePoint = krb::g_context->m4View * worldPoint;
+	const v4f32 clipSpacePoint = 
+		krb::g_context->m4Projection * cameraSpacePoint;
 	if(kmath::isNearlyZero(clipSpacePoint.elements[3]))
-	{
-		local_persist const v2f32 INVALID_RESULT = {nanf(""), nanf("")};
 		return INVALID_RESULT;
-	}
 	/* calculate normalized-device-coordinate-space 
 		y is inverted here because screen-space y axis is flipped! */
 	const v3f32 ndcSpacePoint = 
 		{ clipSpacePoint.elements[0] / clipSpacePoint.elements[3]
 		, clipSpacePoint.elements[1] / clipSpacePoint.elements[3] * -1
-		, clipSpacePoint.elements[2] / clipSpacePoint.elements[3]
-	};
-	/* calculate screen-space.  glsl formula = 
-	   ((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
+		, clipSpacePoint.elements[2] / clipSpacePoint.elements[3] };
+	/* Calculate screen-space.  GLSL formula: 
+		((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
 	const v2f32 result = 
 		{ ((ndcSpacePoint.x + 1.f) / 2.f) * viewportValues[2] + 
 			viewportValues[0]
 		, ((ndcSpacePoint.y + 1.f) / 2.f) * viewportValues[3] + 
-			viewportValues[1]
-	};
+			viewportValues[1] };
 	return result;
 }
 internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 {
-	/* obtain VP matrix from opengl driver */
-	glMatrixMode(GL_MODELVIEW);
-	GLint modelViewStackDepth;
-	glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &modelViewStackDepth);
-	while(modelViewStackDepth > 1)
-	{
-		glPopMatrix();
-		modelViewStackDepth--;
-	}
-	m4f32 mView;
-	m4f32 mProjection;
-	glGetFloatv(GL_TRANSPOSE_MODELVIEW_MATRIX, mView.elements);
-	glMatrixMode(GL_PROJECTION);
-	glGetFloatv(GL_TRANSPOSE_PROJECTION_MATRIX, mProjection.elements);
-	GL_CHECK_ERROR();
 	/* at this point, we have everything we need from the GL to calculate the 
 		eye ray: */
 	m4f32 mInverseView;
 	m4f32 mInverseProjection;
-	if(!m4f32::invert(mView.elements, mInverseView.elements))
+	if(!m4f32::invert(krb::g_context->m4View.elements, mInverseView.elements))
 	{
 		KLOG(WARNING, "Failed to invert the view matrix!");
 		return false;
 	}
-	if(!m4f32::invert(mProjection.elements, mInverseProjection.elements))
+	if(!m4f32::invert(
+		krb::g_context->m4Projection.elements, mInverseProjection.elements))
 	{
 		KLOG(WARNING, "Failed to invert the projection matrix!");
 		return false;
@@ -1053,8 +1081,10 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 	/* We can determine if a projection matrix is orthographic or frustum based 
 		on the last element of the W row.  See: 
 		http://www.songho.ca/opengl/gl_projectionmatrix.html */
-	korlAssert(mProjection.r3c3 == 1 || mProjection.r3c3 == 0);
-	const bool isOrthographic = mProjection.r3c3 == 1;
+	korlAssert(
+		   krb::g_context->m4Projection.r3c3 == 1 
+		|| krb::g_context->m4Projection.r3c3 == 0);
+	const bool isOrthographic = krb::g_context->m4Projection.r3c3 == 1;
 	/* viewport-space          => normalized-device-space */
 	const v2f32 eyeRayNds = 
 		{  2*v2f32WindowPos.x / krb::g_context->windowSizeX - 1
@@ -1083,9 +1113,10 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		resultPosition  = 
 			{eyeRayPositionWs.x, eyeRayPositionWs.y, eyeRayPositionWs.z};
 		resultDirection = 
-			kmath::normal( v3f32{eyeRayDirectionWs.x, 
-			                     eyeRayDirectionWs.y, 
-			                     eyeRayDirectionWs.z} - resultPosition );
+			kmath::normal(v3f32
+				{ eyeRayDirectionWs.x
+				, eyeRayDirectionWs.y
+				, eyeRayDirectionWs.z} - resultPosition );
 	}
 	else
 	{
@@ -1094,9 +1125,10 @@ internal KRB_SCREEN_TO_WORLD(krbScreenToWorld)
 		resultPosition = 
 			{mInverseView.r0c3, mInverseView.r1c3, mInverseView.r2c3};
 		resultDirection = 
-			kmath::normal( v3f32{eyeRayDirectionWs.x, 
-			                     eyeRayDirectionWs.y, 
-			                     eyeRayDirectionWs.z} );
+			kmath::normal(v3f32
+				{ eyeRayDirectionWs.x
+				, eyeRayDirectionWs.y
+				, eyeRayDirectionWs.z });
 	}
 	return true;
 }

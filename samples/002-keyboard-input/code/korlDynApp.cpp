@@ -37,10 +37,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_gs->samplePlayer.orient = 
 			{v3f32::Z, kmath::v2Radians(controlDirection) - PI32/2};
 	/* draw the sample */
-	g_krb->beginFrame(0.2f, 0.f, 0.2f);
-	g_krb->setProjectionOrthoFixedHeight(
-		windowDimensions.x, windowDimensions.y, 100, 1.f);
-	kgtDrawOrigin({10,10,10});
+	g_krb->beginFrame(
+		v3f32{0.2f, 0.f, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
+	g_krb->setProjectionOrthoFixedHeight(100, 1.f);
+	kgtDrawOrigin(windowDimensions, v2f32::ZERO);
 	/* if you can draw a triangle, you can draw ANYTHING~ */
 	{
 		g_krb->setModelXform2d(
@@ -49,7 +50,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{ {{ 0,  5,0}, {}, krb::RED  }
 			, {{ 3, -5,0}, {}, krb::GREEN}
 			, {{-3, -5,0}, {}, krb::BLUE } };
-		DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+		KGT_DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	return true;
 }

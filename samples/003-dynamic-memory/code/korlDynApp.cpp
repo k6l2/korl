@@ -22,13 +22,13 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			/* re-arrange the actors in a circle if there's more than 1 of 
 				them */
 			{
-				const f32 radiansPerActor = 
-					2*PI32 / arrlenu(g_gs->dynamicArrayActorPositions);
+				const f32 radiansPerActor = 2*PI32 / 
+					static_cast<f32>(arrlenu(g_gs->dynamicArrayActorPositions));
 				for(size_t a = 0; 
 					a < arrlenu(g_gs->dynamicArrayActorPositions); a++)
 				{
 					g_gs->dynamicArrayActorPositions[a] = 
-						q32(WORLD_UP, a*radiansPerActor)
+						q32(WORLD_UP, static_cast<f32>(a)*radiansPerActor)
 							.transform(v3f32{10,0,0});
 				}
 			}
@@ -41,22 +41,25 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	/* draw the sample */
-	g_krb->beginFrame(0.2f, 0.f, 0.2f);
+	g_krb->beginFrame(
+		v3f32{0.2f, 0.f, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
 	g_krb->setBackfaceCulling(true);
 	g_krb->setDepthTesting(true);
-	g_krb->setProjectionFov(90.f, windowDimensions.elements, 1.f, 100.f);
+	g_krb->setProjectionFov(90.f, 1.f, 100.f);
 	const v2f32 camPos2d = kmath::rotate({15,0}, 0.25f*g_gs->seconds);
-	const v3f32 camPosition = v3f32{camPos2d.x,camPos2d.y,0.5};
-	g_krb->lookAt(camPosition.elements, v3f32::ZERO.elements, 
-	              WORLD_UP.elements);
-	/* draw a simple 2D origin */
-	kgtDrawOrigin({10,10,10});
-	const local_persist KgtVertex tetrahedronVerts[] = 
+	const v3f32 camPosition = v3f32{camPos2d.x,camPos2d.y,1.5};
+	g_krb->lookAt(
+		camPosition.elements, v3f32::ZERO.elements, WORLD_UP.elements);
+//	kgtDrawAxes({10,10,10});
+//	kgtDrawCompass(128, -camPosition);
+	kgtDrawOrigin(windowDimensions, -camPosition, camPosition);
+	local_const KgtVertex tetrahedronVerts[] = 
 		{ {{ 1, 1, 1}, {}, {1,0,0,0.75}}
 		, {{-1,-1, 1}, {}, {0,1,0,0.75}}
 		, {{-1, 1,-1}, {}, {0,0,1,0.75}}
 		, {{ 1,-1,-1}, {}, {1,1,0,0.75}} };
-	const local_persist KgtVertex meshTri[] = 
+	local_const KgtVertex meshTri[] = 
 		{ tetrahedronVerts[0], tetrahedronVerts[2], tetrahedronVerts[1]
 		, tetrahedronVerts[0], tetrahedronVerts[1], tetrahedronVerts[3]
 		, tetrahedronVerts[0], tetrahedronVerts[3], tetrahedronVerts[2]
@@ -77,14 +80,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			[&camPosition](const v3f32& a, const v3f32& b)->bool
 			{
 				return (a - camPosition).magnitudeSquared() > 
-				       (b - camPosition).magnitudeSquared();
+					(b - camPosition).magnitudeSquared();
 			};
-		std::sort(actorTempArray, actorTempArray + actorTempArrayLength, 
-		          actorSort);
+		std::sort(
+			actorTempArray, actorTempArray + actorTempArrayLength, actorSort);
 		for(size_t a = 0; a < actorTempArrayLength; a++)
 		{
 			g_krb->setModelXform(actorTempArray[a], q32::IDENTITY, {1,1,1});
-			DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+			KGT_DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 		}
 	}
 	return true;

@@ -11,15 +11,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_gs->seconds += deltaSeconds;// animate the sample scene
 	/* Initialize backend renderer for drawing.   This must occur before ANY 
 		drawing operations take place!  */
-	g_krb->beginFrame(0.2f, 0.f, 0.2f);
+	g_krb->beginFrame(
+		v3f32{0.2f, 0.f, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
 	/* Setup an orthographic projection transform such that the y-axis always 
 		represents 100 `units` in world-space, regardless of window size.  
 		The `view` transform is right-handed & automatically centered on the 
 		origin by default. */
-	g_krb->setProjectionOrthoFixedHeight(
-		windowDimensions.x, windowDimensions.y, 100, 1.f);
-	/* draw a simple 2D origin */
-	kgtDrawOrigin({10,10,10});
+	g_krb->setProjectionOrthoFixedHeight(100, 1.f);
+	kgtDrawAxes({10,10,10});
 	/* if you can draw a triangle, you can draw ANYTHING~ */
 	{
 		const q32 quatModel = {{0,0,1}, g_gs->seconds};
@@ -32,7 +32,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			{ {{  0, 30,0}, {}, {1,0,0,0.5f}}
 			, {{ 30,-20,0}, {}, {0,1,0,0.5f}}
 			, {{-30,-20,0}, {}, {0,0,1,0.5f}} };
-		DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+		KGT_DRAW_TRIS(meshTri, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 	}
 	return true;
 }

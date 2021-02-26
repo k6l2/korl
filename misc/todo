@@ -405,8 +405,8 @@
 	[x] fix "projection ortho fixed-height" function since it's apparently just 
 		wrong??
 	[ ] finish implementation of all current API which should carry over
-		[ ] draw circle
-		[ ] world<->screen coordinates API
+		[x] draw circle
+		[x] world<->screen coordinates API
 		[x] clip box API
 	[x] support ImGui
 [ ] rb_ogl: use uniform block binding for View/Projection matrices

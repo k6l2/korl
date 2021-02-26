@@ -53,6 +53,7 @@ internal void
 		const v2u32& windowDimensions, const v3f32& camForward, 
 		const v3f32& camPosition)
 {
+	/* @todo: temporarily disable depth testing */
 	const v2f32 originScreenPos = 
 		g_krb->worldToScreen(v3f32::ZERO.elements, 3);
 	v2f32 originScreenPosYUp = 
@@ -92,28 +93,37 @@ internal void
 		originScreenPosYUp.x = static_cast<f32>(windowDimensions.x);
 	if(originScreenPosYUp.y > static_cast<f32>(windowDimensions.y))
 		originScreenPosYUp.y = static_cast<f32>(windowDimensions.y);
+	/* save the MVP matrix state */
+	m4f32 m4Model, m4View, m4Projection;
+	g_krb->getMatricesMvp(
+		m4Model.elements, m4View.elements, m4Projection.elements);
 	/* set ortho with y+ pointing UP */
 	g_krb->setProjectionOrtho(1);
 	/* adjust the view such that the bottom-left corner of the window is the 
 		screen-space origin */
 	g_krb->setViewXform2d(
 		{ static_cast<f32>(windowDimensions.x) / 2
-		, static_cast<f32>(windowDimensions.y) / 2});
+		, static_cast<f32>(windowDimensions.y) / 2 });
 	g_krb->setModelXform2d(originScreenPosYUp, q32::IDENTITY, {1,1});
 	g_krb->drawCircle(10, 0, krb::TRANSPARENT, krb::WHITE, 32);
+	/* restore the MVP matrix state */
+	g_krb->setMatricesMvp(
+		m4Model.elements, m4View.elements, m4Projection.elements);
 }
 internal void 
 	kgtDrawOrigin(
-		const v2u32& windowDimensions, const v3f32& camForward, 
-		const v2f32& camPosition2d)
+		const v2u32& windowDimensions, const v2f32& camPosition2d)
 {
 	kgtDrawOrigin(
-		windowDimensions, camForward, 
+		windowDimensions, -v3f32::Z, 
 		v3f32{camPosition2d.x, camPosition2d.y, 0});
 }
 internal void 
 	kgtDrawCompass(u32 squareSize, const v3f32& camForward)
 {
+	m4f32 m4View, m4Projection;
+	g_krb->getMatricesMvp(
+		nullptr, m4View.elements, m4Projection.elements);
 	g_krb->setProjectionOrtho(static_cast<f32>(squareSize));
 	g_krb->lookAt(
 		v3f32::ZERO.elements, camForward.elements, v3f32::Z.elements);
@@ -121,6 +131,8 @@ internal void
 		{ static_cast<f32>(squareSize) / 2
 		, static_cast<f32>(squareSize) / 2
 		, static_cast<f32>(squareSize) / 2});
+	g_krb->setMatricesMvp(
+		nullptr, m4View.elements, m4Projection.elements);
 }
 internal void 
 	kgtDrawBoxLines2d(

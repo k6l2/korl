@@ -68,11 +68,11 @@ namespace krb
  * filled with data are drawn to the screen if they haven't already been.  This 
  * API MUST be called for every call to KRB_BEGIN_FRAME! */
 #define KRB_END_FRAME(name) void name()
-#if 0
 #define KRB_SET_DEPTH_TESTING(name) void name(\
 	bool enable)
 #define KRB_SET_BACKFACE_CULLING(name) void name(\
 	bool enable)
+#if 0
 #define KRB_SET_WIREFRAME(name) void name(\
 	bool enable)
 #endif
@@ -134,6 +134,10 @@ namespace krb
 	const v2f32& translation, const q32& orientation, const v2f32& scale)
 #define KRB_SET_MODEL_MATRIX(name) void name(\
 	const f32 rowMajorMatrix4x4[16])
+#define KRB_GET_MATRICES_MVP(name) void name(\
+	f32 o_model[16], f32 o_view[16], f32 o_projection[16])
+#define KRB_SET_MATRICES_MVP(name) void name(\
+	const f32 model[16], const f32 view[16], const f32 projection[16])
 #if 0
 #define KRB_SET_MODEL_XFORM_BILLBOARD(name) void name(\
 	bool lockX, bool lockY, bool lockZ)
@@ -181,9 +185,9 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
 #define KRB_DISABLE_CLIP_BOX(name) void name()
 typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_END_FRAME(fnSig_krbEndFrame);
-#if 0
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
+#if 0
 typedef KRB_SET_WIREFRAME(fnSig_krbSetWireframe);
 #endif//0
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
@@ -201,6 +205,8 @@ typedef KRB_SET_VIEW_XFORM_2D(fnSig_krbSetViewXform2d);
 typedef KRB_SET_MODEL_XFORM(fnSig_krbSetModelXform);
 typedef KRB_SET_MODEL_XFORM_2D(fnSig_krbSetModelXform2d);
 typedef KRB_SET_MODEL_MATRIX(fnSig_krbSetModelMatrix);
+typedef KRB_GET_MATRICES_MVP(fnSig_krbGetMatricesMvp);
+typedef KRB_SET_MATRICES_MVP(fnSig_krbSetMatricesMvp);
 #if 0
 typedef KRB_SET_MODEL_XFORM_BILLBOARD(fnSig_krbSetModelXformBillboard);
 #endif//0
@@ -215,9 +221,9 @@ typedef KRB_SET_CLIP_BOX(fnSig_krbSetClipBox);
 typedef KRB_DISABLE_CLIP_BOX(fnSig_krbDisableClipBox);
 internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_END_FRAME(krbEndFrame);
-#if 0
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
+#if 0
 internal KRB_SET_WIREFRAME(krbSetWireframe);
 #endif//0
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
@@ -235,6 +241,8 @@ internal KRB_SET_VIEW_XFORM_2D(krbSetViewXform2d);
 internal KRB_SET_MODEL_XFORM(krbSetModelXform);
 internal KRB_SET_MODEL_XFORM_2D(krbSetModelXform2d);
 internal KRB_SET_MODEL_MATRIX(krbSetModelMatrix);
+internal KRB_GET_MATRICES_MVP(krbGetMatricesMvp);
+internal KRB_SET_MATRICES_MVP(krbSetMatricesMvp);
 #if 0
 internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard);
 #endif//0
@@ -251,9 +259,9 @@ struct KrbApi
 {
 	fnSig_krbBeginFrame*         beginFrame         = krbBeginFrame;
 	fnSig_krbEndFrame*           endFrame           = krbEndFrame;
-#if 0
 	fnSig_krbSetDepthTesting*    setDepthTesting    = krbSetDepthTesting;
 	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
+#if 0
 	fnSig_krbSetWireframe*       setWireframe       = krbSetWireframe;
 #endif//0
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
@@ -271,6 +279,8 @@ struct KrbApi
 	fnSig_krbSetModelXform*      setModelXform      = krbSetModelXform;
 	fnSig_krbSetModelXform2d*    setModelXform2d    = krbSetModelXform2d;
 	fnSig_krbSetModelMatrix*     setModelMatrix     = krbSetModelMatrix;
+	fnSig_krbGetMatricesMvp*     getMatricesMvp     = krbGetMatricesMvp;
+	fnSig_krbSetMatricesMvp*     setMatricesMvp     = krbSetMatricesMvp;
 #if 0
 	fnSig_krbSetModelXformBillboard* 
 		setModelXformBillboard = krbSetModelXformBillboard;
