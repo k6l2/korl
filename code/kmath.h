@@ -315,7 +315,7 @@ namespace kmath
 		v3f32 lengths, void* o_vertexData, size_t vertexDataBytes, 
 		size_t vertexByteStride, size_t vertexPositionOffset, 
 		size_t vertexTextureNormalOffset);
-	internal size_t generateMeshCircleSphereVertexCount(
+	internal u32 generateMeshCircleSphereVertexCount(
 		u32 latitudeSegments, u32 longitudeSegments);
 	/**
 	 * Generate mesh data for a sphere made of (semi)circles along latitudes and 

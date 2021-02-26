@@ -388,7 +388,7 @@
 [x] win32: copy VC_*.pdb files to the minidump file output location
 [x] KAM: when `kamGetRawSound` gets called and the asset is UNUSED, attempt to 
 	load the asset by calling `kamPushAsset` (see `kamGetTexture`)
-[ ] upgrade korl_rb_ogl to use 3.3+ context
+[x] upgrade korl_rb_ogl to use 3.3+ context
 	[x] use more modern WGL context creation extensions
 	[x] use more modern OGL debugging extension support
 	[x] add internal programmable pipeline for drawing with immediate-mode 
@@ -404,11 +404,16 @@
 	[x] support MVP transformation matrices
 	[x] fix "projection ortho fixed-height" function since it's apparently just 
 		wrong??
-	[ ] finish implementation of all current API which should carry over
+	[x] finish implementation of all current API which should carry over
 		[x] draw circle
 		[x] world<->screen coordinates API
 		[x] clip box API
 	[x] support ImGui
+[ ] KgtAssetManager: GLB support
+	[ ] parse JSON
+		- try https://github.com/zserge/jsmn 
+	[ ] upload buffers to KRB
+	[ ] draw mesh primitives using some kind of pre-defined program
 [ ] rb_ogl: use uniform block binding for View/Projection matrices
 [ ] rb_ogl: move `defaultColor` into global UBO
 [ ] rb_ogl: custom shader/program API

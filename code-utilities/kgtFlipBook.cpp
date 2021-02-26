@@ -218,7 +218,7 @@ internal void kgtFlipBookGetPageProperties(
 	*o_pageSizeY = kfb->cachedMetaData.frameSizeY;
 	*o_pageCount = kfb->cachedMetaData.frameCount;
 	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
-	const v2u32 texSize = kgtAssetManagerGetRawImageSize(g_kam, kaiTex);
+	const v2u32 texSize = kgtAssetManagerGetImageSize(g_kam, kaiTex);
 	if(*o_pageSizeX == 0)
 	{
 		*o_pageSizeX = texSize.x;

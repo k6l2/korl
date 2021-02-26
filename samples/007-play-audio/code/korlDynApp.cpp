@@ -75,7 +75,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	ImGui::End();
-	g_krb->beginFrame(0.2f, 0, 0.2f);
+	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
+	g_krb->endFrame();
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)

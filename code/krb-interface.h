@@ -56,10 +56,10 @@ namespace krb
 		u32 immediateVertexStride;
 		u32 immediatePrimitiveType;
 		RgbaF32 defaultColor;
-		m4f32 m4Projection;
-		m4f32 m4View;
-		m4f32 m4Model;
-		m4f32 m4ModelViewProjection;
+		m4f32 m4Projection          = m4f32::IDENTITY;
+		m4f32 m4View                = m4f32::IDENTITY;
+		m4f32 m4Model               = m4f32::IDENTITY;
+		m4f32 m4ModelViewProjection = m4f32::IDENTITY;
 	};
 	global_variable Context* g_context;
 }
@@ -74,10 +74,8 @@ namespace krb
 	bool enable)
 #define KRB_SET_BACKFACE_CULLING(name) void name(\
 	bool enable)
-#if 0
 #define KRB_SET_WIREFRAME(name) void name(\
 	bool enable)
-#endif
 /** Setup a right-handed axis where +Y is UP in screen-space. */
 #define KRB_SET_PROJECTION_ORTHO(name) void name(\
 	f32 halfDepth)
@@ -189,9 +187,7 @@ typedef KRB_BEGIN_FRAME(fnSig_krbBeginFrame);
 typedef KRB_END_FRAME(fnSig_krbEndFrame);
 typedef KRB_SET_DEPTH_TESTING(fnSig_krbSetDepthTesting);
 typedef KRB_SET_BACKFACE_CULLING(fnSig_krbSetBackfaceCulling);
-#if 0
 typedef KRB_SET_WIREFRAME(fnSig_krbSetWireframe);
-#endif//0
 typedef KRB_SET_PROJECTION_ORTHO(fnSig_krbSetProjectionOrtho);
 typedef KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	fnSig_krbSetProjectionOrthoFixedHeight);
@@ -225,9 +221,7 @@ internal KRB_BEGIN_FRAME(krbBeginFrame);
 internal KRB_END_FRAME(krbEndFrame);
 internal KRB_SET_DEPTH_TESTING(krbSetDepthTesting);
 internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling);
-#if 0
 internal KRB_SET_WIREFRAME(krbSetWireframe);
-#endif//0
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho);
 internal KRB_SET_PROJECTION_ORTHO_FIXED_HEIGHT(
 	krbSetProjectionOrthoFixedHeight);
@@ -263,9 +257,7 @@ struct KrbApi
 	fnSig_krbEndFrame*           endFrame           = krbEndFrame;
 	fnSig_krbSetDepthTesting*    setDepthTesting    = krbSetDepthTesting;
 	fnSig_krbSetBackfaceCulling* setBackfaceCulling = krbSetBackfaceCulling;
-#if 0
 	fnSig_krbSetWireframe*       setWireframe       = krbSetWireframe;
-#endif//0
 	fnSig_krbSetProjectionOrtho* setProjectionOrtho = krbSetProjectionOrtho;
 	fnSig_krbSetProjectionOrthoFixedHeight* 
 		setProjectionOrthoFixedHeight = krbSetProjectionOrthoFixedHeight;

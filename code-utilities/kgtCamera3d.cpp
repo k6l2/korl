@@ -83,9 +83,11 @@ internal void kgtCamera3dLook(KgtCamera3d* cam, const v2i32& deltaYawPitch)
 	local_persist const f32 CAMERA_LOOK_SENSITIVITY = 0.0025f;
 	local_persist const f32 MAX_PITCH_MAGNITUDE = PI32/2 - 0.001f;
 	/* move the camera yaw & pitch based on relative mouse inputs */
-	cam->radiansYaw += CAMERA_LOOK_SENSITIVITY * deltaYawPitch.x;
+	cam->radiansYaw += 
+		CAMERA_LOOK_SENSITIVITY * static_cast<f32>(deltaYawPitch.x);
 	cam->radiansYaw  = fmodf(cam->radiansYaw, 2*PI32);
-	cam->radiansPitch -= CAMERA_LOOK_SENSITIVITY*deltaYawPitch.y;
+	cam->radiansPitch -= 
+		CAMERA_LOOK_SENSITIVITY * static_cast<f32>(deltaYawPitch.y);
 	if(cam->radiansPitch < -MAX_PITCH_MAGNITUDE)
 		cam->radiansPitch = -MAX_PITCH_MAGNITUDE;
 	if(cam->radiansPitch > MAX_PITCH_MAGNITUDE)
@@ -98,20 +100,18 @@ internal void kgtCamera3dLookAt(KgtCamera3d* cam, const v3f32& targetPosition)
 	const v3f32 toTargetCompLateral = toTarget - toTargetCompUp;
 	cam->radiansYaw = kmath::radiansBetween(toTargetCompLateral, v3f32::X);
 	cam->radiansYaw *= 
-		(v3f32::X.cross(toTargetCompLateral)).dot(v3f32::Z) > 0 ? -1 : 1;
+		(v3f32::X.cross(toTargetCompLateral)).dot(v3f32::Z) > 0 ? -1.f : 1.f;
 	cam->radiansPitch = 
 		(PI32 - kmath::radiansBetween(toTarget, v3f32::Z)) - PI32/2;
 }
-internal void kgtCamera3dApplyViewProjection(
-	const KgtCamera3d* cam, const v2u32& windowDimensions)
+internal void kgtCamera3dApplyViewProjection(const KgtCamera3d* cam)
 {
 	const v3f32 cameraWorldForward = kgtCamera3dWorldForward(cam);
 	if(cam->orthographicView)
-		g_krb->setProjectionOrthoFixedHeight(
-			windowDimensions.x, windowDimensions.y, 100, 1000);
+		g_krb->setProjectionOrthoFixedHeight(100, 1000);
 	else
-		g_krb->setProjectionFov(50.f, windowDimensions.elements, 0.001f, 1000);
-	g_krb->lookAt(cam->position.elements, 
-	              (cam->position + cameraWorldForward).elements, 
-	              v3f32::Z.elements);
+		g_krb->setProjectionFov(50.f, 0.001f, 1000);
+	g_krb->lookAt(
+		cam->position.elements, (cam->position + cameraWorldForward).elements, 
+		v3f32::Z.elements);
 }

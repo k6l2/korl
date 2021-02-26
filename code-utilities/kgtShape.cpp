@@ -37,14 +37,14 @@ void kgtShapeDrawBox(
 	const KrbVertexAttributeOffsets vertexAttribs = wireframe
 		? KGT_VERTEX_ATTRIBS_POSITION_ONLY
 		: KGT_VERTEX_ATTRIBS_NO_COLOR;
-	DRAW_TRIS(generatedBox, vertexAttribs);
+	KGT_DRAW_TRIS(generatedBox, vertexAttribs);
 }
 void kgtShapeDrawSphere(
 	const v3f32& worldPosition, const q32& orient, const KgtShape& shape, 
 	bool wireframe, KgtAllocatorHandle hKal)
 {
 	/* generate sphere mesh */
-	const size_t generatedSphereMeshVertexCount = 
+	const u32 generatedSphereMeshVertexCount = 
 		kmath::generateMeshCircleSphereVertexCount(16, 16);
 	const size_t generatedSphereMeshBytes = 
 		generatedSphereMeshVertexCount * sizeof(KgtVertex);

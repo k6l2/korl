@@ -58,9 +58,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	}
 	/* everything below here is just drawing the hud representation of the 
 		gamepad */
-	g_krb->beginFrame(0.2f, 0, 0.2f);
-	g_krb->setProjectionOrthoFixedHeight(
-		windowDimensions.x, windowDimensions.y, 150, 1);
+	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
+	g_krb->setProjectionOrthoFixedHeight(150, 1);
 	local_persist const v2f32 HUD_LEFT_STICK_OFFSET = {-75,0};
 	g_krb->setModelXform2d(HUD_LEFT_STICK_OFFSET, q32::IDENTITY, {1,1});
 	g_krb->drawCircle(25, 0, krb::TRANSPARENT, krb::WHITE, 32);

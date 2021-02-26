@@ -594,6 +594,8 @@ internal KorlTextureMetaData
 		return kam->defaultAssetTextureMetaData.assetData.texture.metaData;
 	}
 }
+/** this is a specialized internal function which ONLY works for RAW_IMAGE 
+ * assets */
 internal v2u32 
 	kgtAssetManagerGetRawImageSize(
 		KgtAssetManager* kam, KgtAssetIndex assetIndex)

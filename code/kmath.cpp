@@ -1159,7 +1159,7 @@ internal inline void kmath::generateMeshBox(
 		*V2F32_STRIDE(o_texNormals,vertexByteStride,v) = TRI_TEX_NORMS[v];
 	}
 }
-internal inline size_t kmath::generateMeshCircleSphereVertexCount(
+internal inline u32 kmath::generateMeshCircleSphereVertexCount(
 		u32 latitudeSegments, u32 longitudeSegments)
 {
 	return ((latitudeSegments - 2)*6 + 6) * longitudeSegments;

@@ -25,5 +25,4 @@ internal void
 internal void
 	kgtCamera3dLookAt(KgtCamera3d* cam, const v3f32& targetPosition);
 internal void 
-	kgtCamera3dApplyViewProjection(
-		const KgtCamera3d* cam, const v2u32& windowDimensions);
+	kgtCamera3dApplyViewProjection(const KgtCamera3d* cam);

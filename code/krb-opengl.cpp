@@ -518,16 +518,20 @@ internal KRB_SET_BACKFACE_CULLING(krbSetBackfaceCulling)
 		glDisable(GL_CULL_FACE);
 	GL_CHECK_ERROR();
 }
-#if 0
 internal KRB_SET_WIREFRAME(krbSetWireframe)
 {
+	GLint polygonModes[2];
+	glGetIntegerv(GL_POLYGON_MODE, polygonModes);
+	if(   ( enable && polygonModes[0] == GL_LINE && polygonModes[1] == GL_LINE)
+	   || (!enable && polygonModes[0] == GL_FILL && polygonModes[1] == GL_FILL))
+		return;
+	korl_rb_ogl_flushImmediateBuffer();
 	if(enable)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	else
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL_CHECK_ERROR();
 }
-#endif//0
 internal KRB_SET_PROJECTION_ORTHO(krbSetProjectionOrtho)
 {
 	korl_rb_ogl_flushImmediateBuffer();

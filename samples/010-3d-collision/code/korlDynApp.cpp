@@ -21,10 +21,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		v3f32 worldEyeRayPosition;
 		v3f32 worldEyeRayDirection;
 		const v2i32 mouseWindowPosition = mouseOverAnyGui
-			? windowDimensions / 2
+			? v2i32
+				{ kmath::safeTruncateI32(windowDimensions.x) / 2
+				, kmath::safeTruncateI32(windowDimensions.y) / 2}
 			: gameMouse.windowPosition;
 		if(!g_krb->screenToWorld(
-				mouseWindowPosition.elements, windowDimensions.elements, 
+				mouseWindowPosition.elements, 
 				worldEyeRayPosition.elements, worldEyeRayDirection.elements))
 		{
 			KLOG(ERROR, "Failed to get mouse world eye ray!");
@@ -49,7 +51,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 				}
 				g_gs->hudState = HudState::NAVIGATING;
 			}
-		if(g_gs->hudState == HudState::MODIFY_SHAPE_GRAB
+		if(    g_gs->hudState == HudState::MODIFY_SHAPE_GRAB
 			|| g_gs->hudState == HudState::MODIFY_SHAPE_ROTATE)
 		{
 			/* calculate the plane which we will use to modify the shape */
@@ -62,7 +64,6 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			v3f32 worldEyeRayDirectionStart;
 			if(!g_krb->screenToWorld(
 					g_gs->modifyShapeWindowPositionStart.elements, 
-					windowDimensions.elements, 
 					worldEyeRayPositionStart.elements, 
 					worldEyeRayDirectionStart.elements))
 			{
@@ -118,8 +119,8 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			if(gameMouse.left == ButtonState::PRESSED)
 				g_gs->hudState = HudState::NAVIGATING;
 		}
-		else if(    g_gs->hudState == HudState::ADDING_BOX 
-		         || g_gs->hudState == HudState::ADDING_SPHERE)
+		else if(g_gs->hudState == HudState::ADDING_BOX 
+		    ||  g_gs->hudState == HudState::ADDING_SPHERE)
 		{
 			g_gs->addShapePosition = worldEyeRayPosition + 
 				18*worldEyeRayDirection;
@@ -296,18 +297,18 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	{
 		if(ImGui::Begin("Add Box", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::SliderFloat3("lengths", g_gs->addShape.box.lengths.elements, 
-			                    0.1f, 10.f);
+			ImGui::SliderFloat3(
+				"lengths", g_gs->addShape.box.lengths.elements, 0.1f, 10.f);
 		}
 		ImGui::End();
 	}
 	else if(g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		if(ImGui::Begin("Add Sphere", nullptr, 
-		                ImGuiWindowFlags_AlwaysAutoResize))
+		if(ImGui::Begin(
+			"Add Sphere", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::SliderFloat("radius", &g_gs->addShape.sphere.radius, 
-			                   0.1f, 10.f);
+			ImGui::SliderFloat(
+				"radius", &g_gs->addShape.sphere.radius, 0.1f, 10.f);
 		}
 		ImGui::End();
 	}
@@ -346,13 +347,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		}
 	}
 	/* render the scene */
-	g_krb->beginFrame(0.2f, 0, 0.2f);
+	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
 	g_krb->setDepthTesting(true);
 	g_krb->setBackfaceCulling(!g_gs->wireframe);
 	g_krb->setWireframe(g_gs->wireframe);
-	kgtCamera3dApplyViewProjection(&g_gs->camera, windowDimensions);
+	kgtCamera3dApplyViewProjection(&g_gs->camera);
 	/* use the default texture asset */
-	USE_IMAGE(KgtAssetIndex::ENUM_SIZE);
+	KGT_USE_IMAGE(KgtAssetIndex::ENUM_SIZE);
 	/* draw all the shapes in the scene */
 	for(size_t a = 0; a < arrlenu(g_gs->actors); a++)
 	{
@@ -361,18 +363,20 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			g_krb->setDefaultColor(krb::YELLOW);
 		else
 			g_krb->setDefaultColor(krb::WHITE);
-		kgtShapeDraw(actor.shape, actor.position, actor.orient, 
-		             g_gs->wireframe, g_gs->kgtGameState.hKalFrame);
+		kgtShapeDraw(
+			actor.shape, actor.position, actor.orient, g_gs->wireframe, 
+			g_gs->kgtGameState.hKalFrame);
 	}
 	/* draw the shape that the user is attempting to add to the scene */
 	if(    g_gs->hudState == HudState::ADDING_BOX
 	    || g_gs->hudState == HudState::ADDING_SPHERE)
 	{
-		kgtShapeDraw(g_gs->addShape, g_gs->addShapePosition, 
-		             q32::IDENTITY, g_gs->wireframe, 
-		             g_gs->kgtGameState.hKalFrame);
+		kgtShapeDraw(
+			g_gs->addShape, g_gs->addShapePosition, q32::IDENTITY, 
+			g_gs->wireframe, g_gs->kgtGameState.hKalFrame);
 	}
-	kgtDrawOrigin({10,10,10});
+	kgtDrawAxes({10,10,10});
+	kgtDrawOrigin(windowDimensions, cameraWorldForward, g_gs->camera.position);
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)
@@ -381,8 +385,8 @@ GAME_RENDER_AUDIO(gameRenderAudio)
 }
 GAME_ON_RELOAD_CODE(gameOnReloadCode)
 {
-	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 	g_gs = reinterpret_cast<GameState*>(memory.permanentMemory);
+	kgtGameStateOnReloadCode(&g_gs->kgtGameState, memory);
 }
 GAME_INITIALIZE(gameInitialize)
 {

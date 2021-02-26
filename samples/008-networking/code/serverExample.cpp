@@ -6,7 +6,7 @@ internal void serverInitialize(ServerState* ss, f32 secondsPerFrame,
                                u64 permanentMemoryBytes, 
                                u64 transientMemoryBytes, u16 port)
 {
-	kassert(ss->runState == ServerState::RunState::STOP);
+	korlAssert(ss->runState == ServerState::RunState::STOP);
 	*ss = {};
 	ss->kNetServer.port = port;
 	ss->secondsPerFrame = secondsPerFrame;

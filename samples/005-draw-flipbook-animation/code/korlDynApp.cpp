@@ -11,9 +11,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 {
 	if(!kgtGameStateUpdateAndDraw(gameKeyboard, windowIsFocused))
 		return false;
-	g_krb->beginFrame(0.2f, 0, 0.2f);
-	g_krb->setProjectionOrthoFixedHeight(
-		windowDimensions.x, windowDimensions.y, 150, 1);
+	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
+	g_krb->setProjectionOrthoFixedHeight(150, 1);
 	/* these function calls are all that's required to draw a flipbook 
 		animation */
 	kgtFlipBookStep(&g_gs->kfbBlob, deltaSeconds);

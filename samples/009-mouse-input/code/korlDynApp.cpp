@@ -20,9 +20,15 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		   && gameMouse.windowPosition.y < 
 		          static_cast<i64>(windowDimensions.y))
 		{
+			/* It is important to note that screen<=>world coordinates being 
+				calculated here are actually based on the KORL Render-Backend's 
+				last known state, and since these have not yet been modified 
+				this frame, they are being derived from the end of the PREVIOUS 
+				frame in this example!  If this is not desireable, then you 
+				should either move this calculation or you should move the scene 
+				transforms to be BEFORE this code. */
 			if(!g_krb->screenToWorld(
 					gameMouse.windowPosition.elements, 
-					windowDimensions.elements, 
 					mouseEyeRayPosition.elements, 
 					mouseEyeRayDirection.elements))
 			{
@@ -58,7 +64,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 			lockedMouse ? false : gameMouse.back    > ButtonState::NOT_PRESSED, 
 			deltaSeconds);
 		g_gs->clickCircleSize = kmath::clamp(
-			g_gs->clickCircleSize + 0.01f*gameMouse.deltaWheel, 1.f, 10.f);
+			g_gs->clickCircleSize + 
+				0.01f*static_cast<f32>(gameMouse.deltaWheel), 
+			1.f, 10.f);
 	}
 	/* display HUD GUI for sample controls */
 	if(ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -88,9 +96,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		mouse as a purely relative axis device (only delta inputs are valid) */
 	g_kpl->mouseSetRelativeMode(lockedMouse);
 	/* render the scene */
-	g_krb->beginFrame(0.2f, 0, 0.2f);
+	g_krb->beginFrame(v3f32{0.2f, 0, 0.2f}.elements, windowDimensions.elements);
+	defer(g_krb->endFrame());
+	kgtCamera3dApplyViewProjection(&g_gs->camera);
 	g_krb->setDepthTesting(true);
-	kgtCamera3dApplyViewProjection(&g_gs->camera, windowDimensions);
 	/* draw something at the click location */
 	{
 		g_krb->setModelXform(g_gs->clickLocation, q32::IDENTITY, {1,1,1});
@@ -108,9 +117,10 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		local_persist const KgtVertex MESH[] = 
 			{ {{-1, 0,0}, {}, krb::WHITE}, {{1,0,0}, {}, krb::WHITE}
 			, {{ 0,-1,0}, {}, krb::WHITE}, {{0,1,0}, {}, krb::WHITE} };
-		DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+		KGT_DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 	}
-	kgtDrawOrigin({10,10,10});
+	kgtDrawAxes({10,10,10});
+	kgtDrawOrigin(windowDimensions, cameraWorldForward, g_gs->camera.position);
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)

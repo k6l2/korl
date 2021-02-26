@@ -11,7 +11,7 @@ internal u16 reliableMessageAnsiTextPack(
 	const size_t ansiStringLength = strlen(nullTerminatedAnsiText);
 	reliableMessageBytes +=
 		kutil::netPack(ansiStringLength, &dataBuffer, dataBufferEnd);
-	kassert(dataBuffer + ansiStringLength < dataBufferEnd);
+	korlAssert(dataBuffer + ansiStringLength < dataBufferEnd);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
 		dataBuffer[0] = *reinterpret_cast<const u8*>(
@@ -30,11 +30,11 @@ internal u32 reliableMessageAnsiTextUnpack(
 	unpackedBytes += 
 		kutil::netUnpack(reinterpret_cast<u8*>(&reliableMessageType), 
 		                 &dataBuffer, dataBufferEnd);
-	kassert(reliableMessageType == ReliableMessageType::ANSI_TEXT_MESSAGE);
+	korlAssert(reliableMessageType == ReliableMessageType::ANSI_TEXT_MESSAGE);
 	size_t ansiStringLength;
 	unpackedBytes += 
 		kutil::netUnpack(&ansiStringLength, &dataBuffer, dataBufferEnd);
-	kassert(nullTerminatedAnsiTextSize >= ansiStringLength + 1);
+	korlAssert(nullTerminatedAnsiTextSize >= ansiStringLength + 1);
 	for(size_t c = 0; c < ansiStringLength; c++)
 	{
 		o_nullTerminatedAnsiText[c] = 
@@ -126,9 +126,10 @@ internal u32 reliableMessageClientControlInputUnpack(
 	{
 		ReliableMessageType reliableMessageType;
 		unpackedBytes += 
-			kutil::netUnpack(reinterpret_cast<u8*>(&reliableMessageType), 
-			                 &data, dataEnd);
-		kassert(reliableMessageType == ReliableMessageType::CLIENT_INPUT_STATE);
+			kutil::netUnpack(
+				reinterpret_cast<u8*>(&reliableMessageType), &data, dataEnd);
+		korlAssert(
+			reliableMessageType == ReliableMessageType::CLIENT_INPUT_STATE);
 	}
 	unpackedBytes += controlInputNetUnpack(o_cci, &data, dataEnd);
 	return unpackedBytes;
@@ -149,7 +150,7 @@ internal KGT_NET_CLIENT_READ_SERVER_STATE(gameClientReadServerState)
 		Actor& actor = g_gs->actors[a];
 		bytesUnpacked += actorNetUnpack(&actor, &data, dataEnd);
 	}
-	kassert(data == dataEnd);
+	korlAssert(data == dataEnd);
 }
 internal KGT_NET_SERVER_READ_CLIENT_STATE(serverReadClient)
 {
@@ -193,7 +194,7 @@ internal KGT_NET_SERVER_ON_CLIENT_CONNECT(serverOnClientConnect)
 			break;
 		}
 	}
-	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
+	korlAssert(clientActorIndex < CARRAY_SIZE(ss->actors));
 	ss->actors[clientActorIndex] = {};
 	ss->actors[clientActorIndex].clientId = clientId;
 }
@@ -210,7 +211,7 @@ internal KGT_NET_SERVER_ON_CLIENT_DISCONNECT(serverOnClientDisconnect)
 			break;
 		}
 	}
-	kassert(clientActorIndex < CARRAY_SIZE(ss->actors));
+	korlAssert(clientActorIndex < CARRAY_SIZE(ss->actors));
 	ss->actors[clientActorIndex].clientId = kgtNet::SERVER_INVALID_CLIENT_ID;
 }
 internal KGT_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
@@ -280,7 +281,7 @@ internal KGT_NET_SERVER_READ_RELIABLE_MESSAGE(serverReadReliableMessage)
 			     reliableMessageType);
 		}break;
 	}
-	kassert(bytesUnpacked == (netDataEnd - netData));
+	korlAssert(bytesUnpacked == (netDataEnd - netData));
 	return bytesUnpacked;
 }
 internal KGT_NET_CLIENT_READ_RELIABLE_MESSAGE(gameClientReadReliableMessage)
