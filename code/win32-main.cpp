@@ -75,6 +75,7 @@ global_variable KorlWin32MoveSizeMode g_moveSizeMode =
 	KorlWin32MoveSizeMode::OFF;
 global_variable RECT g_moveSizeStartWindowRect;
 global_variable POINT g_moveSizeStartMouseScreen;
+global_variable v2f32 g_moveSizeKeyVelocity;
 enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	{ GAME_PERMANENT
 	, GAME_SOUND
@@ -432,6 +433,7 @@ internal LRESULT
 		else
 		{
 			KLOG(INFO, "SC_MOVE - mouse left NOT pressed!");
+			g_moveSizeKeyVelocity = v2f32::ZERO;
 			g_moveSizeMode = KorlWin32MoveSizeMode::MOVE_KEYBOARD;
 		}
 		return 0;
@@ -451,7 +453,9 @@ internal LRESULT
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 internal void 
-	w32StepMoveSize()
+	w32StepMoveSize(
+		const f32 deltaSeconds, const GameMouse*const mouse, 
+		const GameKeyboard*const keyboard)
 {
 	switch(g_moveSizeMode)
 	{
@@ -469,7 +473,7 @@ internal void
 				/* otherwise, some other error occurred */
 				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
 					GetLastError());
-			return;
+			break;
 		}
 		const LONG dX = mousePositionScreen.x - g_moveSizeStartMouseScreen.x;
 		const LONG dY = mousePositionScreen.y - g_moveSizeStartMouseScreen.y;
@@ -494,16 +498,72 @@ internal void
 			g_moveSizeStartWindowRect.bottom += dY;
 			g_moveSizeStartMouseScreen = mousePositionScreen;
 		}
-		const SHORT asyncKeyStateMouseLeft = GetAsyncKeyState(VK_LBUTTON);
-		/* do NOT use the least-significant bit to determine key state!
-			Why? See documentation on the GetAsyncKeyState function:
-			https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate */
-		const bool keyDownMouseLeft = (asyncKeyStateMouseLeft & ~1) != 0;
-		if(!keyDownMouseLeft)
+		if(KORL_BUTTON_OFF(mouse->left))
 			g_moveSizeMode = KorlWin32MoveSizeMode::OFF;
 		} break;
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
-		/* @todo */
+		v2f32 moveDirection = v2f32::ZERO;
+		if(KORL_BUTTON_ON(keyboard->arrowLeft))
+			moveDirection.x -= 1;
+		if(KORL_BUTTON_ON(keyboard->arrowRight))
+			moveDirection.x += 1;
+		if(KORL_BUTTON_ON(keyboard->arrowUp))
+			moveDirection.y -= 1;
+		if(KORL_BUTTON_ON(keyboard->arrowDown))
+			moveDirection.y += 1;
+		/* decelerate towards 0 speed if we're not trying to move */
+		if(moveDirection.isNearlyZero())
+		{
+			local_const f32 DECEL = 1000.f;
+			const v2f32 decelDir = kmath::normal(-g_moveSizeKeyVelocity);
+			if(!g_moveSizeKeyVelocity.isNearlyZero())
+				g_moveSizeKeyVelocity += deltaSeconds*DECEL*decelDir;
+			/* if we have decelerated too much or we're close enough to 0 speed, 
+				just zero out the velocity */
+			if(g_moveSizeKeyVelocity.dot(decelDir) > 0 
+					|| g_moveSizeKeyVelocity.isNearlyZero())
+				g_moveSizeKeyVelocity = v2f32::ZERO;
+		}
+		/* otherwise accelerate towards arrow key direction */
+		else
+		{
+			local_const f32 ACCEL = 100.f;
+			g_moveSizeKeyVelocity += deltaSeconds*ACCEL*moveDirection;
+			/* enforce maximum move speed */
+			f32 speed = g_moveSizeKeyVelocity.normalize();
+			local_const f32 MAX_SPEED = 100;
+			if(speed > MAX_SPEED)
+				speed = MAX_SPEED;
+			g_moveSizeKeyVelocity *= speed;
+		}
+		/* if movement velocity is non-zero, move the window! */
+		if(!g_moveSizeKeyVelocity.isNearlyZero())
+		{
+			RECT windowRect;
+			const bool successGetWindowRect = 
+				GetWindowRect(g_mainWindow, &windowRect);
+			if(!successGetWindowRect)
+				KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+					GetLastError());
+			else
+			{
+				const LONG dX = static_cast<LONG>(g_moveSizeKeyVelocity.x);
+				const LONG dY = static_cast<LONG>(g_moveSizeKeyVelocity.y);
+				const BOOL successMoveWindow = 
+					MoveWindow(
+						g_mainWindow, 
+						windowRect.left + dX, 
+						windowRect.top  + dY, 
+						windowRect.right - windowRect.left, 
+						windowRect.bottom - windowRect.top, 
+						FALSE);
+				if(!successMoveWindow)
+					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+						GetLastError());
+			}
+		}
+		if(KORL_BUTTON_ON(keyboard->escape) || KORL_BUTTON_ON(keyboard->enter))
+			g_moveSizeMode = KorlWin32MoveSizeMode::OFF;
 		} break;
 	default:
 	case KorlWin32MoveSizeMode::OFF: {
@@ -1233,8 +1293,6 @@ extern int WINAPI
 				g_gamePadArrayPreviousFrame + XUSER_MAX_COUNT);
 			w32XInputGetGamePadStates(
 				g_gamePadArrayCurrentFrame, g_gamePadArrayPreviousFrame);
-			/* perform custom non-modal window resize/move logic */
-			w32StepMoveSize();
 			/* update ImGui back end */
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -1270,6 +1328,9 @@ extern int WINAPI
 			}
 			const f32 deltaSeconds = kmath::min(
 				MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
+			/* perform custom non-modal window resize/move logic */
+			w32StepMoveSize(
+				deltaSeconds, gameMouseFrameCurrent, gameKeyboardCurrentFrame);
 			if(!dynApp.updateAndDraw(
 					deltaSeconds, windowDims, 
 					*gameMouseFrameCurrent, *gameKeyboardCurrentFrame,
