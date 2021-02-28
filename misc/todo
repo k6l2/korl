@@ -856,16 +856,31 @@
 	[x] simple size calculation API (given text, output AABB)
 [x] win32: demote GetCursorPos failure to a warning in w32GetMouseStates 
 	- ERROR_ACCESS_DENIED after putting computer to sleep & waking back up
-[ ] remove `jobValid` API
-	- everything it does is handled by `jobDone`
-	- we already know if a job ticket is valid just by checking if it is 
-		non-zero
 [ ] win32: prevent application from freezing when the window is being moved 
 	around or resized
 	https://stackoverflow.com/q/3102074
 	- don't use nfries88's solution out of the box: it's quite buggy it seems...
+	[x] implement mouse drag moving from the window's title bar
+	[ ] implement keyboard moving
+	[ ] prevent the window from being moved out-of-bounds
+	[ ] implement the maximization gesture where the window is moved to the top 
+		of the screen
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
+[ ] remove `code/win32loopl-code` from the project since I'm probably not going 
+	to use it
+[ ] DInput: move device enumeration into a separate thread so the main thread 
+	doesn't hang every time a device is hot-swapped
+[ ] win32: disable the right-click menu in the window title bar when the 
+	application is in mouse relative mode
+	- when the mouse exits relative mode and the cursor is in the title bar, the 
+		right-click menu should not pop up
+[ ] remove `jobValid` API
+	- everything it does is handled by `jobDone`
+	- we already know if a job ticket is valid just by checking if it is 
+		non-zero
+[ ] samples: `multi-threading`
+	- maybe make this sample 008, since networking requires multi-threading
 [ ] win32-jobQ: crash faster when the job queue overflows
 [ ] win32-jobQ: log more warnings/errors on failures, such as when the post job 
 	function receives nullptr as a function
@@ -907,12 +922,12 @@
 	[ ] create a KGT utility function to display (used_frame / total_frame)
 		- probably just using ImGui
 	[ ] create a KGT utility function to log all probes from the previous frame
-[ ] KRB: push/pop MVP matrices
-[ ] KRB: upgrade to modern OpenGL 4.5ish programmable pipeline
-	[ ] process shader programs in assets folder
-		[ ] compile to spir-v
-		[ ] output to build/assets folder
-		[ ] modify kasset pipeline to scan this folder for shaders
+[-] KRB: push/pop MVP matrices
+[-] KRB: upgrade to modern OpenGL 4.5ish programmable pipeline
+	[~] process shader programs in assets folder
+		[~] compile to spir-v
+		[~] output to build/assets folder
+		[~] modify kasset pipeline to scan this folder for shaders
 [x] installer batch script
 	[x] prompt the user for a toolchain install directory
 		https://stackoverflow.com/a/50115044/4526664
@@ -1004,10 +1019,6 @@
 		build failures
 [ ] kmd5: ignore *.swp files
 [ ] samples: GJK + EPA visualization
-[ ] win32: disable the right-click menu in the window title bar when the 
-	application is in mouse relative mode
-	- when the mouse exits relative mode and the cursor is in the title bar, the 
-		right-click menu should not pop up
 [ ] samples: constrained physics simulation
 	VERY useful resource I used to create Dennistar!
 		https://gafferongames.com/categories/virtual-go/
@@ -1086,8 +1097,6 @@
 	spawn/delete arbitrary # of Shape actors...
 [ ] create a script which attempts to build all the KML samples and reports if 
 	any of them fail to build
-[ ] DInput: move device enumeration into a separate thread so the main thread 
-	doesn't hang every time a device is hot-swapped
 [ ] DInput: force feedback
 [ ] it sure would be nice to be able to have an easy way of visualizing memory 
 	allocations for debugging... 🙃

@@ -28,12 +28,10 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #include "stb/stb_image.h"
 #include "stb/stb_vorbis.h"
 #include "win32loopl-code/LooplessSizeMove.h"
-global_variable const TCHAR APPLICATION_NAME[] = 
-	TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
-global_variable const TCHAR FILE_NAME_GAME_DLL[] = 
+global_const TCHAR APPLICATION_NAME[] = TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
+global_const TCHAR FILE_NAME_GAME_DLL[] = 
 	TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));
-global_variable const f32 MAX_GAME_DELTA_SECONDS = 
-	1.f / KORL_MINIMUM_FRAME_RATE;
+global_const f32 MAX_GAME_DELTA_SECONDS = 1.f / KORL_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_isFocused;
 /* this variable exists because mysterious COM incantations require us to check 
@@ -55,13 +53,13 @@ global_variable bool g_hasWrittenCrashDump;
 global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable GamePad* g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 global_variable GamePad* g_gamePadArrayPreviousFrame = g_gamePadArrayB;
-global_variable const u8 SOUND_CHANNELS = 2;
-global_variable const u32 SOUND_SAMPLE_HZ = 44100;
-global_variable const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
-global_variable const u32 SOUND_BUFFER_BYTES = 
+global_const u8 SOUND_CHANNELS = 2;
+global_const u32 SOUND_SAMPLE_HZ = 44100;
+global_const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
+global_const u32 SOUND_BUFFER_BYTES = 
 	SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
 /* @TODO: make these memory quantities configurable per-project */
-global_variable const size_t STATIC_MEMORY_ALLOC_SIZES[] = 
+global_const size_t STATIC_MEMORY_ALLOC_SIZES[] = 
 	{ kmath::megabytes(64)
 	, SOUND_BUFFER_BYTES
 	, kmath::megabytes(128)
@@ -69,6 +67,14 @@ global_variable const size_t STATIC_MEMORY_ALLOC_SIZES[] =
 	, kmath::megabytes(1)
 	, kmath::megabytes(1)
 	, kmath::megabytes(16) };
+enum class KorlWin32MoveSizeMode : u8
+	{ OFF
+	, MOVE_MOUSE
+	, MOVE_KEYBOARD };
+global_variable KorlWin32MoveSizeMode g_moveSizeMode = 
+	KorlWin32MoveSizeMode::OFF;
+global_variable RECT g_moveSizeStartWindowRect;
+global_variable POINT g_moveSizeStartMouseScreen;
 enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	{ GAME_PERMANENT
 	, GAME_SOUND
@@ -345,8 +351,7 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 				else
 				{
 					KLOG(ERROR, "Failed to find next for '%s'!  "
-					            "GetLastError=%i",
-					            fileQueryString, GetLastError());
+						"GetLastError=%i", fileQueryString, GetLastError());
 					return 0;
 				}
 			}
@@ -354,13 +359,156 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 		if(!FindClose(findHandleTempGameDll))
 		{
 			KLOG(ERROR, "Failed to close search for '%s'!  GetLastError=%i",
-			     fileQueryString, GetLastError());
+				fileQueryString, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
 		}
 		if(!postfixInUse)
 			break;
 	}
 	return lowestUnusedPostfix;
+}
+internal LRESULT 
+	w32OnSysCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	/* syscommand wparam values use the first 4 low-order bits internally, 
+		so we have to mask them out to get the correct values (see MSDN) */
+	const WPARAM wParamSysCommand = wParam & 0xFFF0;
+	KLOG(INFO, "WM_SYSCOMMAND: wParam=0x%x wParamSysCommand=0x%x", 
+		wParam, wParamSysCommand);
+	/* These window messages need to be captured in order to stop 
+		windows from needlessly beeping when we use ALT+KEY combinations */
+	if(wParamSysCommand == SC_KEYMENU)
+	{
+		return 0;
+	}
+	else if(wParamSysCommand == SC_MOVE)
+	{
+		/* enter "move window" mode 
+			- save the current mouse position
+			- wherever mouse absolute position gets polled, move the window 
+				to a new position if the mouse position has changed
+			- dispatch WM_EXITSIZEMOVE if the mouse gets released?
+			- when this callback gets a WM_EXITSIZEMOVE msg (?), exit 
+				"move window" mode */
+		/* get the windows starting RECT */
+		const bool successGetWindowRect = 
+			GetWindowRect(hwnd, &g_moveSizeStartWindowRect);
+		/* if we fail to get the window's start RECT, we can't properly 
+			begin moving the window around relative to an undefined 
+			position */
+		if(!successGetWindowRect)
+		{
+			KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+				GetLastError());
+			return 0;
+		}
+		const SHORT asyncKeyStateMouseLeft = GetAsyncKeyState(VK_LBUTTON);
+		/* do NOT use the least-significant bit to determine key state!
+			Why? See documentation on the GetAsyncKeyState function:
+			https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate */
+		const bool keyDownMouseLeft = (asyncKeyStateMouseLeft & ~1) != 0;
+		if(keyDownMouseLeft)
+		{
+			KLOG(INFO, "SC_MOVE - mouse left pressed!");
+			/* attempt to get the mouse cursor position in screen-space */
+			if(!GetCursorPos(&g_moveSizeStartMouseScreen))
+			{
+				/* if we failed to get the mouse cursor for any reason, we 
+					need to break early since we cannot properly move around 
+					relative to an undefined mouse position */
+				const DWORD error = GetLastError();
+				if(error == ERROR_ACCESS_DENIED)
+					/* if we don't have access to the mouse, nothing we can 
+						do, just don't do anything & report a warning */
+					KLOG(WARNING, "GetCursorPos: access denied!");
+				else
+					/* otherwise, some other error occurred */
+					KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
+						GetLastError());
+				return 0;
+			}
+			g_moveSizeMode = KorlWin32MoveSizeMode::MOVE_MOUSE;
+		}
+		else
+		{
+			KLOG(INFO, "SC_MOVE - mouse left NOT pressed!");
+			g_moveSizeMode = KorlWin32MoveSizeMode::MOVE_KEYBOARD;
+		}
+		return 0;
+	}
+	else if(wParamSysCommand == SC_SIZE)
+	{
+		/* @todo: enter "resize window" mode
+			- save the current mouse position
+			- determine which edge(s) the user is resizing
+			- wherever mouse absolute position gets polled, resize the 
+				window (& re-position if necessary for top/left edges) if 
+				the mouse position has changed
+			- when this callback gets a WM_EXITSIZEMOVE msg, exit 
+				"resize window" mode */
+		return 0;
+	}
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+internal void 
+	w32StepMoveSize()
+{
+	switch(g_moveSizeMode)
+	{
+	case KorlWin32MoveSizeMode::MOVE_MOUSE: {
+		/* @todo: figure out how to do the gesture where you can maximize by 
+			moving the window to the top of the screen */
+		/* attempt to get the mouse cursor position in screen-space */
+		POINT mousePositionScreen;
+		if(!GetCursorPos(&mousePositionScreen))
+		{
+			const DWORD error = GetLastError();
+			if(error == ERROR_ACCESS_DENIED)
+				KLOG(WARNING, "GetCursorPos: access denied!");
+			else
+				/* otherwise, some other error occurred */
+				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
+					GetLastError());
+			return;
+		}
+		const LONG dX = mousePositionScreen.x - g_moveSizeStartMouseScreen.x;
+		const LONG dY = mousePositionScreen.y - g_moveSizeStartMouseScreen.y;
+		if(!(dX == 0 && dY == 0))
+		{
+			const BOOL successMoveWindow = 
+				MoveWindow(
+					g_mainWindow, 
+					g_moveSizeStartWindowRect.left + dX, 
+					g_moveSizeStartWindowRect.top  + dY, 
+					g_moveSizeStartWindowRect.right - 
+						g_moveSizeStartWindowRect.left, 
+					g_moveSizeStartWindowRect.bottom - 
+						g_moveSizeStartWindowRect.top, 
+					FALSE);
+			if(!successMoveWindow)
+				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+					GetLastError());
+			g_moveSizeStartWindowRect.left   += dX;
+			g_moveSizeStartWindowRect.right  += dX;
+			g_moveSizeStartWindowRect.top    += dY;
+			g_moveSizeStartWindowRect.bottom += dY;
+			g_moveSizeStartMouseScreen = mousePositionScreen;
+		}
+		const SHORT asyncKeyStateMouseLeft = GetAsyncKeyState(VK_LBUTTON);
+		/* do NOT use the least-significant bit to determine key state!
+			Why? See documentation on the GetAsyncKeyState function:
+			https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate */
+		const bool keyDownMouseLeft = (asyncKeyStateMouseLeft & ~1) != 0;
+		if(!keyDownMouseLeft)
+			g_moveSizeMode = KorlWin32MoveSizeMode::OFF;
+		} break;
+	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
+		/* @todo */
+		} break;
+	default:
+	case KorlWin32MoveSizeMode::OFF: {
+		} break;
+	}
 }
 internal LRESULT CALLBACK 
 	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -374,15 +522,12 @@ internal LRESULT CALLBACK
 		w32KrbOglSetVSyncPreference(true);
 		} break;
 	case WM_SYSCOMMAND: {
-		KLOG(INFO, "WM_SYSCOMMAND: type=0x%x", wParam);
-		if(wParam == SC_KEYMENU)
-		// These window messages need to be captured in order to stop 
-		//	windows from needlessly beeping when we use ALT+KEY combinations 
-		{
-			break;
-		}
+		result = w32OnSysCommand(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_EXITSIZEMOVE: {
+		KLOG(INFO, "WM_EXITSIZEMOVE");
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
-		}break;
+		} break;
 #if 0
 	case WM_MENUCHAR: {
 		KLOG(INFO, "WM_MENUCHAR");
@@ -418,7 +563,7 @@ internal LRESULT CALLBACK
 		} break;
 	case WM_SIZE: {
 			KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
-			     wParam, LOWORD(lParam), HIWORD(lParam));
+				wParam, LOWORD(lParam), HIWORD(lParam));
 		} break;
 	case WM_DESTROY: {
 			///TODO: handle this error: recreate window?
@@ -433,7 +578,7 @@ internal LRESULT CALLBACK
 	case WM_ACTIVATEAPP: {
 			g_isFocused = wParam;
 			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
-			     (wParam ? "TRUE" : "FALSE"), lParam);
+				(wParam ? "TRUE" : "FALSE"), lParam);
 		} break;
 	case WM_DEVICECHANGE: {
 			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
@@ -448,7 +593,7 @@ internal LRESULT CALLBACK
 			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	default: {
-#if 0
+#if 1
 		KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
 #endif // 0
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -1088,10 +1233,13 @@ extern int WINAPI
 				g_gamePadArrayPreviousFrame + XUSER_MAX_COUNT);
 			w32XInputGetGamePadStates(
 				g_gamePadArrayCurrentFrame, g_gamePadArrayPreviousFrame);
-			const v2u32 windowDims = w32GetWindowDimensions(g_mainWindow);
+			/* perform custom non-modal window resize/move logic */
+			w32StepMoveSize();
+			/* update ImGui back end */
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
+			const v2u32 windowDims = w32GetWindowDimensions(g_mainWindow);
 			if(!dynApp.isValid)
 			// display a "loading" message while we wait for cl.exe to 
 			//	relinquish control of the game binary //

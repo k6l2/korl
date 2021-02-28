@@ -131,14 +131,10 @@ internal void w32GetMouseStates(GameMouse* gmCurrent, GameMouse* gmPrevious)
 		{
 			const DWORD error = GetLastError();
 			if(error == ERROR_ACCESS_DENIED)
-			{
 				KLOG(WARNING, "GetCursorPos: access denied!");
-			}
 			else
-			{
 				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
-				     GetLastError());
-			}
+					GetLastError());
 		}
 		else
 		{
@@ -162,9 +158,9 @@ internal void w32GetMouseStates(GameMouse* gmCurrent, GameMouse* gmPrevious)
 			continue;
 		const SHORT asyncKeyState = 
 			GetAsyncKeyState(static_cast<int>(vKeyCode));
-		// do NOT use the least-significant bit to determine key state!
-		//	Why? See documentation on the GetAsyncKeyState function:
-		// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+		/* do NOT use the least-significant bit to determine key state!
+			Why? See documentation on the GetAsyncKeyState function:
+			https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate */
 		const bool keyDown = (asyncKeyState & ~1) != 0;
 		const size_t buttonIndex = buttonState - gmCurrent->vKeys;
 		*buttonState = keyDown
