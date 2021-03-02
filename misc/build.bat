@@ -290,6 +290,7 @@ rem oleaut32.lib - DirectInput8 support.
 rem Hid.lib      - RawInput support (indirectly; support features)
 rem ws2_32.lib   - winsock (networking support)
 rem Advapi32.lib - registry API
+rem Shcore.lib   - monitor DPI acquisition API
 set CommonCompilerFlags=/wd4201 /wd4514 /wd4505 /wd4100 /wd5045 /wd4626 ^
 	/wd4200 /wd4623 /wd5027 /Oi /GR- /EHa- /Zi /FC /nologo /std:c++latest
 set CommonCompilerFlagsRelease=%CommonCompilerFlags% /O2 /MT /w /wd4711 ^
@@ -430,7 +431,7 @@ cl %KORL_HOME%\code\win32-main.cpp /Fe%korlApplicationName% ^
 	/W4 %CommonCompilerFlagsChosen% /link %Win32LinkerFlags% ^
 	user32.lib Gdi32.lib winmm.lib opengl32.lib Dbghelp.lib Shell32.lib ^
 	dinput8.lib dxguid.lib ole32.lib oleaut32.lib Hid.lib ws2_32.lib ^
-	Advapi32.lib
+	Advapi32.lib Shcore.lib
 IF %ERRORLEVEL% NEQ 0 (
 	echo win32 build failed!
 	GOTO :ON_FAILURE_EXE

@@ -17,6 +17,8 @@
 #include <strsafe.h>
 #include <ShlObj.h>
 #include <Dbt.h>
+#include <shellscalingapi.h>/* GetDpiForMonitor */
+#include <windowsx.h>/* GET_X_LPARAM */
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
@@ -58,6 +60,19 @@ global_const u32 SOUND_SAMPLE_HZ = 44100;
 global_const u32 SOUND_BYTES_PER_SAMPLE = sizeof(i16)*SOUND_CHANNELS;
 global_const u32 SOUND_BUFFER_BYTES = 
 	SOUND_SAMPLE_HZ/2 * SOUND_BYTES_PER_SAMPLE;
+enum class KorlWin32MoveSizeMode : u8
+	{ OFF
+	, MOVE_MOUSE
+	, MOVE_KEYBOARD };
+global_variable KorlWin32MoveSizeMode g_moveSizeMode = 
+	KorlWin32MoveSizeMode::OFF;
+global_variable RECT g_moveSizeStartWindowRect;
+global_variable POINT g_moveSizeStartMouseScreen;
+global_variable POINT g_moveSizeStartMouseClient;
+global_variable POINT g_moveSizeLastMouseScreen;
+//global_variable v2f32 g_moveSizeMouseAnchor;
+global_variable v2f32 g_moveSizeKeyVelocity;
+global_variable f32 g_dpiScaleFactor;
 /* @TODO: make these memory quantities configurable per-project */
 global_const size_t STATIC_MEMORY_ALLOC_SIZES[] = 
 	{ kmath::megabytes(64)
@@ -67,15 +82,6 @@ global_const size_t STATIC_MEMORY_ALLOC_SIZES[] =
 	, kmath::megabytes(1)
 	, kmath::megabytes(1)
 	, kmath::megabytes(16) };
-enum class KorlWin32MoveSizeMode : u8
-	{ OFF
-	, MOVE_MOUSE
-	, MOVE_KEYBOARD };
-global_variable KorlWin32MoveSizeMode g_moveSizeMode = 
-	KorlWin32MoveSizeMode::OFF;
-global_variable RECT g_moveSizeStartWindowRect;
-global_variable POINT g_moveSizeStartMouseScreen;
-global_variable v2f32 g_moveSizeKeyVelocity;
 enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	{ GAME_PERMANENT
 	, GAME_SOUND
@@ -368,8 +374,22 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	}
 	return lowestUnusedPostfix;
 }
+internal void 
+	korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode mode)
+{
+	switch(mode)
+	{
+	case KorlWin32MoveSizeMode::OFF: {
+		const BOOL resultReleaseCapture = ReleaseCapture();
+		if(!resultReleaseCapture)
+			KLOG(ERROR, "ReleaseCapture failed! GetLastError=%i", 
+				GetLastError());
+		} break;
+	}
+	g_moveSizeMode = mode;
+}
 internal LRESULT 
-	w32OnSysCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	korl_w32_onSysCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	/* syscommand wparam values use the first 4 low-order bits internally, 
 		so we have to mask them out to get the correct values (see MSDN) */
@@ -403,6 +423,11 @@ internal LRESULT
 				GetLastError());
 			return 0;
 		}
+		/* Test to see if the sys command is the result of a mouse click.  
+			TECHNICALLY I should be able to just use the low bits of the wParam 
+			to determine this, but MSDN doesn't actually say anything about the 
+			consistency of these bits between systems, it just says these bits 
+			are "used internally" */
 		const SHORT asyncKeyStateMouseLeft = GetAsyncKeyState(VK_LBUTTON);
 		/* do NOT use the least-significant bit to determine key state!
 			Why? See documentation on the GetAsyncKeyState function:
@@ -411,31 +436,32 @@ internal LRESULT
 		if(keyDownMouseLeft)
 		{
 			KLOG(INFO, "SC_MOVE - mouse left pressed!");
-			/* attempt to get the mouse cursor position in screen-space */
-			if(!GetCursorPos(&g_moveSizeStartMouseScreen))
+			g_moveSizeStartMouseScreen = 
+				{ .x = GET_X_LPARAM(lParam)
+				, .y = GET_Y_LPARAM(lParam) };
+			/* calculate the client-space mouse position, since we probably need 
+				to use this for calculating the new position when mouse moves */
+			g_moveSizeStartMouseClient = g_moveSizeStartMouseScreen;
+			const bool successScreenToClient = 
+				ScreenToClient(hwnd, &g_moveSizeStartMouseClient);
+			if(!successScreenToClient)
 			{
-				/* if we failed to get the mouse cursor for any reason, we 
-					need to break early since we cannot properly move around 
-					relative to an undefined mouse position */
-				const DWORD error = GetLastError();
-				if(error == ERROR_ACCESS_DENIED)
-					/* if we don't have access to the mouse, nothing we can 
-						do, just don't do anything & report a warning */
-					KLOG(WARNING, "GetCursorPos: access denied!");
-				else
-					/* otherwise, some other error occurred */
-					KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
-						GetLastError());
+				KLOG(ERROR, "ScreenToClient failed!");
 				return 0;
 			}
-			g_moveSizeMode = KorlWin32MoveSizeMode::MOVE_MOUSE;
+			/* set this window to be the global mouse capture so we can process 
+				all mouse events outside of our window */
+			SetCapture(hwnd);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE);
 		}
+#if 0
 		else
 		{
 			KLOG(INFO, "SC_MOVE - mouse left NOT pressed!");
 			g_moveSizeKeyVelocity = v2f32::ZERO;
-			g_moveSizeMode = KorlWin32MoveSizeMode::MOVE_KEYBOARD;
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_KEYBOARD);
 		}
+#endif//0
 		return 0;
 	}
 	else if(wParamSysCommand == SC_SIZE)
@@ -453,15 +479,13 @@ internal LRESULT
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 internal void 
-	w32StepMoveSize(
+	korl_w32_stepMoveSize(
 		const f32 deltaSeconds, const GameMouse*const mouse, 
 		const GameKeyboard*const keyboard)
 {
 	switch(g_moveSizeMode)
 	{
 	case KorlWin32MoveSizeMode::MOVE_MOUSE: {
-		/* @todo: figure out how to do the gesture where you can maximize by 
-			moving the window to the top of the screen */
 		/* attempt to get the mouse cursor position in screen-space */
 		POINT mousePositionScreen;
 		if(!GetCursorPos(&mousePositionScreen))
@@ -475,15 +499,84 @@ internal void
 					GetLastError());
 			break;
 		}
-		const LONG dX = mousePositionScreen.x - g_moveSizeStartMouseScreen.x;
-		const LONG dY = mousePositionScreen.y - g_moveSizeStartMouseScreen.y;
-		if(!(dX == 0 && dY == 0))
+		/* calculate the change in mouse position from when the mouse move mode 
+			was started */
+		const LONG mouseScreenChangeX = 
+			mousePositionScreen.x - g_moveSizeStartMouseScreen.x;
+		const LONG mouseScreenChangeY = 
+			mousePositionScreen.y - g_moveSizeStartMouseScreen.y;
+		/* attempt to get the current window rect */
+		RECT windowRect;
+		const bool successGetWindowRect = 
+			GetWindowRect(g_mainWindow, &windowRect);
+		if(!successGetWindowRect)
+			KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+				GetLastError());
+#if 1
+		/* only perform a move on the window IFF the mouse position has 
+			changed since the last iteration */
+		if(   g_moveSizeLastMouseScreen.x != mousePositionScreen.x 
+		   || g_moveSizeLastMouseScreen.y != mousePositionScreen.y)
+		{
+			/* naively moving the window around relative to the window's 
+				starting {x,y} wont work, because the window can actually change 
+				size if moved to a monitor with different DPI settings; thus we 
+				must move the window to a new position with respect to an 
+				"anchor" which defines the ratio within the window that the 
+				mouse originally clicked on */
+			// at the end of this procedure, save the last known mouse position:
+			defer(g_moveSizeLastMouseScreen = mousePositionScreen);
+			// This value can be pre-computed, but who cares?  Computer fast! //
+			const POINT moveSizeStartMouseWindow = 
+				{ .x = g_moveSizeStartMouseScreen.x - 
+					g_moveSizeStartWindowRect.left
+				, .y = g_moveSizeStartMouseScreen.y - 
+					g_moveSizeStartWindowRect.top };
+			const POINT moveSizeStartWindowSize = 
+				{ g_moveSizeStartWindowRect.right - 
+					g_moveSizeStartWindowRect.left
+				, g_moveSizeStartWindowRect.bottom - 
+					g_moveSizeStartWindowRect.top };
+			const v2f32 moveSizeStartMouseAnchor = 
+				{ static_cast<f32>(moveSizeStartMouseWindow.x) / 
+					static_cast<f32>(moveSizeStartWindowSize.x)
+				, static_cast<f32>(moveSizeStartMouseWindow.y) / 
+					static_cast<f32>(moveSizeStartWindowSize.y) };
+			/* calculate where the window should be moved to based on the 
+				current window size & the anchor ratio */
+			const POINT windowSize = 
+				{ windowRect.right - windowRect.left
+				, windowRect.bottom - windowRect.top };
+			const POINT anchorOffset = 
+				{ static_cast<LONG>(moveSizeStartMouseAnchor.x * windowSize.x)
+				, static_cast<LONG>(moveSizeStartMouseAnchor.y * windowSize.y)};
+			const POINT desiredWindowPositionScreen = 
+				{ mousePositionScreen.x - anchorOffset.x
+				, mousePositionScreen.y - anchorOffset.y };
+#if 0
+			/* attempt to move the window to the desired position */
+			const BOOL successMoveWindow = 
+				MoveWindow(
+					g_mainWindow, 
+					desiredWindowPositionScreen.x, 
+					desiredWindowPositionScreen.y, 
+					windowSize.x, windowSize.y, 
+					FALSE);
+			if(!successMoveWindow)
+				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+					GetLastError());
+#endif//0
+		}
+#else
+		/* attempt to move the window IFF the mouse screen position has 
+			changed! */
+		if(!(mouseScreenChangeX == 0 && mouseScreenChangeY == 0))
 		{
 			const BOOL successMoveWindow = 
 				MoveWindow(
 					g_mainWindow, 
-					g_moveSizeStartWindowRect.left + dX, 
-					g_moveSizeStartWindowRect.top  + dY, 
+					g_moveSizeStartWindowRect.left + mouseScreenChangeX, 
+					g_moveSizeStartWindowRect.top  + mouseScreenChangeY, 
 					g_moveSizeStartWindowRect.right - 
 						g_moveSizeStartWindowRect.left, 
 					g_moveSizeStartWindowRect.bottom - 
@@ -492,14 +585,15 @@ internal void
 			if(!successMoveWindow)
 				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 					GetLastError());
-			g_moveSizeStartWindowRect.left   += dX;
-			g_moveSizeStartWindowRect.right  += dX;
-			g_moveSizeStartWindowRect.top    += dY;
-			g_moveSizeStartWindowRect.bottom += dY;
+			g_moveSizeStartWindowRect.left   += mouseScreenChangeX;
+			g_moveSizeStartWindowRect.right  += mouseScreenChangeX;
+			g_moveSizeStartWindowRect.top    += mouseScreenChangeY;
+			g_moveSizeStartWindowRect.bottom += mouseScreenChangeY;
 			g_moveSizeStartMouseScreen = mousePositionScreen;
 		}
+#endif
 		if(KORL_BUTTON_OFF(mouse->left))
-			g_moveSizeMode = KorlWin32MoveSizeMode::OFF;
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
 		} break;
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
 		v2f32 moveDirection = v2f32::ZERO;
@@ -563,13 +657,15 @@ internal void
 			}
 		}
 		if(KORL_BUTTON_ON(keyboard->escape) || KORL_BUTTON_ON(keyboard->enter))
-			g_moveSizeMode = KorlWin32MoveSizeMode::OFF;
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+			/* @todo: revert movement if escape is pressed */
 		} break;
 	default:
 	case KorlWin32MoveSizeMode::OFF: {
 		} break;
 	}
 }
+#define KORL_W32_VERBOSE_EVENT_LOG 0
 internal LRESULT CALLBACK 
 	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -580,9 +676,29 @@ internal LRESULT CALLBACK
 	case WM_CREATE:{
 		w32KrbOglInitialize(hwnd);
 		w32KrbOglSetVSyncPreference(true);
+		/* Get the handle to the nearest monitor during creation & obtain the 
+			DPI so we can scale the application contents accordingly later. */
+		const HMONITOR monitorNearest = 
+			MonitorFromWindow(g_mainWindow, MONITOR_DEFAULTTONEAREST);
+		UINT dpiX, dpiY;
+		const HRESULT resultGetDpiForMonitor = 
+			GetDpiForMonitor(monitorNearest, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+		// MSDN: "The values of *dpiX and *dpiY are identical."
+		korlAssert(dpiX == dpiY);
+		if(resultGetDpiForMonitor != S_OK)
+			KLOG(ERROR, "GetDpiForMonitor failed!");
+		g_dpiScaleFactor = 
+			static_cast<f32>(dpiX) / static_cast<f32>(USER_DEFAULT_SCREEN_DPI);
+		} break;
+	case WM_DPICHANGED: {
+		const UINT dpiNew = HIWORD(wParam);
+		korlAssert(dpiNew == LOWORD(wParam));// MSDN says this MUST be true!
+		KLOG(INFO, "WM_DPICHANGED: dpiNew=%u", dpiNew);
+		const LPRECT suggestedNewPositionSize = 
+			reinterpret_cast<LPRECT>(lParam);
 		} break;
 	case WM_SYSCOMMAND: {
-		result = w32OnSysCommand(hwnd, uMsg, wParam, lParam);
+		result = korl_w32_onSysCommand(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_EXITSIZEMOVE: {
 		KLOG(INFO, "WM_EXITSIZEMOVE");
@@ -622,40 +738,100 @@ internal LRESULT CALLBACK
 		SetCursor(cursor);
 		} break;
 	case WM_SIZE: {
-			KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
-				wParam, LOWORD(lParam), HIWORD(lParam));
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
+			wParam, LOWORD(lParam), HIWORD(lParam));
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_DESTROY: {
-			///TODO: handle this error: recreate window?
-			g_running = false;
-			KLOG(INFO, "WM_DESTROY");
+		///TODO: handle this error: recreate window?
+		g_running = false;
+		KLOG(INFO, "WM_DESTROY");
 		} break;
 	case WM_CLOSE: {
-			///TODO: ask user first before destroying
-			g_running = false;
-			KLOG(INFO, "WM_CLOSE");
+		///TODO: ask user first before destroying
+		g_running = false;
+		KLOG(INFO, "WM_CLOSE");
 		} break;
 	case WM_ACTIVATEAPP: {
-			g_isFocused = wParam;
-			KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
-				(wParam ? "TRUE" : "FALSE"), lParam);
+		g_isFocused = wParam;
+		KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
+			(wParam ? "TRUE" : "FALSE"), lParam);
+		if(!g_isFocused)
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
 		} break;
 	case WM_DEVICECHANGE: {
-			KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
-			switch(wParam)
+		KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
+		switch(wParam)
+		{
+		case DBT_DEVNODES_CHANGED: {
+			KLOG(INFO, "\tA device has been added or removed!");
+			g_deviceChangeDetected = true;
+			} break;
+		}
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_NCMOUSEMOVE: {
+		const POINT mouseScreenPosition = 
+			{ .x = GET_X_LPARAM(lParam)
+			, .y = GET_Y_LPARAM(lParam) };
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_NCMOUSEMOVE: screenPosition={%i, %i}", 
+			mouseScreenPosition.x, mouseScreenPosition.y);
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_MOUSEMOVE: {
+		const POINT mouseClientPosition = 
+			{ .x = GET_X_LPARAM(lParam)
+			, .y = GET_Y_LPARAM(lParam) };
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_MOUSEMOVE: clientPosition={%i, %i}", 
+			mouseClientPosition.x, mouseClientPosition.y);
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_MOUSE)
+		{
+			/* if the mouse client position has changed, we need to move the 
+				window such that it maintains the same position */
+			if(   mouseClientPosition.x != g_moveSizeStartMouseClient.x 
+			   || mouseClientPosition.y != g_moveSizeStartMouseClient.y)
 			{
-				case DBT_DEVNODES_CHANGED:
-				{
-					KLOG(INFO, "\tA device has been added or removed!");
-					g_deviceChangeDetected = true;
-				} break;
+				RECT windowRect;
+				const bool successGetWindowRect = 
+					GetWindowRect(hwnd, &windowRect);
+				if(!successGetWindowRect)
+					KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+						GetLastError());
+				const POINT mouseClientOldToNew = 
+					{ mouseClientPosition.x - g_moveSizeStartMouseClient.x
+					, mouseClientPosition.y - g_moveSizeStartMouseClient.y };
+				const POINT windowSize = 
+					{ windowRect.right  - windowRect.left
+					, windowRect.bottom - windowRect.top };
+				const BOOL successMoveWindow = 
+					MoveWindow(
+						hwnd, 
+						windowRect.left + mouseClientOldToNew.x, 
+						windowRect.top  + mouseClientOldToNew.y, 
+						windowSize.x, windowSize.y, 
+						FALSE);
+				if(!successMoveWindow)
+					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+						GetLastError());
 			}
-			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_CAPTURECHANGED: {/* sent to window that LOSES mouse capture! */
+		KLOG(INFO, "WM_CAPTURECHANGED");
+		korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	default: {
-#if 1
-		KLOG(INFO, "Window Message uMsg==0x%x", uMsg);
-#endif // 0
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "Window Message uMsg==0x%04x", uMsg);
+#endif //KORL_W32_VERBOSE_EVENT_LOG
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}break;
 	}/* switch(uMsg) */
@@ -1019,11 +1195,13 @@ extern int WINAPI
 		     "GetLastError=%i", GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
+	/* load cursor icons */
 	g_cursorArrow          = LoadCursorA(NULL, IDC_ARROW);
 	g_cursorSizeHorizontal = LoadCursorA(NULL, IDC_SIZEWE);
 	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);
 	g_cursorSizeNeSw       = LoadCursorA(NULL, IDC_SIZENESW);
 	g_cursorSizeNwSe       = LoadCursorA(NULL, IDC_SIZENWSE);
+	/* create the main KORL window's WNDCLASS */
 	const WNDCLASS wndClass = 
 		{ .style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC
 		, .lpfnWndProc   = w32MainWindowCallback
@@ -1039,10 +1217,20 @@ extern int WINAPI
 		     GetLastError());
 		return RETURN_CODE_FAILURE;
 	}
+	/* take control of DPI-awareness from the system before creating any 
+		windows */
+	{
+		DPI_AWARENESS_CONTEXT dpiContextOld = 
+			SetThreadDpiAwarenessContext(
+				/* DPI awareness per monitor V2 allows the application to 
+					automatically scale the non-client region for us 
+					(title bar, etc...) */
+				DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+		korlAssert(dpiContextOld != NULL);
+	}
+	/* create the main KORL window */
 	g_mainWindow = CreateWindowExA(
-		0,
-		wndClass.lpszClassName,
-		APPLICATION_NAME,
+		0, wndClass.lpszClassName, APPLICATION_NAME,
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		CW_USEDEFAULT, CW_USEDEFAULT,
@@ -1329,7 +1517,7 @@ extern int WINAPI
 			const f32 deltaSeconds = kmath::min(
 				MAX_GAME_DELTA_SECONDS, targetSecondsElapsedPerFrame);
 			/* perform custom non-modal window resize/move logic */
-			w32StepMoveSize(
+			korl_w32_stepMoveSize(
 				deltaSeconds, gameMouseFrameCurrent, gameKeyboardCurrentFrame);
 			if(!dynApp.updateAndDraw(
 					deltaSeconds, windowDims, 

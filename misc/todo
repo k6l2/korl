@@ -862,6 +862,7 @@
 	- don't use nfries88's solution out of the box: it's quite buggy it seems...
 	[x] implement mouse drag moving from the window's title bar
 	[x] implement keyboard moving
+	[ ] mouse drag between variable monitor resolutions gracefully
 	[ ] prevent the window from being moved out-of-bounds
 	[ ] end keyboard moving if we receive any input events that aren't arrow 
 		keys
