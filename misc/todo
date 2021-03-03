@@ -863,7 +863,12 @@
 	[x] implement mouse drag moving from the window's title bar
 	[x] implement keyboard moving
 	[x] mouse drag between variable monitor resolutions gracefully
-	[ ] restore window dimensions when dragging a maximized window
+	[x] restore window dimensions when dragging a maximized window
+	[ ] when dragging a maximized window, eliminate as many "tween" frames as 
+		possible to speed up the restoration
+		https://stackoverflow.com/a/6087214
+	[ ] adjust move/resize state to keep the mouse inside the bounds of the 
+		window when dragging a maximized window
 	[ ] prevent the window from being moved out-of-bounds
 	[ ] end keyboard moving if 
 		- we receive any input events that aren't arrow keys
@@ -1236,3 +1241,4 @@
 	- the sourceforge project posted by this guy contains example code which 
 		acomplishes some of the snap effect:
 		https://stackoverflow.com/a/21240384
+	- this needs to somehow work well for vertically arranged monitors

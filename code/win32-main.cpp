@@ -452,6 +452,7 @@ internal LRESULT
 			/* set this window to be the global mouse capture so we can process 
 				all mouse events outside of our window */
 			SetCapture(hwnd);
+			/* begin non-modal window movement logic */
 			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE);
 		}
 #if 0
@@ -486,112 +487,6 @@ internal void
 	switch(g_moveSizeMode)
 	{
 	case KorlWin32MoveSizeMode::MOVE_MOUSE: {
-		/* attempt to get the mouse cursor position in screen-space */
-		POINT mousePositionScreen;
-		if(!GetCursorPos(&mousePositionScreen))
-		{
-			const DWORD error = GetLastError();
-			if(error == ERROR_ACCESS_DENIED)
-				KLOG(WARNING, "GetCursorPos: access denied!");
-			else
-				/* otherwise, some other error occurred */
-				KLOG(ERROR, "GetCursorPos failure! GetLastError=%i", 
-					GetLastError());
-			break;
-		}
-		/* calculate the change in mouse position from when the mouse move mode 
-			was started */
-		const LONG mouseScreenChangeX = 
-			mousePositionScreen.x - g_moveSizeStartMouseScreen.x;
-		const LONG mouseScreenChangeY = 
-			mousePositionScreen.y - g_moveSizeStartMouseScreen.y;
-		/* attempt to get the current window rect */
-		RECT windowRect;
-		const bool successGetWindowRect = 
-			GetWindowRect(g_mainWindow, &windowRect);
-		if(!successGetWindowRect)
-			KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
-				GetLastError());
-#if 1
-		/* only perform a move on the window IFF the mouse position has 
-			changed since the last iteration */
-		if(   g_moveSizeLastMouseScreen.x != mousePositionScreen.x 
-		   || g_moveSizeLastMouseScreen.y != mousePositionScreen.y)
-		{
-			/* naively moving the window around relative to the window's 
-				starting {x,y} wont work, because the window can actually change 
-				size if moved to a monitor with different DPI settings; thus we 
-				must move the window to a new position with respect to an 
-				"anchor" which defines the ratio within the window that the 
-				mouse originally clicked on */
-			// at the end of this procedure, save the last known mouse position:
-			defer(g_moveSizeLastMouseScreen = mousePositionScreen);
-			// This value can be pre-computed, but who cares?  Computer fast! //
-			const POINT moveSizeStartMouseWindow = 
-				{ .x = g_moveSizeStartMouseScreen.x - 
-					g_moveSizeStartWindowRect.left
-				, .y = g_moveSizeStartMouseScreen.y - 
-					g_moveSizeStartWindowRect.top };
-			const POINT moveSizeStartWindowSize = 
-				{ g_moveSizeStartWindowRect.right - 
-					g_moveSizeStartWindowRect.left
-				, g_moveSizeStartWindowRect.bottom - 
-					g_moveSizeStartWindowRect.top };
-			const v2f32 moveSizeStartMouseAnchor = 
-				{ static_cast<f32>(moveSizeStartMouseWindow.x) / 
-					static_cast<f32>(moveSizeStartWindowSize.x)
-				, static_cast<f32>(moveSizeStartMouseWindow.y) / 
-					static_cast<f32>(moveSizeStartWindowSize.y) };
-			/* calculate where the window should be moved to based on the 
-				current window size & the anchor ratio */
-			const POINT windowSize = 
-				{ windowRect.right - windowRect.left
-				, windowRect.bottom - windowRect.top };
-			const POINT anchorOffset = 
-				{ static_cast<LONG>(moveSizeStartMouseAnchor.x * windowSize.x)
-				, static_cast<LONG>(moveSizeStartMouseAnchor.y * windowSize.y)};
-			const POINT desiredWindowPositionScreen = 
-				{ mousePositionScreen.x - anchorOffset.x
-				, mousePositionScreen.y - anchorOffset.y };
-#if 0
-			/* attempt to move the window to the desired position */
-			const BOOL successMoveWindow = 
-				MoveWindow(
-					g_mainWindow, 
-					desiredWindowPositionScreen.x, 
-					desiredWindowPositionScreen.y, 
-					windowSize.x, windowSize.y, 
-					/* repaint? */FALSE);
-			if(!successMoveWindow)
-				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
-					GetLastError());
-#endif//0
-		}
-#else
-		/* attempt to move the window IFF the mouse screen position has 
-			changed! */
-		if(!(mouseScreenChangeX == 0 && mouseScreenChangeY == 0))
-		{
-			const BOOL successMoveWindow = 
-				MoveWindow(
-					g_mainWindow, 
-					g_moveSizeStartWindowRect.left + mouseScreenChangeX, 
-					g_moveSizeStartWindowRect.top  + mouseScreenChangeY, 
-					g_moveSizeStartWindowRect.right - 
-						g_moveSizeStartWindowRect.left, 
-					g_moveSizeStartWindowRect.bottom - 
-						g_moveSizeStartWindowRect.top, 
-					/* repaint? */FALSE);
-			if(!successMoveWindow)
-				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
-					GetLastError());
-			g_moveSizeStartWindowRect.left   += mouseScreenChangeX;
-			g_moveSizeStartWindowRect.right  += mouseScreenChangeX;
-			g_moveSizeStartWindowRect.top    += mouseScreenChangeY;
-			g_moveSizeStartWindowRect.bottom += mouseScreenChangeY;
-			g_moveSizeStartMouseScreen = mousePositionScreen;
-		}
-#endif
 		if(KORL_BUTTON_OFF(mouse->left))
 			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
 		} break;
@@ -696,6 +591,12 @@ internal LRESULT CALLBACK
 		KLOG(INFO, "WM_DPICHANGED: dpiNew=%u", dpiNew);
 		/* resize the window in a way that doesn't disturb the resize/move 
 			mode if it is currently active */
+		/* @robustness: IMPORTANT!!!!!  It seems that due to rounding errors or 
+			something, these dimensions are not guaranteed to be restored to 
+			their original values.  If we want the window to be restored to the 
+			original values at the default screen DPI, we need to do some 
+			additional work here!  
+			(surprise surprise, windows isn't good enough) */
 		const LPRECT suggestedNewPositionSize = 
 			reinterpret_cast<LPRECT>(lParam);
 		const BOOL successMoveWindow = 
@@ -810,6 +711,18 @@ internal LRESULT CALLBACK
 			if(   mouseClientPosition.x != g_moveSizeStartMouseClient.x 
 			   || mouseClientPosition.y != g_moveSizeStartMouseClient.y)
 			{
+				/* if the window is maximized, restore the window first */
+				WINDOWPLACEMENT windowPlacement = {};
+				const BOOL successGetWindowPlacement = 
+					GetWindowPlacement(hwnd, &windowPlacement);
+				if(!successGetWindowPlacement)
+					KLOG(ERROR, "GetWindowPlacement failed! GetLastError=%i", 
+						GetLastError());
+				if(windowPlacement.showCmd == SW_SHOWMAXIMIZED)
+					const BOOL windowPreviouslyVisible = 
+						ShowWindow(hwnd, SW_RESTORE);
+				/* move the window to satisfy the original mouseClientPosition 
+					constraint */
 				RECT windowRect;
 				const bool successGetWindowRect = 
 					GetWindowRect(hwnd, &windowRect);
