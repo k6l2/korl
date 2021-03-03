@@ -864,7 +864,7 @@
 	[x] implement keyboard moving
 	[x] mouse drag between variable monitor resolutions gracefully
 	[x] restore window dimensions when dragging a maximized window
-	[ ] when dragging a maximized window, eliminate as many "tween" frames as 
+	[x] when dragging a maximized window, eliminate as many "tween" frames as 
 		possible to speed up the restoration
 		https://stackoverflow.com/a/6087214
 	[ ] adjust move/resize state to keep the mouse inside the bounds of the 

@@ -719,8 +719,14 @@ internal LRESULT CALLBACK
 					KLOG(ERROR, "GetWindowPlacement failed! GetLastError=%i", 
 						GetLastError());
 				if(windowPlacement.showCmd == SW_SHOWMAXIMIZED)
-					const BOOL windowPreviouslyVisible = 
-						ShowWindow(hwnd, SW_RESTORE);
+				{
+					windowPlacement.showCmd = SW_SHOWNORMAL;
+					const bool successSetWindowPlacement = 
+						SetWindowPlacement(hwnd, &windowPlacement);
+					if(!successSetWindowPlacement)
+						KLOG(ERROR, "SetWindowPlacement failed! "
+							"GetLastError=%i", GetLastError());
+				}
 				/* move the window to satisfy the original mouseClientPosition 
 					constraint */
 				RECT windowRect;
