@@ -72,6 +72,7 @@ global_variable POINT g_moveSizeStartMouseClient;
 global_variable POINT g_moveSizeLastMouseScreen;
 //global_variable v2f32 g_moveSizeMouseAnchor;
 global_variable v2f32 g_moveSizeKeyVelocity;
+global_variable UINT g_dpi;
 global_variable f32 g_dpiScaleFactor;
 /* @TODO: make these memory quantities configurable per-project */
 global_const size_t STATIC_MEMORY_ALLOC_SIZES[] = 
@@ -582,13 +583,18 @@ internal LRESULT CALLBACK
 		korlAssert(dpiX == dpiY);
 		if(resultGetDpiForMonitor != S_OK)
 			KLOG(ERROR, "GetDpiForMonitor failed!");
+		g_dpi = dpiX;
 		g_dpiScaleFactor = 
-			static_cast<f32>(dpiX) / static_cast<f32>(USER_DEFAULT_SCREEN_DPI);
+			static_cast<f32>(g_dpi) / static_cast<f32>(USER_DEFAULT_SCREEN_DPI);
 		} break;
 	case WM_DPICHANGED: {
 		const UINT dpiNew = HIWORD(wParam);
 		korlAssert(dpiNew == LOWORD(wParam));// MSDN says this MUST be true!
 		KLOG(INFO, "WM_DPICHANGED: dpiNew=%u", dpiNew);
+		/* save the new DPI & scale factor */
+		g_dpi = dpiNew;
+		g_dpiScaleFactor = 
+			static_cast<f32>(g_dpi) / static_cast<f32>(USER_DEFAULT_SCREEN_DPI);
 		/* resize the window in a way that doesn't disturb the resize/move 
 			mode if it is currently active */
 		/* @robustness: IMPORTANT!!!!!  It seems that due to rounding errors or 
@@ -721,16 +727,59 @@ internal LRESULT CALLBACK
 				if(windowPlacement.showCmd == SW_SHOWMAXIMIZED)
 				{
 					windowPlacement.showCmd = SW_SHOWNORMAL;
-					const bool successSetWindowPlacement = 
+					const BOOL successSetWindowPlacement = 
 						SetWindowPlacement(hwnd, &windowPlacement);
 					if(!successSetWindowPlacement)
 						KLOG(ERROR, "SetWindowPlacement failed! "
 							"GetLastError=%i", GetLastError());
+					/* ensure that the window movement of the restored window 
+						will continue to appear to be "bound" to the mouse 
+						cursor by adjusting g_moveSizeStartMouseClient with 
+						respect to the new window size */
+					// get the new window rect //
+					RECT windowRect;
+					const BOOL successGetWindowRect = 
+						GetWindowRect(hwnd, &windowRect);
+					if(!successGetWindowRect)
+						KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+							GetLastError());
+					// convert g_moveSizeStartMouseClient to screen-space //
+					POINT moveSizeStartMouse = g_moveSizeStartMouseClient;
+					korlAssert(ClientToScreen(hwnd, &moveSizeStartMouse));
+					// offset the windowRect based on system GUI metrics //
+					/* at first I attempted to use `GetSystemMetricsForDpi` API 
+						to determine the metrics of the buttons in the caption 
+						bar (https://i.stack.imgur.com/TR01p.png), but that API 
+						kept giving me bogus values for some reason on Win10 */
+					TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
+					const LRESULT resultSendMsgTitleBarInfoEx = 
+						SendMessage(
+							hwnd, WM_GETTITLEBARINFOEX, NULL, 
+							reinterpret_cast<LPARAM>(&titleBarInfoEx));
+					/* I'm not actually sure what the result value should be... 
+						MSDN is not very helpful 😑 */
+					local_const u32 TITLE_BAR_INFO_EX_BUTTON_INDEX_MINIMIZE = 2;
+					windowRect.right = 
+						titleBarInfoEx.rgrect[
+							TITLE_BAR_INFO_EX_BUTTON_INDEX_MINIMIZE].left - 1;
+					// clamp this value to the new window rect //
+					if(moveSizeStartMouse.x < windowRect.left)
+						moveSizeStartMouse.x = windowRect.left;
+					if(moveSizeStartMouse.x >= windowRect.right)
+						moveSizeStartMouse.x = windowRect.right - 1;
+					if(moveSizeStartMouse.y < windowRect.top)
+						moveSizeStartMouse.y = windowRect.top;
+					if(moveSizeStartMouse.y >= windowRect.bottom)
+						moveSizeStartMouse.y = windowRect.bottom - 1;
+					// convert this clamped value back to client-space //
+					korlAssert(ScreenToClient(hwnd, &moveSizeStartMouse));
+					// save this as the new g_moveSizeStartMouseClient //
+					g_moveSizeStartMouseClient = moveSizeStartMouse;
 				}
 				/* move the window to satisfy the original mouseClientPosition 
 					constraint */
 				RECT windowRect;
-				const bool successGetWindowRect = 
+				const BOOL successGetWindowRect = 
 					GetWindowRect(hwnd, &windowRect);
 				if(!successGetWindowRect)
 					KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
