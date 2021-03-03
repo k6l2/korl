@@ -862,12 +862,12 @@
 	- don't use nfries88's solution out of the box: it's quite buggy it seems...
 	[x] implement mouse drag moving from the window's title bar
 	[x] implement keyboard moving
-	[ ] mouse drag between variable monitor resolutions gracefully
+	[x] mouse drag between variable monitor resolutions gracefully
+	[ ] restore window dimensions when dragging a maximized window
 	[ ] prevent the window from being moved out-of-bounds
-	[ ] end keyboard moving if we receive any input events that aren't arrow 
-		keys
-	[ ] implement the maximization gesture where the window is moved to the top 
-		of the screen
+	[ ] end keyboard moving if 
+		- we receive any input events that aren't arrow keys
+		- WM_CAPTURECHANGED (we lose mouse capture)
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
 [ ] remove `code/win32loopl-code` from the project since I'm probably not going 
@@ -894,6 +894,10 @@
 [ ] win32: fix application throwing an error when the app loses mouse focus 
 	before enumerating devices when the app is first starting up
 [ ] win32: handle audio device switching more gracefully
+[ ] DPI-awareness
+	https://ourmachinery.com/post/dpi-aware-imgui/
+	[ ] DynApp
+	[ ] ImGui
 [ ] korlTimeProbe macro
 	- getPreviousFrameTimeProbeCount : u32
 	- getPreviousFrameTimeProbe(u32 index)
@@ -1222,3 +1226,13 @@
 		exception handler again!  Does this mean that some shader cache files 
 		were generated & saved somewhere on my computer?  What even caused this 
 		to happen in the first place?
+[ ] implement the maximization gesture where the window is moved to the top 
+	of the screen (windows aero snap gesture support)
+	- this seems somewhat complicated, requiring manual implementation of the 
+		special effects & behaviors... See this related answer for Qt apps: 
+			https://stackoverflow.com/a/25984861
+		And similarly for Win32 APIs: 
+			https://stackoverflow.com/a/9322067
+	- the sourceforge project posted by this guy contains example code which 
+		acomplishes some of the snap effect:
+		https://stackoverflow.com/a/21240384

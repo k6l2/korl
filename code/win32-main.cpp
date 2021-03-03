@@ -561,7 +561,7 @@ internal void
 					desiredWindowPositionScreen.x, 
 					desiredWindowPositionScreen.y, 
 					windowSize.x, windowSize.y, 
-					FALSE);
+					/* repaint? */FALSE);
 			if(!successMoveWindow)
 				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 					GetLastError());
@@ -581,7 +581,7 @@ internal void
 						g_moveSizeStartWindowRect.left, 
 					g_moveSizeStartWindowRect.bottom - 
 						g_moveSizeStartWindowRect.top, 
-					FALSE);
+					/* repaint? */FALSE);
 			if(!successMoveWindow)
 				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 					GetLastError());
@@ -650,7 +650,7 @@ internal void
 						windowRect.top  + dY, 
 						windowRect.right - windowRect.left, 
 						windowRect.bottom - windowRect.top, 
-						FALSE);
+						/* repaint? */FALSE);
 				if(!successMoveWindow)
 					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 						GetLastError());
@@ -694,8 +694,23 @@ internal LRESULT CALLBACK
 		const UINT dpiNew = HIWORD(wParam);
 		korlAssert(dpiNew == LOWORD(wParam));// MSDN says this MUST be true!
 		KLOG(INFO, "WM_DPICHANGED: dpiNew=%u", dpiNew);
+		/* resize the window in a way that doesn't disturb the resize/move 
+			mode if it is currently active */
 		const LPRECT suggestedNewPositionSize = 
 			reinterpret_cast<LPRECT>(lParam);
+		const BOOL successMoveWindow = 
+			MoveWindow(
+				hwnd, 
+				suggestedNewPositionSize->left, 
+				suggestedNewPositionSize->top, 
+				suggestedNewPositionSize->right - 
+					suggestedNewPositionSize->left, 
+				suggestedNewPositionSize->bottom - 
+					suggestedNewPositionSize->top, 
+				/* repaint? */TRUE);
+		if(!successMoveWindow)
+			KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+				GetLastError());
 		} break;
 	case WM_SYSCOMMAND: {
 		result = korl_w32_onSysCommand(hwnd, uMsg, wParam, lParam);
@@ -738,10 +753,8 @@ internal LRESULT CALLBACK
 		SetCursor(cursor);
 		} break;
 	case WM_SIZE: {
-#if KORL_W32_VERBOSE_EVENT_LOG
 		KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 
 			wParam, LOWORD(lParam), HIWORD(lParam));
-#endif// KORL_W32_VERBOSE_EVENT_LOG
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_DESTROY: {
@@ -815,7 +828,7 @@ internal LRESULT CALLBACK
 						windowRect.left + mouseClientOldToNew.x, 
 						windowRect.top  + mouseClientOldToNew.y, 
 						windowSize.x, windowSize.y, 
-						FALSE);
+						/* repaint? */FALSE);
 				if(!successMoveWindow)
 					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 						GetLastError());
