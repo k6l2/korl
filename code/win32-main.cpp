@@ -19,6 +19,7 @@
 #include <Dbt.h>
 #include <shellscalingapi.h>/* GetDpiForMonitor */
 #include <windowsx.h>/* GET_X_LPARAM */
+#include <tchar.h>/* _stprintf_s */
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
@@ -380,10 +381,29 @@ internal void
 {
 	switch(mode)
 	{
+	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
+		TCHAR charBufferWindowText[256];
+		const int charsWritten = 
+			_stprintf_s(
+				charBufferWindowText, CARRAY_SIZE(charBufferWindowText), "%s%s", 
+				APPLICATION_NAME, 
+				" (MOVE ENABLED! [enter]:confirm [escape]:cancel)");
+		korlAssert(charsWritten > 0);
+		const BOOL successSetWindowText = 
+			SetWindowText(g_mainWindow, charBufferWindowText);
+		if(!successSetWindowText)
+			KLOG(ERROR, "SetWindowText failed! GetLastError=%i", 
+				GetLastError());
+		} break;
 	case KorlWin32MoveSizeMode::OFF: {
 		const BOOL resultReleaseCapture = ReleaseCapture();
 		if(!resultReleaseCapture)
 			KLOG(ERROR, "ReleaseCapture failed! GetLastError=%i", 
+				GetLastError());
+		const BOOL successSetWindowText = 
+			SetWindowText(g_mainWindow, APPLICATION_NAME);
+		if(!successSetWindowText)
+			KLOG(ERROR, "SetWindowText failed! GetLastError=%i", 
 				GetLastError());
 		} break;
 	}

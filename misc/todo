@@ -856,7 +856,7 @@
 	[x] simple size calculation API (given text, output AABB)
 [x] win32: demote GetCursorPos failure to a warning in w32GetMouseStates 
 	- ERROR_ACCESS_DENIED after putting computer to sleep & waking back up
-[ ] win32: prevent application from freezing when the window is being moved 
+[x] win32: prevent application from freezing when the window is being moved 
 	around
 	https://stackoverflow.com/q/3102074
 	- don't use nfries88's solution out of the box: it's quite buggy it seems...
@@ -872,7 +872,7 @@
 	[x] end keyboard moving if 
 		- we receive any input events that aren't arrow keys
 		- WM_CAPTURECHANGED (we lose mouse capture)
-	[ ] display some kind of feedback to the user to indicate keyboard move is 
+	[x] display some kind of feedback to the user to indicate keyboard move is 
 		enabled
 		- maybe just temporarily change the window title?
 [ ] win32: prevent application from freezing when the window is being resized 
@@ -1233,6 +1233,12 @@
 		exception handler again!  Does this mean that some shader cache files 
 		were generated & saved somewhere on my computer?  What even caused this 
 		to happen in the first place?
+[ ] win32: enhance WM_DPICHANGED
+	[ ] prevent a window from being sized to a resolution larger than the 
+		monitor we're being set to
+	[ ] fix minor rounding errors when moving between monitors
+		- save the last known resolution for each monitor, and select the cached 
+			resolution when we change monitors
 [ ] win32: prevent the window from being moved out-of-bounds
 [ ] win32: implement the maximization gesture where the window is moved to the 
 	top of the screen (windows aero snap gesture support)
