@@ -53,6 +53,10 @@ global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
 global_variable HCURSOR g_cursorSizeNeSw;
 global_variable HCURSOR g_cursorSizeNwSe;
+global_variable HCURSOR g_cursorSizeAll;
+global_variable HCURSOR g_cursorTextBeam;
+global_variable HCURSOR g_cursorHand;
+global_variable HCURSOR g_cursorNo;
 global_variable KgtAllocatorHandle g_genAllocStbImage;
 global_variable KgtAllocatorHandle g_genAllocImgui;
 global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
@@ -742,31 +746,55 @@ internal LRESULT CALLBACK
 		}break;
 #endif // 0
 	case WM_SETCURSOR: {
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_SETCURSOR");
+#endif// KORL_W32_VERBOSE_EVENT_LOG
 		HCURSOR cursor = NULL;
 		switch(LOWORD(lParam))
 		{
 		case HTBOTTOM:
-		case HTTOP:
+		case HTTOP: {
 			cursor = g_cursorSizeVertical;
-			break;
+			} break;
 		case HTLEFT:
-		case HTRIGHT:
+		case HTRIGHT: {
 			cursor = g_cursorSizeHorizontal;
-			break;
+			} break;
 		case HTBOTTOMLEFT:
-		case HTTOPRIGHT:
+		case HTTOPRIGHT: {
 			cursor = g_cursorSizeNeSw;
-			break;
+			} break;
 		case HTBOTTOMRIGHT:
-		case HTTOPLEFT:
+		case HTTOPLEFT: {
 			cursor = g_cursorSizeNwSe;
-			break;
+			} break;
 		case HTCLIENT:
-		default:
-			cursor = g_cursorArrow;
-			break;
+		default: {
+			ImGuiIO& imguiIo = ImGui::GetIO();
+			if(imguiIo.MouseDrawCursor)
+				break;
+			ImGuiMouseCursor imguiCursor = ImGui::GetMouseCursor();
+			switch (imguiCursor)
+			{
+			case ImGuiMouseCursor_TextInput:  cursor = g_cursorTextBeam; break;
+			case ImGuiMouseCursor_ResizeAll:  cursor = g_cursorSizeAll; break;
+			case ImGuiMouseCursor_ResizeEW: 
+				cursor = g_cursorSizeHorizontal; break;
+			case ImGuiMouseCursor_ResizeNS: 
+				cursor = g_cursorSizeVertical; break;
+			case ImGuiMouseCursor_ResizeNESW: cursor = g_cursorSizeNeSw; break;
+			case ImGuiMouseCursor_ResizeNWSE: cursor = g_cursorSizeNwSe; break;
+			case ImGuiMouseCursor_Hand:       cursor = g_cursorHand; break;
+			case ImGuiMouseCursor_NotAllowed: cursor = g_cursorNo; break;
+			default: 
+			case ImGuiMouseCursor_None: 
+			case ImGuiMouseCursor_Arrow:      cursor = g_cursorArrow; break;
+			}
+			} break;
 		}
-		SetCursor(cursor);
+		HCURSOR currentCursor = GetCursor();
+		if(cursor != currentCursor)
+			SetCursor(cursor);
 		} break;
 	case WM_MOVE: {
 		const POINT clientAreaScreenPosition = 
@@ -1326,6 +1354,10 @@ extern int WINAPI
 	g_cursorSizeVertical   = LoadCursorA(NULL, IDC_SIZENS);
 	g_cursorSizeNeSw       = LoadCursorA(NULL, IDC_SIZENESW);
 	g_cursorSizeNwSe       = LoadCursorA(NULL, IDC_SIZENWSE);
+	g_cursorSizeAll        = LoadCursorA(NULL, IDC_SIZEALL);
+	g_cursorTextBeam       = LoadCursorA(NULL, IDC_IBEAM);
+	g_cursorHand           = LoadCursorA(NULL, IDC_HAND);
+	g_cursorNo             = LoadCursorA(NULL, IDC_NO);
 	/* create the main KORL window's WNDCLASS */
 	const WNDCLASS wndClass = 
 		{ .style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC
@@ -1427,6 +1459,10 @@ extern int WINAPI
 			KLOG(ERROR, "ImGui_ImplWin32_Init failure!");
 			return RETURN_CODE_FAILURE;
 		}
+		/* turn off backend modification of mouse cursor; we will handle it 
+			ourselves */
+		ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 	}
 	GameMemory gameMemory = {};
 	/* initialize GameMemory */
