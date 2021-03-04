@@ -450,20 +450,18 @@ internal LRESULT
 				KLOG(ERROR, "ScreenToClient failed!");
 				return 0;
 			}
-			/* set this window to be the global mouse capture so we can process 
-				all mouse events outside of our window */
-			SetCapture(hwnd);
 			/* begin non-modal window movement logic */
 			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE);
 		}
-#if 0
 		else
 		{
 			KLOG(INFO, "SC_MOVE - mouse left NOT pressed!");
 			g_moveSizeKeyVelocity = v2f32::ZERO;
 			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_KEYBOARD);
 		}
-#endif//0
+		/* set this window to be the global mouse capture so we can process 
+			all mouse events outside of our window */
+		SetCapture(hwnd);
 		return 0;
 	}
 	else if(wParamSysCommand == SC_SIZE)
@@ -552,9 +550,26 @@ internal void
 						GetLastError());
 			}
 		}
-		if(KORL_BUTTON_ON(keyboard->escape) || KORL_BUTTON_ON(keyboard->enter))
+		if(KORL_BUTTON_ON(keyboard->enter))
 			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
-			/* @todo: revert movement if escape is pressed */
+		/* if escape is pressed, revert move changes entirely */
+		else if(KORL_BUTTON_ON(keyboard->escape))
+		{
+			const BOOL successMoveWindow = 
+				MoveWindow(
+					g_mainWindow, 
+					g_moveSizeStartWindowRect.left, 
+					g_moveSizeStartWindowRect.top, 
+					g_moveSizeStartWindowRect.right - 
+						g_moveSizeStartWindowRect.left, 
+					g_moveSizeStartWindowRect.bottom - 
+						g_moveSizeStartWindowRect.top, 
+					/* repaint? */FALSE);
+			if(!successMoveWindow)
+				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+					GetLastError());
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+		}
 		} break;
 	default:
 	case KorlWin32MoveSizeMode::OFF: {
@@ -658,6 +673,41 @@ internal LRESULT CALLBACK
 			break;
 		}
 		SetCursor(cursor);
+		} break;
+	case WM_MOVE: {
+		const POINT clientAreaScreenPosition = 
+			{ .x = GET_X_LPARAM(lParam)
+			, .y = GET_Y_LPARAM(lParam) };
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_MOVE: clientAreaScreenPosition={%i, %i}", 
+			clientAreaScreenPosition.x, clientAreaScreenPosition.y);
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+#if 0/* WIP attempt to keep the window from moving out-of-bounds; preventing the 
+		user from ever being able to move it back in bounds again */
+		/* find the AABB of the window's title bar (which has the capability of 
+			moving the window with the mouse) in screen-space */
+		RECT windowRect;
+		const BOOL successGetWindowRect = GetWindowRect(hwnd, &windowRect);
+		if(!successGetWindowRect)
+			KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+				GetLastError());
+		TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
+		const LRESULT resultSendMsgTitleBarInfoEx = 
+			SendMessage(
+				hwnd, WM_GETTITLEBARINFOEX, NULL, 
+				reinterpret_cast<LPARAM>(&titleBarInfoEx));
+		// I'm not actually sure what the result value should be... 
+		//	MSDN is not very helpful 😑 
+		local_const u32 TITLE_BAR_INFO_EX_BUTTON_INDEX_MINIMIZE = 2;
+		/* get the nearest monitor to the window */
+		///@todo
+		/* get the work area of the nearest monitor */
+		///@todo
+		/* if the window's title bar doesn't sufficiently intersect the work 
+			area, then move the window such that it does! */
+		///@todo
+#endif//0
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_SIZE: {
 		KLOG(INFO, "WM_SIZE: type=%i area={%i,%i}", 

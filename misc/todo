@@ -869,10 +869,12 @@
 		https://stackoverflow.com/a/6087214
 	[x] adjust move/resize state to keep the mouse inside the bounds of the 
 		window when dragging a maximized window
-	[ ] prevent the window from being moved out-of-bounds
-	[ ] end keyboard moving if 
+	[x] end keyboard moving if 
 		- we receive any input events that aren't arrow keys
 		- WM_CAPTURECHANGED (we lose mouse capture)
+	[ ] display some kind of feedback to the user to indicate keyboard move is 
+		enabled
+		- maybe just temporarily change the window title?
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
 [ ] remove `code/win32loopl-code` from the project since I'm probably not going 
@@ -1231,8 +1233,9 @@
 		exception handler again!  Does this mean that some shader cache files 
 		were generated & saved somewhere on my computer?  What even caused this 
 		to happen in the first place?
-[ ] implement the maximization gesture where the window is moved to the top 
-	of the screen (windows aero snap gesture support)
+[ ] win32: prevent the window from being moved out-of-bounds
+[ ] win32: implement the maximization gesture where the window is moved to the 
+	top of the screen (windows aero snap gesture support)
 	- this seems somewhat complicated, requiring manual implementation of the 
 		special effects & behaviors... See this related answer for Qt apps: 
 			https://stackoverflow.com/a/25984861

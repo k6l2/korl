@@ -65,9 +65,8 @@ internal bool
 		const GameKeyboard& gameKeyboard, bool windowIsFocused)
 {
 	kgtAllocReset(g_kgs->hKalFrame);
-	/* Esc, Ctrl+W & Alt+F4 shortcuts to quickly exit the program */
-	if(gameKeyboard.escape == ButtonState::PRESSED 
-	   || (   gameKeyboard.f4 == ButtonState::PRESSED 
+	/* shortcuts to quickly exit the program */
+	if(   (   gameKeyboard.f4 == ButtonState::PRESSED 
 	       && gameKeyboard.modifiers.alt)
 	   || (   gameKeyboard.w == ButtonState::PRESSED 
 	       && gameKeyboard.modifiers.control))
