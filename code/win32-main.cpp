@@ -31,6 +31,13 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #include "stb/stb_image.h"
 #include "stb/stb_vorbis.h"
 #include "win32loopl-code/LooplessSizeMove.h"
+#define KORL_W32_VERBOSE_EVENT_LOG 0
+#define KORL_W32_SIZE_LEFT   0x1
+#define KORL_W32_SIZE_TOP    0x2
+#define KORL_W32_SIZE_RIGHT  0x4
+#define KORL_W32_SIZE_BOTTOM 0x8
+#define KORL_W32_MOVE_KEYBOARD 0x0
+#define KORL_W32_MOVE_MOUSE    0x1
 global_const TCHAR APPLICATION_NAME[] = TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
 global_const TCHAR FILE_NAME_GAME_DLL[] = 
 	TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));
@@ -396,15 +403,21 @@ internal void
 				GetLastError());
 		} break;
 	case KorlWin32MoveSizeMode::OFF: {
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::OFF)
+			break;
+		/* release global mouse event capture */
 		const BOOL resultReleaseCapture = ReleaseCapture();
 		if(!resultReleaseCapture)
 			KLOG(ERROR, "ReleaseCapture failed! GetLastError=%i", 
 				GetLastError());
+		/* ensure the title bar text of the main window is reset */
 		const BOOL successSetWindowText = 
 			SetWindowText(g_mainWindow, APPLICATION_NAME);
 		if(!successSetWindowText)
 			KLOG(ERROR, "SetWindowText failed! GetLastError=%i", 
 				GetLastError());
+		/* conform to default windows behavior */
+		SendMessage(g_mainWindow, WM_EXITSIZEMOVE, 0, 0);
 		} break;
 	}
 	g_moveSizeMode = mode;
@@ -444,17 +457,8 @@ internal LRESULT
 				GetLastError());
 			return 0;
 		}
-		/* Test to see if the sys command is the result of a mouse click.  
-			TECHNICALLY I should be able to just use the low bits of the wParam 
-			to determine this, but MSDN doesn't actually say anything about the 
-			consistency of these bits between systems, it just says these bits 
-			are "used internally" */
-		const SHORT asyncKeyStateMouseLeft = GetAsyncKeyState(VK_LBUTTON);
-		/* do NOT use the least-significant bit to determine key state!
-			Why? See documentation on the GetAsyncKeyState function:
-			https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate */
-		const bool keyDownMouseLeft = (asyncKeyStateMouseLeft & ~1) != 0;
-		if(keyDownMouseLeft)
+		/* Test to see if the sys command is the result of a mouse click. */
+		if((wParam & 0xF) == KORL_W32_MOVE_MOUSE)
 		{
 			KLOG(INFO, "SC_MOVE - mouse left pressed!");
 			g_moveSizeStartMouseScreen = 
@@ -482,11 +486,13 @@ internal LRESULT
 		/* set this window to be the global mouse capture so we can process 
 			all mouse events outside of our window */
 		SetCapture(hwnd);
+		/* conform to default windows behavior */
+		SendMessage(hwnd, WM_ENTERSIZEMOVE, 0, 0);
 		return 0;
 	}
 	else if(wParamSysCommand == SC_SIZE)
 	{
-		/* @todo: enter "resize window" mode
+		/* enter "resize window" mode
 			- save the current mouse position
 			- determine which edge(s) the user is resizing
 			- wherever mouse absolute position gets polled, resize the 
@@ -494,6 +500,7 @@ internal LRESULT
 				the mouse position has changed
 			- when this callback gets a WM_EXITSIZEMOVE msg, exit 
 				"resize window" mode */
+		///@todo
 		return 0;
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -505,10 +512,6 @@ internal void
 {
 	switch(g_moveSizeMode)
 	{
-	case KorlWin32MoveSizeMode::MOVE_MOUSE: {
-		if(KORL_BUTTON_OFF(mouse->left))
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
-		} break;
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
 		v2f32 moveDirection = v2f32::ZERO;
 		if(KORL_BUTTON_ON(keyboard->arrowLeft))
@@ -570,33 +573,11 @@ internal void
 						GetLastError());
 			}
 		}
-		if(KORL_BUTTON_ON(keyboard->enter))
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
-		/* if escape is pressed, revert move changes entirely */
-		else if(KORL_BUTTON_ON(keyboard->escape))
-		{
-			const BOOL successMoveWindow = 
-				MoveWindow(
-					g_mainWindow, 
-					g_moveSizeStartWindowRect.left, 
-					g_moveSizeStartWindowRect.top, 
-					g_moveSizeStartWindowRect.right - 
-						g_moveSizeStartWindowRect.left, 
-					g_moveSizeStartWindowRect.bottom - 
-						g_moveSizeStartWindowRect.top, 
-					/* repaint? */FALSE);
-			if(!successMoveWindow)
-				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
-					GetLastError());
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
-		}
 		} break;
-	default:
-	case KorlWin32MoveSizeMode::OFF: {
+	default: {
 		} break;
 	}
 }
-#define KORL_W32_VERBOSE_EVENT_LOG 0
 internal LRESULT CALLBACK 
 	w32MainWindowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -654,8 +635,101 @@ internal LRESULT CALLBACK
 			KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 				GetLastError());
 		} break;
+	case WM_NCLBUTTONDOWN: {
+		WPARAM wParamSizeMove = 0;
+		switch(wParam)
+		{
+		case HTLEFT: {
+			wParamSizeMove = SC_SIZE | KORL_W32_SIZE_LEFT;
+			} break;
+		case HTTOPLEFT: {
+			wParamSizeMove = SC_SIZE | KORL_W32_SIZE_LEFT | KORL_W32_SIZE_TOP;
+			} break;
+		case HTBOTTOMLEFT: {
+			wParamSizeMove = 
+				SC_SIZE | KORL_W32_SIZE_LEFT | KORL_W32_SIZE_BOTTOM;
+			} break;
+		case HTRIGHT: {
+			wParamSizeMove = SC_SIZE | KORL_W32_SIZE_RIGHT;
+			} break;
+		case HTTOPRIGHT: {
+			wParamSizeMove = SC_SIZE | KORL_W32_SIZE_RIGHT | KORL_W32_SIZE_TOP;
+			} break;
+		case HTBOTTOMRIGHT: {
+			wParamSizeMove = 
+				SC_SIZE | KORL_W32_SIZE_RIGHT | KORL_W32_SIZE_BOTTOM;
+			} break;
+		case HTTOP: {
+			wParamSizeMove = SC_SIZE | KORL_W32_SIZE_TOP;
+			} break;
+		case HTBOTTOM: {
+			wParamSizeMove = SC_SIZE | KORL_W32_SIZE_BOTTOM;
+			} break;
+		case HTCAPTION: {
+			wParamSizeMove = SC_MOVE | KORL_W32_MOVE_MOUSE;
+			} break;
+		default: {
+			} break;
+		}
+		if(wParamSizeMove)
+			result = SendMessage(hwnd, WM_SYSCOMMAND, wParamSizeMove, lParam);
+		else
+			result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
 	case WM_SYSCOMMAND: {
 		result = korl_w32_onSysCommand(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_NCLBUTTONUP: {
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_NCLBUTTONUP");
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_MOUSE)
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_LBUTTONUP: {
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_LBUTTONUP");
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_MOUSE)
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_KEYDOWN: {
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_KEYDOWN: vKey=%i", wParam);
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_KEYBOARD)
+		{
+			switch(wParam)
+			{
+			case VK_ESCAPE: {
+				/* if escape is pressed, revert move changes entirely */
+				const BOOL successMoveWindow = 
+					MoveWindow(
+						g_mainWindow, 
+						g_moveSizeStartWindowRect.left, 
+						g_moveSizeStartWindowRect.top, 
+						g_moveSizeStartWindowRect.right - 
+							g_moveSizeStartWindowRect.left, 
+						g_moveSizeStartWindowRect.bottom - 
+							g_moveSizeStartWindowRect.top, 
+						/* repaint? */FALSE);
+				if(!successMoveWindow)
+					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+						GetLastError());
+				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+				} break;
+			case VK_RETURN: {
+				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+				} break;
+			}
+		}
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		} break;
+	case WM_ENTERSIZEMOVE: {
+		KLOG(INFO, "WM_ENTERSIZEMOVE");
+		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_EXITSIZEMOVE: {
 		KLOG(INFO, "WM_EXITSIZEMOVE");
