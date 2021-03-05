@@ -897,7 +897,7 @@
 	[x] if the user cancels the keyboard move mode, revert mouse position back 
 		to original
 	[x] tighten keyboard movement controller
-	[ ] show cross bar cursor when mouse is dragging window around
+	[x] show cross bar cursor when mouse is dragging window around
 	[ ] allow the user to click & drag if the keyboard move mode is active
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion

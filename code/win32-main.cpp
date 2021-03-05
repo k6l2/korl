@@ -423,6 +423,9 @@ internal void
 		return;
 	switch(mode)
 	{
+	case KorlWin32MoveSizeMode::MOVE_MOUSE: {
+		SetCursor(g_cursorSizeAll);
+		} break;
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
 		g_moveSizeKeyVelocity = v2f32::ZERO;
 		g_moveSizeKeyMoved = false;
