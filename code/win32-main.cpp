@@ -84,6 +84,7 @@ global_variable POINT g_moveSizeStartMouseClient;
 global_variable POINT g_moveSizeLastMouseScreen;
 //global_variable v2f32 g_moveSizeMouseAnchor;
 global_variable v2f32 g_moveSizeKeyVelocity;
+global_variable bool g_moveSizeKeyMoved;
 global_variable UINT g_dpi;
 global_variable f32 g_dpiScaleFactor;
 /* @TODO: make these memory quantities configurable per-project */
@@ -388,12 +389,36 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	return lowestUnusedPostfix;
 }
 internal void 
-	korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode mode)
+	korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode mode, HWND hWnd)
 {
+	if(g_moveSizeMode == mode)
+		return;
 	switch(mode)
 	{
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
 		g_moveSizeKeyVelocity = v2f32::ZERO;
+		g_moveSizeKeyMoved = false;
+		SetCursor(g_cursorSizeAll);
+		/* calculate the center of the window's title bar */
+		TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
+		const LRESULT resultSendMsgTitleBarInfoEx = 
+			SendMessage(
+				hWnd, WM_GETTITLEBARINFOEX, 0, 
+				reinterpret_cast<LPARAM>(&titleBarInfoEx));
+		const POINT titleBarCenter = 
+			{ titleBarInfoEx.rcTitleBar.left + 
+				(titleBarInfoEx.rcTitleBar.right - 
+				 titleBarInfoEx.rcTitleBar.left) / 2
+			, titleBarInfoEx.rcTitleBar.top + 
+				(titleBarInfoEx.rcTitleBar.bottom - 
+				 titleBarInfoEx.rcTitleBar.top) / 2};
+		/* set the mouse cursor to be the center of the window's title 
+			bar */
+		const BOOL successSetCursorPos = 
+			SetCursorPos(titleBarCenter.x, titleBarCenter.y);
+		if(!successSetCursorPos)
+			KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
+				GetLastError());
 		/* display simple controls for the user in the title bar */
 		TCHAR charBufferWindowText[256];
 		const int charsWritten = 
@@ -409,8 +434,6 @@ internal void
 				GetLastError());
 		} break;
 	case KorlWin32MoveSizeMode::OFF: {
-		if(g_moveSizeMode == KorlWin32MoveSizeMode::OFF)
-			break;
 		/* release global mouse event capture */
 		const BOOL resultReleaseCapture = ReleaseCapture();
 		if(!resultReleaseCapture)
@@ -481,33 +504,14 @@ internal LRESULT
 				return 0;
 			}
 			/* begin non-modal window movement logic */
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE, hwnd);
 		}
 		else
 		{
 			KLOG(INFO, "SC_MOVE - keyboard mode!");
-			/* calculate the center of the window's title bar */
-			TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
-			const LRESULT resultSendMsgTitleBarInfoEx = 
-				SendMessage(
-					hwnd, WM_GETTITLEBARINFOEX, 0, 
-					reinterpret_cast<LPARAM>(&titleBarInfoEx));
-			const POINT titleBarCenter = 
-				{ titleBarInfoEx.rcTitleBar.left + 
-					(titleBarInfoEx.rcTitleBar.right - 
-					 titleBarInfoEx.rcTitleBar.left) / 2
-				, titleBarInfoEx.rcTitleBar.top + 
-					(titleBarInfoEx.rcTitleBar.bottom - 
-					 titleBarInfoEx.rcTitleBar.top) / 2};
-			/* set the mouse cursor to be the center of the window's title 
-				bar */
-			const BOOL successSetCursorPos = 
-				SetCursorPos(titleBarCenter.x, titleBarCenter.y);
-			if(!successSetCursorPos)
-				KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
-					GetLastError());
 			/* begin non-modal window movement logic */
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_KEYBOARD);
+			korl_w32_setMoveSizeMode(
+				KorlWin32MoveSizeMode::MOVE_KEYBOARD, hwnd);
 		}
 		/* set this window to be the global mouse capture so we can process 
 			all mouse events outside of our window */
@@ -564,6 +568,7 @@ internal void
 		/* otherwise accelerate towards arrow key direction */
 		else
 		{
+			g_moveSizeKeyMoved = true;
 			local_const f32 ACCEL = 100.f;
 			g_moveSizeKeyVelocity += deltaSeconds*ACCEL*moveDirection;
 			/* enforce maximum move speed */
@@ -710,7 +715,7 @@ internal LRESULT CALLBACK
 		KLOG(INFO, "WM_NCLBUTTONUP");
 #endif// KORL_W32_VERBOSE_EVENT_LOG
 		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_MOUSE)
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_LBUTTONUP: {
@@ -718,7 +723,7 @@ internal LRESULT CALLBACK
 		KLOG(INFO, "WM_LBUTTONUP");
 #endif// KORL_W32_VERBOSE_EVENT_LOG
 		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_MOUSE)
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	case WM_KEYDOWN: {
@@ -733,7 +738,7 @@ internal LRESULT CALLBACK
 				/* if escape is pressed, revert move changes entirely */
 				const BOOL successMoveWindow = 
 					MoveWindow(
-						g_mainWindow, 
+						hwnd, 
 						g_moveSizeStartWindowRect.left, 
 						g_moveSizeStartWindowRect.top, 
 						g_moveSizeStartWindowRect.right - 
@@ -744,10 +749,10 @@ internal LRESULT CALLBACK
 				if(!successMoveWindow)
 					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 						GetLastError());
-				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 				} break;
 			case VK_RETURN: {
-				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 				} break;
 			}
 		}
@@ -812,7 +817,6 @@ internal LRESULT CALLBACK
 			default: 
 			case ImGuiMouseCursor_None: 
 			case ImGuiMouseCursor_Arrow: {
-//				if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_KEYBOARD)
 				cursor = g_cursorArrow;
 				} break;
 			}
@@ -877,7 +881,7 @@ internal LRESULT CALLBACK
 		KLOG(INFO, "WM_ACTIVATEAPP: activated=%s threadId=%i",
 			(wParam ? "TRUE" : "FALSE"), lParam);
 		if(!g_isFocused)
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 		} break;
 	case WM_DEVICECHANGE: {
 		KLOG(INFO, "WM_DEVICECHANGE: event=0x%x", wParam);
@@ -1004,7 +1008,7 @@ internal LRESULT CALLBACK
 		} break;
 	case WM_CAPTURECHANGED: {/* sent to window that LOSES mouse capture! */
 		KLOG(INFO, "WM_CAPTURECHANGED");
-		korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF);
+		korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		} break;
 	default: {

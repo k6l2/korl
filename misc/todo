@@ -878,19 +878,24 @@
 [ ] win32: conform keyboard window move state to default behavior
 	[x] when the WM_SYSCOMMAND occurs, move the mouse cursor to the center of 
 		the caption bar
-	[ ] differentiate between "moved" & "unmoved" states while in this mode
+	[x] differentiate between "moved" & "unmoved" states while in this mode
 		- actually, I don't really understand how this behavior is "good"... 
 			maybe there just isn't an "unmoved" state and the mouse just 
 			immediately begins affecting window movement
 		- nevermind... actually it makes sense if you don't want the user to 
 			accidentally move the window immediately after clicking on the 
 			"move" command in the window's menu
-	[ ] during "unmoved" state, display mouse cursor as a cross bar
+	[x] during "unmoved" state, display mouse cursor as a cross bar
 		- or if there is no "unmoved" state, just always display the mouse 
 			cursor as a cross bar
 	[ ] move the mouse cursor instead of the window
-	[ ] when the mouse cursor moves in this mode, move the window such that the 
-		center of the caption bar is aligned with the cursor screen position
+	[ ] in "unmoved" state, when the user moves using an arrow key, set the 
+		cursor to the center of the caption bar once again
+	[ ] in "moved" state, when the mouse cursor moves in this mode, move the 
+		window such that the center of the caption bar is aligned with the 
+		cursor screen position
+	[ ] if the user cancels the keyboard move mode, revert mouse position back 
+		to original
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
 [ ] remove `code/win32loopl-code` from the project since I'm probably not going 
