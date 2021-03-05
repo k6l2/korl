@@ -57,7 +57,7 @@
 				}
 			],
 			"presentation": {
-				"reveal": "never",
+				"reveal": "silent",
 				"panel": "shared",
 				"showReuseMessage": false,
 				"clear": true
@@ -74,7 +74,7 @@
 				]
 			},
 			"presentation": {
-				"reveal": "never",
+				"reveal": "silent",
 				"panel": "shared",
 				"showReuseMessage": false,
 				"clear": true

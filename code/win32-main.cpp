@@ -393,6 +393,8 @@ internal void
 	switch(mode)
 	{
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
+		g_moveSizeKeyVelocity = v2f32::ZERO;
+		/* display simple controls for the user in the title bar */
 		TCHAR charBufferWindowText[256];
 		const int charsWritten = 
 			_stprintf_s(
@@ -464,7 +466,7 @@ internal LRESULT
 		/* Test to see if the sys command is the result of a mouse click. */
 		if((wParam & 0xF) == KORL_W32_MOVE_MOUSE)
 		{
-			KLOG(INFO, "SC_MOVE - mouse left pressed!");
+			KLOG(INFO, "SC_MOVE - mouse mode!");
 			g_moveSizeStartMouseScreen = 
 				{ .x = GET_X_LPARAM(lParam)
 				, .y = GET_Y_LPARAM(lParam) };
@@ -483,8 +485,28 @@ internal LRESULT
 		}
 		else
 		{
-			KLOG(INFO, "SC_MOVE - mouse left NOT pressed!");
-			g_moveSizeKeyVelocity = v2f32::ZERO;
+			KLOG(INFO, "SC_MOVE - keyboard mode!");
+			/* calculate the center of the window's title bar */
+			TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
+			const LRESULT resultSendMsgTitleBarInfoEx = 
+				SendMessage(
+					hwnd, WM_GETTITLEBARINFOEX, 0, 
+					reinterpret_cast<LPARAM>(&titleBarInfoEx));
+			const POINT titleBarCenter = 
+				{ titleBarInfoEx.rcTitleBar.left + 
+					(titleBarInfoEx.rcTitleBar.right - 
+					 titleBarInfoEx.rcTitleBar.left) / 2
+				, titleBarInfoEx.rcTitleBar.top + 
+					(titleBarInfoEx.rcTitleBar.bottom - 
+					 titleBarInfoEx.rcTitleBar.top) / 2};
+			/* set the mouse cursor to be the center of the window's title 
+				bar */
+			const BOOL successSetCursorPos = 
+				SetCursorPos(titleBarCenter.x, titleBarCenter.y);
+			if(!successSetCursorPos)
+				KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
+					GetLastError());
+			/* begin non-modal window movement logic */
 			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_KEYBOARD);
 		}
 		/* set this window to be the global mouse capture so we can process 
@@ -752,23 +774,24 @@ internal LRESULT CALLBACK
 		HCURSOR cursor = NULL;
 		switch(LOWORD(lParam))
 		{
-		case HTBOTTOM:
+#if 0/* we can't use this naive approach because apparently HTCAPTION also 
+		occurs when we're inside a right-click activated menu */
+		case HTCAPTION: {
+			cursor = g_cursorSizeAll; } break;
+#endif//0
+		case HTBOTTOM: 
 		case HTTOP: {
-			cursor = g_cursorSizeVertical;
-			} break;
-		case HTLEFT:
+			cursor = g_cursorSizeVertical; } break;
+		case HTLEFT: 
 		case HTRIGHT: {
-			cursor = g_cursorSizeHorizontal;
-			} break;
-		case HTBOTTOMLEFT:
+			cursor = g_cursorSizeHorizontal; } break;
+		case HTBOTTOMLEFT: 
 		case HTTOPRIGHT: {
-			cursor = g_cursorSizeNeSw;
-			} break;
-		case HTBOTTOMRIGHT:
+			cursor = g_cursorSizeNeSw; } break;
+		case HTBOTTOMRIGHT: 
 		case HTTOPLEFT: {
-			cursor = g_cursorSizeNwSe;
-			} break;
-		case HTCLIENT:
+			cursor = g_cursorSizeNwSe; } break;
+		case HTCLIENT: 
 		default: {
 			ImGuiIO& imguiIo = ImGui::GetIO();
 			if(imguiIo.MouseDrawCursor)
@@ -788,7 +811,10 @@ internal LRESULT CALLBACK
 			case ImGuiMouseCursor_NotAllowed: cursor = g_cursorNo; break;
 			default: 
 			case ImGuiMouseCursor_None: 
-			case ImGuiMouseCursor_Arrow:      cursor = g_cursorArrow; break;
+			case ImGuiMouseCursor_Arrow: {
+//				if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_KEYBOARD)
+				cursor = g_cursorArrow;
+				} break;
 			}
 			} break;
 		}
