@@ -388,10 +388,9 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	}
 	return lowestUnusedPostfix;
 }
-internal void 
-	korl_w32_centerCursorOnCaptionBar(HWND hWnd)
+internal POINT 
+	korl_w32_computeCaptionBarCenter(HWND hWnd)
 {
-	/* calculate the center of the window's title bar */
 	TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
 	const LRESULT resultSendMsgTitleBarInfoEx = 
 		SendMessage(
@@ -404,8 +403,13 @@ internal void
 		, titleBarInfoEx.rcTitleBar.top + 
 			(titleBarInfoEx.rcTitleBar.bottom - 
 			 titleBarInfoEx.rcTitleBar.top) / 2};
-	/* set the mouse cursor to be the center of the window's title 
-		bar */
+	return titleBarCenter;
+}
+internal void 
+	korl_w32_centerCursorOnCaptionBar(HWND hWnd)
+{
+	const POINT titleBarCenter = korl_w32_computeCaptionBarCenter(hWnd);
+	/* set the mouse cursor to be the center of the window's title bar */
 	const BOOL successSetCursorPos = 
 		SetCursorPos(titleBarCenter.x, titleBarCenter.y);
 	if(!successSetCursorPos)
@@ -493,13 +497,15 @@ internal LRESULT
 				GetLastError());
 			return 0;
 		}
+		/* cache the mouse position at the beginning of the command */
+		g_moveSizeStartMouseScreen = 
+			{ .x = GET_X_LPARAM(lParam)
+			, .y = GET_Y_LPARAM(lParam) };
+		g_moveSizeLastMouseScreen = g_moveSizeStartMouseScreen;
 		/* Test to see if the sys command is the result of a mouse click. */
 		if((wParam & 0xF) == KORL_W32_MOVE_MOUSE)
 		{
 			KLOG(INFO, "SC_MOVE - mouse mode!");
-			g_moveSizeStartMouseScreen = 
-				{ .x = GET_X_LPARAM(lParam)
-				, .y = GET_Y_LPARAM(lParam) };
 			/* calculate the client-space mouse position, since we probably need 
 				to use this for calculating the new position when mouse moves */
 			g_moveSizeStartMouseClient = g_moveSizeStartMouseScreen;
@@ -560,9 +566,9 @@ internal void
 		if(KORL_BUTTON_ON(keyboard->arrowDown))
 			moveDirection.y += 1;
 		/* decelerate towards 0 speed if we're not trying to move */
+		local_const f32 DECEL = 1000.f;
 		if(moveDirection.isNearlyZero())
 		{
-			local_const f32 DECEL = 1000.f;
 			const v2f32 decelDir = kmath::normal(-g_moveSizeKeyVelocity);
 			if(!g_moveSizeKeyVelocity.isNearlyZero())
 				g_moveSizeKeyVelocity += deltaSeconds*DECEL*decelDir;
@@ -577,6 +583,31 @@ internal void
 		{
 			local_const f32 ACCEL = 100.f;
 			g_moveSizeKeyVelocity += deltaSeconds*ACCEL*moveDirection;
+			/* decelerate in the direction perpendicular to `moveDirection` */
+			{
+				/* split the velocity into moveDirection & perpendicular 
+					components */
+				v2f32 velCompMoveDir = 
+					g_moveSizeKeyVelocity.projectOnto(moveDirection);
+				v2f32 velCompMoveDirPerp = 
+					g_moveSizeKeyVelocity - velCompMoveDir;
+				/* decelerate perpendicular component towards zero */
+				if(velCompMoveDirPerp.isNearlyZero())
+					velCompMoveDirPerp = v2f32::ZERO;
+				else
+				{
+					const v2f32 decelDir = kmath::normal(-velCompMoveDirPerp);
+					velCompMoveDirPerp += deltaSeconds*DECEL*decelDir;
+					if(velCompMoveDirPerp.dot(decelDir) >= 0)
+						velCompMoveDirPerp = v2f32::ZERO;
+				}
+				/* while we're at it, ensure that the `moveDirection` component 
+					of velocity is never flowing AWAY from `moveDirection` */
+				if(velCompMoveDir.dot(moveDirection) < 0)
+					velCompMoveDir += deltaSeconds*DECEL*moveDirection;
+				/* recombine the velocity components */
+				g_moveSizeKeyVelocity = velCompMoveDir + velCompMoveDirPerp;
+			}
 			/* enforce maximum move speed */
 			f32 speed = g_moveSizeKeyVelocity.normalize();
 			local_const f32 MAX_SPEED = 100;
@@ -584,7 +615,6 @@ internal void
 				speed = MAX_SPEED;
 			g_moveSizeKeyVelocity *= speed;
 		}
-#if 1
 		/* if movement velocity is non-zero, move the mouse cursor, which in 
 			turn determines where the center of the window's caption bar goes */
 		if(!g_moveSizeKeyVelocity.isNearlyZero())
@@ -599,52 +629,59 @@ internal void
 				korl_w32_centerCursorOnCaptionBar(g_mainWindow);
 				g_moveSizeKeyMoved = true;
 			}
-			/* if this is not the first time we moved with keyboard controls, 
-				then we move the cursor around relative to its previous 
-				position */
+			/* move the cursor around relative to its previous position */
 			const BOOL successGetCursorPosition = GetCursorPos(&cursorPosition);
 			if(!successGetCursorPosition)
 				KLOG(ERROR, "GetCursorPosition failed! GetLastError=%i", 
 					GetLastError());
 			const LONG dX = static_cast<LONG>(g_moveSizeKeyVelocity.x);
 			const LONG dY = static_cast<LONG>(g_moveSizeKeyVelocity.y);
+			cursorPosition.x += dX;
+			cursorPosition.y += dY;
 			const BOOL successSetCursorPosition = 
-				SetCursorPos(cursorPosition.x + dX, cursorPosition.y + dY);
+				SetCursorPos(cursorPosition.x, cursorPosition.y);
 			if(!successSetCursorPosition)
 				KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
 					GetLastError());
+		}
+		/* we need to check here if the mouse cursor has ever moved, because 
+			even if we call SetCapture, we wont actually get any mouse move 
+			events if the user isn't holding a mouse button apparently... */
+		POINT cursorPositionScreen;
+		const BOOL successGetCursorPos = 
+			GetCursorPos(&cursorPositionScreen);
+		if(!successGetCursorPos)
+			KLOG(ERROR, "GetCursorPos failed! GetLastError=%i", GetLastError());
+		if((   cursorPositionScreen.x != g_moveSizeLastMouseScreen.x 
+		    || cursorPositionScreen.y != g_moveSizeLastMouseScreen.y) 
+		   && g_moveSizeKeyMoved)
+		{
+			g_moveSizeLastMouseScreen = cursorPositionScreen;
 			/* move the window such that the center of the title bar is directly 
 				under the mouse cursor */
-			///@todo
-		}
-#else
-		/* if movement velocity is non-zero, move the window! */
-		if(!g_moveSizeKeyVelocity.isNearlyZero())
-		{
 			RECT windowRect;
 			const bool successGetWindowRect = 
 				GetWindowRect(g_mainWindow, &windowRect);
 			if(!successGetWindowRect)
 				KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
 					GetLastError());
-			else
-			{
-				const LONG dX = static_cast<LONG>(g_moveSizeKeyVelocity.x);
-				const LONG dY = static_cast<LONG>(g_moveSizeKeyVelocity.y);
-				const BOOL successMoveWindow = 
-					MoveWindow(
-						g_mainWindow, 
-						windowRect.left + dX, 
-						windowRect.top  + dY, 
-						windowRect.right - windowRect.left, 
-						windowRect.bottom - windowRect.top, 
-						/* repaint? */FALSE);
-				if(!successMoveWindow)
-					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
-						GetLastError());
-			}
+			const POINT windowTitleCenter = 
+				korl_w32_computeCaptionBarCenter(g_mainWindow);
+			const POINT titleCenterOffset = 
+				{ windowTitleCenter.x - windowRect.left
+				, windowTitleCenter.y - windowRect.top };
+			const BOOL successMoveWindow = 
+				MoveWindow(
+					g_mainWindow, 
+					cursorPositionScreen.x - titleCenterOffset.x, 
+					cursorPositionScreen.y - titleCenterOffset.y, 
+					windowRect.right  - windowRect.left, 
+					windowRect.bottom - windowRect.top, 
+					/* repaint? */FALSE);
+			if(!successMoveWindow)
+				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+					GetLastError());
 		}
-#endif//0
 		} break;
 	default: {
 		} break;
@@ -789,6 +826,13 @@ internal LRESULT CALLBACK
 						/* repaint? */FALSE);
 				if(!successMoveWindow)
 					KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+						GetLastError());
+				const BOOL successSetCursorPos = 
+					SetCursorPos(
+						g_moveSizeStartMouseScreen.x, 
+						g_moveSizeStartMouseScreen.y);
+				if(!successSetCursorPos)
+					KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
 						GetLastError());
 				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 				} break;
