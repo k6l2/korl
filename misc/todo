@@ -888,8 +888,8 @@
 	[x] during "unmoved" state, display mouse cursor as a cross bar
 		- or if there is no "unmoved" state, just always display the mouse 
 			cursor as a cross bar
-	[ ] move the mouse cursor instead of the window
-	[ ] in "unmoved" state, when the user moves using an arrow key, set the 
+	[x] move the mouse cursor instead of the window
+	[x] in "unmoved" state, when the user moves using an arrow key, set the 
 		cursor to the center of the caption bar once again
 	[ ] in "moved" state, when the mouse cursor moves in this mode, move the 
 		window such that the center of the caption bar is aligned with the 

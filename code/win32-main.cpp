@@ -389,6 +389,30 @@ internal u32 w32FindUnusedTempGameDllPostfix()
 	return lowestUnusedPostfix;
 }
 internal void 
+	korl_w32_centerCursorOnCaptionBar(HWND hWnd)
+{
+	/* calculate the center of the window's title bar */
+	TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
+	const LRESULT resultSendMsgTitleBarInfoEx = 
+		SendMessage(
+			hWnd, WM_GETTITLEBARINFOEX, 0, 
+			reinterpret_cast<LPARAM>(&titleBarInfoEx));
+	const POINT titleBarCenter = 
+		{ titleBarInfoEx.rcTitleBar.left + 
+			(titleBarInfoEx.rcTitleBar.right - 
+			 titleBarInfoEx.rcTitleBar.left) / 2
+		, titleBarInfoEx.rcTitleBar.top + 
+			(titleBarInfoEx.rcTitleBar.bottom - 
+			 titleBarInfoEx.rcTitleBar.top) / 2};
+	/* set the mouse cursor to be the center of the window's title 
+		bar */
+	const BOOL successSetCursorPos = 
+		SetCursorPos(titleBarCenter.x, titleBarCenter.y);
+	if(!successSetCursorPos)
+		KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
+			GetLastError());
+}
+internal void 
 	korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode mode, HWND hWnd)
 {
 	if(g_moveSizeMode == mode)
@@ -398,27 +422,10 @@ internal void
 	case KorlWin32MoveSizeMode::MOVE_KEYBOARD: {
 		g_moveSizeKeyVelocity = v2f32::ZERO;
 		g_moveSizeKeyMoved = false;
+		/* WM_SETCURSOR doesn't seem to occur during move/resize mode so we can 
+			just set it once here apparently */
 		SetCursor(g_cursorSizeAll);
-		/* calculate the center of the window's title bar */
-		TITLEBARINFOEX titleBarInfoEx = {sizeof(TITLEBARINFOEX), 0};
-		const LRESULT resultSendMsgTitleBarInfoEx = 
-			SendMessage(
-				hWnd, WM_GETTITLEBARINFOEX, 0, 
-				reinterpret_cast<LPARAM>(&titleBarInfoEx));
-		const POINT titleBarCenter = 
-			{ titleBarInfoEx.rcTitleBar.left + 
-				(titleBarInfoEx.rcTitleBar.right - 
-				 titleBarInfoEx.rcTitleBar.left) / 2
-			, titleBarInfoEx.rcTitleBar.top + 
-				(titleBarInfoEx.rcTitleBar.bottom - 
-				 titleBarInfoEx.rcTitleBar.top) / 2};
-		/* set the mouse cursor to be the center of the window's title 
-			bar */
-		const BOOL successSetCursorPos = 
-			SetCursorPos(titleBarCenter.x, titleBarCenter.y);
-		if(!successSetCursorPos)
-			KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
-				GetLastError());
+		korl_w32_centerCursorOnCaptionBar(hWnd);
 		/* display simple controls for the user in the title bar */
 		TCHAR charBufferWindowText[256];
 		const int charsWritten = 
@@ -568,7 +575,6 @@ internal void
 		/* otherwise accelerate towards arrow key direction */
 		else
 		{
-			g_moveSizeKeyMoved = true;
 			local_const f32 ACCEL = 100.f;
 			g_moveSizeKeyVelocity += deltaSeconds*ACCEL*moveDirection;
 			/* enforce maximum move speed */
@@ -578,6 +584,40 @@ internal void
 				speed = MAX_SPEED;
 			g_moveSizeKeyVelocity *= speed;
 		}
+#if 1
+		/* if movement velocity is non-zero, move the mouse cursor, which in 
+			turn determines where the center of the window's caption bar goes */
+		if(!g_moveSizeKeyVelocity.isNearlyZero())
+		{
+			POINT cursorPosition;
+			/* if this is the first time we moved with keyboard controls, we 
+				have to reposition the cursor to be the center of the window's 
+				caption bar again since the user may have moved the mouse since 
+				activating the move mode */
+			if(!g_moveSizeKeyMoved)
+			{
+				korl_w32_centerCursorOnCaptionBar(g_mainWindow);
+				g_moveSizeKeyMoved = true;
+			}
+			/* if this is not the first time we moved with keyboard controls, 
+				then we move the cursor around relative to its previous 
+				position */
+			const BOOL successGetCursorPosition = GetCursorPos(&cursorPosition);
+			if(!successGetCursorPosition)
+				KLOG(ERROR, "GetCursorPosition failed! GetLastError=%i", 
+					GetLastError());
+			const LONG dX = static_cast<LONG>(g_moveSizeKeyVelocity.x);
+			const LONG dY = static_cast<LONG>(g_moveSizeKeyVelocity.y);
+			const BOOL successSetCursorPosition = 
+				SetCursorPos(cursorPosition.x + dX, cursorPosition.y + dY);
+			if(!successSetCursorPosition)
+				KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
+					GetLastError());
+			/* move the window such that the center of the title bar is directly 
+				under the mouse cursor */
+			///@todo
+		}
+#else
 		/* if movement velocity is non-zero, move the window! */
 		if(!g_moveSizeKeyVelocity.isNearlyZero())
 		{
@@ -604,6 +644,7 @@ internal void
 						GetLastError());
 			}
 		}
+#endif//0
 		} break;
 	default: {
 		} break;
