@@ -442,7 +442,7 @@ internal void
 				" (MOVE ENABLED! [enter]:confirm [escape]:cancel)");
 		korlAssert(charsWritten > 0);
 		const BOOL successSetWindowText = 
-			SetWindowText(g_mainWindow, charBufferWindowText);
+			SetWindowText(hWnd, charBufferWindowText);
 		if(!successSetWindowText)
 			KLOG(ERROR, "SetWindowText failed! GetLastError=%i", 
 				GetLastError());
@@ -455,18 +455,26 @@ internal void
 				GetLastError());
 		/* ensure the title bar text of the main window is reset */
 		const BOOL successSetWindowText = 
-			SetWindowText(g_mainWindow, APPLICATION_NAME);
+			SetWindowText(hWnd, APPLICATION_NAME);
 		if(!successSetWindowText)
 			KLOG(ERROR, "SetWindowText failed! GetLastError=%i", 
 				GetLastError());
 		/* conform to default windows behavior */
-		SendMessage(g_mainWindow, WM_EXITSIZEMOVE, 0, 0);
+		SendMessage(hWnd, WM_EXITSIZEMOVE, 0, 0);
 		} break;
 	}
 	g_moveSizeMode = mode;
+	if(mode != KorlWin32MoveSizeMode::OFF)
+	{
+		/* set this window to be the global mouse capture so we can process 
+			all mouse events outside of our window */
+		SetCapture(hWnd);
+		/* conform to default windows behavior */
+		SendMessage(hWnd, WM_ENTERSIZEMOVE, 0, 0);
+	}
 }
 internal LRESULT 
-	korl_w32_onSysCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	korl_w32_onSysCommand(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	/* syscommand wparam values use the first 4 low-order bits internally, 
 		so we have to mask them out to get the correct values (see MSDN) */
@@ -481,6 +489,7 @@ internal LRESULT
 	}
 	else if(wParamSysCommand == SC_MOVE)
 	{
+		korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hWnd);
 		/* enter "move window" mode 
 			- save the current mouse position
 			- wherever mouse absolute position gets polled, move the window 
@@ -490,7 +499,7 @@ internal LRESULT
 				"move window" mode */
 		/* get the windows starting RECT */
 		const bool successGetWindowRect = 
-			GetWindowRect(hwnd, &g_moveSizeStartWindowRect);
+			GetWindowRect(hWnd, &g_moveSizeStartWindowRect);
 		/* if we fail to get the window's start RECT, we can't properly 
 			begin moving the window around relative to an undefined 
 			position */
@@ -513,27 +522,22 @@ internal LRESULT
 				to use this for calculating the new position when mouse moves */
 			g_moveSizeStartMouseClient = g_moveSizeStartMouseScreen;
 			const bool successScreenToClient = 
-				ScreenToClient(hwnd, &g_moveSizeStartMouseClient);
+				ScreenToClient(hWnd, &g_moveSizeStartMouseClient);
 			if(!successScreenToClient)
 			{
 				KLOG(ERROR, "ScreenToClient failed!");
 				return 0;
 			}
 			/* begin non-modal window movement logic */
-			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE, hwnd);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::MOVE_MOUSE, hWnd);
 		}
 		else
 		{
 			KLOG(INFO, "SC_MOVE - keyboard mode!");
 			/* begin non-modal window movement logic */
 			korl_w32_setMoveSizeMode(
-				KorlWin32MoveSizeMode::MOVE_KEYBOARD, hwnd);
+				KorlWin32MoveSizeMode::MOVE_KEYBOARD, hWnd);
 		}
-		/* set this window to be the global mouse capture so we can process 
-			all mouse events outside of our window */
-		SetCapture(hwnd);
-		/* conform to default windows behavior */
-		SendMessage(hwnd, WM_ENTERSIZEMOVE, 0, 0);
 		return 0;
 	}
 	else if(wParamSysCommand == SC_SIZE)
@@ -549,7 +553,7 @@ internal LRESULT
 		///@todo
 		return 0;
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 internal void 
 	korl_w32_stepMoveSize(
@@ -747,7 +751,29 @@ internal LRESULT CALLBACK
 			KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 				GetLastError());
 		} break;
+	case WM_LBUTTONDOWN: {
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_LBUTTONDOWN");
+#endif// KORL_W32_VERBOSE_EVENT_LOG
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_KEYBOARD)
+		{
+			const POINT mouseClient = 
+				{ GET_X_LPARAM(lParam)
+				, GET_Y_LPARAM(lParam) };
+			POINT mouseScreen = mouseClient;
+			const BOOL successClientToScreen = 
+				ClientToScreen(hwnd, &mouseScreen);
+			korlAssert(successClientToScreen);
+			result = 
+				SendMessage(
+					hwnd, WM_SYSCOMMAND, SC_MOVE | KORL_W32_MOVE_MOUSE, 
+					MAKELONG(mouseScreen.x, mouseScreen.y));
+		}
+		} break;
 	case WM_NCLBUTTONDOWN: {
+#if KORL_W32_VERBOSE_EVENT_LOG
+		KLOG(INFO, "WM_NCLBUTTONDOWN");
+#endif// KORL_W32_VERBOSE_EVENT_LOG
 		WPARAM wParamSizeMove = 0;
 		switch(wParam)
 		{
