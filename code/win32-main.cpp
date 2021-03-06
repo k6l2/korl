@@ -991,35 +991,47 @@ internal LRESULT CALLBACK
 					GetLastError());
 			/* manual non-modal handling of the keyboard resize mode... 
 				thanks,  microsoft */
+			local_const LONG RESIZE_KEYPRESS_DELTA = 8;
+			const bool isSideAxisSelectedX = 
+				(   (g_moveSizeSides & KORL_W32_SIZE_LEFT) 
+				 || (g_moveSizeSides & KORL_W32_SIZE_RIGHT));
+			const bool isSideAxisSelectedY = 
+				(   (g_moveSizeSides & KORL_W32_SIZE_TOP) 
+				 || (g_moveSizeSides & KORL_W32_SIZE_BOTTOM));
+			const u8 moveSizeSidesOriginal = g_moveSizeSides;
 			switch(wParam)
 			{
 			case VK_LEFT: {
-				if(!(   (g_moveSizeSides & KORL_W32_SIZE_LEFT) 
-				     || (g_moveSizeSides & KORL_W32_SIZE_RIGHT)))
+				if(isSideAxisSelectedX)
+					cursorPosition.x -= RESIZE_KEYPRESS_DELTA;
+				else
 				{
 					g_moveSizeSides |= KORL_W32_SIZE_LEFT;
 					cursorPosition.x = windowRect.left;
 				}
 				} break;
 			case VK_UP: {
-				if(!(   (g_moveSizeSides & KORL_W32_SIZE_TOP) 
-				     || (g_moveSizeSides & KORL_W32_SIZE_BOTTOM)))
+				if(isSideAxisSelectedY)
+					cursorPosition.y -= RESIZE_KEYPRESS_DELTA;
+				else
 				{
 					g_moveSizeSides |= KORL_W32_SIZE_TOP;
 					cursorPosition.y = windowRect.top;
 				}
 				} break;
 			case VK_RIGHT: {
-				if(!(   (g_moveSizeSides & KORL_W32_SIZE_LEFT) 
-				     || (g_moveSizeSides & KORL_W32_SIZE_RIGHT)))
+				if(isSideAxisSelectedX)
+					cursorPosition.x += RESIZE_KEYPRESS_DELTA;
+				else
 				{
 					g_moveSizeSides |= KORL_W32_SIZE_RIGHT;
 					cursorPosition.x = windowRect.right - 1;
 				}
 				} break;
 			case VK_DOWN: {
-				if(!(   (g_moveSizeSides & KORL_W32_SIZE_TOP) 
-				     || (g_moveSizeSides & KORL_W32_SIZE_BOTTOM)))
+				if(isSideAxisSelectedY)
+					cursorPosition.y += RESIZE_KEYPRESS_DELTA;
+				else
 				{
 					g_moveSizeSides |= KORL_W32_SIZE_BOTTOM;
 					cursorPosition.y = windowRect.bottom - 1;
@@ -1055,7 +1067,8 @@ internal LRESULT CALLBACK
 					SetCursor(g_cursorSizeHorizontal);
 				/* set the cursor position for the relevant axes defined 
 					above */
-				g_moveSizeLastMouseScreen = cursorPosition;
+				if(moveSizeSidesOriginal != g_moveSizeSides)
+					g_moveSizeLastMouseScreen = cursorPosition;
 				const BOOL successSetCursorPos = 
 					SetCursorPos(cursorPosition.x, cursorPosition.y);
 				if(!successSetCursorPos)

@@ -906,11 +906,11 @@
 	[x] SIZE_KEYBOARD: when [escape] is pressed, revert changes
 	[x] SIZE_KEYBOARD: when [enter] is pressed, turn off size/move mode
 	[x] SIZE_KEYBOARD: set the primary resize side on the first arrow key press
-	[ ] SIZE_KEYBOARD: on subsequent arrow key presses on the primary axis, 
+	[x] SIZE_KEYBOARD: on subsequent arrow key presses on the primary axis, 
 		change the window size for the primary resize side
 	[x] SIZE_KEYBOARD: set the secondary resize side if a non-primary-axis arrow 
 		key is pressed
-	[ ] SIZE_KEYBOARD: on subsequent arrow key presses, change the window size 
+	[x] SIZE_KEYBOARD: on subsequent arrow key presses, change the window size 
 		for the secondary resize side
 	[x] SIZE_KEYBOARD: once at least one side has been selected, allow mouse 
 		movement to resize the selected side(s)
