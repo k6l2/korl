@@ -899,7 +899,7 @@
 	[x] tighten keyboard movement controller
 	[x] show cross bar cursor when mouse is dragging window around
 	[x] allow the user to click & drag if the keyboard move mode is active
-[ ] win32: prevent application from freezing when the window is being resized 
+[x] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
 	[x] when SIZE_KEYBOARD occurs, move mouse to the center of the window and 
 		change the cursor icon to SIZE_ALL
@@ -914,11 +914,13 @@
 		for the secondary resize side
 	[x] SIZE_KEYBOARD: once at least one side has been selected, allow mouse 
 		movement to resize the selected side(s)
-	[ ] SIZE_KEYBOARD: allow the user to click & drag to resize
+	[-] SIZE_KEYBOARD: allow the user to click & drag to resize
 		- ???
-	[ ] SIZE_MOUSE: capture mouse & record which side we clicked on
-	[ ] SIZE_MOUSE: on WM_MOUSEMOVE, update new window size WRT the selected 
+	[x] SIZE_MOUSE: capture mouse & record which side we clicked on
+	[x] SIZE_MOUSE: on WM_MOUSEMOVE, update new window size WRT the selected 
 		resize side(s)
+		- actually, this seems to work just fine by re-using the SIZE_KEYBOARD 
+			code in the step function, so maybe I'll just leave it at that
 [ ] fix incorrect behavior when SIZE/MOVE_KEYBOARD mode is cancelled by pressing 
 	[escape] to revert changes to a window which is currently on a different DPI 
 	monitor than the one which it was on when the size/move mode began

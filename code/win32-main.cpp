@@ -546,8 +546,8 @@ internal LRESULT
 		if((wParam & 0xF) == KORL_W32_MOVE_MOUSE)
 		{
 			KLOG(INFO, "SC_MOVE - mouse mode!");
-			/* calculate the client-space mouse position, since we probably need 
-				to use this for calculating the new position when mouse moves */
+			/* calculate the client-space mouse position, since we need to use 
+				this for calculating the new position when mouse moves */
 			g_moveSizeStartMouseClient = g_moveSizeStartMouseScreen;
 			const bool successScreenToClient = 
 				ScreenToClient(hWnd, &g_moveSizeStartMouseClient);
@@ -605,7 +605,8 @@ internal LRESULT
 		else
 		{
 			KLOG(INFO, "SC_SIZE - mouse mode!");
-			///@todo
+			g_moveSizeSides = (wParam & 0xF);
+			korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::SIZE_MOUSE, hWnd);
 		}
 		return 0;
 	}
@@ -746,6 +747,7 @@ internal void
 					GetLastError());
 		}
 		} break;
+	case KorlWin32MoveSizeMode::SIZE_MOUSE: 
 	case KorlWin32MoveSizeMode::SIZE_KEYBOARD: {
 		/* we need to check here if the mouse cursor has ever moved, because 
 			even if we call SetCapture, we wont actually get any mouse move 
