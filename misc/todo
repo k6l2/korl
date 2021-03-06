@@ -905,7 +905,7 @@
 		change the cursor icon to SIZE_ALL
 	[x] SIZE_KEYBOARD: when [escape] is pressed, revert changes
 	[x] SIZE_KEYBOARD: when [enter] is pressed, turn off size/move mode
-	[ ] SIZE_KEYBOARD: set the primary resize side on the first arrow key press
+	[x] SIZE_KEYBOARD: set the primary resize side on the first arrow key press
 	[ ] SIZE_KEYBOARD: on subsequent arrow key presses on the primary axis, 
 		change the window size for the primary resize side
 	[ ] SIZE_KEYBOARD: set the secondary resize side if a non-primary-axis arrow 

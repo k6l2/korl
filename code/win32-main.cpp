@@ -88,6 +88,8 @@ global_variable POINT g_moveSizeLastMouseScreen;
 //global_variable v2f32 g_moveSizeMouseAnchor;
 global_variable v2f32 g_moveSizeKeyVelocity;
 global_variable bool g_moveSizeKeyMoved;
+global_variable u8 g_moveSizeSidePrimary;  // uses KORL_W32_SIZE_X flags
+global_variable u8 g_moveSizeSideSecondary;// uses KORL_W32_SIZE_X flags
 global_variable UINT g_dpi;
 global_variable f32 g_dpiScaleFactor;
 /* @TODO: make these memory quantities configurable per-project */
@@ -451,6 +453,8 @@ internal void
 				GetLastError());
 		} break;
 	case KorlWin32MoveSizeMode::SIZE_KEYBOARD: {
+		g_moveSizeSidePrimary   = 0;
+		g_moveSizeSideSecondary = 0;
 		/* WM_SETCURSOR doesn't seem to occur during move/resize mode so we can 
 			just set it once here apparently */
 		SetCursor(g_cursorSizeAll);
@@ -920,6 +924,71 @@ internal LRESULT CALLBACK
 			case VK_RETURN: {
 				korl_w32_setMoveSizeMode(KorlWin32MoveSizeMode::OFF, hwnd);
 				} break;
+			}
+		}
+		if(g_moveSizeMode == KorlWin32MoveSizeMode::SIZE_KEYBOARD)
+		{
+			/* get the current cursor position & cache a copy, in case we need 
+				to change it as a result of the arrow key presses */
+			POINT cursorPosition;
+			const BOOL successGetCursorPosition = GetCursorPos(&cursorPosition);
+			if(!successGetCursorPosition)
+				KLOG(ERROR, "GetCursorPosition failed! GetLastError=%i", 
+					GetLastError());
+			const POINT cursorPositionOriginal = cursorPosition;
+			/* get the window's screen RECT for later */
+			RECT windowRect;
+			const BOOL successGetWindowRect = GetWindowRect(hwnd, &windowRect);
+			if(!successGetWindowRect)
+				KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+					GetLastError());
+			/* manual non-modal handling of the keyboard resize mode... 
+				thanks,  microsoft */
+			switch(wParam)
+			{
+			case VK_LEFT: {
+				if(!g_moveSizeSidePrimary)
+				{
+					g_moveSizeSidePrimary = KORL_W32_SIZE_LEFT;
+					SetCursor(g_cursorSizeHorizontal);
+					cursorPosition.x = windowRect.left;
+				}
+				} break;
+			case VK_UP: {
+				if(!g_moveSizeSidePrimary)
+				{
+					g_moveSizeSidePrimary = KORL_W32_SIZE_TOP;
+					SetCursor(g_cursorSizeVertical);
+					cursorPosition.y = windowRect.top;
+				}
+				} break;
+			case VK_RIGHT: {
+				if(!g_moveSizeSidePrimary)
+				{
+					g_moveSizeSidePrimary = KORL_W32_SIZE_RIGHT;
+					SetCursor(g_cursorSizeHorizontal);
+					cursorPosition.x = windowRect.right - 1;
+				}
+				} break;
+			case VK_DOWN: {
+				if(!g_moveSizeSidePrimary)
+				{
+					g_moveSizeSidePrimary = KORL_W32_SIZE_BOTTOM;
+					SetCursor(g_cursorSizeVertical);
+					cursorPosition.y = windowRect.bottom - 1;
+				}
+				} break;
+			}
+			/* set the new cursor position if we received certain keyboard 
+				inputs while in certain states */
+			if(   cursorPosition.x != cursorPositionOriginal.x 
+			   || cursorPosition.y != cursorPositionOriginal.y)
+			{
+				const BOOL successSetCursorPos = 
+					SetCursorPos(cursorPosition.x, cursorPosition.y);
+				if(!successSetCursorPos)
+					KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
+						GetLastError());
 			}
 		}
 		result = DefWindowProc(hwnd, uMsg, wParam, lParam);
