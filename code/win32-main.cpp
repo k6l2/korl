@@ -32,10 +32,11 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #include "stb/stb_vorbis.h"
 #include "win32loopl-code/LooplessSizeMove.h"
 #define KORL_W32_VERBOSE_EVENT_LOG 0
-#define KORL_W32_SIZE_LEFT   0x1
-#define KORL_W32_SIZE_TOP    0x2
-#define KORL_W32_SIZE_RIGHT  0x4
-#define KORL_W32_SIZE_BOTTOM 0x8
+#define KORL_W32_SIZE_KEYBOARD 0x0
+#define KORL_W32_SIZE_LEFT     0x1
+#define KORL_W32_SIZE_TOP      0x2
+#define KORL_W32_SIZE_RIGHT    0x4
+#define KORL_W32_SIZE_BOTTOM   0x8
 #define KORL_W32_MOVE_KEYBOARD 0x0
 #define KORL_W32_MOVE_MOUSE    0x1
 global_const TCHAR APPLICATION_NAME[] = TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
@@ -75,7 +76,9 @@ global_const u32 SOUND_BUFFER_BYTES =
 enum class KorlWin32MoveSizeMode : u8
 	{ OFF
 	, MOVE_MOUSE
-	, MOVE_KEYBOARD };
+	, MOVE_KEYBOARD
+	, SIZE_MOUSE
+	, SIZE_KEYBOARD };
 global_variable KorlWin32MoveSizeMode g_moveSizeMode = 
 	KorlWin32MoveSizeMode::OFF;
 global_variable RECT g_moveSizeStartWindowRect;
@@ -447,6 +450,26 @@ internal void
 			KLOG(ERROR, "SetWindowText failed! GetLastError=%i", 
 				GetLastError());
 		} break;
+	case KorlWin32MoveSizeMode::SIZE_KEYBOARD: {
+		/* WM_SETCURSOR doesn't seem to occur during move/resize mode so we can 
+			just set it once here apparently */
+		SetCursor(g_cursorSizeAll);
+		/* calculate the center of the window in screen-space */
+		RECT windowRect;
+		const BOOL successGetWindowRect = GetWindowRect(hWnd, &windowRect);
+		if(!successGetWindowRect)
+			KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+				GetLastError());
+		const POINT windowCenter = 
+			{ windowRect.left + (windowRect.right  - windowRect.left) / 2
+			, windowRect.top  + (windowRect.bottom - windowRect.top ) / 2 };
+		/* move the cursor to the center of the window */
+		const BOOL successSetCursorPos = 
+			SetCursorPos(windowCenter.x, windowCenter.y);
+		if(!successSetCursorPos)
+			KLOG(ERROR, "SetCursorPos failed! GetLastError=%i", 
+				GetLastError());
+		} break;
 	case KorlWin32MoveSizeMode::OFF: {
 		/* release global mouse event capture */
 		const BOOL resultReleaseCapture = ReleaseCapture();
@@ -550,6 +573,34 @@ internal LRESULT
 				the mouse position has changed
 			- when this callback gets a WM_EXITSIZEMOVE msg, exit 
 				"resize window" mode */
+		/* get the windows starting RECT */
+		const bool successGetWindowRect = 
+			GetWindowRect(hWnd, &g_moveSizeStartWindowRect);
+		/* if we fail to get the window's start RECT, we can't properly 
+			begin moving the window around relative to an undefined 
+			position */
+		if(!successGetWindowRect)
+		{
+			KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+				GetLastError());
+			return 0;
+		}
+		/* cache the mouse position at the beginning of the command */
+		g_moveSizeStartMouseScreen = 
+			{ .x = GET_X_LPARAM(lParam)
+			, .y = GET_Y_LPARAM(lParam) };
+		g_moveSizeLastMouseScreen = g_moveSizeStartMouseScreen;
+		if((wParam & 0xF) == KORL_W32_SIZE_KEYBOARD)
+		{
+			KLOG(INFO, "SC_SIZE - keyboard mode!");
+			/* begin non-modal window resize logic */
+			korl_w32_setMoveSizeMode(
+				KorlWin32MoveSizeMode::SIZE_KEYBOARD, hWnd);
+		}
+		else
+		{
+			KLOG(INFO, "SC_SIZE - mouse mode!");
+		}
 		///@todo
 		return 0;
 	}
@@ -837,7 +888,8 @@ internal LRESULT CALLBACK
 #if KORL_W32_VERBOSE_EVENT_LOG
 		KLOG(INFO, "WM_KEYDOWN: vKey=%i", wParam);
 #endif// KORL_W32_VERBOSE_EVENT_LOG
-		if(g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_KEYBOARD)
+		if(   g_moveSizeMode == KorlWin32MoveSizeMode::MOVE_KEYBOARD 
+		   || g_moveSizeMode == KorlWin32MoveSizeMode::SIZE_KEYBOARD)
 		{
 			switch(wParam)
 			{

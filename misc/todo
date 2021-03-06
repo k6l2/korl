@@ -901,6 +901,26 @@
 	[x] allow the user to click & drag if the keyboard move mode is active
 [ ] win32: prevent application from freezing when the window is being resized 
 	- during the actual drag motion
+	[x] when SIZE_KEYBOARD occurs, move mouse to the center of the window and 
+		change the cursor icon to SIZE_ALL
+	[x] SIZE_KEYBOARD: when [escape] is pressed, revert changes
+	[x] SIZE_KEYBOARD: when [enter] is pressed, turn off size/move mode
+	[ ] SIZE_KEYBOARD: set the primary resize side on the first arrow key press
+	[ ] SIZE_KEYBOARD: on subsequent arrow key presses on the primary axis, 
+		change the window size for the primary resize side
+	[ ] SIZE_KEYBOARD: set the secondary resize side if a non-primary-axis arrow 
+		key is pressed
+	[ ] SIZE_KEYBOARD: on subsequent arrow key presses, change the window size 
+		for the secondary resize side
+	[ ] SIZE_KEYBOARD: allow the user to click & draw to resize
+		- ???
+	[ ] SIZE_MOUSE: capture mouse & record which side we clicked on
+	[ ] SIZE_MOUSE: on WM_MOUSEMOVE, update new window size WRT the selected 
+		resize side(s)
+[ ] fix incorrect behavior when SIZE/MOVE_KEYBOARD mode is cancelled by pressing 
+	[escape] to revert changes to a window which is currently on a different DPI 
+	monitor than the one which it was on when the size/move mode began
+[ ] pull modeless move/resize code out of win32-main
 [ ] remove `code/win32loopl-code` from the project since I'm probably not going 
 	to use it
 [ ] DInput: move device enumeration into a separate thread so the main thread 
