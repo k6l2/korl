@@ -88,8 +88,10 @@ global_variable POINT g_moveSizeLastMouseScreen;
 //global_variable v2f32 g_moveSizeMouseAnchor;
 global_variable v2f32 g_moveSizeKeyVelocity;
 global_variable bool g_moveSizeKeyMoved;
-global_variable u8 g_moveSizeSidePrimary;  // uses KORL_W32_SIZE_X flags
-global_variable u8 g_moveSizeSideSecondary;// uses KORL_W32_SIZE_X flags
+/* Uses a combination of KORL_W32_SIZE_X flags.  This should never contain two 
+	sides on the same axis!  This should only ever contain 0, 1, or 2 active 
+	bits at any given time.  */
+global_variable u8 g_moveSizeSides;
 global_variable UINT g_dpi;
 global_variable f32 g_dpiScaleFactor;
 /* @TODO: make these memory quantities configurable per-project */
@@ -453,8 +455,7 @@ internal void
 				GetLastError());
 		} break;
 	case KorlWin32MoveSizeMode::SIZE_KEYBOARD: {
-		g_moveSizeSidePrimary   = 0;
-		g_moveSizeSideSecondary = 0;
+		g_moveSizeSides = 0;
 		/* WM_SETCURSOR doesn't seem to occur during move/resize mode so we can 
 			just set it once here apparently */
 		SetCursor(g_cursorSizeAll);
@@ -947,34 +948,34 @@ internal LRESULT CALLBACK
 			switch(wParam)
 			{
 			case VK_LEFT: {
-				if(!g_moveSizeSidePrimary)
+				if(!(   (g_moveSizeSides & KORL_W32_SIZE_LEFT) 
+				     || (g_moveSizeSides & KORL_W32_SIZE_RIGHT)))
 				{
-					g_moveSizeSidePrimary = KORL_W32_SIZE_LEFT;
-					SetCursor(g_cursorSizeHorizontal);
+					g_moveSizeSides |= KORL_W32_SIZE_LEFT;
 					cursorPosition.x = windowRect.left;
 				}
 				} break;
 			case VK_UP: {
-				if(!g_moveSizeSidePrimary)
+				if(!(   (g_moveSizeSides & KORL_W32_SIZE_TOP) 
+				     || (g_moveSizeSides & KORL_W32_SIZE_BOTTOM)))
 				{
-					g_moveSizeSidePrimary = KORL_W32_SIZE_TOP;
-					SetCursor(g_cursorSizeVertical);
+					g_moveSizeSides |= KORL_W32_SIZE_TOP;
 					cursorPosition.y = windowRect.top;
 				}
 				} break;
 			case VK_RIGHT: {
-				if(!g_moveSizeSidePrimary)
+				if(!(   (g_moveSizeSides & KORL_W32_SIZE_LEFT) 
+				     || (g_moveSizeSides & KORL_W32_SIZE_RIGHT)))
 				{
-					g_moveSizeSidePrimary = KORL_W32_SIZE_RIGHT;
-					SetCursor(g_cursorSizeHorizontal);
+					g_moveSizeSides |= KORL_W32_SIZE_RIGHT;
 					cursorPosition.x = windowRect.right - 1;
 				}
 				} break;
 			case VK_DOWN: {
-				if(!g_moveSizeSidePrimary)
+				if(!(   (g_moveSizeSides & KORL_W32_SIZE_TOP) 
+				     || (g_moveSizeSides & KORL_W32_SIZE_BOTTOM)))
 				{
-					g_moveSizeSidePrimary = KORL_W32_SIZE_BOTTOM;
-					SetCursor(g_cursorSizeVertical);
+					g_moveSizeSides |= KORL_W32_SIZE_BOTTOM;
 					cursorPosition.y = windowRect.bottom - 1;
 				}
 				} break;
@@ -984,6 +985,30 @@ internal LRESULT CALLBACK
 			if(   cursorPosition.x != cursorPositionOriginal.x 
 			   || cursorPosition.y != cursorPositionOriginal.y)
 			{
+				/* update the cursor icon depending on which sides flags we're 
+					using */
+				if(g_moveSizeSides & KORL_W32_SIZE_TOP)
+				{
+					if(g_moveSizeSides & KORL_W32_SIZE_LEFT)
+						SetCursor(g_cursorSizeNwSe);
+					else if(g_moveSizeSides & KORL_W32_SIZE_RIGHT)
+						SetCursor(g_cursorSizeNeSw);
+					else
+						SetCursor(g_cursorSizeVertical);
+				}
+				else if(g_moveSizeSides & KORL_W32_SIZE_BOTTOM)
+				{
+					if(g_moveSizeSides & KORL_W32_SIZE_LEFT)
+						SetCursor(g_cursorSizeNeSw);
+					else if(g_moveSizeSides & KORL_W32_SIZE_RIGHT)
+						SetCursor(g_cursorSizeNwSe);
+					else
+						SetCursor(g_cursorSizeVertical);
+				}
+				else
+					SetCursor(g_cursorSizeHorizontal);
+				/* set the cursor position for the relevant axes defined 
+					above */
 				const BOOL successSetCursorPos = 
 					SetCursorPos(cursorPosition.x, cursorPosition.y);
 				if(!successSetCursorPos)

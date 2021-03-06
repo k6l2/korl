@@ -908,7 +908,7 @@
 	[x] SIZE_KEYBOARD: set the primary resize side on the first arrow key press
 	[ ] SIZE_KEYBOARD: on subsequent arrow key presses on the primary axis, 
 		change the window size for the primary resize side
-	[ ] SIZE_KEYBOARD: set the secondary resize side if a non-primary-axis arrow 
+	[x] SIZE_KEYBOARD: set the secondary resize side if a non-primary-axis arrow 
 		key is pressed
 	[ ] SIZE_KEYBOARD: on subsequent arrow key presses, change the window size 
 		for the secondary resize side
