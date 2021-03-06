@@ -912,7 +912,9 @@
 		key is pressed
 	[ ] SIZE_KEYBOARD: on subsequent arrow key presses, change the window size 
 		for the secondary resize side
-	[ ] SIZE_KEYBOARD: allow the user to click & draw to resize
+	[x] SIZE_KEYBOARD: once at least one side has been selected, allow mouse 
+		movement to resize the selected side(s)
+	[ ] SIZE_KEYBOARD: allow the user to click & drag to resize
 		- ???
 	[ ] SIZE_MOUSE: capture mouse & record which side we clicked on
 	[ ] SIZE_MOUSE: on WM_MOUSEMOVE, update new window size WRT the selected 

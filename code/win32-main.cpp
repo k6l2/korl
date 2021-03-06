@@ -605,8 +605,8 @@ internal LRESULT
 		else
 		{
 			KLOG(INFO, "SC_SIZE - mouse mode!");
+			///@todo
 		}
-		///@todo
 		return 0;
 	}
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -741,6 +741,52 @@ internal void
 					windowRect.right  - windowRect.left, 
 					windowRect.bottom - windowRect.top, 
 					/* repaint? */FALSE);
+			if(!successMoveWindow)
+				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
+					GetLastError());
+		}
+		} break;
+	case KorlWin32MoveSizeMode::SIZE_KEYBOARD: {
+		/* we need to check here if the mouse cursor has ever moved, because 
+			even if we call SetCapture, we wont actually get any mouse move 
+			events if the user isn't holding a mouse button apparently... */
+		POINT cursorPositionScreen;
+		const BOOL successGetCursorPos = 
+			GetCursorPos(&cursorPositionScreen);
+		if(!successGetCursorPos)
+			KLOG(ERROR, "GetCursorPos failed! GetLastError=%i", GetLastError());
+		/* if the mouse position has moved since the last known position, update 
+			the window's size based on the selected side(s) */
+		if((   cursorPositionScreen.x != g_moveSizeLastMouseScreen.x 
+		    || cursorPositionScreen.y != g_moveSizeLastMouseScreen.y) 
+		   /* at least one side has been selected by keyboard input */
+		   && g_moveSizeSides)
+		{
+			g_moveSizeLastMouseScreen = cursorPositionScreen;
+			/* get the window screen-space RECT */
+			RECT windowRect;
+			const bool successGetWindowRect = 
+				GetWindowRect(g_mainWindow, &windowRect);
+			if(!successGetWindowRect)
+				KLOG(ERROR, "GetWindowRect failed! GetLastError=%i", 
+					GetLastError());
+			/* modify the window RECT based on which sides are selected */
+			if(g_moveSizeSides & KORL_W32_SIZE_LEFT)
+				windowRect.left = cursorPositionScreen.x;
+			if(g_moveSizeSides & KORL_W32_SIZE_TOP)
+				windowRect.top = cursorPositionScreen.y;
+			if(g_moveSizeSides & KORL_W32_SIZE_RIGHT)
+				windowRect.right = cursorPositionScreen.x + 1;
+			if(g_moveSizeSides & KORL_W32_SIZE_BOTTOM)
+				windowRect.bottom = cursorPositionScreen.y + 1;
+			/* set the window RECT to the modified values */
+			const BOOL successMoveWindow = 
+				MoveWindow(
+					g_mainWindow, 
+					windowRect.left, windowRect.top, 
+					windowRect.right  - windowRect.left, 
+					windowRect.bottom - windowRect.top, 
+					/* repaint? */TRUE);
 			if(!successMoveWindow)
 				KLOG(ERROR, "MoveWindow failed! GetLastError=%i", 
 					GetLastError());
@@ -1009,6 +1055,7 @@ internal LRESULT CALLBACK
 					SetCursor(g_cursorSizeHorizontal);
 				/* set the cursor position for the relevant axes defined 
 					above */
+				g_moveSizeLastMouseScreen = cursorPosition;
 				const BOOL successSetCursorPos = 
 					SetCursorPos(cursorPosition.x, cursorPosition.y);
 				if(!successSetCursorPos)
