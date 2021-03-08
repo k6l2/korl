@@ -921,10 +921,13 @@
 		resize side(s)
 		- actually, this seems to work just fine by re-using the SIZE_KEYBOARD 
 			code in the step function, so maybe I'll just leave it at that
-[ ] fix incorrect behavior when SIZE/MOVE_KEYBOARD mode is cancelled by pressing 
-	[escape] to revert changes to a window which is currently on a different DPI 
-	monitor than the one which it was on when the size/move mode began
-[ ] pull modeless move/resize code out of win32-main
+[x] pull modeless move/resize code out of win32-main
+	[x] pull WM_* handlers out into their own API
+		- return a value representing whether or not the DefWinProc needs to be 
+			called for this window message
+		- don't call the DefWinProc for any of the window move/resize API 
+			message handlers
+	[x] handle all necessary WM_* messages in the main WndProc ONLY!!!
 [ ] remove `code/win32loopl-code` from the project since I'm probably not going 
 	to use it
 [ ] DInput: move device enumeration into a separate thread so the main thread 
@@ -1287,6 +1290,10 @@
 	[ ] fix minor rounding errors when moving between monitors
 		- save the last known resolution for each monitor, and select the cached 
 			resolution when we change monitors
+[ ] win32: fix incorrect behavior when SIZE/MOVE_KEYBOARD mode is cancelled by 
+	pressing [escape] to revert changes to a window which is currently on a 
+	different DPI monitor than the one which it was on when the size/move mode 
+	began
 [ ] win32: prevent the window from being moved out-of-bounds
 [ ] win32: implement the maximization gesture where the window is moved to the 
 	top of the screen (windows aero snap gesture support)
