@@ -928,7 +928,7 @@
 		- don't call the DefWinProc for any of the window move/resize API 
 			message handlers
 	[x] handle all necessary WM_* messages in the main WndProc ONLY!!!
-[ ] remove `code/win32loopl-code` from the project since I'm probably not going 
+[x] remove `code/win32loopl-code` from the project since I'm probably not going 
 	to use it
 [ ] DInput: move device enumeration into a separate thread so the main thread 
 	doesn't hang every time a device is hot-swapped
