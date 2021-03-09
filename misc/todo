@@ -434,6 +434,15 @@
 [ ] rb_ogl: custom shader/program API
 [ ] rb_ogl: add shader/program assets to KgtAssetManager
 [ ] rb_ogl: support programmable blend function
+[ ] redesign the file I/O API, because it is definitely possible for a file to 
+	become unavailable after a call to `isFileAvailable`
+	- instead, return an opaque "handle" to the file, which is then passed to 
+		the remaining file I/O API by the client
+	- require the client calls a "free handle" function after finishing 
+		operations on the file
+	- this should guarantee that any file I/O API called when in possession of 
+		the file handle should succeed, since the file should be locked at the 
+		OS level (at least on windows)
 [ ] win32: DirectInput 
 	https://bell0bytes.eu/directinput/
 	https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput#xinput-and-directinput-side-by-side
