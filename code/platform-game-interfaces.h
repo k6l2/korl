@@ -23,8 +23,7 @@ struct RawImage
 	 * 	pixelDataFormat==BGR, and rowByteStride==28, then a single row of this 
 	 * 	RawImage will consist of 7 BGR pixels 
 	 * 	(7_pixels * 3_bytes_per_pixel == 21_bytes), followed by 7 bytes of 
-	 * 	unused padding!
-	 */
+	 * 	unused padding! */
 	u32 rowByteStride;
 	KorlPixelDataFormat pixelDataFormat;
 	/* NOTE: when interpreting pixels as u32 values, color order depends on the 

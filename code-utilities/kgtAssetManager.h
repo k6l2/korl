@@ -1,12 +1,49 @@
+#pragma once
+#include "kutil.h"
+#include "kgtAllocator.h"
+#include "platform-game-interfaces.h"
+#include "kcppPolymorphicTaggedUnion.h"
+#include "gen_ptu_KgtAsset_includes.h"
+KCPP_POLYMORPHIC_TAGGED_UNION struct KgtAsset
+{
+	#include "gen_ptu_KgtAsset.h"
+	FileWriteTime lastWriteTime;
+	bool loaded;
+	JobQueueTicket jobTicketLoading;
+#if 0
+	/* async job function convenience data */
+	struct KgtAssetManager* kam;
+	u32 kgtAssetIndex;
+#endif//0
+};
+using KgtAssetHandle = u32;
+struct KgtAssetManager
+{
+	KgtAssetHandle maxAssetHandles;
+	/* this allocator is where all the decoded asset data is stored, such as the 
+		array of pixels in a RawImage asset */
+	KgtAllocatorHandle hKgtAllocatorAssetData;
+	/* raw file data should be a transient storage where file data rests until 
+		it is decoded into a useful KgtAsset */
+	KgtAllocatorHandle hKgtAllocatorRawFiles;
+	/* asset data allocation will be asynchronous, since it will occur on a 
+		separate thread as an async job, so we require a lock for safety */
+	KplLockHandle hLockAssetDataAllocator;
+	/* for each type of KgtAsset, the client must initialize each default asset 
+		of that type by providing the raw data necessary */
+	KgtAsset defaultAssets[static_cast<u32>(KgtAsset::Type::ENUM_COUNT)];
+	KgtAsset assets[];
+};
+internal KgtAssetManager* 
+	kgt_assetManager_construct(
+		KgtAllocatorHandle hKgtAllocator, KgtAssetHandle maxAssetHandles, 
+		KgtAllocatorHandle hKgtAllocatorAssetData);
+#if 0
 /*
  * User code must define the following global variables to use this module:
  *  - KrbApi*          g_krb
  *  - KorlPlatformApi* g_kpl
  */
-#pragma once
-#include "kutil.h"
-#include "kgtAllocator.h"
-#include "platform-game-interfaces.h"
 #include "gen_kgtAssets.h"
 #include "kgtFlipBook.h"
 #include "kgtSpriteFont.h"
@@ -70,3 +107,4 @@ internal void
 	kgtAssetManagerUnloadAllAssets(KgtAssetManager* kam);
 internal void 
 	kgtAssetManagerPushAllKgtAssets(KgtAssetManager* kam);
+#endif//0

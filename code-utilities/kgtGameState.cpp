@@ -1,4 +1,5 @@
 #include "kgtGameState.h"
+#include "gen_kgtAssets.h"
 internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 {
 	g_kpl                     = &memory.kpl;
@@ -41,24 +42,29 @@ internal void
 				KgtAllocatorType::LINEAR, kalFrameStartAddress, 
 				frameAllocatorBytes);
 	}
-	// Contruct/Initialize the game's AssetManager //
-	g_kgs->assetManager = kgtAssetManagerConstruct(
-		g_kgs->hKalPermanent, KGT_ASSET_COUNT, g_kgs->hKalTransient, g_krb);
+	/* construct the dynamic application's asset manager */
+	g_kgs->assetManager = 
+		kgt_assetManager_construct(
+			g_kgs->hKalPermanent, KGT_ASSET_COUNT, g_kgs->hKalTransient);
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
 		the value determined here will be the one which is copied instead! */
 	g_kam = g_kgs->assetManager;
+#if SEPARATE_ASSET_MODULES_COMPLETE
 	// Initialize the game's audio mixer //
 	g_kgs->audioMixer = kgtAudioMixerConstruct(g_kgs->hKalPermanent, 16);
 	// Tell the asset manager to load assets asynchronously! //
 	kgtAssetManagerPushAllKgtAssets(g_kam);
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
 }
 internal void 
 	kgtGameStateRenderAudio(
 		GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed)
 {
+#if SEPARATE_ASSET_MODULES_COMPLETE
 	kgtAudioMixerMix(g_kgs->audioMixer, audioBuffer, sampleBlocksConsumed);
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
 }
 internal bool 
 	kgtGameStateUpdateAndDraw(
@@ -81,10 +87,12 @@ internal bool
 	{
 		g_kpl->setFullscreen(!g_kpl->isFullscreen());
 	}
+#if SEPARATE_ASSET_MODULES_COMPLETE
 	/* hot-reload all assets which have been reported to be changed by the 
 		platform layer (newer file write timestamp) */
 	if(kgtAssetManagerUnloadChangedAssets(g_kgs->assetManager))
 		kgtAssetManagerPushAllKgtAssets(g_kgs->assetManager);
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
 	return true;
 }
 #pragma warning( push )
@@ -140,15 +148,14 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtNetClient.cpp"
 #include "kgtNetServer.cpp"
 #include "KgtNetReliableDataBuffer.cpp"
+#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtFlipBook.cpp"
 #include "kgtAudioMixer.cpp"
-#pragma warning( push )
-	/* warning C4296: '<': expression is always false.  This happens if there 
-		are no KAssets in the assets directory */
-	#pragma warning( disable : 4296 )
-	#include "kgtAssetManager.cpp"
-#pragma warning( pop )
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
+#include "kgtAssetManager.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
+#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtDraw.cpp"
 #include "kgtSpriteFont.cpp"
+#endif// SEPARATE_ASSET_MODULES_COMPLETE

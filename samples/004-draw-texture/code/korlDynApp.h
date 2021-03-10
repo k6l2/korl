@@ -1,4 +1,5 @@
 #pragma once
+#define SEPARATE_ASSET_MODULES_COMPLETE 0
 #include "kgtGameState.h"
 struct GameState
 {

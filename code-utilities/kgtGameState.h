@@ -4,16 +4,18 @@
 #include "krb-interface.h"
 #include "kgtAllocator.h"
 #include "kgtAssetManager.h"
+#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAudioMixer.h"
-#include "kgtVertex.h"
 #include "kgtDraw.h"
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
+#include "kgtVertex.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )
 	#include "imgui/imgui.h"
 #pragma warning( pop )
-internal void* kStbDsRealloc(void* allocatedAddress, size_t newAllocationSize, 
-                             void* context);
+internal void* kStbDsRealloc(
+	void* allocatedAddress, size_t newAllocationSize, void* context);
 internal void kStbDsFree(void* allocatedAddress, void* context);
 struct KgtGameState
 {
@@ -25,7 +27,9 @@ struct KgtGameState
 	krb::Context krbContext;
 	/* useful utilities which almost every game will use */
 	KgtAssetManager* assetManager;
+#if SEPARATE_ASSET_MODULES_COMPLETE
 	KgtAudioMixer* audioMixer;
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
 };
 /* useful global variables */
 global_variable KorlPlatformApi* g_kpl;
@@ -46,8 +50,9 @@ internal void
 internal void 
 	kgtGameStateRenderAudio(
 		GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed);
-/** @return true to request the platform continues to run, false to request the 
- *          platform closes the application */
+/** @return 
+ * true to request the platform continues to run, false to request the platform 
+ * closes the application */
 internal bool 
 	kgtGameStateUpdateAndDraw(
 		const GameKeyboard& gameKeyboard, bool windowIsFocused);

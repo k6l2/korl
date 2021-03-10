@@ -1,3 +1,5 @@
+#include "korl-texture.h"
+#include "kmath.h"
 enum KorlTextureMetaEntries : u8
 	{ KORL_TEXTURE_META_IMAGE_ASSET_NAME
 	, KORL_TEXTURE_META_WRAP_X

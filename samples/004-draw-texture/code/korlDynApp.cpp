@@ -12,15 +12,11 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	if(windowIsFocused)
 	{
 		if(gameKeyboard.s >= ButtonState::PRESSED)
-		{
 			g_gs->camPosition2d = 
 				kmath::rotate(g_gs->camPosition2d, -deltaSeconds);
-		}
 		if(gameKeyboard.f >= ButtonState::PRESSED)
-		{
 			g_gs->camPosition2d = 
 				kmath::rotate(g_gs->camPosition2d, deltaSeconds);
-		}
 	}
 	/* begin drawing the sample */
 	g_krb->beginFrame(
@@ -34,6 +30,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		v3f32{g_gs->camPosition2d.x, g_gs->camPosition2d.y, 7};
 	g_krb->lookAt(
 		camPosition.elements, v3f32::ZERO.elements, WORLD_UP.elements);
+#if SEPARATE_ASSET_MODULES_COMPLETE
 	kgtDrawAxes({10,10,10});
 	/* draw a textured cube 
 		- the `kasset` build tool automatically generates KAssetIndex entries 
@@ -58,6 +55,7 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	kgtDrawTexture2d(KgtAssetIndex::gfx_crate_tex, 
 		{static_cast<f32>(windowDimensions.x)* 0.5f, 
 		 static_cast<f32>(windowDimensions.y)*-0.5f}, {1,1}, 0.f, {4,4});
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
 	return true;
 }
 GAME_RENDER_AUDIO(gameRenderAudio)

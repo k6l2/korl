@@ -1,4 +1,52 @@
 #include "kgtAssetManager.h"
+#include "gen_kgtAssets.h"
+#include "gen_ptu_KgtAsset_dispatch.cpp"
+internal KgtAssetManager* kgt_assetManager_construct(
+	KgtAllocatorHandle hKgtAllocator, KgtAssetHandle maxAssetHandles, 
+	KgtAllocatorHandle hKgtAllocatorAssetData)
+{
+	if(maxAssetHandles < KGT_ASSET_COUNT)
+	{
+		KLOG(ERROR, "maxAssetHandles(%i) < KGT_ASSET_COUNT(%i)!", 
+			maxAssetHandles, KGT_ASSET_COUNT);
+		return nullptr;
+	}
+	const size_t rawFilePoolBytes = kmath::megabytes(1);
+	const size_t requiredBytes = sizeof(KgtAssetManager) + 
+		sizeof(KgtAsset)*maxAssetHandles + rawFilePoolBytes;
+	KgtAssetManager*const result = reinterpret_cast<KgtAssetManager*>(
+		kgtAllocAlloc(hKgtAllocator, requiredBytes));
+	if(!result)
+	{
+		KLOG(ERROR, "Failed to allocate memory for KgtAssetManager!");
+		return nullptr;
+	}
+	/* initialize the default assets in an un-loaded state */
+	for(KgtAssetHandle hAsset = 0; 
+			hAsset < static_cast<u32>(KgtAsset::Type::ENUM_COUNT); hAsset++)
+		result->defaultAssets[hAsset] = {};
+	/* initialize the assets in an un-loaded state */
+	for(KgtAssetHandle hAsset = 0; hAsset < maxAssetHandles; hAsset++)
+		result->assets[hAsset] = {};
+	/* initialize the raw file data allocator */
+	void*const rawFileAllocatorAddress = 
+		reinterpret_cast<u8*>(result) + sizeof(KgtAssetManager) + 
+		sizeof(KgtAsset)*maxAssetHandles;
+	const KgtAllocatorHandle hKgtAllocatorRawFiles = kgtAllocInit(
+		KgtAllocatorType::GENERAL, rawFileAllocatorAddress, rawFilePoolBytes);
+	/* request access to a spinlock from the platform layer so we can keep 
+		the asset data allocator safe between asset loading job threads */
+	const KplLockHandle hLockAssetDataAllocator = g_kpl->reserveLock();
+	/* Initialize the rest of the data members of the asset manager.  NOTE: we 
+		don't use initializer braces because MSVC wont initialize an array with 
+		constant size 0 */
+	result->maxAssetHandles         = maxAssetHandles;
+	result->hKgtAllocatorAssetData  = hKgtAllocatorAssetData;
+	result->hKgtAllocatorRawFiles   = hKgtAllocatorRawFiles;
+	result->hLockAssetDataAllocator = hLockAssetDataAllocator;
+	return result;
+}
+#if 0
 #include "z85-png-default.h"
 #include "z85-wav-default.h"
 #include "korl-texture.h"
@@ -1248,3 +1296,4 @@ internal void kgtAssetManagerPushAllKgtAssets(KgtAssetManager* kam)
 		kgtAssetManagerPushAsset(kam, KgtAssetIndex(kai));
 	}
 }
+#endif//0
