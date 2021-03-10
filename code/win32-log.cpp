@@ -143,12 +143,12 @@ internal void w32WriteLogToFile()
 		korlAssert(!"Failed to rename new log file!");
 		return;
 	}
-	platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
+	platformLog("win32-log", __LINE__, PlatformLogCategory::K_INFO,
 	            "Log successfully wrote to '%s'!", fullPathToLog);
 	// Once the log file has been finalized, we can delete the temporary file //
 	if(!DeleteFileA(fullPathToNewLog))
 	{
-		platformLog("win32-main", __LINE__, PlatformLogCategory::K_WARNING,
+		platformLog("win32-log", __LINE__, PlatformLogCategory::K_WARNING,
 		            "Failed to delete '%s'!", fullPathToNewLog);
 	}
 }

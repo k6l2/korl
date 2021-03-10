@@ -29,8 +29,6 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 #include "imgui/imgui_impl_opengl3.h"
 #include "stb/stb_image.h"
 #include "stb/stb_vorbis.h"
-global_const TCHAR FILE_NAME_GAME_DLL[] = 
-	TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));
 global_const f32 MAX_GAME_DELTA_SECONDS = 1.f / KORL_MINIMUM_FRAME_RATE;
 global_variable bool g_running;
 global_variable bool g_isFocused;
@@ -41,11 +39,6 @@ global_variable bool g_deviceChangeDetected;
 global_variable KgtAllocatorHandle g_genAllocStbImage;
 global_variable KgtAllocatorHandle g_genAllocImgui;
 global_variable CRITICAL_SECTION g_stbiAllocationCsLock;
-// @assumption: once we have written a crash dump, there is never a need to 
-//	write any more, let alone continue execution.
-global_variable bool g_hasWrittenCrashDump;
-///TODO: handle file paths longer than MAX_PATH in the future...
-global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable GamePad* g_gamePadArrayCurrentFrame  = g_gamePadArrayA;
 global_variable GamePad* g_gamePadArrayPreviousFrame = g_gamePadArrayB;
 global_const u8 SOUND_CHANNELS = 2;

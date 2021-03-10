@@ -52,7 +52,10 @@
 		"string": "cpp",
 		"unordered_map": "cpp",
 		"vector": "cpp",
-		"xhash": "cpp"
+		"xhash": "cpp",
+		"atomic": "cpp",
+		"filesystem": "cpp",
+		"iterator": "cpp"
 	},
 	"files.exclude": {
 		"**/.git": true,

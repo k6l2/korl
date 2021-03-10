@@ -17,6 +17,8 @@
 global_variable HWND g_mainWindow;
 global_variable TCHAR g_pathTemp[MAX_PATH];
 global_variable TCHAR g_pathLocalAppData[MAX_PATH];
+///TODO: handle file paths longer than MAX_PATH in the future...
+global_variable TCHAR g_pathToExe[MAX_PATH];
 global_variable HCURSOR g_cursorArrow;
 global_variable HCURSOR g_cursorSizeVertical;
 global_variable HCURSOR g_cursorSizeHorizontal;
@@ -33,3 +35,5 @@ global_variable HCURSOR g_cursorNo;
 global_const TCHAR APPLICATION_NAME[] = TEXT(DEFINE_TO_CSTR(KORL_APP_NAME));
 global_variable const TCHAR APPLICATION_VERSION[] =	 
 	TEXT(DEFINE_TO_CSTR(KORL_APP_VERSION));
+global_const TCHAR FILE_NAME_GAME_DLL[] = 
+	TEXT(DEFINE_TO_CSTR(KORL_GAME_DLL_FILENAME));

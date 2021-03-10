@@ -1,7 +1,11 @@
 #include "win32-crash.h"
 #include "win32-log.h"
+#include "win32-platform.h"
 #include "strsafe.h"
 #include <dbghelp.h>
+// @assumption: once we have written a crash dump, there is never a need to 
+//	write any more, let alone continue execution.
+global_variable bool g_hasWrittenCrashDump;
 internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 {
 	// copy-pasta from MSDN basically:
@@ -22,7 +26,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		GetCurrentProcessId(), GetCurrentThreadId());
 	if(!CreateDirectory(szPdbDirectory, NULL))
 	{
-		platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+		platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 					"Failed to create dir '%s'!  GetLastError=%i",
 					szPdbDirectory, GetLastError());
 		return EXCEPTION_EXECUTE_HANDLER;
@@ -56,7 +60,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		           szFileName, sizeof(szFileName));
 		///TODO: U16 platformLog
 #else
-		platformLog("win32-main", __LINE__, PlatformLogCategory::K_INFO,
+		platformLog("win32-crash", __LINE__, PlatformLogCategory::K_INFO,
 		            "Successfully wrote mini dump to: '%s'", szFileName);
 #endif
 		// Attempt to copy the win32 application's pdb file to the dump 
@@ -68,7 +72,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		                szPdbDirectory, APPLICATION_NAME);
 		if(!CopyFile(szFileNameCopySource, szFileName, false))
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
 			            szFileNameCopySource, szFileName, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -81,7 +85,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		                szPdbDirectory, APPLICATION_NAME);
 		if(!CopyFile(szFileNameCopySource, szFileName, false))
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
 			            szFileNameCopySource, szFileName, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -95,7 +99,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 			FindFirstFile(szFileNameCopySource, &findFileData);
 		if(findHandleGameDll == INVALID_HANDLE_VALUE)
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to begin search for '%s'!  GetLastError=%i",
 			            szFileNameCopySource, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -109,7 +113,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		{
 			if(!findNextFileResult && GetLastError() != ERROR_NO_MORE_FILES)
 			{
-				platformLog("win32-main", __LINE__, 
+				platformLog("win32-crash", __LINE__, 
 				            PlatformLogCategory::K_ERROR,
 				            "Failed to find next for '%s'!  GetLastError=%i",
 				            szFileNameCopySource, GetLastError());
@@ -125,7 +129,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		}
 		if(!FindClose(findHandleGameDll))
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to close search for '%s*.pdb'!  "
 			            "GetLastError=%i",
 			            FILE_NAME_GAME_DLL, GetLastError());
@@ -138,7 +142,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		                szPdbDirectory, fileNameGamePdb);
 		if(!CopyFile(szFileNameCopySource, szFileName, false))
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
 			            szFileNameCopySource, szFileName, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -150,7 +154,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		                szPdbDirectory, fileNameGamePdb);
 		if(!CopyFile(szFileNameCopySource, szFileName, false))
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
 			            szFileNameCopySource, szFileName, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -162,7 +166,7 @@ internal int w32GenerateDump(PEXCEPTION_POINTERS pExceptionPointers)
 		                szPdbDirectory, APPLICATION_NAME);
 		if(!CopyFile(szFileNameCopySource, szFileName, false))
 		{
-			platformLog("win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 			            "Failed to copy '%s' to '%s'!  GetLastError=%i",
 			            szFileNameCopySource, szFileName, GetLastError());
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -193,16 +197,44 @@ internal LONG WINAPI
 		exception properly, find a better solution to this if possible */
 	if(pExceptionInfo->ExceptionRecord->ExceptionCode == 0xE06D7363)
 		return EXCEPTION_CONTINUE_SEARCH;
+	/* Like the above exception, ignoring this one seems to have no effect and I 
+		honestly have no idea why.  Except this time, I don't really know what 
+		the hell is causing it.  It seems to originate from `nvwgf2umx.dll`. */
+	/* @todo: instead of assuming that jackass library writers all handle this 
+		exception properly, find a better solution to this if possible */
+	if(pExceptionInfo->ExceptionRecord->ExceptionCode == 0x406D1388)
+		return EXCEPTION_CONTINUE_SEARCH;
 	g_hasReceivedException = true;
 	// break debugger to give us a chance to figure out what the hell happened
 	if(IsDebuggerPresent())
 		DebugBreak();
+	else
+	{
+		const int resultMessageBox = 
+			MessageBox(
+				g_mainWindow, TEXT("Would you like to ignore it?"), 
+				TEXT("VECTORED EXCEPTION!"), 
+				MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);
+		if(resultMessageBox == 0)
+			platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR, 
+				"MessageBox failed! GetLastError=%i", GetLastError());
+		else
+			switch(resultMessageBox)
+			{
+			case IDYES: {
+				return EXCEPTION_CONTINUE_SEARCH;
+				} break;
+			case IDNO: {
+				/* just do nothing, write a dump & abort */
+				} break;
+			}
+	}
 	if(!g_hasWrittenCrashDump)
 		w32GenerateDump(pExceptionInfo);
 	// I don't use the KLOG macro here because `strrchr` from the 
 	//	__FILENAME__ macro seems to just break everything :(
 	platformLog(
-		"win32-main", __LINE__, PlatformLogCategory::K_ERROR,
+		"win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
 		"Vectored Exception! 0x%x", 
 		pExceptionInfo->ExceptionRecord->ExceptionCode);
 	w32WriteLogToFile();
