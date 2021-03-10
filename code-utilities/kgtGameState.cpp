@@ -1,5 +1,7 @@
 #include "kgtGameState.h"
 #include "gen_kgtAssets.h"
+#include "z85-png-default.h"
+#include "z85.h"
 internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 {
 	g_kpl                     = &memory.kpl;
@@ -45,7 +47,26 @@ internal void
 	/* construct the dynamic application's asset manager */
 	g_kgs->assetManager = 
 		kgt_assetManager_construct(
-			g_kgs->hKalPermanent, KGT_ASSET_COUNT, g_kgs->hKalTransient);
+			g_kgs->hKalPermanent, KGT_ASSET_COUNT, g_kgs->hKalTransient, g_kpl);
+	/* add asset descriptors immediately after construction */
+	// add PNG asset descriptor //
+	{
+		defer(kgtAllocReset(g_kgs->hKalFrame));
+		const u32 rawFileBytes = kmath::safeTruncateU32(
+			z85::decodedFileSizeBytes(CARRAY_SIZE(z85_png_default) - 1));
+		korlAssert(rawFileBytes);
+		u8* rawFileData = reinterpret_cast<u8*>(
+			kgtAllocAlloc(g_kgs->hKalFrame, rawFileBytes));
+		korlAssert(rawFileData);
+		const bool successDecodeZ85 = 
+			z85::decode(
+				reinterpret_cast<const i8*>(z85_png_default), 
+				reinterpret_cast<i8*>(rawFileData));
+		korlAssert(successDecodeZ85);
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETRAWIMAGE, ".png", 
+			rawFileData, rawFileBytes);
+	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
@@ -153,6 +174,8 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtAudioMixer.cpp"
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAssetManager.cpp"
+#include "z85.cpp"
+#include "kgtAssetRawImage.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #if SEPARATE_ASSET_MODULES_COMPLETE

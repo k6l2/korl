@@ -1469,8 +1469,8 @@ internal void* stbiMalloc(size_t allocationByteCount)
 	LeaveCriticalSection(&g_stbiAllocationCsLock);
 	return result;
 }
-internal void* stbiRealloc(void* allocatedAddress, 
-                           size_t newAllocationByteCount)
+internal void* stbiRealloc(
+	void* allocatedAddress, size_t newAllocationByteCount)
 {
 	EnterCriticalSection(&g_stbiAllocationCsLock);
 #if SLOW_BUILD && DEBUG_PRINT_STBI_MEMORY 

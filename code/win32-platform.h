@@ -38,7 +38,7 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg);
 internal PLATFORM_LOAD_WAV(w32PlatformLoadWav);
 internal PLATFORM_IMGUI_ALLOC(w32PlatformImguiAlloc);
 internal PLATFORM_IMGUI_FREE(w32PlatformImguiFree);
-internal PLATFORM_DECODE_Z85_PNG(w32PlatformDecodeZ85Png);
+internal PLATFORM_DECODE_PNG(w32PlatformDecodePng);
 internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav);
 internal PLATFORM_LOG(w32PlatformLog);
 internal KORL_PLATFORM_ASSERT_FAILURE(w32PlatformAssertFailure);
@@ -78,7 +78,7 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .jobDone                       = w32PlatformJobDone
 	, .log                           = w32PlatformLog
 	, .assertFailure                 = w32PlatformAssertFailure
-	, .decodeZ85Png                  = w32PlatformDecodeZ85Png
+	, .decodePng                     = w32PlatformDecodePng
 	, .decodeZ85Wav                  = w32PlatformDecodeZ85Wav
 	, .getFileByteSize               = w32PlatformGetFileByteSize
 	, .readEntireFile                = w32PlatformReadEntireFile

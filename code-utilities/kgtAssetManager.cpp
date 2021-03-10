@@ -1,9 +1,8 @@
 #include "kgtAssetManager.h"
-#include "gen_kgtAssets.h"
 #include "gen_ptu_KgtAsset_dispatch.cpp"
 internal KgtAssetManager* kgt_assetManager_construct(
 	KgtAllocatorHandle hKgtAllocator, KgtAssetHandle maxAssetHandles, 
-	KgtAllocatorHandle hKgtAllocatorAssetData)
+	KgtAllocatorHandle hKgtAllocatorAssetData, const KorlPlatformApi* korl)
 {
 	if(maxAssetHandles < KGT_ASSET_COUNT)
 	{
@@ -12,8 +11,9 @@ internal KgtAssetManager* kgt_assetManager_construct(
 		return nullptr;
 	}
 	const size_t rawFilePoolBytes = kmath::megabytes(1);
+	korlAssert(maxAssetHandles > 0);
 	const size_t requiredBytes = sizeof(KgtAssetManager) + 
-		sizeof(KgtAsset)*maxAssetHandles + rawFilePoolBytes;
+		sizeof(KgtAsset)*(maxAssetHandles - 1) + rawFilePoolBytes;
 	KgtAssetManager*const result = reinterpret_cast<KgtAssetManager*>(
 		kgtAllocAlloc(hKgtAllocator, requiredBytes));
 	if(!result)
@@ -24,7 +24,7 @@ internal KgtAssetManager* kgt_assetManager_construct(
 	/* initialize the default assets in an un-loaded state */
 	for(KgtAssetHandle hAsset = 0; 
 			hAsset < static_cast<u32>(KgtAsset::Type::ENUM_COUNT); hAsset++)
-		result->defaultAssets[hAsset] = {};
+		result->assetDescriptors[hAsset] = {};
 	/* initialize the assets in an un-loaded state */
 	for(KgtAssetHandle hAsset = 0; hAsset < maxAssetHandles; hAsset++)
 		result->assets[hAsset] = {};
@@ -36,15 +36,100 @@ internal KgtAssetManager* kgt_assetManager_construct(
 		KgtAllocatorType::GENERAL, rawFileAllocatorAddress, rawFilePoolBytes);
 	/* request access to a spinlock from the platform layer so we can keep 
 		the asset data allocator safe between asset loading job threads */
-	const KplLockHandle hLockAssetDataAllocator = g_kpl->reserveLock();
+	const KplLockHandle hLockAssetDataAllocator = korl->reserveLock();
 	/* Initialize the rest of the data members of the asset manager.  NOTE: we 
 		don't use initializer braces because MSVC wont initialize an array with 
 		constant size 0 */
+	result->korl                    = korl;
 	result->maxAssetHandles         = maxAssetHandles;
 	result->hKgtAllocatorAssetData  = hKgtAllocatorAssetData;
 	result->hKgtAllocatorRawFiles   = hKgtAllocatorRawFiles;
 	result->hLockAssetDataAllocator = hLockAssetDataAllocator;
 	return result;
+}
+internal void kgt_assetManager_addAssetDescriptor(
+	KgtAssetManager* kam, KgtAsset::Type type, const char*const fileExtension, 
+	const u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes)
+{
+	const u32 descriptorIndex = static_cast<u32>(type);
+	korlAssert(descriptorIndex < static_cast<u32>(KgtAsset::Type::ENUM_COUNT));
+	KgtAssetManager::AssetDescriptor& descriptor = 
+		kam->assetDescriptors[descriptorIndex];
+	/* copy the file extension to the descriptor */
+	const errno_t errorResultCopyFileExtension = 
+		strcpy_s(
+			descriptor.fileExtension, CARRAY_SIZE(descriptor.fileExtension), 
+			fileExtension);
+	korlAssert(errorResultCopyFileExtension == 0);
+	/* load the default asset using the provided raw asset data */
+	kgt_asset_decode(
+		&descriptor.defaultAsset, kam->hKgtAllocatorAssetData, 
+		rawDefaultAssetData, rawDefaultAssetDataBytes);
+}
+internal KgtAssetHandle kgt_assetManager_load(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
+		KgtAssetIndex values! */
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[assetHandle];
+	if(asset.loaded)
+		return assetHandle;
+	/* figure out which asset descriptor matches the file extension of the 
+		KAsset located at `assetIndex` */
+	korlAssert(!"@todo");
+	/* start an asynchronous job which will attempt to load the asset */
+	KLOG(INFO, "Loading asset '%s'...", kgtAssetFileNames[assetHandle]);
+#if 1
+#else
+	const KgtAssetFileType assetFileType = 
+		kgtAssetManagerAssetFileType(assetIndex);
+	KgtAssetType assetType = KgtAssetType::UNUSED;
+	fnSig_jobQueueFunction* jobQueueFunc = nullptr;
+	switch(assetFileType)
+	{
+	case KgtAssetFileType::PNG: {
+		asset->assetData.image = {};
+		assetType    = KgtAssetType::RAW_IMAGE;
+		jobQueueFunc = kgtAssetManagerAsyncLoadPng;
+		} break;
+	case KgtAssetFileType::WAV: {
+		assetType    = KgtAssetType::RAW_SOUND;
+		jobQueueFunc = kgtAssetManagerAsyncLoadWav;
+		} break;
+	case KgtAssetFileType::OGG: {
+		assetType    = KgtAssetType::RAW_SOUND;
+		jobQueueFunc = kgtAssetManagerAsyncLoadOgg;
+		} break;
+	case KgtAssetFileType::FLIPBOOK_META: {
+		assetType    = KgtAssetType::FLIPBOOK_META;
+		jobQueueFunc = kgtAssetManagerAsyncLoadFlipbookMeta;
+		} break;
+	case KgtAssetFileType::TEXTURE_META: {
+		assetType    = KgtAssetType::TEXTURE_META;
+		jobQueueFunc = kgtAssetManagerAsyncLoadTextureMeta;
+		} break;
+	case KgtAssetFileType::SPRITE_FONT_META: {
+		assetType    = KgtAssetType::SPRITE_FONT_META;
+		jobQueueFunc = kgtAssetManagerAsyncLoadSpriteFontMeta;
+		} break;
+	case KgtAssetFileType::UNKNOWN:
+	default: {
+		/* if an asset file type is not known, we can just assume the 
+			contents will be interpreted as raw binary data & load it as 
+			such */
+		assetType = KgtAssetType::BINARY_DATA;
+		jobQueueFunc = kgtAssetManagerAsyncLoadBinary;
+		} break;
+	}
+	asset->loaded          = false;
+	asset->kgtAssetIndex   = assetHandle;
+	asset->kam             = kam;
+	asset->type            = assetType;
+	asset->jqTicketLoading = g_kpl->postJob(jobQueueFunc, asset);
+#endif//0
+	return assetHandle;
 }
 #if 0
 #include "z85-png-default.h"

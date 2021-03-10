@@ -86,19 +86,24 @@ typedef JOB_QUEUE_FUNCTION(fnSig_jobQueueFunction);
  * @return the job ticket which uses `function`.  If `function` is nullptr, the 
  *         return value is guaranteed to be an INVALID ticket.
 */
-#define PLATFORM_POST_JOB(name) \
-	JobQueueTicket name(fnSig_jobQueueFunction* function, void* data)
-#define PLATFORM_JOB_VALID(name) \
-	bool name(JobQueueTicket* ticket)
-#define PLATFORM_JOB_DONE(name) \
-	bool name(JobQueueTicket* ticket)
-#define PLATFORM_IMGUI_ALLOC(name) \
-	void* name(size_t sz, void* user_data)
-#define PLATFORM_IMGUI_FREE(name) \
-	void  name(void* ptr, void* user_data)
-#define PLATFORM_DECODE_Z85_PNG(name) \
-	RawImage name(const u8* z85PngData, size_t z85PngNumBytes, \
-	              KgtAllocatorHandle pixelDataAllocator)
+#define PLATFORM_POST_JOB(name) JobQueueTicket name(\
+	fnSig_jobQueueFunction* function, void* data)
+#define PLATFORM_JOB_VALID(name) bool name(JobQueueTicket* ticket)
+#define PLATFORM_JOB_DONE(name) bool name(JobQueueTicket* ticket)
+#define PLATFORM_IMGUI_ALLOC(name) void* name(size_t sz, void* user_data)
+#define PLATFORM_IMGUI_FREE(name) void  name(void* ptr, void* user_data)
+#define KORL_CALLBACK_REQUEST_MEMORY(name) void* name(\
+	u32 requestedByteCount, void* userData)
+typedef KORL_CALLBACK_REQUEST_MEMORY(fnSig_korlCallbackRequestMemory);
+/** Caller is responsible for keeping whatever allocators used inside 
+ * `requestMemoryPixelData` thread-safe! 
+ * @return 
+ * If there is a failure loading the file, an invalid RawImage where 
+ * `pixelData == nullptr` is returned. */
+#define PLATFORM_DECODE_PNG(name) RawImage name(\
+	const void* data, u32 dataBytes, \
+	fnSig_korlCallbackRequestMemory* requestMemoryPixelData, \
+	void* requestMemoryPixelDataUserData)
 #define PLATFORM_DECODE_Z85_WAV(name) \
 	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
 	              KgtAllocatorHandle sampleDataAllocator)
@@ -146,50 +151,45 @@ typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 		KorlApplicationDirectory pathOrigin, \
 		const char*const ansiDirectoryEntryPathNew)
 /**
- * @return If there is a failure loading the file, an invalid RawSound 
- *         containing sampleData==nullptr is returned.
- */
+ * @return 
+ * If there is a failure loading the file, an invalid RawSound where 
+ * `sampleData == nullptr` is returned. */
 #define PLATFORM_LOAD_WAV(name) \
 	RawSound name(\
 		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
 		KgtAllocatorHandle sampleDataAllocator)
 /**
- * @return If there is a failure loading the file, an invalid RawSound 
- *         containing sampleData==nullptr is returned.
- */
+ * @return 
+ * If there is a failure loading the file, an invalid RawSound where 
+ * `sampleData == nullptr` is returned. */
 #define PLATFORM_LOAD_OGG(name) \
 	RawSound name(\
 		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
 		KgtAllocatorHandle sampleDataAllocator)
 /**
- * @return If there is a failure loading the file, an invalid RawImage 
- *         containing pixelData==nullptr is returned.
- */
-#define PLATFORM_LOAD_PNG(name) \
-	RawImage name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		KgtAllocatorHandle pixelDataAllocator)
-#define PLATFORM_GET_FILE_WRITE_TIME(name) \
-	FileWriteTime name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
-#define PLATFORM_IS_FILE_CHANGED(name) \
-	bool name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		FileWriteTime lastWriteTime)
-#define PLATFORM_IS_FILE_AVAILABLE(name) \
-	bool name(const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
-#define PLATFORM_IS_FULLSCREEN(name) \
-	bool name()
+ * @return 
+ * If there is a failure loading the file, an invalid RawImage where 
+ * `pixelData == nullptr` is returned. */
+#define PLATFORM_LOAD_PNG(name) RawImage name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+	fnSig_korlCallbackRequestMemory* requestMemoryPixelData, \
+	void* requestMemoryPixelDataUserData)
+#define PLATFORM_GET_FILE_WRITE_TIME(name) FileWriteTime name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
+#define PLATFORM_IS_FILE_CHANGED(name) bool name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+	FileWriteTime lastWriteTime)
+#define PLATFORM_IS_FILE_AVAILABLE(name) bool name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
+#define PLATFORM_IS_FULLSCREEN(name) bool name()
 global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
-#define PLATFORM_SET_FULLSCREEN(name) \
-	void name(bool isFullscreenDesired)
+#define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
- * @return INVALID_PLATFORM_BUTTON_INDEX if there is no active button OR if 
- *         there are more than one buttons active!
- */
-#define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) \
-	u16 name(u8 gamePadIndex)
+ * @return 
+ * INVALID_PLATFORM_BUTTON_INDEX if there is no active button OR if there are 
+ * more than one buttons active! */
+#define PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(name) u16 name(u8 gamePadIndex)
 global_variable const u16 INVALID_PLATFORM_AXIS_INDEX = u16(~0);
 struct PlatformGamePadActiveAxis
 {
@@ -201,32 +201,29 @@ struct PlatformGamePadActiveAxis
  * @return INVALID_PLATFORM_AXIS_INDEX if there is no active axis OR if there 
  *         are more than one axes active!
  */
-#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) \
-	PlatformGamePadActiveAxis name(u8 gamePadIndex)
+#define PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(name) PlatformGamePadActiveAxis name(\
+	u8 gamePadIndex)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  */
-#define PLATFORM_GET_GAME_PAD_PRODUCT_NAME(name) \
-	void name(u8 gamePadIndex, char* o_buffer, size_t bufferSize)
+#define PLATFORM_GET_GAME_PAD_PRODUCT_NAME(name) void name(\
+	u8 gamePadIndex, char* o_buffer, size_t bufferSize)
 /** Don't use this API for anything related to game development!!!  The only 
  * reason this exists is to discover hardware-specific controller input maps. 
  */
-#define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) \
-	void name(u8 gamePadIndex, char* o_buffer, size_t bufferSize)
-#define PLATFORM_GET_TIMESTAMP(name) \
-	PlatformTimeStamp name()
-#define PLATFORM_SLEEP_FROM_TIMESTAMP(name) \
-	void name(PlatformTimeStamp pts, f32 desiredDeltaSeconds)
-#define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) \
-	f32 name(PlatformTimeStamp pts)
+#define PLATFORM_GET_GAME_PAD_PRODUCT_GUID(name) void name(\
+	u8 gamePadIndex, char* o_buffer, size_t bufferSize)
+#define PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name()
+#define PLATFORM_SLEEP_FROM_TIMESTAMP(name) void name(\
+	PlatformTimeStamp pts, f32 desiredDeltaSeconds)
+#define PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
 /** It doesn't matter what order the PlatformTimeStamp parameters are in. */
-#define PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(name) \
-	f32 name(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
+#define PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(name) f32 name(\
+	PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
 /** It doesn't matter what order the PlatformTimeStamp parameters are in. */
-#define PLATFORM_MICROSECONDS_BETWEEN_TIMESTAMPS(name) \
-	u64 name(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
-#define PLATFORM_GET_DATESTAMP(name) \
-	PlatformDateStamp name()
+#define PLATFORM_MICROSECONDS_BETWEEN_TIMESTAMPS(name) u64 name(\
+	PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
+#define PLATFORM_GET_DATESTAMP(name) PlatformDateStamp name()
 /**
  * @param cStrBufferSize 
  * 	A size of 32 is recommended.  Current implementation prints out the maximum 
@@ -234,9 +231,8 @@ struct PlatformGamePadActiveAxis
  * 	the null-terminator character, bringing the total to 24.
  * @return the # of characters written to `o_cStrBuffer`
  */
-#define PLATFORM_GENERATE_DATESTAMP_STRING(name) \
-	u32 name(\
-		PlatformDateStamp pds, char*const o_cStrBuffer, u32 cStrBufferSize)
+#define PLATFORM_GENERATE_DATESTAMP_STRING(name) u32 name(\
+	PlatformDateStamp pds, char*const o_cStrBuffer, u32 cStrBufferSize)
 /* IPv4 UDP datagrams cannot be larger than this amount.  Source:
 https://en.wikipedia.org/wiki/User_Datagram_Protocol#:~:text=The%20field%20size%20sets%20a,%E2%88%92%2020%20byte%20IP%20header). */
 const global_variable u32 KPL_MAX_DATAGRAM_SIZE = 65507;
@@ -294,14 +290,10 @@ using KplLockHandle = u8;
 /**
  * @return a handle == `0` if the request wasn't able to complete
  */
-#define PLATFORM_RESERVE_LOCK(name) \
-	KplLockHandle name()
-#define PLATFORM_LOCK(name) \
-	void name(KplLockHandle hLock)
-#define PLATFORM_UNLOCK(name) \
-	void name(KplLockHandle hLock)
-#define PLATFORM_MOUSE_SET_HIDDEN(name) \
-	void name(bool value)
+#define PLATFORM_RESERVE_LOCK(name) KplLockHandle name()
+#define PLATFORM_LOCK(name) void name(KplLockHandle hLock)
+#define PLATFORM_UNLOCK(name) void name(KplLockHandle hLock)
+#define PLATFORM_MOUSE_SET_HIDDEN(name) void name(bool value)
 /**
  * When the mouse is set to "relative mode", the cursor disappears and the 
  * platform stops reporting the GameMouse's windowPosition (the value freezes to 
@@ -311,8 +303,7 @@ using KplLockHandle = u8;
  * mouse cursor to the last known screen-space position before relative mode was 
  * activated.
  */
-#define PLATFORM_MOUSE_SET_RELATIVE_MODE(name) \
-	void name(bool value)
+#define PLATFORM_MOUSE_SET_RELATIVE_MODE(name) void name(bool value)
 using KplWindowHandle = void*;
 struct KplWindowMetaData
 {
@@ -323,24 +314,21 @@ struct KplWindowMetaData
  * @return The # of KplWindowMetaData elements obtained from the platform.  
  *         If an error occurs, a number < 0 is returned.
  */
-#define PLATFORM_ENUMERATE_WINDOWS(name) \
-	i32 name(KplWindowMetaData* o_metaArray, u32 metaArrayCapacity)
-#define KORL_CALLBACK_REQUEST_MEMORY(name) \
-	void* name(u32 requestedByteCount)
-typedef KORL_CALLBACK_REQUEST_MEMORY(fnSig_korlCallbackRequestMemory);
+#define PLATFORM_ENUMERATE_WINDOWS(name) i32 name(\
+	KplWindowMetaData* o_metaArray, u32 metaArrayCapacity)
 /**
  * If an error occurs, *hWindow will be automatically nullified.
  */
-#define PLATFORM_GET_WINDOW_RAW_IMAGE(name) \
-	RawImage name(\
-		KplWindowHandle* hWindow, \
-		fnSig_korlCallbackRequestMemory* callbackRequestMemory)
+#define PLATFORM_GET_WINDOW_RAW_IMAGE(name) RawImage name(\
+	KplWindowHandle* hWindow, \
+	fnSig_korlCallbackRequestMemory* callbackRequestMemory, \
+	void* requestMemoryUserData)
 typedef PLATFORM_POST_JOB(fnSig_platformPostJob);
 typedef PLATFORM_JOB_VALID(fnSig_platformJobValid);
 typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
-typedef PLATFORM_DECODE_Z85_PNG(fnSig_platformDecodeZ85Png);
+typedef PLATFORM_DECODE_PNG(fnSig_platformDecodePng);
 typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
@@ -391,7 +379,7 @@ struct KorlPlatformApi
 	fnSig_platformJobDone* jobDone;
 	fnSig_platformLog* log;
 	fnSig_korlPlatformAssertFailure* assertFailure;
-	fnSig_platformDecodeZ85Png* decodeZ85Png;
+	fnSig_platformDecodePng* decodePng;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
 	fnSig_platformGetFileByteSize* getFileByteSize;
 	fnSig_platformReadEntireFile* readEntireFile;

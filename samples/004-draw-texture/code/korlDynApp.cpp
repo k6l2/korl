@@ -71,6 +71,7 @@ GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
 	kgtGameStateInitialize(memory, sizeof(GameState));
+	kgt_assetManager_load(g_kam, KgtAssetIndex::gfx_crate_png);
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {

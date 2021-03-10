@@ -2,6 +2,7 @@
 #include "kutil.h"
 #include "kgtAllocator.h"
 #include "platform-game-interfaces.h"
+/* KgtAsset is a procedurally generated data type (via KCPP) */
 #include "kcppPolymorphicTaggedUnion.h"
 #include "gen_ptu_KgtAsset_includes.h"
 KCPP_POLYMORPHIC_TAGGED_UNION struct KgtAsset
@@ -16,9 +17,16 @@ KCPP_POLYMORPHIC_TAGGED_UNION struct KgtAsset
 	u32 kgtAssetIndex;
 #endif//0
 };
+KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
+	kgt_asset_decode(
+		KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData, 
+		const u8* data, u32 dataBytes);
+/* KgtAssetManager data structure & API */
+#include "gen_kgtAssets.h"
 using KgtAssetHandle = u32;
 struct KgtAssetManager
 {
+	const KorlPlatformApi* korl;
 	KgtAssetHandle maxAssetHandles;
 	/* this allocator is where all the decoded asset data is stored, such as the 
 		array of pixels in a RawImage asset */
@@ -29,15 +37,43 @@ struct KgtAssetManager
 	/* asset data allocation will be asynchronous, since it will occur on a 
 		separate thread as an async job, so we require a lock for safety */
 	KplLockHandle hLockAssetDataAllocator;
-	/* for each type of KgtAsset, the client must initialize each default asset 
-		of that type by providing the raw data necessary */
-	KgtAsset defaultAssets[static_cast<u32>(KgtAsset::Type::ENUM_COUNT)];
-	KgtAsset assets[];
+	struct AssetDescriptor
+	{
+		char fileExtension[8];
+		KgtAsset defaultAsset;
+		/* the KgtAsset::Type is implied based on the array index */
+	} assetDescriptors[static_cast<u32>(KgtAsset::Type::ENUM_COUNT)];
+	/* This array size is variable & determined in the construct function.  The 
+		`maxAssetHandles` data member should equal the # of elements. */
+	KgtAsset assets[1];
+public:
+	/* debugger symbols don't load without this */
+	KgtAssetManager() {}
+private:
+	/* disable copy/assignment since our struct refers to dynamic memory */
+	KgtAssetManager(const KgtAssetManager&);
+	KgtAssetManager& operator=(const KgtAssetManager&);
 };
 internal KgtAssetManager* 
 	kgt_assetManager_construct(
 		KgtAllocatorHandle hKgtAllocator, KgtAssetHandle maxAssetHandles, 
-		KgtAllocatorHandle hKgtAllocatorAssetData);
+		KgtAllocatorHandle hKgtAllocatorAssetData, 
+		const KorlPlatformApi* korl);
+/** The user of the AssetManager must specify what file extension corresponds to 
+ * what KgtAsset::Type using this API.  We must also provide raw file data of 
+ * the default asset of this type.  We don't need to provide the loading 
+ * function here though, because this should be handled automatically by the 
+ * KgtAsset polymorphic tagged union inheritance via virtual override!  Make 
+ * sure to use this API immediately after construction & before any assets get 
+ * loaded!!!  Caller must be careful to ensure this happens because this 
+ * function does NOT keep the asset data allocator thread-safe. */
+internal void 
+	kgt_assetManager_addAssetDescriptor(
+		KgtAssetManager* kam, KgtAsset::Type type, 
+		const char*const fileExtension, 
+		const u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes);
+internal KgtAssetHandle 
+	kgt_assetManager_load(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 #if 0
 /*
  * User code must define the following global variables to use this module:

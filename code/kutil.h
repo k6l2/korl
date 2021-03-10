@@ -45,9 +45,9 @@ privDefer<F> defer_func(F f) {
 	}while(0)
 /* Logging support.  platform implementation required! */
 #define KLOG(platformLogCategory, formattedString, ...) \
-	platformLog(__FILE__, __LINE__, \
-	            PlatformLogCategory::K_##platformLogCategory, formattedString, \
-	            ##__VA_ARGS__)
+	platformLog(\
+		__FILE__, __LINE__, PlatformLogCategory::K_##platformLogCategory, \
+		formattedString, ##__VA_ARGS__)
 /* Universal primitive definitions with reasonable keystroke counts. */
 #include <stdint.h>
 using u8  = uint8_t;  static_assert(sizeof(u8)  == 1);
@@ -67,11 +67,10 @@ enum class PlatformLogCategory : u8
 	, K_WARNING
 	, K_ERROR
 };
-#define PLATFORM_LOG(name) \
-	void name(const char* sourceFileName, u32 sourceFileLineNumber, \
-	          PlatformLogCategory logCategory, const char* formattedString, ...)
-#define KORL_PLATFORM_ASSERT_FAILURE(name) \
-	void name()
+#define PLATFORM_LOG(name) void name(\
+	const char* sourceFileName, u32 sourceFileLineNumber, \
+	PlatformLogCategory logCategory, const char* formattedString, ...)
+#define KORL_PLATFORM_ASSERT_FAILURE(name) void name()
 typedef PLATFORM_LOG(fnSig_platformLog);
 typedef KORL_PLATFORM_ASSERT_FAILURE(fnSig_korlPlatformAssertFailure);
 /* these function pointers are declared at a global scope to allow all code the 

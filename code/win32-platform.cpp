@@ -158,14 +158,14 @@ internal PLATFORM_JOB_VALID(w32PlatformJobValid)
 {
 	return jobQueueTicketIsValid(&g_jobQueue, ticket);
 }
-internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
-                               KgtAllocatorHandle pixelDataAllocator)
+internal PLATFORM_DECODE_PNG(w32PlatformDecodePng)
 {
 	i32 imgW, imgH, imgNumByteChannels;
 	u8*const img = 
-		stbi_load_from_memory(reinterpret_cast<const u8*>(fileMemory), 
-		                      kmath::safeTruncateI32(fileBytes), &imgW, &imgH, 
-		                      &imgNumByteChannels, 4);
+		stbi_load_from_memory(
+			reinterpret_cast<const u8*>(data), 
+			kmath::safeTruncateI32(dataBytes), &imgW, &imgH, 
+			&imgNumByteChannels, 4);
 	korlAssert(img);
 	if(!img)
 	{
@@ -174,10 +174,8 @@ internal RawImage w32DecodePng(const void* fileMemory, size_t fileBytes,
 	}
 	defer(stbi_image_free(img));
 	// Copy the output from STBI to a buffer in our pixelDataAllocator //
-	EnterCriticalSection(&g_assetAllocationCsLock);
 	u8*const pixelData = reinterpret_cast<u8*>(
-		kgtAllocAlloc(pixelDataAllocator, imgW*imgH*4));
-	LeaveCriticalSection(&g_assetAllocationCsLock);
+		requestMemoryPixelData(imgW*imgH*4, requestMemoryPixelDataUserData));
 	if(!pixelData)
 	{
 		KLOG(ERROR, "Failed to allocate pixelData!");
@@ -220,7 +218,9 @@ internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
 		KLOG(ERROR, "Failed to read entire asset '%s'!", ansiFilePath);
 		return {};
 	}
-	return w32DecodePng(rawFileMemory, rawAssetBytes, pixelDataAllocator);
+	return w32PlatformDecodePng(
+		rawFileMemory, rawAssetBytes, requestMemoryPixelData, 
+		requestMemoryPixelDataUserData);
 }
 internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 {
@@ -513,36 +513,6 @@ internal PLATFORM_IMGUI_FREE(w32PlatformImguiFree)
 	/* imgui allocations don't have to be thread-safe because they should ONLY 
 		proc on the main thread! @TODO: assert this is the main thread */
 	kgtAllocFree(user_data, ptr);
-}
-internal PLATFORM_DECODE_Z85_PNG(w32PlatformDecodeZ85Png)
-{
-	const u32 rawFileBytes = kmath::safeTruncateU32(
-		z85::decodedFileSizeBytes(z85PngNumBytes));
-	if(rawFileBytes == 0)
-	{
-		KLOG(ERROR, "Invalid z85 byte count (%i)!", z85PngNumBytes);
-		return {};
-	}
-	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	i8* rawFileMemory = reinterpret_cast<i8*>(
-		kgtAllocAlloc(g_hKalRawFiles, rawFileBytes));
-	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	if(!rawFileMemory)
-	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawFileBytes);
-		return {};
-	}
-	defer({
-		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgtAllocFree(g_hKalRawFiles, rawFileMemory);
-		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	});
-	if(!z85::decode(reinterpret_cast<const i8*>(z85PngData), rawFileMemory))
-	{
-		KLOG(ERROR, "z85::decode failure!");
-		return {};
-	}
-	return w32DecodePng(rawFileMemory, rawFileBytes, pixelDataAllocator);
 }
 internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav)
 {
@@ -1496,7 +1466,7 @@ internal PLATFORM_GET_WINDOW_RAW_IMAGE(w32PlatformGetWindowRawImage)
 	result.rowByteStride   = ((3*result.sizeX + 3) & ~3);
 	const u32 pixelDataBytesRequired = result.rowByteStride * result.sizeY;
 	result.pixelData = reinterpret_cast<u8*>(
-		callbackRequestMemory(pixelDataBytesRequired));
+		callbackRequestMemory(pixelDataBytesRequired, requestMemoryUserData));
 	if(!result.pixelData)
 	{
 		KLOG(ERROR, "Request for %i bytes from the caller failed!", 
