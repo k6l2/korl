@@ -19,6 +19,8 @@ KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void
 	kgt_asset_decode(
 		KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData, 
 		const u8* data, u32 dataBytes);
+KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
+	kgt_asset_free(KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData);
 /* KgtAssetManager data structure & API */
 #include "gen_kgtAssets.h"
 using KgtAssetHandle = u32;
@@ -73,6 +75,12 @@ internal void
 		const u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes);
 internal KgtAssetHandle 
 	kgt_assetManager_load(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal void 
+	kgt_assetManager_free(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+/** 
+ * @return a default asset if `assetIndex` has not yet been loaded */
+internal const KgtAsset*
+	kgt_assetManager_get(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 #if 0
 /*
  * User code must define the following global variables to use this module:

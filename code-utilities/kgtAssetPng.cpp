@@ -18,3 +18,15 @@ internal void kgt_assetPng_decode(
 	korlAssert(a->kgtAssetPng.rawImage.pixelData);
 	a->type = KgtAsset::Type::KGTASSETPNG;
 }
+internal void kgt_assetPng_free(
+	KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData)
+{
+	kgtAllocFree(hKgtAllocatorAssetData, a->kgtAssetPng.rawImage.pixelData);
+}
+internal RawImage kgt_assetPng_get(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	const KgtAsset*const kgtAsset = kgt_assetManager_get(kam, assetIndex);
+	korlAssert(kgtAsset->type == KgtAsset::Type::KGTASSETPNG);
+	return kgtAsset->kgtAssetPng.rawImage;
+}

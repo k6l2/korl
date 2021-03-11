@@ -67,18 +67,33 @@ internal void kgt_assetManager_addAssetDescriptor(
 		strnlen_s(fileExtension, CARRAY_SIZE(descriptor.fileExtension)));
 	korlAssert(descriptor.fileExtensionSize > 0);
 	/* load the default asset using the provided raw asset data */
+	descriptor.defaultAsset.kam = kam;
 	kgt_asset_decode(
 		&descriptor.defaultAsset, kam->hKgtAllocatorAssetData, 
 		rawDefaultAssetData, rawDefaultAssetDataBytes);
 	descriptor.defaultAsset.loaded = true;
 }
-internal KgtAsset::Type _kgt_assetManager_matchAssetDescriptor(
-	KgtAssetManager* kam, const char* cStrAssetName)
+internal void _kgt_assetManager_matchAssetDescriptor(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
+	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
+		KgtAssetIndex values! */
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[assetHandle];
+	/* if the asset type is already defined, we're done */
+	if(asset.type != KgtAsset::Type::ENUM_COUNT)
+		return;
+	/* figure out which asset descriptor matches the file extension of the 
+		KAsset located at `assetIndex`, then set the KgtAsset type of this index 
+		to match the descriptor's type */
+	const char* cStrAssetName = 
+		kgtAssetFileNames[static_cast<size_t>(assetIndex)];
 	/* @speed: generate an array of asset name lengths in KAsset program, then 
 		pass those values into this function as a param so we don't even have to 
 		call strlen! */
 	const size_t cStrAssetNameLength = strnlen_s(cStrAssetName, 256);
+	KgtAsset::Type assetType = KgtAsset::Type::ENUM_COUNT;
 	for(u32 d = 0; d < static_cast<u32>(KgtAsset::Type::ENUM_COUNT); d++)
 	{
 		const KgtAssetManager::AssetDescriptor& descriptor = 
@@ -89,9 +104,13 @@ internal KgtAsset::Type _kgt_assetManager_matchAssetDescriptor(
 				cStrAssetName + cStrAssetNameLength 
 					- descriptor.fileExtensionSize);
 		if(resultCompareExtension == 0)
-			return KgtAsset::Type(d);
+		{
+			assetType = KgtAsset::Type(d);
+			break;
+		}
 	}
-	return KgtAsset::Type::ENUM_COUNT;
+	korlAssert(assetType < KgtAsset::Type::ENUM_COUNT);
+	asset.type = assetType;
 }
 /** Construct a string in the provided buffer which represents the asset file 
  * path relative to the platform's current working directory.  The expectation 
@@ -109,7 +128,6 @@ internal bool _kgt_assetManager_buildCurrentRelativeFilePath(
 			o_filePathBuffer, filePathBufferBytes, "assets/%s", assetFileName);
 	return charactersWritten > 0;
 }
-global_variable const f32 KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS = 0.25f;
 JOB_QUEUE_FUNCTION(_kgt_assetManager_asyncLoad)
 {
 	KgtAsset*const asset = reinterpret_cast<KgtAsset*>(data);
@@ -119,39 +137,45 @@ JOB_QUEUE_FUNCTION(_kgt_assetManager_asyncLoad)
 			filePathBuffer, CARRAY_SIZE(filePathBuffer), 
 			kgtAssetFileNames[asset->kgtAssetIndex]);
 	korlAssert(successBuildExeFilePath);
-#if 1
 	/* loop forever until we obtain an exclusive handle to the file */
 	KorlFileHandle hFile;
 	while(!asset->kam->korl->getFileHandle(
 		filePathBuffer, KorlApplicationDirectory::CURRENT, 
 		KorlFileHandleUsage::READ_EXISTING, &hFile))
 	{
+		local_const f32 KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS = 0.25f;
 		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
 		asset->kam->korl->sleepFromTimeStamp(
 			asset->kam->korl->getTimeStamp(), 
 			KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
 	}
-	defer(asset->kam->korl->releaseFileHandle(hFile));
+	/* update the asset's last known write time */
+	asset->lastWriteTime = 
+		asset->kam->korl->getFileWriteTime(
+			filePathBuffer, KorlApplicationDirectory::CURRENT);
 	/* obtain the size of the raw file */
-	korlAssert(!"@todo");
+	const i32 resultGetFileByteSize = asset->kam->korl->getFileByteSize(hFile);
+	korlAssert(resultGetFileByteSize > 0);
+	const u32 fileByteSize = kmath::safeTruncateU32(resultGetFileByteSize);
 	/* safely allocate data for the raw file */
-	korlAssert(!"@todo");
+	asset->kam->korl->lock(asset->kam->hLockAssetDataAllocator);
+	u8*const rawFileData = reinterpret_cast<u8*>(
+		kgtAllocAlloc(
+			asset->kam->hKgtAllocatorRawFiles, fileByteSize));
+	asset->kam->korl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* read the raw file into memory */
-	korlAssert(!"@todo");
-	/* decode the KgtAsset */
-	korlAssert(!"@todo");
-#else
-	while(!g_kpl->isFileAvailable(
-			filePathBuffer, KorlApplicationDirectory::CURRENT))
-	{
-		KLOG(INFO, "Waiting for asset '%s'...", filePathBuffer);
-		g_kpl->sleepFromTimeStamp(
-			g_kpl->getTimeStamp(), KGT_ASSET_UNAVAILABLE_SLEEP_SECONDS);
-	}
-	asset->assetData.image.rawImage = 
-		g_kpl->loadPng(filePathBuffer, KorlApplicationDirectory::CURRENT, 
-		               asset->kam->assetDataAllocator);
-#endif//0
+	const bool successReadEntireFile = 
+		asset->kam->korl->readEntireFile(hFile, rawFileData, fileByteSize);
+	korlAssert(successReadEntireFile);
+	/* decode the KgtAsset safely into bulk data storage, then free the memory 
+		holding the raw asset file */
+	asset->kam->korl->lock(asset->kam->hLockAssetDataAllocator);
+	kgt_asset_decode(
+		asset, asset->kam->hKgtAllocatorAssetData, rawFileData, fileByteSize);
+	kgtAllocFree(asset->kam->hKgtAllocatorRawFiles, rawFileData);
+	asset->kam->korl->unlock(asset->kam->hLockAssetDataAllocator);
+	/* release the file handle */
+	asset->kam->korl->releaseFileHandle(hFile);
 }
 internal KgtAssetHandle kgt_assetManager_load(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
@@ -163,17 +187,7 @@ internal KgtAssetHandle kgt_assetManager_load(
 	KgtAsset& asset = kam->assets[assetHandle];
 	if(asset.loaded)
 		return assetHandle;
-	/* figure out which asset descriptor matches the file extension of the 
-		KAsset located at `assetIndex`, then set the KgtAsset type of this index 
-		to match the descriptor's type */
-	if(asset.type == KgtAsset::Type::ENUM_COUNT)
-	{
-		const KgtAsset::Type assetType = 
-			_kgt_assetManager_matchAssetDescriptor(
-				kam, kgtAssetFileNames[static_cast<size_t>(assetIndex)]);
-		korlAssert(assetType < KgtAsset::Type::ENUM_COUNT);
-		asset.type = assetType;
-	}
+	_kgt_assetManager_matchAssetDescriptor(kam, assetIndex);
 	/* start an asynchronous job which will attempt to load the asset (if there 
 		is not already one running) */
 	if(asset.jobTicketLoading)
@@ -184,6 +198,50 @@ internal KgtAssetHandle kgt_assetManager_load(
 	asset.jobTicketLoading = 
 		kam->korl->postJob(_kgt_assetManager_asyncLoad, &asset);
 	return assetHandle;
+}
+internal void kgt_assetManager_free(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
+		KgtAssetIndex values! */
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[assetHandle];
+	if(!asset.loaded)
+	{
+		KLOG(WARNING, "asset[%i] is already free!", assetHandle);
+		return;
+	}
+	kam->korl->lock(kam->hLockAssetDataAllocator);
+	kgt_asset_free(&asset, kam->hKgtAllocatorAssetData);
+	kam->korl->unlock(kam->hLockAssetDataAllocator);
+	asset.loaded = false;
+}
+internal const KgtAsset* kgt_assetManager_get(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	/* ensure that the asset manager has begin async loading the asset if it has 
+		not already done so */
+	kgt_assetManager_load(kam, assetIndex);
+	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
+		KgtAssetIndex values! */
+	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(assetHandle < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[assetHandle];
+	/* if the asset's loading job is finished, then we can mark the asset as 
+		loaded (which ends the async load job) */
+	if(kam->korl->jobDone(&(asset.jobTicketLoading)))
+		asset.loaded = true;
+	/* if the asset isn't marked as loaded at this point, we should just return 
+		the default asset */
+	if(!asset.loaded)
+	{
+		korlAssert(asset.type != KgtAsset::Type::ENUM_COUNT);
+		const size_t descriptorIndex = static_cast<size_t>(asset.type);
+		return &(kam->assetDescriptors[descriptorIndex].defaultAsset);
+	}
+	/* otherwise return the loaded asset */
+	return &asset;
 }
 #if 0
 #include "z85-png-default.h"

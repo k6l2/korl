@@ -30,7 +30,22 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		v3f32{g_gs->camPosition2d.x, g_gs->camPosition2d.y, 7};
 	g_krb->lookAt(
 		camPosition.elements, v3f32::ZERO.elements, WORLD_UP.elements);
-#if SEPARATE_ASSET_MODULES_COMPLETE
+#if !SEPARATE_ASSET_MODULES_COMPLETE
+	/* display a little color square of the upper-left most pixel of 
+		KgtAssetIndex::gfx_crate_png */
+	if(windowIsFocused)
+		if(KORL_BUTTON_ON(gameKeyboard.r))
+			kgt_assetManager_free(g_kam, KgtAssetIndex::gfx_crate_png);
+	RawImage imgCrate = kgt_assetPng_get(g_kam, KgtAssetIndex::gfx_crate_png);
+	const u8 cratePixelR = korlRawImageGetRed(imgCrate, v2u32{0,0});
+	const u8 cratePixelG = korlRawImageGetGreen(imgCrate, v2u32{0,0});
+	const u8 cratePixelB = korlRawImageGetBlue(imgCrate, v2u32{0,0});
+	ImGui::ColorButton(
+		"", 
+		ImVec4(cratePixelR/255.f
+		      , cratePixelG/255.f
+		      , cratePixelB/255.f, 1.f));
+#else
 	kgtDrawAxes({10,10,10});
 	/* draw a textured cube 
 		- the `kasset` build tool automatically generates KAssetIndex entries 
@@ -71,7 +86,9 @@ GAME_INITIALIZE(gameInitialize)
 {
 	*g_gs = {};// clear all GameState memory before initializing the template
 	kgtGameStateInitialize(memory, sizeof(GameState));
+#if !SEPARATE_ASSET_MODULES_COMPLETE
 	kgt_assetManager_load(g_kam, KgtAssetIndex::gfx_crate_png);
+#endif//!SEPARATE_ASSET_MODULES_COMPLETE
 }
 GAME_ON_PRE_UNLOAD(gameOnPreUnload)
 {
