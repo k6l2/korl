@@ -64,7 +64,7 @@ internal void
 				reinterpret_cast<i8*>(rawFileData));
 		korlAssert(successDecodeZ85);
 		kgt_assetManager_addAssetDescriptor(
-			g_kgs->assetManager, KgtAsset::Type::KGTASSETRAWIMAGE, ".png", 
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETPNG, ".png", 
 			rawFileData, rawFileBytes);
 	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
@@ -175,7 +175,7 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAssetManager.cpp"
 #include "z85.cpp"
-#include "kgtAssetRawImage.cpp"
+#include "kgtAssetPng.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #if SEPARATE_ASSET_MODULES_COMPLETE

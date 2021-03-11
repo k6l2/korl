@@ -133,9 +133,13 @@ JOB_QUEUE_FUNCTION(_kgt_assetManager_asyncLoad)
 	}
 	defer(asset->kam->korl->releaseFileHandle(hFile));
 	/* obtain the size of the raw file */
+	korlAssert(!"@todo");
 	/* safely allocate data for the raw file */
+	korlAssert(!"@todo");
 	/* read the raw file into memory */
+	korlAssert(!"@todo");
 	/* decode the KgtAsset */
+	korlAssert(!"@todo");
 #else
 	while(!g_kpl->isFileAvailable(
 			filePathBuffer, KorlApplicationDirectory::CURRENT))
@@ -178,7 +182,7 @@ internal KgtAssetHandle kgt_assetManager_load(
 	asset.kam = kam;
 	asset.kgtAssetIndex = static_cast<u32>(assetIndex);
 	asset.jobTicketLoading = 
-		g_kpl->postJob(_kgt_assetManager_asyncLoad, &asset);
+		kam->korl->postJob(_kgt_assetManager_asyncLoad, &asset);
 	return assetHandle;
 }
 #if 0
