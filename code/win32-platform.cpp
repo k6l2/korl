@@ -25,10 +25,9 @@
 #include "z85.h"
 #include "stb/stb_image.h"
 global_variable WINDOWPLACEMENT g_lastKnownWindowedPlacement;
-internal bool 
-	korlW32BuildFullFilePath(
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, 
-		char* o_buffer, size_t bufferBytes)
+internal bool korlW32BuildFullFilePath(
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, 
+	char* o_buffer, size_t bufferBytes)
 {
 	TCHAR* strPathOrigin = nullptr;
 	switch(pathOrigin)
@@ -44,8 +43,8 @@ internal bool
 		break;
 	}
 	const HRESULT resultBuildPath = 
-		StringCchPrintfA(o_buffer, bufferBytes, TEXT("%s\\%s"), 
-		                 strPathOrigin, ansiFilePath);
+		StringCchPrintfA(
+			o_buffer, bufferBytes, TEXT("%s\\%s"), strPathOrigin, ansiFilePath);
 	if(resultBuildPath == STRSAFE_E_INVALID_PARAMETER)
 	{
 		KLOG(ERROR, "StringCchPrintf INVALID PARAM!");
@@ -188,132 +187,67 @@ internal PLATFORM_DECODE_PNG(w32PlatformDecodePng)
 		, .pixelDataFormat = KorlPixelDataFormat::RGBA 
 		, .pixelData       = pixelData };
 }
-internal PLATFORM_LOAD_PNG(w32PlatformLoadPng)
+internal RawSound _korl_w32_decodeOggVorbis(
+	const u8* data, u32 dataBytes, 
+	fnSig_korlCallbackRequestMemory* requestMemorySampleData, 
+	void* requestMemorySampleDataUserData)
 {
-	const i32 rawAssetBytes = 
-		w32PlatformGetFileByteSize(ansiFilePath, pathOrigin);
-	if(rawAssetBytes < 0)
-	{
-		KLOG(ERROR, "Failed to get asset byte size '%s'!", ansiFilePath);
-		return {};
-	}
-	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgtAllocAlloc(g_hKalRawFiles, rawAssetBytes);
-	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	if(!rawFileMemory)
-	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawAssetBytes);
-		return {};
-	}
-	defer({
-		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgtAllocFree(g_hKalRawFiles, rawFileMemory);
-		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	});
-	const bool assetReadResult = 
-		w32PlatformReadEntireFile(
-			ansiFilePath, pathOrigin, rawFileMemory, rawAssetBytes);
-	if(!assetReadResult)
-	{
-		KLOG(ERROR, "Failed to read entire asset '%s'!", ansiFilePath);
-		return {};
-	}
-	return w32PlatformDecodePng(
-		rawFileMemory, rawAssetBytes, requestMemoryPixelData, 
-		requestMemoryPixelDataUserData);
-}
-internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
-{
-	// Load the entire OGG file into memory //
-	RawSound result = {};
-	const i32 rawAssetBytes = 
-		w32PlatformGetFileByteSize(ansiFilePath, pathOrigin);
-	if(rawAssetBytes < 0)
-	{
-		KLOG(ERROR, "Failed to get file byte size '%s'!", 
-		     ansiFilePath, pathOrigin);
-		return result;
-	}
-	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgtAllocAlloc(g_hKalRawFiles, rawAssetBytes);
-	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	if(!rawFileMemory)
-	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawAssetBytes);
-		return result;
-	}
-	defer({
-		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgtAllocFree(g_hKalRawFiles, rawFileMemory);
-		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	});
-	const bool assetReadResult = 
-		w32PlatformReadEntireFile(
-			ansiFilePath, pathOrigin, rawFileMemory, rawAssetBytes);
-	if(!assetReadResult)
-	{
-		KLOG(ERROR, "Failed to read entire asset '%s'!", 
-		     ansiFilePath, pathOrigin);
-		return result;
-	}
-	// Decode the OGG file into a RawSound //
 	int vorbisError;
 	EnterCriticalSection(&g_vorbisAllocationCsLock);
 	stb_vorbis*const vorbis = 
-		stb_vorbis_open_memory(reinterpret_cast<u8*>(rawFileMemory), 
-		                       rawAssetBytes, &vorbisError, &g_oggVorbisAlloc);
+		stb_vorbis_open_memory(
+			data, dataBytes, &vorbisError, &g_oggVorbisAlloc);
 	if(vorbisError != VORBIS__no_error)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
 		KLOG(ERROR, "stb_vorbis_open_memory error=%i", vorbisError);
-		return result;
+		return {};
 	}
 	const stb_vorbis_info vorbisInfo = stb_vorbis_get_info(vorbis);
 	if(vorbisInfo.channels < 1 || vorbisInfo.channels > 255)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
-		KLOG(ERROR, "vorbisInfo.channels==%i invalid/unsupported for '%s'!",
-		     vorbisInfo.channels, ansiFilePath, pathOrigin);
-		return result;
+		KLOG(ERROR, "vorbisInfo.channels==%i invalid/unsupported!",
+			vorbisInfo.channels);
+		return {};
 	}
 	if(vorbisInfo.sample_rate != 44100)
 	{
 		LeaveCriticalSection(&g_vorbisAllocationCsLock);
-		KLOG(ERROR, "vorbisInfo.sample_rate==%i invalid/unsupported for '%s'!", 
-		     vorbisInfo.sample_rate, ansiFilePath, pathOrigin);
-		return result;
+		KLOG(ERROR, "vorbisInfo.sample_rate==%i invalid/unsupported!", 
+			vorbisInfo.sample_rate);
+		return {};
 	}
 	const i32 vorbisSampleLength = stb_vorbis_stream_length_in_samples(vorbis);
 	LeaveCriticalSection(&g_vorbisAllocationCsLock);
-	const size_t sampleDataSize = 
+	/* we're done scanning meta-data from stb_vorbis; now we know 
+		how much memory is required to store the raw sound samples */
+	const u32 sampleDataSize = 
 		vorbisSampleLength*vorbisInfo.channels*sizeof(SoundSample);
-	EnterCriticalSection(&g_assetAllocationCsLock);
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
-		kgtAllocAlloc(sampleDataAllocator, sampleDataSize) );
-	LeaveCriticalSection(&g_assetAllocationCsLock);
+		requestMemorySampleData(
+			sampleDataSize, requestMemorySampleDataUserData));
 	if(!sampleData)
 	{
 		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
-		     sampleDataSize);
-		return result;
+			sampleDataSize);
+		return {};
 	}
+	/* decode the entire vorbis' raw sound samples into our allocated memory */
 	EnterCriticalSection(&g_vorbisAllocationCsLock);
 	const i32 samplesDecoded = 
-		stb_vorbis_get_samples_short_interleaved(vorbis, vorbisInfo.channels, 
-		                                         sampleData, 
-		                                         vorbisSampleLength * 
-		                                            vorbisInfo.channels);
+		stb_vorbis_get_samples_short_interleaved(
+			vorbis, vorbisInfo.channels, sampleData, 
+			vorbisSampleLength * vorbisInfo.channels);
 	LeaveCriticalSection(&g_vorbisAllocationCsLock);
 	if(samplesDecoded != vorbisSampleLength)
 	{
-		KLOG(ERROR, "Failed to get samples for '%s'!", 
-		     ansiFilePath, pathOrigin);
-		EnterCriticalSection(&g_assetAllocationCsLock);
-		kgtAllocFree(sampleDataAllocator, sampleData);
-		LeaveCriticalSection(&g_assetAllocationCsLock);
-		return result;
+		KLOG(ERROR, "Vorbis sample acquisition failed!");
+		/* @todo: free the memory we reserved from the caller somehow?... */
+		return {};
 	}
-	// Assemble & return the final result //
+	/* Assemble & return the final result */
+	RawSound result = {};
 	result.bitsPerSample    = sizeof(SoundSample)*8;
 	result.channelCount     = static_cast<u8>(vorbisInfo.channels);
 	result.sampleHz         = vorbisInfo.sample_rate;
@@ -321,13 +255,12 @@ internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg)
 	result.sampleData       = sampleData;
 	return result;
 }
-internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes, 
-                               KgtAllocatorHandle sampleDataAllocator, 
-                               const TCHAR* szFileFullPath)
+internal RawSound _korl_w32_decodeWav(
+	const u8* data, size_t dataBytes, 
+	fnSig_korlCallbackRequestMemory* requestMemorySampleData, 
+	void* requestMemorySampleDataUserData)
 {
-	// Now that we have the entire file in memory, we can verify if the file is
-	//	valid and extract necessary meta data simultaneously! //
-	const u8* currByte = reinterpret_cast<const u8*>(fileMemory);
+	const u8* currByte = data;
 	union U32Chars
 	{
 		u32 uInt;
@@ -339,8 +272,8 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	u32Chars.chars[3] = 'F';
 	if(u32Chars.uInt != *reinterpret_cast<const u32*>(currByte))
 	{
-		KLOG(ERROR, "RIFF.ChunkId==0x%x invalid for '%s'!", 
-		     reinterpret_cast<const u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.ChunkId==0x%x invalid!", 
+			reinterpret_cast<const u32*>(currByte));
 		return {};
 	}
 	currByte += 4;
@@ -352,8 +285,8 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	u32Chars.chars[3] = 'E';
 	if(u32Chars.uInt != *reinterpret_cast<const u32*>(currByte))
 	{
-		KLOG(ERROR, "RIFF.Format==0x%x invalid/unsupported for '%s'!", 
-		     *reinterpret_cast<const u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.Format==0x%x invalid/unsupported!", 
+			*reinterpret_cast<const u32*>(currByte));
 		return {};
 	}
 	currByte += 4;
@@ -363,8 +296,8 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	u32Chars.chars[3] = ' ';
 	if(u32Chars.uInt != *reinterpret_cast<const u32*>(currByte))
 	{
-		KLOG(ERROR, "RIFF.fmt.id==0x%x invalid for '%s'!", 
-		     *reinterpret_cast<const u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.id==0x%x invalid!", 
+			*reinterpret_cast<const u32*>(currByte));
 		return {};
 	}
 	currByte += 4;
@@ -372,32 +305,32 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	currByte += 4;
 	if(riffFmtChunkSize != 16)
 	{
-		KLOG(ERROR, "RIFF.fmt.chunkSize==%i invalid/unsupported for '%s'!", 
-		     riffFmtChunkSize, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.chunkSize==%i invalid/unsupported!", 
+			riffFmtChunkSize);
 		return {};
 	}
 	const u16 riffFmtAudioFormat = *reinterpret_cast<const u16*>(currByte);
 	currByte += 2;
 	if(riffFmtAudioFormat != 1)
 	{
-		KLOG(ERROR, "RIFF.fmt.audioFormat==%i invalid/unsupported for '%s'!",
-		     riffFmtAudioFormat, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.audioFormat==%i invalid/unsupported!",
+			riffFmtAudioFormat);
 		return {};
 	}
 	const u16 riffFmtNumChannels = *reinterpret_cast<const u16*>(currByte);
 	currByte += 2;
 	if(riffFmtNumChannels > 255 || riffFmtNumChannels == 0)
 	{
-		KLOG(ERROR, "RIFF.fmt.numChannels==%i invalid/unsupported for '%s'!",
-		     riffFmtNumChannels, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.numChannels==%i invalid/unsupported!",
+			riffFmtNumChannels);
 		return {};
 	}
 	const u32 riffFmtSampleRate = *reinterpret_cast<const u32*>(currByte);
 	currByte += 4;
 	if(riffFmtSampleRate != 44100)
 	{
-		KLOG(ERROR, "RIFF.fmt.riffFmtSampleRate==%i invalid/unsupported for "
-		     "'%s'!", riffFmtSampleRate, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtSampleRate==%i invalid/unsupported", 
+			riffFmtSampleRate);
 		return {};
 	}
 	const u32 riffFmtByteRate = *reinterpret_cast<const u32*>(currByte);
@@ -408,21 +341,21 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	currByte += 2;
 	if(riffFmtBitsPerSample != sizeof(SoundSample)*8)
 	{
-		KLOG(ERROR, "RIFF.fmt.riffFmtBitsPerSample==%i invalid/unsupported for "
-		     "'%s'!", riffFmtBitsPerSample, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtBitsPerSample==%i invalid/unsupported", 
+			riffFmtBitsPerSample);
 		return {};
 	}
 	if(riffFmtByteRate != 
 		riffFmtSampleRate * riffFmtNumChannels * riffFmtBitsPerSample/8)
 	{
-		KLOG(ERROR, "RIFF.fmt.riffFmtByteRate==%i invalid for '%s'!", 
-		     riffFmtByteRate, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtByteRate==%i invalid!", 
+			riffFmtByteRate);
 		return {};
 	}
 	if(riffFmtBlockAlign != riffFmtNumChannels * riffFmtBitsPerSample/8)
 	{
-		KLOG(ERROR, "RIFF.fmt.riffFmtBlockAlign==%i invalid for '%s'!", 
-		     riffFmtBlockAlign, szFileFullPath);
+		KLOG(ERROR, "RIFF.fmt.riffFmtBlockAlign==%i invalid!", 
+			riffFmtBlockAlign);
 		return {};
 	}
 	u32Chars.chars[0] = 'd';
@@ -431,76 +364,54 @@ internal RawSound w32DecodeWav(const void* fileMemory, size_t fileBytes,
 	u32Chars.chars[3] = 'a';
 	if(u32Chars.uInt != *reinterpret_cast<const u32*>(currByte))
 	{
-		KLOG(ERROR, "RIFF.data.id==0x%x invalid for '%s'!", 
-		     *reinterpret_cast<const u32*>(currByte), szFileFullPath);
+		KLOG(ERROR, "RIFF.data.id==0x%x invalid!", 
+			*reinterpret_cast<const u32*>(currByte));
 		return {};
 	}
 	currByte += 4;
 	const u32 riffDataSize = *reinterpret_cast<const u32*>(currByte);
 	currByte += 4;
 	// Now we can extract the actual sound data from the WAV file //
-	if(currByte + riffDataSize > 
-		reinterpret_cast<const u8*>(fileMemory) + fileBytes)
+	if(currByte + riffDataSize > data + dataBytes)
 	{
-		KLOG(ERROR, "RIFF.data.size==%i invalid for '%s'!", 
-		     riffDataSize, szFileFullPath);
+		KLOG(ERROR, "RIFF.data.size==%i invalid!", riffDataSize);
 		return {};
 	}
-	EnterCriticalSection(&g_assetAllocationCsLock);
 	SoundSample*const sampleData = reinterpret_cast<SoundSample*>(
-		kgtAllocAlloc(sampleDataAllocator, riffDataSize) );
-	LeaveCriticalSection(&g_assetAllocationCsLock);
+		requestMemorySampleData(riffDataSize, requestMemorySampleDataUserData));
 	if(!sampleData)
 	{
 		KLOG(ERROR, "Failed to allocate %i bytes for sample data!", 
-		     riffDataSize);
+			riffDataSize);
 		return {};
 	}
 	memcpy(sampleData, currByte, riffDataSize);
 	// Assemble & return a valid result! //
-	const RawSound result = {
-		.sampleHz         = riffFmtSampleRate,
-		.sampleBlockCount = riffDataSize / riffFmtNumChannels / 
-		                      (riffFmtBitsPerSample/8),
-		.bitsPerSample    = riffFmtBitsPerSample,
-		.channelCount     = static_cast<u8>(riffFmtNumChannels),
-		.sampleData       = sampleData,
-	};
+	const RawSound result = 
+		{ .sampleHz         = riffFmtSampleRate
+		, .sampleBlockCount = riffDataSize / riffFmtNumChannels / 
+		                      (riffFmtBitsPerSample/8)
+		, .bitsPerSample    = riffFmtBitsPerSample
+		, .channelCount     = static_cast<u8>(riffFmtNumChannels)
+		, .sampleData       = sampleData };
 	return result;
 }
-internal PLATFORM_LOAD_WAV(w32PlatformLoadWav)
+internal PLATFORM_DECODE_AUDIO_FILE(w32PlatformDecodeAudioFile)
 {
-	// Load the entire WAV file into memory //
-	const i32 rawAssetBytes = 
-		w32PlatformGetFileByteSize(ansiFilePath, pathOrigin);
-	if(rawAssetBytes < 0)
+	switch(dataFileType)
 	{
-		KLOG(ERROR, "Failed to get asset byte size '%s'!", ansiFilePath);
-		return {};
+	case KorlAudioFileType::WAVE: {
+		return _korl_w32_decodeWav(
+			data, dataBytes, requestMemorySampleData, 
+			requestMemorySampleDataUserData);
+		} break;
+	case KorlAudioFileType::OGG_VORBIS: {
+		return _korl_w32_decodeOggVorbis(
+			data, dataBytes, requestMemorySampleData, 
+			requestMemorySampleDataUserData);
+		} break;
 	}
-	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	void* rawFileMemory = kgtAllocAlloc(g_hKalRawFiles, rawAssetBytes);
-	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	if(!rawFileMemory)
-	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawAssetBytes);
-		return {};
-	}
-	defer({
-		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgtAllocFree(g_hKalRawFiles, rawFileMemory);
-		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	});
-	const bool assetReadResult = 
-		w32PlatformReadEntireFile(
-			ansiFilePath, pathOrigin, rawFileMemory, rawAssetBytes);
-	if(!assetReadResult)
-	{
-		KLOG(ERROR, "Failed to read entire asset '%s'!", ansiFilePath);
-		return {};
-	}
-	return w32DecodeWav(rawFileMemory, rawAssetBytes, 
-	                    sampleDataAllocator, ansiFilePath);
+	return {};
 }
 internal PLATFORM_IMGUI_ALLOC(w32PlatformImguiAlloc)
 {
@@ -513,37 +424,6 @@ internal PLATFORM_IMGUI_FREE(w32PlatformImguiFree)
 	/* imgui allocations don't have to be thread-safe because they should ONLY 
 		proc on the main thread! @TODO: assert this is the main thread */
 	kgtAllocFree(user_data, ptr);
-}
-internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav)
-{
-	const u32 rawFileBytes = kmath::safeTruncateU32(
-		z85::decodedFileSizeBytes(z85WavNumBytes));
-	if(rawFileBytes == 0)
-	{
-		KLOG(ERROR, "Invalid z85 byte count (%i)!", z85WavNumBytes);
-		return {};
-	}
-	EnterCriticalSection(&g_csLockAllocatorRawFiles);
-	i8* rawFileMemory = reinterpret_cast<i8*>(
-		kgtAllocAlloc(g_hKalRawFiles, rawFileBytes));
-	LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	if(!rawFileMemory)
-	{
-		KLOG(ERROR, "Failed to allocate %i bytes for raw file!", rawFileBytes);
-		return {};
-	}
-	defer({
-		EnterCriticalSection(&g_csLockAllocatorRawFiles);
-		kgtAllocFree(g_hKalRawFiles, rawFileMemory);
-		LeaveCriticalSection(&g_csLockAllocatorRawFiles);
-	});
-	if(!z85::decode(reinterpret_cast<const i8*>(z85WavData), rawFileMemory))
-	{
-		KLOG(ERROR, "z85::decode failure!");
-		return {};
-	}
-	return w32DecodeWav(rawFileMemory, rawFileBytes, 
-	                    sampleDataAllocator, TEXT("z85_data"));
 }
 internal PLATFORM_LOG(w32PlatformLog)
 {
@@ -782,41 +662,13 @@ internal KORL_PLATFORM_ASSERT_FAILURE(w32PlatformAssertFailure)
 }
 internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize)
 {
-	i32 resultFileByteSize = 0;
-	char szFileFullPath[MAX_PATH];
-	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
-		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
-	if(!successBuildFullFilePath)
-	{
-		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
-		     ansiFilePath, pathOrigin);
-		return -1;
-	}
-	const HANDLE fileHandle = 
-		CreateFileA(szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
-		            OPEN_EXISTING, 
-		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-	if(fileHandle == INVALID_HANDLE_VALUE)
-	{
-		KLOG(ERROR, "Failed to create file handle! GetLastError=%i",
-		     GetLastError());
-		return -1;
-	}
-	defer({
-		if(!CloseHandle(fileHandle))
-		{
-			KLOG(ERROR, "Failed to close file handle! GetLastError=%i",
-			     GetLastError());
-			resultFileByteSize = -1;
-		}
-	});
 	LARGE_INTEGER fileSize;
-	if(!GetFileSizeEx(fileHandle, &fileSize))
+	if(!GetFileSizeEx(hFile, &fileSize))
 	{
 		KLOG(ERROR, "Failed to get file size! GetLastError=%i", GetLastError());
 		return -1;
 	}
-	resultFileByteSize = kmath::safeTruncateI32(fileSize.QuadPart);
+	const i32 resultFileByteSize = kmath::safeTruncateI32(fileSize.QuadPart);
 	if(resultFileByteSize != fileSize.QuadPart)
 	{
 		KLOG(ERROR, "File size exceeds size of resultFileByteSize!");
@@ -826,45 +678,15 @@ internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize)
 }
 internal PLATFORM_READ_ENTIRE_FILE(w32PlatformReadEntireFile)
 {
-	/* use a variable for the return value so we can update it in defer 
-		statements if needed */
-	bool deferredResult = true;
-	char szFileFullPath[MAX_PATH];
-	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
-		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
-	if(!successBuildFullFilePath)
-	{
-		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
-		     ansiFilePath, pathOrigin);
-		return false;
-	}
-	const HANDLE fileHandle = 
-		CreateFileA(szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
-		            OPEN_EXISTING, 
-		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-	if(fileHandle == INVALID_HANDLE_VALUE)
-	{
-		KLOG(ERROR, "Failed to create file handle! GetLastError=%i",
-		     GetLastError());
-		return false;
-	}
-	defer({
-		if(!CloseHandle(fileHandle))
-		{
-			KLOG(ERROR, "Failed to close file handle! GetLastError=%i",
-			     GetLastError());
-			deferredResult = false;
-		}
-	});
 	/* get the size of the file we're about to read in & ensure that o_data has 
 		enough bytes to fit the entire file */
 	u32 fileSize32;
 	{
 		LARGE_INTEGER fileSize;
-		if(!GetFileSizeEx(fileHandle, &fileSize))
+		if(!GetFileSizeEx(hFile, &fileSize))
 		{
 			KLOG(ERROR, "Failed to get file size! GetLastError=%i",
-			     GetLastError());
+				GetLastError());
 			return false;
 		}
 		fileSize32 = kmath::safeTruncateU32(fileSize.QuadPart);
@@ -880,65 +702,35 @@ internal PLATFORM_READ_ENTIRE_FILE(w32PlatformReadEntireFile)
 		}
 	}
 	DWORD numBytesRead;
-	if(!ReadFile(fileHandle, o_data, fileSize32, &numBytesRead, nullptr))
+	if(!ReadFile(hFile, o_data, fileSize32, &numBytesRead, nullptr))
 	{
-		KLOG(ERROR, "Failed to read file! GetLastError=%i", 
-		     fileSize32, GetLastError());
+		KLOG(ERROR, "Failed to read file! GetLastError=%i", GetLastError());
 		return false;
 	}
 	if(numBytesRead != fileSize32)
 	{
 		KLOG(ERROR, "Failed to read file! bytes read: %i / %i", 
-		     numBytesRead, fileSize32);
+			numBytesRead, fileSize32);
 		return false;
 	}
-	return deferredResult;
+	return true;
 }
 internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile)
 {
-	char szFileFullPath[MAX_PATH];
-	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
-		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
-	if(!successBuildFullFilePath)
-	{
-		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
-		     ansiFilePath, pathOrigin);
-		return false;
-	}
-	const HANDLE fileHandle = 
-		CreateFileA(szFileFullPath, GENERIC_WRITE, 0, nullptr, 
-		            CREATE_ALWAYS, 
-		            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
-	if(fileHandle == INVALID_HANDLE_VALUE)
-	{
-		KLOG(ERROR, "Failed to create write file handle '%s'! GetLastError=%i", 
-		     szFileFullPath, GetLastError());
-		return false;
-	}
-	bool result = true;
-	defer({
-		if(!CloseHandle(fileHandle))
-		{
-			KLOG(ERROR, "Failed to close file handle '%s'! GetLastError=%i", 
-			     szFileFullPath, GetLastError());
-			result = false;
-		}
-	});
 	DWORD bytesWritten;
-	if(!WriteFile(fileHandle, data, dataBytes, &bytesWritten, nullptr))
+	if(!WriteFile(hFile, data, dataBytes, &bytesWritten, nullptr))
 	{
-		KLOG(ERROR, "Failed to write to file '%s'! GetLastError=%i", 
-		     szFileFullPath, GetLastError());
+		KLOG(ERROR, "WriteFile failed! GetLastError=%i", GetLastError());
 		return false;
 	}
 	if(bytesWritten != dataBytes)
 	{
-		KLOG(ERROR, "Failed to completely write to file '%s'! "
-		     "Bytes written: %i / %i", 
-		     szFileFullPath, bytesWritten, dataBytes);
+		KLOG(ERROR, "Failed to completely write to file! "
+			"Bytes written: %i / %i", 
+			bytesWritten, dataBytes);
 		return false;
 	}
-	return result;
+	return true;
 }
 internal PLATFORM_CREATE_DIRECTORY(w32PlatformCreateDirectory)
 {

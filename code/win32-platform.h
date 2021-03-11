@@ -33,13 +33,10 @@ internal PLATFORM_SET_FULLSCREEN(w32PlatformSetFullscreen);
 internal PLATFORM_POST_JOB(w32PlatformPostJob);
 internal PLATFORM_JOB_DONE(w32PlatformJobDone);
 internal PLATFORM_JOB_VALID(w32PlatformJobValid);
-internal PLATFORM_LOAD_PNG(w32PlatformLoadPng);
-internal PLATFORM_LOAD_OGG(w32PlatformLoadOgg);
-internal PLATFORM_LOAD_WAV(w32PlatformLoadWav);
 internal PLATFORM_IMGUI_ALLOC(w32PlatformImguiAlloc);
 internal PLATFORM_IMGUI_FREE(w32PlatformImguiFree);
 internal PLATFORM_DECODE_PNG(w32PlatformDecodePng);
-internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav);
+internal PLATFORM_DECODE_AUDIO_FILE(w32PlatformDecodeAudioFile);
 internal PLATFORM_LOG(w32PlatformLog);
 internal KORL_PLATFORM_ASSERT_FAILURE(w32PlatformAssertFailure);
 internal PLATFORM_GET_FILE_HANDLE(w32PlatformGetFileHandle);
@@ -80,7 +77,7 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .log                           = w32PlatformLog
 	, .assertFailure                 = w32PlatformAssertFailure
 	, .decodePng                     = w32PlatformDecodePng
-	, .decodeZ85Wav                  = w32PlatformDecodeZ85Wav
+	, .decodeAudioFile               = w32PlatformDecodeAudioFile
 	, .getFileHandle                 = w32PlatformGetFileHandle
 	, .releaseFileHandle             = w32PlatformReleaseFileHandle
 	, .getFileWriteTime              = w32PlatformGetFileWriteTime
@@ -92,9 +89,6 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .getDirectoryEntries           = w32PlatformGetDirectoryEntries
 	, .destroyDirectoryEntry         = w32PlatformDestroyDirectoryEntry
 	, .renameDirectoryEntry          = w32PlatformRenameDirectoryEntry
-	, .loadWav                       = w32PlatformLoadWav
-	, .loadOgg                       = w32PlatformLoadOgg
-	, .loadPng                       = w32PlatformLoadPng
 	, .isFullscreen                  = w32PlatformIsFullscreen
 	, .setFullscreen                 = w32PlatformSetFullscreen
 	, .getGamePadActiveButton        = w32PlatformGetGamePadActiveButton

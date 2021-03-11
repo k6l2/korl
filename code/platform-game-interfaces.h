@@ -104,9 +104,14 @@ typedef KORL_CALLBACK_REQUEST_MEMORY(fnSig_korlCallbackRequestMemory);
 	const void* data, u32 dataBytes, \
 	fnSig_korlCallbackRequestMemory* requestMemoryPixelData, \
 	void* requestMemoryPixelDataUserData)
-#define PLATFORM_DECODE_Z85_WAV(name) \
-	RawSound name(const u8* z85WavData, size_t z85WavNumBytes, \
-	              KgtAllocatorHandle sampleDataAllocator)
+enum class KorlAudioFileType : u8
+	{ WAVE
+	, OGG_VORBIS };
+#define PLATFORM_DECODE_AUDIO_FILE(name) RawSound name(\
+	const u8* data, u32 dataBytes, \
+	fnSig_korlCallbackRequestMemory* requestMemorySampleData, \
+	void* requestMemorySampleDataUserData, KorlAudioFileType dataFileType)
+/* @todo: decode oggvorbis */
 enum class KorlApplicationDirectory : u8
 	{ CURRENT     // same directory as the platform executable; assume READ-ONLY
 	, LOCAL       // platform-defined; READ + WRITE access, safe storage!
@@ -132,68 +137,33 @@ using KorlFileHandle = void*;
 	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
 	FileWriteTime lastWriteTime)
 /** @return a value < 0 if an error occurs */
-#define PLATFORM_GET_FILE_BYTE_SIZE(name) i32 name(\
-	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
-#define PLATFORM_READ_ENTIRE_FILE(name) \
-	bool name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		void* o_data, u32 dataBytes)
-#define PLATFORM_WRITE_ENTIRE_FILE(name) \
-	bool name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		const void* data, u32 dataBytes)
-#define PLATFORM_CREATE_DIRECTORY(name) \
-	bool name(\
-		const char*const ansiDirectoryPath, KorlApplicationDirectory pathOrigin)
-#define KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(name) \
-	void name(\
-		const char*const ansiEntryName, const char*const ansiDirectoryPath, \
-		KorlApplicationDirectory pathOrigin, \
-		bool isFile, bool isDirectory, void* userData)
+#define PLATFORM_GET_FILE_BYTE_SIZE(name) i32 name(KorlFileHandle hFile)
+#define PLATFORM_READ_ENTIRE_FILE(name) bool name(\
+	KorlFileHandle hFile, void* o_data, u32 dataBytes)
+#define PLATFORM_WRITE_ENTIRE_FILE(name) bool name(\
+	KorlFileHandle hFile, const void* data, u32 dataBytes)
+#define PLATFORM_CREATE_DIRECTORY(name) bool name(\
+	const char*const ansiDirectoryPath, KorlApplicationDirectory pathOrigin)
+#define KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(name) void name(\
+	const char*const ansiEntryName, const char*const ansiDirectoryPath, \
+	KorlApplicationDirectory pathOrigin, bool isFile, bool isDirectory, \
+	void* userData)
 typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 	fnSig_korlCallbackDirectoryEntryFound);
 /**
  * @return false if the `pathOrigin`+`ansiDirectoryPath` directory doesn't exist
  */
-#define PLATFORM_GET_DIRECTORY_ENTRIES(name) \
-	bool name(\
-		const char*const ansiDirectoryPath, \
-		KorlApplicationDirectory pathOrigin, \
-		fnSig_korlCallbackDirectoryEntryFound* callbackEntryFound, \
-		void* callbackEntryFoundUserData)
-#define PLATFORM_DESTROY_DIRECTORY_ENTRY(name) \
-	bool name(\
-		const char*const ansiDirectoryEntryPath, \
-		KorlApplicationDirectory pathOrigin)
-#define PLATFORM_RENAME_DIRECTORY_ENTRY(name) \
-	bool name(\
-		const char*const ansiDirectoryEntryPath, \
-		KorlApplicationDirectory pathOrigin, \
-		const char*const ansiDirectoryEntryPathNew)
-/**
- * @return 
- * If there is a failure loading the file, an invalid RawSound where 
- * `sampleData == nullptr` is returned. */
-#define PLATFORM_LOAD_WAV(name) \
-	RawSound name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		KgtAllocatorHandle sampleDataAllocator)
-/**
- * @return 
- * If there is a failure loading the file, an invalid RawSound where 
- * `sampleData == nullptr` is returned. */
-#define PLATFORM_LOAD_OGG(name) \
-	RawSound name(\
-		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-		KgtAllocatorHandle sampleDataAllocator)
-/**
- * @return 
- * If there is a failure loading the file, an invalid RawImage where 
- * `pixelData == nullptr` is returned. */
-#define PLATFORM_LOAD_PNG(name) RawImage name(\
-	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-	fnSig_korlCallbackRequestMemory* requestMemoryPixelData, \
-	void* requestMemoryPixelDataUserData)
+#define PLATFORM_GET_DIRECTORY_ENTRIES(name) bool name(\
+	const char*const ansiDirectoryPath, KorlApplicationDirectory pathOrigin, \
+	fnSig_korlCallbackDirectoryEntryFound* callbackEntryFound, \
+	void* callbackEntryFoundUserData)
+#define PLATFORM_DESTROY_DIRECTORY_ENTRY(name) bool name(\
+	const char*const ansiDirectoryEntryPath, \
+	KorlApplicationDirectory pathOrigin)
+#define PLATFORM_RENAME_DIRECTORY_ENTRY(name) bool name(\
+	const char*const ansiDirectoryEntryPath, \
+	KorlApplicationDirectory pathOrigin, \
+	const char*const ansiDirectoryEntryPathNew)
 #define PLATFORM_IS_FULLSCREEN(name) bool name()
 global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
 #define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
@@ -342,10 +312,7 @@ typedef PLATFORM_JOB_DONE(fnSig_platformJobDone);
 typedef PLATFORM_IMGUI_ALLOC(fnSig_platformImguiAlloc);
 typedef PLATFORM_IMGUI_FREE(fnSig_platformImguiFree);
 typedef PLATFORM_DECODE_PNG(fnSig_platformDecodePng);
-typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
-typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
-typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
-typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
+typedef PLATFORM_DECODE_AUDIO_FILE(fnSig_platformDecodeAudioFile);
 typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
 typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
@@ -394,7 +361,7 @@ struct KorlPlatformApi
 	fnSig_platformLog* log;
 	fnSig_korlPlatformAssertFailure* assertFailure;
 	fnSig_platformDecodePng* decodePng;
-	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
+	fnSig_platformDecodeAudioFile* decodeAudioFile;
 	fnSig_platformGetFileHandle* getFileHandle;
 	fnSig_platformReleaseFileHandle* releaseFileHandle;
 	fnSig_platformGetFileWriteTime* getFileWriteTime;
@@ -406,9 +373,6 @@ struct KorlPlatformApi
 	fnSig_platformGetDirectoryEntries* getDirectoryEntries;
 	fnSig_platformDestroyDirectoryEntry* destroyDirectoryEntry;
 	fnSig_platformRenameDirectoryEntry* renameDirectoryEntry;
-	fnSig_platformLoadWav* loadWav;
-	fnSig_platformLoadOgg* loadOgg;
-	fnSig_platformLoadPng* loadPng;
 	fnSig_platformIsFullscreen* isFullscreen;
 	fnSig_platformSetFullscreen* setFullscreen;
 	fnSig_platformGetGamePadActiveButton* getGamePadActiveButton;

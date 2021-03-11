@@ -434,7 +434,7 @@
 [ ] rb_ogl: custom shader/program API
 [ ] rb_ogl: add shader/program assets to KgtAssetManager
 [ ] rb_ogl: support programmable blend function
-[ ] redesign the file I/O API, because it is definitely possible for a file to 
+[x] redesign the file I/O API, because it is definitely possible for a file to 
 	become unavailable after a call to `isFileAvailable`
 	- instead, return an opaque "handle" to the file, which is then passed to 
 		the remaining file I/O API by the client
