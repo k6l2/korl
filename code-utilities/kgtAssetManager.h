@@ -11,11 +11,9 @@ KCPP_POLYMORPHIC_TAGGED_UNION struct KgtAsset
 	FileWriteTime lastWriteTime;
 	bool loaded;
 	JobQueueTicket jobTicketLoading;
-#if 0
 	/* async job function convenience data */
 	struct KgtAssetManager* kam;
 	u32 kgtAssetIndex;
-#endif//0
 };
 KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
 	kgt_asset_decode(
@@ -40,6 +38,7 @@ struct KgtAssetManager
 	struct AssetDescriptor
 	{
 		char fileExtension[8];
+		u8 fileExtensionSize;
 		KgtAsset defaultAsset;
 		/* the KgtAsset::Type is implied based on the array index */
 	} assetDescriptors[static_cast<u32>(KgtAsset::Type::ENUM_COUNT)];

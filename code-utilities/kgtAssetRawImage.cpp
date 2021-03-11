@@ -15,4 +15,5 @@ internal void kgt_assetRawImage_decode(
 			data, dataBytes, _kgt_assetRawImage_callbackRequestMemoryPixelData, 
 			hKgtAllocatorAssetData);
 	korlAssert(a->kgtAssetRawImage.rawImage.pixelData);
+	a->type = KgtAsset::Type::KGTASSETRAWIMAGE;
 }

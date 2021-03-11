@@ -1076,6 +1076,45 @@ internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32PlatformGetGamePadProductGuid)
 		                               bufferSize);
 	}
 }
+internal PLATFORM_GET_FILE_HANDLE(w32PlatformGetFileHandle)
+{
+	char szFileFullPath[MAX_PATH];
+	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
+		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
+	if(!successBuildFullFilePath)
+	{
+		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
+			ansiFilePath, pathOrigin);
+		return false;
+	}
+	HANDLE fileHandle = INVALID_HANDLE_VALUE;
+	switch(usage)
+	{
+	case KorlFileHandleUsage::READ_EXISTING: {
+		fileHandle = 
+			CreateFileA(
+				szFileFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, 
+				OPEN_EXISTING, 
+				FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		} break;
+	case KorlFileHandleUsage::WRITE_NEW: {
+		fileHandle = 
+			CreateFileA(
+				szFileFullPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 
+				FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
+		} break;
+	}
+	if(fileHandle == INVALID_HANDLE_VALUE)
+		return false;
+	*o_hFile = fileHandle;
+	return true;
+}
+internal PLATFORM_RELEASE_FILE_HANDLE(w32PlatformReleaseFileHandle)
+{
+	const BOOL successCloseFileHandle = CloseHandle(hFile);
+	if(successCloseFileHandle == 0)
+		KLOG(ERROR, "CloseHandle failed! GetLastError=%i", GetLastError());
+}
 internal PLATFORM_GET_FILE_WRITE_TIME(w32PlatformGetFileWriteTime)
 {
 	char szFileFullPath[MAX_PATH];
@@ -1111,29 +1150,6 @@ internal PLATFORM_IS_FILE_CHANGED(w32PlatformIsFileChanged)
 	fileWriteTimePrev.dwHighDateTime = largeInt.HighPart;
 	fileWriteTimePrev.dwLowDateTime  = largeInt.LowPart;
 	return CompareFileTime(&fileWriteTime, &fileWriteTimePrev) != 0;
-}
-internal PLATFORM_IS_FILE_AVAILABLE(w32PlatformIsFileAvailable)
-{
-	char szFileFullPath[MAX_PATH];
-	const bool successBuildFullFilePath = korlW32BuildFullFilePath(
-		ansiFilePath, pathOrigin, szFileFullPath, CARRAY_SIZE(szFileFullPath));
-	if(!successBuildFullFilePath)
-	{
-		KLOG(ERROR, "Failed to build full file path with '%s' (%i)!", 
-		     ansiFilePath, pathOrigin);
-		return false;
-	}
-	// Check to see if the file is open exclusively by another program by 
-	//	attempting to open it in exclusive mode.
-	// https://stackoverflow.com/a/12821767
-	const HANDLE hFile = CreateFileA(szFileFullPath, GENERIC_READ, 0, nullptr, 
-	                                 OPEN_EXISTING, 0, NULL);
-	defer(CloseHandle(hFile));
-	if(hFile && hFile != INVALID_HANDLE_VALUE)
-	{
-		return true;
-	}
-	return false;
 }
 union PlatformTimeStampUnion
 {

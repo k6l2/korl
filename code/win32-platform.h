@@ -42,6 +42,10 @@ internal PLATFORM_DECODE_PNG(w32PlatformDecodePng);
 internal PLATFORM_DECODE_Z85_WAV(w32PlatformDecodeZ85Wav);
 internal PLATFORM_LOG(w32PlatformLog);
 internal KORL_PLATFORM_ASSERT_FAILURE(w32PlatformAssertFailure);
+internal PLATFORM_GET_FILE_HANDLE(w32PlatformGetFileHandle);
+internal PLATFORM_RELEASE_FILE_HANDLE(w32PlatformReleaseFileHandle);
+internal PLATFORM_GET_FILE_WRITE_TIME(w32PlatformGetFileWriteTime);
+internal PLATFORM_IS_FILE_CHANGED(w32PlatformIsFileChanged);
 internal PLATFORM_GET_FILE_BYTE_SIZE(w32PlatformGetFileByteSize);
 internal PLATFORM_READ_ENTIRE_FILE(w32PlatformReadEntireFile);
 internal PLATFORM_WRITE_ENTIRE_FILE(w32PlatformWriteEntireFile);
@@ -53,9 +57,6 @@ internal PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(w32PlatformGetGamePadActiveButton);
 internal PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(w32PlatformGetGamePadActiveAxis);
 internal PLATFORM_GET_GAME_PAD_PRODUCT_NAME(w32PlatformGetGamePadProductName);
 internal PLATFORM_GET_GAME_PAD_PRODUCT_GUID(w32PlatformGetGamePadProductGuid);
-internal PLATFORM_GET_FILE_WRITE_TIME(w32PlatformGetFileWriteTime);
-internal PLATFORM_IS_FILE_CHANGED(w32PlatformIsFileChanged);
-internal PLATFORM_IS_FILE_AVAILABLE(w32PlatformIsFileAvailable);
 internal PLATFORM_GET_TIMESTAMP(w32PlatformGetTimeStamp);
 internal PLATFORM_SECONDS_SINCE_TIMESTAMP(w32PlatformSecondsSinceTimeStamp);
 internal PLATFORM_SECONDS_BETWEEN_TIMESTAMPS(
@@ -80,6 +81,10 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .assertFailure                 = w32PlatformAssertFailure
 	, .decodePng                     = w32PlatformDecodePng
 	, .decodeZ85Wav                  = w32PlatformDecodeZ85Wav
+	, .getFileHandle                 = w32PlatformGetFileHandle
+	, .releaseFileHandle             = w32PlatformReleaseFileHandle
+	, .getFileWriteTime              = w32PlatformGetFileWriteTime
+	, .isFileChanged                 = w32PlatformIsFileChanged
 	, .getFileByteSize               = w32PlatformGetFileByteSize
 	, .readEntireFile                = w32PlatformReadEntireFile
 	, .writeEntireFile               = w32PlatformWriteEntireFile
@@ -90,9 +95,6 @@ const global_variable KorlPlatformApi KORL_PLATFORM_API_WIN32 =
 	, .loadWav                       = w32PlatformLoadWav
 	, .loadOgg                       = w32PlatformLoadOgg
 	, .loadPng                       = w32PlatformLoadPng
-	, .getFileWriteTime              = w32PlatformGetFileWriteTime
-	, .isFileChanged                 = w32PlatformIsFileChanged
-	, .isFileAvailable               = w32PlatformIsFileAvailable
 	, .isFullscreen                  = w32PlatformIsFullscreen
 	, .setFullscreen                 = w32PlatformSetFullscreen
 	, .getGamePadActiveButton        = w32PlatformGetGamePadActiveButton

@@ -111,9 +111,29 @@ enum class KorlApplicationDirectory : u8
 	{ CURRENT     // same directory as the platform executable; assume READ-ONLY
 	, LOCAL       // platform-defined; READ + WRITE access, safe storage!
 	, TEMPORARY };// platform-defined; READ + WRITE access, LOSSY storage!
+enum class KorlFileHandleUsage : u8
+	{ READ_EXISTING
+	, WRITE_NEW };
+using KorlFileHandle = void*;
+/** Obtain an opaque handle to a file.  Upon success, the caller can be assured 
+ * that it has exclusive access to the file, and they can proceed to call KORL 
+ * API which use this file handle without worrying about whether or not the file 
+ * has been modified by another process.
+ * @return
+ * true if o_hFile contains a valid file handle, false otherwise */
+#define PLATFORM_GET_FILE_HANDLE(name) bool name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+	KorlFileHandleUsage usage, KorlFileHandle* o_hFile)
+#define PLATFORM_RELEASE_FILE_HANDLE(name) void name(\
+	KorlFileHandle hFile)
+#define PLATFORM_GET_FILE_WRITE_TIME(name) FileWriteTime name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
+#define PLATFORM_IS_FILE_CHANGED(name) bool name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
+	FileWriteTime lastWriteTime)
 /** @return a value < 0 if an error occurs */
-#define PLATFORM_GET_FILE_BYTE_SIZE(name) \
-	i32 name(const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
+#define PLATFORM_GET_FILE_BYTE_SIZE(name) i32 name(\
+	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
 #define PLATFORM_READ_ENTIRE_FILE(name) \
 	bool name(\
 		const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
@@ -174,13 +194,6 @@ typedef KORL_CALLBACK_DIRECTORY_ENTRY_FOUND(
 	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
 	fnSig_korlCallbackRequestMemory* requestMemoryPixelData, \
 	void* requestMemoryPixelDataUserData)
-#define PLATFORM_GET_FILE_WRITE_TIME(name) FileWriteTime name(\
-	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
-#define PLATFORM_IS_FILE_CHANGED(name) bool name(\
-	const char* ansiFilePath, KorlApplicationDirectory pathOrigin, \
-	FileWriteTime lastWriteTime)
-#define PLATFORM_IS_FILE_AVAILABLE(name) bool name(\
-	const char* ansiFilePath, KorlApplicationDirectory pathOrigin)
 #define PLATFORM_IS_FULLSCREEN(name) bool name()
 global_variable const u16 INVALID_PLATFORM_BUTTON_INDEX = u16(~0);
 #define PLATFORM_SET_FULLSCREEN(name) void name(bool isFullscreenDesired)
@@ -333,9 +346,6 @@ typedef PLATFORM_DECODE_Z85_WAV(fnSig_platformDecodeZ85Wav);
 typedef PLATFORM_LOAD_WAV(fnSig_platformLoadWav);
 typedef PLATFORM_LOAD_OGG(fnSig_platformLoadOgg);
 typedef PLATFORM_LOAD_PNG(fnSig_platformLoadPng);
-typedef PLATFORM_GET_FILE_WRITE_TIME(fnSig_platformGetFileWriteTime);
-typedef PLATFORM_IS_FILE_CHANGED(fnSig_platformIsFileChanged);
-typedef PLATFORM_IS_FILE_AVAILABLE(fnSig_platformIsFileAvailable);
 typedef PLATFORM_IS_FULLSCREEN(fnSig_platformIsFullscreen);
 typedef PLATFORM_SET_FULLSCREEN(fnSig_platformSetFullscreen);
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
@@ -343,6 +353,10 @@ typedef PLATFORM_GET_GAME_PAD_ACTIVE_BUTTON(
 typedef PLATFORM_GET_GAME_PAD_ACTIVE_AXIS(fnSig_platformGetGamePadActiveAxis);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_NAME(fnSig_platformGetGamePadProductName);
 typedef PLATFORM_GET_GAME_PAD_PRODUCT_GUID(fnSig_platformGetGamePadProductGuid);
+typedef PLATFORM_GET_FILE_HANDLE(fnSig_platformGetFileHandle);
+typedef PLATFORM_RELEASE_FILE_HANDLE(fnSig_platformReleaseFileHandle);
+typedef PLATFORM_GET_FILE_WRITE_TIME(fnSig_platformGetFileWriteTime);
+typedef PLATFORM_IS_FILE_CHANGED(fnSig_platformIsFileChanged);
 typedef PLATFORM_GET_FILE_BYTE_SIZE(fnSig_platformGetFileByteSize);
 typedef PLATFORM_READ_ENTIRE_FILE(fnSig_platformReadEntireFile);
 typedef PLATFORM_WRITE_ENTIRE_FILE(fnSig_platformWriteEntireFile);
@@ -381,6 +395,10 @@ struct KorlPlatformApi
 	fnSig_korlPlatformAssertFailure* assertFailure;
 	fnSig_platformDecodePng* decodePng;
 	fnSig_platformDecodeZ85Wav* decodeZ85Wav;
+	fnSig_platformGetFileHandle* getFileHandle;
+	fnSig_platformReleaseFileHandle* releaseFileHandle;
+	fnSig_platformGetFileWriteTime* getFileWriteTime;
+	fnSig_platformIsFileChanged* isFileChanged;
 	fnSig_platformGetFileByteSize* getFileByteSize;
 	fnSig_platformReadEntireFile* readEntireFile;
 	fnSig_platformWriteEntireFile* writeEntireFile;
@@ -391,9 +409,6 @@ struct KorlPlatformApi
 	fnSig_platformLoadWav* loadWav;
 	fnSig_platformLoadOgg* loadOgg;
 	fnSig_platformLoadPng* loadPng;
-	fnSig_platformGetFileWriteTime* getFileWriteTime;
-	fnSig_platformIsFileChanged* isFileChanged;
-	fnSig_platformIsFileAvailable* isFileAvailable;
 	fnSig_platformIsFullscreen* isFullscreen;
 	fnSig_platformSetFullscreen* setFullscreen;
 	fnSig_platformGetGamePadActiveButton* getGamePadActiveButton;
