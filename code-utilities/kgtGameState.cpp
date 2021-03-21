@@ -47,7 +47,8 @@ internal void
 	/* construct the dynamic application's asset manager */
 	g_kgs->assetManager = 
 		kgt_assetManager_construct(
-			g_kgs->hKalPermanent, KGT_ASSET_COUNT, g_kgs->hKalTransient, g_kpl);
+			g_kgs->hKalPermanent, KGT_ASSET_COUNT, g_kgs->hKalTransient, 
+			g_kpl, g_krb);
 	/* add asset descriptors immediately after construction */
 	// add PNG asset descriptor //
 	{
@@ -67,6 +68,23 @@ internal void
 			g_kgs->assetManager, KgtAsset::Type::KGTASSETPNG, ".png", 
 			rawFileData, rawFileBytes);
 	}
+#if 1/* add this once I finish refactoring asset manager shit */
+	// add Texture asset descriptor //
+	{
+		char defaultTexture[] = 
+			"image-asset-file-name : USE_DEFAULT_IMAGE_ASSET"
+			"\nwrap-x                : clamp"
+			"\nwrap-y                : clamp"
+			"\nfilter-minify         : nearest"
+			"\nfilter-magnify        : nearest";
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETTEXTURE, ".tex", 
+			reinterpret_cast<u8*>(defaultTexture), 
+			/* subtract 1 from size to only account for file size, NOT the null
+				character terminator */
+			sizeof(defaultTexture) - 1);
+	}
+#endif//0
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
@@ -173,9 +191,11 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtFlipBook.cpp"
 #include "kgtAudioMixer.cpp"
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
+#include "kgtAsset.cpp"
 #include "kgtAssetManager.cpp"
 #include "z85.cpp"
 #include "kgtAssetPng.cpp"
+#include "kgtAssetTexture.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #if SEPARATE_ASSET_MODULES_COMPLETE

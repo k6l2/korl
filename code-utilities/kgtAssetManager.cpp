@@ -1,8 +1,8 @@
 #include "kgtAssetManager.h"
-#include "gen_ptu_KgtAsset_dispatch.cpp"
 internal KgtAssetManager* kgt_assetManager_construct(
 	KgtAllocatorHandle hKgtAllocator, KgtAssetHandle maxAssetHandles, 
-	KgtAllocatorHandle hKgtAllocatorAssetData, const KorlPlatformApi* korl)
+	KgtAllocatorHandle hKgtAllocatorAssetData, const KorlPlatformApi* korl, 
+	const KrbApi* krb)
 {
 	if(maxAssetHandles < KGT_ASSET_COUNT)
 	{
@@ -43,6 +43,7 @@ internal KgtAssetManager* kgt_assetManager_construct(
 		don't use initializer braces because MSVC wont initialize an array with 
 		constant size 0 */
 	result->korl                    = korl;
+	result->krb                     = krb;
 	result->maxAssetHandles         = maxAssetHandles;
 	result->hKgtAllocatorAssetData  = hKgtAllocatorAssetData;
 	result->hKgtAllocatorRawFiles   = hKgtAllocatorRawFiles;
@@ -51,7 +52,7 @@ internal KgtAssetManager* kgt_assetManager_construct(
 }
 internal void kgt_assetManager_addAssetDescriptor(
 	KgtAssetManager* kam, KgtAsset::Type type, const char*const fileExtension, 
-	const u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes)
+	u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes)
 {
 	const u32 descriptorIndex = static_cast<u32>(type);
 	korlAssert(descriptorIndex < static_cast<u32>(KgtAsset::Type::ENUM_COUNT));
@@ -68,9 +69,15 @@ internal void kgt_assetManager_addAssetDescriptor(
 	korlAssert(descriptor.fileExtensionSize > 0);
 	/* load the default asset using the provided raw asset data */
 	descriptor.defaultAsset.kam = kam;
+	descriptor.defaultAsset.type = type;
 	kgt_asset_decode(
 		&descriptor.defaultAsset, kam->hKgtAllocatorAssetData, 
-		rawDefaultAssetData, rawDefaultAssetDataBytes);
+		rawDefaultAssetData, rawDefaultAssetDataBytes, "default-asset");
+	/* some default assets require default assets themselves, but there's no 
+		reason to call the onDependenciesLoaded callback if the asset has no 
+		dependencies */
+	if(descriptor.defaultAsset.dependencyCount)
+		kgt_asset_onDependenciesLoaded(&descriptor.defaultAsset, kam);
 	descriptor.defaultAsset.loaded = true;
 }
 internal void _kgt_assetManager_matchAssetDescriptor(
@@ -78,9 +85,9 @@ internal void _kgt_assetManager_matchAssetDescriptor(
 {
 	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
 		KgtAssetIndex values! */
-	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	korlAssert(assetHandle < kam->maxAssetHandles);
-	KgtAsset& asset = kam->assets[assetHandle];
+	const size_t kamIndex = static_cast<size_t>(assetIndex);
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[kamIndex];
 	/* if the asset type is already defined, we're done */
 	if(asset.type != KgtAsset::Type::ENUM_COUNT)
 		return;
@@ -153,6 +160,11 @@ JOB_QUEUE_FUNCTION(_kgt_assetManager_asyncLoad)
 	asset->lastWriteTime = 
 		asset->kam->korl->getFileWriteTime(
 			filePathBuffer, KorlApplicationDirectory::CURRENT);
+	/* @speed: it's probably the case for MOST types of assets that you don't 
+		actually have to read the entire asset into memory before decoding it!  
+		It may be much less wasteful if we just decoded the asset while reading 
+		the file sequentially, although this would mean holding the file handle 
+		for a longer period of time */
 	/* obtain the size of the raw file */
 	const i32 resultGetFileByteSize = asset->kam->korl->getFileByteSize(hFile);
 	korlAssert(resultGetFileByteSize > 0);
@@ -171,45 +183,83 @@ JOB_QUEUE_FUNCTION(_kgt_assetManager_asyncLoad)
 		holding the raw asset file */
 	asset->kam->korl->lock(asset->kam->hLockAssetDataAllocator);
 	kgt_asset_decode(
-		asset, asset->kam->hKgtAllocatorAssetData, rawFileData, fileByteSize);
+		asset, asset->kam->hKgtAllocatorAssetData, rawFileData, fileByteSize, 
+		kgtAssetFileNames[asset->kgtAssetIndex]);
 	kgtAllocFree(asset->kam->hKgtAllocatorRawFiles, rawFileData);
 	asset->kam->korl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* release the file handle */
 	asset->kam->korl->releaseFileHandle(hFile);
+}
+internal KgtAssetHandle _kgt_assetManager_makeHandle(size_t kamIndex)
+{
+	korlAssert(
+		std::numeric_limits<KgtAssetHandle>::max() > 
+		static_cast<KgtAssetHandle>(kamIndex));
+	return static_cast<KgtAssetHandle>(kamIndex) + 1;
 }
 internal KgtAssetHandle kgt_assetManager_load(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
 	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
 		KgtAssetIndex values! */
-	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	korlAssert(assetHandle < kam->maxAssetHandles);
-	KgtAsset& asset = kam->assets[assetHandle];
+	const size_t kamIndex = static_cast<size_t>(assetIndex);
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[kamIndex];
 	if(asset.loaded)
-		return assetHandle;
+		return _kgt_assetManager_makeHandle(kamIndex);
 	_kgt_assetManager_matchAssetDescriptor(kam, assetIndex);
 	/* start an asynchronous job which will attempt to load the asset (if there 
 		is not already one running) */
 	if(asset.jobTicketLoading)
-		return assetHandle;
-	KLOG(INFO, "Loading asset '%s'...", kgtAssetFileNames[assetHandle]);
+		return _kgt_assetManager_makeHandle(kamIndex);
+	KLOG(INFO, "Loading asset '%s'...", kgtAssetFileNames[kamIndex]);
 	asset.kam = kam;
 	asset.kgtAssetIndex = static_cast<u32>(assetIndex);
 	asset.jobTicketLoading = 
 		kam->korl->postJob(_kgt_assetManager_asyncLoad, &asset);
-	return assetHandle;
+	return _kgt_assetManager_makeHandle(kamIndex);
+}
+internal void _kgt_assetManager_load(
+	KgtAssetManager* kam, KgtAssetHandle hAsset)
+{
+	if(!hAsset)
+		return;
+	/* @robustness: create a "decode handle" function */
+	const size_t kamIndex = hAsset - 1;
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[kamIndex];
+	if(asset.loaded)
+		return;
+	if(kamIndex < KGT_ASSET_COUNT)
+		/* @speed: call this code once for all valid KgtAssetIndex values after 
+			all the asset descriptors are added to the asset manager, and we 
+			never actually have to run this code ever again, since KgtAssetIndex 
+			data is determined at compile-time */
+		_kgt_assetManager_matchAssetDescriptor(
+			kam, static_cast<KgtAssetIndex>(kamIndex));
+	else
+		korlAssert(!"Not implemented!");
+	/* start an asynchronous job which will attempt to load the asset (if there 
+		is not already one running) */
+	if(asset.jobTicketLoading)
+		return;
+	KLOG(INFO, "Loading asset '%s'...", kgtAssetFileNames[kamIndex]);
+	asset.kam = kam;
+	asset.kgtAssetIndex = kmath::safeTruncateU32(kamIndex);
+	asset.jobTicketLoading = 
+		kam->korl->postJob(_kgt_assetManager_asyncLoad, &asset);
 }
 internal void kgt_assetManager_free(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
 	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
 		KgtAssetIndex values! */
-	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	korlAssert(assetHandle < kam->maxAssetHandles);
-	KgtAsset& asset = kam->assets[assetHandle];
+	const size_t kamIndex = static_cast<size_t>(assetIndex);
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[kamIndex];
 	if(!asset.loaded)
 	{
-		KLOG(WARNING, "asset[%i] is already free!", assetHandle);
+		KLOG(WARNING, "asset[%i] is already free!", kamIndex);
 		return;
 	}
 	kam->korl->lock(kam->hLockAssetDataAllocator);
@@ -217,24 +267,48 @@ internal void kgt_assetManager_free(
 	kam->korl->unlock(kam->hLockAssetDataAllocator);
 	asset.loaded = false;
 }
+#if 0
+/** @return true if all dependencies of the asset are loaded */
+internal bool _kgt_assetManager_loadDependencies(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
+		KgtAssetIndex values! */
+	const KgtAssetHandle kamIndex = static_cast<KgtAssetHandle>(assetIndex);
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[kamIndex];
+	if(asset.loaded)
+		return false;
+	for(u8 d = 0; d < asset.dependencyCount; d++)
+		if(!_kgt_assetManager_loadDependencies(kam, ))
+			return false;
+	korlAssert(!"@todo");
+	return true;
+}
+#endif//0
 internal const KgtAsset* kgt_assetManager_get(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
+	if(assetIndex >= KgtAssetIndex::ENUM_SIZE)
+		return nullptr;
+	const KgtAssetHandle assetHandle = kgt_asset_makeHandle(assetIndex);
+	return kgt_assetManager_get(kam, assetHandle);
+#if 0
 	/* ensure that the asset manager has begin async loading the asset if it has 
 		not already done so */
 	kgt_assetManager_load(kam, assetIndex);
-	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
-		KgtAssetIndex values! */
-	const KgtAssetHandle assetHandle = static_cast<KgtAssetHandle>(assetIndex);
-	korlAssert(assetHandle < kam->maxAssetHandles);
-	KgtAsset& asset = kam->assets[assetHandle];
 	/* if the asset's loading job is finished, then we can mark the asset as 
 		loaded (which ends the async load job) */
 	if(kam->korl->jobDone(&(asset.jobTicketLoading)))
 		asset.loaded = true;
+	/* if the asset is loaded, we have to ensure that all the asset's 
+		dependencies are loaded before returning the asset */
+	const bool fullyLoaded = asset.loaded 
+		? _kgt_assetManager_loadDependencies(kam, assetIndex)
+		: false;
 	/* if the asset isn't marked as loaded at this point, we should just return 
 		the default asset */
-	if(!asset.loaded)
+	if(!fullyLoaded)
 	{
 		korlAssert(asset.type != KgtAsset::Type::ENUM_COUNT);
 		const size_t descriptorIndex = static_cast<size_t>(asset.type);
@@ -242,6 +316,60 @@ internal const KgtAsset* kgt_assetManager_get(
 	}
 	/* otherwise return the loaded asset */
 	return &asset;
+#endif//0
+}
+/** @return true if the asset & all its dependencies are loaded */
+internal bool _kgt_assetManager_fullyLoad(
+	KgtAssetManager* kam, KgtAssetHandle hAsset)
+{
+	/* ensure that the asset manager has begun async loading the asset if it has 
+		not already done so */
+	_kgt_assetManager_load(kam, hAsset);
+	/* if the asset's loading job is finished, then we can mark the asset as 
+		loaded (which ends the async load job) */
+	/* @robustness: create a "decode handle" function */
+	const size_t kamIndex = hAsset - 1;
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	KgtAsset& asset = kam->assets[kamIndex];
+	if(kam->korl->jobDone(&(asset.jobTicketLoading)))
+		asset.loaded = true;
+	if(!asset.loaded)
+		return false;
+	/* iterate over all the asset's dependencies and recursively fully-load */
+	for(u8 d = 0; d < asset.dependencyCount; d++)
+		if(!_kgt_assetManager_fullyLoad(kam, asset.dependencies[d]))
+			return false;
+	/* if we've made it this far, it must be the case that the asset it loaded & 
+		all its dependencies are loaded, so we can return true! */
+	return true;
+}
+internal const KgtAsset* kgt_assetManager_get(
+	KgtAssetManager* kam, KgtAssetHandle hAsset)
+{
+	if(!hAsset)
+		return nullptr;
+	if(!_kgt_assetManager_fullyLoad(kam, hAsset))
+	{
+		/* return the default asset if the hAsset along with all its 
+			dependencies are not ALL loaded */
+		/* @robustness: create a "decode handle" function */
+		const size_t kamIndex = hAsset - 1;
+		korlAssert(kamIndex < kam->maxAssetHandles);
+		const KgtAsset& asset = kam->assets[kamIndex];
+		korlAssert(asset.type != KgtAsset::Type::ENUM_COUNT);
+		const size_t descriptorIndex = static_cast<size_t>(asset.type);
+		return &(kam->assetDescriptors[descriptorIndex].defaultAsset);
+	}
+	/* @robustness: create a "decode handle" function */
+	const size_t kamIndex = hAsset - 1;
+	return &kam->assets[kamIndex];
+}
+internal const KgtAsset* kgt_assetManager_getDefault(
+	KgtAssetManager* kam, KgtAsset::Type assetType)
+{
+	if(assetType >= KgtAsset::Type::ENUM_COUNT)
+		return nullptr;
+	return &kam->assetDescriptors[static_cast<u32>(assetType)].defaultAsset;
 }
 #if 0
 #include "z85-png-default.h"

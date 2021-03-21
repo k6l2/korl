@@ -2,31 +2,13 @@
 #include "kutil.h"
 #include "kgtAllocator.h"
 #include "platform-game-interfaces.h"
-/* KgtAsset is a procedurally generated data type (via KCPP) */
-#include "kcppPolymorphicTaggedUnion.h"
-#include "gen_ptu_KgtAsset_includes.h"
-KCPP_POLYMORPHIC_TAGGED_UNION struct KgtAsset
-{
-	#include "gen_ptu_KgtAsset.h"
-	FileWriteTime lastWriteTime;
-	bool loaded;
-	JobQueueTicket jobTicketLoading;
-	/* async job function convenience data */
-	struct KgtAssetManager* kam;
-	u32 kgtAssetIndex;
-};
-KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
-	kgt_asset_decode(
-		KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData, 
-		const u8* data, u32 dataBytes);
-KCPP_POLYMORPHIC_TAGGED_UNION_PURE_VIRTUAL internal void 
-	kgt_asset_free(KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData);
 /* KgtAssetManager data structure & API */
 #include "gen_kgtAssets.h"
-using KgtAssetHandle = u32;
+#include "kgtAsset.h"
 struct KgtAssetManager
 {
 	const KorlPlatformApi* korl;
+	const KrbApi* krb;
 	KgtAssetHandle maxAssetHandles;
 	/* this allocator is where all the decoded asset data is stored, such as the 
 		array of pixels in a RawImage asset */
@@ -59,7 +41,7 @@ internal KgtAssetManager*
 	kgt_assetManager_construct(
 		KgtAllocatorHandle hKgtAllocator, KgtAssetHandle maxAssetHandles, 
 		KgtAllocatorHandle hKgtAllocatorAssetData, 
-		const KorlPlatformApi* korl);
+		const KorlPlatformApi* korl, const KrbApi* krb);
 /** The user of the AssetManager must specify what file extension corresponds to 
  * what KgtAsset::Type using this API.  We must also provide raw file data of 
  * the default asset of this type.  We don't need to provide the loading 
@@ -72,7 +54,7 @@ internal void
 	kgt_assetManager_addAssetDescriptor(
 		KgtAssetManager* kam, KgtAsset::Type type, 
 		const char*const fileExtension, 
-		const u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes);
+		u8* rawDefaultAssetData, u32 rawDefaultAssetDataBytes);
 internal KgtAssetHandle 
 	kgt_assetManager_load(KgtAssetManager* kam, KgtAssetIndex assetIndex);
 internal void 
@@ -81,6 +63,10 @@ internal void
  * @return a default asset if `assetIndex` has not yet been loaded */
 internal const KgtAsset*
 	kgt_assetManager_get(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal const KgtAsset*
+	kgt_assetManager_get(KgtAssetManager* kam, KgtAssetHandle hAsset);
+internal const KgtAsset* 
+	kgt_assetManager_getDefault(KgtAssetManager* kam, KgtAsset::Type assetType);
 #if 0
 /*
  * User code must define the following global variables to use this module:

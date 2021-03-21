@@ -45,6 +45,31 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		ImVec4(cratePixelR/255.f
 		      , cratePixelG/255.f
 		      , cratePixelB/255.f, 1.f));
+	/* draw a simple textured quad on the screen */
+	{
+		g_krb->setProjectionOrtho(1);
+		const v2f32 position = 
+			{ static_cast<f32>(windowDimensions.x)* 0.5f
+			, static_cast<f32>(windowDimensions.y)*-0.5f };
+		const v2f32 ratioAnchor = {1,1};
+		const f32 counterClockwiseRadians = 0.f;
+		const v2f32 scale = {1,1};
+		g_krb->setModelXform2d(
+			position, q32{v3f32::Z, counterClockwiseRadians}, scale);
+		g_krb->useTexture(
+			kgt_assetTexture_get(g_kam, KgtAssetIndex::ENUM_SIZE));
+		const RawImage rawImg = 
+			kgt_assetPng_get(g_kam, KgtAssetIndex::ENUM_SIZE);
+		const v2u32 imageSize = {rawImg.sizeX, rawImg.sizeY};
+		const v2f32 quadSize = 
+			{ static_cast<f32>(imageSize.x)
+			, static_cast<f32>(imageSize.y) };
+		local_const RgbaF32 KGT_DRAW_QUAD_WHITE[]  = 
+			{ krb::WHITE, krb::WHITE, krb::WHITE, krb::WHITE };
+		g_krb->drawQuadTextured(
+			quadSize.elements, ratioAnchor.elements, KGT_DRAW_QUAD_WHITE, 
+			v2f32::ZERO.elements, v2f32{1,1}.elements);
+	}
 #else
 	kgtDrawAxes({10,10,10});
 	/* draw a textured cube 

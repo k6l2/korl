@@ -9,7 +9,7 @@ internal KORL_CALLBACK_REQUEST_MEMORY(
 }
 internal void kgt_assetPng_decode(
 	KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData, 
-	const u8* data, u32 dataBytes)
+	u8* data, u32 dataBytes, const char* ansiAssetName)
 {
 	a->kgtAssetPng.rawImage = 
 		a->kam->korl->decodePng(
@@ -26,7 +26,17 @@ internal void kgt_assetPng_free(
 internal RawImage kgt_assetPng_get(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
-	const KgtAsset*const kgtAsset = kgt_assetManager_get(kam, assetIndex);
+	const KgtAsset*const kgtAsset = assetIndex == KgtAssetIndex::ENUM_SIZE 
+		? kgt_assetManager_getDefault(kam, KgtAsset::Type::KGTASSETPNG)
+		: kgt_assetManager_get(kam, assetIndex);
+	korlAssert(kgtAsset->type == KgtAsset::Type::KGTASSETPNG);
+	return kgtAsset->kgtAssetPng.rawImage;
+}
+internal RawImage kgt_assetPng_get(KgtAssetManager* kam, KgtAssetHandle hAsset)
+{
+	const KgtAsset*const kgtAsset = !hAsset 
+		? kgt_assetManager_getDefault(kam, KgtAsset::Type::KGTASSETPNG)
+		: kgt_assetManager_get(kam, hAsset);
 	korlAssert(kgtAsset->type == KgtAsset::Type::KGTASSETPNG);
 	return kgtAsset->kgtAssetPng.rawImage;
 }

@@ -438,7 +438,7 @@ internal void korl_rb_ogl_bufferImmediateVertices(
 {
 	korlAssert(vertexAttribOffsets.position_3f32 < vertexStride);
 	if(vertexAttribOffsets.texCoord_2f32 >= vertexStride)
-		krbUseTexture(krb::INVALID_TEXTURE_HANDLE, {});
+		krbUseTexture(krb::INVALID_TEXTURE_HANDLE);
 	if(    krb::g_context->immediatePrimitiveType != primitiveType 
 		|| krb::g_context->immediateVertexStride != vertexStride 
 		|| krb::g_context->immediateVertexAttributeOffsets != 
@@ -1038,7 +1038,7 @@ internal GLint korl_rb_ogl_decodeTextureFilterMode(KorlTextureFilterMode m)
 	}
 	return GL_NEAREST_MIPMAP_LINEAR;
 }
-internal KRB_USE_TEXTURE(krbUseTexture)
+internal KRB_CONFIGURE_TEXTURE(krbConfigureTexture)
 {
 	glActiveTexture(GL_TEXTURE0);
 	/* if the texture we are binding differs from the one which is currently 
@@ -1066,6 +1066,21 @@ internal KRB_USE_TEXTURE(krbUseTexture)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, paramFilterMin);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, paramFilterMag);
 	}
+	GL_CHECK_ERROR();
+}
+internal KRB_USE_TEXTURE(krbUseTexture)
+{
+	glActiveTexture(GL_TEXTURE0);
+	/* if the texture we are binding differs from the one which is currently 
+		bound, then we need to flush the immediate buffer */
+	{
+		GLint nameTex2dUnit0;
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &nameTex2dUnit0);
+		static_assert(sizeof(KrbTextureHandle) == sizeof(GLint));
+		if(nameTex2dUnit0 != static_cast<GLint>(kth))
+			korl_rb_ogl_flushImmediateBuffer();
+	}
+	glBindTexture(GL_TEXTURE_2D, kth);
 	GL_CHECK_ERROR();
 }
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen)

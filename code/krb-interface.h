@@ -155,8 +155,9 @@ global_variable const u8 KORL_PIXEL_DATA_FORMAT_BITS_PER_PIXEL[] =
 	KorlPixelDataFormat pixelDataFormat)
 #define KRB_DELETE_TEXTURE(name) void name(\
 	KrbTextureHandle krbTextureHandle)
-#define KRB_USE_TEXTURE(name) void name(\
+#define KRB_CONFIGURE_TEXTURE(name) void name(\
 	KrbTextureHandle kth, const KorlTextureMetaData& texMeta)
+#define KRB_USE_TEXTURE(name) void name(KrbTextureHandle kth)
 /** 
  * @return {NAN,NAN} if the provided world position is not contained within the 
  * camera's clip space.  This does NOT mean that non-{NAN,NAN} values are on the 
@@ -210,6 +211,7 @@ typedef KRB_SET_MODEL_XFORM_BILLBOARD(fnSig_krbSetModelXformBillboard);
 #endif//0
 typedef KRB_LOAD_IMAGE(fnSig_krbLoadImage);
 typedef KRB_DELETE_TEXTURE(fnSig_krbDeleteTexture);
+typedef KRB_CONFIGURE_TEXTURE(fnSig_krbConfigureTexture);
 typedef KRB_USE_TEXTURE(fnSig_krbUseTexture);
 typedef KRB_WORLD_TO_SCREEN(fnSig_krbWorldToScreen);
 typedef KRB_SCREEN_TO_WORLD(fnSig_krbScreenToWorld);
@@ -244,6 +246,7 @@ internal KRB_SET_MODEL_XFORM_BILLBOARD(krbSetModelXformBillboard);
 #endif//0
 internal KRB_LOAD_IMAGE(krbLoadImage);
 internal KRB_DELETE_TEXTURE(krbDeleteTexture);
+internal KRB_CONFIGURE_TEXTURE(krbConfigureTexture);
 internal KRB_USE_TEXTURE(krbUseTexture);
 internal KRB_WORLD_TO_SCREEN(krbWorldToScreen);
 internal KRB_SCREEN_TO_WORLD(krbScreenToWorld);
@@ -281,6 +284,7 @@ struct KrbApi
 #endif//0
 	fnSig_krbLoadImage*          loadImage          = krbLoadImage;
 	fnSig_krbDeleteTexture*      deleteTexture      = krbDeleteTexture;
+	fnSig_krbConfigureTexture*   configureTexture   = krbConfigureTexture;
 	fnSig_krbUseTexture*         useTexture         = krbUseTexture;
 	fnSig_krbWorldToScreen*      worldToScreen      = krbWorldToScreen;
 	fnSig_krbScreenToWorld*      screenToWorld      = krbScreenToWorld;
