@@ -9,6 +9,7 @@ KCPP_POLYMORPHIC_TAGGED_UNION struct KgtAsset
 	#include "gen_ptu_KgtAsset.h"
 	FileWriteTime lastWriteTime;
 	bool loaded;
+	bool dependenciesLoaded;
 	JobQueueTicket jobTicketLoading;
 	/* If an asset depends on other assets in order to function (example: 
 		texture assets require a PNG asset to upload the image data to the GPU 

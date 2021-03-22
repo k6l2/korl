@@ -173,12 +173,14 @@ JOB_QUEUE_FUNCTION(_kgt_assetManager_asyncLoad)
 	asset->kam->korl->lock(asset->kam->hLockAssetDataAllocator);
 	u8*const rawFileData = reinterpret_cast<u8*>(
 		kgtAllocAlloc(
-			asset->kam->hKgtAllocatorRawFiles, fileByteSize));
+			asset->kam->hKgtAllocatorRawFiles, fileByteSize + 1));
 	asset->kam->korl->unlock(asset->kam->hLockAssetDataAllocator);
 	/* read the raw file into memory */
 	const bool successReadEntireFile = 
 		asset->kam->korl->readEntireFile(hFile, rawFileData, fileByteSize);
 	korlAssert(successReadEntireFile);
+	// ensure the raw file data is terminated with a null character //
+	rawFileData[fileByteSize] = '\0';
 	/* decode the KgtAsset safely into bulk data storage, then free the memory 
 		holding the raw asset file */
 	asset->kam->korl->lock(asset->kam->hLockAssetDataAllocator);
@@ -266,6 +268,9 @@ internal void kgt_assetManager_free(
 	kgt_asset_free(&asset, kam->hKgtAllocatorAssetData);
 	kam->korl->unlock(kam->hLockAssetDataAllocator);
 	asset.loaded = false;
+	/* recursively modify all assets which depend on this asset by clearing the 
+		dependenciesLoaded flag */
+	korlAssert(!"@todo");
 }
 #if 0
 /** @return true if all dependencies of the asset are loaded */
@@ -339,6 +344,11 @@ internal bool _kgt_assetManager_fullyLoad(
 	for(u8 d = 0; d < asset.dependencyCount; d++)
 		if(!_kgt_assetManager_fullyLoad(kam, asset.dependencies[d]))
 			return false;
+	if(!asset.dependenciesLoaded && asset.dependencyCount)
+	{
+		kgt_asset_onDependenciesLoaded(&asset, kam);
+		asset.dependenciesLoaded = true;
+	}
 	/* if we've made it this far, it must be the case that the asset it loaded & 
 		all its dependencies are loaded, so we can return true! */
 	return true;

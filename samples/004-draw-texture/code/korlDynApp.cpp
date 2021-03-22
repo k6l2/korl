@@ -31,11 +31,12 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 	g_krb->lookAt(
 		camPosition.elements, v3f32::ZERO.elements, WORLD_UP.elements);
 #if !SEPARATE_ASSET_MODULES_COMPLETE
-	/* display a little color square of the upper-left most pixel of 
-		KgtAssetIndex::gfx_crate_png */
 	if(windowIsFocused)
 		if(KORL_BUTTON_ON(gameKeyboard.r))
 			kgt_assetManager_free(g_kam, KgtAssetIndex::gfx_crate_png);
+#if 0
+	/* display a little color square of the upper-left most pixel of 
+		KgtAssetIndex::gfx_crate_png */
 	RawImage imgCrate = kgt_assetPng_get(g_kam, KgtAssetIndex::gfx_crate_png);
 	const u8 cratePixelR = korlRawImageGetRed(imgCrate, v2u32{0,0});
 	const u8 cratePixelG = korlRawImageGetGreen(imgCrate, v2u32{0,0});
@@ -45,6 +46,27 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		ImVec4(cratePixelR/255.f
 		      , cratePixelG/255.f
 		      , cratePixelB/255.f, 1.f));
+#endif//0
+	/* draw a textured cube 
+		- the `kasset` build tool automatically generates KAssetIndex entries 
+			for all files (excluding ones that match regex patterns in the 
+			`assets/assets.ignore` file)
+		- the template game state contains code which automatically loads assets 
+			asynchronously at runtime
+		- the template game state also automatically hot-reloads assets when 
+			they are changed on disk! */
+	{
+		const size_t meshBoxBytes = 36*sizeof(KgtVertex);
+		KgtVertex* meshBox = KGT_ALLOC_FRAME_ARRAY(KgtVertex, 36);
+		kmath::generateMeshBox(
+			{2,2,2}, meshBox, meshBoxBytes, sizeof(meshBox[0]), 
+			offsetof(KgtVertex, position), offsetof(KgtVertex, textureNormal));
+		g_krb->setModelXform({0,0,0}, q32::IDENTITY, {4,4,4});
+		g_krb->useTexture(
+			kgt_assetTexture_get(g_kam, KgtAssetIndex::gfx_crate_tex));
+		g_krb->drawTris(
+			meshBox, 36, sizeof(meshBox[0]), KGT_VERTEX_ATTRIBS_NO_COLOR);
+	}
 	/* draw a simple textured quad on the screen */
 	{
 		g_krb->setProjectionOrtho(1);
@@ -57,9 +79,9 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		g_krb->setModelXform2d(
 			position, q32{v3f32::Z, counterClockwiseRadians}, scale);
 		g_krb->useTexture(
-			kgt_assetTexture_get(g_kam, KgtAssetIndex::ENUM_SIZE));
+			kgt_assetTexture_get(g_kam, KgtAssetIndex::gfx_crate_tex));
 		const RawImage rawImg = 
-			kgt_assetPng_get(g_kam, KgtAssetIndex::ENUM_SIZE);
+			kgt_assetPng_get(g_kam, KgtAssetIndex::gfx_crate_png);
 		const v2u32 imageSize = {rawImg.sizeX, rawImg.sizeY};
 		const v2f32 quadSize = 
 			{ static_cast<f32>(imageSize.x)

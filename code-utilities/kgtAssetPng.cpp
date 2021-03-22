@@ -26,7 +26,7 @@ internal void kgt_assetPng_free(
 internal RawImage kgt_assetPng_get(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
-	const KgtAsset*const kgtAsset = assetIndex == KgtAssetIndex::ENUM_SIZE 
+	const KgtAsset* kgtAsset = assetIndex == KgtAssetIndex::ENUM_SIZE 
 		? kgt_assetManager_getDefault(kam, KgtAsset::Type::KGTASSETPNG)
 		: kgt_assetManager_get(kam, assetIndex);
 	korlAssert(kgtAsset->type == KgtAsset::Type::KGTASSETPNG);

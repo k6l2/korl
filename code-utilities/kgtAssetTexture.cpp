@@ -42,5 +42,6 @@ internal KrbTextureHandle
 		? kgt_assetManager_getDefault(kam, KgtAsset::Type::KGTASSETTEXTURE)
 		: kgt_assetManager_get(kam, assetIndex);
 	korlAssert(kgtAsset->type == KgtAsset::Type::KGTASSETTEXTURE);
+	korlAssert(kgtAsset->kgtAssetTexture.hTexture);
 	return kgtAsset->kgtAssetTexture.hTexture;
 }
