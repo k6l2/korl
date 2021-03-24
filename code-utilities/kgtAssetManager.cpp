@@ -251,48 +251,13 @@ internal void _kgt_assetManager_load(
 	asset.jobTicketLoading = 
 		kam->korl->postJob(_kgt_assetManager_asyncLoad, &asset);
 }
-/** This functionality assumes no cycles in the asset dependency DAG.  If there 
- * are, we will probably hang forever so don't do that!!! */
-internal void _kgt_assetManager_markDependentsUnloaded(
+/** Unload & release all dynamic storage managed by the specified asset index, 
+ * then recursively do the same for all assets use the specified asset index as 
+ * a dependency.  This functionality assumes no cycles in the asset dependency 
+ * DAG.  If there are, we will probably hang forever so don't do that!!! */
+internal void _kgt_assetManager_free(
 	KgtAssetManager* kam, size_t kamIndex)
 {
-	/* @speed: this algorithm is garbage (recursive n^2), and would probably run 
-		MUCH faster if we just did topographical sort or something */
-	const KgtAssetHandle hAsset = _kgt_assetManager_makeHandle(kamIndex);
-	for(size_t kid = 0; kid < kam->maxAssetHandles; kid++)
-	{
-		KgtAsset& asset = kam->assets[kid];
-		if(kid == kamIndex || !asset.loaded || !asset.dependencyCount)
-			continue;
-		bool dependsOnKamIndex = false;
-		for(u8 d = 0; d < asset.dependencyCount; d++)
-		{
-			if(asset.dependencies[d] == hAsset)
-			{
-				dependsOnKamIndex = true;
-				break;
-			}
-		}
-		if(dependsOnKamIndex)
-		{
-			asset.dependenciesLoaded = false;
-			/* we also have to free the asset to release invalid 
-				resources!  For example, Texture assets need to delete their GPU 
-				texture since it will be reallocated when all its dependencies 
-				are loaded */
-			/* @speed: some assets don't actually use the asset data allocator, 
-				so we can conditionally ignore locking code for those! */
-			korlAssert(!"@todo");
-			_kgt_assetManager_markDependentsUnloaded(kam, kid);
-		}
-	}
-}
-internal void kgt_assetManager_free(
-	KgtAssetManager* kam, KgtAssetIndex assetIndex)
-{
-	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
-		KgtAssetIndex values! */
-	const size_t kamIndex = static_cast<size_t>(assetIndex);
 	korlAssert(kamIndex < kam->maxAssetHandles);
 	KgtAsset& asset = kam->assets[kamIndex];
 	if(!asset.loaded)
@@ -305,10 +270,38 @@ internal void kgt_assetManager_free(
 	kam->korl->lock(kam->hLockAssetDataAllocator);
 	kgt_asset_free(&asset, kam->hKgtAllocatorAssetData);
 	kam->korl->unlock(kam->hLockAssetDataAllocator);
-	asset.loaded = false;
-	/* recursively modify all assets which depend on this asset by clearing the 
-		dependenciesLoaded flag */
-	_kgt_assetManager_markDependentsUnloaded(kam, kamIndex);
+	/* @speed: this algorithm is garbage (recursive n^2), and would probably run 
+		MUCH faster if we just did topographical sort or something */
+	const KgtAssetHandle hAsset = _kgt_assetManager_makeHandle(kamIndex);
+	for(size_t kid = 0; kid < kam->maxAssetHandles; kid++)
+	{
+		KgtAsset& assetOther = kam->assets[kid];
+		if(kid == kamIndex || !assetOther.loaded || !assetOther.dependencyCount)
+			continue;
+		bool dependsOnKamIndex = false;
+		for(u8 d = 0; d < assetOther.dependencyCount; d++)
+		{
+			if(assetOther.dependencies[d] == hAsset)
+			{
+				dependsOnKamIndex = true;
+				break;
+			}
+		}
+		if(dependsOnKamIndex)
+			_kgt_assetManager_free(kam, kid);
+	}
+	asset.loaded             = false;
+	asset.dependenciesLoaded = false;
+	asset.dependencyCount    = 0;
+}
+internal void kgt_assetManager_free(
+	KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	/* the first KgtAsset::Type::ENUM_COUNT asset handles are reserved for 
+		KgtAssetIndex values! */
+	const size_t kamIndex = static_cast<size_t>(assetIndex);
+	korlAssert(kamIndex < kam->maxAssetHandles);
+	_kgt_assetManager_free(kam, kamIndex);
 }
 #if 0
 /** @return true if all dependencies of the asset are loaded */
