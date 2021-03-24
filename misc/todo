@@ -409,6 +409,21 @@
 		[x] world<->screen coordinates API
 		[x] clip box API
 	[x] support ImGui
+[ ] KgtAssetManager: split each KgtAssetType into its own code module
+	- each asset module should provide:
+		- raw data representing the default asset of this type
+		- a callback passed to the AssetManager which takes a reference to the 
+			asset's entry in the AssetManager & performs decoding of the raw 
+			asset data into a usable form (perhaps use a KCPP PTU for this?)
+		- a function to obtain some usable struct given a KAssetIndex & an 
+			AssetManager*
+	[ ] delete any critical sections which are no longer being used
+	[ ] delete any allocators which are no longer being used on the win32 
+		platform
+[ ] is it possible to tell MSVC debugger to ignore the platform assert failure 
+	function & go to the function which called it?
+	- check out the "ExceptionImplementation" property here: 
+		https://docs.microsoft.com/en-us/visualstudio/debugger/just-my-code?view=vs-2019#BKMK_C___Just_My_Code
 [ ] KgtAssetManager: GLB support
 	[ ] parse JSON
 		- try https://github.com/zserge/jsmn 

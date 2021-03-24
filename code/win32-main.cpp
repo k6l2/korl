@@ -69,6 +69,7 @@ enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	, ENUM_SIZE };
 struct W32ThreadInfo
 {
+	bool running;
 	u32 index;
 	JobQueue* jobQueue;
 };
@@ -76,10 +77,24 @@ DWORD WINAPI w32WorkThread(_In_ LPVOID lpParameter)
 {
 	W32ThreadInfo*const threadInfo = 
 		reinterpret_cast<W32ThreadInfo*>(lpParameter);
+	WCHAR threadNameBuffer[32];
+	const HRESULT hResultBuildThreadName = 
+		StringCchPrintfW(threadNameBuffer, CARRAY_SIZE(threadNameBuffer), 
+			L"KORL-Windows-Worker-%u", threadInfo->index);
+	korlAssert(hResultBuildThreadName == S_OK);
 	KLOG(INFO, "thread[%i]: started!", threadInfo->index);
-	while(true)
-		if(!jobQueuePerformWork(threadInfo->jobQueue, threadInfo->index))
-			jobQueueWaitForWork(threadInfo->jobQueue);
+	if(FAILED(SetThreadDescription(GetCurrentThread(), threadNameBuffer)))
+		KLOG(WARNING, "SetThreadDescription failed!");
+	while(threadInfo->running)
+	{
+		jobQueueWaitForWork(threadInfo->jobQueue);
+		JobQueueJob*const job = jobQueueTakeJob(threadInfo->jobQueue);
+		if(job)
+		{
+			job->function(job->data, threadInfo->index);
+			jobQueueMarkJobCompleted(threadInfo->jobQueue, job);
+		}
+	}
 	return 0;
 }
 #if 0
@@ -693,7 +708,8 @@ extern int WINAPI
 	}
 	defer(w32WriteLogToFile());
 	KLOG(INFO, "START!");
-	/* @todo: do I REALLY need to call LSMCleanup?  I'm going to guess no... */
+	if(FAILED(SetThreadDescription(GetCurrentThread(), L"KORL-Windows")))
+		KLOG(WARNING, "SetThreadDescription failed!");
 	if(!w32InitializeNetwork())
 	{
 		KLOG(ERROR, "Failed to initialize network!");
@@ -738,22 +754,23 @@ extern int WINAPI
 		threadIndex < sizeof(threadInfos)/sizeof(threadInfos[0]); 
 		threadIndex++)
 	{
+		threadInfos[threadIndex].running  = true;
 		threadInfos[threadIndex].index    = threadIndex;
 		threadInfos[threadIndex].jobQueue = &g_jobQueue;
 		DWORD threadId;
 		const HANDLE hThread = 
 			CreateThread(nullptr, 0, w32WorkThread, 
-			             &threadInfos[threadIndex], 0, &threadId);
+				&threadInfos[threadIndex], 0, &threadId);
 		if(!hThread)
 		{
 			KLOG(ERROR, "Failed to create thread! getlasterror=%i", 
-			     GetLastError());
+				GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 		if(!CloseHandle(hThread))
 		{
 			KLOG(ERROR, "Failed to close thread handle! getlasterror=%i", 
-			     GetLastError());
+				GetLastError());
 			return RETURN_CODE_FAILURE;
 		}
 	}
