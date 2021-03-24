@@ -251,6 +251,42 @@ internal void _kgt_assetManager_load(
 	asset.jobTicketLoading = 
 		kam->korl->postJob(_kgt_assetManager_asyncLoad, &asset);
 }
+/** This functionality assumes no cycles in the asset dependency DAG.  If there 
+ * are, we will probably hang forever so don't do that!!! */
+internal void _kgt_assetManager_markDependentsUnloaded(
+	KgtAssetManager* kam, size_t kamIndex)
+{
+	/* @speed: this algorithm is garbage (recursive n^2), and would probably run 
+		MUCH faster if we just did topographical sort or something */
+	const KgtAssetHandle hAsset = _kgt_assetManager_makeHandle(kamIndex);
+	for(size_t kid = 0; kid < kam->maxAssetHandles; kid++)
+	{
+		KgtAsset& asset = kam->assets[kid];
+		if(kid == kamIndex || !asset.loaded || !asset.dependencyCount)
+			continue;
+		bool dependsOnKamIndex = false;
+		for(u8 d = 0; d < asset.dependencyCount; d++)
+		{
+			if(asset.dependencies[d] == hAsset)
+			{
+				dependsOnKamIndex = true;
+				break;
+			}
+		}
+		if(dependsOnKamIndex)
+		{
+			asset.dependenciesLoaded = false;
+			/* we also have to free the asset to release invalid 
+				resources!  For example, Texture assets need to delete their GPU 
+				texture since it will be reallocated when all its dependencies 
+				are loaded */
+			/* @speed: some assets don't actually use the asset data allocator, 
+				so we can conditionally ignore locking code for those! */
+			korlAssert(!"@todo");
+			_kgt_assetManager_markDependentsUnloaded(kam, kid);
+		}
+	}
+}
 internal void kgt_assetManager_free(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)
 {
@@ -264,13 +300,15 @@ internal void kgt_assetManager_free(
 		KLOG(WARNING, "asset[%i] is already free!", kamIndex);
 		return;
 	}
+	/* @speed: some assets don't actually use the asset data allocator, 
+		so we can conditionally ignore locking code for those! */
 	kam->korl->lock(kam->hLockAssetDataAllocator);
 	kgt_asset_free(&asset, kam->hKgtAllocatorAssetData);
 	kam->korl->unlock(kam->hLockAssetDataAllocator);
 	asset.loaded = false;
 	/* recursively modify all assets which depend on this asset by clearing the 
 		dependenciesLoaded flag */
-	korlAssert(!"@todo");
+	_kgt_assetManager_markDependentsUnloaded(kam, kamIndex);
 }
 #if 0
 /** @return true if all dependencies of the asset are loaded */
@@ -337,7 +375,12 @@ internal bool _kgt_assetManager_fullyLoad(
 	korlAssert(kamIndex < kam->maxAssetHandles);
 	KgtAsset& asset = kam->assets[kamIndex];
 	if(kam->korl->jobDone(&(asset.jobTicketLoading)))
+	{
 		asset.loaded = true;
+		/* the asset was JUST loaded, so we have no idea whether or not all its 
+			dependencies are also loaded; ergo we must check! */
+		asset.dependenciesLoaded = false;
+	}
 	if(!asset.loaded)
 		return false;
 	/* iterate over all the asset's dependencies and recursively fully-load */
