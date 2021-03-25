@@ -68,15 +68,14 @@ internal void
 			g_kgs->assetManager, KgtAsset::Type::KGTASSETPNG, ".png", 
 			rawFileData, rawFileBytes);
 	}
-#if 1/* add this once I finish refactoring asset manager shit */
 	// add Texture asset descriptor //
 	{
 		char defaultTexture[] = 
-			"image-asset-file-name : USE_DEFAULT_IMAGE_ASSET"
-			"\nwrap-x                : clamp"
-			"\nwrap-y                : clamp"
-			"\nfilter-minify         : nearest"
-			"\nfilter-magnify        : nearest";
+			"image-asset-file-name : USE_DEFAULT_IMAGE_ASSET\n"
+			"wrap-x                : clamp\n"
+			"wrap-y                : clamp\n"
+			"filter-minify         : nearest\n"
+			"filter-magnify        : nearest";
 		kgt_assetManager_addAssetDescriptor(
 			g_kgs->assetManager, KgtAsset::Type::KGTASSETTEXTURE, ".tex", 
 			reinterpret_cast<u8*>(defaultTexture), 
@@ -84,7 +83,6 @@ internal void
 				character terminator */
 			sizeof(defaultTexture) - 1);
 	}
-#endif//0
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
@@ -93,9 +91,8 @@ internal void
 #if SEPARATE_ASSET_MODULES_COMPLETE
 	// Initialize the game's audio mixer //
 	g_kgs->audioMixer = kgtAudioMixerConstruct(g_kgs->hKalPermanent, 16);
-	// Tell the asset manager to load assets asynchronously! //
-	kgtAssetManagerPushAllKgtAssets(g_kam);
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
+	kgt_assetManager_loadAllStaticAssets(g_kam);
 }
 internal void 
 	kgtGameStateRenderAudio(
@@ -126,12 +123,9 @@ internal bool
 	{
 		g_kpl->setFullscreen(!g_kpl->isFullscreen());
 	}
-#if SEPARATE_ASSET_MODULES_COMPLETE
 	/* hot-reload all assets which have been reported to be changed by the 
 		platform layer (newer file write timestamp) */
-	if(kgtAssetManagerUnloadChangedAssets(g_kgs->assetManager))
-		kgtAssetManagerPushAllKgtAssets(g_kgs->assetManager);
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
+	kgt_assetManager_reloadChangedAssets(g_kgs->assetManager);
 	return true;
 }
 #pragma warning( push )

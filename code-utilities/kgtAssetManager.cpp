@@ -417,6 +417,42 @@ internal const KgtAsset* kgt_assetManager_getDefault(
 		return nullptr;
 	return &kam->assetDescriptors[static_cast<u32>(assetType)].defaultAsset;
 }
+
+internal void kgt_assetManager_loadAllStaticAssets(KgtAssetManager* kam)
+{
+	for(size_t a = 0; a < KGT_ASSET_COUNT; a++)
+		_kgt_assetManager_load(kam, _kgt_assetManager_makeHandle(a));
+}
+internal void kgt_assetManager_reloadChangedAssets(KgtAssetManager* kam)
+{
+	for(size_t a = 0; a < kam->maxAssetHandles; a++)
+	{
+		KgtAsset& asset = kam->assets[a];
+		if(!asset.loaded)
+			continue;
+		if(a >= KGT_ASSET_COUNT)
+		{
+			KLOG(ERROR, "Dynamic assets not implemented yet!");
+			continue;
+		}
+		/* build the file path of the KAsset */
+		char filePathBuffer[256];
+		const bool successBuildExeFilePath = 
+			_kgt_assetManager_buildCurrentRelativeFilePath(
+				filePathBuffer, CARRAY_SIZE(filePathBuffer), 
+				kgtAssetFileNames[a]);
+		korlAssert(successBuildExeFilePath);
+		/* if the KAsset is changed on disk, we need to free the asset & begin 
+			the async load procedures so it's available as fast as possible */
+		if(kam->korl->isFileChanged(
+			filePathBuffer, KorlApplicationDirectory::CURRENT, 
+			asset.lastWriteTime))
+		{
+			_kgt_assetManager_free(kam, a);
+			_kgt_assetManager_load(kam, _kgt_assetManager_makeHandle(a));
+		}
+	}
+}
 #if 0
 #include "z85-png-default.h"
 #include "z85-wav-default.h"

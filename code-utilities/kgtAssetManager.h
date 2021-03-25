@@ -67,6 +67,10 @@ internal const KgtAsset*
 	kgt_assetManager_get(KgtAssetManager* kam, KgtAssetHandle hAsset);
 internal const KgtAsset* 
 	kgt_assetManager_getDefault(KgtAssetManager* kam, KgtAsset::Type assetType);
+internal void 
+	kgt_assetManager_loadAllStaticAssets(KgtAssetManager* kam);
+internal void 
+	kgt_assetManager_reloadChangedAssets(KgtAssetManager* kam);
 #if 0
 /*
  * User code must define the following global variables to use this module:
