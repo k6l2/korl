@@ -63,7 +63,9 @@ internal RawSound _kgt_audioMixer_getRawSound(
 			kgt_assetWav_get(g_kam, audioMixer->tracks[trackIndex].kaiRawSound);
 		} break;
 	case KgtAudioTrack::AssetType::OGG_VORBIS: {
-		korlAssert(!"@todo: use custom KgtAsset PTU API!");
+		return 
+			kgt_assetOggVorbis_get(
+				g_kam, audioMixer->tracks[trackIndex].kaiRawSound);
 		} break;
 	}
 	KLOG(ERROR, "Invalid audio track asset type! (%u)", 

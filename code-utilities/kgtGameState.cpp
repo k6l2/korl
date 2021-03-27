@@ -3,6 +3,7 @@
 #include "z85.h"
 #include "z85-png-default.h"
 #include "z85-wav-default.h"
+#include "z85-ogg-vorbis-default.h"
 internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 {
 	g_kpl                     = &memory.kpl;
@@ -123,9 +124,21 @@ internal void
 	}
 	// add the Ogg-Vorbis asset descriptor //
 	{
-#if SEPARATE_ASSET_MODULES_COMPLETE
-		korlAssert(!"@todo");
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
+		defer(kgtAllocReset(g_kgs->hKalFrame));
+		const u32 rawFileBytes = kmath::safeTruncateU32(
+			z85::decodedFileSizeBytes(CARRAY_SIZE(z85_ogg_vorbis_default) - 1));
+		korlAssert(rawFileBytes);
+		u8* rawFileData = reinterpret_cast<u8*>(
+			kgtAllocAlloc(g_kgs->hKalFrame, rawFileBytes));
+		korlAssert(rawFileData);
+		const bool successDecodeZ85 = 
+			z85::decode(
+				reinterpret_cast<const i8*>(z85_ogg_vorbis_default), 
+				reinterpret_cast<i8*>(rawFileData));
+		korlAssert(successDecodeZ85);
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETOGGVORBIS, ".ogg", 
+			rawFileData, rawFileBytes);
 	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
@@ -230,6 +243,7 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtAssetTexture.cpp"
 #include "kgtAssetFlipbook.cpp"
 #include "kgtAssetWav.cpp"
+#include "kgtAssetOggVorbis.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #if SEPARATE_ASSET_MODULES_COMPLETE
