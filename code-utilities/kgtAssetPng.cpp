@@ -1,5 +1,5 @@
-#include "kgtAssetManager.h"
 #include "kgtAssetPng.h"
+#include "kgtAssetManager.h"
 internal KORL_CALLBACK_REQUEST_MEMORY(
 	_kgt_assetPng_callbackRequestMemoryPixelData)
 {
@@ -22,6 +22,7 @@ internal void kgt_assetPng_free(
 	KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData)
 {
 	kgtAllocFree(hKgtAllocatorAssetData, a->kgtAssetPng.rawImage.pixelData);
+	a->kgtAssetPng.rawImage.pixelData = nullptr;
 }
 internal RawImage kgt_assetPng_get(
 	KgtAssetManager* kam, KgtAssetIndex assetIndex)

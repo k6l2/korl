@@ -1,7 +1,8 @@
 #include "kgtGameState.h"
 #include "gen_kgtAssets.h"
-#include "z85-png-default.h"
 #include "z85.h"
+#include "z85-png-default.h"
+#include "z85-wav-default.h"
 internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 {
 	g_kpl                     = &memory.kpl;
@@ -102,24 +103,44 @@ internal void
 				character terminator */
 			sizeof(defaultFlipbook) - 1);
 	}
+	// add the WAV asset descriptor //
+	{
+		defer(kgtAllocReset(g_kgs->hKalFrame));
+		const u32 rawFileBytes = kmath::safeTruncateU32(
+			z85::decodedFileSizeBytes(CARRAY_SIZE(z85_wav_default) - 1));
+		korlAssert(rawFileBytes);
+		u8* rawFileData = reinterpret_cast<u8*>(
+			kgtAllocAlloc(g_kgs->hKalFrame, rawFileBytes));
+		korlAssert(rawFileData);
+		const bool successDecodeZ85 = 
+			z85::decode(
+				reinterpret_cast<const i8*>(z85_wav_default), 
+				reinterpret_cast<i8*>(rawFileData));
+		korlAssert(successDecodeZ85);
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETWAV, ".wav", 
+			rawFileData, rawFileBytes);
+	}
+	// add the Ogg-Vorbis asset descriptor //
+	{
+#if SEPARATE_ASSET_MODULES_COMPLETE
+		korlAssert(!"@todo");
+#endif// SEPARATE_ASSET_MODULES_COMPLETE
+	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
 		the value determined here will be the one which is copied instead! */
 	g_kam = g_kgs->assetManager;
-#if SEPARATE_ASSET_MODULES_COMPLETE
 	// Initialize the game's audio mixer //
 	g_kgs->audioMixer = kgtAudioMixerConstruct(g_kgs->hKalPermanent, 16);
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
 	kgt_assetManager_loadAllStaticAssets(g_kam);
 }
 internal void 
 	kgtGameStateRenderAudio(
 		GameAudioBuffer& audioBuffer, u32 sampleBlocksConsumed)
 {
-#if SEPARATE_ASSET_MODULES_COMPLETE
 	kgtAudioMixerMix(g_kgs->audioMixer, audioBuffer, sampleBlocksConsumed);
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
 }
 internal bool 
 	kgtGameStateUpdateAndDraw(
@@ -201,15 +222,14 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtNetServer.cpp"
 #include "KgtNetReliableDataBuffer.cpp"
 #include "kgtFlipBook.cpp"
-#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAudioMixer.cpp"
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAsset.cpp"
 #include "kgtAssetManager.cpp"
 #include "z85.cpp"
 #include "kgtAssetPng.cpp"
 #include "kgtAssetTexture.cpp"
 #include "kgtAssetFlipbook.cpp"
+#include "kgtAssetWav.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #if SEPARATE_ASSET_MODULES_COMPLETE

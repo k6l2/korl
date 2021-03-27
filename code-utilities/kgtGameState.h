@@ -4,8 +4,8 @@
 #include "krb-interface.h"
 #include "kgtAllocator.h"
 #include "kgtAssetManager.h"
-#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAudioMixer.h"
+#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtDraw.h"
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtVertex.h"
@@ -28,9 +28,7 @@ struct KgtGameState
 	krb::Context krbContext;
 	/* useful utilities which almost every game will use */
 	KgtAssetManager* assetManager;
-#if SEPARATE_ASSET_MODULES_COMPLETE
 	KgtAudioMixer* audioMixer;
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
 };
 /* useful global variables */
 global_variable KorlPlatformApi* g_kpl;

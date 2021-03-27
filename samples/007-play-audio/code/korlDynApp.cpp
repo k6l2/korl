@@ -41,12 +41,14 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		{
 			if(ImGui::Button("Play"))
 			{
-				g_gs->htMusic = kgtAudioMixerPlaySound(
+#if SEPARATE_ASSET_MODULES_COMPLETE
+				g_gs->htMusic = kgtAudioMixerPlayOggVorbis(
 					am, 
 					KgtAssetIndex::sfx_joesteroids_battle_theme_modified_ogg);
 				kgtAudioMixerSetRepeat(am, &g_gs->htMusic, g_gs->musicLoop);
 				kgtAudioMixerSetVolume(
 					am, &g_gs->htMusic, g_gs->musicVolumeRatio);
+#endif//SEPARATE_ASSET_MODULES_COMPLETE
 			}
 		}
 		ImGui::Separator();
@@ -55,21 +57,21 @@ GAME_UPDATE_AND_DRAW(gameUpdateAndDraw)
 		if(ImGui::Button("Play Explosion"))
 		{
 			KgtTapeHandle kth = 
-				kgtAudioMixerPlaySound(
+				kgtAudioMixerPlayWav(
 					am, KgtAssetIndex::sfx_joesteroids_explosion_wav);
 			kgtAudioMixerSetVolume(am, &kth, g_gs->sfxVolumeRatio);
 		}
 		if(ImGui::Button("Play Hit"))
 		{
 			KgtTapeHandle kth = 
-				kgtAudioMixerPlaySound(
+				kgtAudioMixerPlayWav(
 					am, KgtAssetIndex::sfx_joesteroids_hit_wav);
 			kgtAudioMixerSetVolume(am, &kth, g_gs->sfxVolumeRatio);
 		}
 		if(ImGui::Button("Play Shoot"))
 		{
 			KgtTapeHandle kth = 
-				kgtAudioMixerPlaySound(
+				kgtAudioMixerPlayWav(
 					am, KgtAssetIndex::sfx_joesteroids_shoot_modified_wav);
 			kgtAudioMixerSetVolume(am, &kth, g_gs->sfxVolumeRatio);
 		}

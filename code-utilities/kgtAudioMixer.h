@@ -18,7 +18,10 @@ internal void
 		KgtAudioMixer* audioMixer, GameAudioBuffer& audioBuffer, 
 		u32 sampleBlocksConsumed);
 internal KgtTapeHandle 
-	kgtAudioMixerPlaySound(
+	kgtAudioMixerPlayWav(
+		KgtAudioMixer* audioMixer, KgtAssetIndex assetIndex);
+internal KgtTapeHandle 
+	kgtAudioMixerPlayOggVorbis(
 		KgtAudioMixer* audioMixer, KgtAssetIndex assetIndex);
 internal bool 
 	kgtAudioMixerIsTapeHandleValid(
