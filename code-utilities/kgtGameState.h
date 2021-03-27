@@ -9,6 +9,7 @@
 #include "kgtDraw.h"
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtVertex.h"
+#include "kgtFlipBook.h"
 #pragma warning( push )
 	// warning C4820: bytes padding added after data member
 	#pragma warning( disable : 4820 )

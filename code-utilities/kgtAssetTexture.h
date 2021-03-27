@@ -1,6 +1,6 @@
 #pragma once
 #include "kcppPolymorphicTaggedUnion.h"
-#include "platform-game-interfaces.h"/* KorlTexture* */
+#include "platform-game-interfaces.h"/* KorlTexture*, RawImage */
 #include "gen_kgtAssets.h"/* KgtAssetIndex */
 KCPP_POLYMORPHIC_TAGGED_UNION_EXTENDS(KgtAsset) struct KgtAssetTexture
 {
@@ -22,3 +22,6 @@ internal void
 		KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData);
 internal KrbTextureHandle 
 	kgt_assetTexture_get(KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal RawImage 
+	kgt_assetTexture_getRawImage(
+		KgtAssetManager* kam, KgtAssetIndex assetIndex);

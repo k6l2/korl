@@ -44,6 +44,7 @@ struct KgtFlipBookMetaData
 	bool defaultRepeat;
 	bool defaultReverse;
 	f32 defaultSecondsPerFrame;
+	/* @todo: change this to a KgtAssetHandle for more robust asset support */
 	KgtAssetIndex kaiTexture;
 	f32 defaultAnchorRatioX;
 	f32 defaultAnchorRatioY;

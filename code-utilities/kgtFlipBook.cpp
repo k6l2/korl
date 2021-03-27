@@ -1,5 +1,6 @@
 #include "kgtFlipBook.h"
-#include "kgtAssetManager.h"
+#include "kgtAssetFlipbook.h"
+#include "kgtAssetTexture.h"
 #include <cstring>
 #include <cstdlib>
 #include <cctype>
@@ -174,8 +175,7 @@ internal bool kgtFlipBookDecodeMeta(
 internal void kgtFlipBookInit(KgtFlipBook* kfb, KgtAssetIndex assetIndex)
 {
 	kfb->kaiMetaData     = assetIndex;
-	kfb->cachedMetaData  = kgtAssetManagerGetFlipBookMetaData(
-	                           g_kam, assetIndex);
+	kfb->cachedMetaData  = kgt_assetFlipbook_get(g_kam, assetIndex);
 	kfb->anchorRatioX    = kfb->cachedMetaData.defaultAnchorRatioX;
 	kfb->anchorRatioY    = kfb->cachedMetaData.defaultAnchorRatioY;
 	kfb->repeat          = kfb->cachedMetaData.defaultRepeat;
@@ -218,7 +218,8 @@ internal void kgtFlipBookGetPageProperties(
 	*o_pageSizeY = kfb->cachedMetaData.frameSizeY;
 	*o_pageCount = kfb->cachedMetaData.frameCount;
 	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
-	const v2u32 texSize = kgtAssetManagerGetImageSize(g_kam, kaiTex);
+	const RawImage texRawImg = kgt_assetTexture_getRawImage(g_kam, kaiTex);
+	const v2u32 texSize = {texRawImg.sizeX, texRawImg.sizeY};
 	if(*o_pageSizeX == 0)
 	{
 		*o_pageSizeX = texSize.x;
@@ -241,8 +242,7 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const RgbaF32& color)
 	// If the flipbook's meta data doesn't match the meta data of the flipbook 
 	//	asset, then initialize the flipbook using the latest asset data. //
 	const KgtAssetIndex kaiFbm = kfb->kaiMetaData;
-	const KgtFlipBookMetaData fbmd = 
-		kgtAssetManagerGetFlipBookMetaData(g_kam, kaiFbm);
+	const KgtFlipBookMetaData fbmd = kgt_assetFlipbook_get(g_kam, kaiFbm);
 	if(kfb->cachedMetaData != fbmd)
 	{
 		kfb->cachedMetaData  = fbmd;
@@ -283,13 +283,13 @@ internal void kgtFlipBookDraw(KgtFlipBook* kfb, const RgbaF32& color)
 			static_cast<f32>(flipbookPageCols);
 	// Submit draw commands to the render backend. //
 	const KgtAssetIndex kaiTex = kfb->cachedMetaData.kaiTexture;
-	g_krb->useTexture(kgtAssetManagerGetTexture        (g_kam, kaiTex), 
-	                  kgtAssetManagerGetTextureMetaData(g_kam, kaiTex));
-	v2f32 texCoords[4] = {{pageTexCoordLeft, pageTexCoordUp},
-	                      {pageTexCoordLeft, pageTexCoordDown},
-	                      {pageTexCoordRight, pageTexCoordDown},
-	                      {pageTexCoordRight, pageTexCoordUp}};
-	RgbaF32 colors[4] = {color,color,color,color};
+	g_krb->useTexture(kgt_assetTexture_get(g_kam, kaiTex));
+	v2f32 texCoords[4] = 
+		{ {pageTexCoordLeft , pageTexCoordUp}
+		, {pageTexCoordLeft , pageTexCoordDown}
+		, {pageTexCoordRight, pageTexCoordDown}
+		, {pageTexCoordRight, pageTexCoordUp} };
+	RgbaF32 colors[4] = {color, color, color, color};
 	g_krb->drawQuadTextured(
 		v2f32{ static_cast<f32>(frameSizeX)
 		     , static_cast<f32>(frameSizeY) }.elements, 

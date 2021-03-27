@@ -83,6 +83,25 @@ internal void
 				character terminator */
 			sizeof(defaultTexture) - 1);
 	}
+	// add the FlipBook asset descriptor //
+	{
+		char defaultFlipbook[] = 
+			"texture-asset-file-name   : DEFAULT_TEXTURE\n"
+			"frame-size-x              : 0\n"
+			"frame-size-y              : 0\n"
+			"frame-count               : 0\n"
+			"default-repeat            : 1\n"
+			"default-reverse           : 0\n"
+			"default-seconds-per-frame : 0.05\n"
+			"default-anchor-ratio-x    : 0.5\n"
+			"default-anchor-ratio-y    : 0.5";
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETFLIPBOOK, ".fbm", 
+			reinterpret_cast<u8*>(defaultFlipbook),
+			/* subtract 1 from size to only account for file size, NOT the null
+				character terminator */
+			sizeof(defaultFlipbook) - 1);
+	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
@@ -181,8 +200,8 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtNetClient.cpp"
 #include "kgtNetServer.cpp"
 #include "KgtNetReliableDataBuffer.cpp"
-#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtFlipBook.cpp"
+#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAudioMixer.cpp"
 #endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtAsset.cpp"
@@ -190,6 +209,7 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "z85.cpp"
 #include "kgtAssetPng.cpp"
 #include "kgtAssetTexture.cpp"
+#include "kgtAssetFlipbook.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #if SEPARATE_ASSET_MODULES_COMPLETE
