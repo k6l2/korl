@@ -149,6 +149,7 @@ internal bool
 	}
 	return success;
 }
+#if SEPARATE_ASSET_MODULES_COMPLETE
 internal void 
 	kgtSpriteFontDraw(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
@@ -403,3 +404,4 @@ internal void
 	KGT_USE_IMAGE(sfm.kaiTexture);
 	g_krb->drawTris(vertices, vertexCount, vertexStride, vertexAttribOffsets);
 }
+#endif// SEPARATE_ASSET_MODULES_COMPLETE

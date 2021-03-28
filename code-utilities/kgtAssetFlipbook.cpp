@@ -9,6 +9,11 @@ internal void kgt_assetFlipbook_decode(
 		kgtFlipBookDecodeMeta(
 			data, dataBytes, ansiAssetName, &a->kgtAssetFlipbook.metaData, 
 			texAssetNameBuffer, CARRAY_SIZE(texAssetNameBuffer));
+	if(!successDecodeFlipbook)
+	{
+		KLOG(ERROR, "Decode flipbook meta data failed!");
+		return;
+	}
 	/* find which asset matches the tex asset name, and add this asset as a 
 		dependency */
 	const KgtAssetIndex kaiTex = 

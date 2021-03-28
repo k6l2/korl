@@ -140,6 +140,23 @@ internal void
 			g_kgs->assetManager, KgtAsset::Type::KGTASSETOGGVORBIS, ".ogg", 
 			rawFileData, rawFileBytes);
 	}
+	// add the SpriteFont asset descriptor //
+	{
+		char defaultSpriteFont[] = 
+			"asset-file-name-texture         : DEFAULT_TEXTURE\n"
+			"asset-file-name-texture-outline : DEFAULT_TEXTURE\n"
+			"size-x                          : 8\n"
+			"size-y                          : 8\n"
+			"padding-x                       : 0\n"
+			"padding-y                       : 0\n"
+			"characters                      : \"\"";
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETSPRITEFONT, ".sfm", 
+			reinterpret_cast<u8*>(defaultSpriteFont),
+			/* subtract 1 from size to only account for file size, NOT the null
+				character terminator */
+			sizeof(defaultSpriteFont) - 1);
+	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
@@ -236,17 +253,16 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "KgtNetReliableDataBuffer.cpp"
 #include "kgtFlipBook.cpp"
 #include "kgtAudioMixer.cpp"
-#include "kgtAsset.cpp"
-#include "kgtAssetManager.cpp"
 #include "z85.cpp"
+#include "kgtAssetManager.cpp"
+#include "kgtAsset.cpp"
 #include "kgtAssetPng.cpp"
 #include "kgtAssetTexture.cpp"
 #include "kgtAssetFlipbook.cpp"
 #include "kgtAssetWav.cpp"
 #include "kgtAssetOggVorbis.cpp"
+#include "kgtAssetSpriteFont.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #include "kgtDraw.cpp"
-#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtSpriteFont.cpp"
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
