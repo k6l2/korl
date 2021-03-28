@@ -246,7 +246,7 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtAssetOggVorbis.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
-#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtDraw.cpp"
+#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtSpriteFont.cpp"
 #endif// SEPARATE_ASSET_MODULES_COMPLETE

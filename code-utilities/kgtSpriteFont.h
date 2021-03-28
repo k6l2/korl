@@ -2,6 +2,16 @@
 #include "kutil.h"
 #include "kmath.h"
 #include "gen_kgtAssets.h"
+/** 
+ * ----- Example of a flipbook meta data asset text file: -----
+ * asset-file-name-texture         : font-small.tex
+ * asset-file-name-texture-outline : font-small-outline.tex
+ * size-x                          : 8
+ * size-y                          : 8
+ * padding-x                       : 1
+ * padding-y                       : 1
+ * characters                      : "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!?"+-" 
+ */
 struct KgtSpriteFontMetaData
 {
 	KgtAssetIndex kaiTexture;

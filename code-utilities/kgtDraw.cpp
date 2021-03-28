@@ -1,18 +1,16 @@
 #include "kgtDraw.h"
 #include "kgtVertex.h"
 #include "gen_kgtAssets.h"
-internal void 
-	kgtDrawTexture2d(
-		KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
-		f32 counterClockwiseRadians, const v2f32& scale, 
-		const RgbaF32 colors[4])
+internal void kgtDrawTexture2d(
+	KgtAssetIndex kai, const v2f32& position, const v2f32& ratioAnchor, 
+	f32 counterClockwiseRadians, const v2f32& scale, 
+	const RgbaF32 colors[4])
 {
 	g_krb->setModelXform2d(
 		position, q32{v3f32::Z, counterClockwiseRadians}, scale);
-	g_krb->useTexture(
-		kgtAssetManagerGetTexture(g_kam, kai), 
-		kgtAssetManagerGetTextureMetaData(g_kam, kai));
-	const v2u32 imageSize = kgtAssetManagerGetImageSize(g_kam, kai);
+	KGT_USE_IMAGE(kai);
+	const RawImage rawImg = kgt_assetTexture_getRawImage(g_kam, kai);
+	const v2u32 imageSize = {rawImg.sizeX, rawImg.sizeY};
 	const v2f32 quadSize = 
 		{ static_cast<f32>(imageSize.x)
 		, static_cast<f32>(imageSize.y) };
@@ -20,17 +18,14 @@ internal void
 		quadSize.elements, ratioAnchor.elements, colors, 
 		v2f32::ZERO.elements, v2f32{1,1}.elements);
 }
-internal void 
-	kgtDrawTexture2d(
-		KrbTextureHandle kth, const v2u32& imageSize, 
-		const v2f32& position, const v2f32& ratioAnchor, 
-		f32 counterClockwiseRadians, const v2f32& scale)
+internal void kgtDrawTexture2d(
+	KrbTextureHandle kth, const v2u32& imageSize, 
+	const v2f32& position, const v2f32& ratioAnchor, 
+	f32 counterClockwiseRadians, const v2f32& scale)
 {
 	g_krb->setModelXform2d(
 		position, q32{v3f32::Z, counterClockwiseRadians}, scale);
-	g_krb->useTexture(
-		kth, 
-		kgtAssetManagerGetTextureMetaData(g_kam, KgtAssetIndex::ENUM_SIZE));
+	g_krb->useTexture(kth);
 	const v2f32 quadSize = 
 		{ static_cast<f32>(imageSize.x)
 		, static_cast<f32>(imageSize.y) };
@@ -38,8 +33,7 @@ internal void
 		quadSize.elements, ratioAnchor.elements, KGT_DRAW_QUAD_WHITE, 
 		v2f32::ZERO.elements, v2f32{1,1}.elements);
 }
-internal void 
-	kgtDrawAxes(const v3f32& scale)
+internal void kgtDrawAxes(const v3f32& scale)
 {
 	g_krb->setModelXform(v3f32::ZERO, q32::IDENTITY, scale);
 	local_persist const KgtVertex MESH[] = 
@@ -48,10 +42,9 @@ internal void
 		, {{0,0,0}, {}, krb::BLUE }, {{0,0,1}, {}, krb::BLUE } };
 	KGT_DRAW_LINES(MESH, KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }
-internal void 
-	kgtDrawOrigin(
-		const v2u32& windowDimensions, const v3f32& camForward, 
-		const v3f32& camPosition)
+internal void kgtDrawOrigin(
+	const v2u32& windowDimensions, const v3f32& camForward, 
+	const v3f32& camPosition)
 {
 	const v2f32 originScreenPos = 
 		g_krb->worldToScreen(v3f32::ZERO.elements, 3);
@@ -109,16 +102,14 @@ internal void
 	g_krb->setMatricesMvp(
 		m4Model.elements, m4View.elements, m4Projection.elements);
 }
-internal void 
-	kgtDrawOrigin(
-		const v2u32& windowDimensions, const v2f32& camPosition2d)
+internal void kgtDrawOrigin(
+	const v2u32& windowDimensions, const v2f32& camPosition2d)
 {
 	kgtDrawOrigin(
 		windowDimensions, -v3f32::Z, 
 		v3f32{camPosition2d.x, camPosition2d.y, 0});
 }
-internal void 
-	kgtDrawCompass(u32 squareSize, const v3f32& camForward)
+internal void kgtDrawCompass(u32 squareSize, const v3f32& camForward)
 {
 	m4f32 m4View, m4Projection;
 	g_krb->getMatricesMvp(
@@ -133,9 +124,8 @@ internal void
 	g_krb->setMatricesMvp(
 		nullptr, m4View.elements, m4Projection.elements);
 }
-internal void 
-	kgtDrawBoxLines2d(
-		const v2f32& cornerA, const v2f32& cornerB, const RgbaF32& color)
+internal void kgtDrawBoxLines2d(
+	const v2f32& cornerA, const v2f32& cornerB, const RgbaF32& color)
 {
 	const KgtVertex mesh[] = 
 		{ {{cornerA.x, cornerA.y, 0}, {}, color}
@@ -147,13 +137,13 @@ internal void
 		, {{cornerB.x, cornerB.y, 0}, {}, color}
 		, {{cornerA.x, cornerB.y, 0}, {}, color} };
 	g_krb->setModelXform2d(v2f32::ZERO, q32::IDENTITY, {1.f, 1.f});
-	g_krb->drawLines(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
-	                 KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+	g_krb->drawLines(
+		mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
+		KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }
-internal void 
-	kgtDrawBox2d(
-		const v2f32& cornerMinusXPlusY, const v2f32& size, 
-		const RgbaF32& color)
+internal void kgtDrawBox2d(
+	const v2f32& cornerMinusXPlusY, const v2f32& size, 
+	const RgbaF32& color)
 {
 	const KgtVertex mesh[] = 
 		// upper-left triangle //
@@ -164,9 +154,9 @@ internal void
 		, {{cornerMinusXPlusY.x + size.x,cornerMinusXPlusY.y - size.y,0}, 
 			{}, color} 
 		, {{cornerMinusXPlusY.x + size.x,cornerMinusXPlusY.y,0}, {}, color} 
-		, {{cornerMinusXPlusY.x,cornerMinusXPlusY.y - size.y,0}, {}, color} 
-		};
+		, {{cornerMinusXPlusY.x,cornerMinusXPlusY.y - size.y,0}, {}, color} };
 	g_krb->setModelXform2d(v2f32::ZERO, q32::IDENTITY, {1,1});
-	g_krb->drawTris(mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
-	                KGT_VERTEX_ATTRIBS_NO_TEXTURE);
+	g_krb->drawTris(
+		mesh, CARRAY_SIZE(mesh), sizeof(mesh[0]), 
+		KGT_VERTEX_ATTRIBS_NO_TEXTURE);
 }

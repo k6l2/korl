@@ -45,9 +45,7 @@ internal void
 		const v2f32& cornerMinusXPlusY, const v2f32& size, 
 		const RgbaF32& color);
 #define KGT_USE_IMAGE(kgtAssetIndex) \
-	g_krb->useTexture(\
-		kgtAssetManagerGetTexture        (g_kam, kgtAssetIndex), \
-		kgtAssetManagerGetTextureMetaData(g_kam, kgtAssetIndex));
+	g_krb->useTexture(kgt_assetTexture_get(g_kam, kgtAssetIndex));
 /* useful drawing macros which can work with arbitrarily defined vertex 
  * structures */
 #define KGT_DRAW_POINTS(mesh, vertexAttribs) \

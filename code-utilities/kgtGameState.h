@@ -5,9 +5,7 @@
 #include "kgtAllocator.h"
 #include "kgtAssetManager.h"
 #include "kgtAudioMixer.h"
-#if SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtDraw.h"
-#endif// SEPARATE_ASSET_MODULES_COMPLETE
 #include "kgtVertex.h"
 #include "kgtFlipBook.h"
 #pragma warning( push )
