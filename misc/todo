@@ -417,6 +417,7 @@
 			asset data into a usable form (perhaps use a KCPP PTU for this?)
 		- a function to obtain some usable struct given a KAssetIndex & an 
 			AssetManager*
+	[x] cleanup KgtAssetManager deprecated code
 	[ ] delete any critical sections which are no longer being used
 	[ ] delete any allocators which are no longer being used on the win32 
 		platform
