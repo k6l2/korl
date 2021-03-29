@@ -55,3 +55,14 @@ internal RawImage kgt_assetTexture_getRawImage(
 	korlAssert(kgtAsset->dependencyCount > 0);
 	return kgt_assetPng_get(kam, kgtAsset->dependencies[0]);
 }
+internal v2u32 
+	kgt_assetTexture_getSize(KgtAssetManager* kam, KgtAssetIndex assetIndex)
+{
+	const KgtAsset*const kgtAsset = assetIndex == KgtAssetIndex::ENUM_SIZE 
+		? kgt_assetManager_getDefault(kam, KgtAsset::Type::KGTASSETTEXTURE)
+		: kgt_assetManager_get(kam, assetIndex);
+	korlAssert(kgtAsset->type == KgtAsset::Type::KGTASSETTEXTURE);
+	korlAssert(kgtAsset->dependencyCount > 0);
+	const RawImage rawImg = kgt_assetPng_get(kam, kgtAsset->dependencies[0]);
+	return {rawImg.sizeX, rawImg.sizeY};
+}

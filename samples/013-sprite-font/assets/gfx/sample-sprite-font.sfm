@@ -1,7 +1,7 @@
-asset-file-name-texture         : sample-sprite-font.tex
-asset-file-name-texture-outline : sample-sprite-font.tex
-size-x                          : 15
-size-y                          : 15
+asset-file-name-texture         : gfx/sample-sprite-font.tex
+asset-file-name-texture-outline : gfx/sample-sprite-font.tex
+size-x                          : 14
+size-y                          : 14
 padding-x                       : 1
 padding-y                       : 1
 characters                      : "abcdefghijklmnopqrstuvwxyz"

@@ -1,6 +1,8 @@
 #include "kgtSpriteFont.h"
 #include "kgtAssetManager.h"
 #include "krb-interface.h"
+#include "kgtAssetSpriteFont.h"
+#include "kgtAssetTexture.h"
 enum KgtSpriteFontMetaDataEntries : u32
 	{ KGT_SPRITE_FONT_META_DECODE_ASSET_NAME_TEX
 	, KGT_SPRITE_FONT_META_DECODE_ASSET_NAME_TEX_OUTLINE
@@ -149,7 +151,6 @@ internal bool
 	}
 	return success;
 }
-#if SEPARATE_ASSET_MODULES_COMPLETE
 internal void 
 	kgtSpriteFontDraw(
 		KgtAssetIndex kaiSpriteFontMeta, const char* cStrText, 
@@ -158,9 +159,9 @@ internal void
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
-		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+		kgt_assetSpriteFont_get(kam, kaiSpriteFontMeta);
 	const v2u32 fontSpriteSheetSize = 
-		kgtAssetManagerGetImageSize(kam, sfm.kaiTexture);
+		kgt_assetTexture_getSize(kam, sfm.kaiTexture);
 	/* build the triangle mesh to draw each character */
 	KgtVertex charTriMesh[6];
 	// upper-left triangle //
@@ -251,7 +252,7 @@ internal v2f32
 		const v2f32& scale, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
-		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+		kgt_assetSpriteFont_get(kam, kaiSpriteFontMeta);
 	v2f32 resultAabbSize = {0, scale.y * static_cast<f32>(sfm.monospaceSize.y)};
 	f32 currentLineSizeX = 0;
 	for(; *cStrText; cStrText++)
@@ -274,7 +275,7 @@ internal v2f32
 		const v2f32& scale, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
-		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+		kgt_assetSpriteFont_get(kam, kaiSpriteFontMeta);
 	return position + scale*v2u32{0, sfm.monospaceSize.y};
 }
 internal void
@@ -287,9 +288,9 @@ internal void
 		void* callbackAddVertexUserData, v2f32* io_aabbMin, v2f32* io_aabbMax)
 {
 	const KgtSpriteFontMetaData& sfm = 
-		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+		kgt_assetSpriteFont_get(kam, kaiSpriteFontMeta);
 	const v2u32 fontSpriteSheetSize = 
-		kgtAssetManagerGetImageSize(kam, sfm.kaiTexture);
+		kgt_assetTexture_getSize(kam, sfm.kaiTexture);
 	/* build the triangle mesh to draw each character */
 	KgtVertex charTriMesh[6];
 	// upper-left triangle //
@@ -394,7 +395,7 @@ internal void
 		const KrbApi*const krb, KgtAssetManager*const kam)
 {
 	const KgtSpriteFontMetaData& sfm = 
-		kgtAssetManagerGetSpriteFontMetaData(kam, kaiSpriteFontMeta);
+		kgt_assetSpriteFont_get(kam, kaiSpriteFontMeta);
 	/* draw the outline mesh first */
 	krb->setModelXform2d(positionOffset, q32::IDENTITY, {1,1});
 	KGT_USE_IMAGE(sfm.kaiTextureOutline);
@@ -404,4 +405,3 @@ internal void
 	KGT_USE_IMAGE(sfm.kaiTexture);
 	g_krb->drawTris(vertices, vertexCount, vertexStride, vertexAttribOffsets);
 }
-#endif// SEPARATE_ASSET_MODULES_COMPLETE

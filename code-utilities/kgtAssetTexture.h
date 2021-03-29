@@ -25,3 +25,5 @@ internal KrbTextureHandle
 internal RawImage 
 	kgt_assetTexture_getRawImage(
 		KgtAssetManager* kam, KgtAssetIndex assetIndex);
+internal v2u32 
+	kgt_assetTexture_getSize(KgtAssetManager* kam, KgtAssetIndex assetIndex);
