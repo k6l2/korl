@@ -55,7 +55,6 @@ global_const size_t STATIC_MEMORY_ALLOC_SIZES[] =
 	, kmath::megabytes(128)
 	, kmath::megabytes(2)
 	, kmath::megabytes(1)
-	, kmath::megabytes(1)
 	, kmath::megabytes(16) };
 enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	{ GAME_PERMANENT
@@ -64,7 +63,6 @@ enum class StaticMemoryAllocationIndex : u8// sub-255 memory chunks please, god!
 	, STB_IMAGE
 	, STB_VORBIS
 	, IMGUI
-	, RAW_FILES
 	/* obviously, this value does not have a matching allocation size */
 	, ENUM_SIZE };
 struct W32ThreadInfo
@@ -662,10 +660,8 @@ extern int WINAPI
 	// Initialize locks to ensure thread safety for various systems //
 	{
 		InitializeCriticalSection(&g_logCsLock);
-		InitializeCriticalSection(&g_assetAllocationCsLock);
 		InitializeCriticalSection(&g_vorbisAllocationCsLock);
 		InitializeCriticalSection(&g_stbiAllocationCsLock);
-		InitializeCriticalSection(&g_csLockAllocatorRawFiles);
 		for(size_t l = 0; l < CARRAY_SIZE(g_platformExposedLocks); l++)
 		{
 			g_platformExposedLocks[l].allocated = false;
@@ -971,18 +967,6 @@ extern int WINAPI
 			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
 		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
 		g_genAllocImgui = kgtAllocInit(
-			KgtAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
-	}
-	/* assign a pre-allocated dynamic memory arena for loading files into memory 
-		note: this memory definitely needs to be thread-safe */
-	{
-		const u8 allocId = static_cast<u8>(
-			StaticMemoryAllocationIndex::RAW_FILES);
-		size_t memoryOffset = staticMemoryAllocOffsets[allocId];
-		void*const memoryAddressStart = 
-			static_cast<u8*>(minimumApplicationMemory) + memoryOffset;
-		const size_t memoryBytes = STATIC_MEMORY_ALLOC_SIZES[allocId];
-		g_hKalRawFiles = kgtAllocInit(
 			KgtAllocatorType::GENERAL, memoryAddressStart, memoryBytes);
 	}
 	/* assign a pre-allocated dynamic memory arena for decoding vorbis data */

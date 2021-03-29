@@ -409,7 +409,7 @@
 		[x] world<->screen coordinates API
 		[x] clip box API
 	[x] support ImGui
-[ ] KgtAssetManager: split each KgtAssetType into its own code module
+[x] KgtAssetManager: split each KgtAssetType into its own code module
 	- each asset module should provide:
 		- raw data representing the default asset of this type
 		- a callback passed to the AssetManager which takes a reference to the 
@@ -418,8 +418,8 @@
 		- a function to obtain some usable struct given a KAssetIndex & an 
 			AssetManager*
 	[x] cleanup KgtAssetManager deprecated code
-	[ ] delete any critical sections which are no longer being used
-	[ ] delete any allocators which are no longer being used on the win32 
+	[x] delete any critical sections which are no longer being used
+	[x] delete any allocators which are no longer being used on the win32 
 		platform
 [ ] is it possible to tell MSVC debugger to ignore the platform assert failure 
 	function & go to the function which called it?
