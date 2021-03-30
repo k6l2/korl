@@ -11,8 +11,10 @@ internal KgtAssetHandle kgt_asset_makeHandle(KgtAssetIndex kai)
 }
 internal KgtAssetIndex kgt_asset_findKgtAssetIndex(const char* assetName)
 {
+#ifndef KGT_ASSET_NONE_FOUND
 	for(size_t id = 0; id < KGT_ASSET_COUNT; id++)
 		if(strcmp(kgtAssetFileNames[id], assetName) == 0)
 			return static_cast<KgtAssetIndex>(id);
+#endif// !defined(KGT_ASSET_NONE_FOUND)
 	return KgtAssetIndex::ENUM_SIZE;
 }

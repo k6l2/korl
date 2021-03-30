@@ -4,12 +4,18 @@ internal KgtAssetManager* kgt_assetManager_construct(
 	KgtAllocatorHandle hKgtAllocatorAssetData, const KorlPlatformApi* korl, 
 	const KrbApi* krb)
 {
+#ifdef KGT_ASSET_NONE_FOUND
+	/* ensure that we can still run a program with no static assets */
+	if(maxAssetHandles < 1)
+		maxAssetHandles = 1;
+#else
 	if(maxAssetHandles < KGT_ASSET_COUNT)
 	{
 		KLOG(ERROR, "maxAssetHandles(%i) < KGT_ASSET_COUNT(%i)!", 
 			maxAssetHandles, KGT_ASSET_COUNT);
 		return nullptr;
 	}
+#endif// !defined(KGT_ASSET_NONE_FOUND)
 	const size_t rawFilePoolBytes = kmath::megabytes(1);
 	korlAssert(maxAssetHandles > 0);
 	const size_t requiredBytes = sizeof(KgtAssetManager) + 
@@ -232,6 +238,7 @@ internal void _kgt_assetManager_load(
 	KgtAsset& asset = kam->assets[kamIndex];
 	if(asset.loaded)
 		return;
+#ifndef KGT_ASSET_NONE_FOUND
 	if(kamIndex < KGT_ASSET_COUNT)
 		/* @speed: call this code once for all valid KgtAssetIndex values after 
 			all the asset descriptors are added to the asset manager, and we 
@@ -240,6 +247,7 @@ internal void _kgt_assetManager_load(
 		_kgt_assetManager_matchAssetDescriptor(
 			kam, static_cast<KgtAssetIndex>(kamIndex));
 	else
+#endif// !defined(KGT_ASSET_NONE_FOUND)
 		korlAssert(!"Not implemented!");
 	/* start an asynchronous job which will attempt to load the asset (if there 
 		is not already one running) */
@@ -420,8 +428,10 @@ internal const KgtAsset* kgt_assetManager_getDefault(
 
 internal void kgt_assetManager_loadAllStaticAssets(KgtAssetManager* kam)
 {
+#ifndef KGT_ASSET_NONE_FOUND
 	for(size_t a = 0; a < KGT_ASSET_COUNT; a++)
 		_kgt_assetManager_load(kam, _kgt_assetManager_makeHandle(a));
+#endif// !defined(KGT_ASSET_NONE_FOUND)
 }
 internal void kgt_assetManager_reloadChangedAssets(KgtAssetManager* kam)
 {
@@ -430,11 +440,13 @@ internal void kgt_assetManager_reloadChangedAssets(KgtAssetManager* kam)
 		KgtAsset& asset = kam->assets[a];
 		if(!asset.loaded)
 			continue;
+#ifndef KGT_ASSET_NONE_FOUND
 		if(a >= KGT_ASSET_COUNT)
 		{
 			KLOG(ERROR, "Dynamic assets not implemented yet!");
 			continue;
 		}
+#endif// !defined(KGT_ASSET_NONE_FOUND)
 		/* build the file path of the KAsset */
 		char filePathBuffer[256];
 		const bool successBuildExeFilePath = 
