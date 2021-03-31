@@ -92,79 +92,125 @@ namespace kutil
 	 *         characters exist in the string, the return value is `filePath`.
 	*/
 	const char* fileName(const char* filePath);
-	/**
+	/** 
 	 * upon execution, `data` will be stored in an array at the position 
 	 * currently pointed to by `*bufferCursor`, and `*bufferCursor` is 
 	 * incremented by `sizeof(data)`
 	 * @param data the variable to pack
-	 * @param bufferCursor pointer to the address of the moving current byte 
-	 *                     within an array
-	 * @param bufferEnd pointer to the address immediately following the last 
-	 *                  byte within the buffer which `*bufferCursor` is pointing 
-	 *                  to.  `*bufferEnd` should NEVER be modified, and netPack 
-	 *                  will fail if the call is about to violate this axiom.
-	 * @return the # of bytes packed into `*bufferCursor`
-	 */
-	u32 netPack(u64 data, u8** bufferCursor, const u8* bufferEnd);
+	 * @param bufferCursor 
+	 * pointer to the address of the moving current byte within an array
+	 * @param bufferEnd 
+	 * pointer to the address immediately following the last byte within the 
+	 * buffer which `*bufferCursor` is pointing to.  `*bufferEnd` should NEVER 
+	 * be modified, and netPack will fail if the call is about to violate this 
+	 * axiom.
+	 * @param littleEndian 
+	 * specify whether the packed data should be in little or big endian
+	 * @return the # of bytes packed into `*bufferCursor` */
+	u32 dataPack(
+		u64 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(u32 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		u32 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(u16 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		u16 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(u8 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		u8 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(i64 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		i64 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(i32 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		i32 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(i16 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		i16 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(i8 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		i8 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(f32 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		f32 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netPack(f64 data, u8** bufferCursor, const u8* bufferEnd);
+	u32 dataPack(
+		f64 data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/* this template prevents calls to netPack which don't precisely match the 
 		data parameter.  Source: https://stackoverflow.com/a/12877589 */
 	template<class T>
-	u32 netPack(T data, u8** bufferCursor, const u8* bufferEnd) = delete;
-	/**
+	u32 dataPack(
+		T data, u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian) = delete;
+	/** 
 	 * upon execution, a value is extracted from an array defined by the 
 	 * position currently pointed to by `*bufferCursor`, and `*bufferCursor` 
 	 * is incremented by `sizeof(*o_data)`
 	 * @param o_data the return value which receives the unpacked data
 	 * @param bufferCursor pointer to the address of the moving current byte 
-	 *                       within `dataBuffer`
+	 * within `dataBuffer`
 	 * @param bufferEnd pointer to the address immediately following the last 
-	 *                  byte within the buffer which `*bufferCursor` is pointing 
-	 *                  to.  `*bufferEnd` should NEVER be read, and netUnpack 
-	 *                  will fail if the call is about to violate this axiom.
-	 * @return the # of bytes unpacked from `*bufferCursor`
-	 */
-	u32 netUnpack(u64* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	 * byte within the buffer which `*bufferCursor` is pointing to.  
+	 * `*bufferEnd` should NEVER be read, and netUnpack will fail if the call is 
+	 * about to violate this axiom.
+	 * @param littleEndian 
+	 * specify whether the packed data should be in little or big endian
+	 * @return the # of bytes unpacked from `*bufferCursor` */
+	u32 dataUnpack(
+		u64* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(u32* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		u32* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(u16* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		u16* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(u8* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		u8* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(i64* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		i64* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(i32* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		i32* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(i16* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		i16* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(i8* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		i8* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(f32* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		f32* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/** See above for documentation */
-	u32 netUnpack(f64* o_data, const u8** bufferCursor, const u8* bufferEnd);
+	u32 dataUnpack(
+		f64* o_data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian = false);
 	/* this template prevents calls to netUnpack which don't precisely match the 
 		data parameter.  Source: https://stackoverflow.com/a/12877589 */
 	template<class T>
-	u32 netUnpack(T data, const u8** bufferCursor, const u8* bufferEnd) 
-		= delete;
+	u32 dataUnpack(
+		T data, const u8** bufferCursor, const u8* bufferEnd, 
+		bool littleEndian) = delete;
 	/**
 	 * Modify the c-string pointed to by `pCStr` to point to the first 
 	 * non-whitespace character in the string, then destructively terminate the 

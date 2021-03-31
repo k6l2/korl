@@ -149,8 +149,8 @@ internal void kgtNetServerStep(
 					find that it's old/duplicated data */
 				u32 rollingUnreliableStateIndex;
 				bytesUnpacked += 
-					kutil::netUnpack(&rollingUnreliableStateIndex, 
-					                 &packetBuffer, packetBufferEnd);
+					KGT_NET_UNPACK(&rollingUnreliableStateIndex, 
+					               &packetBuffer, packetBufferEnd);
 				if(kns->clientArray[clientIndex].rollingUnreliableStateIndex >= 
 					rollingUnreliableStateIndex)
 				{
@@ -162,8 +162,8 @@ internal void kgtNetServerStep(
 					client's last known server timestamp */
 				PlatformTimeStamp clientLastKnownServerTimestamp;
 				bytesUnpacked += 
-					kutil::netUnpack(&clientLastKnownServerTimestamp, 
-					                 &packetBuffer, packetBufferEnd);
+					KGT_NET_UNPACK(&clientLastKnownServerTimestamp, 
+					               &packetBuffer, packetBufferEnd);
 				kns->clientArray[clientIndex].roundTripTime = 
 					g_kpl->secondsSinceTimeStamp(
 						clientLastKnownServerTimestamp);
@@ -182,7 +182,7 @@ internal void kgtNetServerStep(
 					reported to have been received by the client */
 				u32 clientReportedReliableMessageRollingIndex;
 				bytesUnpacked += 
-					kutil::netUnpack(
+					KGT_NET_UNPACK(
 						&clientReportedReliableMessageRollingIndex, 
 						&packetBuffer, packetBufferEnd);
 				kgtNetReliableDataBufferDequeue(
@@ -252,8 +252,8 @@ internal void kgtNetServerStep(
 				{
 					u16 reliableMessageBytes; 
 					const u32 reliableMessageBytesBytesUnpacked = 
-						kutil::netUnpack(&reliableMessageBytes, &packetBuffer, 
-						                 packetBufferEnd);
+						KGT_NET_UNPACK(&reliableMessageBytes, &packetBuffer, 
+						               packetBufferEnd);
 					if(reliableMessageBytes == 0)
 					{
 						KLOG(ERROR, "SERVER: empty reliable message received!  "
@@ -366,11 +366,11 @@ internal void kgtNetServerStep(
 				u8*            packetBuffer    = netBuffer;
 				const u8*const packetBufferEnd = 
 					netBuffer + CARRAY_SIZE(netBuffer);
-				kutil::netPack(static_cast<u8>(
+				KGT_NET_PACK(static_cast<u8>(
 					kgtNet::PacketType::SERVER_ACCEPT_CONNECTION), 
 					&packetBuffer, packetBufferEnd);
-				kutil::netPack(kns->clientArray[c].id, &packetBuffer, 
-				               packetBufferEnd);
+				KGT_NET_PACK(
+					kns->clientArray[c].id, &packetBuffer, packetBufferEnd);
 				const size_t packetSize = kmath::safeTruncateU64(
 					packetBuffer - netBuffer);
 				const i32 bytesSent = 
@@ -384,16 +384,20 @@ internal void kgtNetServerStep(
 				u8*            packetBuffer    = netBuffer;
 				const u8*const packetBufferEnd = 
 					netBuffer + CARRAY_SIZE(netBuffer);
-				kutil::netPack(static_cast<u8>(
+				KGT_NET_PACK(static_cast<u8>(
 					kgtNet::PacketType::SERVER_UNRELIABLE_STATE), 
 					&packetBuffer, packetBufferEnd);
-				kutil::netPack(kns->rollingUnreliableStateIndex, &packetBuffer, 
-				               packetBufferEnd);
-				kutil::netPack(g_kpl->getTimeStamp(), &packetBuffer, 
-				               packetBufferEnd);
-				kutil::netPack(kns->clientArray[c].roundTripTime, &packetBuffer, 
-				               packetBufferEnd);
-				kutil::netPack(kns->clientArray[c]
+				KGT_NET_PACK(
+					kns->rollingUnreliableStateIndex, &packetBuffer, 
+					packetBufferEnd);
+				KGT_NET_PACK(
+					g_kpl->getTimeStamp(), &packetBuffer, 
+					packetBufferEnd);
+				KGT_NET_PACK(
+					kns->clientArray[c].roundTripTime, &packetBuffer, 
+					packetBufferEnd);
+				KGT_NET_PACK(
+					kns->clientArray[c]
 					.latestReceivedReliableMessageIndex,
 					&packetBuffer, packetBufferEnd);
 				packetBuffer += 
@@ -411,9 +415,9 @@ internal void kgtNetServerStep(
 				{
 					packetBuffer = netBuffer;
 					u32 reliablePacketSize = 
-						kutil::netPack(static_cast<u8>(kgtNet::PacketType
-						                   ::SERVER_RELIABLE_MESSAGE_BUFFER), 
-						               &packetBuffer, packetBufferEnd);
+						KGT_NET_PACK(static_cast<u8>(
+							kgtNet::PacketType::SERVER_RELIABLE_MESSAGE_BUFFER), 
+							&packetBuffer, packetBufferEnd);
 					reliablePacketSize += 
 						kgtNetReliableDataBufferNetPack(
 							&kns->clientArray[c].reliableDataBuffer, 

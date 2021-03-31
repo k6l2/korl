@@ -22,9 +22,9 @@ internal u16 kgtNetReliableDataBufferUsedBytes(
 		const u8* messageBytesBufferCursor = messageBytesBuffer;
 		u16 messageByteCount;
 		const u32 bytesUnpacked = 
-			kutil::netUnpack(&messageByteCount, &messageBytesBufferCursor, 
-			                 messageBytesBuffer + 
-			                     CARRAY_SIZE(messageBytesBuffer));
+			KGT_NET_UNPACK(
+				&messageByteCount, &messageBytesBufferCursor, 
+				messageBytesBuffer + CARRAY_SIZE(messageBytesBuffer));
 		korlAssert(bytesUnpacked == sizeof(messageByteCount));
 		/* move buffer cursor to next possible message location & add this 
 			message size to the total used byte count */
@@ -84,9 +84,10 @@ internal void kgtNetReliableDataBufferDequeue(
 		const u8* netPackedMessageSizeBufferCursor = netPackedMessageSizeBuffer;
 		u16 messageSize;
 		const u32 bytesUnpacked = 
-			kutil::netUnpack(&messageSize, &netPackedMessageSizeBufferCursor, 
-			                 netPackedMessageSizeBuffer + 
-			                     CARRAY_SIZE(netPackedMessageSizeBuffer));
+			KGT_NET_UNPACK(
+				&messageSize, &netPackedMessageSizeBufferCursor, 
+				netPackedMessageSizeBuffer + 
+					CARRAY_SIZE(netPackedMessageSizeBuffer));
 		korlAssert(bytesUnpacked == sizeof(messageSize));
 		/* now that we have the message size we can move the data cursor to the 
 			next message location */
@@ -109,9 +110,9 @@ internal u32 kgtNetReliableDataBufferNetPack(
 	/* first, pack the datagram header & the # of reliable messages we're about 
 		to send */
 	bytesPacked += 
-		kutil::netPack(rdb->frontMessageRollingIndex, dataCursor, dataEnd);
+		KGT_NET_PACK(rdb->frontMessageRollingIndex, dataCursor, dataEnd);
 	bytesPacked += 
-		kutil::netPack(rdb->messageCount, dataCursor, dataEnd);
+		KGT_NET_PACK(rdb->messageCount, dataCursor, dataEnd);
 	/* copy the reliable messages into the dataCursor */
 	/* because reliable message buffer is circular, we need to handle two cases: 
 		- reliableDataBufferFront <  reliableDataBufferCursor => one memcpy
@@ -155,9 +156,9 @@ internal u32 kgtNetReliableDataBufferUnpackMeta(
 	/* extract range of reliable message rolling indices contained 
 		in the packet */
 	bytesUnpacked += 
-		kutil::netUnpack(o_frontMessageRollingIndex, dataCursor, dataEnd);
+		KGT_NET_UNPACK(o_frontMessageRollingIndex, dataCursor, dataEnd);
 	bytesUnpacked += 
-		kutil::netUnpack(o_reliableMessageCount, dataCursor, dataEnd);
+		KGT_NET_UNPACK(o_reliableMessageCount, dataCursor, dataEnd);
 	return bytesUnpacked;
 }
 internal void kgtNetReliableDataBufferQueueMessage(
@@ -183,9 +184,9 @@ internal void kgtNetReliableDataBufferQueueMessage(
 	u8 netPackedDataBytesBuffer[2];
 	u8* netPackedDataBytesBufferCursor = netPackedDataBytesBuffer;
 	const u32 packedDataBytesBytes = 
-		kutil::netPack(netPackedDataBytes, &netPackedDataBytesBufferCursor, 
-		               netPackedDataBytesBuffer + 
-		                   CARRAY_SIZE(netPackedDataBytesBuffer));
+		KGT_NET_PACK(
+			netPackedDataBytes, &netPackedDataBytesBufferCursor, 
+			netPackedDataBytesBuffer + CARRAY_SIZE(netPackedDataBytesBuffer));
 	korlAssert(packedDataBytesBytes == 2);
 	/* now that we have `dataBytes` in network-byte-order, we can add them all 
 		to the circular buffer queue */

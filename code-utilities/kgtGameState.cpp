@@ -4,6 +4,7 @@
 #include "z85-png-default.h"
 #include "z85-wav-default.h"
 #include "z85-ogg-vorbis-default.h"
+#include "z85-glb-default.h"
 internal void kgtGameStateOnReloadCode(KgtGameState* kgs, GameMemory& memory)
 {
 	g_kpl                     = &memory.kpl;
@@ -157,6 +158,24 @@ internal void
 				character terminator */
 			sizeof(defaultSpriteFont) - 1);
 	}
+	// add the GLB asset descriptor //
+	{
+		defer(kgtAllocReset(g_kgs->hKalFrame));
+		const u32 rawFileBytes = kmath::safeTruncateU32(
+			z85::decodedFileSizeBytes(CARRAY_SIZE(z85_glb_default) - 1));
+		korlAssert(rawFileBytes);
+		u8* rawFileData = reinterpret_cast<u8*>(
+			kgtAllocAlloc(g_kgs->hKalFrame, rawFileBytes));
+		korlAssert(rawFileData);
+		const bool successDecodeZ85 = 
+			z85::decode(
+				reinterpret_cast<const i8*>(z85_glb_default), 
+				reinterpret_cast<i8*>(rawFileData));
+		korlAssert(successDecodeZ85);
+		kgt_assetManager_addAssetDescriptor(
+			g_kgs->assetManager, KgtAsset::Type::KGTASSETGLB, ".glb", 
+			rawFileData, rawFileBytes);
+	}
 	/* set the global asset manager pointer again here because the VERY FIRST 
 		time it is set in `kgtGameStateOnReloadCode` when the program first 
 		starts the value is zero, but on subsequent calls to the same function 
@@ -262,6 +281,7 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 #include "kgtAssetWav.cpp"
 #include "kgtAssetOggVorbis.cpp"
 #include "kgtAssetSpriteFont.cpp"
+#include "kgtAssetGlb.cpp"
 #include "kgtAllocator.cpp"
 #include "korl-texture.cpp"
 #include "kgtDraw.cpp"

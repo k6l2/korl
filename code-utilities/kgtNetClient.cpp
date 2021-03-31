@@ -58,16 +58,19 @@ internal void kgtNetClientStep(
 			}break;
 			case kgtNet::ConnectionState::CONNECTED:{
 				/* send unreliable client state every frame */
-				kutil::netPack(static_cast<u8>(
-				               kgtNet::PacketType::CLIENT_UNRELIABLE_STATE), 
-				               &dataCursor, kncPacketBufferEnd);
-				kutil::netPack(knc->rollingUnreliableStateIndex, 
-				               &dataCursor, kncPacketBufferEnd);
+				KGT_NET_PACK(static_cast<u8>(
+					kgtNet::PacketType::CLIENT_UNRELIABLE_STATE), 
+					&dataCursor, kncPacketBufferEnd);
+				KGT_NET_PACK(
+					knc->rollingUnreliableStateIndex, 
+					&dataCursor, kncPacketBufferEnd);
 				knc->rollingUnreliableStateIndex++;
-				kutil::netPack(knc->latestServerTimestamp, 
-				               &dataCursor, kncPacketBufferEnd);
-				kutil::netPack(knc->latestReceivedReliableMessageIndex, 
-				               &dataCursor, kncPacketBufferEnd);
+				KGT_NET_PACK(
+					knc->latestServerTimestamp, 
+					&dataCursor, kncPacketBufferEnd);
+				KGT_NET_PACK(
+					knc->latestReceivedReliableMessageIndex, 
+					&dataCursor, kncPacketBufferEnd);
 				const u32 remainingPacketBufferSize = 
 					kmath::safeTruncateU32(kncPacketBufferEnd - dataCursor);
 				dataCursor += 
@@ -92,9 +95,9 @@ internal void kgtNetClientStep(
 		{
 			dataCursor = knc->packetBuffer;
 			u32 packetSize = 
-				kutil::netPack(static_cast<u8>(kgtNet::PacketType
-				                   ::CLIENT_RELIABLE_MESSAGE_BUFFER), 
-				               &dataCursor, kncPacketBufferEnd);
+				KGT_NET_PACK(static_cast<u8>(
+					kgtNet::PacketType::CLIENT_RELIABLE_MESSAGE_BUFFER), 
+					&dataCursor, kncPacketBufferEnd);
 			packetSize += 
 				kgtNetReliableDataBufferNetPack(
 					&knc->reliableDataBuffer, &dataCursor, kncPacketBufferEnd);
@@ -156,8 +159,8 @@ internal void kgtNetClientStep(
 						break;
 					}
 					bytesUnpacked += 
-						kutil::netUnpack(&knc->id, &packetBuffer, 
-						                 packetBufferEnd);
+						KGT_NET_UNPACK(
+							&knc->id, &packetBuffer, packetBufferEnd);
 					knc->connectionState = 
 						kgtNet::ConnectionState::CONNECTED;
 					knc->secondsSinceLastServerPacket = 0;
@@ -177,8 +180,9 @@ internal void kgtNetClientStep(
 					}
 					u32 rollingUnreliableStateIndexServer;
 					bytesUnpacked += 
-						kutil::netUnpack(&rollingUnreliableStateIndexServer, 
-						                 &packetBuffer, packetBufferEnd);
+						KGT_NET_UNPACK(
+							&rollingUnreliableStateIndexServer, 
+							&packetBuffer, packetBufferEnd);
 					if(rollingUnreliableStateIndexServer <= 
 						knc->rollingUnreliableStateIndexServer)
 					/* drop/ignore old/duplicate server state packets! */
@@ -188,14 +192,16 @@ internal void kgtNetClientStep(
 					knc->rollingUnreliableStateIndexServer = 
 						rollingUnreliableStateIndexServer;
 					bytesUnpacked += 
-						kutil::netUnpack(&knc->latestServerTimestamp, 
-						                 &packetBuffer, packetBufferEnd);
+						KGT_NET_UNPACK(
+							&knc->latestServerTimestamp, 
+							&packetBuffer, packetBufferEnd);
 					bytesUnpacked += 
-						kutil::netUnpack(&knc->serverReportedRoundTripTime, 
-						                 &packetBuffer, packetBufferEnd);
+						KGT_NET_UNPACK(
+							&knc->serverReportedRoundTripTime, 
+							&packetBuffer, packetBufferEnd);
 					u32 serverReportedReliableMessageRollingIndex;
 					bytesUnpacked += 
-						kutil::netUnpack(
+						KGT_NET_UNPACK(
 							&serverReportedReliableMessageRollingIndex, 
 							&packetBuffer, packetBufferEnd);
 					kgtNetReliableDataBufferDequeue(
@@ -246,8 +252,9 @@ internal void kgtNetClientStep(
 					{
 						u16 reliableMessageBytes; 
 						const u32 reliableMessageBytesBytesUnpacked = 
-							kutil::netUnpack(&reliableMessageBytes, 
-							                 &packetBuffer, packetBufferEnd);
+							KGT_NET_UNPACK(
+								&reliableMessageBytes, &packetBuffer, 
+								packetBufferEnd);
 						if(reliableMessageBytes == 0)
 						{
 							KLOG(ERROR, "CLIENT: empty reliable message "

@@ -1,5 +1,9 @@
 #pragma once
 #include "kutil.h"
+#define KGT_NET_PACK(pData, pCursor, dataEnd) \
+	kutil::dataPack(pData, pCursor, dataEnd, false)
+#define KGT_NET_UNPACK(pData, pCursor, dataEnd) \
+	kutil::dataUnpack(pData, pCursor, dataEnd, false)
 namespace kgtNet
 {
 	using ServerClientId = u16;
