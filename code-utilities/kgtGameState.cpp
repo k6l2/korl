@@ -264,6 +264,20 @@ internal void kStbDsFree(void* allocatedAddress, void* context)
 	#pragma warning( disable : 4456 )
 	#include "stb/stb_ds.h"
 #pragma warning( pop )
+#ifndef JSMN_STATIC
+	#define JSMN_STATIC
+#endif
+#ifdef JSMN_HEADER
+	/* ensure the header macro is disabled, because now we want the actual 
+		implementation */
+	#undef JSMN_HEADER
+#endif
+#pragma warning( push )
+	// warning C4365: conversion from unsigned => signed
+	#pragma warning( disable : 4365 )
+	/* JSMN implementation; NOT just the API declaration */
+	#include "jsmn/jsmn.h"
+#pragma warning( pop )
 #include "kmath.cpp"
 #include "kutil.cpp"
 #include "platform-game-interfaces.cpp"
