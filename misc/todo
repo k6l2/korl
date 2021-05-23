@@ -421,6 +421,17 @@
 	[x] delete any critical sections which are no longer being used
 	[x] delete any allocators which are no longer being used on the win32 
 		platform
+[ ] add bluetooth support
+	[ ] implement bluetooth device discovery
+		- WSALookupServiceBegin
+		- WSALookupServiceNext
+		- BluetoothGetDeviceInfo
+		- WSALookupServiceEnd
+	[ ] implement bluetooth I/O API (similar to UDP API)
+		- connect
+		- disconnect
+		- read
+		- write
 [ ] is it possible to tell MSVC debugger to ignore the platform assert failure 
 	function & go to the function which called it?
 	- check out the "ExceptionImplementation" property here: 
@@ -430,6 +441,13 @@
 		- try https://github.com/zserge/jsmn 
 	[ ] upload buffers to KRB
 	[ ] draw mesh primitives using some kind of pre-defined program
+[ ] ditch DirectSound
+	[ ] consider just using WASAPI
+		https://docs.microsoft.com/en-us/windows/win32/coreaudio/rendering-a-stream
+	[ ] or maybe use XAudio2 to implement a higher-level API that has built-in 
+		mixing capabilities?
+		- speaking of which, I haven't been using any of these high-level 
+			capabilities with DirectSound, so why even bother?
 [ ] rb_ogl: use uniform block binding for View/Projection matrices
 [ ] rb_ogl: move `defaultColor` into global UBO
 [ ] rb_ogl: custom shader/program API

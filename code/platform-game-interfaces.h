@@ -236,6 +236,8 @@ internal inline bool operator==(const KplNetAddress& lhs,
 	return lhs.uLongs[0] == rhs.uLongs[0] && lhs.uLongs[1] == rhs.uLongs[1];
 }
 const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
+/** This function often takes a long time to complete, so it's probably best to 
+ * run this as an asynchronous job (see PLATFORM_POST_JOB). */
 #define PLATFORM_NET_RESOLVE_ADDRESS(name) \
 	KplNetAddress name(const char* ansiAddress)
 /** 
@@ -255,20 +257,20 @@ const global_variable KplNetAddress KPL_INVALID_ADDRESS = {};
  *         If the socket or the underlying platform networking implementation is 
  *         not ready to send right now, 0 is returned (no errors occurred)
  */
-#define PLATFORM_SOCKET_SEND(name) \
-	i32 name(KplSocketIndex socketIndex, const u8* dataBuffer, \
-	         size_t dataBufferSize, const KplNetAddress& netAddressReceiver, \
-	         u16 netPortReceiver)
+#define PLATFORM_SOCKET_SEND(name) i32 name(\
+	KplSocketIndex socketIndex, const u8* dataBuffer, \
+	size_t dataBufferSize, const KplNetAddress& netAddressReceiver, \
+	u16 netPortReceiver)
 /** 
  * @return (1) the # of elements written to o_dataBuffer  (2) the received data 
  *         into `o_dataBuffer` (3) the network address from which the data was 
  *         sent into `o_netAddressSender`.  If an error occurs, a value < 0 is 
  *         returned.
  */
-#define PLATFORM_SOCKET_RECEIVE(name) \
-	i32 name(KplSocketIndex socketIndex, u8* o_dataBuffer, \
-	         size_t dataBufferSize, KplNetAddress* o_netAddressSender, \
-	         u16* o_netPortSender)
+#define PLATFORM_SOCKET_RECEIVE(name) i32 name(\
+	KplSocketIndex socketIndex, u8* o_dataBuffer, \
+	size_t dataBufferSize, KplNetAddress* o_netAddressSender, \
+	u16* o_netPortSender)
 using KplLockHandle = u8;
 /**
  * @return a handle == `0` if the request wasn't able to complete
