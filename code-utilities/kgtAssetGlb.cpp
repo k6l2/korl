@@ -1,4 +1,5 @@
 #include "kgtAssetGlb.h"
+#include "kgtAsset.h"
 #ifndef JSMN_STATIC
 	#define JSMN_STATIC
 #endif
@@ -8,6 +9,16 @@
 #endif
 #define KGT_ASSETGLB_UNPACK(pValue) \
 	bytesUnpacked = kutil::dataUnpack(pValue, &dataCursor, dataEnd, true)
+internal void _kgt_assetGlb_jsonDecode(
+	KgtAssetGlb*const glb, const jsmntok_t* tokens, const int parsedTokens)
+{
+	korlAssert(tokens->type == JSMN_OBJECT);
+	for(int c = 0; c < tokens->size; c++)
+	{
+		/* call a function which parses each JSON attribute key/value 
+			recursively, depending on the key string */
+	}
+}
 internal void kgt_assetGlb_decode(
 	KgtAsset* a, KgtAllocatorHandle hKgtAllocatorAssetData, 
 	u8* data, u32 dataBytes, const char* ansiAssetName)
@@ -24,7 +35,7 @@ internal void kgt_assetGlb_decode(
 		KGT_ASSETGLB_UNPACK(&magicNumber);
 		KGT_ASSETGLB_UNPACK(&version);
 		KGT_ASSETGLB_UNPACK(&glbBytes);
-		/* the magic # is literally the ASCII string "glTF" */
+		/* the magic # is literally the ASCII string "glTF" (little-endian) */
 		korlAssert(magicNumber == 0x46546C67);
 		korlAssert(version == 2);
 		korlAssert(glbBytes == dataBytes);
@@ -35,7 +46,7 @@ internal void kgt_assetGlb_decode(
 		u32 chunkType;
 		KGT_ASSETGLB_UNPACK(&chunkLength);
 		KGT_ASSETGLB_UNPACK(&chunkType);
-		/* this chunkType value == the ASCII string "JSON" */
+		/* this chunkType value == the ASCII string "JSON" (little-endian) */
 		korlAssert(chunkType == 0x4E4F534A);
 		/* the remaining data of this chunk should be a JSON string of byte 
 			length 'chunkLength', which we must now parse & process */
@@ -85,7 +96,11 @@ internal void kgt_assetGlb_decode(
 				}
 			}
 #endif// INTERNAL_BUILD && SLOW_BUILD
-			///@todo: populate the GLB asset with this data
+			/* populate the GLB asset with this data */
+			_kgt_assetGlb_jsonDecode(&a->kgtAssetGlb, tokens, parsedTokens);
+			/* when we're done with processing the JSON chunk, we can advance 
+				the data cursor to the end of the chunk */
+			dataCursor += chunkLength;
 		}/* end of JSON token processing */
 	}
 	/* parse chunk 1 (binary) if it exists */
