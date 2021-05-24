@@ -1,5 +1,9 @@
 @echo off
 setlocal
+rem ----- save a timestamp so we can report how long it takes to build -----
+for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
+    set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
+)
 rem ----- setup build variables -----
 set buildExeName=korl-windows
 rem ----- create the build output directory -----
@@ -51,6 +55,26 @@ set buildCommand=%buildCommand% kernel32.lib
 rem ----- run the build command -----
 echo Running "%buildCommand%"...
 %buildCommand%
+rem ----- report how long the script took -----
+echo KORL Build Complete!
+for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
+    set /A "end=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
+)
+set /A elapsed=end-start
+set /A hh=elapsed/(60*60*100), rest=elapsed%%(60*60*100)
+set /A mm=rest/(60*100), rest%%=60*100, ss=rest/100, cc=rest%%100
+if %mm% lss 10 set mm=0%mm%
+if %ss% lss 10 set ss=0%ss%
+if %cc% lss 10 set cc=0%cc%
+IF %hh% LEQ 0 (
+    IF %mm% LEQ 0 (
+        echo Build script finished. Time elapsed: %ss%.%cc% seconds.
+    ) ELSE (
+        echo Build script finished. Time elapsed: %mm%:%ss%.%cc%
+    )
+) ELSE (
+	echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
+)
 rem ----- exit the script -----
 endlocal
 exit /b 0
