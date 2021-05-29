@@ -29,6 +29,7 @@ rem disable annoying verbose compiler output
 set buildCommand=%buildCommand% /nologo
 rem use wide character implementations for Windows API
 set buildCommand=%buildCommand% /D UNICODE
+set buildCommand=%buildCommand% /D _UNICODE
 rem generate a PDB file, no "edit-and-continue" support
 set buildCommand=%buildCommand% /Zi
 rem disable optimization
@@ -38,11 +39,10 @@ set buildCommand=%buildCommand% /Oi
 rem disable run-time type information (dynamic_cast, typeid)
 set buildCommand=%buildCommand% /GR-
 rem disable stack buffer overrun security checks
-rem @todo: consider enabling this & linking to CRT in debug builds only
-set buildCommand=%buildCommand% /GS-
+rem set buildCommand=%buildCommand% /GS-
 rem set the stack dynamic allocator probe to be the max value
 rem this allows us to disable dynamic stack allocation features
-set buildCommand=%buildCommand% /Gs2147483647
+rem set buildCommand=%buildCommand% /Gs2147483647
 rem disable exception handling unwind code generation
 set buildCommand=%buildCommand% /EHa-
 rem display the full path of source code files passed in diagnostics
@@ -56,13 +56,20 @@ set buildCommand=%buildCommand% /map:"%KORL_EXE_NAME%.map"
 rem reserve AND commit 1MB of stack space, preventing dynamic stack allocations
 set buildCommand=%buildCommand% /stack:0x100000,0x100000
 rem do not link to the C runtime (CRT) libraries
-set buildCommand=%buildCommand% /nodefaultlib
+rem set buildCommand=%buildCommand% /nodefaultlib
 rem we're no longer using the CRT, so we have to define a custom entry point
 set buildCommand=%buildCommand% /entry:korl_windows_main
 rem this is required since the compiler can't deduce this option anymore
 set buildCommand=%buildCommand% /subsystem:WINDOWS
 rem for ExitProcess, GetModuleHandle, etc...
 set buildCommand=%buildCommand% kernel32.lib
+rem for wvsprintf
+set buildCommand=%buildCommand% user32.lib
+rem for __stdio_common_vswprintf
+set buildCommand=%buildCommand% ucrt.lib
+rem set buildCommand=%buildCommand% legacy_stdio_definitions.lib
+rem set buildCommand=%buildCommand% libucrt.lib
+rem set buildCommand=%buildCommand% libvcruntime.lib
 rem ----- run the build command -----
 echo Running "%buildCommand%"...
 %buildCommand%
