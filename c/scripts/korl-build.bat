@@ -54,7 +54,7 @@ set buildCommand=%buildCommand% /pdb:"%KORL_EXE_NAME%.pdb"
 rem generate a map file (manifest of program symbols)
 set buildCommand=%buildCommand% /map:"%KORL_EXE_NAME%.map"
 rem reserve AND commit 1MB of stack space, preventing dynamic stack allocations
-set buildCommand=%buildCommand% /stack:0x100000,0x100000
+rem set buildCommand=%buildCommand% /stack:0x100000,0x100000
 rem do not link to the C runtime (CRT) libraries
 rem set buildCommand=%buildCommand% /nodefaultlib
 rem we're no longer using the CRT, so we have to define a custom entry point

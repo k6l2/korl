@@ -93,7 +93,8 @@ korl_internal DWORD korl_windows_cast_sizetToDword(size_t value)
 }
 enum KorlEnumStandardStream
     { KORL_STANDARD_STREAM_OUT
-    , KORL_STANDARD_STREAM_ERROR };
+    , KORL_STANDARD_STREAM_ERROR
+    , KORL_STANDARD_STREAM_IN };
 /** @return @c NULL if the specified stream has not been redirected.  
  * @c INVALID_HANDLE_VALUE if an invalid value was passed to 
  * @c KorlEnumStandardStream */
@@ -109,13 +110,16 @@ korl_internal HANDLE korl_windows_handleFromEnumStandardStream(
     case KORL_STANDARD_STREAM_ERROR: {
         result = GetStdHandle(STD_ERROR_HANDLE);
         } break;
+    case KORL_STANDARD_STREAM_IN: {
+        result = GetStdHandle(STD_INPUT_HANDLE);
+        } break;
     }
     korl_assert(result != INVALID_HANDLE_VALUE);
+    /** @todo: do something with lastError? */
 #if 0
     if(result == INVALID_HANDLE_VALUE)
     {
         const DWORD lastError = GetLastError();
-        /** @todo: do something with lastError? */
     }
 #endif//0
     return result;
@@ -134,7 +138,7 @@ korl_internal void korl_printVariableArgumentList(
     if(hResultPrintToStackBuffer == S_OK)
         goto WRITE_FINAL_BUFFER;
     /* if that fails, allocate a dynamic buffer twice that size */
-    korl_assert(!"TODO");
+    korl_assert(!"TODO: also pass in an allocator callback");
     /* attempt to write the formatted string to the dynamic buffer */
     korl_assert(!"TODO");
     /* if that fails, double the size of the buffer & repeat until we 
@@ -151,22 +155,45 @@ korl_internal void korl_printVariableArgumentList(
     const HRESULT resultGetFinalBufferSize = 
         StringCchLength(finalBuffer, finalBufferMaxSize, &finalBufferSize);
     korl_assert(resultGetFinalBufferSize == S_OK);
-    DWORD bytesWritten = 0;
-    const BOOL resultWriteFile = 
-        WriteFile(
-            hStream, finalBuffer, 
-            korl_windows_cast_sizetToDword(
-                finalBufferSize*sizeof(finalBuffer[0])), 
-            &bytesWritten, 
-            NULL/* OVERLAPPED*: NULL == we're not doing async I/O here */);
-#if 0
-    if(!resultWriteFile)
+    // check whether or not hStream is a "console handle" //
+    DWORD consoleMode = 0;
+    const BOOL successGetConsoleMode = GetConsoleMode(hStream, &consoleMode);
+    if(successGetConsoleMode)
     {
-        const DWORD lastError = GetLastError();
+        DWORD numCharsWritten = 0;
+        const BOOL successWriteConsole = 
+            WriteConsole(
+                hStream, finalBuffer, 
+                korl_windows_cast_sizetToDword(finalBufferSize), 
+                &numCharsWritten, NULL/*reserved; always NULL*/);
         /** @todo: do something with lastError? */
-    }
+#if 0
+        if(!successWriteConsole)
+        {
+            const DWORD lastError = GetLastError();
+        }
 #endif//0
-    korl_assert(resultWriteFile);
+        korl_assert(successWriteConsole);
+    }
+    else
+    {
+        DWORD bytesWritten = 0;
+        const BOOL successWriteFile = 
+            WriteFile(
+                hStream, finalBuffer, 
+                korl_windows_cast_sizetToDword(
+                    finalBufferSize*sizeof(finalBuffer[0])), 
+                &bytesWritten, 
+                NULL/* OVERLAPPED*: NULL == we're not doing async I/O here */);
+        /** @todo: do something with lastError? */
+#if 0
+        if(!resultWriteFile)
+        {
+            const DWORD lastError = GetLastError();
+        }
+#endif//0
+        korl_assert(successWriteFile);
+    }
     /* free dynamic buffer if we had to allocate one */
     if(finalBuffer != stackStringBuffer)
     {
@@ -215,9 +242,43 @@ korl_internal void (korl_print)(unsigned variadicArgumentCount,
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
+    const BOOL successAttachConsole = AttachConsole(ATTACH_PARENT_PROCESS);
+    if(!successAttachConsole)
+    {
+        //const BOOL successFreeConsole = FreeConsole();
+        //korl_assert(successFreeConsole);
+        const BOOL successAllocConsole = AllocConsole();
+        korl_assert(successAllocConsole);
+        /* after allocating a new console, we have to re-open the I/O streams!
+            source: https://stackoverflow.com/a/57241985 */
+        FILE *fileDummy;
+        const errno_t resultReOpenStdIn = 
+            freopen_s(&fileDummy, "CONIN$", "r", stdin);
+        const errno_t resultReOpenStdErr = 
+            freopen_s(&fileDummy, "CONOUT$", "w", stderr);
+        const errno_t resultReOpenStdOut = 
+            freopen_s(&fileDummy, "CONOUT$", "w", stdout);
+        korl_assert(resultReOpenStdIn == 0);
+        korl_assert(resultReOpenStdErr == 0);
+        korl_assert(resultReOpenStdOut == 0);
+        const HANDLE hConOut = 
+            CreateFile(_T("CONOUT$"), GENERIC_READ | GENERIC_WRITE, 
+                FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 
+                FILE_ATTRIBUTE_NORMAL, NULL);
+        const HANDLE hConIn = 
+            CreateFile(_T("CONIN$"), GENERIC_READ | GENERIC_WRITE, 
+                FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 
+                FILE_ATTRIBUTE_NORMAL, NULL);
+        korl_assert(SetStdHandle(STD_OUTPUT_HANDLE, hConOut));
+        korl_assert(SetStdHandle(STD_ERROR_HANDLE, hConOut));
+        korl_assert(SetStdHandle(STD_INPUT_HANDLE, hConIn));
+    }
     SYSTEM_INFO systemInfo;
     ZeroMemory(&systemInfo, sizeof(systemInfo));
     GetSystemInfo(&systemInfo);
-    korl_print(KORL_STANDARD_STREAM_OUT, L"hello! %lu %f", systemInfo.dwPageSize, 0.5f);
+    korl_print(KORL_STANDARD_STREAM_OUT, L"dwPageSize=%lu PI=%f\n", 
+        systemInfo.dwPageSize, 3.14159f);
+    korl_print(KORL_STANDARD_STREAM_OUT, L"Press [Enter] to exit:\n");
+    getchar();
     ExitProcess(0);
 }
