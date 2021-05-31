@@ -1,5 +1,5 @@
 /** Some resources that I'm using for building an application without 
- * Microsoft's bloated CRT: 
+ * Microsoft's bloated CRT : 
  * https://hero.handmade.network/forums/code-discussion/t/94-guide_-_how_to_avoid_c_c++_runtime_on_windows
  * https://www.codeproject.com/articles/15156/tiny-c-runtime-library */
 #ifndef NOMINMAX
@@ -24,7 +24,7 @@
     /* for StringCchVPrintf */
     #include <strsafe.h>
 #pragma warning(pop)
-/** disambiguations of the @c static key word to improve project 
+/** disambiguations of the \c static key word to improve project 
  * searchability */
 #define korl_internal static
 /** calculate the size of an array 
@@ -95,9 +95,9 @@ enum KorlEnumStandardStream
     { KORL_STANDARD_STREAM_OUT
     , KORL_STANDARD_STREAM_ERROR
     , KORL_STANDARD_STREAM_IN };
-/** @return @c NULL if the specified stream has not been redirected.  
- * @c INVALID_HANDLE_VALUE if an invalid value was passed to 
- * @c KorlEnumStandardStream */
+/** \return \c NULL if the specified stream has not been redirected.  
+ * \c INVALID_HANDLE_VALUE if an invalid value was passed to 
+ * \c KorlEnumStandardStream */
 korl_internal HANDLE korl_windows_handleFromEnumStandardStream(
     int KorlEnumStandardStream)
 {
@@ -158,7 +158,14 @@ korl_internal void korl_printVariableArgumentList(
     // check whether or not hStream is a "console handle" //
     DWORD consoleMode = 0;
     const BOOL successGetConsoleMode = GetConsoleMode(hStream, &consoleMode);
-    if(successGetConsoleMode)
+    /** @hack: this shouldn't be here; we're lying to the user and not actually 
+     * printing to the file stream they asked for just for the sake of 
+     * displaying things correctly in visual studio debug output window! */
+    if(IsDebuggerPresent())
+    {
+        OutputDebugString(finalBuffer);
+    }
+    else if(successGetConsoleMode)
     {
         DWORD numCharsWritten = 0;
         const BOOL successWriteConsole = 
@@ -200,7 +207,7 @@ korl_internal void korl_printVariableArgumentList(
         korl_assert(!"TODO");
     }
 }
-/** this macro definition of the @c korl_print function allows us to 
+/** this macro definition of the \c korl_print function allows us to 
  * automatically pass in the number of arguments passed to the print function */
 #define korl_print(...) \
     korl_print(KORL_GET_ARG_COUNT(__VA_ARGS__) - 2, __VA_ARGS__)
@@ -242,7 +249,8 @@ korl_internal void (korl_print)(unsigned variadicArgumentCount,
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
-    const BOOL successAttachConsole = AttachConsole(ATTACH_PARENT_PROCESS);
+    /*const BOOL successAttachConsole = */AttachConsole(ATTACH_PARENT_PROCESS);
+#if 0
     if(!successAttachConsole)
     {
         //const BOOL successFreeConsole = FreeConsole();
@@ -273,12 +281,18 @@ void __stdcall korl_windows_main(void)
         korl_assert(SetStdHandle(STD_ERROR_HANDLE, hConOut));
         korl_assert(SetStdHandle(STD_INPUT_HANDLE, hConIn));
     }
+#endif//0
     SYSTEM_INFO systemInfo;
     ZeroMemory(&systemInfo, sizeof(systemInfo));
     GetSystemInfo(&systemInfo);
     korl_print(KORL_STANDARD_STREAM_OUT, L"dwPageSize=%lu PI=%f\n", 
         systemInfo.dwPageSize, 3.14159f);
-    korl_print(KORL_STANDARD_STREAM_OUT, L"Press [Enter] to exit:\n");
-    getchar();
+#if 0
+    if(!IsDebuggerPresent())
+    {
+        korl_print(KORL_STANDARD_STREAM_OUT, L"Press [Enter] to exit:\n");
+        getchar();
+    }
+#endif//0
     ExitProcess(0);
 }
