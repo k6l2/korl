@@ -1,0 +1,266 @@
+#include "korl-io.h"
+#include "korl-global-defines-windows.h"
+korl_internal unsigned _korl_countFormatSubstitutions(const wchar_t* format)
+{
+    /* find the number of variable substitutions in the format string */
+    unsigned formatSubstitutions = 0;
+    for(const wchar_t* f = format; *f; f++)
+    {
+        if(*f != '%')
+            continue;
+        const wchar_t nextChar = *(f+1);
+        /* for now, let's just make it illegal to have a trailing '%' at the end 
+            of the format string */
+        korl_assert(nextChar);
+        if(nextChar == '%')
+            /* f is currently pointing to an escape character sequence 
+                for the '%' character, so we should skip both 
+                characters */
+            f++;
+        else
+            /* if the current character is a '%', and there is a next 
+                character, and the next character is NOT a '%', that 
+                means this must be a variable substitution */
+            formatSubstitutions++;
+    }
+    return formatSubstitutions;
+}
+/** \return \c NULL if the specified stream has not been redirected.  
+ * \c INVALID_HANDLE_VALUE if an invalid value was passed to 
+ * \c KorlEnumStandardStream */
+korl_internal HANDLE _korl_windows_handleFromEnumStandardStream(
+    enum KorlEnumStandardStream standardStream)
+{
+    HANDLE result = INVALID_HANDLE_VALUE;
+    switch(standardStream)
+    {
+    case KORL_STANDARD_STREAM_OUT: {
+        result = GetStdHandle(STD_OUTPUT_HANDLE);
+        } break;
+    case KORL_STANDARD_STREAM_ERROR: {
+        result = GetStdHandle(STD_ERROR_HANDLE);
+        } break;
+    case KORL_STANDARD_STREAM_IN: {
+        result = GetStdHandle(STD_INPUT_HANDLE);
+        } break;
+    }
+    korl_assert(result != INVALID_HANDLE_VALUE);
+    /** @todo: do something with lastError? */
+#if 0
+    if(result == INVALID_HANDLE_VALUE)
+    {
+        const DWORD lastError = GetLastError();
+    }
+#endif//0
+    return result;
+}
+korl_internal bool _korl_printVaList_variableLengthStackString(
+    unsigned stackStringBufferSize, enum KorlEnumStandardStream standardStream, 
+    unsigned variadicArgumentCount, wchar_t* format, va_list vaList)
+{
+    const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
+    korl_assert(variadicArgumentCount == formatSubstitutions);
+    korl_assert(stackStringBufferSize > 0);
+    wchar_t*const stackStringBuffer = 
+        _alloca(stackStringBufferSize * sizeof(wchar_t));
+    /* attempt to write the formatted string to a buffer on the stack */
+    korl_assert(stackStringBufferSize <= STRSAFE_MAX_CCH);
+    const HRESULT hResultPrintToStackBuffer = 
+        StringCchVPrintf(
+            stackStringBuffer, stackStringBufferSize, format, vaList);
+    korl_assert(hResultPrintToStackBuffer != STRSAFE_E_INVALID_PARAMETER);
+    if(hResultPrintToStackBuffer == STRSAFE_E_INSUFFICIENT_BUFFER)
+        return false;
+    korl_assert(hResultPrintToStackBuffer == S_OK);
+    /* write the final buffer to the desired KorlEnumStandardStream */
+    const HANDLE hStream = 
+        _korl_windows_handleFromEnumStandardStream(standardStream);
+    korl_assert(hStream != NULL);
+    korl_assert(hStream != INVALID_HANDLE_VALUE);
+    size_t finalBufferSize = 0;
+    const HRESULT resultGetFinalBufferSize = 
+        StringCchLength(
+            stackStringBuffer, stackStringBufferSize, &finalBufferSize);
+    korl_assert(resultGetFinalBufferSize == S_OK);
+    // check whether or not hStream is a "console handle" //
+    DWORD consoleMode = 0;
+    const BOOL successGetConsoleMode = GetConsoleMode(hStream, &consoleMode);
+    if(successGetConsoleMode)
+    {
+        DWORD numCharsWritten = 0;
+        const BOOL successWriteConsole = 
+            WriteConsole(
+                hStream, stackStringBuffer, 
+                korl_windows_cast_sizetToDword(finalBufferSize), 
+                &numCharsWritten, NULL/*reserved; always NULL*/);
+        /** @todo: do something with lastError? */
+#if 0
+        if(!successWriteConsole)
+        {
+            const DWORD lastError = GetLastError();
+        }
+#endif//0
+        korl_assert(successWriteConsole);
+    }
+    /* we're in the debugger, and the output stream isn't a console, which most 
+        likely means we're printing to the visual studio debug output window, 
+        which has special encoding requirements :( */
+    /** @vs-debug-output-work-around: is this the best way to handle this case?  
+     * Test using a different debugger like VSCode or something?  */
+    else if(IsDebuggerPresent())
+    {
+        OutputDebugString(stackStringBuffer);
+    }
+    else
+    {
+        DWORD bytesWritten = 0;
+        const BOOL successWriteFile = 
+            WriteFile(
+                hStream, stackStringBuffer, 
+                korl_windows_cast_sizetToDword(
+                    finalBufferSize*sizeof(stackStringBuffer[0])), 
+                &bytesWritten, 
+                NULL/* OVERLAPPED*: NULL == we're not doing async I/O here */);
+        /** @todo: do something with lastError? */
+#if 0
+        if(!resultWriteFile)
+        {
+            const DWORD lastError = GetLastError();
+        }
+#endif//0
+        korl_assert(successWriteFile);
+    }
+    return true;
+}
+korl_internal void _korl_printVaList(
+    enum KorlEnumStandardStream standardStream, unsigned variadicArgumentCount, 
+    wchar_t* format, va_list vaList)
+{
+    const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
+    korl_assert(variadicArgumentCount == formatSubstitutions);
+    /* Now, we're going to do some stupid shit here.  Because Windows API is 
+        insanely dumb and doesn't allow us to calculate how many characters a 
+        buffer will need to hold a formatted string, all we can do is 
+        continuously attempt to format the string using larger and larger 
+        buffers until the operation actually succeeds. */
+    unsigned stackStringSize = 64;
+    bool success = false;
+    while(!success)
+    {
+        va_list vaListCopy;
+        va_copy(vaListCopy, vaList);
+        success = 
+            _korl_printVaList_variableLengthStackString(
+                stackStringSize, standardStream, variadicArgumentCount, 
+                format, vaList);
+        va_end(vaListCopy);
+        stackStringSize *= 2;
+    }
+}
+korl_internal void korl_printVariadicArguments(unsigned variadicArgumentCount, 
+    enum KorlEnumStandardStream standardStream, wchar_t* format, ...)
+{
+    const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
+    korl_assert(variadicArgumentCount == formatSubstitutions);
+    /* print the formatted text to the desired standard handle */
+    va_list vaList;
+    va_start(vaList, format);
+    _korl_printVaList(standardStream, variadicArgumentCount, format, vaList);
+    va_end(vaList);
+}
+/** \return \c true if the formatted string could be stored within a buffer of 
+ * size \c stackStringBufferSize and \c false otherwise.
+ */
+korl_internal bool _korl_logVaList_variableLengthStackString(
+    unsigned stackStringBufferSize, unsigned variadicArgumentCount, 
+    enum KorlEnumLogLevel logLevel, const char* cStringFileName, 
+    const char* cStringFunctionName, int lineNumber, wchar_t* format, 
+    va_list vaList)
+{
+    const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
+    korl_assert(variadicArgumentCount == formatSubstitutions);
+    korl_assert(stackStringBufferSize > 0);
+    wchar_t*const stackStringBuffer = 
+        _alloca(stackStringBufferSize * sizeof(wchar_t));
+    /* attempt to write the formatted string to the local buffer */
+    korl_assert(stackStringBufferSize <= STRSAFE_MAX_CCH);
+    const HRESULT hResultPrintToStackBuffer = 
+        StringCchVPrintf(
+            stackStringBuffer, stackStringBufferSize, format, vaList);
+    korl_assert(hResultPrintToStackBuffer != STRSAFE_E_INVALID_PARAMETER);
+    if(hResultPrintToStackBuffer == STRSAFE_E_INSUFFICIENT_BUFFER)
+        return false;
+    korl_assert(hResultPrintToStackBuffer == S_OK);
+    /* print the final formatted string to the appropriate output, as well as a 
+        tag containing all the provided meta data about the log message */
+    const char* cStringLogLevel = "???";
+    switch(logLevel)
+    {
+    case KORL_LOG_LEVEL_INFO: { cStringLogLevel = "INFO"; }break;
+    case KORL_LOG_LEVEL_DEBUG: { cStringLogLevel = "DEBUG"; }break;
+    case KORL_LOG_LEVEL_ERROR: { cStringLogLevel = "ERROR"; }break;
+    }
+    // only print the file name, not the full path!
+    for(const char* fileNameCursor = cStringFileName; *fileNameCursor; 
+    fileNameCursor++)
+        if(*fileNameCursor == '\\' || *fileNameCursor == '/')
+            cStringFileName = fileNameCursor + 1;
+    // determine which standard stream we need to print to based on log level
+    const enum KorlEnumStandardStream printStream = 
+        logLevel <= KORL_LOG_LEVEL_ERROR 
+            ? KORL_STANDARD_STREAM_ERROR
+            : KORL_STANDARD_STREAM_OUT;
+    /** if we're debugging, either fix visual studio's debug output 
+     * window encoding or just use OutputDebugString or some shit here 
+     * @vs-debug-output-work-around */
+    korl_print(printStream, L"{%s|%i|%s|%s} %S\n", 
+        cStringLogLevel, lineNumber, cStringFileName, cStringFunctionName, 
+        stackStringBuffer);
+    /* if we ever log an error while a debugger is attached, just break right 
+        now so we can figure out what's going on! */
+    if(IsDebuggerPresent() && logLevel <= KORL_LOG_LEVEL_ERROR)
+        DebugBreak();
+    return true;
+}
+korl_internal void _korl_logVaList(
+    unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
+    const char* cStringFileName, const char* cStringFunctionName, 
+    int lineNumber, wchar_t* format, va_list vaList)
+{
+    const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
+    korl_assert(variadicArgumentCount == formatSubstitutions);
+    /* Now, we're going to do some stupid shit here.  Because Windows API is 
+        insanely dumb and doesn't allow us to calculate how many characters a 
+        buffer will need to hold a formatted string, all we can do is 
+        continuously attempt to format the string using larger and larger 
+        buffers until the operation actually succeeds. */
+    unsigned stackStringSize = 64;
+    bool success = false;
+    while(!success)
+    {
+        va_list vaListCopy;
+        va_copy(vaListCopy, vaList);
+        success = 
+            _korl_logVaList_variableLengthStackString(
+                stackStringSize, variadicArgumentCount, logLevel, 
+                cStringFileName, cStringFunctionName, lineNumber, format, 
+                vaList);
+        va_end(vaListCopy);
+        stackStringSize *= 2;
+    }
+}
+korl_internal void korl_logVariadicArguments(
+    unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
+    const char* cStringFileName, const char* cStringFunctionName, 
+    int lineNumber, wchar_t* format, ...)
+{
+    const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
+    korl_assert(variadicArgumentCount == formatSubstitutions);
+    /* now we can log the using a va_list instead of variadic arguments */
+    va_list vaList;
+    va_start(vaList, format);
+    _korl_logVaList(
+        variadicArgumentCount, logLevel, cStringFileName, cStringFunctionName, 
+        lineNumber, format, vaList);
+    va_end(vaList);
+}

@@ -13,7 +13,9 @@ cd "build"
 rem ----- create the command to build the EXE -----
 set buildCommand=cl
 rem :::::::::::::::::::::::::::: COMPILER SETTINGS ::::::::::::::::::::::::::::
-set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\korl-windows-main.c"
+set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\windows\korl-main.c"
+rem allow OS-specific code to include global headers/code
+set buildCommand=%buildCommand% /I "%KORL_PROJECT_ROOT%\code"
 rem set the executable's file name
 set buildCommand=%buildCommand% /Fe"%KORL_EXE_NAME%"
 rem set the VCX0.PDB file name
@@ -98,9 +100,14 @@ IF %hh% LEQ 0 (
 )
 rem ----- exit the script -----
 endlocal
-exit /b 0
+cmd /c exit 0
 rem ----- exit on failures -----
 :ON_FAILURE_EXE
 echo KORL build failed! 1>&2
 endlocal
-exit /B %ERRORLEVEL%
+rem We need to exit like this in order to be able to do things in the calling 
+rem command prompt like `korl-build && build\korl-windows.exe` to allow us to 
+rem automatically run the program if the build succeeds.  I tested it and 
+rem unfortunately, this does actually work...
+rem SOURCE: https://www.computerhope.com/forum/index.php?topic=65815.0
+cmd /c exit %ERRORLEVEL%

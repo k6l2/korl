@@ -1,0 +1,8 @@
+#pragma once
+#include "korl-global-defines.h"
+#define korl_assert(condition) \
+    if(!(condition)) { \
+        korl_assertConditionFailed(L""#condition, __FILE__, __LINE__); }
+/** \note DO NOT CALL THIS!  Use \c korl_assert instead! */
+korl_internal void korl_assertConditionFailed(
+    wchar_t* conditionString, const char* cStringFileName, int lineNumber);

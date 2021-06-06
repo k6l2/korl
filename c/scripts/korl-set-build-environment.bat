@@ -1,4 +1,3 @@
-@rem ----- turn off echo of commands to the prompt -----
 @echo off
 rem ----- setup MSVC build tools -----
 call "%VsDevCmd_Path%" -arch=amd64

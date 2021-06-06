@@ -1,0 +1,63 @@
+[x] log macro
+	- INFO|DEBUG|ERROR
+	- if we're in the VS debugger, use outputdebugstring
+	- otherwise, just send to standard output streams
+[ ] dynamic memory allocation
+	- use a macro to store the meta data of each allocation (file, line)
+	- use allocation macro to align each specific allocation to its expected 
+		alignment (using stdalign.h)
+	- align allocations to pages
+	- protect pages that are not allocated
+	- if allocation fails, allocate another memory arena from the OS
+	- if memory arena contains no allocations and is not the primary arena, 
+		release the arena back to the OS
+	- stack allocator
+	- heap allocator
+	- is there a simple/easy way to have a common allocator "interface" which 
+		essentially just a v-table dispatch?
+[ ] memory metrics
+	- how much memory is allocated for the ENTIRE program?
+	- how much the allocated memory are we using?
+	- WHERE do all our allocations originate?
+[ ] time metrics
+	- add thread to time metrics
+	- "start" a time probe recording period (frames)
+	- "probe" arbitrary sections of code using labels & using thread ID
+	- print all the probe results from the previous frame
+[ ] stability metrics
+	- SEH interceptor
+	- stack overflow
+	- infinite loop (unresponsive program) detection
+[ ] create a window
+[ ] create a dynamic application code module
+[ ] gfx: vulkan - initialize graphics context
+[ ] gfx: vulkan - draw empty color buffer to the window
+[ ] multi-threading: create a job queue + worker threads
+[ ] assets: asset manager
+	- we need this for loading graphics assets like shaders, textures, etc...
+[ ] assets: load vulkan shaders
+[ ] gfx: vulkan - draw geoprims (tris, lines)
+[ ] keyboard input
+[ ] mouse input
+[ ] game pad input (XInput)
+[ ] create sample project
+[ ] build all sample projects
+[ ] assets: load PNG
+[ ] gfx: vulkan - upload textures to GPU
+[ ] gfx: vulkan - draw textured geoprims
+[ ] Sprite Fonts
+[ ] time metrics: draw graph of all probed threads
+[ ] memory metrics: draw graph of all application memory usage
+[ ] audio: stream output using WASAPI
+[ ] assets: load WAV files
+[ ] audio: mixer, play WAV assets
+[ ] assets: load OggVorbis files
+[ ] audio: play/loop OggVorbis assets
+[ ] assets: load GLTF
+[ ] gfx: vulkan - draw mesh
+[ ] gfx: vulkan - animate mesh
+[ ] collision detection (narrow-phase)
+[ ] collision detection (manifold calculation)
+[ ] collision resolution (???)
+[ ] networking: UDP
+[ ] networking: reliable packets
