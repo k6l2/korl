@@ -1,5 +1,6 @@
 #include "korl-io.h"
-#include "korl-global-defines-windows.h"
+#include "korl-windows-global-defines.h"
+#include "korl-windows-utilities.h"
 korl_internal unsigned _korl_countFormatSubstitutions(const wchar_t* format)
 {
     /* find the number of variable substitutions in the format string */
@@ -89,7 +90,7 @@ korl_internal bool _korl_printVaList_variableLengthStackString(
         const BOOL successWriteConsole = 
             WriteConsole(
                 hStream, stackStringBuffer, 
-                korl_windows_cast_sizetToDword(finalBufferSize), 
+                korl_windows_sizet_to_dword(finalBufferSize), 
                 &numCharsWritten, NULL/*reserved; always NULL*/);
         /* save the result of GetLastError to the stack in case we need to 
             examine a memory dump that has a stack trace or somethin ;) */
@@ -113,7 +114,7 @@ korl_internal bool _korl_printVaList_variableLengthStackString(
         const BOOL successWriteFile = 
             WriteFile(
                 hStream, stackStringBuffer, 
-                korl_windows_cast_sizetToDword(
+                korl_windows_sizet_to_dword(
                     finalBufferSize*sizeof(stackStringBuffer[0])), 
                 &bytesWritten, 
                 NULL/* OVERLAPPED*: NULL == we're not doing async I/O here */);
@@ -207,7 +208,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
     /** if we're debugging, either fix visual studio's debug output 
      * window encoding or just use OutputDebugString or some shit here 
      * @vs-debug-output-work-around */
-    korl_print(printStream, L"{%s|%i|%s|%s} %S\n", 
+    korl_print(printStream, L"{%-5s|%5i|%s|%s} %S\n", 
         cStringLogLevel, lineNumber, cStringFileName, cStringFunctionName, 
         stackStringBuffer);
     /* if we ever log an error while a debugger is attached, just break right 

@@ -11,12 +11,21 @@ korl_internal void korl_assertConditionFailed(
         DebugBreak();
     }
     else
+    {
+        /* give the user a prompt indicating something went wrong */
+        //const int resultMessageBox = 
+            MessageBox(
+                NULL/*hWnd*/, conditionString, 
+                _T("KORL ASSERTION FAILED!"), MB_ICONERROR);
+        /* if resultMessageBox is 0, that means an error occurred, which can be 
+            obtained via GetLastError(), but we're too deep in critical error 
+            handling already for this to be useful */
+        /* write failed condition to standard error stream */
         korl_log(ERROR, "ASSERT FAILED: \"%S\" {%i|%s}", 
             conditionString, lineNumber, cStringFileName);
+    }
     /** @todo: In the case that we're deploying this application (not running in 
      * a debugger) maybe do one or more of the following things:
-     * - give the user a prompt indicating something went wrong
      * - write a memory dump to disk
-     * - write failed condition to standard error stream
      * - end the program right now */
 }

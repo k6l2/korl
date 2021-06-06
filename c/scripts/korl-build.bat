@@ -13,7 +13,7 @@ cd "build"
 rem ----- create the command to build the EXE -----
 set buildCommand=cl
 rem :::::::::::::::::::::::::::: COMPILER SETTINGS ::::::::::::::::::::::::::::
-set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\windows\korl-main.c"
+set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\windows\korl-windows-main.c"
 rem allow OS-specific code to include global headers/code
 set buildCommand=%buildCommand% /I "%KORL_PROJECT_ROOT%\code"
 rem set the executable's file name
@@ -25,7 +25,8 @@ set buildCommand=%buildCommand% /WX
 rem enable all warnings
 set buildCommand=%buildCommand% /Wall
 rem So... for some reason this switch completely DESTROYS compile times (nearly 
-rem a 2x increase! wtf?) Consequently, I am keeping this commented out for now.
+rem     a 2x increase! wtf?) Consequently, I am keeping this commented out for 
+rem     now.
 rem set buildCommand=%buildCommand% /std:c17
 rem disable annoying verbose compiler output
 set buildCommand=%buildCommand% /nologo
@@ -43,7 +44,7 @@ set buildCommand=%buildCommand% /GR-
 rem disable stack buffer overrun security checks
 rem set buildCommand=%buildCommand% /GS-
 rem set the stack dynamic allocator probe to be the max value
-rem this allows us to disable dynamic stack allocation features
+rem     this allows us to disable dynamic stack allocation features
 rem set buildCommand=%buildCommand% /Gs2147483647
 rem disable exception handling unwind code generation
 set buildCommand=%buildCommand% /EHa-
@@ -61,8 +62,15 @@ rem do not link to the C runtime (CRT) libraries
 rem set buildCommand=%buildCommand% /nodefaultlib
 rem we're no longer using the CRT, so we have to define a custom entry point
 set buildCommand=%buildCommand% /entry:korl_windows_main
-rem this is required since the compiler can't deduce this option anymore
-set buildCommand=%buildCommand% /subsystem:WINDOWS
+rem So this property is actually extremely important:  this tells Windows how to 
+rem     hook the executable up to the Windows environment, which determines what 
+rem     the application's capabilities are.  In the beginning, it makes sense 
+rem     for us to have a CONSOLE application, since we generally want to be able 
+rem     to print things out to the console to have a better idea of what the 
+rem     program is doing without having to step it through the debugger each 
+rem     time.  Once the application has the ability to render the log in a 
+rem     window, we can set this to be /subsystem:WINDOWS!
+set buildCommand=%buildCommand% /subsystem:CONSOLE
 rem for ExitProcess, GetModuleHandle, etc...
 set buildCommand=%buildCommand% kernel32.lib
 rem for wvsprintf
@@ -100,14 +108,14 @@ IF %hh% LEQ 0 (
 )
 rem ----- exit the script -----
 endlocal
-cmd /c exit 0
+exit /b 0
 rem ----- exit on failures -----
 :ON_FAILURE_EXE
 echo KORL build failed! 1>&2
 endlocal
 rem We need to exit like this in order to be able to do things in the calling 
-rem command prompt like `korl-build && build\korl-windows.exe` to allow us to 
-rem automatically run the program if the build succeeds.  I tested it and 
-rem unfortunately, this does actually work...
-rem SOURCE: https://www.computerhope.com/forum/index.php?topic=65815.0
+rem     command prompt like `korl-build && build\korl-windows.exe` to allow us 
+rem     to automatically run the program if the build succeeds.  I tested it and 
+rem     unfortunately, this does actually work...
+rem     SOURCE: https://www.computerhope.com/forum/index.php?topic=65815.0
 cmd /c exit %ERRORLEVEL%

@@ -1,21 +1,16 @@
-/** Some resources that I'm using for building an application without 
- * Microsoft's bloated CRT : 
- * https://hero.handmade.network/forums/code-discussion/t/94-guide_-_how_to_avoid_c_c++_runtime_on_windows
- * https://www.codeproject.com/articles/15156/tiny-c-runtime-library */
 #include "korl-global-defines.h"
-#include "korl-global-defines-windows.h"
+#include "korl-windows-global-defines.h"
 #include "korl-io.h"
 #include "korl-assert.h"
-korl_internal DWORD korl_windows_cast_sizetToDword(size_t value)
-{
-    _STATIC_ASSERT(sizeof(DWORD) == 4);
-    korl_assert(value <= 0xFFFFFFFF);
-    return (DWORD)value;
-}
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
-    /*const BOOL successAttachConsole = */AttachConsole(ATTACH_PARENT_PROCESS);
+    /* So all of the code that is commented-out below here is a vain attempt at 
+        getting a Windows non-console application to interact with the console 
+        that it was invoked by.  As it turns out, it is actually literally 
+        impossible to make a Windows application that does this... lol.
+        SOURCE: https://stackoverflow.com/a/494000 */
+    ///*const BOOL successAttachConsole = */AttachConsole(ATTACH_PARENT_PROCESS);
 #if 0
     if(!successAttachConsole)
     {
@@ -59,3 +54,4 @@ void __stdcall korl_windows_main(void)
 }
 #include "korl-assert.c"
 #include "korl-io.c"
+#include "korl-windows-utilities.c"
