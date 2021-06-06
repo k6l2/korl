@@ -31,6 +31,7 @@ korl_internal unsigned _korl_countFormatSubstitutions(const wchar_t* format)
 korl_internal HANDLE _korl_windows_handleFromEnumStandardStream(
     enum KorlEnumStandardStream standardStream)
 {
+    DWORD lastError;
     HANDLE result = INVALID_HANDLE_VALUE;
     switch(standardStream)
     {
@@ -44,14 +45,11 @@ korl_internal HANDLE _korl_windows_handleFromEnumStandardStream(
         result = GetStdHandle(STD_INPUT_HANDLE);
         } break;
     }
-    korl_assert(result != INVALID_HANDLE_VALUE);
-    /** @todo: do something with lastError? */
-#if 0
+    /* save the result of GetLastError to the stack in case we need to examine a 
+        memory dump that has a stack trace or somethin ;) */
     if(result == INVALID_HANDLE_VALUE)
-    {
-        const DWORD lastError = GetLastError();
-    }
-#endif//0
+        lastError = GetLastError();
+    korl_assert(result != INVALID_HANDLE_VALUE);
     return result;
 }
 korl_internal bool _korl_printVaList_variableLengthStackString(
@@ -93,13 +91,11 @@ korl_internal bool _korl_printVaList_variableLengthStackString(
                 hStream, stackStringBuffer, 
                 korl_windows_cast_sizetToDword(finalBufferSize), 
                 &numCharsWritten, NULL/*reserved; always NULL*/);
-        /** @todo: do something with lastError? */
-#if 0
+        /* save the result of GetLastError to the stack in case we need to 
+            examine a memory dump that has a stack trace or somethin ;) */
+        DWORD lastError;
         if(!successWriteConsole)
-        {
-            const DWORD lastError = GetLastError();
-        }
-#endif//0
+            lastError = GetLastError();
         korl_assert(successWriteConsole);
     }
     /* we're in the debugger, and the output stream isn't a console, which most 
@@ -121,13 +117,11 @@ korl_internal bool _korl_printVaList_variableLengthStackString(
                     finalBufferSize*sizeof(stackStringBuffer[0])), 
                 &bytesWritten, 
                 NULL/* OVERLAPPED*: NULL == we're not doing async I/O here */);
-        /** @todo: do something with lastError? */
-#if 0
-        if(!resultWriteFile)
-        {
-            const DWORD lastError = GetLastError();
-        }
-#endif//0
+        /* save the result of GetLastError to the stack in case we need to 
+            examine a memory dump that has a stack trace or somethin ;) */
+        DWORD lastError;
+        if(!successWriteFile)
+            lastError = GetLastError();
         korl_assert(successWriteFile);
     }
     return true;
