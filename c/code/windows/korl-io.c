@@ -99,15 +99,15 @@ korl_internal bool _korl_printVaList_variableLengthStackString(
             lastError = GetLastError();
         korl_assert(successWriteConsole);
     }
+#if 0
     /* we're in the debugger, and the output stream isn't a console, which most 
         likely means we're printing to the visual studio debug output window, 
         which has special encoding requirements :( */
-    /** @vs-debug-output-work-around: is this the best way to handle this case?  
-     * Test using a different debugger like VSCode or something?  */
     else if(IsDebuggerPresent())
     {
         OutputDebugString(stackStringBuffer);
     }
+#endif//0
     else
     {
         DWORD bytesWritten = 0;
@@ -205,9 +205,6 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
         logLevel <= KORL_LOG_LEVEL_ERROR 
             ? KORL_STANDARD_STREAM_ERROR
             : KORL_STANDARD_STREAM_OUT;
-    /** if we're debugging, either fix visual studio's debug output 
-     * window encoding or just use OutputDebugString or some shit here 
-     * @vs-debug-output-work-around */
     korl_print(printStream, L"{%-5s|%5i|%s|%s} %S\n", 
         cStringLogLevel, lineNumber, cStringFileName, cStringFunctionName, 
         stackStringBuffer);
