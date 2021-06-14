@@ -12,6 +12,33 @@
 /** disambiguations of the \c static key word to improve project 
  * searchability */
 #define korl_internal static
+#define korl_global_variable static
+#define korl_global_const static const
+#define korl_shared_variable static
+#define korl_shared_const static const
+/** simple primitive type definitions */
+typedef char      i8;
+typedef short     i16;
+typedef int       i32;
+typedef long long i64;
+typedef unsigned char      u8;
+typedef unsigned short     u16;
+typedef unsigned int       u32;
+typedef unsigned long long u64;
+typedef float  f32;
+typedef double f64;
+// and if any of these asserts fail, we can just fix these based on target 
+//  platform architecture/compiler:
+_STATIC_ASSERT(sizeof(i8 ) == 1);
+_STATIC_ASSERT(sizeof(i16) == 2);
+_STATIC_ASSERT(sizeof(i32) == 4);
+_STATIC_ASSERT(sizeof(i64) == 8);
+_STATIC_ASSERT(sizeof(u8 ) == 1);
+_STATIC_ASSERT(sizeof(u16) == 2);
+_STATIC_ASSERT(sizeof(u32) == 4);
+_STATIC_ASSERT(sizeof(u64) == 8);
+_STATIC_ASSERT(sizeof(f32) == 4);
+_STATIC_ASSERT(sizeof(f64) == 8);
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
 #define korl_arraySize(array) (sizeof(array) / sizeof(array[0]))

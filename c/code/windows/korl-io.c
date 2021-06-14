@@ -191,9 +191,9 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
     const char* cStringLogLevel = "???";
     switch(logLevel)
     {
-    case KORL_LOG_LEVEL_INFO: { cStringLogLevel = "INFO"; }break;
-    case KORL_LOG_LEVEL_DEBUG: { cStringLogLevel = "DEBUG"; }break;
-    case KORL_LOG_LEVEL_ERROR: { cStringLogLevel = "ERROR"; }break;
+    case KORL_LOG_LEVEL_INFO:    { cStringLogLevel = "INFO";    }break;
+    case KORL_LOG_LEVEL_WARNING: { cStringLogLevel = "WARNING"; }break;
+    case KORL_LOG_LEVEL_ERROR:   { cStringLogLevel = "ERROR";   }break;
     }
     // only print the file name, not the full path!
     for(const char* fileNameCursor = cStringFileName; *fileNameCursor; 
@@ -205,7 +205,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
         logLevel <= KORL_LOG_LEVEL_ERROR 
             ? KORL_STANDARD_STREAM_ERROR
             : KORL_STANDARD_STREAM_OUT;
-    korl_print(printStream, L"{%-5s|%5i|%s|%s} %S\n", 
+    korl_print(printStream, L"{%-7s|%5i|%s|%s} %S\n", 
         cStringLogLevel, lineNumber, cStringFileName, cStringFunctionName, 
         stackStringBuffer);
     /* if we ever log an error while a debugger is attached, just break right 

@@ -22,3 +22,4 @@
     #include <strsafe.h>
 #pragma warning(pop)
 #define KORL_EXIT_SUCCESS 0
+#define KORL_EXIT_FAIL_ASSERT 1

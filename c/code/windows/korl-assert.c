@@ -26,6 +26,7 @@ korl_internal void korl_assertConditionFailed(
     }
     /** @todo: In the case that we're deploying this application (not running in 
      * a debugger) maybe do one or more of the following things:
-     * - write a memory dump to disk
-     * - end the program right now */
+     * - offer a choice to continue execution
+     * - offer a choice to write a memory dump to disk */
+    ExitProcess(KORL_EXIT_FAIL_ASSERT);
 }

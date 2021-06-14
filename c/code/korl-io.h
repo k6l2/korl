@@ -10,7 +10,7 @@ enum KorlEnumStandardStream
         format, __VA_ARGS__)
 enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ERROR
-    , KORL_LOG_LEVEL_DEBUG
+    , KORL_LOG_LEVEL_WARNING
     , KORL_LOG_LEVEL_INFO };
 #define korl_log(logLevel, format, ...) \
     korl_logVariadicArguments(\
