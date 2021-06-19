@@ -42,7 +42,7 @@ void __stdcall korl_windows_main(void)
     korl_memory_initialize();
     /* let's play with dynamic memory allocation~ */
     struct Korl_Memory_Allocation allocationTest = 
-        korl_memory_allocate(5000);
+        korl_memory_allocate(5000, korl_memory_addressMin());
     korl_assert(allocationTest.address);
     korl_log(INFO, "allocationTest.address=%p bytes=%llu", 
         allocationTest.address, allocationTest.bytes);

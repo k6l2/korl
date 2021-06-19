@@ -8,9 +8,18 @@ korl_internal void korl_memory_initialize(void)
 }
 korl_internal u32 korl_memory_pageSize(void)
 {
-	return g_korl_memory_systemInfo.dwPageSize;
+    return g_korl_memory_systemInfo.dwPageSize;
 }
-korl_internal struct Korl_Memory_Allocation korl_memory_allocate(size_t bytes)
+korl_internal void* korl_memory_addressMin(void)
+{
+    return g_korl_memory_systemInfo.lpMinimumApplicationAddress;
+}
+korl_internal void* korl_memory_addressMax(void)
+{
+    return g_korl_memory_systemInfo.lpMaximumApplicationAddress;
+}
+korl_internal struct Korl_Memory_Allocation korl_memory_allocate(
+    size_t bytes, void* desiredAddress)
 {
     /* round bytes up to the nearest page size */
     const size_t pageCount = 
@@ -19,8 +28,11 @@ korl_internal struct Korl_Memory_Allocation korl_memory_allocate(size_t bytes)
     /* attempt to allocate pages of memory to satisfy byte requirement */
     LPVOID resultVirtualAlloc = 
         VirtualAlloc(
-            NULL/*start address*/, pageBytes, 
+            desiredAddress, pageBytes, 
             MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if(resultVirtualAlloc == NULL)
+        korl_log(ERROR, "VirtualAlloc failed!  GetLastError=%lu", 
+            GetLastError());
     /* generate the result; only populate the # of bytes if the allocation 
         succeeds */
     struct Korl_Memory_Allocation result;
