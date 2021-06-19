@@ -168,8 +168,8 @@ korl_internal void korl_printVariadicArguments(unsigned variadicArgumentCount,
  */
 korl_internal bool _korl_logVaList_variableLengthStackString(
     unsigned stackStringBufferSize, unsigned variadicArgumentCount, 
-    enum KorlEnumLogLevel logLevel, const char* cStringFileName, 
-    const char* cStringFunctionName, int lineNumber, wchar_t* format, 
+    enum KorlEnumLogLevel logLevel, const wchar_t* cStringFileName, 
+    const wchar_t* cStringFunctionName, int lineNumber, wchar_t* format, 
     va_list vaList)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
@@ -196,7 +196,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
     case KORL_LOG_LEVEL_ERROR:   { cStringLogLevel = "ERROR";   }break;
     }
     // only print the file name, not the full path!
-    for(const char* fileNameCursor = cStringFileName; *fileNameCursor; 
+    for(const wchar_t* fileNameCursor = cStringFileName; *fileNameCursor; 
     fileNameCursor++)
         if(*fileNameCursor == '\\' || *fileNameCursor == '/')
             cStringFileName = fileNameCursor + 1;
@@ -205,7 +205,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
         logLevel <= KORL_LOG_LEVEL_ERROR 
             ? KORL_STANDARD_STREAM_ERROR
             : KORL_STANDARD_STREAM_OUT;
-    korl_print(printStream, L"{%-7s|%5i|%s|%s} %S\n", 
+    korl_print(printStream, L"{%-7s|%5i|%S|%S} %S\n", 
         cStringLogLevel, lineNumber, cStringFileName, cStringFunctionName, 
         stackStringBuffer);
     /* if we ever log an error while a debugger is attached, just break right 
@@ -216,7 +216,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
 }
 korl_internal void _korl_logVaList(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
-    const char* cStringFileName, const char* cStringFunctionName, 
+    const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
     int lineNumber, wchar_t* format, va_list vaList)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
@@ -243,7 +243,7 @@ korl_internal void _korl_logVaList(
 }
 korl_internal void korl_logVariadicArguments(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
-    const char* cStringFileName, const char* cStringFunctionName, 
+    const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
     int lineNumber, wchar_t* format, ...)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);

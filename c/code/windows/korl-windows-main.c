@@ -8,7 +8,7 @@
 struct Korl_AllocatorStack_AllocationMetaData
 {
     void* address;
-    const char* file;
+    const wchar_t* file;
     int line;
     char _padding[4];
 };
@@ -20,21 +20,19 @@ struct KorlAllocatorStack
     u32 allocationCount;
     struct Korl_AllocatorStack_AllocationMetaData allocationMetaDatas[1];
 };
-#if 0
 /** 
  * \param address where to store the \c KorlAllocatorStack object
- * \param bytes how many bytes that the allocator will occupy adjacent to 
- * \c address
+ * \param addressEnd the address immediately following the range of memory the 
+ * new allocator will occupy
  * \return a pointer to the \c KorlAllocatorStack which occupies all the memory 
- * starting at \c address , and occupying \c bytes bytes afterwards
-*/
+ * in the range [ \c address , \c addressEnd )
+ */
 korl_internal struct KorlAllocatorStack* korl_allocator_stack_initialize(
-    void* address, size_t bytes)
+    void* address, void* addressEnd)
 {
+    const size_t bytes = (size_t)addressEnd - (size_t)address;
     korl_assert(bytes >= korl_memory_pageSize());
-    void*const endAddress = (u8*)address + bytes;
 }
-#endif//0
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
