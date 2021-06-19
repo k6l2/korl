@@ -21,5 +21,6 @@
     /* for StringCchVPrintf */
     #include <strsafe.h>
 #pragma warning(pop)
+/* KORL application exit codes */
 #define KORL_EXIT_SUCCESS 0
 #define KORL_EXIT_FAIL_ASSERT 1

@@ -5,7 +5,6 @@
 #include "korl-windows-utilities.h"
 #include "korl-memory.h"
 #include "korl-math.h"
-#if 0
 struct Korl_AllocatorStack_AllocationMetaData
 {
     void* address;
@@ -21,6 +20,7 @@ struct KorlAllocatorStack
     u32 allocationCount;
     struct Korl_AllocatorStack_AllocationMetaData allocationMetaDatas[1];
 };
+#if 0
 /** 
  * \param address where to store the \c KorlAllocatorStack object
  * \param bytes how many bytes that the allocator will occupy adjacent to 
@@ -40,6 +40,14 @@ void __stdcall korl_windows_main(void)
 {
     korl_log(INFO, "start");
     korl_memory_initialize();
+    /* how do you align stuff in C? */
+    korl_log(INFO, "sizeof(struct KorlAllocatorStack)=%llu alignof=%llu", 
+        sizeof(struct KorlAllocatorStack), alignof(struct KorlAllocatorStack));
+    korl_log(INFO, "sizeof(struct Korl_AllocatorStack_AllocationMetaData)=%llu", 
+        sizeof(struct Korl_AllocatorStack_AllocationMetaData));
+    //offsetof (struct DummyStruct{ char c; struct KorlAllocatorStack member; }, member);
+    //ALIGNOF(KorlAllocatorStack);
+    //korl_log(INFO, "alignof(KorlAllocatorStack)=%i", );
     /* let's play with dynamic memory allocation~ */
     struct Korl_Memory_Allocation allocationTest = 
         korl_memory_allocate(5000, korl_memory_addressMin());

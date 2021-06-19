@@ -1,21 +1,26 @@
 #pragma once
 #if defined(_MSC_VER) && !defined(__cplusplus)
-	/* Windows SDK has a stupid bug in corecrt.h, and if we don't define this 
-		here we get stupid warnings.  THANKS, MICROSHAFT!
-		SOURCE: https://developercommunity.visualstudio.com/t/issue-in-corecrth-header-results-in-an-undefined-m/433021 */
-	#define _CRT_HAS_CXX17 0
+    /* Windows SDK has a stupid bug in corecrt.h, and if we don't define this 
+        here we get stupid warnings.  THANKS, MICROSHAFT!  SOURCE: 
+        https://developercommunity.visualstudio.com/t/issue-in-corecrth-header-results-in-an-undefined-m/433021 */
+    #define _CRT_HAS_CXX17 0
 #endif// def _MSC_VER
 /* C doesn't have bool by default until we include this I guess */
 #include <stdbool.h>
 /* for wchar_t */
 #include <stddef.h>
+/* support for stdalign.h, since MSVC just doesn't have this I guess */
+#if defined(_MSC_VER)
+    #define alignof _Alignof
+    #define alignas(byteCount) __declspec(align(byteCount))
+#endif// defined(_MSC_VER)
 /** disambiguations of the \c static key word to improve project 
  * searchability */
-#define korl_internal static
+#define korl_internal        static
 #define korl_global_variable static
-#define korl_global_const static const
+#define korl_global_const    static const
 #define korl_shared_variable static
-#define korl_shared_const static const
+#define korl_shared_const    static const
 /** simple primitive type definitions */
 typedef char      i8;
 typedef short     i16;
