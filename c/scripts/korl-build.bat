@@ -11,6 +11,10 @@ if not exist "build" (
 )
 cd "build"
 rem ----- create the command to build the EXE -----
+rem 4189: local variable is initialized but not referenced; this is useful for 
+rem       debugging transient values
+rem 4820: 'x' bytes padding added after data member 'y'
+set disableReleaseWarnings=/wd4189 /wd4820
 set buildCommand=cl
 rem :::::::::::::::::::::::::::: COMPILER SETTINGS ::::::::::::::::::::::::::::
 set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\windows\korl-windows-main.c"
@@ -24,6 +28,8 @@ rem treat warnings as errors
 set buildCommand=%buildCommand% /WX
 rem enable all warnings
 set buildCommand=%buildCommand% /Wall
+rem disable warnings that are not useful while debugging
+set buildCommand=%buildCommand% %disableReleaseWarnings%
 rem So... for some reason this switch completely DESTROYS compile times (nearly 
 rem     a 2x increase! wtf?) Consequently, I am keeping this commented out for 
 rem     now.

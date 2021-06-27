@@ -18,7 +18,7 @@ korl_internal void* korl_memory_addressMax(void)
 {
     return g_korl_memory_systemInfo.lpMaximumApplicationAddress;
 }
-korl_internal struct Korl_Memory_Allocation korl_memory_allocate(
+korl_internal Korl_Memory_Allocation korl_memory_allocate(
     size_t bytes, void* desiredAddress)
 {
     /* round bytes up to the nearest page size */
@@ -35,12 +35,10 @@ korl_internal struct Korl_Memory_Allocation korl_memory_allocate(
             GetLastError());
     /* generate the result; only populate the # of bytes if the allocation 
         succeeds */
-    struct Korl_Memory_Allocation result;
+    Korl_Memory_Allocation result;
     ZeroMemory(&result, sizeof(result));
     result.address = resultVirtualAlloc;
     if(resultVirtualAlloc)
-    {
-        result.bytes = pageBytes;
-    }
+        result.addressEnd = KORL_C_CAST(u8*, resultVirtualAlloc) + pageBytes;
     return result;
 }

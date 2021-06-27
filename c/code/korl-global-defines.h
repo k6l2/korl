@@ -87,3 +87,5 @@ _STATIC_ASSERT(sizeof(f64) == 8);
     _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, \
     _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, count, ...) count
 #endif//0
+/* macro for c-style casts to improve project searchability */
+#define KORL_C_CAST(type,variable) ((type)variable)

@@ -17,7 +17,7 @@
     /* warning C5045: "Compiler will insert Spectre mitigation for memory load 
         if /Qspectre switch specified" I don't care about microshaft's shitty 
         API requiring spectre mitigation, only my own to some extent. */
-    #pragma warning(disable: 5045)
+    #pragma warning(disable : 5045)
     /* for StringCchVPrintf */
     #include <strsafe.h>
 #pragma warning(pop)
