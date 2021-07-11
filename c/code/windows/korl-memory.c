@@ -1,5 +1,5 @@
 #include "korl-memory.h"
-#include "korl-windows-global-defines.h"
+#include "korl-windows-globalDefines.h"
 korl_global_variable SYSTEM_INFO g_korl_memory_systemInfo;
 korl_internal void korl_memory_initialize(void)
 {

@@ -1,5 +1,5 @@
 #pragma once
-#include "korl-global-defines.h"
+#include "korl-globalDefines.h"
 typedef struct
 {
     void* address;

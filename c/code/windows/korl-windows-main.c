@@ -1,103 +1,94 @@
-#include "korl-global-defines.h"
-#include "korl-windows-global-defines.h"
+#include "korl-globalDefines.h"
+#include "korl-windows-globalDefines.h"
 #include "korl-io.h"
 #include "korl-assert.h"
 #include "korl-windows-utilities.h"
 #include "korl-memory.h"
 #include "korl-math.h"
-typedef struct
+LRESULT CALLBACK korl_windowProcedure(
+    _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    void* address;
-    const wchar_t* file;
-    int line;
-} Korl_AllocatorStack_AllocationMetaData;
-typedef struct
-{
-    void* nextAddress;
-    void* endAddress;
-    u32 allocationMax;
-    u32 allocationCount;
-    Korl_AllocatorStack_AllocationMetaData allocationMetaDatas[1];
-} KorlAllocatorStack;
-/** 
- * \param address where to store the \c KorlAllocatorStack object
- * \param addressEnd the address immediately following the range of memory the 
- * new allocator will occupy
- * \return a pointer to the \c KorlAllocatorStack which occupies all the memory 
- * in the range [ \c address , \c addressEnd )
- */
-korl_internal KorlAllocatorStack* korl_allocator_stack_initialize(
-    void* address, void* addressEnd)
-{
-    KorlAllocatorStack* result = NULL;
-    /* let's make sure that there is at LEAST one page in the target address 
-        space so that we can protect the allocator book-keeping memory */
-    const uintptr_t bytes = 
-        KORL_C_CAST(uintptr_t, addressEnd) - KORL_C_CAST(uintptr_t, address);
-    korl_assert(bytes >= korl_memory_pageSize());
-    /* make sure the result struct is initialized on an address 
-        that is aligned to the start of the first page-aligned address */
-    void*const addressAllocatorPage = 
-        KORL_C_CAST(void*, korl_math_roundUpPowerOf2(
-            KORL_C_CAST(uintptr_t, address), korl_memory_pageSize()));
-    /* make sure the result struct is initialized on an address 
-        that satisfies the result struct's alignment requirements */
-    result = KORL_C_CAST(KorlAllocatorStack*, korl_math_roundUpPowerOf2(
-        KORL_C_CAST(uintptr_t, address), alignof(KorlAllocatorStack)));
-    /* sanity check our final address */
-    korl_assert(KORL_C_CAST(void*, result) >= address);
-    korl_assert(KORL_C_CAST(void*, result) <  addressEnd);
-    korl_assert(
-        KORL_C_CAST(u8*, result) + sizeof(*result) <= 
-            KORL_C_CAST(u8*, addressEnd));
-    /* initialize the result struct */
-    ZeroMemory(result, sizeof(KorlAllocatorStack));
-    result->nextAddress = KORL_C_CAST(u8*, addressAllocatorPage) + 
-        korl_memory_pageSize();
-    result->endAddress = addressEnd;
-    // we need to calculate how many allocations we can store in the allocator's 
-    //  protected page:
-    korl_assert(korl_memory_pageSize() > sizeof(KorlAllocatorStack));
-    //korl_memory_pageSize() - sizeof(KorlAllocatorStack);
-    //result->allocationMax = ;
-    /** @todo */
-    /* protect the allocator struct's page(s) */
-    /** @todo */
-    /* and finally, we can return the allocator's address */
-    return result;
+    switch(uMsg)
+    {
+    case WM_DESTROY:{
+        PostQuitMessage(KORL_EXIT_SUCCESS);
+        } break;
+    default: 
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
+    return 0;// the most common user-handled result
 }
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
     korl_log(INFO, "start");
     korl_memory_initialize();
-    /* how do you align stuff in C? */
-    korl_log(INFO, "sizeof(KorlAllocatorStack)=%llu alignof=%llu", 
-        sizeof(KorlAllocatorStack), alignof(KorlAllocatorStack));
-    korl_log(INFO, "sizeof(Korl_AllocatorStack_AllocationMetaData)=%llu", 
-        sizeof(Korl_AllocatorStack_AllocationMetaData));
-    /* let's play with dynamic memory allocation~ */
-    Korl_Memory_Allocation allocationTest = 
-        korl_memory_allocate(5000, korl_memory_addressMin());
-    korl_assert(allocationTest.address);
-    korl_log(INFO, "allocationTest.address=%p bytes=%llu", 
-        allocationTest.address, 
-        KORL_C_CAST(uintptr_t, allocationTest.addressEnd) - 
-            KORL_C_CAST(uintptr_t, allocationTest.address));
-#if 0
-#if 1
-    for(i32 i = 0; i < korl_windows_dword_to_i32(korl_memory_pageSize()) + 1; i++)
-        testChars[i] = 69;
-#else
-    korl_shared_const char TEST_C_STR[] = "lololol...";
-    for(size_t i = 0; i < korl_arraySize(TEST_C_STR); i++)
-        testChars[i] = TEST_C_STR[i];
-#endif//0
-#endif//0
-    /* okay, let's try initializing a stack allocator */
-    korl_allocator_stack_initialize(
-        allocationTest.address, allocationTest.addressEnd);
-    /* end the application */
+    /* prepare variables necessary to create a window class */
+    const TCHAR windowClassName[] = _T("KorlWindowClass");
+    /* note: since this is a global shared handle, it does NOT need to be 
+        cleaned up via DestroyCursor later */
+    const HCURSOR hCursorArrow = LoadCursor(NULL, IDC_ARROW);
+    if(!hCursorArrow) korl_logLastError("LoadCursor failed!");
+    /* Note: Windows will automatically delete Window class brushes when they 
+        are unregistered, so we don't need to clean this up.  Also, stock 
+        objects do not need to be cleaned up, so we gucci. */
+    HBRUSH hBrushWindowBackground = 
+        KORL_C_CAST(HBRUSH, GetStockObject(BLACK_BRUSH));
+    if(!hBrushWindowBackground) korl_logLastError("GetStockObject failed!");
+    /* create a window class */
+    korl_makeZeroStackVariable(WNDCLASSEX, windowClass);
+    windowClass.cbSize        = sizeof(windowClass);
+    windowClass.style         = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+    windowClass.lpfnWndProc   = korl_windowProcedure;
+    windowClass.hCursor       = hCursorArrow;
+    windowClass.hbrBackground = hBrushWindowBackground;
+    windowClass.lpszClassName = windowClassName;
+    const ATOM atomWindowClass = RegisterClassEx(&windowClass);
+    if(!atomWindowClass) korl_logLastError("RegisterClassEx failed");
+    /* create a window */
+    const u32 clientSizeX = 1024;
+    const u32 clientSizeY = 576;
+    const u32 primaryDisplayPixelSizeX = GetSystemMetrics(SM_CXSCREEN);
+    const u32 primaryDisplayPixelSizeY = GetSystemMetrics(SM_CYSCREEN);
+    if(primaryDisplayPixelSizeX == 0) korl_log(ERROR, "GetSystemMetrics failed!");
+    if(primaryDisplayPixelSizeY == 0) korl_log(ERROR, "GetSystemMetrics failed!");
+    /* we will compute the window rect by starting with the desired centered 
+        client rect and adjusting it for the non-client region */
+    RECT rectCenteredClient;
+    rectCenteredClient.left = primaryDisplayPixelSizeX/2 - clientSizeX/2;
+    rectCenteredClient.top  = primaryDisplayPixelSizeY/2 - clientSizeY/2;
+    rectCenteredClient.right  = rectCenteredClient.left + clientSizeX;
+    rectCenteredClient.bottom = rectCenteredClient.top  + clientSizeY;
+    const DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+    const BOOL successAdjustClientRect = 
+        AdjustWindowRect(&rectCenteredClient, windowStyle, FALSE/*menu?*/);
+    if(!successAdjustClientRect) korl_logLastError("AdjustWindowRect failed!");
+    const HWND hWnd = 
+        CreateWindowEx(
+            0/*extended style flags*/, windowClassName, _T("KORL C"), 
+            windowStyle, 
+            rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
+            rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
+            rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
+            NULL/*hWndParent*/, 
+            NULL/*hMenu*/, NULL/*hInstance*/, 
+            NULL/*lpParam; passed to WM_CREATE*/);
+    if(!hWnd) korl_logLastError("CreateWindowEx failed!");
+    /* main window loop */
+    bool quit = false;
+    while(!quit)
+    {
+        korl_makeZeroStackVariable(MSG, windowMessage);
+        while(
+            PeekMessage(
+                &windowMessage, NULL/*hWnd; NULL == get all thread messages*/, 
+                0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
+        {
+            if(windowMessage.message == WM_QUIT) quit = true;
+            const BOOL messageTranslated = TranslateMessage(&windowMessage);
+            const LRESULT messageResult  = DispatchMessage (&windowMessage);
+        }
+    }
     korl_log(INFO, "end");
     ExitProcess(KORL_EXIT_SUCCESS);
 }

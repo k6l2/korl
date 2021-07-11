@@ -83,6 +83,8 @@ rem for wvsprintf
 set buildCommand=%buildCommand% user32.lib
 rem for __stdio_common_vswprintf
 set buildCommand=%buildCommand% ucrt.lib
+rem for CreateSolidBrush, & other GDI API
+set buildCommand=%buildCommand% Gdi32.lib
 rem set buildCommand=%buildCommand% legacy_stdio_definitions.lib
 rem set buildCommand=%buildCommand% libucrt.lib
 rem set buildCommand=%buildCommand% libvcruntime.lib

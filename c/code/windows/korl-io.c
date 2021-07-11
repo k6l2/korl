@@ -1,5 +1,5 @@
 #include "korl-io.h"
-#include "korl-windows-global-defines.h"
+#include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
 korl_internal unsigned _korl_countFormatSubstitutions(const wchar_t* format)
 {

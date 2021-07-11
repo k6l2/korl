@@ -1,5 +1,5 @@
 #pragma once
-#include "korl-global-defines.h"
+#include "korl-globalDefines.h"
 enum KorlEnumStandardStream
     { KORL_STANDARD_STREAM_OUT
     , KORL_STANDARD_STREAM_ERROR

@@ -1,5 +1,5 @@
 #pragma once
-#include "korl-global-defines.h"
+#include "korl-globalDefines.h"
 #define korl_assert(condition) \
     if(!(condition)) { \
         korl_assertConditionFailed(L""#condition, __FILE__, __LINE__); }
