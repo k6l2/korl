@@ -205,9 +205,14 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
         logLevel <= KORL_LOG_LEVEL_ERROR 
             ? KORL_STANDARD_STREAM_ERROR
             : KORL_STANDARD_STREAM_OUT;
-    korl_print(printStream, L"{%-7s|%5i|%S|%S} %S\n", 
-        cStringLogLevel, lineNumber, cStringFileName, cStringFunctionName, 
-        stackStringBuffer);
+    // get the current time //
+    korl_makeZeroStackVariable(SYSTEMTIME, systemTimeLocal);
+    GetLocalTime(&systemTimeLocal);
+    // print out the the log entry alone side the meta data //
+    korl_print(printStream, L"{%-7s|%02i:%02i'%02i\"%03i|%5i|%S|%S} %S\n", 
+        cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
+        systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
+        cStringFileName, cStringFunctionName, stackStringBuffer);
     /* if we ever log an error while a debugger is attached, just break right 
         now so we can figure out what's going on! */
     if(IsDebuggerPresent() && logLevel <= KORL_LOG_LEVEL_ERROR)
