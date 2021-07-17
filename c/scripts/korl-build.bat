@@ -40,6 +40,8 @@ rem     now.
 rem set buildCommand=%buildCommand% /std:c17
 rem disable annoying verbose compiler output
 set buildCommand=%buildCommand% /nologo
+rem KORL-specific pre-processor definitions
+set buildCommand=%buildCommand% /D KORL_DEBUG=1
 rem use wide character implementations for Windows API
 set buildCommand=%buildCommand% /D UNICODE
 set buildCommand=%buildCommand% /D _UNICODE
