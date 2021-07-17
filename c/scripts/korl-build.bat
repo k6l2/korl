@@ -15,6 +15,9 @@ rem 4189: local variable is initialized but not referenced; this is useful for
 rem       debugging transient values
 rem 4820: 'x' bytes padding added after data member 'y'
 set disableReleaseWarnings=/wd4189 /wd4820
+rem 5045: Compiler will insert Spectre mitigation for memory load if /Qspectre 
+rem       switch specified
+set disableOptimizationWarnings=/wd5045
 set buildCommand=cl
 rem :::::::::::::::::::::::::::: COMPILER SETTINGS ::::::::::::::::::::::::::::
 set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\windows\korl-windows-main.c"
@@ -30,6 +33,7 @@ rem enable all warnings
 set buildCommand=%buildCommand% /Wall
 rem disable warnings that are not useful while debugging
 set buildCommand=%buildCommand% %disableReleaseWarnings%
+set buildCommand=%buildCommand% %disableOptimizationWarnings%
 rem So... for some reason this switch completely DESTROYS compile times (nearly 
 rem     a 2x increase! wtf?) Consequently, I am keeping this commented out for 
 rem     now.
