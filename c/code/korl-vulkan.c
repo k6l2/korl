@@ -7,12 +7,23 @@
 typedef struct _Korl_Vulkan_Context _Korl_Vulkan_Context;
 struct _Korl_Vulkan_Context
 {
+    /** This member is a placeholder and should be replaced by an object instead 
+     * of a pointer, and the code which uses this member should be refactored 
+     * appropriately when I decide to use a custom host memory allocator. */
+    VkAllocationCallbacks* allocator;
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
+    VkDevice device;
 #if KORL_DEBUG
     PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif// KORL_DEBUG
+};
+typedef struct _Korl_Vulkan_QueueFamilyMetaData _Korl_Vulkan_QueueFamilyMetaData;
+struct _Korl_Vulkan_QueueFamilyMetaData
+{
+    u32 indexQueueGraphics;
+    bool hasIndexQueueGraphics;
 };
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 #if KORL_DEBUG
@@ -47,26 +58,15 @@ korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
 korl_internal bool _korl_vulkan_isBetterDevice(
     const VkPhysicalDevice deviceOld, 
     const VkPhysicalDevice deviceNew, 
+    const _Korl_Vulkan_QueueFamilyMetaData*const queueFamilyMetaData, 
     const VkPhysicalDeviceProperties*const propertiesOld, 
     const VkPhysicalDeviceProperties*const propertiesNew/*, 
     const VkPhysicalDeviceFeatures*const featuresOld, 
     const VkPhysicalDeviceFeatures*const featuresNew*/)
 {
     korl_assert(deviceNew != VK_NULL_HANDLE);
-    KORL_ZERO_STACK(u32, queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        deviceNew, &queueFamilyCount, 
-        NULL/*pQueueFamilyProperties; NULL->return the count via param 2*/);
-    VkQueueFamilyProperties queueFamilies[64];
-    korl_assert(queueFamilyCount <= korl_arraySize(queueFamilies));
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        deviceNew, &queueFamilyCount, queueFamilies);
-    bool hasGraphicsQueue = false;
-    for(u32 q = 0; q < queueFamilyCount; q++)
-        if(queueFamilies[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            hasGraphicsQueue = true;
     /* don't even consider using devices that can't render graphics */
-    if(!hasGraphicsQueue)
+    if(!queueFamilyMetaData->hasIndexQueueGraphics)
         return false;
     /* if the old device hasn't been selected, just use the new device */
     if(deviceOld == VK_NULL_HANDLE)
@@ -76,6 +76,19 @@ korl_internal bool _korl_vulkan_isBetterDevice(
         && propertiesOld->deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
         return true;
     return false;
+}
+korl_internal _Korl_Vulkan_QueueFamilyMetaData _korl_vulkan_queueFamilyMetaData(
+    const u32 queueFamilyCount, 
+    const VkQueueFamilyProperties*const queueFamilies)
+{
+    KORL_ZERO_STACK(_Korl_Vulkan_QueueFamilyMetaData, result);
+    for(u32 q = 0; q < queueFamilyCount; q++)
+        if(queueFamilies[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            result.hasIndexQueueGraphics = true;
+            result.indexQueueGraphics = q;
+        }
+    return result;
 }
 korl_internal void korl_vulkan_construct(void)
 {
@@ -178,7 +191,7 @@ korl_internal void korl_vulkan_construct(void)
 #endif// KORL_DEBUG
     vkResult = 
         vkCreateInstance(
-            &createInfoInstance, NULL/*pAllocator*/, &context->instance);
+            &createInfoInstance, context->allocator, &context->instance);
     korl_assert(vkResult == VK_SUCCESS);
 #if KORL_DEBUG
     /* get debug extension function pointers */
@@ -196,7 +209,7 @@ korl_internal void korl_vulkan_construct(void)
     vkResult = 
         vkCreateDebugUtilsMessengerEXT(
             context->instance, &createInfoDebugUtilsMessenger, 
-            NULL/*pAllocator*/, &context->debugMessenger);
+            context->allocator, &context->debugMessenger);
     korl_assert(vkResult == VK_SUCCESS);
 #endif// KORL_DEBUG
     /* enumerate & choose a physical device */
@@ -217,34 +230,74 @@ korl_internal void korl_vulkan_construct(void)
     korl_assert(vkResult == VK_SUCCESS);
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, devicePropertiesBest);
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeaturesBest);
+    KORL_ZERO_STACK(u32, queueFamilyCountBest);
+    KORL_ZERO_STACK(_Korl_Vulkan_QueueFamilyMetaData, queueFamilyMetaDataBest);
     for(u32 d = 0; d < physicalDeviceCount; d++)
     {
+        KORL_ZERO_STACK(u32, queueFamilyCount);
+        VkQueueFamilyProperties queueFamilies[32];
+        vkGetPhysicalDeviceQueueFamilyProperties(
+            physicalDevices[d], &queueFamilyCount, 
+            NULL/*pQueueFamilyProperties; NULL->return the count via param 2*/);
+        korl_assert(queueFamilyCount <= korl_arraySize(queueFamilies));
+        vkGetPhysicalDeviceQueueFamilyProperties(
+            physicalDevices[d], &queueFamilyCount, queueFamilies);
+        _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData = 
+            _korl_vulkan_queueFamilyMetaData(queueFamilyCount, queueFamilies);
         KORL_ZERO_STACK(VkPhysicalDeviceProperties, deviceProperties);
         KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeatures);
         vkGetPhysicalDeviceProperties(physicalDevices[d], &deviceProperties);
         vkGetPhysicalDeviceFeatures(physicalDevices[d], &deviceFeatures);
         if(_korl_vulkan_isBetterDevice(
                 context->physicalDevice, physicalDevices[d], 
+                &queueFamilyMetaData, 
                 &devicePropertiesBest, &deviceProperties/*, 
                 &deviceFeaturesBest, &deviceFeatures*/))
         {
             context->physicalDevice = physicalDevices[d];
             devicePropertiesBest = deviceProperties;
             deviceFeaturesBest = deviceFeatures;
+            queueFamilyMetaDataBest = queueFamilyMetaData;
         }
     }
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
     korl_log(INFO, "chosen physical device: \"%s\"", 
         devicePropertiesBest.deviceName);
+    /* create logical device */
+    // a priority of 1.f is the highest possible priority
+    korl_shared_const f32 QUEUE_PRIORITIES_GFX[] = {1.f};
+    KORL_ZERO_STACK(VkDeviceQueueCreateInfo, createInfoDeviceQueue);
+    createInfoDeviceQueue.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    createInfoDeviceQueue.queueFamilyIndex = queueFamilyMetaDataBest.indexQueueGraphics;
+    createInfoDeviceQueue.queueCount       = korl_arraySize(QUEUE_PRIORITIES_GFX);
+    createInfoDeviceQueue.pQueuePriorities = QUEUE_PRIORITIES_GFX;
+    KORL_ZERO_STACK(VkPhysicalDeviceFeatures, physicalDeviceFeatures);
+    // leave all features turned off for now~
+    KORL_ZERO_STACK(VkDeviceCreateInfo, createInfoDevice);
+    createInfoDevice.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfoDevice.queueCreateInfoCount = 1;
+    createInfoDevice.pQueueCreateInfos    = &createInfoDeviceQueue;
+    createInfoDevice.pEnabledFeatures     = &physicalDeviceFeatures;
+    /* @todo: enable VK_KHR_SWAPCHAIN_EXTENSION_NAME extension */
+#if KORL_DEBUG
+    createInfoDevice.enabledLayerCount    = korl_arraySize(enabledLayers);
+    createInfoDevice.ppEnabledLayerNames  = enabledLayers;
+#endif// KORL_DEBUG
+    vkResult = 
+        vkCreateDevice(
+            context->physicalDevice, &createInfoDevice, 
+            context->allocator, &context->device);
+    korl_assert(vkResult == VK_SUCCESS);
 }
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    vkDestroyDevice(context->device, context->allocator);
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(
-        context->instance, context->debugMessenger, NULL/*pAllocator*/);
+        context->instance, context->debugMessenger, context->allocator);
 #endif// KORL_DEBUG
-    vkDestroyInstance(context->instance, NULL/*pAllocator*/);
+    vkDestroyInstance(context->instance, context->allocator);
     /* nullify the context after cleaning up properly for safety */
     memset(context, 0, sizeof(*context));
 }
