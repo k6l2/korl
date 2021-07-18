@@ -3,7 +3,7 @@
 /** for now we'll just have one global surface context, since the KORL 
  * application will only use one window */
 korl_global_variable _Korl_Vulkan_SurfaceContext g_korl_windows_vulkan_surfaceContext;
-korl_internal void korl_vulkan_createSurface(void* userData)
+korl_internal VkSurfaceKHR korl_vulkan_createSurface(void* userData)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
@@ -21,6 +21,7 @@ korl_internal void korl_vulkan_createSurface(void* userData)
             context->instance, &createInfoSurface, context->allocator, 
             &surfaceContext->surface);
     korl_assert(vkResult == VK_SUCCESS);
+    return surfaceContext->surface;
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {

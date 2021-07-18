@@ -206,7 +206,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
             ? KORL_STANDARD_STREAM_ERROR
             : KORL_STANDARD_STREAM_OUT;
     // get the current time //
-    korl_makeZeroStackVariable(SYSTEMTIME, systemTimeLocal);
+    KORL_ZERO_STACK(SYSTEMTIME, systemTimeLocal);
     GetLocalTime(&systemTimeLocal);
     // print out the the log entry alone side the meta data //
     korl_print(printStream, L"{%-7s|%02i:%02i'%02i\"%03i|%5i|%S|%S} %S\n", 

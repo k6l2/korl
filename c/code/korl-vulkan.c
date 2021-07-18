@@ -1,15 +1,27 @@
 #include "korl-io.h"
 #include "korl-assert.h"
 #include "korl-vulkan-common.h"
-#include <vulkan/vulkan.h>
 #if defined(_WIN32)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(_WIN32)
+korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
+    { "VK_LAYER_KHRONOS_validation" };
 typedef struct _Korl_Vulkan_QueueFamilyMetaData _Korl_Vulkan_QueueFamilyMetaData;
 struct _Korl_Vulkan_QueueFamilyMetaData
 {
-    u32 indexQueueGraphics;
+    /* unify the unique queue family index variables with an array so we can 
+        easily iterate over them */
+    union
+    {
+        struct
+        {
+            u32 graphics;
+            u32 present;
+        } indexQueues;
+        u32 indices[2];
+    } indexQueueUnion;
     bool hasIndexQueueGraphics;
+    bool hasIndexQueuePresent;
 };
 #define KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, proc)                      \
     {                                                                          \
@@ -69,16 +81,36 @@ korl_internal bool _korl_vulkan_isBetterDevice(
     return false;
 }
 korl_internal _Korl_Vulkan_QueueFamilyMetaData _korl_vulkan_queueFamilyMetaData(
+    VkPhysicalDevice physicalDevice, 
     const u32 queueFamilyCount, 
-    const VkQueueFamilyProperties*const queueFamilies)
+    const VkQueueFamilyProperties*const queueFamilies, 
+    VkSurfaceKHR surface)
 {
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    VkResult vkResult = VK_SUCCESS;
     KORL_ZERO_STACK(_Korl_Vulkan_QueueFamilyMetaData, result);
     for(u32 q = 0; q < queueFamilyCount; q++)
-        if(queueFamilies[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+    {
+        if(!result.hasIndexQueueGraphics 
+            && (queueFamilies[q].queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             result.hasIndexQueueGraphics = true;
-            result.indexQueueGraphics = q;
+            result.indexQueueUnion.indexQueues.graphics = q;
         }
+        if(!result.hasIndexQueuePresent)
+        {
+            KORL_ZERO_STACK(VkBool32, surfaceSupport);
+            vkResult = 
+                context->vkGetPhysicalDeviceSurfaceSupportKHR(
+                    physicalDevice, q, surface, &surfaceSupport);
+            korl_assert(vkResult == VK_SUCCESS);
+            if(surfaceSupport)
+            {
+                result.hasIndexQueuePresent = true;
+                result.indexQueueUnion.indexQueues.present = q;
+            }
+        }
+    }
     return result;
 }
 korl_internal void korl_vulkan_construct(void)
@@ -110,13 +142,12 @@ korl_internal void korl_vulkan_construct(void)
             layerProperties[l].implementationVersion);
     }
     /* select layers & check to see if they are supported */
-    const char* enabledLayers[] = 
-        { "VK_LAYER_KHRONOS_validation" };
-    for(u32 el = 0; el < korl_arraySize(enabledLayers); el++)
+    for(u32 el = 0; el < korl_arraySize(G_KORL_VULKAN_ENABLED_LAYERS); el++)
     {
         bool enabledLayerSupported = false;
         for(u32 l = 0; l < layerCount; l++)
-            if(strcmp(enabledLayers[el], layerProperties[l].layerName))
+            if(strcmp(G_KORL_VULKAN_ENABLED_LAYERS[el], 
+                      layerProperties[l].layerName))
             {
                 enabledLayerSupported = true;
                 break;
@@ -168,8 +199,8 @@ korl_internal void korl_vulkan_construct(void)
     createInfoInstance.enabledExtensionCount   = korl_arraySize(enabledExtensions);
     createInfoInstance.ppEnabledExtensionNames = enabledExtensions;
 #if KORL_DEBUG
-    createInfoInstance.enabledLayerCount       = korl_arraySize(enabledLayers);
-    createInfoInstance.ppEnabledLayerNames     = enabledLayers;
+    createInfoInstance.enabledLayerCount       = korl_arraySize(G_KORL_VULKAN_ENABLED_LAYERS);
+    createInfoInstance.ppEnabledLayerNames     = G_KORL_VULKAN_ENABLED_LAYERS;
     KORL_ZERO_STACK(VkDebugUtilsMessengerCreateInfoEXT, createInfoDebugUtilsMessenger);
     createInfoDebugUtilsMessenger.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfoDebugUtilsMessenger.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -206,6 +237,23 @@ korl_internal void korl_vulkan_construct(void)
             context->allocator, &context->debugMessenger);
     korl_assert(vkResult == VK_SUCCESS);
 #endif// KORL_DEBUG
+}
+korl_internal void korl_vulkan_destroy(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    vkDestroyDevice(context->device, context->allocator);
+#if KORL_DEBUG
+    context->vkDestroyDebugUtilsMessengerEXT(
+        context->instance, context->debugMessenger, context->allocator);
+#endif// KORL_DEBUG
+    vkDestroyInstance(context->instance, context->allocator);
+    /* nullify the context after cleaning up properly for safety */
+    memset(context, 0, sizeof(*context));
+}
+korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    VkResult vkResult = VK_SUCCESS;
     /* enumerate & choose a physical device */
     KORL_ZERO_STACK(u32, physicalDeviceCount);
     vkResult = 
@@ -237,7 +285,8 @@ korl_internal void korl_vulkan_construct(void)
         vkGetPhysicalDeviceQueueFamilyProperties(
             physicalDevices[d], &queueFamilyCount, queueFamilies);
         _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData = 
-            _korl_vulkan_queueFamilyMetaData(queueFamilyCount, queueFamilies);
+            _korl_vulkan_queueFamilyMetaData(
+                physicalDevices[d], queueFamilyCount, queueFamilies, surface);
         KORL_ZERO_STACK(VkPhysicalDeviceProperties, deviceProperties);
         KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeatures);
         vkGetPhysicalDeviceProperties(physicalDevices[d], &deviceProperties);
@@ -257,41 +306,65 @@ korl_internal void korl_vulkan_construct(void)
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
     korl_log(INFO, "chosen physical device: \"%s\"", 
         devicePropertiesBest.deviceName);
+    /* determine how many queue families we need, which determines how many 
+        VkDeviceQueueCreateInfo structs we will need to create the logical 
+        device with our specifications */
+    VkDeviceQueueCreateInfo createInfoDeviceQueueFamilies[8];
+    KORL_ZERO_STACK(u32, createInfoDeviceQueueFamiliesSize);
+    // we're only going to make one queue for each queue family, so this array 
+    //  size is just going to be size == 1 for now
+    korl_shared_const f32 QUEUE_PRIORITIES[] = {1.f};
+    for(u32 f = 0; 
+    f < korl_arraySize(queueFamilyMetaDataBest.indexQueueUnion.indices); f++)
+    {
+        KORL_ZERO_STACK(bool, queueFamilyCreateInfoFound);
+        for(u32 c = 0; c < createInfoDeviceQueueFamiliesSize; c++)
+        {
+            if(createInfoDeviceQueueFamilies[c].queueFamilyIndex == 
+                queueFamilyMetaDataBest.indexQueueUnion.indices[f])
+            {
+                queueFamilyCreateInfoFound = true;
+                break;
+            }
+        }
+        if(queueFamilyCreateInfoFound)
+            continue;
+        korl_assert(createInfoDeviceQueueFamiliesSize < 
+            korl_arraySize(createInfoDeviceQueueFamilies));
+        VkDeviceQueueCreateInfo*const createInfo = 
+            &createInfoDeviceQueueFamilies[createInfoDeviceQueueFamiliesSize];
+        memset(createInfo, 0, sizeof(*createInfo));
+        createInfo->sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        createInfo->queueFamilyIndex = queueFamilyMetaDataBest.indexQueueUnion.indices[f];
+        createInfo->queueCount       = korl_arraySize(QUEUE_PRIORITIES);
+        createInfo->pQueuePriorities = QUEUE_PRIORITIES;
+        createInfoDeviceQueueFamiliesSize++;
+    }
     /* create logical device */
-    // a priority of 1.f is the highest possible priority
-    korl_shared_const f32 QUEUE_PRIORITIES_GFX[] = {1.f};
-    KORL_ZERO_STACK(VkDeviceQueueCreateInfo, createInfoDeviceQueue);
-    createInfoDeviceQueue.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    createInfoDeviceQueue.queueFamilyIndex = queueFamilyMetaDataBest.indexQueueGraphics;
-    createInfoDeviceQueue.queueCount       = korl_arraySize(QUEUE_PRIORITIES_GFX);
-    createInfoDeviceQueue.pQueuePriorities = QUEUE_PRIORITIES_GFX;
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, physicalDeviceFeatures);
-    // leave all features turned off for now~
+    // leave all device features turned off for now~
     KORL_ZERO_STACK(VkDeviceCreateInfo, createInfoDevice);
     createInfoDevice.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfoDevice.queueCreateInfoCount = 1;
-    createInfoDevice.pQueueCreateInfos    = &createInfoDeviceQueue;
+    createInfoDevice.queueCreateInfoCount = createInfoDeviceQueueFamiliesSize;
+    createInfoDevice.pQueueCreateInfos    = createInfoDeviceQueueFamilies;
     createInfoDevice.pEnabledFeatures     = &physicalDeviceFeatures;
     /* @todo: enable VK_KHR_SWAPCHAIN_EXTENSION_NAME extension */
 #if KORL_DEBUG
-    createInfoDevice.enabledLayerCount    = korl_arraySize(enabledLayers);
-    createInfoDevice.ppEnabledLayerNames  = enabledLayers;
+    createInfoDevice.enabledLayerCount    = korl_arraySize(G_KORL_VULKAN_ENABLED_LAYERS);
+    createInfoDevice.ppEnabledLayerNames  = G_KORL_VULKAN_ENABLED_LAYERS;
 #endif// KORL_DEBUG
     vkResult = 
         vkCreateDevice(
             context->physicalDevice, &createInfoDevice, 
             context->allocator, &context->device);
     korl_assert(vkResult == VK_SUCCESS);
-}
-korl_internal void korl_vulkan_destroy(void)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    vkDestroyDevice(context->device, context->allocator);
-#if KORL_DEBUG
-    context->vkDestroyDebugUtilsMessengerEXT(
-        context->instance, context->debugMessenger, context->allocator);
-#endif// KORL_DEBUG
-    vkDestroyInstance(context->instance, context->allocator);
-    /* nullify the context after cleaning up properly for safety */
-    memset(context, 0, sizeof(*context));
+    /* obtain opaque handles to the queues that we need */
+    vkGetDeviceQueue(
+        context->device, 
+        queueFamilyMetaDataBest.indexQueueUnion.indexQueues.graphics, 
+        0/*queueIndex*/, &context->queueGraphics);
+    vkGetDeviceQueue(
+        context->device, 
+        queueFamilyMetaDataBest.indexQueueUnion.indexQueues.present, 
+        0/*queueIndex*/, &context->queuePresent);
 }

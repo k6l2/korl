@@ -9,8 +9,13 @@ typedef struct _Korl_Vulkan_Context
      * appropriately when I decide to use a custom host memory allocator. */
     VkAllocationCallbacks* allocator;
     VkInstance instance;
+    /* for now we're just going to have a single window with Vulkan rendering, 
+        so we only have to make one device, ergo we only need one global 
+        instance of these variables */
     VkPhysicalDevice physicalDevice;
     VkDevice device;
+    VkQueue queueGraphics;
+    VkQueue queuePresent;
     /* instance extension function pointers */
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;

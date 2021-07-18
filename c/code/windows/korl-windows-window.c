@@ -17,7 +17,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
         surfaceUserData.hInstance = hInstance;
         surfaceUserData.hWnd      = hWnd;
-        korl_vulkan_createSurface(&surfaceUserData);
+        korl_vulkan_createDevice(korl_vulkan_createSurface(&surfaceUserData));
         }break;
     case WM_DESTROY:{
         korl_vulkan_destroySurface();
@@ -42,7 +42,7 @@ korl_internal void korl_windows_window_initialize(void)
         KORL_C_CAST(HBRUSH, GetStockObject(BLACK_BRUSH));
     if(!hBrushWindowBackground) korl_logLastError("GetStockObject failed!");
     /* create a window class */
-    korl_makeZeroStackVariable(WNDCLASSEX, windowClass);
+    KORL_ZERO_STACK(WNDCLASSEX, windowClass);
     windowClass.cbSize        = sizeof(windowClass);
     windowClass.style         = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     windowClass.lpfnWndProc   = _korl_windows_window_windowProcedure;
@@ -89,7 +89,7 @@ korl_internal void korl_windows_window_loop(void)
     bool quit = false;
     while(!quit)
     {
-        korl_makeZeroStackVariable(MSG, windowMessage);
+        KORL_ZERO_STACK(MSG, windowMessage);
         while(
             PeekMessage(
                 &windowMessage, NULL/*hWnd; NULL == get all thread messages*/, 
