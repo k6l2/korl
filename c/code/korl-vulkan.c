@@ -1,31 +1,22 @@
 #include "korl-io.h"
 #include "korl-assert.h"
+#include "korl-vulkan-common.h"
 #include <vulkan/vulkan.h>
 #if defined(_WIN32)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(_WIN32)
-typedef struct _Korl_Vulkan_Context _Korl_Vulkan_Context;
-struct _Korl_Vulkan_Context
-{
-    /** This member is a placeholder and should be replaced by an object instead 
-     * of a pointer, and the code which uses this member should be refactored 
-     * appropriately when I decide to use a custom host memory allocator. */
-    VkAllocationCallbacks* allocator;
-    VkInstance instance;
-    VkPhysicalDevice physicalDevice;
-    VkDevice device;
-#if KORL_DEBUG
-    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
-    VkDebugUtilsMessengerEXT debugMessenger;
-#endif// KORL_DEBUG
-};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData _Korl_Vulkan_QueueFamilyMetaData;
 struct _Korl_Vulkan_QueueFamilyMetaData
 {
     u32 indexQueueGraphics;
     bool hasIndexQueueGraphics;
 };
-korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
+#define KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, proc)                      \
+    {                                                                          \
+        context->vk##proc =                                                    \
+            (PFN_vk##proc)vkGetInstanceProcAddr(context->instance, "vk"#proc); \
+        korl_assert(context->vk##proc);                                        \
+    }
 #if KORL_DEBUG
 korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -193,18 +184,21 @@ korl_internal void korl_vulkan_construct(void)
         vkCreateInstance(
             &createInfoInstance, context->allocator, &context->instance);
     korl_assert(vkResult == VK_SUCCESS);
+    /* get instance function pointers */
+    KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, GetPhysicalDeviceSurfaceSupportKHR);
+    KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, GetPhysicalDeviceSurfaceCapabilitiesKHR);
+    KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, GetPhysicalDeviceSurfaceFormatsKHR);
+    KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, GetPhysicalDeviceSurfacePresentModesKHR);
 #if KORL_DEBUG
     /* get debug extension function pointers */
+    // note: there's no need to store this in the context since we're never 
+    //  going to call it again //
     PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = 
         KORL_C_CAST(PFN_vkCreateDebugUtilsMessengerEXT, 
             vkGetInstanceProcAddr(
                 context->instance, "vkCreateDebugUtilsMessengerEXT"));
     korl_assert(vkCreateDebugUtilsMessengerEXT);
-    context->vkDestroyDebugUtilsMessengerEXT = 
-        KORL_C_CAST(PFN_vkDestroyDebugUtilsMessengerEXT, 
-            vkGetInstanceProcAddr(
-                context->instance, "vkDestroyDebugUtilsMessengerEXT"));
-    korl_assert(context->vkDestroyDebugUtilsMessengerEXT);
+    KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, DestroyDebugUtilsMessengerEXT);
     /* attach a VkDebugUtilsMessengerEXT to our instance */
     vkResult = 
         vkCreateDebugUtilsMessengerEXT(

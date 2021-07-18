@@ -11,7 +11,7 @@ void __stdcall korl_windows_main(void)
     korl_log(INFO, "start ---------------------------------------------------");
     korl_memory_initialize();
     korl_vulkan_construct();
-    korl_windows_window_initialize(); 
+    korl_windows_window_initialize();
     korl_windows_window_create(1024, 576);
     korl_windows_window_loop();
     korl_vulkan_destroy();
@@ -25,3 +25,4 @@ void __stdcall korl_windows_main(void)
 #include "korl-memory.c"
 #include "korl-windows-window.c"
 #include "korl-vulkan.c"
+#include "korl-windows-vulkan.c"

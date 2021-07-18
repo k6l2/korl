@@ -2,13 +2,25 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
 #include "korl-io.h"
+#include "korl-vulkan.h"
+#include "korl-windows-vulkan.h"
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
     switch(uMsg)
     {
+    case WM_CREATE:{
+        /* get a handle to the file used to create the calling process */
+        const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
+        /* create vulkan surface for this window */
+        KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
+        surfaceUserData.hInstance = hInstance;
+        surfaceUserData.hWnd      = hWnd;
+        korl_vulkan_createSurface(&surfaceUserData);
+        }break;
     case WM_DESTROY:{
+        korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
     /* @todo: WM_PAINT, ValidateRect(hWnd, NULL); ??? */
@@ -42,6 +54,9 @@ korl_internal void korl_windows_window_initialize(void)
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {
+    /* get a handle to the file used to create the calling process */
+    const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
+    korl_assert(hInstance);
     /* create a window */
     const u32 primaryDisplayPixelSizeX = GetSystemMetrics(SM_CXSCREEN);
     const u32 primaryDisplayPixelSizeY = GetSystemMetrics(SM_CYSCREEN);
@@ -65,8 +80,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
             rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
             rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
             rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
-            NULL/*hWndParent*/, 
-            NULL/*hMenu*/, NULL/*hInstance*/, 
+            NULL/*hWndParent*/, NULL/*hMenu*/, hInstance, 
             NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
