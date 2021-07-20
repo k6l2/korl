@@ -62,8 +62,9 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkSurfaceFormatKHR swapChainSurfaceFormat;
     VkExtent2D swapChainImageExtent;
     VkSwapchainKHR swapChain;
-    VkImage swapChainImages[8];
     u32 swapChainImagesSize;
+    VkImage swapChainImages[8];
+    VkImageView swapChainImageViews[8];
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** for now we'll just have one global surface context, since the KORL 

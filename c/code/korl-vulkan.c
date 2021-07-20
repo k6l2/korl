@@ -441,6 +441,10 @@ korl_internal void korl_vulkan_destroySurface(void)
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+        vkDestroyImageView(
+            context->device, surfaceContext->swapChainImageViews[i], 
+            context->allocator);
     vkDestroySwapchainKHR(
         context->device, surfaceContext->swapChain, context->allocator);
     vkDestroySurfaceKHR(
@@ -526,4 +530,27 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
             &surfaceContext->swapChainImagesSize, 
             surfaceContext->swapChainImages);
     korl_assert(vkResult == VK_SUCCESS);
+    /* create image views for all the swap chain images */
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    {
+        KORL_ZERO_STACK(VkImageViewCreateInfo, createInfo);
+        createInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image                           = surfaceContext->swapChainImages[i];
+        createInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format                          = surfaceContext->swapChainSurfaceFormat.format;
+        createInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.layerCount     = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.levelCount     = 1;
+        createInfo.subresourceRange.baseMipLevel   = 0;
+        vkResult = 
+            vkCreateImageView(
+                context->device, &createInfo, context->allocator, 
+                &surfaceContext->swapChainImageViews[i]);
+        korl_assert(vkResult == VK_SUCCESS);
+    }
 }
