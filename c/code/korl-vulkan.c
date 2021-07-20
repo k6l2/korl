@@ -6,23 +6,8 @@
 #endif// defined(_WIN32)
 korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
     { "VK_LAYER_KHRONOS_validation" };
-typedef struct _Korl_Vulkan_QueueFamilyMetaData _Korl_Vulkan_QueueFamilyMetaData;
-struct _Korl_Vulkan_QueueFamilyMetaData
-{
-    /* unify the unique queue family index variables with an array so we can 
-        easily iterate over them */
-    union
-    {
-        struct
-        {
-            u32 graphics;
-            u32 present;
-        } indexQueues;
-        u32 indices[2];
-    } indexQueueUnion;
-    bool hasIndexQueueGraphics;
-    bool hasIndexQueuePresent;
-};
+korl_global_const char* G_KORL_VULKAN_DEVICE_EXTENSIONS[] = 
+    { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 #define KORL_VULCAN_GET_INSTANCE_PROC_ADDR(context, proc)                      \
     {                                                                          \
         context->vk##proc =                                                    \
@@ -62,12 +47,54 @@ korl_internal bool _korl_vulkan_isBetterDevice(
     const VkPhysicalDevice deviceOld, 
     const VkPhysicalDevice deviceNew, 
     const _Korl_Vulkan_QueueFamilyMetaData*const queueFamilyMetaData, 
+    const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData, 
     const VkPhysicalDeviceProperties*const propertiesOld, 
     const VkPhysicalDeviceProperties*const propertiesNew/*, 
     const VkPhysicalDeviceFeatures*const featuresOld, 
     const VkPhysicalDeviceFeatures*const featuresNew*/)
 {
     korl_assert(deviceNew != VK_NULL_HANDLE);
+    VkResult vkResult = VK_SUCCESS;
+    /* don't even consider devices that don't support all the extensions we 
+        need */
+    VkExtensionProperties extensionProperties[256];
+    KORL_ZERO_STACK(u32, extensionPropertiesSize);
+    vkResult = 
+        vkEnumerateDeviceExtensionProperties(
+            deviceNew, NULL/*pLayerName*/, &extensionPropertiesSize, 
+            NULL/*pProperties*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    korl_assert(extensionPropertiesSize <= korl_arraySize(extensionProperties));
+    extensionPropertiesSize = korl_arraySize(extensionProperties);
+    vkResult = 
+        vkEnumerateDeviceExtensionProperties(
+            deviceNew, NULL/*pLayerName*/, &extensionPropertiesSize, 
+            extensionProperties);
+    korl_assert(vkResult == VK_SUCCESS);
+    bool deviceNewSupportsExtensions = true;
+    for(size_t e = 0; e < korl_arraySize(G_KORL_VULKAN_DEVICE_EXTENSIONS); e++)
+    {
+        bool extensionFound = false;
+        for(u32 de = 0; de < extensionPropertiesSize; de++)
+            if(strcmp(extensionProperties[de].extensionName, 
+                      G_KORL_VULKAN_DEVICE_EXTENSIONS[e]) == 0)
+            {
+                extensionFound = true;
+                break;
+            }
+        if(!extensionFound)
+        {
+            deviceNewSupportsExtensions = false;
+            break;
+        }
+    }
+    if(!deviceNewSupportsExtensions)
+        return false;
+    /* don't consider devices that don't have the ability to create a swap chain 
+        for the surface we provided earlier */
+    if(    deviceSurfaceMetaData->formatsSize      == 0 
+        || deviceSurfaceMetaData->presentModesSize == 0)
+        return false;
     /* don't even consider using devices that can't render graphics */
     if(!queueFamilyMetaData->hasIndexQueueGraphics)
         return false;
@@ -79,6 +106,43 @@ korl_internal bool _korl_vulkan_isBetterDevice(
         && propertiesOld->deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
         return true;
     return false;
+}
+korl_internal _Korl_Vulkan_DeviceSurfaceMetaData _korl_vulkan_deviceSurfaceMetaData(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+{
+    KORL_ZERO_STACK(_Korl_Vulkan_DeviceSurfaceMetaData, result);
+    VkResult vkResult = VK_SUCCESS;
+    /* query for device-surface capabilities */
+    vkResult = 
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+            physicalDevice, surface, &result.capabilities);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* query for device-surface formats */
+    vkResult = 
+        vkGetPhysicalDeviceSurfaceFormatsKHR(
+            physicalDevice, surface, &result.formatsSize, 
+            NULL/*pSurfaceFormats*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    korl_assert(result.formatsSize <= korl_arraySize(result.formats));
+    result.formatsSize = korl_arraySize(result.formats);
+    vkResult = 
+        vkGetPhysicalDeviceSurfaceFormatsKHR(
+            physicalDevice, surface, &result.formatsSize, result.formats);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* query for device-surface present modes */
+    vkResult = 
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+            physicalDevice, surface, &result.presentModesSize, 
+            NULL/*pPresentModes*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    korl_assert(result.presentModesSize <= korl_arraySize(result.presentModes));
+    result.presentModesSize = korl_arraySize(result.presentModes);
+    vkResult = 
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+            physicalDevice, surface, &result.presentModesSize, 
+            result.presentModes);
+    korl_assert(vkResult == VK_SUCCESS);
+    return result;
 }
 korl_internal _Korl_Vulkan_QueueFamilyMetaData _korl_vulkan_queueFamilyMetaData(
     VkPhysicalDevice physicalDevice, 
@@ -273,7 +337,6 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, devicePropertiesBest);
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeaturesBest);
     KORL_ZERO_STACK(u32, queueFamilyCountBest);
-    KORL_ZERO_STACK(_Korl_Vulkan_QueueFamilyMetaData, queueFamilyMetaDataBest);
     for(u32 d = 0; d < physicalDeviceCount; d++)
     {
         KORL_ZERO_STACK(u32, queueFamilyCount);
@@ -291,16 +354,19 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
         KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeatures);
         vkGetPhysicalDeviceProperties(physicalDevices[d], &deviceProperties);
         vkGetPhysicalDeviceFeatures(physicalDevices[d], &deviceFeatures);
+        _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
+            _korl_vulkan_deviceSurfaceMetaData(physicalDevices[d], surface);
         if(_korl_vulkan_isBetterDevice(
                 context->physicalDevice, physicalDevices[d], 
-                &queueFamilyMetaData, 
+                &queueFamilyMetaData, &deviceSurfaceMetaData, 
                 &devicePropertiesBest, &deviceProperties/*, 
                 &deviceFeaturesBest, &deviceFeatures*/))
         {
             context->physicalDevice = physicalDevices[d];
             devicePropertiesBest = deviceProperties;
             deviceFeaturesBest = deviceFeatures;
-            queueFamilyMetaDataBest = queueFamilyMetaData;
+            context->queueFamilyMetaData = queueFamilyMetaData;
+            context->deviceSurfaceMetaData = deviceSurfaceMetaData;
         }
     }
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
@@ -315,13 +381,14 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
     //  size is just going to be size == 1 for now
     korl_shared_const f32 QUEUE_PRIORITIES[] = {1.f};
     for(u32 f = 0; 
-    f < korl_arraySize(queueFamilyMetaDataBest.indexQueueUnion.indices); f++)
+    f < korl_arraySize(context->queueFamilyMetaData.indexQueueUnion.indices); 
+    f++)
     {
         KORL_ZERO_STACK(bool, queueFamilyCreateInfoFound);
         for(u32 c = 0; c < createInfoDeviceQueueFamiliesSize; c++)
         {
             if(createInfoDeviceQueueFamilies[c].queueFamilyIndex == 
-                queueFamilyMetaDataBest.indexQueueUnion.indices[f])
+                context->queueFamilyMetaData.indexQueueUnion.indices[f])
             {
                 queueFamilyCreateInfoFound = true;
                 break;
@@ -335,7 +402,7 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
             &createInfoDeviceQueueFamilies[createInfoDeviceQueueFamiliesSize];
         memset(createInfo, 0, sizeof(*createInfo));
         createInfo->sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        createInfo->queueFamilyIndex = queueFamilyMetaDataBest.indexQueueUnion.indices[f];
+        createInfo->queueFamilyIndex = context->queueFamilyMetaData.indexQueueUnion.indices[f];
         createInfo->queueCount       = korl_arraySize(QUEUE_PRIORITIES);
         createInfo->pQueuePriorities = QUEUE_PRIORITIES;
         createInfoDeviceQueueFamiliesSize++;
@@ -344,14 +411,15 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, physicalDeviceFeatures);
     // leave all device features turned off for now~
     KORL_ZERO_STACK(VkDeviceCreateInfo, createInfoDevice);
-    createInfoDevice.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfoDevice.queueCreateInfoCount = createInfoDeviceQueueFamiliesSize;
-    createInfoDevice.pQueueCreateInfos    = createInfoDeviceQueueFamilies;
-    createInfoDevice.pEnabledFeatures     = &physicalDeviceFeatures;
-    /* @todo: enable VK_KHR_SWAPCHAIN_EXTENSION_NAME extension */
+    createInfoDevice.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfoDevice.queueCreateInfoCount    = createInfoDeviceQueueFamiliesSize;
+    createInfoDevice.pQueueCreateInfos       = createInfoDeviceQueueFamilies;
+    createInfoDevice.pEnabledFeatures        = &physicalDeviceFeatures;
+    createInfoDevice.enabledExtensionCount   = korl_arraySize(G_KORL_VULKAN_DEVICE_EXTENSIONS);
+    createInfoDevice.ppEnabledExtensionNames = G_KORL_VULKAN_DEVICE_EXTENSIONS;
 #if KORL_DEBUG
-    createInfoDevice.enabledLayerCount    = korl_arraySize(G_KORL_VULKAN_ENABLED_LAYERS);
-    createInfoDevice.ppEnabledLayerNames  = G_KORL_VULKAN_ENABLED_LAYERS;
+    createInfoDevice.enabledLayerCount       = korl_arraySize(G_KORL_VULKAN_ENABLED_LAYERS);
+    createInfoDevice.ppEnabledLayerNames     = G_KORL_VULKAN_ENABLED_LAYERS;
 #endif// KORL_DEBUG
     vkResult = 
         vkCreateDevice(
@@ -361,10 +429,101 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
     /* obtain opaque handles to the queues that we need */
     vkGetDeviceQueue(
         context->device, 
-        queueFamilyMetaDataBest.indexQueueUnion.indexQueues.graphics, 
+        context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics, 
         0/*queueIndex*/, &context->queueGraphics);
     vkGetDeviceQueue(
         context->device, 
-        queueFamilyMetaDataBest.indexQueueUnion.indexQueues.present, 
+        context->queueFamilyMetaData.indexQueueUnion.indexQueues.present, 
         0/*queueIndex*/, &context->queuePresent);
+}
+korl_internal void korl_vulkan_destroySurface(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    vkDestroySwapchainKHR(
+        context->device, surfaceContext->swapChain, context->allocator);
+    vkDestroySurfaceKHR(
+        context->instance, surfaceContext->surface, context->allocator);
+    memset(surfaceContext, 0, sizeof(*surfaceContext));
+}
+korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
+    /* given what we know about the device & the surface, select the best 
+        settings for the swap chain */
+    korl_assert(context->deviceSurfaceMetaData.formatsSize > 0);
+    surfaceContext->swapChainSurfaceFormat = context->deviceSurfaceMetaData.formats[0];
+    for(u32 f = 0; f < context->deviceSurfaceMetaData.formatsSize; f++)
+        if(    context->deviceSurfaceMetaData.formats[f].format == VK_FORMAT_B8G8R8A8_SRGB
+            && context->deviceSurfaceMetaData.formats[f].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            surfaceContext->swapChainSurfaceFormat = context->deviceSurfaceMetaData.formats[f];
+            break;
+        }
+    // the only present mode REQUIRED by the spec to be supported
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    surfaceContext->swapChainImageExtent = context->deviceSurfaceMetaData.capabilities.currentExtent;
+    if(    surfaceContext->swapChainImageExtent.width  == 0xFFFFFFFF 
+        && surfaceContext->swapChainImageExtent.height == 0xFFFFFFFF)
+    {
+        surfaceContext->swapChainImageExtent.width = KORL_MATH_CLAMP(sizeX, 
+            context->deviceSurfaceMetaData.capabilities.minImageExtent.width, 
+            context->deviceSurfaceMetaData.capabilities.maxImageExtent.width);
+        surfaceContext->swapChainImageExtent.height = KORL_MATH_CLAMP(sizeY, 
+            context->deviceSurfaceMetaData.capabilities.minImageExtent.height, 
+            context->deviceSurfaceMetaData.capabilities.maxImageExtent.height);
+    }
+    u32 minImageCount = 
+        context->deviceSurfaceMetaData.capabilities.minImageCount + 1;
+    if(    context->deviceSurfaceMetaData.capabilities.maxImageCount > 0 
+        && context->deviceSurfaceMetaData.capabilities.maxImageCount < minImageCount)
+        minImageCount = context->deviceSurfaceMetaData.capabilities.maxImageCount;
+    /* create the swap chain */
+    KORL_ZERO_STACK(VkSwapchainCreateInfoKHR, createInfoSwapChain);
+    createInfoSwapChain.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfoSwapChain.surface          = surfaceContext->surface;
+    createInfoSwapChain.minImageCount    = minImageCount;
+    createInfoSwapChain.imageFormat      = surfaceContext->swapChainSurfaceFormat.format;
+    createInfoSwapChain.imageColorSpace  = surfaceContext->swapChainSurfaceFormat.colorSpace;
+    createInfoSwapChain.imageExtent      = surfaceContext->swapChainImageExtent;
+    createInfoSwapChain.imageArrayLayers = 1;//non-stereoscopic
+    createInfoSwapChain.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfoSwapChain.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfoSwapChain.preTransform     = context->deviceSurfaceMetaData.capabilities.currentTransform;
+    createInfoSwapChain.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfoSwapChain.presentMode      = presentMode;
+    createInfoSwapChain.clipped          = VK_TRUE;
+    createInfoSwapChain.oldSwapchain     = VK_NULL_HANDLE;
+    if(context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics != 
+        context->queueFamilyMetaData.indexQueueUnion.indexQueues.present)
+    {
+        createInfoSwapChain.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+        createInfoSwapChain.queueFamilyIndexCount = 2;
+        createInfoSwapChain.pQueueFamilyIndices   = context->queueFamilyMetaData.indexQueueUnion.indices;
+    }
+    vkResult = 
+        vkCreateSwapchainKHR(
+            context->device, &createInfoSwapChain, 
+            context->allocator, &surfaceContext->swapChain);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* get swap chain images */
+    vkResult = 
+        vkGetSwapchainImagesKHR(
+            context->device, surfaceContext->swapChain, 
+            &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    korl_assert(surfaceContext->swapChainImagesSize <= 
+        korl_arraySize(surfaceContext->swapChainImages));
+    surfaceContext->swapChainImagesSize = 
+        korl_arraySize(surfaceContext->swapChainImages);
+    vkResult = 
+        vkGetSwapchainImagesKHR(
+            context->device, surfaceContext->swapChain, 
+            &surfaceContext->swapChainImagesSize, 
+            surfaceContext->swapChainImages);
+    korl_assert(vkResult == VK_SUCCESS);
 }

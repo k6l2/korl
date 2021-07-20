@@ -11,13 +11,21 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     switch(uMsg)
     {
     case WM_CREATE:{
-        /* get a handle to the file used to create the calling process */
-        const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
+        const CREATESTRUCT*const createStruct = 
+            KORL_C_CAST(CREATESTRUCT*, lParam);
+        /* obtain the client rect of the window */
+        RECT clientRect;
+        const BOOL resultGetClientRect = GetClientRect(hWnd, &clientRect);
+        if(!resultGetClientRect)
+            korl_logLastError("GetClientRect failed!");
         /* create vulkan surface for this window */
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
-        surfaceUserData.hInstance = hInstance;
+        surfaceUserData.hInstance = createStruct->hInstance;
         surfaceUserData.hWnd      = hWnd;
         korl_vulkan_createDevice(korl_vulkan_createSurface(&surfaceUserData));
+        korl_vulkan_createSwapChain(
+            clientRect.right - clientRect.left, 
+            clientRect.bottom - clientRect.top);
         }break;
     case WM_DESTROY:{
         korl_vulkan_destroySurface();

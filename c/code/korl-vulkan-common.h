@@ -2,6 +2,30 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include <vulkan/vulkan.h>
+typedef struct _Korl_Vulkan_QueueFamilyMetaData
+{
+    /* unify the unique queue family index variables with an array so we can 
+        easily iterate over them */
+    union
+    {
+        struct
+        {
+            u32 graphics;
+            u32 present;
+        } indexQueues;
+        u32 indices[2];
+    } indexQueueUnion;
+    bool hasIndexQueueGraphics;
+    bool hasIndexQueuePresent;
+} _Korl_Vulkan_QueueFamilyMetaData;
+typedef struct _Korl_Vulkan_DeviceSurfaceMetaData
+{
+    VkSurfaceCapabilitiesKHR capabilities;
+    u32 formatsSize;
+    VkSurfaceFormatKHR formats[256];
+    u32 presentModesSize;
+    VkPresentModeKHR presentModes[256];
+} _Korl_Vulkan_DeviceSurfaceMetaData;
 typedef struct _Korl_Vulkan_Context
 {
     /** This member is a placeholder and should be replaced by an object instead 
@@ -14,8 +38,10 @@ typedef struct _Korl_Vulkan_Context
         instance of these variables */
     VkPhysicalDevice physicalDevice;
     VkDevice device;
+    _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
     VkQueue queueGraphics;
     VkQueue queuePresent;
+    _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData;
     /* instance extension function pointers */
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
@@ -33,5 +59,13 @@ typedef struct _Korl_Vulkan_Context
 typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR surface;
+    VkSurfaceFormatKHR swapChainSurfaceFormat;
+    VkExtent2D swapChainImageExtent;
+    VkSwapchainKHR swapChain;
+    VkImage swapChainImages[8];
+    u32 swapChainImagesSize;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
+/** for now we'll just have one global surface context, since the KORL 
+ * application will only use one window */
+korl_global_variable _Korl_Vulkan_SurfaceContext g_korl_windows_vulkan_surfaceContext;
