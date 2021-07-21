@@ -441,12 +441,6 @@ korl_internal void korl_vulkan_destroySurface(void)
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
-    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
-        vkDestroyImageView(
-            context->device, surfaceContext->swapChainImageViews[i], 
-            context->allocator);
-    vkDestroySwapchainKHR(
-        context->device, surfaceContext->swapChain, context->allocator);
     vkDestroySurfaceKHR(
         context->instance, surfaceContext->surface, context->allocator);
     memset(surfaceContext, 0, sizeof(*surfaceContext));
@@ -553,4 +547,16 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
                 &surfaceContext->swapChainImageViews[i]);
         korl_assert(vkResult == VK_SUCCESS);
     }
+}
+korl_internal void korl_vulkan_destroySwapChain(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+        vkDestroyImageView(
+            context->device, surfaceContext->swapChainImageViews[i], 
+            context->allocator);
+    vkDestroySwapchainKHR(
+        context->device, surfaceContext->swapChain, context->allocator);
 }

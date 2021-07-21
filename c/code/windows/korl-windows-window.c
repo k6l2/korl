@@ -28,6 +28,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             clientRect.bottom - clientRect.top);
         }break;
     case WM_DESTROY:{
+        korl_vulkan_destroySwapChain();
         korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
