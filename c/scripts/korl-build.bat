@@ -20,9 +20,9 @@ rem       switch specified
 set disableOptimizationWarnings=/wd5045
 set buildCommand=cl
 rem :::::::::::::::::::::::::::: COMPILER SETTINGS ::::::::::::::::::::::::::::
-set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\windows\korl-windows-main.c"
+set buildCommand=%buildCommand% "%korl_root%\code\windows\korl-windows-main.c"
 rem allow OS-specific code to include global headers/code
-set buildCommand=%buildCommand% /I "%KORL_PROJECT_ROOT%\code"
+set buildCommand=%buildCommand% /I "%korl_root%\code"
 rem set the executable's file name
 set buildCommand=%buildCommand% /Fe"%KORL_EXE_NAME%"
 rem set the VCX0.PDB file name

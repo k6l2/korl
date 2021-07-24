@@ -1,1 +1,1 @@
-devenv build/%KORL_EXE_NAME%.exe
+devenv %KORL_PROJECT_ROOT%/build/%KORL_EXE_NAME%.exe

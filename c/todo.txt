@@ -2,6 +2,8 @@
 	- INFO|DEBUG|ERROR
 	- if we're in the VS debugger, use outputdebugstring
 	- otherwise, just send to standard output streams
+[x] create a script to compile all vulkan shaders in a project 
+	(shader directory)
 [ ] dynamic memory allocation
 	- use a macro to store the meta data of each allocation (file, line)
 	- use allocation macro to align each specific allocation to its expected 
@@ -28,9 +30,9 @@
 	- SEH interceptor
 	- stack overflow
 	- infinite loop (unresponsive program) detection
-[ ] create a window
+[x] create a window
 [ ] create a dynamic application code module
-[ ] gfx: vulkan - initialize graphics context
+[x] gfx: vulkan - initialize graphics context
 [ ] gfx: vulkan - draw empty color buffer to the window
 [ ] multi-threading: create a job queue + worker threads
 [ ] assets: asset manager

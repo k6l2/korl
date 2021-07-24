@@ -5,8 +5,8 @@ rem ----- set the project root directory -----
 set KORL_PROJECT_ROOT=%cd%
 echo KORL_PROJECT_ROOT=%KORL_PROJECT_ROOT%
 rem ----- add KORL scripts to path for easy execution -----
-echo Adding "%KORL_PROJECT_ROOT%\scripts" to PATH...
-set PATH=%PATH%;%KORL_PROJECT_ROOT%\scripts
+echo Adding "%korl_root%\scripts" to PATH...
+set PATH=%PATH%;%korl_root%\scripts
 rem ----- set build global variables -----
 set KORL_EXE_NAME=korl-windows
 echo KORL_EXE_NAME=%KORL_EXE_NAME%
