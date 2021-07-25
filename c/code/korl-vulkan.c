@@ -590,5 +590,17 @@ korl_internal void korl_vulkan_createPipeline(void)
             context->device, &createInfoShaderFrag, context->allocator, 
             &context->shaderTriangleFrag);
     korl_assert(vkResult == VK_SUCCESS);
+    KORL_ZERO_STACK_ARRAY(
+        VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
+    createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    createInfoShaderStages[0].module = context->shaderTriangleVert;
+    createInfoShaderStages[0].pName  = "main";
+    createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    createInfoShaderStages[1].module = context->shaderTriangleFrag;
+    createInfoShaderStages[1].pName  = "main";
+    /* set fixed functions */
+    /* set render passes */
     /* create pipeline */
 }

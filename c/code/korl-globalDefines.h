@@ -93,3 +93,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #define KORL_ZERO_STACK(variableType, variableIdentifier) \
     variableType variableIdentifier;\
     memset(&(variableIdentifier), 0, sizeof(variableIdentifier));
+/* same as KORL_ZERO_STACK, except for arrays */
+#define KORL_ZERO_STACK_ARRAY(variableType, variableIdentifier, arraySize) \
+    variableType variableIdentifier[arraySize]; \
+    memset(variableIdentifier, 0, sizeof(variableIdentifier));
