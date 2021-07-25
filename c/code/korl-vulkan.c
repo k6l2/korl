@@ -305,6 +305,7 @@ korl_internal void korl_vulkan_construct(void)
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
@@ -565,8 +566,8 @@ korl_internal void korl_vulkan_destroySwapChain(void)
 korl_internal void korl_vulkan_createPipeline(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    //_Korl_Vulkan_SurfaceContext*const surfaceContext = 
-    //    &g_korl_windows_vulkan_surfaceContext;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
     VkResult vkResult = VK_SUCCESS;
     /* @hack: just load shader files into memory right here */
     const Korl_File_Result spirvTriangleVertex   = korl_readEntireFile(L"triangle.vert.spv");
@@ -601,6 +602,70 @@ korl_internal void korl_vulkan_createPipeline(void)
     createInfoShaderStages[1].module = context->shaderTriangleFrag;
     createInfoShaderStages[1].pName  = "main";
     /* set fixed functions */
-    /* set render passes */
+    KORL_ZERO_STACK(VkPipelineVertexInputStateCreateInfo, createInfoVertexInput);
+    createInfoVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    // @hack: we don't set any other members here since we're hard-coding the 
+    //        vertex data in the vertex shader!
+    KORL_ZERO_STACK(VkPipelineInputAssemblyStateCreateInfo, createInfoInputAssembly);
+    createInfoInputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkViewport viewPort;
+    viewPort.x        = 0.f;
+    viewPort.y        = 0.f;
+    viewPort.width    = KORL_C_CAST(float, surfaceContext->swapChainImageExtent.width);
+    viewPort.height   = KORL_C_CAST(float, surfaceContext->swapChainImageExtent.height);
+    viewPort.minDepth = 0.f;
+    viewPort.maxDepth = 1.f;
+    VkRect2D scissor;
+    scissor.extent   = surfaceContext->swapChainImageExtent;
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    KORL_ZERO_STACK(VkPipelineViewportStateCreateInfo, createInfoViewport);
+    createInfoViewport.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    createInfoViewport.viewportCount = 1;
+    createInfoViewport.pViewports    = &viewPort;
+    createInfoViewport.scissorCount  = 1;
+    createInfoViewport.pScissors     = &scissor;
+    KORL_ZERO_STACK(VkPipelineRasterizationStateCreateInfo, createInfoRasterizer);
+    createInfoRasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    createInfoRasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    createInfoRasterizer.lineWidth   = 1.f;
+    createInfoRasterizer.cullMode    = VK_CULL_MODE_BACK_BIT;
+    createInfoRasterizer.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;//right-handed triangles!
+    KORL_ZERO_STACK(VkPipelineMultisampleStateCreateInfo, createInfoMultisample);
+    createInfoMultisample.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    createInfoMultisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    createInfoMultisample.minSampleShading     = 1.f;
+    // we have only one framebuffer, so we only need one attachment:
+    // enable alpha blending
+    KORL_ZERO_STACK(VkPipelineColorBlendAttachmentState, colorBlendAttachment);
+    colorBlendAttachment.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable         = VK_TRUE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
+    KORL_ZERO_STACK(VkPipelineColorBlendStateCreateInfo, createInfoColorBlend);
+    createInfoColorBlend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    createInfoColorBlend.attachmentCount = 1;
+    createInfoColorBlend.pAttachments    = &colorBlendAttachment;
+    VkDynamicState dynamicStates[] = 
+        { VK_DYNAMIC_STATE_VIEWPORT
+        , VK_DYNAMIC_STATE_LINE_WIDTH };
+    KORL_ZERO_STACK(VkPipelineDynamicStateCreateInfo, createInfoDynamicState);
+    createInfoDynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    createInfoDynamicState.dynamicStateCount = korl_arraySize(dynamicStates);
+    createInfoDynamicState.pDynamicStates    = dynamicStates;
+    /* create pipeline layout */
+    KORL_ZERO_STACK(VkPipelineLayoutCreateInfo, createInfoPipelineLayout);
+    createInfoPipelineLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    vkResult = 
+        vkCreatePipelineLayout(
+            context->device, &createInfoPipelineLayout, context->allocator, 
+            &context->pipelineLayout);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* create render passes */
     /* create pipeline */
 }
