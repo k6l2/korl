@@ -42,6 +42,9 @@ typedef struct _Korl_Vulkan_Context
     VkQueue queueGraphics;
     VkQueue queuePresent;
     _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData;
+    /* @todo: move this data into a pipeline struct */
+    VkShaderModule shaderTriangleVert;
+    VkShaderModule shaderTriangleFrag;
     /* instance extension function pointers */
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;

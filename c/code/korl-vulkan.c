@@ -305,6 +305,8 @@ korl_internal void korl_vulkan_construct(void)
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(
@@ -562,6 +564,31 @@ korl_internal void korl_vulkan_destroySwapChain(void)
 }
 korl_internal void korl_vulkan_createPipeline(void)
 {
-    const u8* spirvTriangleVertex   = korl_readEntireFile(L"triangle.vert.spv");
-    const u8* spirvTriangleFragment = korl_readEntireFile(L"triangle.frag.spv");
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    //_Korl_Vulkan_SurfaceContext*const surfaceContext = 
+    //    &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
+    /* @hack: just load shader files into memory right here */
+    const Korl_File_Result spirvTriangleVertex   = korl_readEntireFile(L"triangle.vert.spv");
+    const Korl_File_Result spirvTriangleFragment = korl_readEntireFile(L"triangle.frag.spv");
+    /* create shader modules */
+    KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderVert);
+    createInfoShaderVert.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfoShaderVert.codeSize = spirvTriangleVertex.dataSize;
+    createInfoShaderVert.pCode    = spirvTriangleVertex.data;
+    vkResult = 
+        vkCreateShaderModule(
+            context->device, &createInfoShaderVert, context->allocator, 
+            &context->shaderTriangleVert);
+    korl_assert(vkResult == VK_SUCCESS);
+    KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderFrag);
+    createInfoShaderFrag.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfoShaderFrag.codeSize = spirvTriangleFragment.dataSize;
+    createInfoShaderFrag.pCode    = spirvTriangleFragment.data;
+    vkResult = 
+        vkCreateShaderModule(
+            context->device, &createInfoShaderFrag, context->allocator, 
+            &context->shaderTriangleFrag);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* create pipeline */
 }

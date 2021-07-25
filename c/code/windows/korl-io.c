@@ -261,7 +261,7 @@ korl_internal void korl_logVariadicArguments(
         lineNumber, format, vaList);
     va_end(vaList);
 }
-korl_internal u8* korl_readEntireFile(const wchar_t* fileName)
+korl_internal Korl_File_Result korl_readEntireFile(const wchar_t* fileName)
 {
     const HANDLE hFile = 
         CreateFileW(
@@ -274,6 +274,13 @@ korl_internal u8* korl_readEntireFile(const wchar_t* fileName)
         korl_logLastError("GetFileSize failed!");
     Korl_Memory_Allocation memory = 
         korl_memory_allocate(fileSize, NULL/*desiredAddress*/);
+    KORL_ZERO_STACK(DWORD, bytesRead);
+    if(!ReadFile(hFile, memory.address, fileSize, &bytesRead, NULL/*lpOverlapped*/))
+        korl_logLastError("ReadFile failed!");
+    korl_assert(bytesRead == fileSize);
     korl_assert(CloseHandle(hFile));
-    return KORL_C_CAST(u8*, memory.address);
+    KORL_ZERO_STACK(Korl_File_Result, result);
+    result.data     = memory.address;
+    result.dataSize = fileSize;
+    return result;
 }
