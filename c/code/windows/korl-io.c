@@ -261,3 +261,19 @@ korl_internal void korl_logVariadicArguments(
         lineNumber, format, vaList);
     va_end(vaList);
 }
+korl_internal u8* korl_readEntireFile(const wchar_t* fileName)
+{
+    const HANDLE hFile = 
+        CreateFileW(
+            fileName, GENERIC_READ, FILE_SHARE_READ, NULL/*default security*/, 
+            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL/*no template file*/);
+    if(hFile == INVALID_HANDLE_VALUE)
+        korl_logLastError("CreateFileW failed!");
+    const DWORD fileSize = GetFileSize(hFile, NULL/*high file size DWORD*/);
+    if(fileSize == INVALID_FILE_SIZE)
+        korl_logLastError("GetFileSize failed!");
+    Korl_Memory_Allocation memory = 
+        korl_memory_allocate(fileSize, NULL/*desiredAddress*/);
+    korl_assert(CloseHandle(hFile));
+    return KORL_C_CAST(u8*, memory.address);
+}

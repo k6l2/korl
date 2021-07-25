@@ -26,6 +26,8 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_vulkan_createSwapChain(
             clientRect.right - clientRect.left, 
             clientRect.bottom - clientRect.top);
+        /* @hack: pipeline creation should probably be a little more intelligent */
+        korl_vulkan_createPipeline();
         }break;
     case WM_DESTROY:{
         korl_vulkan_destroySwapChain();

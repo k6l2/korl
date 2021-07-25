@@ -10,3 +10,4 @@ korl_internal VkSurfaceKHR korl_vulkan_createSurface(void* userData);
 korl_internal void korl_vulkan_destroySurface(void);
 korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_destroySwapChain(void);
+korl_internal void korl_vulkan_createPipeline(void);

@@ -24,3 +24,6 @@ korl_internal void korl_logVariadicArguments(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
     int lineNumber, wchar_t* format, ...);
+/** @hack: this API currently just leaks memory
+ * @todo: replace this with file I/O that takes an allocator */
+korl_internal u8* korl_readEntireFile(const wchar_t* fileName);

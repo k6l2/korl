@@ -560,3 +560,8 @@ korl_internal void korl_vulkan_destroySwapChain(void)
     vkDestroySwapchainKHR(
         context->device, surfaceContext->swapChain, context->allocator);
 }
+korl_internal void korl_vulkan_createPipeline(void)
+{
+    const u8* spirvTriangleVertex   = korl_readEntireFile(L"triangle.vert.spv");
+    const u8* spirvTriangleFragment = korl_readEntireFile(L"triangle.frag.spv");
+}
