@@ -45,8 +45,10 @@ typedef struct _Korl_Vulkan_Context
     /* @todo: move this data into a pipeline struct */
     VkShaderModule shaderTriangleVert;
     VkShaderModule shaderTriangleFrag;
-    /* pipeline layouts (uniform data) are shared between layouts */
+    /* pipeline layouts (uniform data) are shared between pipelines */
     VkPipelineLayout pipelineLayout;
+    /* render passes are shared between pipelines */
+    VkRenderPass renderPass;
     /* instance extension function pointers */
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;

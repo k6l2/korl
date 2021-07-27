@@ -305,6 +305,7 @@ korl_internal void korl_vulkan_construct(void)
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
@@ -666,6 +667,33 @@ korl_internal void korl_vulkan_createPipeline(void)
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout);
     korl_assert(vkResult == VK_SUCCESS);
-    /* create render passes */
+    /* create render pass */
+    KORL_ZERO_STACK(VkAttachmentDescription, colorAttachment);
+    colorAttachment.format         = surfaceContext->swapChainSurfaceFormat.format;
+    colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReference);
+    attachmentReference.attachment = 0;
+    attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkSubpassDescription, subPass);
+    subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subPass.colorAttachmentCount = 1;
+    subPass.pColorAttachments    = &attachmentReference;
+    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
+    createInfoRenderPass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfoRenderPass.attachmentCount = 1;
+    createInfoRenderPass.pAttachments    = &colorAttachment;
+    createInfoRenderPass.subpassCount    = 1;
+    createInfoRenderPass.pSubpasses      = &subPass;
+    vkResult = 
+        vkCreateRenderPass(
+            context->device, &createInfoRenderPass, context->allocator, 
+            &context->renderPass);
+    korl_assert(vkResult == VK_SUCCESS);
     /* create pipeline */
 }
