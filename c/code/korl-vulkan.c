@@ -305,6 +305,7 @@ korl_internal void korl_vulkan_construct(void)
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    vkDestroyPipeline(context->device, context->pipeline, context->allocator);
     vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
@@ -696,4 +697,21 @@ korl_internal void korl_vulkan_createPipeline(void)
             &context->renderPass);
     korl_assert(vkResult == VK_SUCCESS);
     /* create pipeline */
+    KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
+    createInfoPipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    createInfoPipeline.stageCount = korl_arraySize(createInfoShaderStages);
+    createInfoPipeline.pStages    = createInfoShaderStages;
+    createInfoPipeline.pVertexInputState = &createInfoVertexInput;
+    createInfoPipeline.pInputAssemblyState = &createInfoInputAssembly;
+    createInfoPipeline.pViewportState      = &createInfoViewport;
+    createInfoPipeline.pRasterizationState = &createInfoRasterizer;
+    createInfoPipeline.pMultisampleState   = &createInfoMultisample;
+    createInfoPipeline.pColorBlendState    = &createInfoColorBlend;
+    createInfoPipeline.layout              = context->pipelineLayout;
+    createInfoPipeline.renderPass          = context->renderPass;
+    createInfoPipeline.subpass             = 0;
+    vkResult = 
+        vkCreateGraphicsPipelines(
+            context->device, VK_NULL_HANDLE/*pipeline cache*/, 
+            1, &createInfoPipeline, context->allocator, &context->pipeline);
 }
