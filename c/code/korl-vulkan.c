@@ -513,6 +513,34 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
             context->device, &createInfoSwapChain, 
             context->allocator, &surfaceContext->swapChain);
     korl_assert(vkResult == VK_SUCCESS);
+    /* create render pass */
+    KORL_ZERO_STACK(VkAttachmentDescription, colorAttachment);
+    colorAttachment.format         = surfaceContext->swapChainSurfaceFormat.format;
+    colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReference);
+    attachmentReference.attachment = 0;
+    attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkSubpassDescription, subPass);
+    subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subPass.colorAttachmentCount = 1;
+    subPass.pColorAttachments    = &attachmentReference;
+    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
+    createInfoRenderPass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfoRenderPass.attachmentCount = 1;
+    createInfoRenderPass.pAttachments    = &colorAttachment;
+    createInfoRenderPass.subpassCount    = 1;
+    createInfoRenderPass.pSubpasses      = &subPass;
+    vkResult = 
+        vkCreateRenderPass(
+            context->device, &createInfoRenderPass, context->allocator, 
+            &context->renderPass);
+    korl_assert(vkResult == VK_SUCCESS);
     /* get swap chain images */
     vkResult = 
         vkGetSwapchainImagesKHR(
@@ -529,27 +557,43 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
             &surfaceContext->swapChainImagesSize, 
             surfaceContext->swapChainImages);
     korl_assert(vkResult == VK_SUCCESS);
-    /* create image views for all the swap chain images */
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
-        KORL_ZERO_STACK(VkImageViewCreateInfo, createInfo);
-        createInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image                           = surfaceContext->swapChainImages[i];
-        createInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format                          = surfaceContext->swapChainSurfaceFormat.format;
-        createInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.layerCount     = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.levelCount     = 1;
-        createInfo.subresourceRange.baseMipLevel   = 0;
+        /* create image views for all the swap chain images */
+        KORL_ZERO_STACK(VkImageViewCreateInfo, createInfoImageView);
+        createInfoImageView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfoImageView.image                           = surfaceContext->swapChainImages[i];
+        createInfoImageView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+        createInfoImageView.format                          = surfaceContext->swapChainSurfaceFormat.format;
+        createInfoImageView.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfoImageView.subresourceRange.layerCount     = 1;
+        createInfoImageView.subresourceRange.baseArrayLayer = 0;
+        createInfoImageView.subresourceRange.levelCount     = 1;
+        createInfoImageView.subresourceRange.baseMipLevel   = 0;
         vkResult = 
             vkCreateImageView(
-                context->device, &createInfo, context->allocator, 
+                context->device, &createInfoImageView, context->allocator, 
                 &surfaceContext->swapChainImageViews[i]);
+        korl_assert(vkResult == VK_SUCCESS);
+        /* create a frame buffer for all the swap chain image views */
+        VkImageView frameBufferAttachments[] = 
+            { surfaceContext->swapChainImageViews[i] };
+        KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
+        createInfoFrameBuffer.sType      = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        createInfoFrameBuffer.renderPass = context->renderPass;
+        createInfoFrameBuffer.attachmentCount = korl_arraySize(frameBufferAttachments);
+        createInfoFrameBuffer.pAttachments    = frameBufferAttachments;
+        createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
+        createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
+        createInfoFrameBuffer.layers          = 1;
+        vkResult = 
+            vkCreateFramebuffer(
+                context->device, &createInfoFrameBuffer, context->allocator, 
+                &surfaceContext->swapChainFrameBuffers[i]);
         korl_assert(vkResult == VK_SUCCESS);
     }
 }
@@ -559,9 +603,14 @@ korl_internal void korl_vulkan_destroySwapChain(void)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    {
+        vkDestroyFramebuffer(
+            context->device, surfaceContext->swapChainFrameBuffers[i], 
+            context->allocator);
         vkDestroyImageView(
             context->device, surfaceContext->swapChainImageViews[i], 
             context->allocator);
+    }
     vkDestroySwapchainKHR(
         context->device, surfaceContext->swapChain, context->allocator);
 }
@@ -667,34 +716,6 @@ korl_internal void korl_vulkan_createPipeline(void)
         vkCreatePipelineLayout(
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout);
-    korl_assert(vkResult == VK_SUCCESS);
-    /* create render pass */
-    KORL_ZERO_STACK(VkAttachmentDescription, colorAttachment);
-    colorAttachment.format         = surfaceContext->swapChainSurfaceFormat.format;
-    colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReference);
-    attachmentReference.attachment = 0;
-    attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkSubpassDescription, subPass);
-    subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subPass.colorAttachmentCount = 1;
-    subPass.pColorAttachments    = &attachmentReference;
-    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
-    createInfoRenderPass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfoRenderPass.attachmentCount = 1;
-    createInfoRenderPass.pAttachments    = &colorAttachment;
-    createInfoRenderPass.subpassCount    = 1;
-    createInfoRenderPass.pSubpasses      = &subPass;
-    vkResult = 
-        vkCreateRenderPass(
-            context->device, &createInfoRenderPass, context->allocator, 
-            &context->renderPass);
     korl_assert(vkResult == VK_SUCCESS);
     /* create pipeline */
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
