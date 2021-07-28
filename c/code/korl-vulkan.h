@@ -11,3 +11,8 @@ korl_internal void korl_vulkan_destroySurface(void);
 korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_destroySwapChain(void);
 korl_internal void korl_vulkan_createPipeline(void);
+/* @hack: record a simple set of commands to draw the triangle for each of 
+    the command buffers.  In a more fleshed out application, a new set of 
+    commands would likely get recorded each from for the next image in the 
+    swap chain! */
+korl_internal void korl_vulkan_recordAllCommandBuffers(void);

@@ -42,6 +42,7 @@ typedef struct _Korl_Vulkan_Context
     VkQueue queueGraphics;
     VkQueue queuePresent;
     _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData;
+    VkCommandPool commandPool;
     /* @todo: move this data into a pipeline struct */
     VkShaderModule shaderTriangleVert;
     VkShaderModule shaderTriangleFrag;
@@ -74,6 +75,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkImage swapChainImages[8];
     VkImageView swapChainImageViews[8];
     VkFramebuffer swapChainFrameBuffers[8];
+    VkCommandBuffer swapChainCommandBuffers[8];
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** for now we'll just have one global surface context, since the KORL 

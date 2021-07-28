@@ -310,6 +310,7 @@ korl_internal void korl_vulkan_destroy(void)
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
+    vkDestroyCommandPool(context->device, context->commandPool, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(
@@ -440,6 +441,14 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
         context->device, 
         context->queueFamilyMetaData.indexQueueUnion.indexQueues.present, 
         0/*queueIndex*/, &context->queuePresent);
+    /* create graphics command pool */
+    KORL_ZERO_STACK(VkCommandPoolCreateInfo, createInfoCommandPool);
+    createInfoCommandPool.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createInfoCommandPool.queueFamilyIndex = context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics;
+    vkResult = 
+        vkCreateCommandPool(
+            context->device, &createInfoCommandPool, context->allocator, 
+            &context->commandPool);
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {
@@ -596,6 +605,17 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
                 &surfaceContext->swapChainFrameBuffers[i]);
         korl_assert(vkResult == VK_SUCCESS);
     }
+    /* allocate a command buffer for each of the swap chain frame buffers */
+    KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
+    allocateInfoCommandBuffers.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocateInfoCommandBuffers.commandPool        = context->commandPool;
+    allocateInfoCommandBuffers.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocateInfoCommandBuffers.commandBufferCount = surfaceContext->swapChainImagesSize;
+    vkResult = 
+        vkAllocateCommandBuffers(
+            context->device, &allocateInfoCommandBuffers, 
+            surfaceContext->swapChainCommandBuffers);
+    korl_assert(vkResult == VK_SUCCESS);
 }
 korl_internal void korl_vulkan_destroySwapChain(void)
 {
@@ -735,4 +755,42 @@ korl_internal void korl_vulkan_createPipeline(void)
         vkCreateGraphicsPipelines(
             context->device, VK_NULL_HANDLE/*pipeline cache*/, 
             1, &createInfoPipeline, context->allocator, &context->pipeline);
+}
+korl_internal void korl_vulkan_recordAllCommandBuffers(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    {
+        KORL_ZERO_STACK(VkCommandBufferBeginInfo, beginInfoCommandBuffer);
+        beginInfoCommandBuffer.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        vkResult = 
+            vkBeginCommandBuffer(
+                surfaceContext->swapChainCommandBuffers[i], 
+                &beginInfoCommandBuffer);
+        korl_assert(vkResult == VK_SUCCESS);
+        KORL_ZERO_STACK(VkClearValue, clearValue);
+        clearValue.color.float32[3] = 1.f;
+        KORL_ZERO_STACK(VkRenderPassBeginInfo, beginInfoRenderPass);
+        beginInfoRenderPass.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        beginInfoRenderPass.renderPass        = context->renderPass;
+        beginInfoRenderPass.framebuffer       = surfaceContext->swapChainFrameBuffers[i];
+        beginInfoRenderPass.renderArea.extent = surfaceContext->swapChainImageExtent;
+        beginInfoRenderPass.clearValueCount   = 1;
+        beginInfoRenderPass.pClearValues      = &clearValue;
+        vkCmdBeginRenderPass(
+            surfaceContext->swapChainCommandBuffers[i], &beginInfoRenderPass, 
+            VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(
+            surfaceContext->swapChainCommandBuffers[i], 
+            VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
+        vkCmdDraw(
+            surfaceContext->swapChainCommandBuffers[i], 3, 1, 0, 0);
+        vkCmdEndRenderPass(surfaceContext->swapChainCommandBuffers[i]);
+        vkResult = 
+            vkEndCommandBuffer(surfaceContext->swapChainCommandBuffers[i]);
+        korl_assert(vkResult == VK_SUCCESS);
+    }
 }
