@@ -76,6 +76,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkImageView swapChainImageViews[8];
     VkFramebuffer swapChainFrameBuffers[8];
     VkCommandBuffer swapChainCommandBuffers[8];
+    VkSemaphore semaphoreImageAvailable;
+    VkSemaphore semaphoreRenderDone;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** for now we'll just have one global surface context, since the KORL 

@@ -104,12 +104,15 @@ korl_internal void korl_windows_window_loop(void)
         KORL_ZERO_STACK(MSG, windowMessage);
         while(
             PeekMessage(
-                &windowMessage, NULL/*hWnd; NULL == get all thread messages*/, 
+                &windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
                 0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
         {
             if(windowMessage.message == WM_QUIT) quit = true;
             const BOOL messageTranslated = TranslateMessage(&windowMessage);
             const LRESULT messageResult  = DispatchMessage (&windowMessage);
         }
+        if(quit)
+            break;
+        korl_vulkan_draw();
     }
 }

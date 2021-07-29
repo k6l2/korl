@@ -16,3 +16,4 @@ korl_internal void korl_vulkan_createPipeline(void);
     commands would likely get recorded each from for the next image in the 
     swap chain! */
 korl_internal void korl_vulkan_recordAllCommandBuffers(void);
+korl_internal void korl_vulkan_draw(void);

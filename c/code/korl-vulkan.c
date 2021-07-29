@@ -455,6 +455,12 @@ korl_internal void korl_vulkan_destroySurface(void)
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
+    vkDestroySemaphore(
+        context->device, surfaceContext->semaphoreImageAvailable, 
+        context->allocator);
+    vkDestroySemaphore(
+        context->device, surfaceContext->semaphoreRenderDone, 
+        context->allocator);
     vkDestroySurfaceKHR(
         context->instance, surfaceContext->surface, context->allocator);
     memset(surfaceContext, 0, sizeof(*surfaceContext));
@@ -539,12 +545,21 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
     subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subPass.colorAttachmentCount = 1;
     subPass.pColorAttachments    = &attachmentReference;
+    KORL_ZERO_STACK(VkSubpassDependency, subpassDependency);
+    subpassDependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
+    subpassDependency.dstSubpass    = 0;
+    subpassDependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.srcAccessMask = 0;
+    subpassDependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
-    createInfoRenderPass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     createInfoRenderPass.attachmentCount = 1;
     createInfoRenderPass.pAttachments    = &colorAttachment;
     createInfoRenderPass.subpassCount    = 1;
     createInfoRenderPass.pSubpasses      = &subPass;
+    createInfoRenderPass.dependencyCount = 1;
+    createInfoRenderPass.pDependencies   = &subpassDependency;
     vkResult = 
         vkCreateRenderPass(
             context->device, &createInfoRenderPass, context->allocator, 
@@ -615,6 +630,20 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
         vkAllocateCommandBuffers(
             context->device, &allocateInfoCommandBuffers, 
             surfaceContext->swapChainCommandBuffers);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* create the semaphores we will use to sync rendering operations of the 
+        swap chain */
+    KORL_ZERO_STACK(VkSemaphoreCreateInfo, createInfoSemaphore);
+    createInfoSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    vkResult = 
+        vkCreateSemaphore(
+            context->device, &createInfoSemaphore, context->allocator, 
+            &surfaceContext->semaphoreImageAvailable);
+    korl_assert(vkResult == VK_SUCCESS);
+    vkResult = 
+        vkCreateSemaphore(
+            context->device, &createInfoSemaphore, context->allocator, 
+            &surfaceContext->semaphoreRenderDone);
     korl_assert(vkResult == VK_SUCCESS);
 }
 korl_internal void korl_vulkan_destroySwapChain(void)
@@ -771,7 +800,11 @@ korl_internal void korl_vulkan_recordAllCommandBuffers(void)
                 surfaceContext->swapChainCommandBuffers[i], 
                 &beginInfoCommandBuffer);
         korl_assert(vkResult == VK_SUCCESS);
+        /* define the color we are going to clear the color attachment with when 
+            the render pass begins */
         KORL_ZERO_STACK(VkClearValue, clearValue);
+        clearValue.color.float32[0] = 0.05f;
+        clearValue.color.float32[2] = 0.05f;
         clearValue.color.float32[3] = 1.f;
         KORL_ZERO_STACK(VkRenderPassBeginInfo, beginInfoRenderPass);
         beginInfoRenderPass.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -793,4 +826,54 @@ korl_internal void korl_vulkan_recordAllCommandBuffers(void)
             vkEndCommandBuffer(surfaceContext->swapChainCommandBuffers[i]);
         korl_assert(vkResult == VK_SUCCESS);
     }
+}
+korl_internal void korl_vulkan_draw(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
+    /* acquire the next image from the swap chain */
+    KORL_ZERO_STACK(u32, nextImageIndex);
+    vkResult = 
+        vkAcquireNextImageKHR(
+            context->device, surfaceContext->swapChain, 
+            UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
+            surfaceContext->semaphoreImageAvailable, VK_NULL_HANDLE/*fence*/, 
+            &nextImageIndex);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* submit graphics commands to the graphics queue */
+    VkSemaphore submitGraphicsWaitSemaphores[] = 
+        { surfaceContext->semaphoreImageAvailable };
+    VkPipelineStageFlags submitGraphicsWaitStages[] = 
+        { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore submitGraphicsSignalSemaphores[] = 
+        { surfaceContext->semaphoreRenderDone };
+    KORL_ZERO_STACK(VkSubmitInfo, submitInfoGraphics);
+    submitInfoGraphics.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfoGraphics.waitSemaphoreCount   = korl_arraySize(submitGraphicsWaitSemaphores);
+    submitInfoGraphics.pWaitSemaphores      = submitGraphicsWaitSemaphores;
+    submitInfoGraphics.pWaitDstStageMask    = submitGraphicsWaitStages;
+    submitInfoGraphics.commandBufferCount   = 1;
+    submitInfoGraphics.pCommandBuffers      = &surfaceContext->swapChainCommandBuffers[nextImageIndex];
+    submitInfoGraphics.signalSemaphoreCount = korl_arraySize(submitGraphicsSignalSemaphores);
+    submitInfoGraphics.pSignalSemaphores    = submitGraphicsSignalSemaphores;
+    vkResult = 
+        vkQueueSubmit(
+            context->queueGraphics, 1, &submitInfoGraphics, 
+            VK_NULL_HANDLE/*fence*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* present the swap chain */
+    VkSwapchainKHR presentInfoSwapChains[] = { surfaceContext->swapChain };
+    KORL_ZERO_STACK(VkPresentInfoKHR, presentInfo);
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores    = submitGraphicsSignalSemaphores;
+    presentInfo.swapchainCount     = korl_arraySize(presentInfoSwapChains);
+    presentInfo.pSwapchains        = presentInfoSwapChains;
+    presentInfo.pImageIndices      = &nextImageIndex;
+    vkResult = vkQueuePresentKHR(context->queuePresent, &presentInfo);
+    korl_assert(vkResult == VK_SUCCESS);
+    vkResult = vkQueueWaitIdle(context->queuePresent);
+    korl_assert(vkResult == VK_SUCCESS);
 }
