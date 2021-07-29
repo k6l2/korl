@@ -65,19 +65,24 @@ typedef struct _Korl_Vulkan_Context
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
  * basis, so there will potentially be a collection of these which all need to 
  * be created, destroyed, & managed separately. */
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
 typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR surface;
     VkSurfaceFormatKHR swapChainSurfaceFormat;
     VkExtent2D swapChainImageExtent;
-    VkSwapchainKHR swapChain;
-    u32 swapChainImagesSize;
-    VkImage swapChainImages[8];
-    VkImageView swapChainImageViews[8];
-    VkFramebuffer swapChainFrameBuffers[8];
-    VkCommandBuffer swapChainCommandBuffers[8];
-    VkSemaphore semaphoreImageAvailable;
-    VkSemaphore semaphoreRenderDone;
+    VkSwapchainKHR  swapChain;
+    u32             swapChainImagesSize;
+    VkImage         swapChainImages        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    VkImageView     swapChainImageViews    [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    VkFramebuffer   swapChainFrameBuffers  [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    VkCommandBuffer swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    VkFence         swapChainFences        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    unsigned    wipFrameCurrent;
+    VkSemaphore wipFramesSemaphoreImageAvailable[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
+    VkSemaphore wipFramesSemaphoreRenderDone    [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
+    VkFence     wipFramesFence                  [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** for now we'll just have one global surface context, since the KORL 

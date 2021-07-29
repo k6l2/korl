@@ -455,12 +455,19 @@ korl_internal void korl_vulkan_destroySurface(void)
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
-    vkDestroySemaphore(
-        context->device, surfaceContext->semaphoreImageAvailable, 
-        context->allocator);
-    vkDestroySemaphore(
-        context->device, surfaceContext->semaphoreRenderDone, 
-        context->allocator);
+    for(size_t f = 0; f < _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES; f++)
+    {
+        vkDestroySemaphore(
+            context->device, 
+            surfaceContext->wipFramesSemaphoreImageAvailable[f], 
+            context->allocator);
+        vkDestroySemaphore(
+            context->device, surfaceContext->wipFramesSemaphoreRenderDone[f], 
+            context->allocator);
+        vkDestroyFence(
+            context->device, surfaceContext->wipFramesFence[f], 
+            context->allocator);
+    }
     vkDestroySurfaceKHR(
         context->instance, surfaceContext->surface, context->allocator);
     memset(surfaceContext, 0, sizeof(*surfaceContext));
@@ -619,6 +626,8 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
                 context->device, &createInfoFrameBuffer, context->allocator, 
                 &surfaceContext->swapChainFrameBuffers[i]);
         korl_assert(vkResult == VK_SUCCESS);
+        /* initialize the swap chain fence references to nothing */
+        surfaceContext->swapChainFences[i] = VK_NULL_HANDLE;
     }
     /* allocate a command buffer for each of the swap chain frame buffers */
     KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
@@ -635,22 +644,35 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
         swap chain */
     KORL_ZERO_STACK(VkSemaphoreCreateInfo, createInfoSemaphore);
     createInfoSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    vkResult = 
-        vkCreateSemaphore(
-            context->device, &createInfoSemaphore, context->allocator, 
-            &surfaceContext->semaphoreImageAvailable);
-    korl_assert(vkResult == VK_SUCCESS);
-    vkResult = 
-        vkCreateSemaphore(
-            context->device, &createInfoSemaphore, context->allocator, 
-            &surfaceContext->semaphoreRenderDone);
-    korl_assert(vkResult == VK_SUCCESS);
+    KORL_ZERO_STACK(VkFenceCreateInfo, createInfoFence);
+    createInfoFence.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    createInfoFence.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    for(size_t f = 0; f < _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES; f++)
+    {
+        vkResult = 
+            vkCreateSemaphore(
+                context->device, &createInfoSemaphore, context->allocator, 
+                &surfaceContext->wipFramesSemaphoreImageAvailable[f]);
+        korl_assert(vkResult == VK_SUCCESS);
+        vkResult = 
+            vkCreateSemaphore(
+                context->device, &createInfoSemaphore, context->allocator, 
+                &surfaceContext->wipFramesSemaphoreRenderDone[f]);
+        korl_assert(vkResult == VK_SUCCESS);
+        vkResult = 
+            vkCreateFence(
+                context->device, &createInfoFence, context->allocator, 
+                &surfaceContext->wipFramesFence[f]);
+        korl_assert(vkResult == VK_SUCCESS);
+    }
 }
 korl_internal void korl_vulkan_destroySwapChain(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = vkDeviceWaitIdle(context->device);
+    korl_assert(vkResult == VK_SUCCESS);
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         vkDestroyFramebuffer(
@@ -833,22 +855,40 @@ korl_internal void korl_vulkan_draw(void)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
     VkResult vkResult = VK_SUCCESS;
+    /* wait on the fence for the current WIP frame */
+    vkResult = 
+        vkWaitForFences(
+            context->device, 1, 
+            &surfaceContext->wipFramesFence[surfaceContext->wipFrameCurrent], 
+            VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/);
+    korl_assert(vkResult == VK_SUCCESS);
     /* acquire the next image from the swap chain */
     KORL_ZERO_STACK(u32, nextImageIndex);
     vkResult = 
         vkAcquireNextImageKHR(
             context->device, surfaceContext->swapChain, 
             UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
-            surfaceContext->semaphoreImageAvailable, VK_NULL_HANDLE/*fence*/, 
-            &nextImageIndex);
+            surfaceContext->wipFramesSemaphoreImageAvailable[surfaceContext->wipFrameCurrent], 
+            VK_NULL_HANDLE/*fence*/, &nextImageIndex);
     korl_assert(vkResult == VK_SUCCESS);
+    if(surfaceContext->swapChainFences[nextImageIndex] != VK_NULL_HANDLE)
+    {
+        vkResult = 
+            vkWaitForFences(
+                context->device, 1, 
+                &surfaceContext->swapChainFences[nextImageIndex], 
+                VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/);
+        korl_assert(vkResult == VK_SUCCESS);
+    }
+    surfaceContext->swapChainFences[nextImageIndex] = 
+        surfaceContext->wipFramesFence[surfaceContext->wipFrameCurrent];
     /* submit graphics commands to the graphics queue */
     VkSemaphore submitGraphicsWaitSemaphores[] = 
-        { surfaceContext->semaphoreImageAvailable };
+        { surfaceContext->wipFramesSemaphoreImageAvailable[surfaceContext->wipFrameCurrent] };
     VkPipelineStageFlags submitGraphicsWaitStages[] = 
         { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     VkSemaphore submitGraphicsSignalSemaphores[] = 
-        { surfaceContext->semaphoreRenderDone };
+        { surfaceContext->wipFramesSemaphoreRenderDone[surfaceContext->wipFrameCurrent] };
     KORL_ZERO_STACK(VkSubmitInfo, submitInfoGraphics);
     submitInfoGraphics.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfoGraphics.waitSemaphoreCount   = korl_arraySize(submitGraphicsWaitSemaphores);
@@ -858,10 +898,16 @@ korl_internal void korl_vulkan_draw(void)
     submitInfoGraphics.pCommandBuffers      = &surfaceContext->swapChainCommandBuffers[nextImageIndex];
     submitInfoGraphics.signalSemaphoreCount = korl_arraySize(submitGraphicsSignalSemaphores);
     submitInfoGraphics.pSignalSemaphores    = submitGraphicsSignalSemaphores;
+    // close the fence in preparation to submit commands to the graphics queue
+    vkResult = 
+        vkResetFences(
+            context->device, 1, 
+            &surfaceContext->wipFramesFence[surfaceContext->wipFrameCurrent]);
+    korl_assert(vkResult == VK_SUCCESS);
     vkResult = 
         vkQueueSubmit(
             context->queueGraphics, 1, &submitInfoGraphics, 
-            VK_NULL_HANDLE/*fence*/);
+            surfaceContext->wipFramesFence[surfaceContext->wipFrameCurrent]);
     korl_assert(vkResult == VK_SUCCESS);
     /* present the swap chain */
     VkSwapchainKHR presentInfoSwapChains[] = { surfaceContext->swapChain };
@@ -874,6 +920,8 @@ korl_internal void korl_vulkan_draw(void)
     presentInfo.pImageIndices      = &nextImageIndex;
     vkResult = vkQueuePresentKHR(context->queuePresent, &presentInfo);
     korl_assert(vkResult == VK_SUCCESS);
-    vkResult = vkQueueWaitIdle(context->queuePresent);
-    korl_assert(vkResult == VK_SUCCESS);
+    /* advance to the next WIP frame index */
+    surfaceContext->wipFrameCurrent = 
+        (surfaceContext->wipFrameCurrent + 1) % 
+        _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES;
 }
