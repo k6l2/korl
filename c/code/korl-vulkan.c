@@ -881,9 +881,19 @@ korl_internal void korl_vulkan_draw(void)
     VkResult vkResult = VK_SUCCESS;
     if(surfaceContext->deferredResize)
     {
+        /* if the resize area is zero, then we can't do anything because that is 
+            an illegal vulkan state anyways!  This happens when the window gets 
+            minimized or the user makes it really small for some reason... */
+        if(    surfaceContext->deferredResizeX == 0 
+            || surfaceContext->deferredResizeY == 0)
+            return;
         /* destroy swap chain & all resources which depend on it */
         korl_vulkan_destroySwapChain();
         _korl_vulkan_destroySwapChainDependencies();
+        /* since the device surface meta data has changed, we need to query it */
+        context->deviceSurfaceMetaData = 
+            _korl_vulkan_deviceSurfaceMetaData(
+                context->physicalDevice, surfaceContext->surface);
         /* re-create the swap chain & all resources which depend on it */
         _korl_vulkan_createSwapChainTransient(
             surfaceContext->deferredResizeX, surfaceContext->deferredResizeY);
@@ -907,8 +917,6 @@ korl_internal void korl_vulkan_draw(void)
             UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
             surfaceContext->wipFramesSemaphoreImageAvailable[surfaceContext->wipFrameCurrent], 
             VK_NULL_HANDLE/*fence*/, &nextImageIndex);
-    if(vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
-        return;
     korl_assert(vkResult == VK_SUCCESS);
     if(surfaceContext->swapChainFences[nextImageIndex] != VK_NULL_HANDLE)
     {
@@ -958,8 +966,6 @@ korl_internal void korl_vulkan_draw(void)
     presentInfo.pSwapchains        = presentInfoSwapChains;
     presentInfo.pImageIndices      = &nextImageIndex;
     vkResult = vkQueuePresentKHR(context->queuePresent, &presentInfo);
-    if(vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
-        return;
     korl_assert(vkResult == VK_SUCCESS);
     /* advance to the next WIP frame index */
     surfaceContext->wipFrameCurrent = 

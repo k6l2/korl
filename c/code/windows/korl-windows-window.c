@@ -35,6 +35,11 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
+    case WM_SIZE:{
+        const UINT clientWidth  = LOWORD(lParam);
+        const UINT clientHeight = HIWORD(lParam);
+        korl_vulkan_deferredResize(clientWidth, clientHeight);
+        } break;
     /* @todo: WM_PAINT, ValidateRect(hWnd, NULL); ??? */
     default: 
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
