@@ -23,10 +23,10 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         surfaceUserData.hInstance = createStruct->hInstance;
         surfaceUserData.hWnd      = hWnd;
         korl_vulkan_createDevice(korl_vulkan_createSurface(&surfaceUserData));
+        korl_vulkan_loadShaders();
         korl_vulkan_createSwapChain(
             clientRect.right - clientRect.left, 
             clientRect.bottom - clientRect.top);
-        /* @hack: pipeline creation should probably be a little more intelligent */
         korl_vulkan_createPipeline();
         korl_vulkan_recordAllCommandBuffers();
         }break;

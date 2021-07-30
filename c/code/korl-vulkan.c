@@ -302,12 +302,17 @@ korl_internal void korl_vulkan_construct(void)
     korl_assert(vkResult == VK_SUCCESS);
 #endif// KORL_DEBUG
 }
-korl_internal void korl_vulkan_destroy(void)
+korl_internal void _korl_vulkan_destroySwapChainDependencies(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     vkDestroyPipeline(context->device, context->pipeline, context->allocator);
-    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
+    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
+}
+korl_internal void korl_vulkan_destroy(void)
+{
+    _korl_vulkan_destroySwapChainDependencies();
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
     vkDestroyCommandPool(context->device, context->commandPool, context->allocator);
@@ -472,7 +477,9 @@ korl_internal void korl_vulkan_destroySurface(void)
         context->instance, surfaceContext->surface, context->allocator);
     memset(surfaceContext, 0, sizeof(*surfaceContext));
 }
-korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
+/** This API will create the parts of the swap chain which can be destroyed & 
+ * re-created in the event that the swap chain needs to be resized. */
+korl_internal void _korl_vulkan_createSwapChainTransient(u32 sizeX, u32 sizeY)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
@@ -640,6 +647,14 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
             context->device, &allocateInfoCommandBuffers, 
             surfaceContext->swapChainCommandBuffers);
     korl_assert(vkResult == VK_SUCCESS);
+}
+korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
+{
+    _korl_vulkan_createSwapChainTransient(sizeX, sizeY);
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
     /* create the semaphores we will use to sync rendering operations of the 
         swap chain */
     KORL_ZERO_STACK(VkSemaphoreCreateInfo, createInfoSemaphore);
@@ -673,6 +688,10 @@ korl_internal void korl_vulkan_destroySwapChain(void)
         &g_korl_windows_vulkan_surfaceContext;
     VkResult vkResult = vkDeviceWaitIdle(context->device);
     korl_assert(vkResult == VK_SUCCESS);
+    vkFreeCommandBuffers(
+        context->device, context->commandPool, 
+        surfaceContext->swapChainImagesSize, 
+        surfaceContext->swapChainCommandBuffers);
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         vkDestroyFramebuffer(
@@ -685,11 +704,9 @@ korl_internal void korl_vulkan_destroySwapChain(void)
     vkDestroySwapchainKHR(
         context->device, surfaceContext->swapChain, context->allocator);
 }
-korl_internal void korl_vulkan_createPipeline(void)
+korl_internal void korl_vulkan_loadShaders(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
-        &g_korl_windows_vulkan_surfaceContext;
     VkResult vkResult = VK_SUCCESS;
     /* @hack: just load shader files into memory right here */
     const Korl_File_Result spirvTriangleVertex   = korl_readEntireFile(L"triangle.vert.spv");
@@ -713,16 +730,13 @@ korl_internal void korl_vulkan_createPipeline(void)
             context->device, &createInfoShaderFrag, context->allocator, 
             &context->shaderTriangleFrag);
     korl_assert(vkResult == VK_SUCCESS);
-    KORL_ZERO_STACK_ARRAY(
-        VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
-    createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    createInfoShaderStages[0].module = context->shaderTriangleVert;
-    createInfoShaderStages[0].pName  = "main";
-    createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    createInfoShaderStages[1].module = context->shaderTriangleFrag;
-    createInfoShaderStages[1].pName  = "main";
+}
+korl_internal void korl_vulkan_createPipeline(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
     /* set fixed functions */
     KORL_ZERO_STACK(VkPipelineVertexInputStateCreateInfo, createInfoVertexInput);
     createInfoVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -789,6 +803,16 @@ korl_internal void korl_vulkan_createPipeline(void)
             &context->pipelineLayout);
     korl_assert(vkResult == VK_SUCCESS);
     /* create pipeline */
+    KORL_ZERO_STACK_ARRAY(
+        VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
+    createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    createInfoShaderStages[0].module = context->shaderTriangleVert;
+    createInfoShaderStages[0].pName  = "main";
+    createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    createInfoShaderStages[1].module = context->shaderTriangleFrag;
+    createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     createInfoPipeline.stageCount = korl_arraySize(createInfoShaderStages);
@@ -855,6 +879,19 @@ korl_internal void korl_vulkan_draw(void)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
     VkResult vkResult = VK_SUCCESS;
+    if(surfaceContext->deferredResize)
+    {
+        /* destroy swap chain & all resources which depend on it */
+        korl_vulkan_destroySwapChain();
+        _korl_vulkan_destroySwapChainDependencies();
+        /* re-create the swap chain & all resources which depend on it */
+        _korl_vulkan_createSwapChainTransient(
+            surfaceContext->deferredResizeX, surfaceContext->deferredResizeY);
+        korl_vulkan_createPipeline();
+        korl_vulkan_recordAllCommandBuffers();
+        /* clear the deferred resize flag for the next frame */
+        surfaceContext->deferredResize = false;
+    }
     /* wait on the fence for the current WIP frame */
     vkResult = 
         vkWaitForFences(
@@ -870,6 +907,8 @@ korl_internal void korl_vulkan_draw(void)
             UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
             surfaceContext->wipFramesSemaphoreImageAvailable[surfaceContext->wipFrameCurrent], 
             VK_NULL_HANDLE/*fence*/, &nextImageIndex);
+    if(vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
+        return;
     korl_assert(vkResult == VK_SUCCESS);
     if(surfaceContext->swapChainFences[nextImageIndex] != VK_NULL_HANDLE)
     {
@@ -919,9 +958,20 @@ korl_internal void korl_vulkan_draw(void)
     presentInfo.pSwapchains        = presentInfoSwapChains;
     presentInfo.pImageIndices      = &nextImageIndex;
     vkResult = vkQueuePresentKHR(context->queuePresent, &presentInfo);
+    if(vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
+        return;
     korl_assert(vkResult == VK_SUCCESS);
     /* advance to the next WIP frame index */
     surfaceContext->wipFrameCurrent = 
         (surfaceContext->wipFrameCurrent + 1) % 
         _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES;
+}
+korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    surfaceContext->deferredResize = true;
+    surfaceContext->deferredResizeX = sizeX;
+    surfaceContext->deferredResizeY = sizeY;
 }

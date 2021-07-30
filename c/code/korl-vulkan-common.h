@@ -83,6 +83,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkSemaphore wipFramesSemaphoreImageAvailable[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     VkSemaphore wipFramesSemaphoreRenderDone    [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     VkFence     wipFramesFence                  [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
+    bool deferredResize;
+    u32 deferredResizeX, deferredResizeY;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** for now we'll just have one global surface context, since the KORL 
