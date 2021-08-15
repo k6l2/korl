@@ -15,29 +15,31 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             KORL_C_CAST(CREATESTRUCT*, lParam);
         /* obtain the client rect of the window */
         RECT clientRect;
-        const BOOL resultGetClientRect = GetClientRect(hWnd, &clientRect);
-        if(!resultGetClientRect)
+        if(!GetClientRect(hWnd, &clientRect))
             korl_logLastError("GetClientRect failed!");
         /* create vulkan surface for this window */
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
         surfaceUserData.hInstance = createStruct->hInstance;
         surfaceUserData.hWnd      = hWnd;
-        korl_vulkan_createDevice(korl_vulkan_createSurface(&surfaceUserData));
-        korl_vulkan_loadShaders();
-        korl_vulkan_createSwapChain(
-            clientRect.right - clientRect.left, 
+        korl_vulkan_createDevice(
+            &surfaceUserData, 
+            clientRect.right  - clientRect.left, 
             clientRect.bottom - clientRect.top);
+        /** @todo: erase all this stuff; we're going to load the immediate-mode 
+         * rendering pipeline stuff internally, as well as handle those 
+         * resources internally (for now) */
+        korl_vulkan_loadShaders();
         korl_vulkan_createPipeline();
         korl_vulkan_recordAllCommandBuffers();
         }break;
     case WM_DESTROY:{
-        korl_vulkan_destroySwapChain();
-        korl_vulkan_destroySurface();
+        korl_vulkan_destroyDevice();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
         const UINT clientHeight = HIWORD(lParam);
+        korl_log(VERBOSE, "WM_SIZE - clientSize: %ux%u", clientWidth, clientHeight);
         korl_vulkan_deferredResize(clientWidth, clientHeight);
         } break;
     /* @todo: WM_PAINT, ValidateRect(hWnd, NULL); ??? */
@@ -101,6 +103,33 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
             NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
+/** @hack: this is just scaffolding to build immediate batched rendering */
+korl_internal void _korl_windows_window_step(void)
+{
+    /* let's try just drawing a triangle */
+#if 1
+    korl_shared_const Korl_Math_V3f32 trianglePositions[] = 
+        { { 0.f ,-0.5f,0.f}
+        , {-0.5f, 0.5f,0.f}
+        , { 0.5f, 0.5f,0.f} };
+    korl_shared_const Korl_Math_V3u8 triangleColors[] = 
+        { {255,  0,  0}
+        , {0  ,255,  0}
+        , {0  ,  0,255} };
+    _STATIC_ASSERT(
+        korl_arraySize(trianglePositions) == korl_arraySize(triangleColors));
+    //korl_vulkan_batchTriangles_color(
+    //    korl_arraySize(trianglePositions), trianglePositions, triangleColors);
+#else
+    Korl_ImmediateDraw_Vertex verticesTriangle[] = 
+        { { 0.f ,-0.5f,0.f, 255,  0,  0}
+        , {-0.5f, 0.5f,0.f, 0  ,255,  0}
+        , { 0.5f, 0.5f,0.f, 0  ,  0,255}};
+    korl_vulkan_batchTriangles(
+        verticesTriangle, korl_arraySize(verticesTriangle), 
+        sizeof(*verticesTriangle), KORL_IMMEDIATEDRAW_DESCRIBEVERTEX_COLOR);
+#endif//0
+}
 korl_internal void korl_windows_window_loop(void)
 {
     bool quit = false;
@@ -118,6 +147,7 @@ korl_internal void korl_windows_window_loop(void)
         }
         if(quit)
             break;
+        _korl_windows_window_step();
         korl_vulkan_draw();
     }
 }

@@ -40,6 +40,14 @@ korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
     return VK_FALSE;
 }
 #endif// KORL_DEBUG
+typedef struct _Korl_Vulkan_DeviceSurfaceMetaData
+{
+    VkSurfaceCapabilitiesKHR capabilities;
+    u32 formatsSize;
+    VkSurfaceFormatKHR formats[256];
+    u32 presentModesSize;
+    VkPresentModeKHR presentModes[256];
+} _Korl_Vulkan_DeviceSurfaceMetaData;
 /** 
  * \return true if \c deviceNew is a "better" device than \c deviceOld
  */
@@ -177,6 +185,209 @@ korl_internal _Korl_Vulkan_QueueFamilyMetaData _korl_vulkan_queueFamilyMetaData(
     }
     return result;
 }
+/** This API will create the parts of the swap chain which can be destroyed & 
+ * re-created in the event that the swap chain needs to be resized. */
+korl_internal void _korl_vulkan_createSwapChainTransient(
+    u32 sizeX, u32 sizeY, 
+    const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    VkResult vkResult = VK_SUCCESS;
+    /* given what we know about the device & the surface, select the best 
+        settings for the swap chain */
+    korl_assert(deviceSurfaceMetaData->formatsSize > 0);
+    surfaceContext->swapChainSurfaceFormat = deviceSurfaceMetaData->formats[0];
+    for(u32 f = 0; f < deviceSurfaceMetaData->formatsSize; f++)
+        if(    deviceSurfaceMetaData->formats[f].format == VK_FORMAT_B8G8R8A8_SRGB
+            && deviceSurfaceMetaData->formats[f].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            surfaceContext->swapChainSurfaceFormat = deviceSurfaceMetaData->formats[f];
+            break;
+        }
+    // the only present mode REQUIRED by the spec to be supported
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    surfaceContext->swapChainImageExtent = deviceSurfaceMetaData->capabilities.currentExtent;
+    if(    surfaceContext->swapChainImageExtent.width  == 0xFFFFFFFF 
+        && surfaceContext->swapChainImageExtent.height == 0xFFFFFFFF)
+    {
+        surfaceContext->swapChainImageExtent.width = KORL_MATH_CLAMP(sizeX, 
+            deviceSurfaceMetaData->capabilities.minImageExtent.width, 
+            deviceSurfaceMetaData->capabilities.maxImageExtent.width);
+        surfaceContext->swapChainImageExtent.height = KORL_MATH_CLAMP(sizeY, 
+            deviceSurfaceMetaData->capabilities.minImageExtent.height, 
+            deviceSurfaceMetaData->capabilities.maxImageExtent.height);
+    }
+    u32 minImageCount = deviceSurfaceMetaData->capabilities.minImageCount + 1;
+    if(    deviceSurfaceMetaData->capabilities.maxImageCount > 0 
+        && deviceSurfaceMetaData->capabilities.maxImageCount < minImageCount)
+        minImageCount = deviceSurfaceMetaData->capabilities.maxImageCount;
+    /* create the swap chain */
+    KORL_ZERO_STACK(VkSwapchainCreateInfoKHR, createInfoSwapChain);
+    createInfoSwapChain.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfoSwapChain.surface          = surfaceContext->surface;
+    createInfoSwapChain.minImageCount    = minImageCount;
+    createInfoSwapChain.imageFormat      = surfaceContext->swapChainSurfaceFormat.format;
+    createInfoSwapChain.imageColorSpace  = surfaceContext->swapChainSurfaceFormat.colorSpace;
+    createInfoSwapChain.imageExtent      = surfaceContext->swapChainImageExtent;
+    createInfoSwapChain.imageArrayLayers = 1;//non-stereoscopic
+    createInfoSwapChain.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfoSwapChain.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfoSwapChain.preTransform     = deviceSurfaceMetaData->capabilities.currentTransform;
+    createInfoSwapChain.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfoSwapChain.presentMode      = presentMode;
+    createInfoSwapChain.clipped          = VK_TRUE;
+    createInfoSwapChain.oldSwapchain     = VK_NULL_HANDLE;
+    if(context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics != 
+        context->queueFamilyMetaData.indexQueueUnion.indexQueues.present)
+    {
+        createInfoSwapChain.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+        createInfoSwapChain.queueFamilyIndexCount = 2;
+        createInfoSwapChain.pQueueFamilyIndices   = context->queueFamilyMetaData.indexQueueUnion.indices;
+    }
+    vkResult = 
+        vkCreateSwapchainKHR(
+            context->device, &createInfoSwapChain, 
+            context->allocator, &surfaceContext->swapChain);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* create render pass */
+    KORL_ZERO_STACK(VkAttachmentDescription, colorAttachment);
+    colorAttachment.format         = surfaceContext->swapChainSurfaceFormat.format;
+    colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReference);
+    attachmentReference.attachment = 0;
+    attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkSubpassDescription, subPass);
+    subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subPass.colorAttachmentCount = 1;
+    subPass.pColorAttachments    = &attachmentReference;
+    KORL_ZERO_STACK(VkSubpassDependency, subpassDependency);
+    subpassDependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
+    subpassDependency.dstSubpass    = 0;
+    subpassDependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.srcAccessMask = 0;
+    subpassDependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
+    createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfoRenderPass.attachmentCount = 1;
+    createInfoRenderPass.pAttachments    = &colorAttachment;
+    createInfoRenderPass.subpassCount    = 1;
+    createInfoRenderPass.pSubpasses      = &subPass;
+    createInfoRenderPass.dependencyCount = 1;
+    createInfoRenderPass.pDependencies   = &subpassDependency;
+    vkResult = 
+        vkCreateRenderPass(
+            context->device, &createInfoRenderPass, context->allocator, 
+            &context->renderPass);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* get swap chain images */
+    vkResult = 
+        vkGetSwapchainImagesKHR(
+            context->device, surfaceContext->swapChain, 
+            &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    korl_assert(surfaceContext->swapChainImagesSize <= 
+        korl_arraySize(surfaceContext->swapChainImages));
+    surfaceContext->swapChainImagesSize = 
+        korl_arraySize(surfaceContext->swapChainImages);
+    vkResult = 
+        vkGetSwapchainImagesKHR(
+            context->device, surfaceContext->swapChain, 
+            &surfaceContext->swapChainImagesSize, 
+            surfaceContext->swapChainImages);
+    korl_assert(vkResult == VK_SUCCESS);
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    {
+        /* create image views for all the swap chain images */
+        KORL_ZERO_STACK(VkImageViewCreateInfo, createInfoImageView);
+        createInfoImageView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfoImageView.image                           = surfaceContext->swapChainImages[i];
+        createInfoImageView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+        createInfoImageView.format                          = surfaceContext->swapChainSurfaceFormat.format;
+        createInfoImageView.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfoImageView.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfoImageView.subresourceRange.layerCount     = 1;
+        createInfoImageView.subresourceRange.baseArrayLayer = 0;
+        createInfoImageView.subresourceRange.levelCount     = 1;
+        createInfoImageView.subresourceRange.baseMipLevel   = 0;
+        vkResult = 
+            vkCreateImageView(
+                context->device, &createInfoImageView, context->allocator, 
+                &surfaceContext->swapChainImageViews[i]);
+        korl_assert(vkResult == VK_SUCCESS);
+        /* create a frame buffer for all the swap chain image views */
+        VkImageView frameBufferAttachments[] = 
+            { surfaceContext->swapChainImageViews[i] };
+        KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
+        createInfoFrameBuffer.sType      = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        createInfoFrameBuffer.renderPass = context->renderPass;
+        createInfoFrameBuffer.attachmentCount = korl_arraySize(frameBufferAttachments);
+        createInfoFrameBuffer.pAttachments    = frameBufferAttachments;
+        createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
+        createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
+        createInfoFrameBuffer.layers          = 1;
+        vkResult = 
+            vkCreateFramebuffer(
+                context->device, &createInfoFrameBuffer, context->allocator, 
+                &surfaceContext->swapChainFrameBuffers[i]);
+        korl_assert(vkResult == VK_SUCCESS);
+        /* initialize the swap chain fence references to nothing */
+        surfaceContext->swapChainFences[i] = VK_NULL_HANDLE;
+    }
+    /* allocate a command buffer for each of the swap chain frame buffers */
+    KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
+    allocateInfoCommandBuffers.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocateInfoCommandBuffers.commandPool        = context->commandPool;
+    allocateInfoCommandBuffers.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocateInfoCommandBuffers.commandBufferCount = surfaceContext->swapChainImagesSize;
+    vkResult = 
+        vkAllocateCommandBuffers(
+            context->device, &allocateInfoCommandBuffers, 
+            surfaceContext->swapChainCommandBuffers);
+    korl_assert(vkResult == VK_SUCCESS);
+}
+korl_internal void _korl_vulkan_destroySwapChainDependencies(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    VkResult vkResult = vkDeviceWaitIdle(context->device);
+    korl_assert(vkResult == VK_SUCCESS);
+    vkDestroyPipeline(context->device, context->pipeline, context->allocator);
+    vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
+    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
+}
+korl_internal void _korl_vulkan_destroySwapChain(void)
+{
+    _korl_vulkan_destroySwapChainDependencies();
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
+    vkFreeCommandBuffers(
+        context->device, context->commandPool, 
+        surfaceContext->swapChainImagesSize, 
+        surfaceContext->swapChainCommandBuffers);
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    {
+        vkDestroyFramebuffer(
+            context->device, surfaceContext->swapChainFrameBuffers[i], 
+            context->allocator);
+        vkDestroyImageView(
+            context->device, surfaceContext->swapChainImageViews[i], 
+            context->allocator);
+    }
+    vkDestroySwapchainKHR(
+        context->device, surfaceContext->swapChain, context->allocator);
+}
 korl_internal void korl_vulkan_construct(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
@@ -302,21 +513,9 @@ korl_internal void korl_vulkan_construct(void)
     korl_assert(vkResult == VK_SUCCESS);
 #endif// KORL_DEBUG
 }
-korl_internal void _korl_vulkan_destroySwapChainDependencies(void)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    vkDestroyPipeline(context->device, context->pipeline, context->allocator);
-    vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
-    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
-}
 korl_internal void korl_vulkan_destroy(void)
 {
-    _korl_vulkan_destroySwapChainDependencies();
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
-    vkDestroyCommandPool(context->device, context->commandPool, context->allocator);
-    vkDestroyDevice(context->device, context->allocator);
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(
         context->instance, context->debugMessenger, context->allocator);
@@ -325,10 +524,19 @@ korl_internal void korl_vulkan_destroy(void)
     /* nullify the context after cleaning up properly for safety */
     memset(context, 0, sizeof(*context));
 }
-korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
+/** This API is platform-specific, and thus must be defined within the code base 
+ * of whatever the current target platform is. */
+korl_internal void _korl_vulkan_createSurface(void* userData);
+korl_internal void korl_vulkan_createDevice(
+    void* createSurfaceUserData, u32 sizeX, u32 sizeY)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
+        &g_korl_windows_vulkan_surfaceContext;
     VkResult vkResult = VK_SUCCESS;
+    /* we have to create the OS-specific surface before choosing a physical 
+        device to create the logical device on */
+    _korl_vulkan_createSurface(createSurfaceUserData);
     /* enumerate & choose a physical device */
     KORL_ZERO_STACK(u32, physicalDeviceCount);
     vkResult = 
@@ -348,6 +556,7 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, devicePropertiesBest);
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeaturesBest);
     KORL_ZERO_STACK(u32, queueFamilyCountBest);
+    KORL_ZERO_STACK(_Korl_Vulkan_DeviceSurfaceMetaData, deviceSurfaceMetaDataBest);
     for(u32 d = 0; d < physicalDeviceCount; d++)
     {
         KORL_ZERO_STACK(u32, queueFamilyCount);
@@ -360,13 +569,15 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
             physicalDevices[d], &queueFamilyCount, queueFamilies);
         _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData = 
             _korl_vulkan_queueFamilyMetaData(
-                physicalDevices[d], queueFamilyCount, queueFamilies, surface);
+                physicalDevices[d], queueFamilyCount, queueFamilies, 
+                surfaceContext->surface);
         KORL_ZERO_STACK(VkPhysicalDeviceProperties, deviceProperties);
         KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeatures);
         vkGetPhysicalDeviceProperties(physicalDevices[d], &deviceProperties);
         vkGetPhysicalDeviceFeatures(physicalDevices[d], &deviceFeatures);
         _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
-            _korl_vulkan_deviceSurfaceMetaData(physicalDevices[d], surface);
+            _korl_vulkan_deviceSurfaceMetaData(
+                physicalDevices[d], surfaceContext->surface);
         if(_korl_vulkan_isBetterDevice(
                 context->physicalDevice, physicalDevices[d], 
                 &queueFamilyMetaData, &deviceSurfaceMetaData, 
@@ -377,7 +588,7 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
             devicePropertiesBest = deviceProperties;
             deviceFeaturesBest = deviceFeatures;
             context->queueFamilyMetaData = queueFamilyMetaData;
-            context->deviceSurfaceMetaData = deviceSurfaceMetaData;
+            deviceSurfaceMetaDataBest = deviceSurfaceMetaData;
         }
     }
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
@@ -454,207 +665,10 @@ korl_internal void korl_vulkan_createDevice(VkSurfaceKHR surface)
         vkCreateCommandPool(
             context->device, &createInfoCommandPool, context->allocator, 
             &context->commandPool);
-}
-korl_internal void korl_vulkan_destroySurface(void)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
-        &g_korl_windows_vulkan_surfaceContext;
-    for(size_t f = 0; f < _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES; f++)
-    {
-        vkDestroySemaphore(
-            context->device, 
-            surfaceContext->wipFramesSemaphoreImageAvailable[f], 
-            context->allocator);
-        vkDestroySemaphore(
-            context->device, surfaceContext->wipFramesSemaphoreRenderDone[f], 
-            context->allocator);
-        vkDestroyFence(
-            context->device, surfaceContext->wipFramesFence[f], 
-            context->allocator);
-    }
-    vkDestroySurfaceKHR(
-        context->instance, surfaceContext->surface, context->allocator);
-    memset(surfaceContext, 0, sizeof(*surfaceContext));
-}
-/** This API will create the parts of the swap chain which can be destroyed & 
- * re-created in the event that the swap chain needs to be resized. */
-korl_internal void _korl_vulkan_createSwapChainTransient(u32 sizeX, u32 sizeY)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
-        &g_korl_windows_vulkan_surfaceContext;
-    VkResult vkResult = VK_SUCCESS;
-    /* given what we know about the device & the surface, select the best 
-        settings for the swap chain */
-    korl_assert(context->deviceSurfaceMetaData.formatsSize > 0);
-    surfaceContext->swapChainSurfaceFormat = context->deviceSurfaceMetaData.formats[0];
-    for(u32 f = 0; f < context->deviceSurfaceMetaData.formatsSize; f++)
-        if(    context->deviceSurfaceMetaData.formats[f].format == VK_FORMAT_B8G8R8A8_SRGB
-            && context->deviceSurfaceMetaData.formats[f].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
-            surfaceContext->swapChainSurfaceFormat = context->deviceSurfaceMetaData.formats[f];
-            break;
-        }
-    // the only present mode REQUIRED by the spec to be supported
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    surfaceContext->swapChainImageExtent = context->deviceSurfaceMetaData.capabilities.currentExtent;
-    if(    surfaceContext->swapChainImageExtent.width  == 0xFFFFFFFF 
-        && surfaceContext->swapChainImageExtent.height == 0xFFFFFFFF)
-    {
-        surfaceContext->swapChainImageExtent.width = KORL_MATH_CLAMP(sizeX, 
-            context->deviceSurfaceMetaData.capabilities.minImageExtent.width, 
-            context->deviceSurfaceMetaData.capabilities.maxImageExtent.width);
-        surfaceContext->swapChainImageExtent.height = KORL_MATH_CLAMP(sizeY, 
-            context->deviceSurfaceMetaData.capabilities.minImageExtent.height, 
-            context->deviceSurfaceMetaData.capabilities.maxImageExtent.height);
-    }
-    u32 minImageCount = 
-        context->deviceSurfaceMetaData.capabilities.minImageCount + 1;
-    if(    context->deviceSurfaceMetaData.capabilities.maxImageCount > 0 
-        && context->deviceSurfaceMetaData.capabilities.maxImageCount < minImageCount)
-        minImageCount = context->deviceSurfaceMetaData.capabilities.maxImageCount;
-    /* create the swap chain */
-    KORL_ZERO_STACK(VkSwapchainCreateInfoKHR, createInfoSwapChain);
-    createInfoSwapChain.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfoSwapChain.surface          = surfaceContext->surface;
-    createInfoSwapChain.minImageCount    = minImageCount;
-    createInfoSwapChain.imageFormat      = surfaceContext->swapChainSurfaceFormat.format;
-    createInfoSwapChain.imageColorSpace  = surfaceContext->swapChainSurfaceFormat.colorSpace;
-    createInfoSwapChain.imageExtent      = surfaceContext->swapChainImageExtent;
-    createInfoSwapChain.imageArrayLayers = 1;//non-stereoscopic
-    createInfoSwapChain.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    createInfoSwapChain.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    createInfoSwapChain.preTransform     = context->deviceSurfaceMetaData.capabilities.currentTransform;
-    createInfoSwapChain.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfoSwapChain.presentMode      = presentMode;
-    createInfoSwapChain.clipped          = VK_TRUE;
-    createInfoSwapChain.oldSwapchain     = VK_NULL_HANDLE;
-    if(context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics != 
-        context->queueFamilyMetaData.indexQueueUnion.indexQueues.present)
-    {
-        createInfoSwapChain.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
-        createInfoSwapChain.queueFamilyIndexCount = 2;
-        createInfoSwapChain.pQueueFamilyIndices   = context->queueFamilyMetaData.indexQueueUnion.indices;
-    }
-    vkResult = 
-        vkCreateSwapchainKHR(
-            context->device, &createInfoSwapChain, 
-            context->allocator, &surfaceContext->swapChain);
-    korl_assert(vkResult == VK_SUCCESS);
-    /* create render pass */
-    KORL_ZERO_STACK(VkAttachmentDescription, colorAttachment);
-    colorAttachment.format         = surfaceContext->swapChainSurfaceFormat.format;
-    colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReference);
-    attachmentReference.attachment = 0;
-    attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkSubpassDescription, subPass);
-    subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subPass.colorAttachmentCount = 1;
-    subPass.pColorAttachments    = &attachmentReference;
-    KORL_ZERO_STACK(VkSubpassDependency, subpassDependency);
-    subpassDependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
-    subpassDependency.dstSubpass    = 0;
-    subpassDependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDependency.srcAccessMask = 0;
-    subpassDependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
-    createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfoRenderPass.attachmentCount = 1;
-    createInfoRenderPass.pAttachments    = &colorAttachment;
-    createInfoRenderPass.subpassCount    = 1;
-    createInfoRenderPass.pSubpasses      = &subPass;
-    createInfoRenderPass.dependencyCount = 1;
-    createInfoRenderPass.pDependencies   = &subpassDependency;
-    vkResult = 
-        vkCreateRenderPass(
-            context->device, &createInfoRenderPass, context->allocator, 
-            &context->renderPass);
-    korl_assert(vkResult == VK_SUCCESS);
-    /* get swap chain images */
-    vkResult = 
-        vkGetSwapchainImagesKHR(
-            context->device, surfaceContext->swapChain, 
-            &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/);
-    korl_assert(vkResult == VK_SUCCESS);
-    korl_assert(surfaceContext->swapChainImagesSize <= 
-        korl_arraySize(surfaceContext->swapChainImages));
-    surfaceContext->swapChainImagesSize = 
-        korl_arraySize(surfaceContext->swapChainImages);
-    vkResult = 
-        vkGetSwapchainImagesKHR(
-            context->device, surfaceContext->swapChain, 
-            &surfaceContext->swapChainImagesSize, 
-            surfaceContext->swapChainImages);
-    korl_assert(vkResult == VK_SUCCESS);
-    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
-    {
-        /* create image views for all the swap chain images */
-        KORL_ZERO_STACK(VkImageViewCreateInfo, createInfoImageView);
-        createInfoImageView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfoImageView.image                           = surfaceContext->swapChainImages[i];
-        createInfoImageView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-        createInfoImageView.format                          = surfaceContext->swapChainSurfaceFormat.format;
-        createInfoImageView.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfoImageView.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfoImageView.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfoImageView.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfoImageView.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfoImageView.subresourceRange.layerCount     = 1;
-        createInfoImageView.subresourceRange.baseArrayLayer = 0;
-        createInfoImageView.subresourceRange.levelCount     = 1;
-        createInfoImageView.subresourceRange.baseMipLevel   = 0;
-        vkResult = 
-            vkCreateImageView(
-                context->device, &createInfoImageView, context->allocator, 
-                &surfaceContext->swapChainImageViews[i]);
-        korl_assert(vkResult == VK_SUCCESS);
-        /* create a frame buffer for all the swap chain image views */
-        VkImageView frameBufferAttachments[] = 
-            { surfaceContext->swapChainImageViews[i] };
-        KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
-        createInfoFrameBuffer.sType      = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        createInfoFrameBuffer.renderPass = context->renderPass;
-        createInfoFrameBuffer.attachmentCount = korl_arraySize(frameBufferAttachments);
-        createInfoFrameBuffer.pAttachments    = frameBufferAttachments;
-        createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
-        createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
-        createInfoFrameBuffer.layers          = 1;
-        vkResult = 
-            vkCreateFramebuffer(
-                context->device, &createInfoFrameBuffer, context->allocator, 
-                &surfaceContext->swapChainFrameBuffers[i]);
-        korl_assert(vkResult == VK_SUCCESS);
-        /* initialize the swap chain fence references to nothing */
-        surfaceContext->swapChainFences[i] = VK_NULL_HANDLE;
-    }
-    /* allocate a command buffer for each of the swap chain frame buffers */
-    KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
-    allocateInfoCommandBuffers.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocateInfoCommandBuffers.commandPool        = context->commandPool;
-    allocateInfoCommandBuffers.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocateInfoCommandBuffers.commandBufferCount = surfaceContext->swapChainImagesSize;
-    vkResult = 
-        vkAllocateCommandBuffers(
-            context->device, &allocateInfoCommandBuffers, 
-            surfaceContext->swapChainCommandBuffers);
-    korl_assert(vkResult == VK_SUCCESS);
-}
-korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
-{
-    _korl_vulkan_createSwapChainTransient(sizeX, sizeY);
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
-        &g_korl_windows_vulkan_surfaceContext;
-    VkResult vkResult = VK_SUCCESS;
+    /* now that the device is created we can create the swap chain - this also 
+        requires the command pool since we need to create the graphics command 
+        buffers for each element of the swap chain */
+    _korl_vulkan_createSwapChainTransient(sizeX, sizeY, &deviceSurfaceMetaDataBest);
     /* create the semaphores we will use to sync rendering operations of the 
         swap chain */
     KORL_ZERO_STACK(VkSemaphoreCreateInfo, createInfoSemaphore);
@@ -681,28 +695,34 @@ korl_internal void korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY)
         korl_assert(vkResult == VK_SUCCESS);
     }
 }
-korl_internal void korl_vulkan_destroySwapChain(void)
+korl_internal void korl_vulkan_destroyDevice(void)
 {
+    _korl_vulkan_destroySwapChain();
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
         &g_korl_windows_vulkan_surfaceContext;
-    VkResult vkResult = vkDeviceWaitIdle(context->device);
-    korl_assert(vkResult == VK_SUCCESS);
-    vkFreeCommandBuffers(
-        context->device, context->commandPool, 
-        surfaceContext->swapChainImagesSize, 
-        surfaceContext->swapChainCommandBuffers);
-    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    /* destroy the surface-specific resources */
+    for(size_t f = 0; f < _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES; f++)
     {
-        vkDestroyFramebuffer(
-            context->device, surfaceContext->swapChainFrameBuffers[i], 
+        vkDestroySemaphore(
+            context->device, 
+            surfaceContext->wipFramesSemaphoreImageAvailable[f], 
             context->allocator);
-        vkDestroyImageView(
-            context->device, surfaceContext->swapChainImageViews[i], 
+        vkDestroySemaphore(
+            context->device, surfaceContext->wipFramesSemaphoreRenderDone[f], 
+            context->allocator);
+        vkDestroyFence(
+            context->device, surfaceContext->wipFramesFence[f], 
             context->allocator);
     }
-    vkDestroySwapchainKHR(
-        context->device, surfaceContext->swapChain, context->allocator);
+    vkDestroySurfaceKHR(
+        context->instance, surfaceContext->surface, context->allocator);
+    memset(surfaceContext, 0, sizeof(*surfaceContext));
+    /* destroy the device-specific resources */
+    vkDestroyShaderModule(context->device, context->shaderTriangleVert, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderTriangleFrag, context->allocator);
+    vkDestroyCommandPool(context->device, context->commandPool, context->allocator);
+    vkDestroyDevice(context->device, context->allocator);
 }
 korl_internal void korl_vulkan_loadShaders(void)
 {
@@ -814,10 +834,10 @@ korl_internal void korl_vulkan_createPipeline(void)
     createInfoShaderStages[1].module = context->shaderTriangleFrag;
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
-    createInfoPipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    createInfoPipeline.stageCount = korl_arraySize(createInfoShaderStages);
-    createInfoPipeline.pStages    = createInfoShaderStages;
-    createInfoPipeline.pVertexInputState = &createInfoVertexInput;
+    createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    createInfoPipeline.stageCount          = korl_arraySize(createInfoShaderStages);
+    createInfoPipeline.pStages             = createInfoShaderStages;
+    createInfoPipeline.pVertexInputState   = &createInfoVertexInput;
     createInfoPipeline.pInputAssemblyState = &createInfoInputAssembly;
     createInfoPipeline.pViewportState      = &createInfoViewport;
     createInfoPipeline.pRasterizationState = &createInfoRasterizer;
@@ -887,16 +907,18 @@ korl_internal void korl_vulkan_draw(void)
         if(    surfaceContext->deferredResizeX == 0 
             || surfaceContext->deferredResizeY == 0)
             return;
-        /* destroy swap chain & all resources which depend on it */
-        korl_vulkan_destroySwapChain();
-        _korl_vulkan_destroySwapChainDependencies();
+        korl_log(VERBOSE, "resizing to: %ux%u", 
+            surfaceContext->deferredResizeX, surfaceContext->deferredResizeY);
+        /* destroy swap chain & all resources which depend on it implicitly*/
+        _korl_vulkan_destroySwapChain();
         /* since the device surface meta data has changed, we need to query it */
-        context->deviceSurfaceMetaData = 
+        _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
             _korl_vulkan_deviceSurfaceMetaData(
                 context->physicalDevice, surfaceContext->surface);
         /* re-create the swap chain & all resources which depend on it */
         _korl_vulkan_createSwapChainTransient(
-            surfaceContext->deferredResizeX, surfaceContext->deferredResizeY);
+            surfaceContext->deferredResizeX, surfaceContext->deferredResizeY, 
+            &deviceSurfaceMetaData);
         korl_vulkan_createPipeline();
         korl_vulkan_recordAllCommandBuffers();
         /* clear the deferred resize flag for the next frame */
@@ -981,3 +1003,10 @@ korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
     surfaceContext->deferredResizeX = sizeX;
     surfaceContext->deferredResizeY = sizeY;
 }
+#if 0
+korl_internal void korl_vulkan_batchTriangles_color(
+    u32 vertexCount, const Korl_Math_V3f32* positions, 
+    const Korl_Math_V3u8* colors)
+{
+}
+#endif//0

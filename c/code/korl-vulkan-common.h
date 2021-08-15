@@ -18,14 +18,6 @@ typedef struct _Korl_Vulkan_QueueFamilyMetaData
     bool hasIndexQueueGraphics;
     bool hasIndexQueuePresent;
 } _Korl_Vulkan_QueueFamilyMetaData;
-typedef struct _Korl_Vulkan_DeviceSurfaceMetaData
-{
-    VkSurfaceCapabilitiesKHR capabilities;
-    u32 formatsSize;
-    VkSurfaceFormatKHR formats[256];
-    u32 presentModesSize;
-    VkPresentModeKHR presentModes[256];
-} _Korl_Vulkan_DeviceSurfaceMetaData;
 typedef struct _Korl_Vulkan_Context
 {
     /** This member is a placeholder and should be replaced by an object instead 
@@ -38,16 +30,21 @@ typedef struct _Korl_Vulkan_Context
         instance of these variables */
     VkPhysicalDevice physicalDevice;
     VkDevice device;
+    /* we save this data member because once we query for this meta data in the 
+        device creation routines, we basically never have to query for it again 
+        (unless we need to create a device again for some reason), and this data 
+        is needed for swap chain creation, which is very likely to happen 
+        multiple times during program execution */
     _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
     VkQueue queueGraphics;
     VkQueue queuePresent;
-    _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData;
     VkCommandPool commandPool;
-    /* @todo: move this data into a pipeline struct */
+    /** @todo: move this data into a pipeline struct? */
     VkShaderModule shaderTriangleVert;
     VkShaderModule shaderTriangleFrag;
     VkPipeline pipeline;
-    /* pipeline layouts (uniform data) are shared between pipelines */
+    /* pipeline layouts (uniform data) are (potentially) shared between 
+        pipelines */
     VkPipelineLayout pipelineLayout;
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;

@@ -11,7 +11,8 @@ enum KorlEnumStandardStream
 enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ERROR
     , KORL_LOG_LEVEL_WARNING
-    , KORL_LOG_LEVEL_INFO };
+    , KORL_LOG_LEVEL_INFO
+    , KORL_LOG_LEVEL_VERBOSE };
 #define korl_log(logLevel, format, ...) \
     korl_logVariadicArguments(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \

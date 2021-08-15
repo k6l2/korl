@@ -194,6 +194,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
     case KORL_LOG_LEVEL_INFO:    { cStringLogLevel = "INFO";    }break;
     case KORL_LOG_LEVEL_WARNING: { cStringLogLevel = "WARNING"; }break;
     case KORL_LOG_LEVEL_ERROR:   { cStringLogLevel = "ERROR";   }break;
+    case KORL_LOG_LEVEL_VERBOSE: { cStringLogLevel = "VERBOSE"; }break;
     }
     // only print the file name, not the full path!
     for(const wchar_t* fileNameCursor = cStringFileName; *fileNameCursor; 

@@ -1,6 +1,6 @@
 #include "korl-windows-vulkan.h"
 #include <vulkan/vulkan_win32.h>
-korl_internal VkSurfaceKHR korl_vulkan_createSurface(void* userData)
+korl_internal void _korl_vulkan_createSurface(void* userData)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = 
@@ -19,5 +19,4 @@ korl_internal VkSurfaceKHR korl_vulkan_createSurface(void* userData)
             context->instance, &createInfoSurface, context->allocator, 
             &surfaceContext->surface);
     korl_assert(vkResult == VK_SUCCESS);
-    return surfaceContext->surface;
 }
