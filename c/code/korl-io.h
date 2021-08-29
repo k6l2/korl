@@ -30,6 +30,6 @@ typedef struct
     void* data;
     size_t dataSize;
 } Korl_File_Result;
-/** @hack: this API currently just leaks memory
- * @todo: replace this with file I/O that takes an allocator */
+/** @todo: replace this with file I/O that takes an allocator */
 korl_internal Korl_File_Result korl_readEntireFile(const wchar_t* fileName);
+korl_internal void korl_freeEntireFile(Korl_File_Result* fileResult);

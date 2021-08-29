@@ -2,6 +2,8 @@
 #include "korl-globalDefines.h"
 #define KORL_MATH_CLAMP(x, min, max) \
     ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
+#define KORL_MATH_MIN(a,b) ((a) < (b) ? (a) : (b))
+#define KORL_MATH_MAX(a,b) ((a) > (b) ? (a) : (b))
 typedef union Korl_Math_V3f32
 {
     struct

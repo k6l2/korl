@@ -42,3 +42,8 @@ korl_internal Korl_Memory_Allocation korl_memory_allocate(
         result.addressEnd = KORL_C_CAST(u8*, resultVirtualAlloc) + pageBytes;
     return result;
 }
+korl_internal void korl_memory_free(void* address)
+{
+    if(!VirtualFree(address, 0, MEM_RELEASE))
+        korl_logLastError("VirtualFree failed!");
+}

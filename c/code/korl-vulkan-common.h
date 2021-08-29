@@ -1,6 +1,9 @@
-/** This header is used internally by vulkan code modules. */
+/**
+ * This header is used internally by vulkan code modules.
+ */
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-math.h"// for KORL vector structs, such as V3f32
 #include <vulkan/vulkan.h>
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
@@ -20,11 +23,25 @@ typedef struct _Korl_Vulkan_QueueFamilyMetaData
 } _Korl_Vulkan_QueueFamilyMetaData;
 typedef struct _Korl_Vulkan_Context
 {
-    /** This member is a placeholder and should be replaced by an object instead 
+    /**
+     * This member is a placeholder and should be replaced by an object instead 
      * of a pointer, and the code which uses this member should be refactored 
-     * appropriately when I decide to use a custom host memory allocator. */
+     * appropriately when I decide to use a custom host memory allocator.
+     */
     VkAllocationCallbacks* allocator;
     VkInstance instance;
+    /* instance extension function pointers */
+    PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
+    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
+    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
+#if KORL_DEBUG
+    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+    VkDebugUtilsMessengerEXT debugMessenger;
+#endif// KORL_DEBUG
+    /**
+     * @todo: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
+     */
     /* for now we're just going to have a single window with Vulkan rendering, 
         so we only have to make one device, ergo we only need one global 
         instance of these variables */
@@ -39,31 +56,37 @@ typedef struct _Korl_Vulkan_Context
     VkQueue queueGraphics;
     VkQueue queuePresent;
     VkCommandPool commandPool;
-    /** @todo: move this data into a pipeline struct? */
-    VkShaderModule shaderTriangleVert;
-    VkShaderModule shaderTriangleFrag;
-    VkPipeline pipeline;
+    /**
+     * @todo: store a collection of shader modules which can be referenced by 
+     * external API, and store built-in shaders in known positions
+     */
+    VkShaderModule shaderImmediateColorVert;
+    VkShaderModule shaderImmediateFrag;
+    /**
+     * @todo: store pipelines in a collection which can be referenced by 
+     * external API, and store built-in pipelines in known positions 
+     */
+    /**
+     * @todo: store pipeline meta data as part of the above collection so that 
+     * we can rebuild all pipelines at any given time
+     */
+    VkPipeline pipelineImmediateColor;
     /* pipeline layouts (uniform data) are (potentially) shared between 
         pipelines */
     VkPipelineLayout pipelineLayout;
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
-    /* instance extension function pointers */
-    PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
-    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
-    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
-#if KORL_DEBUG
-    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
-    VkDebugUtilsMessengerEXT debugMessenger;
-#endif// KORL_DEBUG
 } _Korl_Vulkan_Context;
-/** It makes sense for this data structure to be separate from the 
- * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
- * basis, so there will potentially be a collection of these which all need to 
- * be created, destroyed, & managed separately. */
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES 10*1024
+/**
+ * It makes sense for this data structure to be separate from the 
+ * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
+ * basis, so there will potentially be a collection of these which all need to 
+ * be created, destroyed, & managed separately.
+ */
 typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR surface;
@@ -82,8 +105,17 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkFence     wipFramesFence                  [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
+    u32 batchVertexCount;
+    Korl_Math_V3f32 batchVertexPositions[_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES];
+    Korl_Math_V3u8  batchVertexColors   [_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES];
+    u32 deviceBatchVertexCount;
+    VkDeviceMemory deviceMemoryVertexImmediate;
+    VkBuffer bufferVertexImmediatePositions;
+    VkBuffer bufferVertexImmediateColors;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
-/** for now we'll just have one global surface context, since the KORL 
- * application will only use one window */
-korl_global_variable _Korl_Vulkan_SurfaceContext g_korl_windows_vulkan_surfaceContext;
+/** 
+ * for now we'll just have one global surface context, since the KORL 
+ * application will only use one window 
+ * */
+korl_global_variable _Korl_Vulkan_SurfaceContext g_korl_vulkan_surfaceContext;

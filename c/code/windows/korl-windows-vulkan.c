@@ -2,9 +2,8 @@
 #include <vulkan/vulkan_win32.h>
 korl_internal void _korl_vulkan_createSurface(void* userData)
 {
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = 
-        &g_korl_windows_vulkan_surfaceContext;
+    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     Korl_Windows_Vulkan_SurfaceUserData*const windowsUserData = 
         KORL_C_CAST(Korl_Windows_Vulkan_SurfaceUserData*, userData);
     memset(surfaceContext, 0, sizeof(*surfaceContext));

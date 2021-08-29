@@ -285,3 +285,8 @@ korl_internal Korl_File_Result korl_readEntireFile(const wchar_t* fileName)
     result.dataSize = fileSize;
     return result;
 }
+korl_internal void korl_freeEntireFile(Korl_File_Result* fileResult)
+{
+    korl_memory_free(fileResult->data);
+    memset(fileResult, 0, sizeof(*fileResult));
+}

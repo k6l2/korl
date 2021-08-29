@@ -15,3 +15,4 @@ korl_internal void* korl_memory_addressMax(void);
  */
 korl_internal Korl_Memory_Allocation korl_memory_allocate(
     size_t bytes, void* desiredAddress);
+korl_internal void korl_memory_free(void* address);

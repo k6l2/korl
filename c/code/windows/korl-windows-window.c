@@ -25,12 +25,6 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             &surfaceUserData, 
             clientRect.right  - clientRect.left, 
             clientRect.bottom - clientRect.top);
-        /** @todo: erase all this stuff; we're going to load the immediate-mode 
-         * rendering pipeline stuff internally, as well as handle those 
-         * resources internally (for now) */
-        korl_vulkan_loadShaders();
-        korl_vulkan_createPipeline();
-        korl_vulkan_recordAllCommandBuffers();
         }break;
     case WM_DESTROY:{
         korl_vulkan_destroyDevice();
@@ -118,8 +112,8 @@ korl_internal void _korl_windows_window_step(void)
         , {0  ,  0,255} };
     _STATIC_ASSERT(
         korl_arraySize(trianglePositions) == korl_arraySize(triangleColors));
-    //korl_vulkan_batchTriangles_color(
-    //    korl_arraySize(trianglePositions), trianglePositions, triangleColors);
+    korl_vulkan_batchTriangles_color(
+        korl_arraySize(trianglePositions), trianglePositions, triangleColors);
 #else
     Korl_ImmediateDraw_Vertex verticesTriangle[] = 
         { { 0.f ,-0.5f,0.f, 255,  0,  0}
@@ -147,7 +141,9 @@ korl_internal void korl_windows_window_loop(void)
         }
         if(quit)
             break;
+        korl_shared_const f32 clearColorRgb[] = {0.05f, 0.f, 0.05f};
+        const u32 nextSwapchainImage = korl_vulkan_frameBegin(clearColorRgb);
         _korl_windows_window_step();
-        korl_vulkan_draw();
+        korl_vulkan_frameEnd(nextSwapchainImage);
     }
 }
