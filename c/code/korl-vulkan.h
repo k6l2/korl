@@ -4,8 +4,14 @@
 #include "korl-math.h"
 korl_internal void korl_vulkan_construct(void);
 korl_internal void korl_vulkan_destroy(void);
+/**
+ * @todo: rename this to \c createSurface
+ */
 korl_internal void korl_vulkan_createDevice(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY);
+/**
+ * @todo: rename this to \c destroySurface
+ */
 korl_internal void korl_vulkan_destroyDevice(void);
 #if 0/* @todo: bring these API back later when we want the ability to create 
                pipelines using externally managed resources like shaders */

@@ -347,7 +347,7 @@ korl_internal void _korl_vulkan_createSwapChain(
     /* allocate a command buffer for each of the swap chain frame buffers */
     KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
     allocateInfoCommandBuffers.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocateInfoCommandBuffers.commandPool        = context->commandPool;
+    allocateInfoCommandBuffers.commandPool        = context->commandPoolGraphics;
     allocateInfoCommandBuffers.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocateInfoCommandBuffers.commandBufferCount = surfaceContext->swapChainImagesSize;
     vkResult = 
@@ -370,7 +370,7 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     vkFreeCommandBuffers(
-        context->device, context->commandPool, 
+        context->device, context->commandPoolGraphics, 
         surfaceContext->swapChainImagesSize, 
         surfaceContext->swapChainCommandBuffers);
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
@@ -394,43 +394,106 @@ korl_internal void _korl_vulkan_batchFlush(void)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     VkResult vkResult = VK_SUCCESS;
     /* don't do any work if there's no work to do! */
-    if(surfaceContext->batchVertexCount <= 0)
+    if(surfaceContext->batchVertexCountStaging <= 0)
         return;
     /* make sure that we don't overflow the device memory! */
-    korl_assert(surfaceContext->batchVertexCount + surfaceContext->deviceBatchVertexCount 
-        <= _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES);
-    /* for each attribute sub-buffer, map the memory range we need to batch the 
-        vertex attributes, then write copy the data from the host staging buffer 
-        to the device memory */
-    KORL_ZERO_STACK(void*, mappedDeviceMemory);
-    vkResult = 
-        vkMapMemory(
-            context->device, surfaceContext->deviceMemoryVertexImmediate, 
-            surfaceContext->deviceBatchVertexCount * sizeof(Korl_Math_V3f32), 
-            surfaceContext->batchVertexCount * sizeof(Korl_Math_V3f32), 
-            0/*flags*/, &mappedDeviceMemory);
+    korl_assert(
+        surfaceContext->batchVertexCountStaging 
+        + surfaceContext->batchVertexCountDevice 
+            <= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE);
+    /* record commands to transfer the data from staging to device-local memory */
+    KORL_ZERO_STACK(VkCommandBufferAllocateInfo, commandBufferAllocateInfo);
+    commandBufferAllocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocateInfo.commandPool        = context->commandPoolTransfer;
+    commandBufferAllocateInfo.commandBufferCount = 1;
+    KORL_ZERO_STACK(VkCommandBuffer, commandBuffer);
+    vkResult = vkAllocateCommandBuffers(context->device, &commandBufferAllocateInfo, &commandBuffer);
     korl_assert(vkResult == VK_SUCCESS);
-    memcpy(
-        mappedDeviceMemory, surfaceContext->batchVertexPositions, 
-        surfaceContext->batchVertexCount * sizeof(Korl_Math_V3f32));
-    vkUnmapMemory(context->device, surfaceContext->deviceMemoryVertexImmediate);
-    vkResult = 
-        vkMapMemory(
-            context->device, surfaceContext->deviceMemoryVertexImmediate, 
-            // the vertex attribute sub-buffers should all be contiguous in memory:
-            (_KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES * sizeof(Korl_Math_V3f32))
-                + (surfaceContext->deviceBatchVertexCount * sizeof(Korl_Math_V3u8)), 
-            surfaceContext->batchVertexCount * sizeof(Korl_Math_V3u8), 
-            0/*flags*/, &mappedDeviceMemory);
+    KORL_ZERO_STACK(VkCommandBufferBeginInfo, commandBufferBeginInfo);
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkResult = vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
     korl_assert(vkResult == VK_SUCCESS);
-    memcpy(
-        mappedDeviceMemory, surfaceContext->batchVertexColors, 
-        surfaceContext->batchVertexCount * sizeof(Korl_Math_V3u8));
-    vkUnmapMemory(context->device, surfaceContext->deviceMemoryVertexImmediate);
-    /* clean up; update our book-keeping */
-    surfaceContext->deviceBatchVertexCount += surfaceContext->batchVertexCount;
-    surfaceContext->batchVertexCount = 0;
+    KORL_ZERO_STACK(VkBufferCopy, bufferCopyPositions);
+    bufferCopyPositions.srcOffset = 0;
+    bufferCopyPositions.dstOffset = surfaceContext->batchVertexCountDevice *sizeof(Korl_Math_V3f32);
+    bufferCopyPositions.size      = surfaceContext->batchVertexCountStaging*sizeof(Korl_Math_V3f32);
+    vkCmdCopyBuffer(
+        commandBuffer, 
+        surfaceContext->bufferVertexBatchStagingPositions, 
+        surfaceContext->bufferVertexBatchDevicePositions, 
+        1, &bufferCopyPositions);
+    KORL_ZERO_STACK(VkBufferCopy, bufferCopyColors);
+    bufferCopyColors.srcOffset = 0;
+    bufferCopyColors.dstOffset = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*sizeof(Korl_Math_V3f32) + surfaceContext->batchVertexCountDevice*sizeof(Korl_Math_V3u8);
+    bufferCopyColors.size      = surfaceContext->batchVertexCountStaging*sizeof(Korl_Math_V3u8);
+    vkCmdCopyBuffer(
+        commandBuffer, 
+        surfaceContext->bufferVertexBatchStagingColors, 
+        surfaceContext->bufferVertexBatchDeviceColors, 
+        1, &bufferCopyPositions);
+    vkResult = vkEndCommandBuffer(commandBuffer);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* submit the memory transfer commands to the device */
+    KORL_ZERO_STACK(VkSubmitInfo, queueSubmitInfo);
+    queueSubmitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    queueSubmitInfo.commandBufferCount = 1;
+    queueSubmitInfo.pCommandBuffers    = &commandBuffer;
+    vkResult = vkQueueSubmit(context->queueGraphics, 1, &queueSubmitInfo, VK_NULL_HANDLE/*fence*/);
+    korl_assert(vkResult == VK_SUCCESS);
+    /** @bandwidth: this is very heavy handed!  It would be better if this 
+     * process could happen in the background while we wait on a fence or 
+     * something so that the graphicsQueue can keep going unimpeded and program 
+     * execution can continue batching more vertices. */
+    vkResult = vkQueueWaitIdle(context->queueGraphics);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* release the command buffer memory back to the pool now that we're done */
+    vkFreeCommandBuffers(context->device, context->commandPoolTransfer, 1, &commandBuffer);
+    /* finish up; update our book-keeping */
+    surfaceContext->batchVertexCountDevice += surfaceContext->batchVertexCountStaging;
+    surfaceContext->batchVertexCountStaging = 0;
 }
+/** 
+ * \param memoryTypeBits Flags representing the incides in a list of memory 
+ * types for a physical device are supported for a given resource - the caller 
+ * is responsible for querying for these flags using vulkan API, such as 
+ * \c vkGetBufferMemoryRequirements .  From the spec: Bit \c i is set if and 
+ * only if the memory type \c i in the \c VkPhysicalDeviceMemoryProperties 
+ * structure for the physical device is supported for the resource.
+ * \param memoryPropertyFlagBits Flags representing the caller's required flags 
+ * which must be present in the memory type index returned by this function.
+ * \return An index identifying a memory type from the \c memoryTypes array of a 
+ * \c VkPhysicalDeviceMemoryProperties structure.  If no memory type on the 
+ * physical device can satisfy the requirements, the \c memoryTypeCount is 
+ * returned. 
+ */
+korl_internal uint32_t _korl_vulkan_findMemoryType(
+    uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlagBits)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    KORL_ZERO_STACK(VkPhysicalDeviceMemoryProperties, physicalDeviceMemoryProperties);
+    vkGetPhysicalDeviceMemoryProperties(
+        context->physicalDevice, &physicalDeviceMemoryProperties);
+    for(uint32_t m = 0; m < physicalDeviceMemoryProperties.memoryTypeCount; m++)
+    {
+        /* if this index isn't supported by the user-provided index list, 
+            continue searching elsewhere */
+        if(!(memoryTypeBits & (1 << m)))
+            continue;
+        /* if this memory type doesn't support the user-requested property 
+            flags, continue searching elsewhere */
+        if((physicalDeviceMemoryProperties.memoryTypes[m].propertyFlags & memoryPropertyFlagBits) 
+                != memoryPropertyFlagBits)
+            continue;
+        /* otherwise, we can just return the first index we find */
+        return m;
+    }
+    return physicalDeviceMemoryProperties.memoryTypeCount;
+}
+/** This API is platform-specific, and thus must be defined within the code base 
+ * of whatever the current target platform is. */
+korl_internal void _korl_vulkan_createSurface(void* userData);
 korl_internal void korl_vulkan_construct(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
@@ -567,46 +630,6 @@ korl_internal void korl_vulkan_destroy(void)
     /* nullify the context after cleaning up properly for safety */
     memset(context, 0, sizeof(*context));
 }
-/** 
- * \param memoryTypeBits Flags representing the incides in a list of memory 
- * types for a physical device are supported for a given resource - the caller 
- * is responsible for querying for these flags using vulkan API, such as 
- * \c vkGetBufferMemoryRequirements .  From the spec: Bit \c i is set if and 
- * only if the memory type \c i in the \c VkPhysicalDeviceMemoryProperties 
- * structure for the physical device is supported for the resource.
- * \param memoryPropertyFlagBits Flags representing the caller's required flags 
- * which must be present in the memory type index returned by this function.
- * \return An index identifying a memory type from the \c memoryTypes array of a 
- * \c VkPhysicalDeviceMemoryProperties structure.  If no memory type on the 
- * physical device can satisfy the requirements, the \c memoryTypeCount is 
- * returned. 
- */
-korl_internal uint32_t _korl_vulkan_findMemoryType(
-    uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlagBits)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    KORL_ZERO_STACK(VkPhysicalDeviceMemoryProperties, physicalDeviceMemoryProperties);
-    vkGetPhysicalDeviceMemoryProperties(
-        context->physicalDevice, &physicalDeviceMemoryProperties);
-    for(uint32_t m = 0; m < physicalDeviceMemoryProperties.memoryTypeCount; m++)
-    {
-        /* if this index isn't supported by the user-provided index list, 
-            continue searching elsewhere */
-        if(!(memoryTypeBits & (1 << m)))
-            continue;
-        /* if this memory type doesn't support the user-requested property 
-            flags, continue searching elsewhere */
-        if((physicalDeviceMemoryProperties.memoryTypes[m].propertyFlags & memoryPropertyFlagBits) 
-                != memoryPropertyFlagBits)
-            continue;
-        /* otherwise, we can just return the first index we find */
-        return m;
-    }
-    return physicalDeviceMemoryProperties.memoryTypeCount;
-}
-/** This API is platform-specific, and thus must be defined within the code base 
- * of whatever the current target platform is. */
-korl_internal void _korl_vulkan_createSurface(void* userData);
 korl_internal void korl_vulkan_createDevice(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY)
 {
@@ -740,64 +763,140 @@ korl_internal void korl_vulkan_createDevice(
     KORL_ZERO_STACK(VkCommandPoolCreateInfo, createInfoCommandPool);
     createInfoCommandPool.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     createInfoCommandPool.queueFamilyIndex = context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics;
-    createInfoCommandPool.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    createInfoCommandPool.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT/*we want to be able to reset the same primary command buffers in this pool once at the beginning of each frame*/;
     vkResult = 
         vkCreateCommandPool(
             context->device, &createInfoCommandPool, context->allocator, 
-            &context->commandPool);
-    /* create buffers on the device to store various resources in */
+            &context->commandPoolGraphics);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* create memory transfer command pool */
+    /* it kinda feels like we don't, since we can just use a single command 
+        buffer which is reset once per frame.......................... */
+    /* NO!  Actually that is not correct.  We DO, in fact, need to have 
+        transient command buffers created because memory has to move from 
+        staging to device memory potentially multiple times in the same frame.  
+        Then, the staging buffer memory potentially will be reused to batch more 
+        vertices, which are subsequently flushed again to device memory.  This 
+        is logical speculation based on the fact that it is very likely for us 
+        to be working with a SMALL staging buffer, and a LARGE device buffer! */
+    createInfoCommandPool.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT/*give a hint to the implementation that the command buffers allocated by this command pool will be short-lived*/;
+    vkResult = 
+        vkCreateCommandPool(
+            context->device, &createInfoCommandPool, context->allocator, 
+            &context->commandPoolTransfer);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* --- create buffers on the device to store various resources in ---
+        We have two distinct usages: staging buffers which will only be the 
+        source of transfer operations to the device, and device buffers which 
+        will be the destination of transfer operations to the device & also be 
+        used as vertex buffers. */
+    // first let's declare the staging buffers //
     KORL_ZERO_STACK(VkBufferCreateInfo, createInfoBuffer);
     createInfoBuffer.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfoBuffer.size        = _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES*sizeof(Korl_Math_V3f32);
-    createInfoBuffer.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    createInfoBuffer.size        = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*sizeof(Korl_Math_V3f32);
+    createInfoBuffer.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     createInfoBuffer.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkResult = 
         vkCreateBuffer(
             context->device, &createInfoBuffer, context->allocator, 
-            &surfaceContext->bufferVertexImmediatePositions);
+            &surfaceContext->bufferVertexBatchStagingPositions);
     korl_assert(vkResult == VK_SUCCESS);
-    createInfoBuffer.size = _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES*sizeof(Korl_Math_V3u8);
+    createInfoBuffer.size = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*sizeof(Korl_Math_V3u8);
     vkResult = 
         vkCreateBuffer(
             context->device, &createInfoBuffer, context->allocator, 
-            &surfaceContext->bufferVertexImmediateColors);
+            &surfaceContext->bufferVertexBatchStagingColors);
     korl_assert(vkResult == VK_SUCCESS);
-    /* assign device memory to the buffer(s) */
-    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsBufferVertexImmediatePositions);
-    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsBufferVertexImmediateColors);
-    vkGetBufferMemoryRequirements(
-        context->device, surfaceContext->bufferVertexImmediatePositions, &memoryRequirementsBufferVertexImmediatePositions);
-    vkGetBufferMemoryRequirements(
-        context->device, surfaceContext->bufferVertexImmediateColors, &memoryRequirementsBufferVertexImmediateColors);
-    /* allocate memory on the device to bind buffers to */
-    const uint32_t allocationMemoryTypeBits = 
-        memoryRequirementsBufferVertexImmediateColors   .memoryTypeBits | 
-        memoryRequirementsBufferVertexImmediatePositions.memoryTypeBits;
-    const VkMemoryPropertyFlags allocationMemoryProperties = 
+    // now we can create the device buffers //
+    createInfoBuffer.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    createInfoBuffer.size  = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*sizeof(Korl_Math_V3f32);
+    vkResult = 
+        vkCreateBuffer(
+            context->device, &createInfoBuffer, context->allocator, 
+            &surfaceContext->bufferVertexBatchDevicePositions);
+    korl_assert(vkResult == VK_SUCCESS);
+    createInfoBuffer.size = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*sizeof(Korl_Math_V3u8);
+    vkResult = 
+        vkCreateBuffer(
+            context->device, &createInfoBuffer, context->allocator, 
+            &surfaceContext->bufferVertexBatchDeviceColors);
+    korl_assert(vkResult == VK_SUCCESS);
+    /** --- allocate memory on the device to bind buffers to ---
+        We need to make two allocations here now: one for the staging buffer, 
+        and one for the device buffer.  We need to do this because in general 
+        the most optimal memory for assets used for rendering are not directly 
+        accessible (the ability to map this memory) by the host.  To ensure this 
+        happens, we have to specifically query 
+        \c VkPhysicalDeviceMemoryProperties for a memory type which is coherent 
+        & visible to the host, as well as a memory type which is local to the 
+        device. */
+    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsBufferVertexBatchStagingPositions);
+    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsBufferVertexBatchStagingColors);
+    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsBufferVertexBatchDevicePositions);
+    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsBufferVertexBatchDeviceColors);
+    vkGetBufferMemoryRequirements(context->device, surfaceContext->bufferVertexBatchStagingColors   , &memoryRequirementsBufferVertexBatchStagingColors);
+    vkGetBufferMemoryRequirements(context->device, surfaceContext->bufferVertexBatchStagingPositions, &memoryRequirementsBufferVertexBatchStagingPositions);
+    vkGetBufferMemoryRequirements(context->device, surfaceContext->bufferVertexBatchDeviceColors    , &memoryRequirementsBufferVertexBatchDeviceColors);
+    vkGetBufferMemoryRequirements(context->device, surfaceContext->bufferVertexBatchDevicePositions , &memoryRequirementsBufferVertexBatchDevicePositions);
+    const uint32_t allocationMemoryTypeBitsStaging = 
+        memoryRequirementsBufferVertexBatchStagingPositions.memoryTypeBits | 
+        memoryRequirementsBufferVertexBatchStagingColors   .memoryTypeBits;
+    const uint32_t allocationMemoryTypeBitsDevice = 
+        memoryRequirementsBufferVertexBatchDevicePositions.memoryTypeBits | 
+        memoryRequirementsBufferVertexBatchDeviceColors   .memoryTypeBits;
+    const VkMemoryPropertyFlags allocationMemoryPropertiesStaging = 
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    const VkMemoryPropertyFlags allocationMemoryPropertiesDevice = 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    // first, let's allocate the host-visible STAGING device memory //
     KORL_ZERO_STACK(VkMemoryAllocateInfo, allocateInfo);
     allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize  = _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES*(sizeof(Korl_Math_V3f32) + sizeof(Korl_Math_V3u8));
-    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(allocationMemoryTypeBits, allocationMemoryProperties);
+    allocateInfo.allocationSize  = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*(sizeof(Korl_Math_V3f32) + sizeof(Korl_Math_V3u8));
+    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(allocationMemoryTypeBitsStaging, allocationMemoryPropertiesStaging);
     vkResult = 
         vkAllocateMemory(
             context->device, &allocateInfo, context->allocator, 
-            &surfaceContext->deviceMemoryVertexImmediate);
+            &surfaceContext->deviceMemoryVertexBatchStaging);
     korl_assert(vkResult == VK_SUCCESS);
-    /* bind the buffers to the device memory */
+    // now let's allocate the DEVICE-local device memory //
+    allocateInfo.allocationSize  = _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*(sizeof(Korl_Math_V3f32) + sizeof(Korl_Math_V3u8));
+    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(allocationMemoryTypeBitsDevice, allocationMemoryPropertiesDevice);
+    vkResult = 
+        vkAllocateMemory(
+            context->device, &allocateInfo, context->allocator, 
+            &surfaceContext->deviceMemoryVertexBatchDevice);
+    korl_assert(vkResult == VK_SUCCESS);
+    /* --- bind all the vertex batch buffers to their respective memory --- */
+    // bind the positions buffer at the beginning of the allocation //
     vkResult = 
         vkBindBufferMemory(
-            context->device, surfaceContext->bufferVertexImmediatePositions, 
-            surfaceContext->deviceMemoryVertexImmediate, 0);
+            context->device, surfaceContext->bufferVertexBatchStagingPositions, 
+            surfaceContext->deviceMemoryVertexBatchStaging, 0);
     korl_assert(vkResult == VK_SUCCESS);
-    // bind the color buffer immediately after the positions buffer:
+    // bind the color buffer immediately after the positions buffer //
     vkResult = 
         vkBindBufferMemory(
-            context->device, surfaceContext->bufferVertexImmediateColors, 
-            surfaceContext->deviceMemoryVertexImmediate, 
-            // note that we probably should respect the VkMemoryRequirements of this buffer, but I'm lazy ;)
-            _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES*sizeof(Korl_Math_V3f32));
+            context->device, surfaceContext->bufferVertexBatchStagingColors, 
+            surfaceContext->deviceMemoryVertexBatchStaging, 
+            // note that we probably should respect the VkMemoryRequirements of 
+            //  this buffer (specifically alignment), but I'm lazy ;)
+            _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*sizeof(Korl_Math_V3f32));
+    korl_assert(vkResult == VK_SUCCESS);
+    // bind the positions buffer at the beginning of the allocation //
+    vkResult = 
+        vkBindBufferMemory(
+            context->device, surfaceContext->bufferVertexBatchDevicePositions, 
+            surfaceContext->deviceMemoryVertexBatchDevice, 0);
+    korl_assert(vkResult == VK_SUCCESS);
+    // bind the color buffer immediately after the positions buffer //
+    vkResult = 
+        vkBindBufferMemory(
+            context->device, surfaceContext->bufferVertexBatchDeviceColors, 
+            surfaceContext->deviceMemoryVertexBatchDevice, 
+            // note that we probably should respect the VkMemoryRequirements of 
+            //  this buffer (specifically alignment), but I'm lazy ;)
+            _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*sizeof(Korl_Math_V3f32));
     korl_assert(vkResult == VK_SUCCESS);
     /* now that the device is created we can create the swap chain - this also 
         requires the command pool since we need to create the graphics command 
@@ -876,15 +975,19 @@ korl_internal void korl_vulkan_destroyDevice(void)
         vkDestroyFence(context->device, surfaceContext->wipFramesFence[f], context->allocator);
     }
     vkDestroySurfaceKHR(context->instance, surfaceContext->surface, context->allocator);
-    vkDestroyBuffer(context->device, surfaceContext->bufferVertexImmediatePositions, context->allocator);
-    vkDestroyBuffer(context->device, surfaceContext->bufferVertexImmediateColors, context->allocator);
-    vkFreeMemory(context->device, surfaceContext->deviceMemoryVertexImmediate, context->allocator);
+    vkDestroyBuffer(context->device, surfaceContext->bufferVertexBatchStagingColors, context->allocator);
+    vkDestroyBuffer(context->device, surfaceContext->bufferVertexBatchStagingPositions, context->allocator);
+    vkDestroyBuffer(context->device, surfaceContext->bufferVertexBatchDeviceColors, context->allocator);
+    vkDestroyBuffer(context->device, surfaceContext->bufferVertexBatchDevicePositions, context->allocator);
+    vkFreeMemory(context->device, surfaceContext->deviceMemoryVertexBatchStaging, context->allocator);
+    vkFreeMemory(context->device, surfaceContext->deviceMemoryVertexBatchDevice, context->allocator);
     memset(surfaceContext, 0, sizeof(*surfaceContext));
     /* destroy the device-specific resources */
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderImmediateColorVert, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderImmediateFrag, context->allocator);
-    vkDestroyCommandPool(context->device, context->commandPool, context->allocator);
+    vkDestroyCommandPool(context->device, context->commandPoolTransfer, context->allocator);
+    vkDestroyCommandPool(context->device, context->commandPoolGraphics, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 }
 korl_internal void _korl_vulkan_createPipeline(void)
@@ -1064,20 +1167,21 @@ korl_internal u32 korl_vulkan_frameBegin(const f32 clearRgb[3])
     }
     surfaceContext->swapChainFences[nextImageIndex] = 
         surfaceContext->wipFramesFence[surfaceContext->wipFrameCurrent];
-    /* begin the swap chain command buffer for this frame */
+    /* ----- begin the swap chain command buffer for this frame ----- */
     vkResult = 
         vkResetCommandBuffer(
             surfaceContext->swapChainCommandBuffers[nextImageIndex], 0/*flags*/);
     korl_assert(vkResult == VK_SUCCESS);
     KORL_ZERO_STACK(VkCommandBufferBeginInfo, beginInfoCommandBuffer);
     beginInfoCommandBuffer.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfoCommandBuffer.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkResult = 
         vkBeginCommandBuffer(
             surfaceContext->swapChainCommandBuffers[nextImageIndex], 
             &beginInfoCommandBuffer);
     korl_assert(vkResult == VK_SUCCESS);
-    /* define the color we are going to clear the color attachment with when 
-        the render pass begins */
+    // define the color we are going to clear the color attachment with when 
+    //    the render pass begins:
     KORL_ZERO_STACK(VkClearValue, clearValue);
     clearValue.color.float32[0] = clearRgb[0];
     clearValue.color.float32[1] = clearRgb[1];
@@ -1094,9 +1198,13 @@ korl_internal u32 korl_vulkan_frameBegin(const f32 clearRgb[3])
         surfaceContext->swapChainCommandBuffers[nextImageIndex], 
         &beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
 done:
-    /* clear the vertex attribute batches for the upcoming frame */
-    surfaceContext->batchVertexCount = 0;
-    surfaceContext->deviceBatchVertexCount = 0;
+    /* help to ensure the user is calling frameBegin & frameEnd in the correct 
+        order & the correct frequency */
+    korl_assert(surfaceContext->frameStackCounter == 0);
+    surfaceContext->frameStackCounter++;
+    /* clear the vertex batch metrics for the upcoming frame */
+    surfaceContext->batchVertexCountStaging = 0;
+    surfaceContext->batchVertexCountDevice  = 0;
     return nextImageIndex;
 }
 korl_internal void korl_vulkan_frameEnd(u32 nextImageIndex)
@@ -1107,25 +1215,29 @@ korl_internal void korl_vulkan_frameEnd(u32 nextImageIndex)
     /* if we got an invalid next swapchain image index, just do nothing */
     if(nextImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return;
-    /* flush any potentially batched vertices, then submit the commands to 
-        finally draw them! */
+    /* flush any batched vertices in staging, and if the device has any batched 
+        vertices we should then execute the actual commands to draw them */
     _korl_vulkan_batchFlush();
-    vkCmdBindPipeline(
-        surfaceContext->swapChainCommandBuffers[nextImageIndex], 
-        VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineImmediateColor);
-    VkBuffer batchVertexBuffers[] = 
-        { surfaceContext->bufferVertexImmediatePositions
-        , surfaceContext->bufferVertexImmediateColors };
-    VkDeviceSize batchVertexBufferOffsets[] = 
-        { 0, 0 };
-    vkCmdBindVertexBuffers(
-        surfaceContext->swapChainCommandBuffers[nextImageIndex], 
-        0/*first binding*/, 
-        korl_arraySize(batchVertexBuffers), batchVertexBuffers, 
-        batchVertexBufferOffsets);
-    vkCmdDraw(
-        surfaceContext->swapChainCommandBuffers[nextImageIndex], 
-        surfaceContext->deviceBatchVertexCount, 1, 0, 0);
+    if(surfaceContext->batchVertexCountDevice)
+    {
+        /* submit the commands to finally draw batched vertices */
+        vkCmdBindPipeline(
+            surfaceContext->swapChainCommandBuffers[nextImageIndex], 
+            VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineImmediateColor);
+        VkBuffer batchVertexBuffers[] = 
+            { surfaceContext->bufferVertexBatchDevicePositions
+            , surfaceContext->bufferVertexBatchDeviceColors };
+        VkDeviceSize batchVertexBufferOffsets[] = 
+            { 0, 0 };
+        vkCmdBindVertexBuffers(
+            surfaceContext->swapChainCommandBuffers[nextImageIndex], 
+            0/*first binding*/, 
+            korl_arraySize(batchVertexBuffers), batchVertexBuffers, 
+            batchVertexBufferOffsets);
+        vkCmdDraw(
+            surfaceContext->swapChainCommandBuffers[nextImageIndex], 
+            surfaceContext->batchVertexCountDevice, 1, 0, 0);
+    }
     vkCmdEndRenderPass(surfaceContext->swapChainCommandBuffers[nextImageIndex]);
     vkResult = 
         vkEndCommandBuffer(surfaceContext->swapChainCommandBuffers[nextImageIndex]);
@@ -1172,6 +1284,10 @@ korl_internal void korl_vulkan_frameEnd(u32 nextImageIndex)
     surfaceContext->wipFrameCurrent = 
         (surfaceContext->wipFrameCurrent + 1) % 
         _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES;
+    /* help to ensure the user is calling frameBegin & frameEnd in the correct 
+        order & the correct frequency */
+    korl_assert(surfaceContext->frameStackCounter == 1);
+    surfaceContext->frameStackCounter--;
 }
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
 {
@@ -1184,29 +1300,57 @@ korl_internal void korl_vulkan_batchTriangles_color(
     u32 vertexCount, const Korl_Math_V3f32* positions, 
     const Korl_Math_V3u8* colors)
 {
+    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    u32 batchedVertices = 0;
-    while(batchedVertices < vertexCount)
+    VkResult vkResult = VK_SUCCESS;
+    u32 stagedVertices = 0;
+    // make sure we aren't going to create a situation which will eventually 
+    //  overflow the device-local buffer:
+    korl_assert(
+        vertexCount 
+        + surfaceContext->batchVertexCountStaging 
+        + surfaceContext->batchVertexCountDevice 
+            < _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE);
+    while(stagedVertices < vertexCount)
     {
-        const u32 remainingVertices = vertexCount - batchedVertices;
-        /* figure out how many vertices we can fit in the batch buffer */
-        const unsigned batchFree = 
-            _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES - surfaceContext->batchVertexCount;
+        const u32 remainingVertices = vertexCount - stagedVertices;
+        /* figure out how many vertices we can fit in the staging buffer */
+        const unsigned stagingFree = 
+            _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING - surfaceContext->batchVertexCountStaging;
         /* figure out how many vertices we can batch */
-        const unsigned batchAddition = KORL_MATH_MIN(batchFree, remainingVertices);
-        /* batch this many vertices */
+        const unsigned stagingAddition = KORL_MATH_MIN(stagingFree, remainingVertices);
+        /* ----- stage this many vertices ----- */
+        // stage the positions in mapped staging memory //
+        KORL_ZERO_STACK(void*, mappedDeviceMemory);
+        vkResult = 
+            vkMapMemory(
+                context->device, surfaceContext->deviceMemoryVertexBatchStaging, 
+                /*offset*/surfaceContext->batchVertexCountStaging * sizeof(Korl_Math_V3f32), 
+                /*bytes*/stagingAddition * sizeof(Korl_Math_V3f32), 
+                0/*flags*/, &mappedDeviceMemory);
+        korl_assert(vkResult == VK_SUCCESS);
         memcpy(
-            surfaceContext->batchVertexPositions + surfaceContext->batchVertexCount, 
-            positions + batchedVertices, 
-            batchAddition * sizeof(Korl_Math_V3f32));
+            mappedDeviceMemory, positions + stagedVertices, 
+            stagingAddition * sizeof(Korl_Math_V3f32));
+        vkUnmapMemory(context->device, surfaceContext->deviceMemoryVertexBatchStaging);
+        // stage the colors in mapped staging memory //
+        vkResult = 
+            vkMapMemory(
+                context->device, surfaceContext->deviceMemoryVertexBatchStaging, 
+                /*offset*/_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING * sizeof(Korl_Math_V3f32) 
+                    + surfaceContext->batchVertexCountStaging * sizeof(Korl_Math_V3u8), 
+                /*bytes*/stagingAddition * sizeof(Korl_Math_V3u8), 
+                0/*flags*/, &mappedDeviceMemory);
+        korl_assert(vkResult == VK_SUCCESS);
         memcpy(
-            surfaceContext->batchVertexColors + surfaceContext->batchVertexCount, 
-            colors + batchedVertices, 
-            batchAddition * sizeof(Korl_Math_V3u8));
-        batchedVertices += batchAddition;
-        surfaceContext->batchVertexCount += batchAddition;
-        /* if the batch buffer is full, flush it */
-        if(surfaceContext->batchVertexCount >= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES)
+            mappedDeviceMemory, colors + stagedVertices, 
+            stagingAddition * sizeof(Korl_Math_V3u8));
+        vkUnmapMemory(context->device, surfaceContext->deviceMemoryVertexBatchStaging);
+        /* update the staging metrics */
+        stagedVertices += stagingAddition;
+        surfaceContext->batchVertexCountStaging += stagingAddition;
+        /* if the batch staging buffer is full, flush it */
+        if(surfaceContext->batchVertexCountStaging >= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING)
             _korl_vulkan_batchFlush();
     }
 }

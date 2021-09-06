@@ -55,7 +55,13 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
     VkQueue queueGraphics;
     VkQueue queuePresent;
-    VkCommandPool commandPool;
+    VkCommandPool commandPoolGraphics;
+    /** Used to issue commands to transfer memory to device-local storage */
+    VkCommandPool commandPoolTransfer;
+    /** 
+     * @todo: rename everything w/ "immediate" to just "batch", differentiating 
+     * between "batchDevice" & "batchHost" 
+     */
     /**
      * @todo: store a collection of shader modules which can be referenced by 
      * external API, and store built-in shaders in known positions
@@ -79,8 +85,8 @@ typedef struct _Korl_Vulkan_Context
 } _Korl_Vulkan_Context;
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_DEVICE_BATCH_VERTICES 10*1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
 /**
  * It makes sense for this data structure to be separate from the 
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
@@ -90,6 +96,11 @@ typedef struct _Korl_Vulkan_Context
 typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR surface;
+    /** 
+     * Used to ensure that the user calls \c korl_vulkan_frameBegin before, and 
+     * the same number of times as, \c korl_vulkan_frameEnd .
+     */
+    u8 frameStackCounter;
     VkSurfaceFormatKHR swapChainSurfaceFormat;
     VkExtent2D swapChainImageExtent;
     VkSwapchainKHR  swapChain;
@@ -105,13 +116,18 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkFence     wipFramesFence                  [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
-    u32 batchVertexCount;
-    Korl_Math_V3f32 batchVertexPositions[_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES];
-    Korl_Math_V3u8  batchVertexColors   [_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES];
-    u32 deviceBatchVertexCount;
-    VkDeviceMemory deviceMemoryVertexImmediate;
-    VkBuffer bufferVertexImmediatePositions;
-    VkBuffer bufferVertexImmediateColors;
+    /** @todo: all of this vertex batch stuff probably needs to be duplicated 
+     *         over each "frame state" so that we can safely batch vertices 
+     *         while other frames are still being processed! 
+     * @korl-vulkan-parallel-vertex-batch */
+    u32 batchVertexCountStaging;
+    u32 batchVertexCountDevice;
+    VkDeviceMemory deviceMemoryVertexBatchStaging;
+    VkDeviceMemory deviceMemoryVertexBatchDevice;
+    VkBuffer bufferVertexBatchStagingPositions;
+    VkBuffer bufferVertexBatchStagingColors;
+    VkBuffer bufferVertexBatchDevicePositions;
+    VkBuffer bufferVertexBatchDeviceColors;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

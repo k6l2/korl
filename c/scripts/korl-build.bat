@@ -12,8 +12,11 @@ if not exist "build" (
 cd "build"
 rem ----- create the command to build the EXE -----
 rem 4189: local variable is initialized but not referenced; this is useful for 
-rem       debugging transient values
-rem 4820: 'x' bytes padding added after data member 'y'
+rem       debugging transient values, but introduces possible bugs so it 
+rem       shouldn't be part of release builds
+rem 4820: 'x' bytes padding added after data member 'y'; data structures should 
+rem       be fully optimized in released builds, but during development this is 
+rem       just annoying
 set disableReleaseWarnings=/wd4189 /wd4820
 rem 5045: Compiler will insert Spectre mitigation for memory load if /Qspectre 
 rem       switch specified
