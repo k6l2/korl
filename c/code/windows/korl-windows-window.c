@@ -102,18 +102,24 @@ korl_internal void _korl_windows_window_step(void)
 {
     /* let's try just drawing a triangle */
 #if 1
-    korl_shared_const Korl_Math_V3f32 trianglePositions[] = 
-        { { 0.f ,-0.5f,0.f}
-        , {-0.5f, 0.5f,0.f}
-        , { 0.5f, 0.5f,0.f} };
-    korl_shared_const Korl_Math_V3u8 triangleColors[] = 
-        { {255,  0,  0}
-        , {0  ,255,  0}
-        , {0  ,  0,255} };
+    korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
+        { {-0.5f, -0.5f, 0.f}
+        , { 0.5f, -0.5f, 0.f}
+        , { 0.5f,  0.5f, 0.f}
+        , {-0.5f,  0.5f, 0.f} };
+    korl_shared_const Korl_Vulkan_Color vertexColors[] = 
+        { {255,   0,   0}
+        , {0  , 255,   0}
+        , {255, 255, 255}
+        , {0  ,   0, 255} };
+    korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
+        { 0, 3, 1
+        , 1, 3, 2 };
     _STATIC_ASSERT(
-        korl_arraySize(trianglePositions) == korl_arraySize(triangleColors));
+        korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
     korl_vulkan_batchTriangles_color(
-        korl_arraySize(trianglePositions), trianglePositions, triangleColors);
+        korl_arraySize(vertexIndices), vertexIndices, 
+        korl_arraySize(vertexPositions), vertexPositions, vertexColors);
 #else// @todo: this API feels over-complicated & annoying to use; maybe we should just delete this & never do it again
     Korl_ImmediateDraw_Vertex verticesTriangle[] = 
         { { 0.f ,-0.5f,0.f, 255,  0,  0}

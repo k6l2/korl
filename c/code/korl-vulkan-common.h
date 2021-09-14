@@ -85,6 +85,8 @@ typedef struct _Korl_Vulkan_Context
 } _Korl_Vulkan_Context;
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
 /**
@@ -120,12 +122,44 @@ typedef struct _Korl_Vulkan_SurfaceContext
      *         over each "frame state" so that we can safely batch vertices 
      *         while other frames are still being processed! 
      * @korl-vulkan-parallel-vertex-batch */
+    u32 batchVertexIndexCountStaging;
+    u32 batchVertexIndexCountDevice;
     u32 batchVertexCountStaging;
     u32 batchVertexCountDevice;
+    /**
+     * Allocation layout:
+     * ----- 0
+     * - vertex batch indices
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
+     * - vertex batch positions
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
+     * - vertex batch colors
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Color
+     */
     VkDeviceMemory deviceMemoryVertexBatchStaging;
+    /**
+     * \note: This layout looks SIMILAR to \c deviceMemoryVertexBatchStaging , 
+     *        but it is NOT due to difference in size specification.
+     * Allocation layout:
+     * ----- 0
+     * - vertex batch indices
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE*Korl_Vulkan_VertexIndex
+     * - vertex batch positions
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE*Korl_Vulkan_VertexIndex
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Position
+     * - vertex batch colors
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE*Korl_Vulkan_VertexIndex
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Position
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Color
+     */
     VkDeviceMemory deviceMemoryVertexBatchDevice;
+    VkBuffer bufferVertexBatchStagingIndices;
     VkBuffer bufferVertexBatchStagingPositions;
     VkBuffer bufferVertexBatchStagingColors;
+    VkBuffer bufferVertexBatchDeviceIndices;
     VkBuffer bufferVertexBatchDevicePositions;
     VkBuffer bufferVertexBatchDeviceColors;
 } _Korl_Vulkan_SurfaceContext;
