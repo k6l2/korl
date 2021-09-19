@@ -80,6 +80,7 @@ typedef struct _Korl_Vulkan_Context
     /* pipeline layouts (uniform data) are (potentially) shared between 
         pipelines */
     VkPipelineLayout pipelineLayout;
+    VkDescriptorSetLayout descriptorSetLayout;
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
 } _Korl_Vulkan_Context;

@@ -110,8 +110,8 @@ korl_internal void _korl_windows_window_step(void)
     korl_shared_const Korl_Vulkan_Color vertexColors[] = 
         { {255,   0,   0}
         , {0  , 255,   0}
-        , {255, 255, 255}
-        , {0  ,   0, 255} };
+        , {0  ,   0, 255}
+        , {255, 255, 255} };
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
         { 0, 3, 1
         , 1, 3, 2 };
