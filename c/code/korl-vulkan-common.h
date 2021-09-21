@@ -109,14 +109,20 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkSwapchainKHR  swapChain;
     u32             swapChainImagesSize;
     VkImage         swapChainImages        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    VkImageView     swapChainImageViews    [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    VkFramebuffer   swapChainFrameBuffers  [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     VkCommandBuffer swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    VkFence         swapChainFences        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    struct 
+    {
+        VkImageView     imageView;
+        VkFramebuffer   frameBuffer;
+        VkFence         fence;
+    } swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     unsigned    wipFrameCurrent;
-    VkSemaphore wipFramesSemaphoreImageAvailable[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
-    VkSemaphore wipFramesSemaphoreRenderDone    [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
-    VkFence     wipFramesFence                  [_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
+    struct 
+    {
+        VkSemaphore semaphoreImageAvailable;
+        VkSemaphore semaphoreRenderDone;
+        VkFence     fence;
+    } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
     /** @todo: all of this vertex batch stuff probably needs to be duplicated 
