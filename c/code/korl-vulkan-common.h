@@ -84,51 +84,18 @@ typedef struct _Korl_Vulkan_Context
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
 } _Korl_Vulkan_Context;
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
-/**
- * It makes sense for this data structure to be separate from the 
- * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
- * basis, so there will potentially be a collection of these which all need to 
- * be created, destroyed, & managed separately.
- */
-typedef struct _Korl_Vulkan_SurfaceContext
+typedef struct _Korl_Vulkan_SwapChainImageContext
 {
-    VkSurfaceKHR surface;
-    /** 
-     * Used to ensure that the user calls \c korl_vulkan_frameBegin before, and 
-     * the same number of times as, \c korl_vulkan_frameEnd .
-     */
-    u8 frameStackCounter;
-    VkSurfaceFormatKHR swapChainSurfaceFormat;
-    VkExtent2D swapChainImageExtent;
-    VkSwapchainKHR  swapChain;
-    u32             swapChainImagesSize;
-    VkImage         swapChainImages        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    VkCommandBuffer swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    struct 
-    {
-        VkImageView     imageView;
-        VkFramebuffer   frameBuffer;
-        VkFence         fence;
-    } swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    unsigned    wipFrameCurrent;
-    struct 
-    {
-        VkSemaphore semaphoreImageAvailable;
-        VkSemaphore semaphoreRenderDone;
-        VkFence     fence;
-    } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
-    bool deferredResize;
-    u32 deferredResizeX, deferredResizeY;
-    /** @todo: all of this vertex batch stuff probably needs to be duplicated 
-     *         over each "frame state" so that we can safely batch vertices 
-     *         while other frames are still being processed! 
-     * @korl-vulkan-parallel-vertex-batch */
+    VkImageView     imageView;
+    VkFramebuffer   frameBuffer;
+    VkFence         fence;
+    /** @todo: would it make more sense for the vertex batch stuff to be inside 
+     * of the WipFrame struct inside the surface context?  Because when I am 
+     * thinking about it, there isn't really a point to having this memory lying 
+     * around for each frame if it isn't being used by anything, and since the # 
+     * of WIP frames is going to be <= the # of swap chain images, we would be 
+     * using the optimal minimum # of allocations for our surface context's 
+     * internal memory requirements due to vertex batching... */
     u32 batchVertexIndexCountStaging;
     u32 batchVertexIndexCountDevice;
     u32 batchVertexCountStaging;
@@ -169,6 +136,44 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkBuffer bufferVertexBatchDeviceIndices;
     VkBuffer bufferVertexBatchDevicePositions;
     VkBuffer bufferVertexBatchDeviceColors;
+} _Korl_Vulkan_SwapChainImageContext;
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
+/**
+ * It makes sense for this data structure to be separate from the 
+ * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
+ * basis, so there will potentially be a collection of these which all need to 
+ * be created, destroyed, & managed separately.
+ */
+typedef struct _Korl_Vulkan_SurfaceContext
+{
+    VkSurfaceKHR surface;
+    /** 
+     * Used to ensure that the user calls \c korl_vulkan_frameBegin before, and 
+     * the same number of times as, \c korl_vulkan_frameEnd .
+     */
+    u8 frameStackCounter;
+    u32 frameSwapChainImageIndex;
+    VkSurfaceFormatKHR swapChainSurfaceFormat;
+    VkExtent2D         swapChainImageExtent;
+    VkSwapchainKHR     swapChain;
+    u32                                swapChainImagesSize;
+    VkImage                            swapChainImages        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    VkCommandBuffer                    swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    _Korl_Vulkan_SwapChainImageContext swapChainImageContexts [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    unsigned    wipFrameCurrent;
+    struct 
+    {
+        VkSemaphore semaphoreImageAvailable;
+        VkSemaphore semaphoreRenderDone;
+        VkFence     fence;
+    } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
+    bool deferredResize;
+    u32 deferredResizeX, deferredResizeY;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

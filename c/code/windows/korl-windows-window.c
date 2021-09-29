@@ -148,8 +148,8 @@ korl_internal void korl_windows_window_loop(void)
         if(quit)
             break;
         korl_shared_const f32 CLEAR_COLOR_RGB[] = {0.05f, 0.f, 0.05f};
-        const u32 nextSwapchainImage = korl_vulkan_frameBegin(CLEAR_COLOR_RGB);
+        korl_vulkan_frameBegin(CLEAR_COLOR_RGB);
         _korl_windows_window_step();
-        korl_vulkan_frameEnd(nextSwapchainImage);
+        korl_vulkan_frameEnd();
     }
 }

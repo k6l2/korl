@@ -28,12 +28,9 @@ korl_internal void korl_vulkan_loadShaders(void);
 /* @hack: pipeline creation should probably be a little more intelligent */
 korl_internal void korl_vulkan_createPipeline(void);
 #endif//0
-/**
- * \return the index of the next image in the swapchain
- */
-korl_internal u32 korl_vulkan_frameBegin(const f32 clearRgb[3]);
+korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3]);
 /** submit all batched graphics command buffers to the Vulkan device */
-korl_internal void korl_vulkan_frameEnd(u32 nextImageIndex);
+korl_internal void korl_vulkan_frameEnd(void);
 /** 
  * Call this whenever the window is resized.  This will trigger a resize of the 
  * swap chain right before the next draw operation in \c korl_vulkan_draw .
