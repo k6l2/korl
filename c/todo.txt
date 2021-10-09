@@ -33,7 +33,7 @@
 [x] create a window
 [ ] create a dynamic application code module
 [x] gfx: vulkan - initialize graphics context
-[ ] gfx: vulkan - draw empty color buffer to the window
+[x] gfx: vulkan - draw empty color buffer to the window
 [ ] multi-threading: create a job queue + worker threads
 [ ] assets: asset manager
 	- we need this for loading graphics assets like shaders, textures, etc...

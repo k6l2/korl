@@ -954,8 +954,8 @@ korl_internal void korl_vulkan_createDevice(
             &context->pipelineLayout));
     /* @hack: just load shader files into memory right here; handle file IO 
         asynchronously at some point, maybe using some kind of asset manager */
-    Korl_File_Result spirvImmediateColorVertex   = korl_readEntireFile(L"korl-immediate-color.vert.spv");
-    Korl_File_Result spirvImmediateFragment = korl_readEntireFile(L"korl-immediate.frag.spv");
+    Korl_File_Result spirvImmediateColorVertex = korl_readEntireFile(L"korl-immediate-color.vert.spv");
+    Korl_File_Result spirvImmediateFragment    = korl_readEntireFile(L"korl-immediate.frag.spv");
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderVert);
     createInfoShaderVert.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
