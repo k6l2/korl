@@ -13,6 +13,10 @@ typedef union Korl_Math_V3f32
     } xyz;
     f32 elements[3];
 } Korl_Math_V3f32;
+const Korl_Math_V3f32 KORL_MATH_V3F32_ZERO = {.xyz = {0, 0, 0}};
+const Korl_Math_V3f32 KORL_MATH_V3F32_X    = {.xyz = {1, 0, 0}};
+const Korl_Math_V3f32 KORL_MATH_V3F32_Y    = {.xyz = {0, 1, 0}};
+const Korl_Math_V3f32 KORL_MATH_V3F32_Z    = {.xyz = {0, 0, 1}};
 typedef union Korl_Math_V4f32
 {
     struct
@@ -38,11 +42,11 @@ typedef union Korl_Math_M4f32
         f32 r3c0, r3c1, r3c2, r3c3;
     } rc;
 } Korl_Math_M4f32;
-#define KORL_MATH_M4F32_IDENTITY {.rows = \
-    {{1,0,0,0}\
-    ,{0,1,0,0}\
-    ,{0,0,1,0}\
-    ,{0,0,0,1}}}
+const Korl_Math_M4f32 KORL_MATH_M4F32_IDENTITY = {.rows = 
+    { {1,0,0,0}
+    , {0,1,0,0}
+    , {0,0,1,0}
+    , {0,0,0,1} }};
 typedef union Korl_Math_V3u8
 {
     struct

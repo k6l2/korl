@@ -116,6 +116,13 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     const Korl_Math_V3f32*const positionTarget, 
     const Korl_Math_V3f32*const worldUpNormal)
 {
+    /* @speed: could potentially just compile this out for "release" builds, but 
+               like who actually cares??  The performance gain from doing so is 
+               most likely not at all worth it for all I know.  PRE-MATURE OPT! */
+//#if KORL_DEBUG
+    /* sanity check to ensure that worldUpNormal is, in fact, normalized! */
+    korl_assert(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(worldUpNormal), 1));
+//#endif
     Korl_Math_M4f32 result = KORL_MATH_M4F32_IDENTITY;
     /* Even though this author uses "column-major" memory layout for matrices 
         for some reason, which makes everything really fucking confusing most of 

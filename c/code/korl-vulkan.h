@@ -40,3 +40,9 @@ korl_internal void korl_vulkan_batchTriangles_color(
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors);
+korl_internal void korl_vulkan_setProjectionFov(
+    f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
+korl_internal void korl_vulkan_lookAt(
+    const Korl_Math_V3f32*const positionEye, 
+    const Korl_Math_V3f32*const positionTarget, 
+    const Korl_Math_V3f32*const worldUpNormal);

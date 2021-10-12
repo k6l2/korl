@@ -84,6 +84,19 @@ typedef struct _Korl_Vulkan_Context
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
 } _Korl_Vulkan_Context;
+/** 
+ * Make sure to ensure memory alignment of these data members according to GLSL 
+ * data alignment spec after this struct definition!  See Vulkan Specification 
+ * `15.6.4. Offset and Stride Assignment` for details.
+ */
+typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
+{
+    Korl_Math_M4f32 m4f32Projection;
+    Korl_Math_M4f32 m4f32View;
+    /** @todo: pre-calculate the ViewProjection matrix */
+} _Korl_Vulkan_SwapChainImageBatchUbo;
+/* Ensure _Korl_Vulkan_SwapChainImageBatchUbo member alignment here: */
+_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View) & 16) == 0);
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView     imageView;
@@ -112,6 +125,11 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
      * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
      *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
      *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Color
+     * - uniform data; _Korl_Vulkan_SwapChainImageBatchUbo
+     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
+     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Color
+     *     + _Korl_Vulkan_SwapChainImageBatchUbo
      */
     VkDeviceMemory deviceMemoryVertexBatchStaging;
     /**

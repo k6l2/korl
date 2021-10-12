@@ -1383,3 +1383,57 @@ korl_internal void korl_vulkan_batchTriangles_color(
     swapChainImageContext->batchVertexIndexCountStaging += vertexIndexCount;
     swapChainImageContext->batchVertexCountStaging      += vertexCount;
 }
+korl_internal void korl_vulkan_setProjectionFov(
+    f32 horizontalFovDegrees, f32 clipNear, f32 clipFar)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    const f32 viewportWidthOverHeight = 
+        KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width) / 
+        KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
+    const Korl_Math_M4f32 m4f32Projection = 
+        korl_math_m4f32_projectionFov(horizontalFovDegrees, viewportWidthOverHeight, clipNear, clipFar);
+    /* for now, we'll just support a single UBO set per frame because it's 
+        simpler - later, we could make an array of UBO sets and tell each render 
+        batch to use a specific UBO set */
+    /* send the data for the matrix into the staging buffer memory */
+    KORL_ZERO_STACK(void*, mappedDeviceMemory);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, swapChainImageContext->deviceMemoryVertexBatchStaging, 
+            /*offset*/_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*sizeof(Korl_Vulkan_VertexIndex) 
+                + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING * sizeof(Korl_Vulkan_Position) 
+                + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING * sizeof(Korl_Vulkan_Color), 
+            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+            0/*flags*/, &mappedDeviceMemory));
+    _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
+    ubo->m4f32Projection = m4f32Projection;
+    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryVertexBatchStaging);
+}
+korl_internal void korl_vulkan_lookAt(
+    const Korl_Math_V3f32*const positionEye, 
+    const Korl_Math_V3f32*const positionTarget, 
+    const Korl_Math_V3f32*const worldUpNormal)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    const Korl_Math_M4f32 m4f32View = korl_math_m4f32_lookAt(positionEye, positionTarget, worldUpNormal);
+    /* for now, we'll just support a single UBO set per frame because it's 
+        simpler - later, we could make an array of UBO sets and tell each render 
+        batch to use a specific UBO set */
+    /* send the data for the matrix into the staging buffer memory */
+    KORL_ZERO_STACK(void*, mappedDeviceMemory);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, swapChainImageContext->deviceMemoryVertexBatchStaging, 
+            /*offset*/_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*sizeof(Korl_Vulkan_VertexIndex) 
+                + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING * sizeof(Korl_Vulkan_Position) 
+                + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING * sizeof(Korl_Vulkan_Color), 
+            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+            0/*flags*/, &mappedDeviceMemory));
+    _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
+    ubo->m4f32View = m4f32View;
+    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryVertexBatchStaging);
+}

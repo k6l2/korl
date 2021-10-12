@@ -4,6 +4,7 @@
 #include "korl-io.h"
 #include "korl-vulkan.h"
 #include "korl-windows-vulkan.h"
+#include "korl-math.h"
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
@@ -100,8 +101,14 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 /** @hack: this is just scaffolding to build immediate batched rendering */
 korl_internal void _korl_windows_window_step(void)
 {
-    /* let's try just drawing a triangle */
-#if 1
+    /* theoretically, I should be able to submit uniform transforms at ANY point 
+        during the frame, since they are not actually ever going to be used 
+        until draw operations are submitted to the device at the END of the 
+        frame! */
+    Korl_Math_V3f32 cameraPosition = {.xyz = {10,10,10}};
+    korl_vulkan_setProjectionFov(90, 1, 100);
+    korl_vulkan_lookAt(&cameraPosition, &KORL_MATH_V3F32_ZERO, &KORL_MATH_V3F32_Z);
+    /* let's try just drawing some triangles */
     korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
         { {-0.5f, -0.5f, 0.f}
         , { 0.5f, -0.5f, 0.f}
@@ -120,15 +127,6 @@ korl_internal void _korl_windows_window_step(void)
     korl_vulkan_batchTriangles_color(
         korl_arraySize(vertexIndices), vertexIndices, 
         korl_arraySize(vertexPositions), vertexPositions, vertexColors);
-#else// @todo: this API feels over-complicated & annoying to use; maybe we should just delete this & never do it again
-    Korl_ImmediateDraw_Vertex verticesTriangle[] = 
-        { { 0.f ,-0.5f,0.f, 255,  0,  0}
-        , {-0.5f, 0.5f,0.f, 0  ,255,  0}
-        , { 0.5f, 0.5f,0.f, 0  ,  0,255}};
-    korl_vulkan_batchTriangles(
-        verticesTriangle, korl_arraySize(verticesTriangle), 
-        sizeof(*verticesTriangle), KORL_IMMEDIATEDRAW_DESCRIBEVERTEX_COLOR);
-#endif//0
 }
 korl_internal void korl_windows_window_loop(void)
 {
