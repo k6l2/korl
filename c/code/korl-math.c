@@ -88,6 +88,14 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const
     vA.elements[2] -= vB->elements[2];
     return vA;
 }
+korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m)
+{
+    KORL_ZERO_STACK(Korl_Math_M4f32, result);
+    for(unsigned r = 0; r < 4; r++)
+        for(unsigned c = 0; c < 4; c++)
+            result.rows[r].elements[c] = m->rows[c].elements[r];
+    return result;
+}
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
     f32 clipNear, f32 clipFar)
@@ -97,17 +105,19 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     korl_assert(!korl_math_isNearlyEqual(clipNear, clipFar) && clipNear < clipFar);
     const f32 horizontalFovRadians = horizontalFovDegrees*KORL_PI32/180.f;
     const f32 tanHalfFov = tanf(horizontalFovRadians / 2.f);
-    /* This should theoretically be a projection transform which translates 
-        right-handed eye-space coordinates into right-handed clip-space 
-        coordinates (such that +Y is up and +Z is coming out of the screen).
-        I derived the equations for this matrix myself, but here are some good 
-        resources which I followed: 
+    /* Good sources for how to derive this matrix:
         http://ogldev.org/www/tutorial12/tutorial12.html
         http://www.songho.ca/opengl/gl_projectionmatrix.html */
+    /* transforms eye-space into clip-space with the following properties:
+        - left-handed, because Vulkan default requires VkViewport.min/maxDepth 
+          values to lie within the range [0,1] (unless the extension 
+          `VK_EXT_depth_range_unrestricted` is used, but who wants to do that?)
+        - clipNear maps to Z==0 in clip-space
+        - clipFar  maps to Z==1 in clip-space */
     result.rc.r0c0 = 1.f / tanHalfFov;
     result.rc.r1c1 = viewportWidthOverHeight / tanHalfFov;
-    result.rc.r2c2 = (clipNear - 3.f*clipFar)   / (clipNear - clipFar);
-    result.rc.r2c3 = (2.f * clipNear * clipFar) / (clipNear - clipFar);
+    result.rc.r2c2 =             -clipFar / (clipNear - clipFar);
+    result.rc.r2c3 = (clipNear * clipFar) / (clipNear - clipFar);
     result.rc.r3c2 = 1;
     return result;
 }
@@ -119,19 +129,17 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     /* @speed: could potentially just compile this out for "release" builds, but 
                like who actually cares??  The performance gain from doing so is 
                most likely not at all worth it for all I know.  PRE-MATURE OPT! */
-//#if KORL_DEBUG
     /* sanity check to ensure that worldUpNormal is, in fact, normalized! */
     korl_assert(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(worldUpNormal), 1));
-//#endif
     Korl_Math_M4f32 result = KORL_MATH_M4F32_IDENTITY;
     /* Even though this author uses "column-major" memory layout for matrices 
         for some reason, which makes everything really fucking confusing most of 
         the time, this still does a good job explaining a useful implementation 
         of the view matrix: https://www.3dgep.com/understanding-the-view-matrix/ */
-    /* our camera eye-space will be right-handed, with the camera looking down 
-        the -Z axis, and +Y being UP */
-    const Korl_Math_V3f32 cameraZ = korl_math_v3f32_normal(korl_math_v3f32_subtract(*positionEye, positionTarget));
-    const Korl_Math_V3f32 cameraX = korl_math_v3f32_cross(worldUpNormal, &cameraZ);
+    /* our camera eye-space will be left-handed, with the camera looking down 
+        the +Z axis, and +Y being UP */
+    const Korl_Math_V3f32 cameraZ = korl_math_v3f32_normal(korl_math_v3f32_subtract(*positionTarget, positionEye));
+    const Korl_Math_V3f32 cameraX = korl_math_v3f32_cross(&cameraZ, worldUpNormal);
     const Korl_Math_V3f32 cameraY = korl_math_v3f32_cross(&cameraZ, &cameraX);
     /* the view matrix is simply the inverse of the camera transform, and since 
         the camera transform is orthonormal, we can simply transpose the 

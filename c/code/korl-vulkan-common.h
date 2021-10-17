@@ -80,6 +80,8 @@ typedef struct _Korl_Vulkan_Context
     /* pipeline layouts (uniform data) are (potentially) shared between 
         pipelines */
     VkPipelineLayout pipelineLayout;
+    /** the layout for the shared internal descriptor data 
+     * (UBO, view projection) */
     VkDescriptorSetLayout descriptorSetLayout;
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
@@ -148,6 +150,7 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
      *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Color
      */
     VkDeviceMemory deviceMemoryVertexBatchDevice;
+    VkBuffer bufferStagingUbo;
     VkBuffer bufferVertexBatchStagingIndices;
     VkBuffer bufferVertexBatchStagingPositions;
     VkBuffer bufferVertexBatchStagingColors;
@@ -183,6 +186,13 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkImage                            swapChainImages        [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     VkCommandBuffer                    swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
+    /** 
+     * Currently only used to manage internal shared UBO descriptors, but 
+     * probably will be expanded to manage even more.
+     */
+    VkDescriptorPool descriptorPool;
+    /** Used for internal descriptor sets, such as shared UBO data, etc. */
+    VkDescriptorSet descriptorSets[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     unsigned    wipFrameCurrent;
     struct 
     {

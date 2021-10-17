@@ -1,5 +1,5 @@
 #version 450
-layout(binding = 0) uniform UniformBufferObject
+layout(binding = 0, row_major) uniform UniformBufferObject
 {
     mat4 projection;
     mat4 view;

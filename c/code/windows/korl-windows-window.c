@@ -99,14 +99,22 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
 /** @hack: this is just scaffolding to build immediate batched rendering */
+#include "korl-math.h"
+#include <math.h>
 korl_internal void _korl_windows_window_step(void)
 {
+    /* simple camera rotation around the +Z axis (counter-clockwise) */
+    korl_shared_variable f32 cameraRadians = 0;
+    cameraRadians += 0.01f;
+    while(cameraRadians >= 2*KORL_PI32)
+        cameraRadians -= 2*KORL_PI32;
+    korl_shared_const f32 CAMERA_DISTANCE = 1;
+    Korl_Math_V3f32 cameraPosition = {.xyz = {CAMERA_DISTANCE*cosf(cameraRadians),CAMERA_DISTANCE*sinf(cameraRadians),1}};
     /* theoretically, I should be able to submit uniform transforms at ANY point 
         during the frame, since they are not actually ever going to be used 
         until draw operations are submitted to the device at the END of the 
         frame! */
-    Korl_Math_V3f32 cameraPosition = {.xyz = {10,10,10}};
-    korl_vulkan_setProjectionFov(90, 1, 100);
+    korl_vulkan_setProjectionFov(90, 0.001f, 10);
     korl_vulkan_lookAt(&cameraPosition, &KORL_MATH_V3F32_ZERO, &KORL_MATH_V3F32_Z);
     /* let's try just drawing some triangles */
     korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
@@ -120,8 +128,8 @@ korl_internal void _korl_windows_window_step(void)
         , {0  ,   0, 255}
         , {255, 255, 255} };
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
-        { 0, 3, 1
-        , 1, 3, 2 };
+        { 0, 1, 3
+        , 1, 2, 3 };
     _STATIC_ASSERT(
         korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
     korl_vulkan_batchTriangles_color(

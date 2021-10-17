@@ -27,11 +27,6 @@ typedef union Korl_Math_V4f32
 } Korl_Math_V4f32;
 typedef union Korl_Math_M4f32
 {
-    /* Note that there is no implication here as to how this matrix is to be 
-        used mathematically with respect to whether or not we're operating on 
-        4x1 "column" vectors or 1x4 "row" vectors!  That usage convention will 
-        come from the actual implementation of the math functions which use this 
-        struct. */
     Korl_Math_V4f32 rows[4];
     f32 elements[4*4];
     struct
@@ -78,6 +73,7 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f
 korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
 korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const Korl_Math_V3f32*const vB);
+korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
     f32 clipNear, f32 clipFar);
