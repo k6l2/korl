@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "korl-math.h"
 #include "korl-checkCast.h"
+#include "korl-memory.h"
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V3u8  Korl_Vulkan_Color;
@@ -38,6 +39,9 @@ korl_internal void korl_vulkan_frameEnd(void);
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_batchTriangles_color(
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
+    u32 vertexCount, const Korl_Vulkan_Position* positions, 
+    const Korl_Vulkan_Color* colors);
+korl_internal void korl_vulkan_batchLines_color(
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors);
 korl_internal void korl_vulkan_setProjectionFov(

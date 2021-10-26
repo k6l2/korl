@@ -47,3 +47,18 @@ korl_internal void korl_memory_free(void* address)
     if(!VirtualFree(address, 0, MEM_RELEASE))
         korl_logLastError("VirtualFree failed!");
 }
+/** @todo: move this into an OS-independent file since this isn't using any OS-
+ * specific code */
+korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes)
+{
+    const u8* aBytes = KORL_C_CAST(const u8*, a);
+    const u8* bBytes = KORL_C_CAST(const u8*, b);
+    for(size_t i = 0; i < bytes; ++i)
+    {
+        if(aBytes[i] < bBytes[i])
+            return -1;
+        else if(aBytes[i] > bBytes[i])
+            return 1;
+    }
+    return 0;
+}

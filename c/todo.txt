@@ -38,7 +38,10 @@
 [ ] assets: asset manager
 	- we need this for loading graphics assets like shaders, textures, etc...
 [ ] assets: load vulkan shaders
-[ ] gfx: vulkan - draw geoprims (tris, lines)
+[x] gfx: vulkan - draw different geoprims (tris, lines)
+[ ] gfx: vulkan - store & select from multiple uniform descriptor sets per frame
+	- to support different VP matrices per frame
+[ ] gfx: vulkan: depth buffer
 [ ] keyboard input
 [ ] mouse input
 [ ] game pad input (XInput)

@@ -3,7 +3,6 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-math.h"// for KORL vector structs, such as V3f32
 #include <vulkan/vulkan.h>
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
@@ -21,6 +20,25 @@ typedef struct _Korl_Vulkan_QueueFamilyMetaData
     bool hasIndexQueueGraphics;
     bool hasIndexQueuePresent;
 } _Korl_Vulkan_QueueFamilyMetaData;
+/** 
+ * Using the contents of this struct, we should be able to fully create a 
+ * conformant KORL pipeline.  This can essentially be used as the current 
+ * "render state" of the vertex batching functionality as well.
+ */
+typedef struct _Korl_Vulkan_Pipeline
+{
+    /* actually store the pipeline handle in here */
+    VkPipeline pipeline;
+    /* ---------------------------------------------------------------------- */
+    /* pipeline meta data which should be able to fully describe the pipeline 
+        itself */
+    VkPrimitiveTopology primitiveTopology;
+    //@todo: blend equations
+    //@todo: use color vertex attribute?
+    /* ---------------------------------------------------------------------- */
+    /* render state that has nothing to do with the pipeline itself */
+    bool useIndexBuffer;
+} _Korl_Vulkan_Pipeline;
 typedef struct _Korl_Vulkan_Context
 {
     /**
@@ -68,15 +86,8 @@ typedef struct _Korl_Vulkan_Context
      */
     VkShaderModule shaderImmediateColorVert;
     VkShaderModule shaderImmediateFrag;
-    /**
-     * @todo: store pipelines in a collection which can be referenced by 
-     * external API, and store built-in pipelines in known positions 
-     */
-    /**
-     * @todo: store pipeline meta data as part of the above collection so that 
-     * we can rebuild all pipelines at any given time
-     */
-    VkPipeline pipelineImmediateColor;
+    u32 pipelinesCount;
+    _Korl_Vulkan_Pipeline pipelines[1024];
     /* pipeline layouts (uniform data) are (potentially) shared between 
         pipelines */
     VkPipelineLayout pipelineLayout;
@@ -115,6 +126,12 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     u32 batchVertexIndexCountDevice;
     u32 batchVertexCountStaging;
     u32 batchVertexCountDevice;
+    /* While the above metrics represent the TOTAL number of vertex 
+        attributes/indices in batch buffers, the following metrics represent the 
+        number of vertex attributes/indices in the current pipeline batch.  The 
+        batch buffers will probably hold multiple pipeline batches. */
+    u32 pipelineBatchVertexIndexCount;
+    u32 pipelineBatchVertexCount;
     /**
      * Allocation layout:
      * ----- 0
@@ -150,6 +167,8 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
      *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Color
      */
     VkDeviceMemory deviceMemoryVertexBatchDevice;
+    /* @todo: store the buffer memory offsets of the buffers side-by-side so we 
+              don't have to keep calculating these numbers each time */
     VkBuffer bufferStagingUbo;
     VkBuffer bufferVertexBatchStagingIndices;
     VkBuffer bufferVertexBatchStagingPositions;
@@ -202,6 +221,13 @@ typedef struct _Korl_Vulkan_SurfaceContext
     } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
+    /** 
+     * This is an index into the array of pipelines currently in the 
+     * _Korl_Vulkan_Context. This can essentially be our batch "render state".  
+     * If this value is equal to \c korl_arraySize(context->pipelines) , that 
+     * means there is no valid render state. 
+     */
+    u32 batchCurrentPipeline;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

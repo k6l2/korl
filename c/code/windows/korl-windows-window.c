@@ -117,24 +117,47 @@ korl_internal void _korl_windows_window_step(void)
     korl_vulkan_setProjectionFov(90, 0.001f, 10);
     korl_vulkan_lookAt(&cameraPosition, &KORL_MATH_V3F32_ZERO, &KORL_MATH_V3F32_Z);
     /* let's try just drawing some triangles */
-    korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
-        { {-0.5f, -0.5f, 0.f}
-        , { 0.5f, -0.5f, 0.f}
-        , { 0.5f,  0.5f, 0.f}
-        , {-0.5f,  0.5f, 0.f} };
-    korl_shared_const Korl_Vulkan_Color vertexColors[] = 
-        { {255,   0,   0}
-        , {0  , 255,   0}
-        , {0  ,   0, 255}
-        , {255, 255, 255} };
-    korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
-        { 0, 1, 3
-        , 1, 2, 3 };
-    _STATIC_ASSERT(
-        korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
-    korl_vulkan_batchTriangles_color(
-        korl_arraySize(vertexIndices), vertexIndices, 
-        korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+    {
+        korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
+            { {-0.5f, -0.5f, 0.f}
+            , { 0.5f, -0.5f, 0.f}
+            , { 0.5f,  0.5f, 0.f}
+            , {-0.5f,  0.5f, 0.f} };
+        korl_shared_const Korl_Vulkan_Color vertexColors[] = 
+            { {255,   0,   0}
+            , {0  , 255,   0}
+            , {0  ,   0, 255}
+            , {255, 255, 255} };
+        korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
+            { 0, 1, 3
+            , 1, 2, 3 };
+        _STATIC_ASSERT(
+            korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
+        korl_vulkan_batchTriangles_color(
+            korl_arraySize(vertexIndices), vertexIndices, 
+            korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+    }
+    /* let's also draw some lines */
+    {
+        korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
+            { {0.f, 0.f, 0.f}
+            , {1.f, 0.f, 0.f} 
+            , {0.f, 0.f, 0.f} 
+            , {0.f, 1.f, 0.f} 
+            , {0.f, 0.f, 0.f} 
+            , {0.f, 0.f, 1.f} };
+        korl_shared_const Korl_Vulkan_Color vertexColors[] = 
+            { {255,   0,   0}
+            , {255,   0,   0}
+            , {0  , 255,   0}
+            , {0  , 255,   0}
+            , {0  ,   0, 255}
+            , {0  ,   0, 255} };
+        _STATIC_ASSERT(
+            korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
+        korl_vulkan_batchLines_color(
+            korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+    }
 }
 korl_internal void korl_windows_window_loop(void)
 {

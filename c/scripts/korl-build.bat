@@ -24,7 +24,7 @@ rem 5045: Compiler will insert Spectre mitigation for memory load if /Qspectre
 rem       switch specified
 set disableOptimizationWarnings=/wd5045
 set buildCommand=cl
-rem :::::::::::::::::::::::::::: COMPILER SETTINGS ::::::::::::::::::::::::::::
+rem :::::::::::::::::::::::::::: COMPILER SETTINGS :::::::::::::::::::::::::::::
 set buildCommand=%buildCommand% "%korl_root%\code\windows\korl-windows-main.c"
 rem allow OS-specific code to include global headers/code
 set buildCommand=%buildCommand% /I "%korl_root%\code"
@@ -67,7 +67,7 @@ rem disable exception handling unwind code generation
 set buildCommand=%buildCommand% /EHa-
 rem display the full path of source code files passed in diagnostics
 set buildCommand=%buildCommand% /FC
-rem ::::::::::::::::::::::::::::: LINKER SETTINGS :::::::::::::::::::::::::::::
+rem ::::::::::::::::::::::::::::: LINKER SETTINGS ::::::::::::::::::::::::::::::
 set buildCommand=%buildCommand% /link
 rem set the PDB file name
 set buildCommand=%buildCommand% /pdb:"%KORL_EXE_NAME%.pdb"
