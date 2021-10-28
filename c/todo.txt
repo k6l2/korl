@@ -35,22 +35,35 @@
 [x] gfx: vulkan - initialize graphics context
 [x] gfx: vulkan - draw empty color buffer to the window
 [ ] multi-threading: create a job queue + worker threads
-[ ] assets: asset manager
-	- we need this for loading graphics assets like shaders, textures, etc...
 [ ] assets: load vulkan shaders
 [x] gfx: vulkan - draw different geoprims (tris, lines)
-[ ] gfx: vulkan - store & select from multiple uniform descriptor sets per frame
-	- to support different VP matrices per frame
+[ ] Sprite Fonts
+	[ ] dynamic memory: stack allocator
+		- push/pop
+		- alloc
+		- realloc
+		- store meta data for each allocation right before the allocation memory pointer
+			- bytes
+			- file
+			- line number
+		- use OS virtual memory API directly to 
+			- reserve a large range of addresses
+			- commit only the necessary memory, then release when we're not using it anymore
+	[ ] assets: asset manager
+		- we need this for loading graphics assets like shaders, textures, etc...
+		- load assets from the current working directory
+		- just use a stack allocator to store the asset data (always add memory, never remove free it)
+	[ ] assets: load PNG
+	[ ] gfx: vulkan - upload textures to GPU
+	[ ] gfx: vulkan - store & select from multiple uniform descriptor sets per frame
+		- to support different VP matrices per frame
+	[ ] gfx: vulkan - draw textured geoprims
 [ ] gfx: vulkan: depth buffer
 [ ] keyboard input
 [ ] mouse input
 [ ] game pad input (XInput)
 [ ] create sample project
 [ ] build all sample projects
-[ ] assets: load PNG
-[ ] gfx: vulkan - upload textures to GPU
-[ ] gfx: vulkan - draw textured geoprims
-[ ] Sprite Fonts
 [ ] time metrics: draw graph of all probed threads
 [ ] memory metrics: draw graph of all application memory usage
 [ ] audio: stream output using WASAPI
