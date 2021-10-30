@@ -4,6 +4,10 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include <vulkan/vulkan.h>
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -110,11 +114,65 @@ typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
 } _Korl_Vulkan_SwapChainImageBatchUbo;
 /* Ensure _Korl_Vulkan_SwapChainImageBatchUbo member alignment here: */
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View) & 16) == 0);
+typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
+{
+    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED, 
+    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER
+} _Korl_Vulkan_DeviceMemory_Allocation_Type;
+typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
+{
+    /* @polymorphic-tagged-union
+        We essentially need "virtual constructor/destructor" logic for this 
+        data type, since this logic is specific to the device object type (we 
+        need to use different Vulkan API for these tasks).
+        It's worth noting that I have found this to be a common enough design 
+        pattern that at one point I created a simple C++ parser which 
+        automatically generated dispatch routines for virtual functions (kcpp?), 
+        which theoretically might make development of these constructs easier.  
+        Although, I am not yet _entirely_ convinced that this is the case just 
+        yet.  Generated v-tables are not a panacea, and still don't properly 
+        solve issues associated with function pointer tables, such as hot code 
+        reloading, so such a feature might need a bit more effort to make it 
+        easy-to-use like C++ virtuals, but also not complete shit under the hood 
+        that we can't fix (like C++ virtuals).  */
+    _Korl_Vulkan_DeviceMemory_Allocation_Type type;
+    union 
+    {
+        VkBuffer buffer;
+        /** @todo: add images */
+    } deviceObject;
+    VkDeviceSize byteOffset;
+    VkDeviceSize byteSize;
+} _Korl_Vulkan_DeviceMemory_Alloctation;
+/**
+ * This is the "dumbest" possible allocator - we literally just allocate a big 
+ * chunk of memory, and then bind (allocate) new device objects one right after 
+ * another contiguously.  We don't do any defragmentation, and we don't even 
+ * have the ability to "free" objects, really (except when the entire allocator 
+ * needs to be destroyed).  But, for the purposes of prototyping, this will do 
+ * just fine for now.  
+ * @todo: if we ever start having more "shippable" asset pipelines, we will need 
+ *        a more intelligent allocator which allows things like:
+ *        - dynamic growth
+ *        - "freeing" allocations
+ *        - defragmentation
+ */
+typedef struct _Korl_Vulkan_DeviceMemoryLinear
+{
+    VkDeviceMemory deviceMemory;
+    /** passed as the first parameter to \c _korl_vulkan_findMemoryType */
+    u32 memoryTypeBits;
+    /** passed as the second parameter to \c _korl_vulkan_findMemoryType */
+    VkMemoryPropertyFlags memoryPropertyFlags;
+    VkDeviceSize byteSize;
+    VkDeviceSize bytesAllocated;
+    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceMemory_Alloctation, allocations, 64);
+} _Korl_Vulkan_DeviceMemoryLinear;
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
-    VkImageView     imageView;
-    VkFramebuffer   frameBuffer;
-    VkFence         fence;
+    VkImageView imageView;
+    VkFramebuffer frameBuffer;
+    VkFence fence;
     /** @todo: would it make more sense for the vertex batch stuff to be inside 
      * of the WipFrame struct inside the surface context?  Because when I am 
      * thinking about it, there isn't really a point to having this memory lying 
@@ -132,57 +190,18 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
         batch buffers will probably hold multiple pipeline batches. */
     u32 pipelineBatchVertexIndexCount;
     u32 pipelineBatchVertexCount;
-    /**
-     * Allocation layout:
-     * ----- 0
-     * - vertex batch indices
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
-     * - vertex batch positions
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
-     * - vertex batch colors
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Color
-     * - uniform data; _Korl_Vulkan_SwapChainImageBatchUbo
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING*Korl_Vulkan_VertexIndex
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Position
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*Korl_Vulkan_Color
-     *     + _Korl_Vulkan_SwapChainImageBatchUbo
-     */
-    VkDeviceMemory deviceMemoryVertexBatchStaging;
-    /**
-     * \note: This layout looks SIMILAR to \c deviceMemoryVertexBatchStaging , 
-     *        but it is NOT due to difference in size specification.
-     * Allocation layout:
-     * ----- 0
-     * - vertex batch indices
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE*Korl_Vulkan_VertexIndex
-     * - vertex batch positions
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE*Korl_Vulkan_VertexIndex
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Position
-     * - vertex batch colors
-     * ----- _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE*Korl_Vulkan_VertexIndex
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Position
-     *     + _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*Korl_Vulkan_Color
-     */
-    VkDeviceMemory deviceMemoryVertexBatchDevice;
-    /* @todo: store the buffer memory offsets of the buffers side-by-side so we 
-              don't have to keep calculating these numbers each time */
-    VkBuffer bufferStagingUbo;
-    VkBuffer bufferVertexBatchStagingIndices;
-    VkBuffer bufferVertexBatchStagingPositions;
-    VkBuffer bufferVertexBatchStagingColors;
-    VkBuffer bufferVertexBatchDeviceIndices;
-    VkBuffer bufferVertexBatchDevicePositions;
-    VkBuffer bufferVertexBatchDeviceColors;
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearHostVisible;
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearDeviceLocal;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchIndices;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchIndices;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchPositions;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchColors;
 } _Korl_Vulkan_SwapChainImageContext;
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
 /**
  * It makes sense for this data structure to be separate from the 
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 

@@ -48,7 +48,7 @@ korl_internal void korl_memory_free(void* address)
         korl_logLastError("VirtualFree failed!");
 }
 /** @todo: move this into an OS-independent file since this isn't using any OS-
- * specific code */
+ * specific code - @pull-out-os-agnostic */
 korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes)
 {
     const u8* aBytes = KORL_C_CAST(const u8*, a);
@@ -61,4 +61,17 @@ korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes
             return 1;
     }
     return 0;
+}
+korl_internal void korl_memory_nullify(void*const p, size_t bytes)
+{
+    ZeroMemory(p, bytes);
+}
+/** @todo: @pull-out-os-agnostic */
+korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
+{
+    const void*const pEnd = KORL_C_CAST(const u8*, p) + bytes;
+    for(; p != pEnd; p = KORL_C_CAST(const u8*, p) + 1)
+        if(*KORL_C_CAST(const u8*, p))
+            return false;
+    return true;
 }

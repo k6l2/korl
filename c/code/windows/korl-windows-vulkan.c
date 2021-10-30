@@ -6,7 +6,7 @@ korl_internal void _korl_vulkan_createSurface(void* userData)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     Korl_Windows_Vulkan_SurfaceUserData*const windowsUserData = 
         KORL_C_CAST(Korl_Windows_Vulkan_SurfaceUserData*, userData);
-    memset(surfaceContext, 0, sizeof(*surfaceContext));
+    ZeroMemory(surfaceContext, sizeof(*surfaceContext));
     VkResult vkResult = VK_SUCCESS;
     /* create the Windows-specific surface */
     KORL_ZERO_STACK(VkWin32SurfaceCreateInfoKHR, createInfoSurface);
