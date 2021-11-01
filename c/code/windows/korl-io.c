@@ -270,7 +270,7 @@ korl_internal Korl_File_Result korl_readEntireFile(const wchar_t* fileName)
             fileName, GENERIC_READ, FILE_SHARE_READ, NULL/*default security*/, 
             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL/*no template file*/);
     if(hFile == INVALID_HANDLE_VALUE)
-        korl_logLastError("CreateFileW failed!");
+        korl_logLastError("CreateFileW failed! fileName=%S", fileName);
     const DWORD fileSize = GetFileSize(hFile, NULL/*high file size DWORD*/);
     if(fileSize == INVALID_FILE_SIZE)
         korl_logLastError("GetFileSize failed!");
