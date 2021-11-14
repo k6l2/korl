@@ -263,31 +263,3 @@ korl_internal void korl_logVariadicArguments(
         lineNumber, format, vaList);
     va_end(vaList);
 }
-korl_internal Korl_File_Result korl_readEntireFile(const wchar_t* fileName)
-{
-    const HANDLE hFile = 
-        CreateFileW(
-            fileName, GENERIC_READ, FILE_SHARE_READ, NULL/*default security*/, 
-            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL/*no template file*/);
-    if(hFile == INVALID_HANDLE_VALUE)
-        korl_logLastError("CreateFileW failed! fileName=%S", fileName);
-    const DWORD fileSize = GetFileSize(hFile, NULL/*high file size DWORD*/);
-    if(fileSize == INVALID_FILE_SIZE)
-        korl_logLastError("GetFileSize failed!");
-    Korl_Memory_Allocation memory = 
-        korl_memory_allocate(fileSize, NULL/*desiredAddress*/);
-    KORL_ZERO_STACK(DWORD, bytesRead);
-    if(!ReadFile(hFile, memory.address, fileSize, &bytesRead, NULL/*lpOverlapped*/))
-        korl_logLastError("ReadFile failed!");
-    korl_assert(bytesRead == fileSize);
-    korl_assert(CloseHandle(hFile));
-    KORL_ZERO_STACK(Korl_File_Result, result);
-    result.data     = memory.address;
-    result.dataSize = fileSize;
-    return result;
-}
-korl_internal void korl_freeEntireFile(Korl_File_Result* fileResult)
-{
-    korl_memory_free(fileResult->data);
-    ZeroMemory(fileResult, sizeof(*fileResult));
-}

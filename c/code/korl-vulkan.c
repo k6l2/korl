@@ -936,8 +936,8 @@ korl_internal void _korl_vulkan_createSurface(void* userData);
 korl_internal void korl_vulkan_construct(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    /* nullify the context memory before doing anything for safety */
-    korl_memory_nullify(context, sizeof(*context));
+    /* sanity check - ensure that the memory is nullified */
+    korl_assert(korl_memory_isNull(context, sizeof(*context)));
     /* get a list of VkLayerProperties so we can check of validation layer 
         support if needed */
     KORL_ZERO_STACK(u32, layerCount);
@@ -1360,30 +1360,36 @@ korl_internal void korl_vulkan_createDevice(
         vkCreatePipelineLayout(
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout));
-    /* @hack: just load shader files into memory right here; handle file IO 
-        asynchronously at some point, maybe using some kind of asset manager */
-    Korl_File_Result spirvImmediateColorVertex = korl_readEntireFile(L"korl-immediate-color.vert.spv");
-    Korl_File_Result spirvImmediateFragment    = korl_readEntireFile(L"korl-immediate.frag.spv");
+    /* load required built-in shader assets */
+    Korl_AssetCache_AssetData assetShaderBatchVertexColor = korl_assetCache_get(L"build/korl-immediate-color.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchFragment    = korl_assetCache_get(L"build/korl-immediate.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE);
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderVert);
     createInfoShaderVert.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfoShaderVert.codeSize = spirvImmediateColorVertex.dataSize;
-    createInfoShaderVert.pCode    = spirvImmediateColorVertex.data;
+    createInfoShaderVert.codeSize = assetShaderBatchVertexColor.dataBytes;
+    createInfoShaderVert.pCode    = assetShaderBatchVertexColor.data;
     _KORL_VULKAN_CHECK(
         vkCreateShaderModule(
             context->device, &createInfoShaderVert, context->allocator, 
             &context->shaderImmediateColorVert));
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderFrag);
     createInfoShaderFrag.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfoShaderFrag.codeSize = spirvImmediateFragment.dataSize;
-    createInfoShaderFrag.pCode    = spirvImmediateFragment.data;
+    createInfoShaderFrag.codeSize = assetShaderBatchFragment.dataBytes;
+    createInfoShaderFrag.pCode    = assetShaderBatchFragment.data;
     _KORL_VULKAN_CHECK(
         vkCreateShaderModule(
             context->device, &createInfoShaderFrag, context->allocator, 
             &context->shaderImmediateFrag));
-    /* and now we can just free the shader file data */
-    korl_freeEntireFile(&spirvImmediateColorVertex);
-    korl_freeEntireFile(&spirvImmediateFragment);
+    /* create memory allocators to stage & store persistent assets, like images */
+    _korl_vulkan_deviceMemoryLinear_create(
+        &context->deviceMemoryLinearAssetsStaging, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        korl_math_megabytes(1));
+    _korl_vulkan_deviceMemoryLinear_create(
+        &context->deviceMemoryLinearAssets, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        korl_math_megabytes(64));
 }
 korl_internal void korl_vulkan_destroyDevice(void)
 {
@@ -1407,6 +1413,8 @@ korl_internal void korl_vulkan_destroyDevice(void)
     }
     korl_memory_nullify(surfaceContext, sizeof(*surfaceContext));
     /* destroy the device-specific resources */
+    _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssetsStaging);
+    _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssets);
     for(size_t p = 0; p < context->pipelinesCount; p++)
         vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
     vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayout, context->allocator);

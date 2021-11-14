@@ -11,6 +11,7 @@ if not exist "build" (
 )
 cd "build"
 rem ----- create the command to build the EXE -----
+rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)
 rem 4189: local variable is initialized but not referenced; this is useful for 
@@ -19,7 +20,7 @@ rem       shouldn't be part of release builds
 rem 4820: 'x' bytes padding added after data member 'y'; data structures should 
 rem       be fully optimized in released builds, but during development this is 
 rem       just annoying
-set disableReleaseWarnings=/wd4101 /wd4189 /wd4820
+set disableReleaseWarnings=/wd4100 /wd4101 /wd4189 /wd4820
 rem 5045: Compiler will insert Spectre mitigation for memory load if /Qspectre 
 rem       switch specified
 set disableOptimizationWarnings=/wd5045
@@ -28,6 +29,8 @@ rem :::::::::::::::::::::::::::: COMPILER SETTINGS :::::::::::::::::::::::::::::
 set buildCommand=%buildCommand% "%korl_root%\code\windows\korl-windows-main.c"
 rem allow OS-specific code to include global headers/code
 set buildCommand=%buildCommand% /I "%korl_root%\code"
+rem include additional libraries
+set buildCommand=%buildCommand% /I "%korl_root%\code\stb"
 rem set the executable's file name
 set buildCommand=%buildCommand% /Fe"%KORL_EXE_NAME%"
 rem set the VCX0.PDB file name
@@ -101,7 +104,7 @@ rem set buildCommand=%buildCommand% legacy_stdio_definitions.lib
 rem set buildCommand=%buildCommand% libucrt.lib
 rem set buildCommand=%buildCommand% libvcruntime.lib
 rem ----- run the build command -----
-echo Running "%buildCommand%"...
+echo %buildCommand%...
 %buildCommand%
 IF %ERRORLEVEL% NEQ 0 (
     echo Windows EXE build failed!

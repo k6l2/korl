@@ -5,13 +5,15 @@
 #include "korl-windows-window.h"
 #include "korl-assert.h"
 #include "korl-vulkan.h"
+#include "korl-file.h"
+#include "korl-assetCache.h"
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
     korl_log(INFO, "start ---------------------------------------------------");
     korl_memory_initialize();
     korl_file_initialize();
-    korl_assetManager_initialize();
+    korl_assetCache_initialize();
     korl_vulkan_construct();
     korl_windows_window_initialize();
     korl_windows_window_create(1024, 576);
@@ -30,4 +32,4 @@ void __stdcall korl_windows_main(void)
 #include "korl-windows-vulkan.c"
 #include "korl-checkCast.c"
 #include "korl-file.c"
-#include "korl-assetManager.c"
+#include "korl-assetCache.c"

@@ -25,11 +25,3 @@ korl_internal void korl_logVariadicArguments(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
     int lineNumber, wchar_t* format, ...);
-typedef struct 
-{
-    void* data;
-    size_t dataSize;
-} Korl_File_Result;
-/** @todo: replace this with file I/O that takes an allocator */
-korl_internal Korl_File_Result korl_readEntireFile(const wchar_t* fileName);
-korl_internal void korl_freeEntireFile(Korl_File_Result* fileResult);

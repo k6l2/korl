@@ -8,6 +8,10 @@ korl_internal inline u64 korl_math_megabytes(u64 x)
 {
     return 1024 * korl_math_kilobytes(x);
 }
+korl_internal inline u64 korl_math_gigabytes(u64 x)
+{
+    return 1024 * korl_math_megabytes(x);
+}
 korl_internal inline uintptr_t korl_math_roundUpPowerOf2(
     uintptr_t value, uintptr_t powerOf2Multiple)
 {

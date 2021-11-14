@@ -4,6 +4,7 @@
 #include "korl-math.h"
 #include "korl-checkCast.h"
 #include "korl-memory.h"
+#include "korl-assetCache.h"
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V3u8  Korl_Vulkan_Color;

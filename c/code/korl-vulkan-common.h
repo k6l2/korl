@@ -8,6 +8,60 @@
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
+typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
+{
+    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED, 
+    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER
+} _Korl_Vulkan_DeviceMemory_Allocation_Type;
+typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
+{
+    /* @polymorphic-tagged-union
+        We essentially need "virtual constructor/destructor" logic for this 
+        data type, since this logic is specific to the device object type (we 
+        need to use different Vulkan API for these tasks).
+        It's worth noting that I have found this to be a common enough design 
+        pattern that at one point I created a simple C++ parser which 
+        automatically generated dispatch routines for virtual functions (kcpp?), 
+        which theoretically might make development of these constructs easier.  
+        Although, I am not yet _entirely_ convinced that this is the case just 
+        yet.  Generated v-tables are not a panacea, and still don't properly 
+        solve issues associated with function pointer tables, such as hot code 
+        reloading, so such a feature might need a bit more effort to make it 
+        easy-to-use like C++ virtuals, but also not complete shit under the hood 
+        that we can't fix (like C++ virtuals).  */
+    _Korl_Vulkan_DeviceMemory_Allocation_Type type;
+    union 
+    {
+        VkBuffer buffer;
+        /** @todo: add images */
+    } deviceObject;
+    VkDeviceSize byteOffset;
+    VkDeviceSize byteSize;
+} _Korl_Vulkan_DeviceMemory_Alloctation;
+/**
+ * This is the "dumbest" possible allocator - we literally just allocate a big 
+ * chunk of memory, and then bind (allocate) new device objects one right after 
+ * another contiguously.  We don't do any defragmentation, and we don't even 
+ * have the ability to "free" objects, really (except when the entire allocator 
+ * needs to be destroyed).  But, for the purposes of prototyping, this will do 
+ * just fine for now.  
+ * @todo: if we ever start having more "shippable" asset pipelines, we will need 
+ *        a more intelligent allocator which allows things like:
+ *        - dynamic growth
+ *        - "freeing" allocations
+ *        - defragmentation
+ */
+typedef struct _Korl_Vulkan_DeviceMemoryLinear
+{
+    VkDeviceMemory deviceMemory;
+    /** passed as the first parameter to \c _korl_vulkan_findMemoryType */
+    u32 memoryTypeBits;
+    /** passed as the second parameter to \c _korl_vulkan_findMemoryType */
+    VkMemoryPropertyFlags memoryPropertyFlags;
+    VkDeviceSize byteSize;
+    VkDeviceSize bytesAllocated;
+    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceMemory_Alloctation, allocations, 64);
+} _Korl_Vulkan_DeviceMemoryLinear;
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -90,6 +144,7 @@ typedef struct _Korl_Vulkan_Context
      */
     VkShaderModule shaderImmediateColorVert;
     VkShaderModule shaderImmediateFrag;
+    /** @robustness: use KORL_MEMORY_POOL_* API */
     u32 pipelinesCount;
     _Korl_Vulkan_Pipeline pipelines[1024];
     /* pipeline layouts (uniform data) are (potentially) shared between 
@@ -100,6 +155,10 @@ typedef struct _Korl_Vulkan_Context
     VkDescriptorSetLayout descriptorSetLayout;
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
+    /* we need a place to store assets which exist & persist between multiple 
+        swap chain images */
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssetsStaging;
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssets;
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
@@ -114,60 +173,6 @@ typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
 } _Korl_Vulkan_SwapChainImageBatchUbo;
 /* Ensure _Korl_Vulkan_SwapChainImageBatchUbo member alignment here: */
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View) & 16) == 0);
-typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
-{
-    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED, 
-    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER
-} _Korl_Vulkan_DeviceMemory_Allocation_Type;
-typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
-{
-    /* @polymorphic-tagged-union
-        We essentially need "virtual constructor/destructor" logic for this 
-        data type, since this logic is specific to the device object type (we 
-        need to use different Vulkan API for these tasks).
-        It's worth noting that I have found this to be a common enough design 
-        pattern that at one point I created a simple C++ parser which 
-        automatically generated dispatch routines for virtual functions (kcpp?), 
-        which theoretically might make development of these constructs easier.  
-        Although, I am not yet _entirely_ convinced that this is the case just 
-        yet.  Generated v-tables are not a panacea, and still don't properly 
-        solve issues associated with function pointer tables, such as hot code 
-        reloading, so such a feature might need a bit more effort to make it 
-        easy-to-use like C++ virtuals, but also not complete shit under the hood 
-        that we can't fix (like C++ virtuals).  */
-    _Korl_Vulkan_DeviceMemory_Allocation_Type type;
-    union 
-    {
-        VkBuffer buffer;
-        /** @todo: add images */
-    } deviceObject;
-    VkDeviceSize byteOffset;
-    VkDeviceSize byteSize;
-} _Korl_Vulkan_DeviceMemory_Alloctation;
-/**
- * This is the "dumbest" possible allocator - we literally just allocate a big 
- * chunk of memory, and then bind (allocate) new device objects one right after 
- * another contiguously.  We don't do any defragmentation, and we don't even 
- * have the ability to "free" objects, really (except when the entire allocator 
- * needs to be destroyed).  But, for the purposes of prototyping, this will do 
- * just fine for now.  
- * @todo: if we ever start having more "shippable" asset pipelines, we will need 
- *        a more intelligent allocator which allows things like:
- *        - dynamic growth
- *        - "freeing" allocations
- *        - defragmentation
- */
-typedef struct _Korl_Vulkan_DeviceMemoryLinear
-{
-    VkDeviceMemory deviceMemory;
-    /** passed as the first parameter to \c _korl_vulkan_findMemoryType */
-    u32 memoryTypeBits;
-    /** passed as the second parameter to \c _korl_vulkan_findMemoryType */
-    VkMemoryPropertyFlags memoryPropertyFlags;
-    VkDeviceSize byteSize;
-    VkDeviceSize bytesAllocated;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceMemory_Alloctation, allocations, 64);
-} _Korl_Vulkan_DeviceMemoryLinear;
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView imageView;
