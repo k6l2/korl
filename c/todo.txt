@@ -38,7 +38,8 @@
 [ ] assets: load vulkan shaders
 [x] gfx: vulkan - draw different geoprims (tris, lines)
 [ ] Sprite Fonts
-	[ ] dynamic memory: stack allocator
+	[x] dynamic memory: linear allocator
+	[-] dynamic memory: stack allocator
 		- push/pop
 		- alloc
 		- realloc
@@ -49,7 +50,7 @@
 		- use OS virtual memory API directly to 
 			- reserve a large range of addresses
 			- commit only the necessary memory, then release when we're not using it anymore
-	[ ] assets: asset manager
+	[x] assets: asset manager
 		- we need this for loading graphics assets like shaders, textures, etc...
 		- load assets from the current working directory
 		- just use a stack allocator to store the asset data (always add memory, never remove free it)

@@ -7,11 +7,13 @@
 #include "korl-vulkan.h"
 #include "korl-file.h"
 #include "korl-assetCache.h"
+#include "korl-stb-image.h"
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
     korl_log(INFO, "start ---------------------------------------------------");
     korl_memory_initialize();
+    korl_stb_image_initialize();
     korl_file_initialize();
     korl_assetCache_initialize();
     korl_vulkan_construct();
@@ -33,3 +35,4 @@ void __stdcall korl_windows_main(void)
 #include "korl-checkCast.c"
 #include "korl-file.c"
 #include "korl-assetCache.c"
+#include "korl-stb-image.c"

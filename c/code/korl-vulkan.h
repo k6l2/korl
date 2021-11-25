@@ -7,6 +7,7 @@
 #include "korl-assetCache.h"
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
+typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
 typedef Korl_Math_V3u8  Korl_Vulkan_Color;
 korl_internal void korl_vulkan_construct(void);
 korl_internal void korl_vulkan_destroy(void);
@@ -42,6 +43,10 @@ korl_internal void korl_vulkan_batchTriangles_color(
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors);
+korl_internal void korl_vulkan_batchTriangles_uv(
+    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
+    u32 vertexCount, const Korl_Vulkan_Position* positions, 
+    const Korl_Vulkan_Uv* vertexTextureUvs);
 korl_internal void korl_vulkan_batchLines_color(
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors);
@@ -51,3 +56,4 @@ korl_internal void korl_vulkan_lookAt(
     const Korl_Math_V3f32*const positionEye, 
     const Korl_Math_V3f32*const positionTarget, 
     const Korl_Math_V3f32*const worldUpNormal);
+korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);

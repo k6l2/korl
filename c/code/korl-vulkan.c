@@ -1,7 +1,9 @@
 #include "korl-vulkan.h"
 #include "korl-io.h"
 #include "korl-assert.h"
+#include "korl-assetCache.h"
 #include "korl-vulkan-common.h"
+#include "korl-stb-image.h"
 #if defined(_WIN32)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(_WIN32)
@@ -1620,6 +1622,13 @@ korl_internal void korl_vulkan_batchTriangles_color(
     _korl_vulkan_batchVertexIndices(vertexIndexCount, vertexIndices);
     _korl_vulkan_batchVertexAttributes(vertexCount, positions, colors);
 }
+korl_internal void korl_vulkan_batchTriangles_uv(
+    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
+    u32 vertexCount, const Korl_Vulkan_Position* positions, 
+    const Korl_Vulkan_Uv* vertexTextureUvs)
+{
+    korl_assert(!"@todo");
+}
 korl_internal void korl_vulkan_batchLines_color(
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors)
@@ -1715,4 +1724,28 @@ korl_internal void korl_vulkan_lookAt(
     writeDescriptorSetUbo.descriptorCount = 1;
     writeDescriptorSetUbo.pBufferInfo     = &descriptorBufferInfoUbo;
     vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUbo, 0, NULL);
+}
+korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /* check and see if the asset is already loaded as a device texture */
+    u$ deviceAssetIndexLoaded = 0;
+    for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
+        if(korl_memory_stringCompare(context->deviceAssets[deviceAssetIndexLoaded].name, assetName) == 0)
+            break;
+    /* if it is, select this texture for later use and return */
+    if(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets))
+    {
+        korl_assert(!"@todo: set this texture device asset for drawing");
+        return;
+    }
+    /* request the image asset from the asset manager */
+    Korl_AssetCache_AssetData assetData = korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    /* if the asset isn't loaded we can stop here */
+    if(assetData.data == NULL)
+        return;
+    /* decode the raw image data from the asset */
+    /* allocate a device texture object */
+    /* upload the raw image data to the device texture object */
+    korl_assert(!"@todo");
 }

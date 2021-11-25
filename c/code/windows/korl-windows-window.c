@@ -125,17 +125,31 @@ korl_internal void _korl_windows_window_step(void)
             , {-0.5f,  0.5f, 0.f} };
         korl_shared_const Korl_Vulkan_Color vertexColors[] = 
             { {255,   0,   0}
-            , {0  , 255,   0}
-            , {0  ,   0, 255}
+            , {  0, 255,   0}
+            , {  0,   0, 255}
             , {255, 255, 255} };
         korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
             { 0, 1, 3
             , 1, 2, 3 };
         _STATIC_ASSERT(
             korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
+#if 1
+        korl_shared_const Korl_Vulkan_Uv vertexTextureUvs[] = 
+            { {0, 0}
+            , {1, 0}
+            , {1, 1}
+            , {0, 1} };
+        //Korl_Vulkan_TextureHandle hTexture = 
+        //    korl_vulkan_createTexture(L"test-assets/birb.jpg");
+        korl_vulkan_useImageAssetAsTexture(L"test-assets/birb.jpg");
+        korl_vulkan_batchTriangles_uv(
+            korl_arraySize(vertexIndices), vertexIndices, 
+            korl_arraySize(vertexPositions), vertexPositions, vertexTextureUvs);
+#else
         korl_vulkan_batchTriangles_color(
             korl_arraySize(vertexIndices), vertexIndices, 
             korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+#endif
     }
     /* let's also draw some lines */
     {

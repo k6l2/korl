@@ -4,6 +4,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include <vulkan/vulkan.h>
+#define _KORL_VULKAN_MAX_ASSET_NAME_LENGTH 64
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
@@ -97,6 +98,10 @@ typedef struct _Korl_Vulkan_Pipeline
     /* render state that has nothing to do with the pipeline itself */
     bool useIndexBuffer;
 } _Korl_Vulkan_Pipeline;
+typedef struct _Korl_Vulkan_DeviceAsset
+{
+    wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
+} _Korl_Vulkan_DeviceAsset;
 typedef struct _Korl_Vulkan_Context
 {
     /**
@@ -107,9 +112,9 @@ typedef struct _Korl_Vulkan_Context
     VkAllocationCallbacks* allocator;
     VkInstance instance;
     /* instance extension function pointers */
-    PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
+    PFN_vkGetPhysicalDeviceSurfaceSupportKHR      vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR      vkGetPhysicalDeviceSurfaceFormatsKHR;
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
 #if KORL_DEBUG
     PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
@@ -159,6 +164,9 @@ typedef struct _Korl_Vulkan_Context
         swap chain images */
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssetsStaging;
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssets;
+    /* storage for assets that are exist on the device 
+        (textures, shaders, buffers, etc) */
+    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceAsset, deviceAssets, 1024);
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 

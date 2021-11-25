@@ -5,6 +5,14 @@
     ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 #define KORL_MATH_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define KORL_MATH_MAX(a,b) ((a) > (b) ? (a) : (b))
+typedef union Korl_Math_V2f32
+{
+    struct
+    {
+        f32 x, y;
+    } xy;
+    f32 elements[2];
+} Korl_Math_V2f32;
 typedef union Korl_Math_V3f32
 {
     struct
