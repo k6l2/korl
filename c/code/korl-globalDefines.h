@@ -90,7 +90,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
     _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, count, ...) count
 #endif//0
 /* macro for c-style casts to improve project searchability */
-#define KORL_C_CAST(type,variable) ((type)variable)
+#define KORL_C_CAST(type,variable) ((type)(variable))
 /* macro for automatically initializing stack variables to 0 */
 #define KORL_ZERO_STACK(variableType, variableIdentifier) \
     variableType variableIdentifier;\

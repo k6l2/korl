@@ -10,7 +10,7 @@ korl_internal void korl_stb_image_initialize(void)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     korl_memory_nullify(context, sizeof(*context));
-    context->allocator = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
+    context->allocator = korl_memory_createAllocatorLinear(korl_math_megabytes(16));
 }
 #define STBI_ASSERT(x) korl_assert(x)
 void* _stbi_allocate(u$ bytes)

@@ -4,15 +4,23 @@
 #include "korl-assert.h"
 #include "korl-io.h"
 #define _KORL_MEMORY_INVALID_BYTE_PATTERN 0xFE
-korl_global_variable SYSTEM_INFO _korl_memory_systemInfo;
+typedef struct _Korl_Memory_Context
+{
+    SYSTEM_INFO systemInfo;
+    DWORD mainThreadId;
+} _Korl_Memory_Context;
+korl_global_variable _Korl_Memory_Context _korl_memory_context;
 korl_internal void korl_memory_initialize(void)
 {
-    SecureZeroMemory(&_korl_memory_systemInfo, sizeof(_korl_memory_systemInfo));
-    GetSystemInfo(&_korl_memory_systemInfo);
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_memory_nullify(&context->systemInfo, sizeof(context->systemInfo));
+    GetSystemInfo(&context->systemInfo);
+    context->mainThreadId = GetCurrentThreadId();
 }
 korl_internal u$ korl_memory_pageBytes(void)
 {
-    return _korl_memory_systemInfo.dwPageSize;
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    return context->systemInfo.dwPageSize;
 }
 #if 0// @unused
 korl_internal void* korl_memory_addressMin(void)
@@ -121,7 +129,15 @@ typedef struct _Korl_Memory_AllocationMeta
 } _Korl_Memory_AllocationMeta;
 KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
 {
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    /* for now, only support operations on the main thread */
+    if(GetCurrentThreadId() != _korl_memory_context.mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
+        return NULL;
+    }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
+    void* allocationAddress = NULL;
     /* release the protection on the allocator pages */
     {
         DWORD oldProtect;
@@ -140,13 +156,13 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
     if(availableCommitPages < allocationPages)
     {
         korl_log(WARNING, "Not enough space to allocate %lu bytes!", bytes);
-        return NULL;
+        goto done;
     }
     /* commit the pages of this allocation */
     korl_assert(sizeof(_Korl_Memory_AllocationMeta) < pageBytes);
     _Korl_Memory_AllocationMeta*const metaPageAddress = KORL_C_CAST(_Korl_Memory_AllocationMeta*, 
         KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes) + allocator->bytesAllocated);
-    void*const allocationAddress = KORL_C_CAST(u8*, metaPageAddress) + pageBytes;
+    allocationAddress = KORL_C_CAST(u8*, metaPageAddress) + pageBytes;
     {
         LPVOID resultVirtualAlloc = 
             VirtualAlloc(metaPageAddress, allocationPages * pageBytes, MEM_COMMIT, PAGE_READWRITE);
@@ -175,6 +191,7 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
     /* update allocator's metrics */
     allocator->bytesAllocated += allocationPages * pageBytes;
     allocator->lastAllocation  = allocationAddress;
+done:
     /* protect the allocator pages until the time comes to actually use it */
     {
         DWORD oldProtect;
@@ -185,16 +202,23 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
 }
 KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
 {
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    /* for now, only support operations on the main thread */
+    if(GetCurrentThreadId() != _korl_memory_context.mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
+        return;
+    }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
     const u$ pageBytes = korl_memory_pageBytes();
-    korl_assert(allocator->bytes % pageBytes == 0);
-    const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
     /* release the protection on the allocator pages */
     {
         DWORD oldProtect;
         korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect));
         korl_assert(oldProtect == PAGE_NOACCESS);
     }
+    korl_assert(allocator->bytes % pageBytes == 0);
+    const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
     /* ensure that this address is actually within the allocator's range */
     korl_assert(KORL_C_CAST(u8*, allocation) >= KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes)
              && KORL_C_CAST(u8*, allocation) <  KORL_C_CAST(u8*, allocator) + allocator->bytes);
@@ -215,17 +239,19 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
     //   the allocation's `size` information //
     {
         DWORD oldProtect;
-        korl_assert(VirtualProtect(allocationMeta, sizeof(*allocationMeta), PAGE_READWRITE, &oldProtect));
+        const BOOL resultVirtualProtect = VirtualProtect(allocationMeta, sizeof(*allocationMeta), PAGE_READWRITE, &oldProtect);
+        if(!resultVirtualProtect)
+            korl_logLastError("VirtualProtect failed!");
         korl_assert(oldProtect == PAGE_NOACCESS);
     }
     // the range of pages occupied by the allocation //
     // note that we get the TOTAL pages occupied by the allocation, including 
     //  the meta data
     const u$ allocationPages = ((allocationMeta->bytes + (pageBytes - 1)) / pageBytes) + 1;
-    /* set the allocation's pages to NOACCESS */
+    /* set the allocation's pages to NOACCESS, including the meta data page! */
     {
         DWORD oldProtect;
-        korl_assert(VirtualProtect(allocation, allocationPages * pageBytes, PAGE_NOACCESS, &oldProtect));
+        korl_assert(VirtualProtect(allocationMeta, allocationPages * pageBytes, PAGE_NOACCESS, &oldProtect));
         korl_assert(oldProtect == PAGE_READWRITE);
     }
     /* update allocator's metrics 
@@ -243,6 +269,13 @@ done:
 }
 KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate)
 {
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    /* for now, only support operations on the main thread */
+    if(GetCurrentThreadId() != _korl_memory_context.mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
+        return NULL;
+    }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
     const u$ pageBytes = korl_memory_pageBytes();
     korl_assert(allocator->bytes % pageBytes == 0);
@@ -388,9 +421,9 @@ done:
             ZeroMemory(KORL_C_CAST(u8*, allocation) + allocationMeta->bytes, bytes - allocationMeta->bytes);
         else if(allocationMeta->bytes > bytes)// we're losing space
             /* fill the now unused space with a known bit pattern */
-            /** @todo: this will fail in the case that our allocation's page 
-             * count shrinks, as we will accidentally attempt to write in the 
-             * old page - fix me pls */
+            /** @incomplete: this will fail in the case that our allocation's 
+             * page count shrinks, as we will accidentally attempt to write in 
+             * the old page - fix me pls */
             FillMemory(KORL_C_CAST(u8*, allocation) + bytes, allocationMeta->bytes - bytes, _KORL_MEMORY_INVALID_BYTE_PATTERN);
         /* update the allocation's metadata */
         allocationMeta->bytes = bytes;

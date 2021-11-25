@@ -7,7 +7,7 @@ for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
 rem ----- create & enter the build output directory -----
 cd %KORL_PROJECT_ROOT%
 if not exist "build" (
-	mkdir "build"
+    mkdir "build"
 )
 cd "build"
 rem ----- create the command to build the EXE -----
@@ -70,7 +70,7 @@ rem disable exception handling unwind code generation
 set buildCommand=%buildCommand% /EHa-
 rem display the full path of source code files passed in diagnostics
 set buildCommand=%buildCommand% /FC
-rem ::::::::::::::::::::::::::::: LINKER SETTINGS ::::::::::::::::::::::::::::::
+rem ----------------------------- LINKER SETTINGS ------------------------------
 set buildCommand=%buildCommand% /link
 rem set the PDB file name
 set buildCommand=%buildCommand% /pdb:"%KORL_EXE_NAME%.pdb"

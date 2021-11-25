@@ -1059,6 +1059,12 @@ korl_internal void korl_vulkan_destroy(void)
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(
         context->instance, context->debugMessenger, context->allocator);
+#else
+    /* we only need to manually destroy the vulkan module if we're running a 
+        debug build, since the validation layers require us to properly clean up 
+        before the program ends, but for release builds we really don't care at 
+        all about wasting time like this if we don't have to */
+    return;
 #endif// KORL_DEBUG
     vkDestroyInstance(context->instance, context->allocator);
     /* nullify the context after cleaning up properly for safety */
@@ -1745,7 +1751,17 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     if(assetData.data == NULL)
         return;
     /* decode the raw image data from the asset */
+    int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
+    stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
+    if(!imagePixels)
+    {
+        korl_log(ERROR, "stbi_load_from_memory failed! (%S)", assetName);
+        return;
+    }
     /* allocate a device texture object */
+    korl_assert(!"@todo");
     /* upload the raw image data to the device texture object */
     korl_assert(!"@todo");
+    /* free the raw image data */
+    stbi_image_free(imagePixels);
 }

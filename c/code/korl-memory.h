@@ -14,12 +14,12 @@
     , &(name)[name##_korlMemoryPoolSize++] )
 /* @simplify: make some macros which automatically inject file + line for calls 
     to these allocator functions so we don't have to think about it */
-#define KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(name) void* name(void* userData, u$ bytes, wchar_t* file, int line)
+#define KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(name)   void* name(void* userData, u$ bytes, wchar_t* file, int line)
 #define KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(name) void* name(void* userData, void* allocation, u$ bytes, wchar_t* file, int line)
-#define KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(name) void name(void* userData, void* allocation, wchar_t* file, int line)
-typedef KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocator_callback_allocate);
+#define KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(name)       void  name(void* userData, void* allocation, wchar_t* file, int line)
+typedef KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE  (korl_memory_allocator_callback_allocate);
 typedef KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocator_callback_reallocate);
-typedef KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocator_callback_free);
+typedef KORL_MEMORY_ALLOCATOR_CALLBACK_FREE      (korl_memory_allocator_callback_free);
 typedef struct Korl_Memory_Allocator
 {
     /** data to be passed to the allocator's callback API */
@@ -29,7 +29,7 @@ typedef struct Korl_Memory_Allocator
     korl_memory_allocator_callback_free*       callbackFree;
 } Korl_Memory_Allocator;
 korl_internal void korl_memory_initialize(void);
-korl_internal u$ korl_memory_pageBytes(void);
+korl_internal u$   korl_memory_pageBytes(void);
 #if 0 //@unused
 korl_internal void* korl_memory_addressMin(void);
 korl_internal void* korl_memory_addressMax(void);
