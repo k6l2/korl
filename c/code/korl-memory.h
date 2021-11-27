@@ -12,7 +12,17 @@
 #define KORL_MEMORY_POOL_ADD(name) \
     ( korl_assert(name##_korlMemoryPoolSize < korl_arraySize(name))\
     , &(name)[name##_korlMemoryPoolSize++] )
-/* @simplify: make some macros which automatically inject file + line for calls 
+#define KORL_MEMORY_POOL_REMOVE(name, index) \
+    ( korl_assert(name##_korlMemoryPoolSize > 0) \
+    , korl_assert((u32)(index) < name##_korlMemoryPoolSize) \
+    , (name)[index] = (name)[name##_korlMemoryPoolSize - 1] \
+    , name##_korlMemoryPoolSize-- )
+#define KORL_MEMORY_POOL_EMPTY(name) (name##_korlMemoryPoolSize == 0)
+/** @simplify: we don't actually need to expose ANY of this allocator API right 
+ * now for any reason - all the user of this module needs is the enumeration of 
+ * what kind of allocator they are getting, then the dispatch can just all be 
+ * done internally and the user doesn't have to deal with function pointer crap */
+/** @simplify: make some macros which automatically inject file + line for calls 
     to these allocator functions so we don't have to think about it */
 #define KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(name)   void* name(void* userData, u$ bytes, wchar_t* file, int line)
 #define KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(name) void* name(void* userData, void* allocation, u$ bytes, wchar_t* file, int line)

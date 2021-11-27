@@ -1764,4 +1764,6 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     korl_assert(!"@todo");
     /* free the raw image data */
     stbi_image_free(imagePixels);
+    /* add the device asset to the database */
+    korl_assert(!"@todo");
 }

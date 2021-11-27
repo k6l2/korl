@@ -99,19 +99,14 @@ korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
 }
 typedef struct _Korl_Memory_AllocatorLinear
 {
-    /* @redundant: technically we don't need this, since we can just call 
+    /** @redundant: technically we don't need this, since we can just call 
         QueryVirtualMemoryInformation */
     /** total amount of reserved virtual address space, including this struct */
     u$ bytes;
-    /** 
-     * Total amount of comitted virtual address space AFTER pages used by this 
-     * struct, including any NOACCESS pages, allocation metadata, etc.
-     * This is effectively the total comitted memory.
-     */
-    /** @rename: bytesComitted - better descriptor */
-    u$ bytesAllocated;
-    /** support for realloc/free for the last allocation */
-    void* lastAllocation;
+    void* nextAllocationAddress;
+    /** support for realloc/free for arbitrary allocations 
+     * - offsets are relative to the start address of this struct */
+    KORL_MEMORY_POOL_DECLARE(u32, allocationOffsets, 1024);
 } _Korl_Memory_AllocatorLinear;
 typedef struct _Korl_Memory_AllocationMeta
 {
@@ -144,24 +139,21 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
         korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect));
         korl_assert(oldProtect == PAGE_NOACCESS);
     }
+    /* sanity check that the allocator's address range is page-aligned */
     const u$ pageBytes = korl_memory_pageBytes();
-    korl_assert(allocator->bytes % pageBytes == 0);
-    const u$ allocatorPages       = (sizeof(*allocator)        + (pageBytes - 1)) / pageBytes;
-    const u$ pagesAllocated       = (allocator->bytesAllocated + (pageBytes - 1)) / pageBytes;
-    const u$ totalReservedPages   = allocator->bytes / pageBytes;
-    const u$ availableCommitPages = totalReservedPages - allocatorPages - pagesAllocated;
-    const u$ allocationPages      = ((bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
-    /* ensure that the allocator has enough space for the allocation + any 
-        additional overhead required for the allocation */
-    if(availableCommitPages < allocationPages)
-    {
-        korl_log(WARNING, "Not enough space to allocate %lu bytes!", bytes);
-        goto done;
-    }
+    korl_assert(KORL_C_CAST(u$, allocator) % pageBytes == 0);
+    korl_assert(allocator->bytes           % pageBytes == 0);
+    /* the allocator knows where the next allocation address is, so all we need 
+        to do is check to see that this allocation can fit in the range 
+        [nextAllocationAddress, lastReservedAddress] */
+    const u$ allocationPages = ((bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
+    const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
+    korl_assert(KORL_C_CAST(u8*, allocator->nextAllocationAddress) + allocationPages*pageBytes < allocatorEnd);
     /* commit the pages of this allocation */
+    const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
+    _Korl_Memory_AllocationMeta*const metaPageAddress = 
+        KORL_C_CAST(_Korl_Memory_AllocationMeta*, allocator->nextAllocationAddress);
     korl_assert(sizeof(_Korl_Memory_AllocationMeta) < pageBytes);
-    _Korl_Memory_AllocationMeta*const metaPageAddress = KORL_C_CAST(_Korl_Memory_AllocationMeta*, 
-        KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes) + allocator->bytesAllocated);
     allocationAddress = KORL_C_CAST(u8*, metaPageAddress) + pageBytes;
     {
         LPVOID resultVirtualAlloc = 
@@ -189,9 +181,9 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
         korl_assert(oldProtect == PAGE_READWRITE);
     }
     /* update allocator's metrics */
-    allocator->bytesAllocated += allocationPages * pageBytes;
-    allocator->lastAllocation  = allocationAddress;
-done:
+    u32*const newAllocationOffset = KORL_MEMORY_POOL_ADD(allocator->allocationOffsets);
+    allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocationAddress) + allocationPages*pageBytes;
+    *newAllocationOffset             = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, allocationAddress) - KORL_C_CAST(u8*, allocator));
     /* protect the allocator pages until the time comes to actually use it */
     {
         DWORD oldProtect;
@@ -225,12 +217,17 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
     /* ensure that the allocation address is divisible by the page size, because 
         this is currently a constraint of this allocator */
     korl_assert(KORL_C_CAST(u$, allocation) % pageBytes == 0);
-    /* if we're not the last allocation, we currently don't support freeing it */
-    if(allocation != allocator->lastAllocation)
+    /* ensure that the offset of this address is recorded in the allocator 
+        - remember: the allocation offset should point to the allocation's meta 
+                    data page, not the allocation itself! */
+    const u32 allocationOffset = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, allocation) - KORL_C_CAST(u8*, allocator));
+    u32 allocationOffsetIndex = 0;
+    for(; allocationOffsetIndex < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); ++allocationOffsetIndex)
     {
-        korl_log(WARNING, "Attempted to free an allocation that was not the last allocation!");
-        goto done;
+        if(allocator->allocationOffsets[allocationOffsetIndex] == allocationOffset)
+            break;
     }
+    korl_assert(allocationOffsetIndex < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets));
     /* determine the range of pages occupied by the allocation */
     // get the address of the allocation's metadata page //
     _Korl_Memory_AllocationMeta*const allocationMeta = 
@@ -254,12 +251,12 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
         korl_assert(VirtualProtect(allocationMeta, allocationPages * pageBytes, PAGE_NOACCESS, &oldProtect));
         korl_assert(oldProtect == PAGE_READWRITE);
     }
-    /* update allocator's metrics 
-        - reduce the # of bytesAllocated
-        - clear the allocation address */
-    allocator->bytesAllocated -= allocationPages * pageBytes;
-    allocator->lastAllocation  = NULL;
-done:
+    /* update allocator's metrics */
+    KORL_MEMORY_POOL_REMOVE(allocator->allocationOffsets, allocationOffsetIndex);
+    if(KORL_MEMORY_POOL_EMPTY(allocator->allocationOffsets))
+        /* if the allocator no longer has any allocations, we can safely start 
+            re-using memory from the beginning of the allocator again */
+        allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
     /* protect the allocator pages until the time comes to actually use it */
     {
         DWORD oldProtect;
@@ -295,6 +292,20 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate
     /* ensure that the allocation address is divisible by the page size, because 
         this is currently a constraint of this allocator */
     korl_assert(KORL_C_CAST(u$, allocation) % pageBytes == 0);
+    /* ensure that the offset of this address is recorded in the allocator */
+    /* additionally, determine if this allocation is the LAST allocation 
+        (in other words, determine if we can freely expand into higher addresses) */
+    const u32 allocationOffset = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, allocation) - KORL_C_CAST(u8*, allocator));
+    u32 allocationOffsetIndex = KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets);
+    bool isLastAllocation = true;
+    for(u32 i = 0; i < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); ++i)
+    {
+        if(allocator->allocationOffsets[i] == allocationOffset)
+            allocationOffsetIndex = i;
+        if(allocator->allocationOffsets[i] > allocationOffset)
+            isLastAllocation = false;
+    }
+    korl_assert(allocationOffsetIndex < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets));
     /* if bytes is 0, just call `free` & return NULL */
     if(bytes == 0)
     {
@@ -307,7 +318,6 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate
         korl_memory_allocatorLinear_free(userData, allocation, file, line);
         return NULL;
     }
-    /* determine the range of pages occupied by the allocation */
     // get the address of the allocation's metadata page //
     _Korl_Memory_AllocationMeta*const allocationMeta = 
         KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
@@ -329,17 +339,15 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate
        To determine which case we fall in, we must first obtain the allocation's 
        meta data to see how much actual memory the caller is using, which we 
        have already done above.  */
-    if(allocation != allocator->lastAllocation)
+    if(!isLastAllocation)
     {
         // JUST the number of pages used by the allocation itself, excluding the 
         //  meta data, etc... //
         const u$ allocationPages = (allocationMeta->bytes + (pageBytes - 1)) / pageBytes;
-        /* if we have enough room within the allocation's comitted pages */
-        if(allocationPages * pageBytes >= bytes)
-        {
+        /* if we have enough room within the allocation's address range */
+        if(allocationPages*pageBytes >= bytes)
             /* in-place allocation size modification code runs in the `done` section */
             goto done;
-        }
         /* we don't have enough room in the current allocation's pages - we need 
             to make a new allocation! */
         else
@@ -382,19 +390,18 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate
     else
     {
         /* determine if the new allocation size will fit in the allocator */
-        const u$ pagesAllocated       = (allocator->bytesAllocated + (pageBytes - 1)) / pageBytes;
-        const u$ totalReservedPages   = allocator->bytes / pageBytes;
-        const u$ allocationPagesOld = ((allocationMeta->bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
-        const u$ allocationPages    = ((bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
+        const u$ allocationPages = ((bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
+        const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
         /* if we don't have enough room to grow, we can effectively just abort 
             here without changing anything internally */
-        if(totalReservedPages < pagesAllocated - allocationPagesOld + KORL_MATH_MAX(allocationPagesOld, allocationPages))
+        if(KORL_C_CAST(u8*, allocationMeta) + allocationPages*pageBytes >= allocatorEnd)
         {
             allocation = NULL;
             korl_log(WARNING, "failed to grow the allocation - not enough space");
             goto done;
         }
         /* ensure that if the allocation shrinks, the unused pages are PROTECTED */
+        const u$ allocationPagesOld = ((allocationMeta->bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
         {
             DWORD oldProtect;
             korl_assert(VirtualProtect(allocationMeta, KORL_MATH_MAX(allocationPagesOld, allocationPages) * pageBytes, PAGE_NOACCESS, &oldProtect));
@@ -415,16 +422,14 @@ done:
     /* in-place allocation size modification code */
     if(allocation)
     {
+        const u$ allocationPages = ((bytes + (pageBytes - 1)) / pageBytes);
         /* fill allocated/freed space with known bit patterns */
         if(allocationMeta->bytes < bytes)// we're gaining space
             /* fill the newly used space with zeroes */
             ZeroMemory(KORL_C_CAST(u8*, allocation) + allocationMeta->bytes, bytes - allocationMeta->bytes);
         else if(allocationMeta->bytes > bytes)// we're losing space
             /* fill the now unused space with a known bit pattern */
-            /** @incomplete: this will fail in the case that our allocation's 
-             * page count shrinks, as we will accidentally attempt to write in 
-             * the old page - fix me pls */
-            FillMemory(KORL_C_CAST(u8*, allocation) + bytes, allocationMeta->bytes - bytes, _KORL_MEMORY_INVALID_BYTE_PATTERN);
+            FillMemory(KORL_C_CAST(u8*, allocation) + bytes, allocationPages*pageBytes - bytes, _KORL_MEMORY_INVALID_BYTE_PATTERN);
         /* update the allocation's metadata */
         allocationMeta->bytes = bytes;
         allocationMeta->file  = file;
@@ -458,19 +463,21 @@ korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxByte
     const u$ pageBytes = pageCount * korl_memory_pageBytes();
     /* reserve all these pages */
     LPVOID resultVirtualAlloc = 
-        VirtualAlloc(NULL/*specify start address; optional*/, pageBytes, MEM_RESERVE, PAGE_NOACCESS);
+        VirtualAlloc(NULL/*optional start address; NULL=>let OS choose for us*/, pageBytes, MEM_RESERVE, PAGE_NOACCESS);
     if(resultVirtualAlloc == NULL)
         korl_logLastError("VirtualAlloc failed!");
     result.userData = resultVirtualAlloc;
-    /* commit the first page for the allocator itself */
+    /* commit the first pages for the allocator itself */
     resultVirtualAlloc = 
-        VirtualAlloc(result.userData, korl_memory_pageBytes(), MEM_COMMIT, PAGE_READWRITE);
+        VirtualAlloc(result.userData, sizeof(_Korl_Memory_AllocatorLinear), MEM_COMMIT, PAGE_READWRITE);
     if(resultVirtualAlloc == NULL)
         korl_logLastError("VirtualAlloc failed!");
     /* initialize the memory of the allocator userData */
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, resultVirtualAlloc);
     korl_memory_nullify(allocator, sizeof(*allocator));
-    allocator->bytes = pageBytes;
+    const u$ allocatorPages = (sizeof(*allocator) + (korl_memory_pageBytes() - 1)) / korl_memory_pageBytes();
+    allocator->bytes                 = pageBytes;
+    allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocator) + allocatorPages*korl_memory_pageBytes();
     /* protect the allocator pages until the time comes to actually use it */
     {
         DWORD oldProtect;
