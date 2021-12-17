@@ -1,5 +1,6 @@
 #include "korl-assetCache.h"
 #include "korl-memory.h"
+#include "korl-file.h"
 #define _KORL_ASSETCACHE_ASSET_COUNT_MAX 1024
 #define _KORL_ASSETCACHE_ASSET_NAME_SIZE_MAX 64
 typedef struct _Korl_AssetCache_Asset

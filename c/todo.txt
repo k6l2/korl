@@ -26,6 +26,9 @@
 	- "start" a time probe recording period (frames)
 	- "probe" arbitrary sections of code using labels & using thread ID
 	- print all the probe results from the previous frame
+	- how does Optick get samples of the entire call stack of the application?
+	- how does Optick get information about whether or not other applications on 
+		the system are using the CPU at specific points in time?
 [ ] stability metrics
 	- SEH interceptor
 	- stack overflow
@@ -80,3 +83,7 @@
 [ ] collision resolution (???)
 [ ] networking: UDP
 [ ] networking: reliable packets
+[ ] game pad input (RawInput)
+	[ ] logitech pad (D mode)
+	[ ] DS4
+	[ ] DS3

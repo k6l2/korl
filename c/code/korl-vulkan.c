@@ -503,49 +503,97 @@ korl_internal void _korl_vulkan_deviceMemory_allocation_destroy(_Korl_Vulkan_Dev
     case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER:{
         vkDestroyBuffer(context->device, allocation->deviceObject.buffer, context->allocator);
         } break;
+    case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE:{
+        vkDestroyImage(context->device, allocation->deviceObject.image, context->allocator);
+        } break;
+    /* add code to handle new device object types here!
+        @vulkan-device-allocation-type */
+    default:
+        korl_assert(!"device object type not implemented!");
     }
     korl_memory_nullify(allocation, sizeof(*allocation));
 }
+/**
+ * \param bufferUsageFlags If this allocator is going to be used to allocate any 
+ * VkBuffer objects, then this value MUST be populated with the set of all 
+ * possible flags that any allocated buffer might use.  If no flags are 
+ * specified, then the allocator cannot be guaranteed to allow VkBuffer 
+ * allocations.
+ * \param imageUsageFlags Similar to \c bufferUsageFlags , except for VkImage.
+ */
 korl_internal void _korl_vulkan_deviceMemoryLinear_create(
     _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
     VkMemoryPropertyFlagBits memoryPropertyFlags, 
     VkBufferUsageFlags bufferUsageFlags, 
+    VkImageUsageFlags imageUsageFlags, 
     VkDeviceSize bytes)
 {
     /* sanity check - ensure the deviceMemoryLinear is already nullified */
     korl_assert(korl_memory_isNull(deviceMemoryLinear, sizeof(*deviceMemoryLinear)));
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /** this will store the accumulation of all necessary memory types for this 
+     * allocator, which is based on the provided *UsageFlags parameters */
+    u32 memoryTypeBits = 0;
     /* Create a dummy buffer using the buffer usage flags.  According to sources 
         I've read on this subject, this should allow us to allocate device 
         memory that can accomodate buffers made with any subset of these usage 
         flags in the future.  This Vulkan API idiom is, in my opinion, very 
         obtuse/unintuitive, but whatever!  
         Source: https://stackoverflow.com/a/55456540 */
-    VkBuffer dummyBuffer;
-    KORL_ZERO_STACK(VkBufferCreateInfo, bufferCreateInfo);
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.size  = 1;
-    bufferCreateInfo.usage = bufferUsageFlags;
-    _KORL_VULKAN_CHECK(
-        vkCreateBuffer(
-            context->device, &bufferCreateInfo, context->allocator, &dummyBuffer));
-    /* query the dummy device objects for their memory requirements */
-    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsDummyBuffer);
-    vkGetBufferMemoryRequirements(context->device, dummyBuffer, &memoryRequirementsDummyBuffer);
+    if(bufferUsageFlags)
+    {
+        VkBuffer dummyBuffer;
+        KORL_ZERO_STACK(VkBufferCreateInfo, bufferCreateInfo);
+        bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferCreateInfo.size  = 1;
+        bufferCreateInfo.usage = bufferUsageFlags;
+        _KORL_VULKAN_CHECK(vkCreateBuffer(context->device, &bufferCreateInfo, context->allocator, &dummyBuffer));
+        KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsDummyBuffer);
+        vkGetBufferMemoryRequirements(context->device, dummyBuffer, &memoryRequirementsDummyBuffer);
+        vkDestroyBuffer(context->device, dummyBuffer, context->allocator);
+        memoryTypeBits |= memoryRequirementsDummyBuffer.memoryTypeBits;
+    }
+    /* Create dummy image, query mem reqs, extract memory type bits.  See notes 
+        above regarding the same procedures for VkBuffer for details.  */
+    if(imageUsageFlags)
+    {
+        VkImage dummyImage;
+        KORL_ZERO_STACK(VkImageCreateInfo, imageCreateInfo);
+        imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
+        imageCreateInfo.extent.width  = 1;
+        imageCreateInfo.extent.height = 1;
+        imageCreateInfo.extent.depth  = 1;
+        imageCreateInfo.mipLevels     = 1;
+        imageCreateInfo.arrayLayers   = 1;
+        imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+        imageCreateInfo.usage         = imageUsageFlags;
+        imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+        // all these options are already defaulted to 0 //
+        //imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        //imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        //imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &dummyImage));
+        KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
+        vkGetImageMemoryRequirements(context->device, dummyImage, &memoryRequirements);
+        vkDestroyImage(context->device, dummyImage, context->allocator);
+        memoryTypeBits |= memoryRequirements.memoryTypeBits;
+    }
+    /* put additional device object memory type bit queries here 
+        (don't forget to add the usage flags as a parameter)
+        @vulkan-device-allocation-type */
     /* now we can create the device memory used in the allocator */
     KORL_ZERO_STACK(VkMemoryAllocateInfo, allocateInfo);
     allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.allocationSize  = bytes;
-    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(memoryRequirementsDummyBuffer.memoryTypeBits, memoryPropertyFlags);
+    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(memoryTypeBits, memoryPropertyFlags);
     _KORL_VULKAN_CHECK(
         vkAllocateMemory(
             context->device, &allocateInfo, context->allocator, &deviceMemoryLinear->deviceMemory));
-    /* clean up dummy device objects */
-    vkDestroyBuffer(context->device, dummyBuffer, context->allocator);
     /* initialize the rest of the allocator */
     deviceMemoryLinear->byteSize            = bytes;
     deviceMemoryLinear->memoryPropertyFlags = memoryPropertyFlags;
-    deviceMemoryLinear->memoryTypeBits      = memoryRequirementsDummyBuffer.memoryTypeBits;
+    deviceMemoryLinear->memoryTypeBits      = memoryTypeBits;
 }
 korl_internal void _korl_vulkan_deviceMemoryLinear_destroy(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
 {
@@ -554,6 +602,14 @@ korl_internal void _korl_vulkan_deviceMemoryLinear_destroy(_Korl_Vulkan_DeviceMe
         _korl_vulkan_deviceMemory_allocation_destroy(&deviceMemoryLinear->allocations[a]);
     vkFreeMemory(context->device, deviceMemoryLinear->deviceMemory, context->allocator);
     korl_memory_nullify(deviceMemoryLinear, sizeof(*deviceMemoryLinear));
+}
+/**
+ * Iterate over each allocation and destroy it, effectively emptying the allocator.
+ */
+korl_internal void _korl_vulkan_deviceMemoryLinear_clear(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
+{
+    for(unsigned a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
+        _korl_vulkan_deviceMemory_allocation_destroy(&deviceMemoryLinear->allocations[a]);
 }
 korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateBuffer(
     _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, VkDeviceSize bytes, 
@@ -592,6 +648,54 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
         vkBindBufferMemory(
             context->device, result->deviceObject.buffer, 
             deviceMemoryLinear->deviceMemory, alignedOffset));
+    /* update the rest of the allocations meta data */
+    result->byteOffset = alignedOffset;
+    result->byteSize   = memoryRequirements.size;
+    /* update allocator book keeping */
+    deviceMemoryLinear->bytesAllocated = alignedOffset + memoryRequirements.size;
+    return result;
+}
+korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateImage(
+    _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
+    u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    korl_assert(!KORL_MEMORY_POOL_FULL(deviceMemoryLinear->allocations));
+    _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
+    result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE;
+    /* create the image with the given parameters */
+    KORL_ZERO_STACK(VkImageCreateInfo, imageCreateInfo);
+    imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.extent.width  = imageSizeX;
+    imageCreateInfo.extent.height = imageSizeY;
+    imageCreateInfo.extent.depth  = 1;
+    imageCreateInfo.mipLevels     = 1;
+    imageCreateInfo.arrayLayers   = 1;
+    imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+    imageCreateInfo.usage         = imageUsageFlags;
+    imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    // all these options are already defaulted to 0 //
+    //imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    //imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    //imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+    _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &result->deviceObject.image));
+    /* obtain the device memory requirements for the image */
+    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
+    vkGetImageMemoryRequirements(context->device, result->deviceObject.image, &memoryRequirements);
+    /* bind the image to the device memory, making sure to obey the device 
+        memory requirements 
+        For some more details, see: https://stackoverflow.com/a/45459196 */
+    /* @robustness: ensure that device objects respect `bufferImageGranularity`, 
+                    obtained from `VkPhysicalDeviceLimits`, if we ever have NON-
+                    LINEAR device objects in the same allocation (in addition to 
+                    respecting memory alignment requirements, of course).  */
+    korl_assert(memoryRequirements.alignment > 0);
+    const VkDeviceSize alignedOffset = 
+        (deviceMemoryLinear->bytesAllocated + (memoryRequirements.alignment - 1)) & ~(memoryRequirements.alignment - 1);
+    // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
+    korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);
+    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, result->deviceObject.image, deviceMemoryLinear->deviceMemory, alignedOffset));
     /* update the rest of the allocations meta data */
     result->byteOffset = alignedOffset;
     result->byteSize   = memoryRequirements.size;
@@ -1261,11 +1365,13 @@ korl_internal void korl_vulkan_createDevice(
             &swapChainImageContext->deviceMemoryLinearHostVisible, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+            /*image usage flags*/0, 
             korl_math_kilobytes(256));
         _korl_vulkan_deviceMemoryLinear_create(
             &swapChainImageContext->deviceMemoryLinearDeviceLocal, 
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+            /*image usage flags*/0, 
             korl_math_kilobytes(256));
         /* --- allocate vertex batch staging buffers --- */
         swapChainImageContext->bufferStagingBatchIndices = 
@@ -1393,10 +1499,13 @@ korl_internal void korl_vulkan_createDevice(
         &context->deviceMemoryLinearAssetsStaging, 
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        korl_math_megabytes(1));
+        /*image usage flags*/0, 
+        korl_math_megabytes(8));
     _korl_vulkan_deviceMemoryLinear_create(
         &context->deviceMemoryLinearAssets, 
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
         korl_math_megabytes(64));
 }
 korl_internal void korl_vulkan_destroyDevice(void)
@@ -1741,29 +1850,128 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
             break;
     /* if it is, select this texture for later use and return */
     if(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets))
-    {
-        korl_assert(!"@todo: set this texture device asset for drawing");
-        return;
-    }
+        goto done_conditionallySelectLoadedAsset;
     /* request the image asset from the asset manager */
     Korl_AssetCache_AssetData assetData = korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAGS_LAZY);
     /* if the asset isn't loaded we can stop here */
     if(assetData.data == NULL)
-        return;
+        goto done_conditionallySelectLoadedAsset;
     /* decode the raw image data from the asset */
     int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
     stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
     if(!imagePixels)
     {
         korl_log(ERROR, "stbi_load_from_memory failed! (%S)", assetName);
-        return;
+        goto done_conditionallySelectLoadedAsset;
     }
-    /* allocate a device texture object */
-    korl_assert(!"@todo");
-    /* upload the raw image data to the device texture object */
-    korl_assert(!"@todo");
+    const u$ imageBytes = 4 * imageSizeX * imageSizeY;
+    /* create a staging object to store the pixel data */
+    _Korl_Vulkan_DeviceMemory_Alloctation* stagingPixelBuffer = 
+        _korl_vulkan_deviceMemoryLinear_allocateBuffer(
+            &context->deviceMemoryLinearAssetsStaging, imageBytes, 
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE);
+    /* copy the pixel data to the staging object */
+    KORL_ZERO_STACK(void*, mappedStagingMemory);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, context->deviceMemoryLinearAssetsStaging.deviceMemory, 
+            stagingPixelBuffer->byteOffset, imageBytes, 
+            0/*flags*/, &mappedStagingMemory));
+    memcpy(mappedStagingMemory, imagePixels, imageBytes);
+    vkUnmapMemory(context->device, context->deviceMemoryLinearAssetsStaging.deviceMemory);
     /* free the raw image data */
     stbi_image_free(imagePixels);
-    /* add the device asset to the database */
-    korl_assert(!"@todo");
+    /* allocate a device-local image object for the texture */
+    _Korl_Vulkan_DeviceMemory_Alloctation* deviceImage = 
+        _korl_vulkan_deviceMemoryLinear_allocateImage(
+            &context->deviceMemoryLinearAssets, imageSizeX, imageSizeY, 
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    /** @bandwidth: we don't actually need to submit this buffer right now!  It 
+     * should be possible to maintain a command buffer for at least the duration 
+     * of a frame (if not > 1 frame), and ONLY submit/flush the commands once 
+     * any of the following conditions are met:  
+     * - the staging asset buffer fills up
+     * - we reach the end of the frame & the staging asset buffer is NOT empty */
+    /* transfer the staging memory to the device-local texture memory */
+    KORL_ZERO_STACK(VkCommandBufferAllocateInfo, commandBufferAllocateInfo);
+    commandBufferAllocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocateInfo.commandPool        = context->commandPoolTransfer;
+    commandBufferAllocateInfo.commandBufferCount = 1;
+    KORL_ZERO_STACK(VkCommandBuffer, commandBuffer);
+    _KORL_VULKAN_CHECK(vkAllocateCommandBuffers(context->device, &commandBufferAllocateInfo, &commandBuffer));
+    KORL_ZERO_STACK(VkCommandBufferBeginInfo, commandBufferBeginInfo);
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    _KORL_VULKAN_CHECK(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
+    // transition the image layout from undefined => transfer_destination_optimal //
+    KORL_ZERO_STACK(VkImageMemoryBarrier, barrierImageMemory);
+    barrierImageMemory.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrierImageMemory.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrierImageMemory.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrierImageMemory.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrierImageMemory.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrierImageMemory.image                           = deviceImage->deviceObject.image;
+    barrierImageMemory.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrierImageMemory.subresourceRange.levelCount     = 1;
+    barrierImageMemory.subresourceRange.layerCount     = 1;
+    barrierImageMemory.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+    //barrierImageMemory.subresourceRange.baseMipLevel   = 0;
+    //barrierImageMemory.subresourceRange.baseArrayLayer = 0;
+    //barrierImageMemory.srcAccessMask                   = 0;
+    vkCmdPipelineBarrier(
+        commandBuffer, /*srcStageMask*/VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+        /*dstStageMask*/VK_PIPELINE_STAGE_TRANSFER_BIT, /*dependencyFlags*/0, 
+        /*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL, 
+        /*bufferBarrierCount*/0, /*bufferBarriers*/NULL, 
+        /*imageBarrierCount*/1, &barrierImageMemory);
+    // copy the buffer from staging buffer => device-local image //
+    KORL_ZERO_STACK(VkBufferImageCopy, imageCopyRegion);
+    // default zero values indicate no buffer padding, copy to image origin, copy to base mip level & array layer
+    imageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.imageSubresource.layerCount = 1;
+    imageCopyRegion.imageExtent.width           = imageSizeX;
+    imageCopyRegion.imageExtent.height          = imageSizeY;
+    imageCopyRegion.imageExtent.depth           = 1;
+    vkCmdCopyBufferToImage(commandBuffer, stagingPixelBuffer->deviceObject.buffer, deviceImage->deviceObject.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /*regionCount*/1, &imageCopyRegion);
+    // transition the image layout from tranfer_destination_optimal => shader_read_only_optimal //
+    // we can recycle the VkImageMemoryBarrier from the first transition here:  
+    barrierImageMemory.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrierImageMemory.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrierImageMemory.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrierImageMemory.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(
+        commandBuffer, /*srcStageMask*/VK_PIPELINE_STAGE_TRANSFER_BIT, 
+        /*dstStageMask*/VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, /*dependencyFlags*/0, 
+        /*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL, 
+        /*bufferBarrierCount*/0, /*bufferBarriers*/NULL, 
+        /*imageBarrierCount*/1, &barrierImageMemory);
+    /* end & submit the memory transfer commands to the device */
+    _KORL_VULKAN_CHECK(vkEndCommandBuffer(commandBuffer));
+    KORL_ZERO_STACK(VkSubmitInfo, queueSubmitInfo);
+    queueSubmitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    queueSubmitInfo.commandBufferCount = 1;
+    queueSubmitInfo.pCommandBuffers    = &commandBuffer;
+    _KORL_VULKAN_CHECK(vkQueueSubmit(context->queueGraphics, 1, &queueSubmitInfo, VK_NULL_HANDLE/*fence*/));
+    /** @bandwidth: this is very heavy handed!  It would be better if this 
+     * process could happen in the background while we wait on a fence or 
+     * something so that the graphicsQueue can keep going unimpeded and program 
+     * execution can continue batching more vertices. */
+    _KORL_VULKAN_CHECK(vkQueueWaitIdle(context->queueGraphics));
+    vkFreeCommandBuffers(context->device, context->commandPoolTransfer, 1, &commandBuffer);
+    /* now that the staging assets have been moved to the device-local memory, 
+        we can completely clear out the staging asset allocator */
+    _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearAssetsStaging);
+    /* add the device asset to the `deviceAssets` database */
+    _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
+    if(korl_memory_stringCopy(assetName, asset->name, korl_arraySize(asset->name)) <= 0)
+        korl_log(ERROR, "copy assetName failed! \"%s\"", assetName);
+    /** @todo: save the device allocation inside of asset */
+    deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
+done_conditionallySelectLoadedAsset:
+    /* if we do not have a valid index for a loaded device asset, just do nothing */
+    if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
+        return;
+    /* select the loaded texture device asset for any future textured draw operations */
+    /** @todo */
 }
