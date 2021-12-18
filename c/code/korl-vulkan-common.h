@@ -13,7 +13,7 @@ typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
 {
     _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED, 
     _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER, 
-    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE
+    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE
     /* IMPORTANT: when adding new types to this enum, we must update the 
         appropriate tagged union in the allocation struct, as well as the code 
         which handles each type in the allocator constructor (and create a 
@@ -40,7 +40,12 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     union 
     {
         VkBuffer buffer;
-        VkImage image;
+        struct Texture
+        {
+            VkImage image;
+            VkImageView imageView;
+            VkSampler sampler;
+        } texture;
         /* @vulkan-device-allocation-type */
     } deviceObject;
     VkDeviceSize byteOffset;

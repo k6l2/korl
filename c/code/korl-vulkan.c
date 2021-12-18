@@ -61,9 +61,9 @@ korl_internal bool _korl_vulkan_isBetterDevice(
     const _Korl_Vulkan_QueueFamilyMetaData*const queueFamilyMetaData, 
     const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData, 
     const VkPhysicalDeviceProperties*const propertiesOld, 
-    const VkPhysicalDeviceProperties*const propertiesNew/*, 
+    const VkPhysicalDeviceProperties*const propertiesNew, 
     const VkPhysicalDeviceFeatures*const featuresOld, 
-    const VkPhysicalDeviceFeatures*const featuresNew*/)
+    const VkPhysicalDeviceFeatures*const featuresNew)
 {
     korl_assert(deviceNew != VK_NULL_HANDLE);
     /* don't even consider devices that don't support all the extensions we 
@@ -107,12 +107,15 @@ korl_internal bool _korl_vulkan_isBetterDevice(
     /* don't even consider using devices that can't render graphics */
     if(!queueFamilyMetaData->hasIndexQueueGraphics)
         return false;
-    /* if the old device hasn't been selected, just use the new device */
-    if(deviceOld == VK_NULL_HANDLE)
-        return true;
+    /* don't consider using devices that don't support anisotropic filtering */
+    if(!featuresNew->samplerAnisotropy)
+        return false;
     /* always attempt to use a discrete GPU first */
     if(    propertiesNew->deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
         && propertiesOld->deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+        return true;
+    /* if the old device hasn't been selected, just use the new device */
+    if(deviceOld == VK_NULL_HANDLE)
         return true;
     return false;
 }
@@ -503,8 +506,10 @@ korl_internal void _korl_vulkan_deviceMemory_allocation_destroy(_Korl_Vulkan_Dev
     case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER:{
         vkDestroyBuffer(context->device, allocation->deviceObject.buffer, context->allocator);
         } break;
-    case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE:{
-        vkDestroyImage(context->device, allocation->deviceObject.image, context->allocator);
+    case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE:{
+        vkDestroyImage(context->device, allocation->deviceObject.texture.image, context->allocator);
+        vkDestroyImageView(context->device, allocation->deviceObject.texture.imageView, context->allocator);
+        vkDestroySampler(context->device, allocation->deviceObject.texture.sampler, context->allocator);
         } break;
     /* add code to handle new device object types here!
         @vulkan-device-allocation-type */
@@ -655,14 +660,14 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     deviceMemoryLinear->bytesAllocated = alignedOffset + memoryRequirements.size;
     return result;
 }
-korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateImage(
+korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateTexture(
     _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
     u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     korl_assert(!KORL_MEMORY_POOL_FULL(deviceMemoryLinear->allocations));
     _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
-    result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE;
+    result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE;
     /* create the image with the given parameters */
     KORL_ZERO_STACK(VkImageCreateInfo, imageCreateInfo);
     imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -679,10 +684,10 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     //imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     //imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     //imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-    _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &result->deviceObject.image));
+    _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &result->deviceObject.texture.image));
     /* obtain the device memory requirements for the image */
     KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
-    vkGetImageMemoryRequirements(context->device, result->deviceObject.image, &memoryRequirements);
+    vkGetImageMemoryRequirements(context->device, result->deviceObject.texture.image, &memoryRequirements);
     /* bind the image to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
@@ -695,12 +700,46 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
         (deviceMemoryLinear->bytesAllocated + (memoryRequirements.alignment - 1)) & ~(memoryRequirements.alignment - 1);
     // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
     korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);
-    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, result->deviceObject.image, deviceMemoryLinear->deviceMemory, alignedOffset));
+    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, result->deviceObject.texture.image, deviceMemoryLinear->deviceMemory, alignedOffset));
     /* update the rest of the allocations meta data */
     result->byteOffset = alignedOffset;
     result->byteSize   = memoryRequirements.size;
     /* update allocator book keeping */
     deviceMemoryLinear->bytesAllocated = alignedOffset + memoryRequirements.size;
+    /* create the image view for the image */
+    KORL_ZERO_STACK(VkImageViewCreateInfo, createInfoImageView);
+    createInfoImageView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    createInfoImageView.image                           = result->deviceObject.texture.image;
+    createInfoImageView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+    createInfoImageView.format                          = VK_FORMAT_R8G8B8A8_SRGB;
+    createInfoImageView.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    createInfoImageView.subresourceRange.baseMipLevel   = 0;
+    createInfoImageView.subresourceRange.levelCount     = 1;
+    createInfoImageView.subresourceRange.baseArrayLayer = 0;
+    createInfoImageView.subresourceRange.layerCount     = 1;
+    _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &result->deviceObject.texture.imageView));
+    /* create the sampler for the image */
+    // first obtain physical device properties to get the max anisotropy value
+    KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
+    vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
+    KORL_ZERO_STACK(VkSamplerCreateInfo, createInfoSampler);
+    createInfoSampler.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    createInfoSampler.magFilter               = VK_FILTER_LINEAR;
+    createInfoSampler.minFilter               = VK_FILTER_LINEAR;
+    createInfoSampler.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfoSampler.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfoSampler.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfoSampler.anisotropyEnable        = VK_TRUE;
+    createInfoSampler.maxAnisotropy           = physicalDeviceProperties.limits.maxSamplerAnisotropy;/// @performance: setting this to a lower value will trade off performance for quality
+    createInfoSampler.borderColor             = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+    createInfoSampler.unnormalizedCoordinates = VK_FALSE;
+    createInfoSampler.compareEnable           = VK_FALSE;
+    createInfoSampler.compareOp               = VK_COMPARE_OP_ALWAYS;
+    createInfoSampler.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    createInfoSampler.mipLodBias              = 0.0f;
+    createInfoSampler.minLod                  = 0.0f;
+    createInfoSampler.maxLod                  = 0.0f;
+    _KORL_VULKAN_CHECK(vkCreateSampler(context->device, &createInfoSampler, context->allocator, &result->deviceObject.texture.sampler));
     return result;
 }
 korl_internal bool _korl_vulkan_pipeline_isMetaDataSame(_Korl_Vulkan_Pipeline p0, _Korl_Vulkan_Pipeline p1)
@@ -1224,8 +1263,8 @@ korl_internal void korl_vulkan_createDevice(
         if(_korl_vulkan_isBetterDevice(
                 context->physicalDevice, physicalDevices[d], 
                 &queueFamilyMetaData, &deviceSurfaceMetaData, 
-                &devicePropertiesBest, &deviceProperties/*, 
-                &deviceFeaturesBest, &deviceFeatures*/))
+                &devicePropertiesBest, &deviceProperties, 
+                &deviceFeaturesBest, &deviceFeatures))
         {
             context->physicalDevice = physicalDevices[d];
             devicePropertiesBest = deviceProperties;
@@ -1274,6 +1313,7 @@ korl_internal void korl_vulkan_createDevice(
     }
     /* create logical device */
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, physicalDeviceFeatures);
+    physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
     // leave all device features turned off for now~
     KORL_ZERO_STACK(VkDeviceCreateInfo, createInfoDevice);
     createInfoDevice.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1883,7 +1923,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     stbi_image_free(imagePixels);
     /* allocate a device-local image object for the texture */
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceImage = 
-        _korl_vulkan_deviceMemoryLinear_allocateImage(
+        _korl_vulkan_deviceMemoryLinear_allocateTexture(
             &context->deviceMemoryLinearAssets, imageSizeX, imageSizeY, 
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     /** @bandwidth: we don't actually need to submit this buffer right now!  It 
@@ -1911,7 +1951,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     barrierImageMemory.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrierImageMemory.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
     barrierImageMemory.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrierImageMemory.image                           = deviceImage->deviceObject.image;
+    barrierImageMemory.image                           = deviceImage->deviceObject.texture.image;
     barrierImageMemory.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     barrierImageMemory.subresourceRange.levelCount     = 1;
     barrierImageMemory.subresourceRange.layerCount     = 1;
@@ -1933,7 +1973,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     imageCopyRegion.imageExtent.width           = imageSizeX;
     imageCopyRegion.imageExtent.height          = imageSizeY;
     imageCopyRegion.imageExtent.depth           = 1;
-    vkCmdCopyBufferToImage(commandBuffer, stagingPixelBuffer->deviceObject.buffer, deviceImage->deviceObject.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /*regionCount*/1, &imageCopyRegion);
+    vkCmdCopyBufferToImage(commandBuffer, stagingPixelBuffer->deviceObject.buffer, deviceImage->deviceObject.texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /*regionCount*/1, &imageCopyRegion);
     // transition the image layout from tranfer_destination_optimal => shader_read_only_optimal //
     // we can recycle the VkImageMemoryBarrier from the first transition here:  
     barrierImageMemory.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
