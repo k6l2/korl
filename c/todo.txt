@@ -4,15 +4,16 @@
 	- otherwise, just send to standard output streams
 [x] create a script to compile all vulkan shaders in a project 
 	(shader directory)
-[ ] dynamic memory allocation
+[x] dynamic memory allocation
 	- use a macro to store the meta data of each allocation (file, line)
 	- use allocation macro to align each specific allocation to its expected 
 		alignment (using stdalign.h)
 	- align allocations to pages
 	- protect pages that are not allocated
-	- if allocation fails, allocate another memory arena from the OS
-	- if memory arena contains no allocations and is not the primary arena, 
+	x if allocation fails, allocate another memory arena from the OS
+	x if memory arena contains no allocations and is not the primary arena, 
 		release the arena back to the OS
+		- NO.  No memory arenas!  Just use mmap/VirtualAlloc!
 	- stack allocator
 	- heap allocator
 	- is there a simple/easy way to have a common allocator "interface" which 

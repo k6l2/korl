@@ -160,7 +160,8 @@ typedef struct _Korl_Vulkan_Context
      * @todo: store a collection of shader modules which can be referenced by 
      * external API, and store built-in shaders in known positions
      */
-    VkShaderModule shaderBatchVert;
+    VkShaderModule shaderBatchVertColor;
+    VkShaderModule shaderBatchVertTexture;
     VkShaderModule shaderBatchFragColor;
     VkShaderModule shaderBatchFragTexture;
     /** @robustness: use KORL_MEMORY_POOL_* API */

@@ -781,34 +781,52 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     korl_assert(context->pipelines[pipelineIndex].pipeline == VK_NULL_HANDLE);
     /* set fixed functions & other pipeline parameters */
     KORL_ZERO_STACK_ARRAY(VkVertexInputBindingDescription, vertexInputBindings, 3);
+    uint32_t vertexBindingDescriptionCount = 1;
     vertexInputBindings[0].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
     vertexInputBindings[0].stride    = sizeof(Korl_Vulkan_Position);
     vertexInputBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertexInputBindings[1].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
-    vertexInputBindings[1].stride    = sizeof(Korl_Vulkan_Color);
-    vertexInputBindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertexInputBindings[2].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
-    vertexInputBindings[2].stride    = sizeof(Korl_Vulkan_Uv);
-    vertexInputBindings[2].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    {
+        vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
+        vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Color);
+        vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        vertexBindingDescriptionCount++;
+    }
+    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    {
+        vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
+        vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Uv);
+        vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        vertexBindingDescriptionCount++;
+    }
     KORL_ZERO_STACK_ARRAY(VkVertexInputAttributeDescription, vertexAttributes, 3);
+    uint32_t vertexAttributeDescriptionCount = 1;
     vertexAttributes[0].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
     vertexAttributes[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
     vertexAttributes[0].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
     vertexAttributes[0].offset   = 0;// we're not using interleaved vertex data
-    vertexAttributes[1].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
-    vertexAttributes[1].format   = VK_FORMAT_R8G8B8_UNORM;
-    vertexAttributes[1].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
-    vertexAttributes[1].offset   = 0;// we're not using interleaved vertex data
-    vertexAttributes[2].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
-    vertexAttributes[2].format   = VK_FORMAT_R32G32_SFLOAT;
-    vertexAttributes[2].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
-    vertexAttributes[2].offset   = 0;// we're not using interleaved vertex data
+    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    {
+        vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
+        vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R8G8B8_UNORM;
+        vertexAttributes[vertexAttributeDescriptionCount].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
+        vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
+        vertexAttributeDescriptionCount++;
+    }
+    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    {
+        vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
+        vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R32G32_SFLOAT;
+        vertexAttributes[vertexAttributeDescriptionCount].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
+        vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
+        vertexAttributeDescriptionCount++;
+    }
     KORL_ZERO_STACK(VkPipelineVertexInputStateCreateInfo, createInfoVertexInput);
     createInfoVertexInput.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     createInfoVertexInput.pVertexBindingDescriptions      = vertexInputBindings;
-    createInfoVertexInput.vertexBindingDescriptionCount   = korl_arraySize(vertexInputBindings);
+    createInfoVertexInput.vertexBindingDescriptionCount   = vertexBindingDescriptionCount;
     createInfoVertexInput.pVertexAttributeDescriptions    = vertexAttributes;
-    createInfoVertexInput.vertexAttributeDescriptionCount = korl_arraySize(vertexAttributes);
+    createInfoVertexInput.vertexAttributeDescriptionCount = vertexAttributeDescriptionCount;
     KORL_ZERO_STACK(VkPipelineInputAssemblyStateCreateInfo, createInfoInputAssembly);
     createInfoInputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     createInfoInputAssembly.topology = context->pipelines[pipelineIndex].primitiveTopology;
@@ -866,7 +884,12 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    createInfoShaderStages[0].module = context->shaderBatchVert;
+    if(      context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
+        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
+        createInfoShaderStages[0].module = context->shaderBatchVertColor;
+    else if( context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
+        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
+        createInfoShaderStages[0].module = context->shaderBatchVertTexture;
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -1656,18 +1679,25 @@ korl_internal void korl_vulkan_createSurface(
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout));
     /* load required built-in shader assets */
-    Korl_AssetCache_AssetData assetShaderBatchVertex          = korl_assetCache_get(L"build/korl-batch.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchVertexColor     = korl_assetCache_get(L"build/korl-batch-color.vert.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchVertexTexture   = korl_assetCache_get(L"build/korl-batch-texture.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
     Korl_AssetCache_AssetData assetShaderBatchFragmentColor   = korl_assetCache_get(L"build/korl-batch-color.frag.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
     Korl_AssetCache_AssetData assetShaderBatchFragmentTexture = korl_assetCache_get(L"build/korl-batch-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
     createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfoShader.codeSize = assetShaderBatchVertex.dataBytes;
-    createInfoShader.pCode    = assetShaderBatchVertex.data;
+    createInfoShader.codeSize = assetShaderBatchVertexColor.dataBytes;
+    createInfoShader.pCode    = assetShaderBatchVertexColor.data;
     _KORL_VULKAN_CHECK(
         vkCreateShaderModule(
             context->device, &createInfoShader, context->allocator, 
-            &context->shaderBatchVert));
+            &context->shaderBatchVertColor));
+    createInfoShader.codeSize = assetShaderBatchVertexTexture.dataBytes;
+    createInfoShader.pCode    = assetShaderBatchVertexTexture.data;
+    _KORL_VULKAN_CHECK(
+        vkCreateShaderModule(
+            context->device, &createInfoShader, context->allocator, 
+            &context->shaderBatchVertTexture));
     createInfoShader.codeSize = assetShaderBatchFragmentColor.dataBytes;
     createInfoShader.pCode    = assetShaderBatchFragmentColor.data;
     _KORL_VULKAN_CHECK(
@@ -1722,7 +1752,8 @@ korl_internal void korl_vulkan_destroySurface(void)
         vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
     vkDestroyDescriptorSetLayout(context->device, context->batchDescriptorSetLayout, context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderBatchVert, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderBatchVertColor, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderBatchVertTexture, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderBatchFragColor, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderBatchFragTexture, context->allocator);
     vkDestroyCommandPool(context->device, context->commandPoolTransfer, context->allocator);
