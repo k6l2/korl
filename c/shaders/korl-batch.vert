@@ -6,9 +6,12 @@ layout(binding = 0, row_major) uniform UniformBufferObject
 } ubo;
 layout(location = 0) in vec3 attributePosition;
 layout(location = 1) in vec3 attributeColor;
+layout(location = 2) in vec2 attributeUv;
 layout(location = 0) out vec3 fragmentColor;
+layout(location = 1) out vec2 fragmentUv;
 void main() 
 {
     gl_Position = ubo.projection * ubo.view * vec4(attributePosition, 1.0);
     fragmentColor = attributeColor;
+    fragmentUv = attributeUv;
 }

@@ -117,6 +117,7 @@ typedef struct _Korl_Vulkan_Pipeline
 typedef struct _Korl_Vulkan_DeviceAsset
 {
     wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
+    _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
 } _Korl_Vulkan_DeviceAsset;
 typedef struct _Korl_Vulkan_Context
 {
@@ -155,16 +156,13 @@ typedef struct _Korl_Vulkan_Context
     VkCommandPool commandPoolGraphics;
     /** Used to issue commands to transfer memory to device-local storage */
     VkCommandPool commandPoolTransfer;
-    /** 
-     * @todo: rename everything w/ "immediate" to just "batch", differentiating 
-     * between "batchDevice" & "batchHost" 
-     */
     /**
      * @todo: store a collection of shader modules which can be referenced by 
      * external API, and store built-in shaders in known positions
      */
-    VkShaderModule shaderImmediateColorVert;
-    VkShaderModule shaderImmediateFrag;
+    VkShaderModule shaderBatchVert;
+    VkShaderModule shaderBatchFragColor;
+    VkShaderModule shaderBatchFragTexture;
     /** @robustness: use KORL_MEMORY_POOL_* API */
     u32 pipelinesCount;
     _Korl_Vulkan_Pipeline pipelines[1024];

@@ -449,7 +449,7 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
             commandBuffer, 
             swapChainImageContext->bufferStagingBatchUvs->deviceObject.buffer, 
             swapChainImageContext->bufferDeviceBatchUvs ->deviceObject.buffer, 
-            1, &bufferCopyColors);
+            1, &bufferCopyUvs);
     }
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(commandBuffer));
     /* submit the memory transfer commands to the device */
@@ -787,7 +787,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     vertexInputBindings[1].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
     vertexInputBindings[1].stride    = sizeof(Korl_Vulkan_Color);
     vertexInputBindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertexInputBindings[2].binding   = 2;
+    vertexInputBindings[2].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
     vertexInputBindings[2].stride    = sizeof(Korl_Vulkan_Uv);
     vertexInputBindings[2].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     KORL_ZERO_STACK_ARRAY(VkVertexInputAttributeDescription, vertexAttributes, 3);
@@ -862,16 +862,20 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     createInfoDynamicState.dynamicStateCount = korl_arraySize(dynamicStates);
     createInfoDynamicState.pDynamicStates    = dynamicStates;
     /* create pipeline */
-    korl_assert(!"@todo: alter the shaders based on what our pipeline's optional attributes look like");
     KORL_ZERO_STACK_ARRAY(
         VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    createInfoShaderStages[0].module = context->shaderImmediateColorVert;
+    createInfoShaderStages[0].module = context->shaderBatchVert;
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    createInfoShaderStages[1].module = context->shaderImmediateFrag;
+    if(      context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
+        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
+        createInfoShaderStages[1].module = context->shaderBatchFragColor;
+    else if( context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
+        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
+        createInfoShaderStages[1].module = context->shaderBatchFragTexture;
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -941,13 +945,15 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
         VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelines[surfaceContext->batchState.currentPipeline].pipeline);
     VkBuffer batchVertexBuffers[] = 
         { swapChainImageContext->bufferDeviceBatchPositions->deviceObject.buffer
-        , swapChainImageContext->bufferDeviceBatchColors   ->deviceObject.buffer };
+        , swapChainImageContext->bufferDeviceBatchColors   ->deviceObject.buffer
+        , swapChainImageContext->bufferDeviceBatchUvs      ->deviceObject.buffer };
     /* we can calculate the pipeline batch offsets here, because we know how 
         many vertex attribs/indices are in the pipeline batch, and we also know 
         the total number of attribs/indices in the buffer! */
     const VkDeviceSize batchVertexBufferOffsets[] = 
         { surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Position) - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Position)
-        , surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Color)    - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Color) };
+        , surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Color)    - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Color)
+        , surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Uv)       - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Uv) };
     vkCmdBindVertexBuffers(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         0/*first binding*/, 
@@ -1650,26 +1656,30 @@ korl_internal void korl_vulkan_createSurface(
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout));
     /* load required built-in shader assets */
-    Korl_AssetCache_AssetData assetShaderBatchVertexColor = korl_assetCache_get(L"build/korl-immediate-color.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchFragment    = korl_assetCache_get(L"build/korl-immediate.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    korl_assert(!"@todo: create and load texture processing shaders here");
+    Korl_AssetCache_AssetData assetShaderBatchVertex          = korl_assetCache_get(L"build/korl-batch.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchFragmentColor   = korl_assetCache_get(L"build/korl-batch-color.frag.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchFragmentTexture = korl_assetCache_get(L"build/korl-batch-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
     /* create shader modules */
-    KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderVert);
-    createInfoShaderVert.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfoShaderVert.codeSize = assetShaderBatchVertexColor.dataBytes;
-    createInfoShaderVert.pCode    = assetShaderBatchVertexColor.data;
+    KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
+    createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfoShader.codeSize = assetShaderBatchVertex.dataBytes;
+    createInfoShader.pCode    = assetShaderBatchVertex.data;
     _KORL_VULKAN_CHECK(
         vkCreateShaderModule(
-            context->device, &createInfoShaderVert, context->allocator, 
-            &context->shaderImmediateColorVert));
-    KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShaderFrag);
-    createInfoShaderFrag.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfoShaderFrag.codeSize = assetShaderBatchFragment.dataBytes;
-    createInfoShaderFrag.pCode    = assetShaderBatchFragment.data;
+            context->device, &createInfoShader, context->allocator, 
+            &context->shaderBatchVert));
+    createInfoShader.codeSize = assetShaderBatchFragmentColor.dataBytes;
+    createInfoShader.pCode    = assetShaderBatchFragmentColor.data;
     _KORL_VULKAN_CHECK(
         vkCreateShaderModule(
-            context->device, &createInfoShaderFrag, context->allocator, 
-            &context->shaderImmediateFrag));
+            context->device, &createInfoShader, context->allocator, 
+            &context->shaderBatchFragColor));
+    createInfoShader.codeSize = assetShaderBatchFragmentTexture.dataBytes;
+    createInfoShader.pCode    = assetShaderBatchFragmentTexture.data;
+    _KORL_VULKAN_CHECK(
+        vkCreateShaderModule(
+            context->device, &createInfoShader, context->allocator, 
+            &context->shaderBatchFragTexture));
     /* create memory allocators to stage & store persistent assets, like images */
     _korl_vulkan_deviceMemoryLinear_create(
         &context->deviceMemoryLinearAssetsStaging, 
@@ -1712,8 +1722,9 @@ korl_internal void korl_vulkan_destroySurface(void)
         vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
     vkDestroyDescriptorSetLayout(context->device, context->batchDescriptorSetLayout, context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderImmediateColorVert, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderImmediateFrag, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderBatchVert, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderBatchFragColor, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderBatchFragTexture, context->allocator);
     vkDestroyCommandPool(context->device, context->commandPoolTransfer, context->allocator);
     vkDestroyCommandPool(context->device, context->commandPoolGraphics, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
@@ -2184,17 +2195,18 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
     if(korl_memory_stringCopy(assetName, asset->name, korl_arraySize(asset->name)) <= 0)
         korl_log(ERROR, "copy assetName failed! \"%s\"", assetName);
-    /** @todo: save the device allocation inside of asset */
+    asset->deviceAllocation = deviceImage;
     deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
 done_conditionallySelectLoadedAsset:
     /* if we do not have a valid index for a loaded device asset, just do nothing */
     if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
         return;
+    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
     /* select the loaded texture device asset for any future textured draw operations */
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    descriptorImageInfo.imageView   = context->deviceAssets[deviceAssetIndexLoaded].deviceObject.texture.imageView;// OR SOMETHING LIKE THIS?   Not sure yet
-    descriptorImageInfo.sampler     = context->deviceAssets[deviceAssetIndexLoaded].deviceObject.texture.sampler;
+    descriptorImageInfo.imageView   = context->deviceAssets[deviceAssetIndexLoaded].deviceAllocation->deviceObject.texture.imageView;
+    descriptorImageInfo.sampler     = context->deviceAssets[deviceAssetIndexLoaded].deviceAllocation->deviceObject.texture.sampler;
     KORL_ZERO_STACK(VkWriteDescriptorSet, writeDescriptorSetUbo);
     writeDescriptorSetUbo.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSetUbo.dstSet          = surfaceContext->batchDescriptorSets[surfaceContext->frameSwapChainImageIndex][surfaceContext->batchState.descriptorSetIndexCurrent];

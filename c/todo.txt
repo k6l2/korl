@@ -57,11 +57,12 @@
 		- we need this for loading graphics assets like shaders, textures, etc...
 		- load assets from the current working directory
 		- just use a stack allocator to store the asset data (always add memory, never remove free it)
-	[ ] assets: load PNG
-	[ ] gfx: vulkan - upload textures to GPU
-	[ ] gfx: vulkan - store & select from multiple uniform descriptor sets per frame
+	[x] assets: load PNG
+	[x] gfx: vulkan - upload textures to GPU
+	[x] gfx: vulkan - store & select from multiple uniform descriptor sets per frame
 		- to support different VP matrices per frame
-	[ ] gfx: vulkan - draw textured geoprims
+	[x] gfx: vulkan - draw textured geoprims
+[ ] gfx: vulkan: orthographic projection - for drawing HUDs
 [ ] gfx: vulkan: depth buffer
 [ ] keyboard input
 [ ] mouse input
