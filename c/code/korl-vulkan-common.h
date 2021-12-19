@@ -104,8 +104,12 @@ typedef struct _Korl_Vulkan_Pipeline
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself */
     VkPrimitiveTopology primitiveTopology;
-    //@todo: blend equations
-    //@todo: use color vertex attribute?
+    ///@todo: blend equations
+    enum _Korl_Vulkan_Pipeline_OptionalVertexAttributeFlags
+    {
+        _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR = 1 << 0, 
+        _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV    = 1 << 1
+    } flagsOptionalVertexAttributes;
     /* ---------------------------------------------------------------------- */
     /* render state that has nothing to do with the pipeline itself */
     bool useIndexBuffer;
@@ -167,9 +171,10 @@ typedef struct _Korl_Vulkan_Context
     /* pipeline layouts (uniform data) are (potentially) shared between 
         pipelines */
     VkPipelineLayout pipelineLayout;
-    /** the layout for the shared internal descriptor data 
-     * (UBO, view projection) */
-    VkDescriptorSetLayout descriptorSetLayout;
+    /** the layout for the descriptor data used in batch rendering which is 
+     * shared between all KORL Vulkan Surfaces
+     * (UBO, view projection, and currently texture asset) */
+    VkDescriptorSetLayout batchDescriptorSetLayout;
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
     /* we need a place to store assets which exist & persist between multiple 
@@ -198,35 +203,47 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     VkImageView imageView;
     VkFramebuffer frameBuffer;
     VkFence fence;
-    /** @todo: would it make more sense for the vertex batch stuff to be inside 
-     * of the WipFrame struct inside the surface context?  Because when I am 
-     * thinking about it, there isn't really a point to having this memory lying 
-     * around for each frame if it isn't being used by anything, and since the # 
-     * of WIP frames is going to be <= the # of swap chain images, we would be 
-     * using the optimal minimum # of allocations for our surface context's 
-     * internal memory requirements due to vertex batching... */
-    u32 batchVertexIndexCountStaging;
-    u32 batchVertexIndexCountDevice;
-    u32 batchVertexCountStaging;
-    u32 batchVertexCountDevice;
-    /* While the above metrics represent the TOTAL number of vertex 
-        attributes/indices in batch buffers, the following metrics represent the 
-        number of vertex attributes/indices in the current pipeline batch.  The 
-        batch buffers will probably hold multiple pipeline batches. */
-    u32 pipelineBatchVertexIndexCount;
-    u32 pipelineBatchVertexCount;
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearHostVisible;
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearDeviceLocal;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchIndices;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchUvs;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchIndices;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchPositions;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchColors;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchUvs;
 } _Korl_Vulkan_SwapChainImageContext;
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 8
+/** 
+ * the contents of this struct are expected to be nullified at the end of each 
+ * call to \c frameBegin() 
+ */
+typedef struct _Korl_Vulkan_SurfaceContextBatchState
+{
+    /** 
+     * This is an index into the array of pipelines currently in the 
+     * _Korl_Vulkan_Context. This can essentially be our batch "render state".  
+     * If this value is equal to \c korl_arraySize(context->pipelines) , that 
+     * means there is no valid render state. 
+     */
+    u32  currentPipeline;
+    u32  vertexIndexCountStaging;
+    u32  vertexIndexCountDevice;
+    u32  vertexCountStaging;
+    u32  vertexCountDevice;
+    /* While the above metrics represent the TOTAL number of vertex 
+        attributes/indices in batch buffers, the following metrics represent the 
+        number of vertex attributes/indices in the current pipeline batch.  The 
+        batch buffers will probably hold multiple pipeline batches. */
+    u32  pipelineVertexIndexCount;
+    u32  pipelineVertexCount;
+    u32  descriptorSetIndexCurrent;
+    bool descriptorSetIsUsed;// true if ANY geometry has been staged using the current working batch descriptor set
+} _Korl_Vulkan_SurfaceContextBatchState;
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS 1024
 /**
  * It makes sense for this data structure to be separate from the 
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
@@ -238,9 +255,12 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkSurfaceKHR surface;
     /** 
      * Used to ensure that the user calls \c korl_vulkan_frameBegin before, and 
-     * the same number of times as, \c korl_vulkan_frameEnd .
+     * the same number of times as, \c korl_vulkan_frameEnd .  This value == 1 
+     * if the last frame delimitter called was \c korl_vulkan_frameBegin , and 
+     * == 0 if the last frame delimitter called was \c korl_vulkan_frameEnd .
      */
     u8 frameStackCounter;
+    /** the index of the swap chain we are working with for the current frame */
     u32 frameSwapChainImageIndex;
     VkSurfaceFormatKHR swapChainSurfaceFormat;
     VkExtent2D         swapChainImageExtent;
@@ -250,14 +270,14 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkCommandBuffer                    swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     /** 
-     * Currently only used to manage internal shared UBO descriptors, but 
-     * probably will be expanded to manage even more.
+     * Currently only used to manage batch rendering shared UBO descriptors, but 
+     * probably might be expanded to manage even more.
      */
-    VkDescriptorPool descriptorPool;
-    /** Used for internal descriptor sets, such as shared UBO data, etc. */
-    VkDescriptorSet descriptorSets[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    unsigned    wipFrameCurrent;
-    struct 
+    VkDescriptorPool batchDescriptorPool;
+    /** Used for batch rendering descriptor sets, such as shared UBO data, etc. */
+    VkDescriptorSet batchDescriptorSets[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE][_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS];
+    unsigned wipFrameCurrent;
+    struct
     {
         VkSemaphore semaphoreImageAvailable;
         VkSemaphore semaphoreRenderDone;
@@ -265,13 +285,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
-    /** 
-     * This is an index into the array of pipelines currently in the 
-     * _Korl_Vulkan_Context. This can essentially be our batch "render state".  
-     * If this value is equal to \c korl_arraySize(context->pipelines) , that 
-     * means there is no valid render state. 
-     */
-    u32 batchCurrentPipeline;
+    /** expected to be nullified at the end of each call to \c frameBegin() */
+    _Korl_Vulkan_SurfaceContextBatchState batchState;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

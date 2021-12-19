@@ -11,20 +11,21 @@ typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
 typedef Korl_Math_V3u8  Korl_Vulkan_Color;
 korl_internal void korl_vulkan_construct(void);
 korl_internal void korl_vulkan_destroy(void);
-/**
- * @todo: rename this to \c createSurface
+/** 
+ * Not to be confused with \c _korl_vulkan_createSurface (an internal API to 
+ * create an actual Vulkan Surface resource)!  "Surface" here refers to an 
+ * entire rendering region on the screen.  A common use case is to create a 
+ * desktop window, and then create a KORL Vulkan Surface to fill the entire 
+ * region of the window.
  */
-korl_internal void korl_vulkan_createDevice(
+korl_internal void korl_vulkan_createSurface(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY);
-/**
- * @todo: rename this to \c destroySurface
- */
-korl_internal void korl_vulkan_destroyDevice(void);
+korl_internal void korl_vulkan_destroySurface(void);
 #if 0/* @todo: bring these API back later when we want the ability to create 
                pipelines using externally managed resources like shaders */
 /* @hack: shader loading should probably be more robust */
 /** 
- * This must be called AFTER \c korl_vulkan_createDevice since shader modules 
+ * This must be called AFTER \c korl_vulkan_createSurface since shader modules 
  * require a device to be created!
  */
 korl_internal void korl_vulkan_loadShaders(void);

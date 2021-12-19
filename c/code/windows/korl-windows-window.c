@@ -22,13 +22,13 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
         surfaceUserData.hInstance = createStruct->hInstance;
         surfaceUserData.hWnd      = hWnd;
-        korl_vulkan_createDevice(
+        korl_vulkan_createSurface(
             &surfaceUserData, 
             clientRect.right  - clientRect.left, 
             clientRect.bottom - clientRect.top);
         }break;
     case WM_DESTROY:{
-        korl_vulkan_destroyDevice();
+        korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
     case WM_SIZE:{
