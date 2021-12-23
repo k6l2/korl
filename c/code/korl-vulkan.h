@@ -9,6 +9,11 @@ typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
 typedef Korl_Math_V3u8  Korl_Vulkan_Color;
+typedef enum Korl_Vulkan_PrimitiveType
+{
+    KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,
+    KORL_VULKAN_PRIMITIVETYPE_LINES
+} Korl_Vulkan_PrimitiveType;
 korl_internal void korl_vulkan_construct(void);
 korl_internal void korl_vulkan_destroy(void);
 /** 
@@ -40,6 +45,12 @@ korl_internal void korl_vulkan_frameEnd(void);
  * swap chain right before the next draw operation in \c korl_vulkan_draw .
  */
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
+#if 0/** @simplify: all the batch calls below can just be a single API */
+korl_internal void korl_vulkan_batch(
+    Korl_Vulkan_PrimitiveType primitiveType, 
+    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
+    u32 vertexCount, const Korl_Vulkan_Position* positions, const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* vertexTextureUvs);
+#else
 korl_internal void korl_vulkan_batchTriangles_color(
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
@@ -51,9 +62,11 @@ korl_internal void korl_vulkan_batchTriangles_uv(
 korl_internal void korl_vulkan_batchLines_color(
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors);
+#endif
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
 korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 halfDepth);
 korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
+korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale);
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);

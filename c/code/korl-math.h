@@ -33,6 +33,8 @@ typedef union Korl_Math_V4f32
     } xyzw;
     f32 elements[4];
 } Korl_Math_V4f32;
+typedef Korl_Math_V4f32 Korl_Math_Quaternion;
+const Korl_Math_Quaternion KORL_MATH_QUATERNION_IDENTITY = {.xyzw = {0, 0, 0, 1}};
 typedef union Korl_Math_M4f32
 {
     Korl_Math_V4f32 rows[4];
@@ -83,7 +85,22 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const 
 korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const Korl_Math_V3f32*const vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar);
+korl_internal f32 korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v);
+korl_internal f32 korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v);
+korl_internal Korl_Math_V4f32 korl_math_v4f32_normal(Korl_Math_V4f32 v);
+korl_internal Korl_Math_V4f32 korl_math_v4f32_normalKnownMagnitude(Korl_Math_V4f32 v, f32 magnitude);
+korl_internal f32 korl_math_v4f32_dot(const Korl_Math_V4f32*const vA, const Korl_Math_V4f32*const vB);
+korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized);
+korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
+korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
+korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q);
+korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized);
+korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized);
+korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation);
+korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vTranslation);
+korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vScale, Korl_Math_V3f32 vTranslation);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m);
+korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
     f32 clipNear, f32 clipFar);

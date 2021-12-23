@@ -99,12 +99,161 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, 
     v.elements[2] *= scalar;
     return v;
 }
+korl_internal f32 korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v)
+{
+    return sqrtf(korl_math_v4f32_magnitudeSquared(v));
+}
+korl_internal f32 korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v)
+{
+    return powf(v->elements[0], 2) + powf(v->elements[1], 2) + powf(v->elements[2], 2) + powf(v->elements[3], 2);
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_normal(Korl_Math_V4f32 v)
+{
+    const f32 magnitude = korl_math_v4f32_magnitude(&v);
+    return korl_math_v4f32_normalKnownMagnitude(v, magnitude);
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_normalKnownMagnitude(Korl_Math_V4f32 v, f32 magnitude)
+{
+    if(korl_math_isNearlyZero(magnitude))
+    {
+        v.elements[0] = 0;
+        v.elements[1] = 0;
+        v.elements[2] = 0;
+        v.elements[3] = 0;
+        return v;
+    }
+    v.elements[0] /= magnitude;
+    v.elements[1] /= magnitude;
+    v.elements[2] /= magnitude;
+    v.elements[3] /= magnitude;
+    return v;
+}
+korl_internal f32 korl_math_v4f32_dot(const Korl_Math_V4f32*const vA, const Korl_Math_V4f32*const vB)
+{
+    return vA->elements[0] * vB->elements[0]
+        +  vA->elements[1] * vB->elements[1]
+        +  vA->elements[2] * vB->elements[2]
+        +  vA->elements[3] * vB->elements[3];
+}
+korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized)
+{
+    if(!axisIsNormalized)
+        axis = korl_math_v3f32_normal(axis);
+    const f32 sine = sinf(radians/2);
+    return (Korl_Math_Quaternion){.xyzw = {
+        sine * axis.xyz.x, 
+        sine * axis.xyz.y, 
+        sine * axis.xyz.z, 
+        cosf(radians/2) }};
+}
+korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
+{
+    return korl_math_quaternion_hamilton(qA, qB);
+}
+korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
+{
+    return (Korl_Math_Quaternion){.xyzw = {
+        qA.xyzw.w*qB.xyzw.x + qA.xyzw.x*qB.xyzw.w + qA.xyzw.y*qB.xyzw.z - qA.xyzw.z*qB.xyzw.y,
+        qA.xyzw.w*qB.xyzw.y - qA.xyzw.x*qB.xyzw.z + qA.xyzw.y*qB.xyzw.w + qA.xyzw.z*qB.xyzw.x,
+        qA.xyzw.w*qB.xyzw.z + qA.xyzw.x*qB.xyzw.y - qA.xyzw.y*qB.xyzw.x + qA.xyzw.z*qB.xyzw.w,
+        qA.xyzw.w*qB.xyzw.w - qA.xyzw.x*qB.xyzw.x - qA.xyzw.y*qB.xyzw.y - qA.xyzw.z*qB.xyzw.z }};
+}
+korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q)
+{
+	return (Korl_Math_Quaternion){.xyzw = {-q.xyzw.x, -q.xyzw.y, -q.xyzw.z, q.xyzw.w}};
+}
+korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized)
+{
+    if(!qIsNormalized)
+        q = korl_math_v4f32_normal(q);
+    q = korl_math_quaternion_hamilton(
+            korl_math_quaternion_hamilton(q, (Korl_Math_Quaternion){.xyzw = {v.xy.x, v.xy.y, 0, 0}}), 
+            korl_math_quaternion_conjugate(q));
+    return (Korl_Math_V2f32){.xy = {q.xyzw.x, q.xyzw.y}};
+}
+korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized)
+{
+    if(!qIsNormalized)
+        q = korl_math_v4f32_normal(q);
+    q = korl_math_quaternion_hamilton(
+            korl_math_quaternion_hamilton(q, (Korl_Math_Quaternion){.xyzw = {v.xyz.x, v.xyz.y, v.xyz.z, 0}}), 
+            korl_math_quaternion_conjugate(q));
+    return (Korl_Math_V3f32){.xyz = {q.xyzw.x, q.xyzw.y, q.xyzw.z}};
+}
+korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation)
+{
+    KORL_ZERO_STACK(Korl_Math_M4f32, result);
+    /* https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix */
+    const f32 sqW = qRotation.xyzw.w*qRotation.xyzw.w;
+    const f32 sqX = qRotation.xyzw.x*qRotation.xyzw.x;
+    const f32 sqY = qRotation.xyzw.y*qRotation.xyzw.y;
+    const f32 sqZ = qRotation.xyzw.z*qRotation.xyzw.z;
+    const f32 inverseSquareLength = 1 / (sqW + sqX + sqY + sqZ);
+    result.rc.r0c0 = ( sqX - sqY - sqZ + sqW) * inverseSquareLength;
+    result.rc.r1c1 = (-sqX + sqY - sqZ + sqW) * inverseSquareLength;
+    result.rc.r2c2 = (-sqX - sqY + sqZ + sqW) * inverseSquareLength;
+    const f32 temp1 = qRotation.xyzw.x*qRotation.xyzw.y;
+    const f32 temp2 = qRotation.xyzw.z*qRotation.xyzw.w;
+    result.rc.r1c0 = 2*(temp1 + temp2) * inverseSquareLength;
+    result.rc.r0c1 = 2*(temp1 - temp2) * inverseSquareLength;
+    const f32 temp3 = qRotation.xyzw.x*qRotation.xyzw.z;
+    const f32 temp4 = qRotation.xyzw.y*qRotation.xyzw.w;
+    result.rc.r2c0 = 2*(temp3 - temp4) * inverseSquareLength;
+    result.rc.r0c2 = 2*(temp3 + temp4) * inverseSquareLength;
+    const f32 temp5 = qRotation.xyzw.y*qRotation.xyzw.z;
+    const f32 temp6 = qRotation.xyzw.x*qRotation.xyzw.w;
+    result.rc.r2c1 = 2*(temp5 + temp6) * inverseSquareLength;
+    result.rc.r1c2 = 2*(temp5 - temp6) * inverseSquareLength;
+    result.rc.r0c3 = result.rc.r1c3 = result.rc.r2c3 = 0;
+    result.rc.r3c0 = result.rc.r3c1 = result.rc.r3c2 = 0;
+    result.rc.r3c3 = 1;
+    return result;
+}
+korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vTranslation)
+{
+    /** @speed: most likely there is a MUCH more efficient way to build a matrix 
+        using these parameters */
+    Korl_Math_M4f32 m4Rotation = korl_math_makeM4f32_rotate(qRotation);
+    Korl_Math_M4f32 m4Translation = KORL_MATH_M4F32_IDENTITY;
+    m4Translation.rc.r0c3 = vTranslation.xyz.x;
+    m4Translation.rc.r1c3 = vTranslation.xyz.y;
+    m4Translation.rc.r2c3 = vTranslation.xyz.z;
+    return korl_math_m4f32_multiply(&m4Translation, &m4Rotation);
+}
+korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vScale, Korl_Math_V3f32 vTranslation)
+{
+    /** @speed: most likely there is a MUCH more efficient way to build a matrix 
+        using these parameters */
+    Korl_Math_M4f32 m4Rotation = korl_math_makeM4f32_rotate(qRotation);
+    Korl_Math_M4f32 m4Translation = KORL_MATH_M4F32_IDENTITY;
+    m4Translation.rc.r0c3 = vTranslation.xyz.x;
+    m4Translation.rc.r1c3 = vTranslation.xyz.y;
+    m4Translation.rc.r2c3 = vTranslation.xyz.z;
+    Korl_Math_M4f32 m4Scale = KORL_MATH_M4F32_IDENTITY;
+	m4Scale.rc.r0c0 = vScale.xyz.x;
+	m4Scale.rc.r1c1 = vScale.xyz.y;
+	m4Scale.rc.r2c2 = vScale.xyz.z;
+    Korl_Math_M4f32 m4ScaleRotate = korl_math_m4f32_multiply(&m4Rotation, &m4Scale);
+    return korl_math_m4f32_multiply(&m4Translation, &m4ScaleRotate);
+}
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m)
 {
     KORL_ZERO_STACK(Korl_Math_M4f32, result);
     for(unsigned r = 0; r < 4; r++)
         for(unsigned c = 0; c < 4; c++)
             result.rows[r].elements[c] = m->rows[c].elements[r];
+    return result;
+}
+korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
+{
+    /** @speed: once again, not doing the most efficient thing here, but until 
+     * this causes actual performance issues IDGAF */
+    /** used to perform dot product with the columns of mB */
+    const Korl_Math_M4f32 mBTranspose = korl_math_m4f32_transpose(mB);
+    Korl_Math_M4f32 result;// no need to initialize to anything, since we will write to all elements
+    for(u8 mARow = 0; mARow < 4; mARow++)
+        for(u8 mBCol = 0; mBCol < 4; mBCol++)
+            result.elements[mARow*4 + mBCol] = korl_math_v4f32_dot(&mA->rows[mARow], &mBTranspose.rows[mBCol]);
     return result;
 }
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(

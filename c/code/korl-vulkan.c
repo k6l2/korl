@@ -2135,6 +2135,10 @@ korl_internal void korl_vulkan_setView(
     ubo->m4f32View = m4f32View;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
+korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale)
+{
+    korl_assert(!"@todo: implement");
+}
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
