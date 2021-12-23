@@ -2105,7 +2105,7 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
     ubo->m4f32Projection = m4f32Projection;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
-korl_internal void korl_vulkan_lookAt(
+korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;

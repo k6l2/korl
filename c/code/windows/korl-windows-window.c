@@ -116,7 +116,7 @@ korl_internal void _korl_windows_window_step(void)
 #else
     korl_vulkan_setProjectionFov(90, 0.001f, 10);
 #endif
-    korl_vulkan_lookAt(cameraPosition, KORL_MATH_V3F32_ZERO, KORL_MATH_V3F32_Z);
+    korl_vulkan_setView(cameraPosition, KORL_MATH_V3F32_ZERO, KORL_MATH_V3F32_Z);
     /* let's try just drawing some triangles */
     {
         korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
@@ -169,7 +169,7 @@ korl_internal void _korl_windows_window_step(void)
     }
     /* let's try changing the VP xforms & drawing a HUD */
     korl_vulkan_setProjectionOrthographicFixedHeight(600, 1.f);
-    korl_vulkan_lookAt((Korl_Math_V3f32){0, 0, 0}, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1), KORL_MATH_V3F32_Y);
+    korl_vulkan_setView((Korl_Math_V3f32){0, 0, 0}, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1), KORL_MATH_V3F32_Y);
     // now let's draw a quad somewhere on the HUD //
     {
         korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
