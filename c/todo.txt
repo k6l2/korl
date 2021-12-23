@@ -39,7 +39,9 @@
 [x] gfx: vulkan - initialize graphics context
 [x] gfx: vulkan - draw empty color buffer to the window
 [ ] multi-threading: create a job queue + worker threads
-[ ] assets: load vulkan shaders
+[ ] assets: vulkan materials
+	[ ] shader assets
+	[ ] somehow draw mesh data using material pipeline?...
 [x] gfx: vulkan - draw different geoprims (tris, lines)
 [ ] Sprite Fonts
 	[x] dynamic memory: linear allocator
@@ -62,9 +64,17 @@
 	[x] gfx: vulkan - upload textures to GPU
 	[x] gfx: vulkan - store & select from multiple uniform descriptor sets per frame
 		- to support different VP matrices per frame
+		- okay, NOW this feature actually works LUL
 	[x] gfx: vulkan - draw textured geoprims
-[ ] gfx: vulkan: orthographic projection - for drawing HUDs
+[x] gfx: vulkan: orthographic projection - for drawing HUDs
+[ ] gfx: vulkan: model transform for batch pipelines
 [ ] gfx: vulkan: depth buffer
+[ ] gfx: mesh generation abstraction; make drawing primitive meshes (quads, circles, etc) easier
+	- motivation: we don't want to have to declare a bunch of vertex attribute 
+		arrays and calculate them all individually each time we want to draw primitive meshes
+	- similar to SFML shape classes API, but without the unnecessary OOP baggage
+	[ ] add a heap-controlled linear "stack" allocator whose contents are cleared
+		at the beginning of each frame
 [ ] keyboard input
 [ ] mouse input
 [ ] game pad input (XInput)

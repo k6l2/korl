@@ -10,6 +10,12 @@
         It seems Windows.h doesn't conform well to C, surprise surprise! */
     #pragma warning(disable : 4255)
     #include <Windows.h>
+    #ifdef near
+        #undef near // fuck you too, Microsoft!
+    #endif
+    #ifdef far
+        #undef far // fuck you too, Microsoft!
+    #endif
 #pragma warning(pop)
 /* for _T macro */
 #include <tchar.h>

@@ -78,9 +78,9 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     if(primaryDisplayPixelSizeY == 0) korl_log(ERROR, "GetSystemMetrics failed!");
     /* we will compute the window rect by starting with the desired centered 
         client rect and adjusting it for the non-client region */
-    RECT rectCenteredClient;
-    rectCenteredClient.left = primaryDisplayPixelSizeX/2 - sizeX/2;
-    rectCenteredClient.top  = primaryDisplayPixelSizeY/2 - sizeY/2;
+    KORL_ZERO_STACK(RECT, rectCenteredClient);
+    rectCenteredClient.left   = primaryDisplayPixelSizeX/2 - sizeX/2;
+    rectCenteredClient.top    = primaryDisplayPixelSizeY/2 - sizeY/2;
     rectCenteredClient.right  = rectCenteredClient.left + sizeX;
     rectCenteredClient.bottom = rectCenteredClient.top  + sizeY;
     const DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
@@ -110,12 +110,13 @@ korl_internal void _korl_windows_window_step(void)
         cameraRadians -= 2*KORL_PI32;
     korl_shared_const f32 CAMERA_DISTANCE = 1;
     Korl_Math_V3f32 cameraPosition = {.xyz = {CAMERA_DISTANCE*cosf(cameraRadians),CAMERA_DISTANCE*sinf(cameraRadians),1}};
-    /* theoretically, I should be able to submit uniform transforms at ANY point 
-        during the frame, since they are not actually ever going to be used 
-        until draw operations are submitted to the device at the END of the 
-        frame! */
+    /* these UBO calls should affect all the batched draw calls which follow */
+#if 0/* this is just to quickly test the orthographic projection math, and it seems like it's working! :D */
+    korl_vulkan_setProjectionOrthographicFixedHeight(1.f, 10.f);
+#else
     korl_vulkan_setProjectionFov(90, 0.001f, 10);
-    korl_vulkan_lookAt(&cameraPosition, &KORL_MATH_V3F32_ZERO, &KORL_MATH_V3F32_Z);
+#endif
+    korl_vulkan_lookAt(cameraPosition, KORL_MATH_V3F32_ZERO, KORL_MATH_V3F32_Z);
     /* let's try just drawing some triangles */
     {
         korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
@@ -133,7 +134,6 @@ korl_internal void _korl_windows_window_step(void)
             , 1, 2, 3 };
         _STATIC_ASSERT(
             korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
-#if 1
         korl_shared_const Korl_Vulkan_Uv vertexTextureUvs[] = 
             { {0, 0}
             , {1, 0}
@@ -145,11 +145,6 @@ korl_internal void _korl_windows_window_step(void)
         korl_vulkan_batchTriangles_uv(
             korl_arraySize(vertexIndices), vertexIndices, 
             korl_arraySize(vertexPositions), vertexPositions, vertexTextureUvs);
-#else
-        korl_vulkan_batchTriangles_color(
-            korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, vertexColors);
-#endif
     }
     /* let's also draw some lines */
     {
@@ -172,6 +167,30 @@ korl_internal void _korl_windows_window_step(void)
         korl_vulkan_batchLines_color(
             korl_arraySize(vertexPositions), vertexPositions, vertexColors);
     }
+    /* let's try changing the VP xforms & drawing a HUD */
+    korl_vulkan_setProjectionOrthographicFixedHeight(600, 1.f);
+    korl_vulkan_lookAt((Korl_Math_V3f32){0, 0, 0}, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1), KORL_MATH_V3F32_Y);
+    // now let's draw a quad somewhere on the HUD //
+    {
+        korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
+            { {-100.5f, -100.5f, 0.f}
+            , { 100.5f, -100.5f, 0.f}
+            , { 100.5f,  100.5f, 0.f}
+            , {-100.5f,  100.5f, 0.f} };
+        korl_shared_const Korl_Vulkan_Color vertexColors[] = 
+            { {255,   0,   0}
+            , {  0, 255,   0}
+            , {  0,   0, 255}
+            , {255, 255, 255} };
+        korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
+            { 0, 1, 3
+            , 1, 2, 3 };
+        _STATIC_ASSERT(
+            korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
+        korl_vulkan_batchTriangles_color(
+            korl_arraySize(vertexIndices), vertexIndices, 
+            korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+    }
 }
 korl_internal void korl_windows_window_loop(void)
 {
@@ -190,8 +209,7 @@ korl_internal void korl_windows_window_loop(void)
         }
         if(quit)
             break;
-        korl_shared_const f32 CLEAR_COLOR_RGB[] = {0.05f, 0.f, 0.05f};
-        korl_vulkan_frameBegin(CLEAR_COLOR_RGB);
+        korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         _korl_windows_window_step();
         korl_vulkan_frameEnd();
     }

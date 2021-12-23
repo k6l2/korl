@@ -13,9 +13,9 @@ void __stdcall korl_windows_main(void)
 {
     korl_log(INFO, "start ---------------------------------------------------");
     korl_memory_initialize();
-    korl_stb_image_initialize();
-    korl_file_initialize();
-    korl_assetCache_initialize();
+    korl_stb_image_initialize();// depends on memory module
+    korl_file_initialize();// depends on memory module
+    korl_assetCache_initialize();// depends on {memory, file, stb_image} modules
     korl_vulkan_construct();
     korl_windows_window_initialize();
     korl_windows_window_create(1024, 576);

@@ -92,6 +92,13 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const
     vA.elements[2] -= vB->elements[2];
     return vA;
 }
+korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar)
+{
+    v.elements[0] *= scalar;
+    v.elements[1] *= scalar;
+    v.elements[2] *= scalar;
+    return v;
+}
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m)
 {
     KORL_ZERO_STACK(Korl_Math_M4f32, result);
@@ -120,9 +127,33 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
         - clipFar  maps to Z==1 in clip-space */
     result.rc.r0c0 = 1.f / tanHalfFov;
     result.rc.r1c1 = viewportWidthOverHeight / tanHalfFov;
-    result.rc.r2c2 =             -clipFar / (clipNear - clipFar);
+    result.rc.r2c2 =            -clipFar  / (clipNear - clipFar);
     result.rc.r2c3 = (clipNear * clipFar) / (clipNear - clipFar);
     result.rc.r3c2 = 1;
+    return result;
+}
+korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
+    f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax)
+{
+    korl_assert(xMin < xMax);
+    korl_assert(yMin < yMax);
+    korl_assert(zMin < zMax);
+    /* derive orthographic matrix using the power of math, people! 
+        - we're given 6 coordinates which define the AABB in eye-space that we 
+          want to map into clip-space 
+        - we're assuming here that eye-space is right-handed
+        - clip-space coordinates shall be left-handed, because Vulkan depth 
+          values must be in the range [0,1] without extensions
+            - zMin maps to 0
+            - zMax maps to 1 */
+    KORL_ZERO_STACK(Korl_Math_M4f32, result);
+    result.rc.r0c0 =              2 / (xMax - xMin);
+    result.rc.r0c3 = -(xMax + xMin) / (xMax - xMin);
+    result.rc.r1c1 =              2 / (yMax - yMin);
+    result.rc.r1c3 = -(yMax + yMin) / (yMax - yMin);
+    result.rc.r2c2 =    1 / (zMin - zMax);
+    result.rc.r2c3 = zMin / (zMin - zMax);
+    result.rc.r3c3 = 1;
     return result;
 }
 korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(

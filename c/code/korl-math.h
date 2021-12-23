@@ -82,10 +82,13 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f
 korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
 korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const Korl_Math_V3f32*const vB);
+korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
     f32 clipNear, f32 clipFar);
+korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
+    f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     const Korl_Math_V3f32*const positionEye, 
     const Korl_Math_V3f32*const positionTarget, 

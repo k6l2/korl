@@ -53,8 +53,7 @@ korl_internal void korl_vulkan_batchLines_color(
     const Korl_Vulkan_Color* colors);
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
+korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 halfDepth);
 korl_internal void korl_vulkan_lookAt(
-    const Korl_Math_V3f32*const positionEye, 
-    const Korl_Math_V3f32*const positionTarget, 
-    const Korl_Math_V3f32*const worldUpNormal);
+    Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);

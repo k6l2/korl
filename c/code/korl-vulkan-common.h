@@ -208,6 +208,9 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchUvs;
+    /** @speed: do we REALLY not need device-local memory for this?  I don't 
+     * trust the tutorial writer(s) about this.  Maybe this can be probed at 
+     * some point. */
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchIndices;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchPositions;
