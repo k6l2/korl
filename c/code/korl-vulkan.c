@@ -222,7 +222,7 @@ korl_internal void _korl_vulkan_createSwapChain(
     if(    deviceSurfaceMetaData->capabilities.maxImageCount > 0 
         && deviceSurfaceMetaData->capabilities.maxImageCount < minImageCount)
         minImageCount = deviceSurfaceMetaData->capabilities.maxImageCount;
-    /* create the swap chain */
+    /* ------ create the swap chain ------ */
     KORL_ZERO_STACK(VkSwapchainCreateInfoKHR, createInfoSwapChain);
     createInfoSwapChain.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfoSwapChain.surface          = surfaceContext->surface;
@@ -249,34 +249,76 @@ korl_internal void _korl_vulkan_createSwapChain(
         vkCreateSwapchainKHR(
             context->device, &createInfoSwapChain, 
             context->allocator, &surfaceContext->swapChain));
-    /* create render pass */
-    KORL_ZERO_STACK(VkAttachmentDescription, colorAttachment);
-    colorAttachment.format         = surfaceContext->swapChainSurfaceFormat.format;
-    colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReference);
-    attachmentReference.attachment = 0;
-    attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    /* ------ create a depth buffer ------ */
+    // first, attempt to find the "most optimal" format for the depth buffer //
+    const VkFormat depthBufferFormatCandidates[] = 
+        { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+    const VkImageTiling depthBufferTiling          = VK_IMAGE_TILING_OPTIMAL;
+    const VkFormatFeatureFlags depthBufferFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    u$ depthBufferFormatSelection = 0; 
+    for(; depthBufferFormatSelection < korl_arraySize(depthBufferFormatCandidates); depthBufferFormatSelection++)
+    {
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(context->physicalDevice, depthBufferFormatCandidates[depthBufferFormatSelection], &formatProperties);
+        if(depthBufferTiling == VK_IMAGE_TILING_LINEAR 
+            && ((formatProperties.linearTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
+            break;
+        if(depthBufferTiling == VK_IMAGE_TILING_OPTIMAL 
+            && ((formatProperties.optimalTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
+            break;
+    }
+    korl_assert(depthBufferFormatSelection < korl_arraySize(depthBufferFormatCandidates));
+    const VkFormat formatDepthBuffer = depthBufferFormatCandidates[depthBufferFormatSelection];
+    surfaceContext->hasStencilComponent = formatDepthBuffer == VK_FORMAT_D32_SFLOAT_S8_UINT
+                                       || formatDepthBuffer == VK_FORMAT_D24_UNORM_S8_UINT;
+    // now that we have selected a format, we can create the depth buffer image //
+    surfaceContext->allocationDepthStencilImageBuffer = 
+        _korl_vulkan_deviceMemoryLinear_allocateImageBuffer(
+            &context->deviceMemoryLinearRenderResources, 
+            surfaceContext->swapChainImageExtent.width, 
+            surfaceContext->swapChainImageExtent.height, 
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+            VK_IMAGE_ASPECT_DEPTH_BIT, formatDepthBuffer, depthBufferTiling);
+    /* ----- create render pass ----- */
+    KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
+    attachments[0].format         = surfaceContext->swapChainSurfaceFormat.format;
+    attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
+    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[0].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[1].format         = formatDepthBuffer;
+    attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
+    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[1].finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceColor);
+    attachmentReferenceColor.attachment = 0;
+    attachmentReferenceColor.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceDepth);
+    attachmentReferenceDepth.attachment = 1;
+    attachmentReferenceDepth.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     KORL_ZERO_STACK(VkSubpassDescription, subPass);
-    subPass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subPass.colorAttachmentCount = 1;
-    subPass.pColorAttachments    = &attachmentReference;
+    subPass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subPass.colorAttachmentCount    = 1;
+    subPass.pColorAttachments       = &attachmentReferenceColor;
+    subPass.pDepthStencilAttachment = &attachmentReferenceDepth;
     KORL_ZERO_STACK(VkSubpassDependency, subpassDependency);
     subpassDependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
     subpassDependency.dstSubpass    = 0;
-    subpassDependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     subpassDependency.srcAccessMask = 0;
-    subpassDependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpassDependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
     createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfoRenderPass.attachmentCount = 1;
-    createInfoRenderPass.pAttachments    = &colorAttachment;
+    createInfoRenderPass.attachmentCount = korl_arraySize(attachments);
+    createInfoRenderPass.pAttachments    = attachments;
     createInfoRenderPass.subpassCount    = 1;
     createInfoRenderPass.pSubpasses      = &subPass;
     createInfoRenderPass.dependencyCount = 1;
@@ -322,7 +364,8 @@ korl_internal void _korl_vulkan_createSwapChain(
                 &surfaceContext->swapChainImageContexts[i].imageView));
         /* create a frame buffer for all the swap chain image views */
         VkImageView frameBufferAttachments[] = 
-            { surfaceContext->swapChainImageContexts[i].imageView };
+            { surfaceContext->swapChainImageContexts[i].imageView
+            , surfaceContext->allocationDepthStencilImageBuffer->deviceObject.imageBuffer.imageView };
         KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
         createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         createInfoFrameBuffer.renderPass      = context->renderPass;
@@ -349,17 +392,18 @@ korl_internal void _korl_vulkan_createSwapChain(
             context->device, &allocateInfoCommandBuffers, 
             surfaceContext->swapChainCommandBuffers));
 }
-korl_internal void _korl_vulkan_destroySwapChainDependencies(void)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
-    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
-}
 korl_internal void _korl_vulkan_destroySwapChain(void)
 {
-    _korl_vulkan_destroySwapChainDependencies();
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
+    /* just completely wipe all device objects used as render resources, since 
+        we will likely have to recreate them all anyways if we want to create 
+        another swap chain */
+    _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearRenderResources);
+    /* wipe all device object allocation references for safety here */
+    surfaceContext->allocationDepthStencilImageBuffer = NULL;
+    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
     vkFreeCommandBuffers(
         context->device, context->commandPoolGraphics, 
         surfaceContext->swapChainImagesSize, 
@@ -508,254 +552,6 @@ korl_internal uint32_t _korl_vulkan_findMemoryType(
     }
     return physicalDeviceMemoryProperties.memoryTypeCount;
 }
-
-korl_internal void _korl_vulkan_deviceMemory_allocation_destroy(_Korl_Vulkan_DeviceMemory_Alloctation*const allocation)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    switch(allocation->type)
-    {
-    case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED:{
-        // just do nothing - the allocation is already destroyed
-        } break;
-    case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER:{
-        vkDestroyBuffer(context->device, allocation->deviceObject.buffer, context->allocator);
-        } break;
-    case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE:{
-        vkDestroyImage(context->device, allocation->deviceObject.texture.image, context->allocator);
-        vkDestroyImageView(context->device, allocation->deviceObject.texture.imageView, context->allocator);
-        vkDestroySampler(context->device, allocation->deviceObject.texture.sampler, context->allocator);
-        } break;
-    /* add code to handle new device object types here!
-        @vulkan-device-allocation-type */
-    default:
-        korl_assert(!"device object type not implemented!");
-    }
-    korl_memory_nullify(allocation, sizeof(*allocation));
-}
-/**
- * \param bufferUsageFlags If this allocator is going to be used to allocate any 
- * VkBuffer objects, then this value MUST be populated with the set of all 
- * possible flags that any allocated buffer might use.  If no flags are 
- * specified, then the allocator cannot be guaranteed to allow VkBuffer 
- * allocations.
- * \param imageUsageFlags Similar to \c bufferUsageFlags , except for VkImage.
- */
-korl_internal void _korl_vulkan_deviceMemoryLinear_create(
-    _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
-    VkMemoryPropertyFlagBits memoryPropertyFlags, 
-    VkBufferUsageFlags bufferUsageFlags, 
-    VkImageUsageFlags imageUsageFlags, 
-    VkDeviceSize bytes)
-{
-    /* sanity check - ensure the deviceMemoryLinear is already nullified */
-    korl_assert(korl_memory_isNull(deviceMemoryLinear, sizeof(*deviceMemoryLinear)));
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    /** this will store the accumulation of all necessary memory types for this 
-     * allocator, which is based on the provided *UsageFlags parameters */
-    u32 memoryTypeBits = 0;
-    /* Create a dummy buffer using the buffer usage flags.  According to sources 
-        I've read on this subject, this should allow us to allocate device 
-        memory that can accomodate buffers made with any subset of these usage 
-        flags in the future.  This Vulkan API idiom is, in my opinion, very 
-        obtuse/unintuitive, but whatever!  
-        Source: https://stackoverflow.com/a/55456540 */
-    if(bufferUsageFlags)
-    {
-        VkBuffer dummyBuffer;
-        KORL_ZERO_STACK(VkBufferCreateInfo, bufferCreateInfo);
-        bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferCreateInfo.size  = 1;
-        bufferCreateInfo.usage = bufferUsageFlags;
-        _KORL_VULKAN_CHECK(vkCreateBuffer(context->device, &bufferCreateInfo, context->allocator, &dummyBuffer));
-        KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsDummyBuffer);
-        vkGetBufferMemoryRequirements(context->device, dummyBuffer, &memoryRequirementsDummyBuffer);
-        vkDestroyBuffer(context->device, dummyBuffer, context->allocator);
-        memoryTypeBits |= memoryRequirementsDummyBuffer.memoryTypeBits;
-    }
-    /* Create dummy image, query mem reqs, extract memory type bits.  See notes 
-        above regarding the same procedures for VkBuffer for details.  */
-    if(imageUsageFlags)
-    {
-        VkImage dummyImage;
-        KORL_ZERO_STACK(VkImageCreateInfo, imageCreateInfo);
-        imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
-        imageCreateInfo.extent.width  = 1;
-        imageCreateInfo.extent.height = 1;
-        imageCreateInfo.extent.depth  = 1;
-        imageCreateInfo.mipLevels     = 1;
-        imageCreateInfo.arrayLayers   = 1;
-        imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
-        imageCreateInfo.usage         = imageUsageFlags;
-        imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-        // all these options are already defaulted to 0 //
-        //imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-        //imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        //imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-        _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &dummyImage));
-        KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
-        vkGetImageMemoryRequirements(context->device, dummyImage, &memoryRequirements);
-        vkDestroyImage(context->device, dummyImage, context->allocator);
-        memoryTypeBits |= memoryRequirements.memoryTypeBits;
-    }
-    /* put additional device object memory type bit queries here 
-        (don't forget to add the usage flags as a parameter)
-        @vulkan-device-allocation-type */
-    /* now we can create the device memory used in the allocator */
-    KORL_ZERO_STACK(VkMemoryAllocateInfo, allocateInfo);
-    allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize  = bytes;
-    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(memoryTypeBits, memoryPropertyFlags);
-    _KORL_VULKAN_CHECK(
-        vkAllocateMemory(
-            context->device, &allocateInfo, context->allocator, &deviceMemoryLinear->deviceMemory));
-    /* initialize the rest of the allocator */
-    deviceMemoryLinear->byteSize            = bytes;
-    deviceMemoryLinear->memoryPropertyFlags = memoryPropertyFlags;
-    deviceMemoryLinear->memoryTypeBits      = memoryTypeBits;
-}
-korl_internal void _korl_vulkan_deviceMemoryLinear_destroy(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    for(unsigned a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
-        _korl_vulkan_deviceMemory_allocation_destroy(&deviceMemoryLinear->allocations[a]);
-    vkFreeMemory(context->device, deviceMemoryLinear->deviceMemory, context->allocator);
-    korl_memory_nullify(deviceMemoryLinear, sizeof(*deviceMemoryLinear));
-}
-/**
- * Iterate over each allocation and destroy it, effectively emptying the allocator.
- */
-korl_internal void _korl_vulkan_deviceMemoryLinear_clear(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
-{
-    for(unsigned a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
-        _korl_vulkan_deviceMemory_allocation_destroy(&deviceMemoryLinear->allocations[a]);
-}
-korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateBuffer(
-    _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, VkDeviceSize bytes, 
-    VkBufferUsageFlags bufferUsageFlags, VkSharingMode sharingMode)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    korl_assert(!KORL_MEMORY_POOL_FULL(deviceMemoryLinear->allocations));
-    _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
-    result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER;
-    /* create the buffer with the given parameters */
-    KORL_ZERO_STACK(VkBufferCreateInfo, createInfoBuffer);
-    createInfoBuffer.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfoBuffer.size        = bytes;
-    createInfoBuffer.usage       = bufferUsageFlags;
-    createInfoBuffer.sharingMode = sharingMode;
-    _KORL_VULKAN_CHECK(
-        vkCreateBuffer(
-            context->device, &createInfoBuffer, context->allocator, 
-            &result->deviceObject.buffer));
-    /* obtain the device memory requirements for the buffer */
-    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
-    vkGetBufferMemoryRequirements(context->device, result->deviceObject.buffer, &memoryRequirements);
-    /* bind the buffer to the device memory, making sure to obey the device 
-        memory requirements 
-        For some more details, see: https://stackoverflow.com/a/45459196 */
-    /* @robustness: ensure that device objects respect `bufferImageGranularity`, 
-                    obtained from `VkPhysicalDeviceLimits`, if we ever have NON-
-                    LINEAR device objects in the same allocation (in addition to 
-                    respecting memory alignment requirements, of course).  */
-    korl_assert(memoryRequirements.alignment > 0);
-    const VkDeviceSize alignedOffset = 
-        (deviceMemoryLinear->bytesAllocated + (memoryRequirements.alignment - 1)) & ~(memoryRequirements.alignment - 1);
-    // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
-    korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);
-    _KORL_VULKAN_CHECK(
-        vkBindBufferMemory(
-            context->device, result->deviceObject.buffer, 
-            deviceMemoryLinear->deviceMemory, alignedOffset));
-    /* update the rest of the allocations meta data */
-    result->byteOffset = alignedOffset;
-    result->byteSize   = memoryRequirements.size;
-    /* update allocator book keeping */
-    deviceMemoryLinear->bytesAllocated = alignedOffset + memoryRequirements.size;
-    return result;
-}
-korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateTexture(
-    _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
-    u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    korl_assert(!KORL_MEMORY_POOL_FULL(deviceMemoryLinear->allocations));
-    _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
-    result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE;
-    /* create the image with the given parameters */
-    KORL_ZERO_STACK(VkImageCreateInfo, imageCreateInfo);
-    imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.extent.width  = imageSizeX;
-    imageCreateInfo.extent.height = imageSizeY;
-    imageCreateInfo.extent.depth  = 1;
-    imageCreateInfo.mipLevels     = 1;
-    imageCreateInfo.arrayLayers   = 1;
-    imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
-    imageCreateInfo.usage         = imageUsageFlags;
-    imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-    // all these options are already defaulted to 0 //
-    //imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    //imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    //imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-    _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &result->deviceObject.texture.image));
-    /* obtain the device memory requirements for the image */
-    KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
-    vkGetImageMemoryRequirements(context->device, result->deviceObject.texture.image, &memoryRequirements);
-    /* bind the image to the device memory, making sure to obey the device 
-        memory requirements 
-        For some more details, see: https://stackoverflow.com/a/45459196 */
-    /* @robustness: ensure that device objects respect `bufferImageGranularity`, 
-                    obtained from `VkPhysicalDeviceLimits`, if we ever have NON-
-                    LINEAR device objects in the same allocation (in addition to 
-                    respecting memory alignment requirements, of course).  */
-    korl_assert(memoryRequirements.alignment > 0);
-    const VkDeviceSize alignedOffset = 
-        (deviceMemoryLinear->bytesAllocated + (memoryRequirements.alignment - 1)) & ~(memoryRequirements.alignment - 1);
-    // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
-    korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);
-    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, result->deviceObject.texture.image, deviceMemoryLinear->deviceMemory, alignedOffset));
-    /* update the rest of the allocations meta data */
-    result->byteOffset = alignedOffset;
-    result->byteSize   = memoryRequirements.size;
-    /* update allocator book keeping */
-    deviceMemoryLinear->bytesAllocated = alignedOffset + memoryRequirements.size;
-    /* create the image view for the image */
-    KORL_ZERO_STACK(VkImageViewCreateInfo, createInfoImageView);
-    createInfoImageView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    createInfoImageView.image                           = result->deviceObject.texture.image;
-    createInfoImageView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    createInfoImageView.format                          = VK_FORMAT_R8G8B8A8_SRGB;
-    createInfoImageView.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    createInfoImageView.subresourceRange.baseMipLevel   = 0;
-    createInfoImageView.subresourceRange.levelCount     = 1;
-    createInfoImageView.subresourceRange.baseArrayLayer = 0;
-    createInfoImageView.subresourceRange.layerCount     = 1;
-    _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &result->deviceObject.texture.imageView));
-    /* create the sampler for the image */
-    // first obtain physical device properties to get the max anisotropy value
-    KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
-    vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
-    KORL_ZERO_STACK(VkSamplerCreateInfo, createInfoSampler);
-    createInfoSampler.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    createInfoSampler.magFilter               = VK_FILTER_LINEAR;
-    createInfoSampler.minFilter               = VK_FILTER_LINEAR;
-    createInfoSampler.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    createInfoSampler.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    createInfoSampler.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    createInfoSampler.anisotropyEnable        = VK_TRUE;
-    createInfoSampler.maxAnisotropy           = physicalDeviceProperties.limits.maxSamplerAnisotropy;/// @performance: setting this to a lower value will trade off performance for quality
-    createInfoSampler.borderColor             = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
-    createInfoSampler.unnormalizedCoordinates = VK_FALSE;
-    createInfoSampler.compareEnable           = VK_FALSE;
-    createInfoSampler.compareOp               = VK_COMPARE_OP_ALWAYS;
-    createInfoSampler.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    createInfoSampler.mipLodBias              = 0.0f;
-    createInfoSampler.minLod                  = 0.0f;
-    createInfoSampler.maxLod                  = 0.0f;
-    _KORL_VULKAN_CHECK(vkCreateSampler(context->device, &createInfoSampler, context->allocator, &result->deviceObject.texture.sampler));
-    return result;
-}
 korl_internal bool _korl_vulkan_pipeline_isMetaDataSame(_Korl_Vulkan_Pipeline p0, _Korl_Vulkan_Pipeline p1)
 {
     /* we only want to compare the meta data - we don't care about the actual 
@@ -900,6 +696,11 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
         createInfoShaderStages[1].module = context->shaderBatchFragTexture;
     createInfoShaderStages[1].pName  = "main";
+    KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
+    createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    createInfoDepthStencil.depthTestEnable  = VK_TRUE;
+    createInfoDepthStencil.depthWriteEnable = VK_TRUE;
+    createInfoDepthStencil.depthCompareOp   = VK_COMPARE_OP_LESS;
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     createInfoPipeline.stageCount          = korl_arraySize(createInfoShaderStages);
@@ -910,6 +711,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     createInfoPipeline.pRasterizationState = &createInfoRasterizer;
     createInfoPipeline.pMultisampleState   = &createInfoMultisample;
     createInfoPipeline.pColorBlendState    = &createInfoColorBlend;
+    createInfoPipeline.pDepthStencilState  = &createInfoDepthStencil;
     createInfoPipeline.layout              = context->pipelineLayout;
     createInfoPipeline.renderPass          = context->renderPass;
     createInfoPipeline.subpass             = 0;
@@ -1478,6 +1280,14 @@ korl_internal void korl_vulkan_createSurface(
         vkCreateCommandPool(
             context->device, &createInfoCommandPool, context->allocator, 
             &context->commandPoolTransfer));
+    /* create the device memory allocator we will require to store certain swap 
+        chain dependent resources, such as the depth buffer, stencil buffer, etc. */
+    _korl_vulkan_deviceMemoryLinear_create(
+        &context->deviceMemoryLinearRenderResources, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+        /*bufferUsageFlags*/0, 
+        /*imageUsageFlags*/VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+        korl_math_megabytes(64));
     /* now that the device is created we can create the swap chain 
         - this also requires the command pool since we need to create the 
           graphics command buffers for each element of the swap chain
@@ -1780,6 +1590,7 @@ korl_internal void korl_vulkan_destroySurface(void)
     /* destroy the device-specific resources */
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssetsStaging);
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssets);
+    _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearRenderResources);
     for(size_t p = 0; p < context->pipelinesCount; p++)
         vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
     vkDestroyDescriptorSetLayout(context->device, context->batchDescriptorSetLayout, context->allocator);
@@ -1797,6 +1608,11 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
     _Korl_Vulkan_Context*const context                        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext          = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext* swapChainImageContext = NULL;
+    /* it is possible that we do not have the ability to render anything this 
+        frame, so we need to check the state of the swap chain image index for 
+        each of the exposed rendering APIs - if it remains unchanged from this 
+        initial assigned value, then we need to just not do anything in those 
+        functions which require a valid swap chain image context!!! */
     surfaceContext->frameSwapChainImageIndex = _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE;
     /* to begin the frame, we need to: 
         - resize the swap chain if any events triggered a deferred resize
@@ -1872,31 +1688,23 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
             &beginInfoCommandBuffer));
     // define the color we are going to clear the color attachment with when 
     //    the render pass begins:
-    KORL_ZERO_STACK(VkClearValue, clearValue);
-    clearValue.color.float32[0] = clearRgb[0];
-    clearValue.color.float32[1] = clearRgb[1];
-    clearValue.color.float32[2] = clearRgb[2];
-    clearValue.color.float32[3] = 1.f;
+    KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
+    clearValues[0].color.float32[0] = clearRgb[0];
+    clearValues[0].color.float32[1] = clearRgb[1];
+    clearValues[0].color.float32[2] = clearRgb[2];
+    clearValues[0].color.float32[3] = 1.f;
+    clearValues[1].depthStencil.depth = 1.f;
+    clearValues[1].depthStencil.stencil = 0;
     KORL_ZERO_STACK(VkRenderPassBeginInfo, beginInfoRenderPass);
     beginInfoRenderPass.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfoRenderPass.renderPass        = context->renderPass;
     beginInfoRenderPass.framebuffer       = swapChainImageContext->frameBuffer;
     beginInfoRenderPass.renderArea.extent = surfaceContext->swapChainImageExtent;
-    beginInfoRenderPass.clearValueCount   = 1;
-    beginInfoRenderPass.pClearValues      = &clearValue;
+    beginInfoRenderPass.clearValueCount   = korl_arraySize(clearValues);
+    beginInfoRenderPass.pClearValues      = clearValues;
     vkCmdBeginRenderPass(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         &beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
-done:
-    /* help to ensure the user is calling frameBegin & frameEnd in the correct 
-        order & the correct frequency */
-    korl_assert(surfaceContext->frameStackCounter == 0);
-    surfaceContext->frameStackCounter++;
-    /* clear the vertex batch metrics for the upcoming frame */
-    korl_memory_nullify(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
-    // setting the current pipeline index to be out of bounds effectively sets 
-    //  the pipeline produced from _korl_vulkan_pipeline_default to be used
-    surfaceContext->batchState.currentPipeline = context->pipelinesCount;
     /* clear the state of the first batch descriptor set */
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
@@ -1916,6 +1724,16 @@ done:
     ubo->m4f32View       = KORL_MATH_M4F32_IDENTITY;
     ubo->m4f32Model      = KORL_MATH_M4F32_IDENTITY;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+done:
+    /* help to ensure the user is calling frameBegin & frameEnd in the correct 
+        order & the correct frequency */
+    korl_assert(surfaceContext->frameStackCounter == 0);
+    surfaceContext->frameStackCounter++;
+    /* clear the vertex batch metrics for the upcoming frame */
+    korl_memory_nullify(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
+    // setting the current pipeline index to be out of bounds effectively sets 
+    //  the pipeline produced from _korl_vulkan_pipeline_default to be used
+    surfaceContext->batchState.currentPipeline = context->pipelinesCount;
 }
 korl_internal void korl_vulkan_frameEnd(void)
 {
@@ -1924,7 +1742,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* if we got an invalid next swapchain image index, just do nothing */
     if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
+        goto done;
     _korl_vulkan_flushBatchPipeline();
     vkCmdEndRenderPass(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex]);
     _KORL_VULKAN_CHECK(
@@ -1968,6 +1786,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     surfaceContext->wipFrameCurrent = 
         (surfaceContext->wipFrameCurrent + 1) % 
         _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES;
+done:
     /* help to ensure the user is calling frameBegin & frameEnd in the correct 
         order & the correct frequency */
     korl_assert(surfaceContext->frameStackCounter == 1);
@@ -1976,6 +1795,10 @@ korl_internal void korl_vulkan_frameEnd(void)
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    /* help ensure that this code never runs INSIDE of a set of 
+        frameBegin/frameEnd calls - we cannot signal a deferred resize once a 
+        new frame has begun! */
+    korl_assert(surfaceContext->frameStackCounter == 0);
     surfaceContext->deferredResize = true;
     surfaceContext->deferredResizeX = sizeX;
     surfaceContext->deferredResizeY = sizeY;
@@ -1990,6 +1813,10 @@ korl_internal void korl_vulkan_batchTriangles_color(
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* if there is no pipeline selected, create a default pipeline meta data, 
         modify it to have the desired render state for this call, then set the 
         current pipeline meta data to this value */
@@ -2019,6 +1846,10 @@ korl_internal void korl_vulkan_batchTriangles_uv(
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* if there is no pipeline selected, create a default pipeline meta data, 
         modify it to have the desired render state for this call, then set the 
         current pipeline meta data to this value */
@@ -2047,6 +1878,10 @@ korl_internal void korl_vulkan_batchLines_color(
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* if there is no pipeline selected, create a default pipeline meta data, 
         modify it to have the desired render state for this call, then set the 
         current pipeline meta data to this value */
@@ -2074,6 +1909,10 @@ korl_internal void korl_vulkan_setProjectionFov(
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* create the projection matrix */
     const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 ? 1.f : 
         KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width) / 
@@ -2107,6 +1946,10 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* create the projection matrix */
     const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 ? 1.f :
         KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width) / 
@@ -2149,6 +1992,10 @@ korl_internal void korl_vulkan_setView(
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* create the view matrix */
     const Korl_Math_M4f32 m4f32View = korl_math_m4f32_lookAt(&positionEye, &positionTarget, &worldUpNormal);
     /* ensure the current descriptor set index of the batch state is not being 
@@ -2178,6 +2025,10 @@ korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* create the model matrix */
     const Korl_Math_M4f32 m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(rotation, scale, position);
     /* ensure the current descriptor set index of the batch state is not being 
@@ -2206,6 +2057,10 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* check and see if the asset is already loaded as a device texture */
     u$ deviceAssetIndexLoaded = 0;
     for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)

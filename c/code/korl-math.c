@@ -12,8 +12,7 @@ korl_internal inline u64 korl_math_gigabytes(u64 x)
 {
     return 1024 * korl_math_megabytes(x);
 }
-korl_internal inline uintptr_t korl_math_roundUpPowerOf2(
-    uintptr_t value, uintptr_t powerOf2Multiple)
+korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple)
 {
     /* derived from this source: https://stackoverflow.com/a/9194117 */
     // ensure multiple is non-zero
@@ -245,7 +244,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*co
     return result;
 }
 #pragma warning(push)
-#pragma warning(disable:4701)/* disable warning about uninitialized local variable - trust me bro I know what I'm doing here */
+#pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
 korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
 {
     /** @speed: once again, not doing the most efficient thing here, but until 

@@ -31,6 +31,7 @@ void __stdcall korl_windows_main(void)
 #include "korl-memory.c"
 #include "korl-windows-window.c"
 #include "korl-vulkan.c"
+#include "korl-vulkan-memory.c"
 #include "korl-windows-vulkan.c"
 #include "korl-checkCast.c"
 #include "korl-file.c"

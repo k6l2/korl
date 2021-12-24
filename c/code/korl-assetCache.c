@@ -47,7 +47,7 @@ korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     }
     /* @todo: lazy load asset if KORL_ASSETCACHE_GET_FLAGS_LAZY is specified */
     /* @todo: only assert that the file loaded when we're not lazy loading */
-    korl_assert(!KORL_MEMORY_POOL_FULL(context->assets));
+    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->assets));
     korl_assert(
         korl_file_load(
             assetName, KORL_FILE_PATHTYPE_CURRENTWORKINGDIRECTORY, 

@@ -3,78 +3,12 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
-#include <vulkan/vulkan.h>
+#include "korl-vulkan-memory.h"
 #define _KORL_VULKAN_MAX_ASSET_NAME_LENGTH 64
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
-typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
-{
-    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED, 
-    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER, 
-    _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE
-    /* IMPORTANT: when adding new types to this enum, we must update the 
-        appropriate tagged union in the allocation struct, as well as the code 
-        which handles each type in the allocator constructor (and create a 
-        corresponding allocation method for the new device object type) 
-        @vulkan-device-allocation-type */
-} _Korl_Vulkan_DeviceMemory_Allocation_Type;
-typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
-{
-    /* @polymorphic-tagged-union
-        We essentially need "virtual constructor/destructor" logic for this 
-        data type, since this logic is specific to the device object type (we 
-        need to use different Vulkan API for these tasks).
-        It's worth noting that I have found this to be a common enough design 
-        pattern that at one point I created a simple C++ parser which 
-        automatically generated dispatch routines for virtual functions (kcpp?), 
-        which theoretically might make development of these constructs easier.  
-        Although, I am not yet _entirely_ convinced that this is the case just 
-        yet.  Generated v-tables are not a panacea, and still don't properly 
-        solve issues associated with function pointer tables, such as hot code 
-        reloading, so such a feature might need a bit more effort to make it 
-        easy-to-use like C++ virtuals, but also not complete shit under the hood 
-        that we can't fix (like C++ virtuals).  */
-    _Korl_Vulkan_DeviceMemory_Allocation_Type type;
-    union 
-    {
-        VkBuffer buffer;
-        struct Texture
-        {
-            VkImage image;
-            VkImageView imageView;
-            VkSampler sampler;
-        } texture;
-        /* @vulkan-device-allocation-type */
-    } deviceObject;
-    VkDeviceSize byteOffset;
-    VkDeviceSize byteSize;
-} _Korl_Vulkan_DeviceMemory_Alloctation;
-/**
- * This is the "dumbest" possible allocator - we literally just allocate a big 
- * chunk of memory, and then bind (allocate) new device objects one right after 
- * another contiguously.  We don't do any defragmentation, and we don't even 
- * have the ability to "free" objects, really (except when the entire allocator 
- * needs to be destroyed).  But, for the purposes of prototyping, this will do 
- * just fine for now.  
- * @todo: if we ever start having more "shippable" asset pipelines, we will need 
- *        a more intelligent allocator which allows things like:
- *        - dynamic growth
- *        - "freeing" allocations
- *        - defragmentation
- */
-typedef struct _Korl_Vulkan_DeviceMemoryLinear
-{
-    VkDeviceMemory deviceMemory;
-    /** passed as the first parameter to \c _korl_vulkan_findMemoryType */
-    u32 memoryTypeBits;
-    /** passed as the second parameter to \c _korl_vulkan_findMemoryType */
-    VkMemoryPropertyFlags memoryPropertyFlags;
-    VkDeviceSize byteSize;
-    VkDeviceSize bytesAllocated;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceMemory_Alloctation, allocations, 64);
-} _Korl_Vulkan_DeviceMemoryLinear;
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -116,6 +50,9 @@ typedef struct _Korl_Vulkan_Pipeline
 } _Korl_Vulkan_Pipeline;
 typedef struct _Korl_Vulkan_DeviceAsset
 {
+    /** @speed: comparisons between asset strings are going to be slow, so maybe 
+     * we should create a hash table for asset identifiers at some point.  
+     * simple hash functions:  http://www.cse.yorku.ca/~oz/hash.html */
     wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
 } _Korl_Vulkan_DeviceAsset;
@@ -180,7 +117,10 @@ typedef struct _Korl_Vulkan_Context
         swap chain images */
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssetsStaging;
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssets;
-    /* storage for assets that are exist on the device 
+    /** this allocator will maintain device-local objects required during the 
+     * render process, such as depth buffers, etc. */
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearRenderResources;
+    /* database for assets that exist on the device 
         (textures, shaders, buffers, etc) */
     KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceAsset, deviceAssets, 1024);
 } _Korl_Vulkan_Context;
@@ -293,6 +233,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     u32 deferredResizeX, deferredResizeY;
     /** expected to be nullified at the end of each call to \c frameBegin() */
     _Korl_Vulkan_SurfaceContextBatchState batchState;
+    bool hasStencilComponent;
+    _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

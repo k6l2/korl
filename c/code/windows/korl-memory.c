@@ -253,7 +253,7 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
     }
     /* update allocator's metrics */
     KORL_MEMORY_POOL_REMOVE(allocator->allocationOffsets, allocationOffsetIndex);
-    if(KORL_MEMORY_POOL_EMPTY(allocator->allocationOffsets))
+    if(KORL_MEMORY_POOL_ISEMPTY(allocator->allocationOffsets))
         /* if the allocator no longer has any allocations, we can safely start 
             re-using memory from the beginning of the allocator again */
         allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
