@@ -139,9 +139,12 @@ korl_internal void _korl_windows_window_step(void)
             , {1, 1}
             , {1, 0}
             , {0, 0} };
-        //Korl_Vulkan_TextureHandle hTexture = 
-        //    korl_vulkan_createTexture(L"test-assets/birb.jpg");
         korl_vulkan_useImageAssetAsTexture(L"test-assets/birb.jpg");
+        korl_vulkan_setModel((Korl_Math_V3f32){0,0,0.4f}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
+        korl_vulkan_batchTriangles_uv(
+            korl_arraySize(vertexIndices), vertexIndices, 
+            korl_arraySize(vertexPositions), vertexPositions, vertexTextureUvs);
+        korl_vulkan_setModel((Korl_Math_V3f32){0,0,0}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
         korl_vulkan_batchTriangles_uv(
             korl_arraySize(vertexIndices), vertexIndices, 
             korl_arraySize(vertexPositions), vertexPositions, vertexTextureUvs);
@@ -164,6 +167,7 @@ korl_internal void _korl_windows_window_step(void)
             , {0  ,   0, 255} };
         _STATIC_ASSERT(
             korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
+        korl_vulkan_setModel((Korl_Math_V3f32){0,0,0}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
         korl_vulkan_batchLines_color(
             korl_arraySize(vertexPositions), vertexPositions, vertexColors);
     }
@@ -173,7 +177,7 @@ korl_internal void _korl_windows_window_step(void)
     // now let's draw a quad somewhere on the HUD //
     {
         const Korl_Math_V3f32 position = {.xyz = {250.f*cosf(cameraRadians), 250.f*sinf(cameraRadians), 0}};
-        korl_vulkan_setModel(position, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, cameraRadians, true), (Korl_Math_V3f32){1, 1, 1});
+        korl_vulkan_setModel(position, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1, 1, 1});
         korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
             { {-100.5f, -100.5f, 0.f}
             , { 100.5f, -100.5f, 0.f}
