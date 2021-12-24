@@ -244,6 +244,8 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*co
             result.rows[r].elements[c] = m->rows[c].elements[r];
     return result;
 }
+#pragma warning(push)
+#pragma warning(disable:4701)/* disable warning about uninitialized local variable - trust me bro I know what I'm doing here */
 korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
 {
     /** @speed: once again, not doing the most efficient thing here, but until 
@@ -256,6 +258,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*con
             result.elements[mARow*4 + mBCol] = korl_math_v4f32_dot(&mA->rows[mARow], &mBTranspose.rows[mBCol]);
     return result;
 }
+#pragma warning(pop)
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
     f32 clipNear, f32 clipFar)

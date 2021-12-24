@@ -67,7 +67,7 @@
 		- okay, NOW this feature actually works LUL
 	[x] gfx: vulkan - draw textured geoprims
 [x] gfx: vulkan: orthographic projection - for drawing HUDs
-[ ] gfx: vulkan: model transform for batch pipelines
+[x] gfx: vulkan: model transform for batch pipelines
 [ ] gfx: vulkan: depth buffer
 [ ] gfx: mesh generation abstraction; make drawing primitive meshes (quads, circles, etc) easier
 	- motivation: we don't want to have to declare a bunch of vertex attribute 

@@ -109,7 +109,7 @@ korl_internal void _korl_windows_window_step(void)
     while(cameraRadians >= 2*KORL_PI32)
         cameraRadians -= 2*KORL_PI32;
     korl_shared_const f32 CAMERA_DISTANCE = 1;
-    Korl_Math_V3f32 cameraPosition = {.xyz = {CAMERA_DISTANCE*cosf(cameraRadians),CAMERA_DISTANCE*sinf(cameraRadians),1}};
+    const Korl_Math_V3f32 cameraPosition = {.xyz = {CAMERA_DISTANCE*cosf(cameraRadians),CAMERA_DISTANCE*sinf(cameraRadians),1}};
     /* these UBO calls should affect all the batched draw calls which follow */
 #if 0/* this is just to quickly test the orthographic projection math, and it seems like it's working! :D */
     korl_vulkan_setProjectionOrthographicFixedHeight(1.f, 10.f);
@@ -135,10 +135,10 @@ korl_internal void _korl_windows_window_step(void)
         _STATIC_ASSERT(
             korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
         korl_shared_const Korl_Vulkan_Uv vertexTextureUvs[] = 
-            { {0, 0}
-            , {1, 0}
+            { {0, 1}
             , {1, 1}
-            , {0, 1} };
+            , {1, 0}
+            , {0, 0} };
         //Korl_Vulkan_TextureHandle hTexture = 
         //    korl_vulkan_createTexture(L"test-assets/birb.jpg");
         korl_vulkan_useImageAssetAsTexture(L"test-assets/birb.jpg");
@@ -172,6 +172,8 @@ korl_internal void _korl_windows_window_step(void)
     korl_vulkan_setView((Korl_Math_V3f32){0, 0, 0}, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1), KORL_MATH_V3F32_Y);
     // now let's draw a quad somewhere on the HUD //
     {
+        const Korl_Math_V3f32 position = {.xyz = {250.f*cosf(cameraRadians), 250.f*sinf(cameraRadians), 0}};
+        korl_vulkan_setModel(position, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, cameraRadians, true), (Korl_Math_V3f32){1, 1, 1});
         korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
             { {-100.5f, -100.5f, 0.f}
             , { 100.5f, -100.5f, 0.f}

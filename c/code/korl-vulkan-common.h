@@ -193,10 +193,14 @@ typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
-    /** @todo: pre-calculate the ViewProjection matrix */
+    Korl_Math_M4f32 m4f32Model;
+    /** @performance: pre-calculate the ViewProjection matrix; probably good 
+     * for performance, but I would like to do timings for this */
 } _Korl_Vulkan_SwapChainImageBatchUbo;
 /* Ensure _Korl_Vulkan_SwapChainImageBatchUbo member alignment here: */
-_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View) & 16) == 0);
+_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Projection) & 16) == 0);
+_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View      ) & 16) == 0);
+_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Model     ) & 16) == 0);
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView imageView;

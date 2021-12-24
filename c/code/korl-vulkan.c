@@ -1149,12 +1149,36 @@ korl_internal void _korl_vulkan_batchVertexAttributes(u32 vertexCount, const Kor
     surfaceContext->batchState.pipelineVertexCount += vertexCount;
     surfaceContext->batchState.descriptorSetIsUsed  = true;
 }
+korl_internal void _korl_vulkan_batchDescriptorSetClear(void)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* calculate the stride of each batch descriptor set UBO within the buffer */
+    KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
+    vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
+    const VkDeviceSize batchUboStride = korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
+    /* now we can set the UBO in the buffer at the current batch descriptor set 
+        index to be a known default set of values */
+    KORL_ZERO_STACK(void*, mappedDeviceMemory);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+            swapChainImageContext->bufferStagingUbo->byteOffset + surfaceContext->batchState.descriptorSetIndexCurrent*batchUboStride, 
+            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+            0/*flags*/, &mappedDeviceMemory));
+    _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
+    ubo->m4f32Projection = KORL_MATH_M4F32_IDENTITY;
+    ubo->m4f32View       = KORL_MATH_M4F32_IDENTITY;
+    ubo->m4f32Model      = KORL_MATH_M4F32_IDENTITY;
+    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+}
 /**
  * Calling this ensures that the current descriptor set index of the surface 
  * context batch state is pointing to unused batch descriptor sets, flushing the 
  * batch pipeline if necessary.
  */
-korl_internal void _korl_vulkan_flushBatchDescriptorSet(void)
+korl_internal void _korl_vulkan_batchDescriptorSetFlush(void)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -1175,6 +1199,8 @@ korl_internal void _korl_vulkan_flushBatchDescriptorSet(void)
     /* advance to the copied batch descriptor set */
     surfaceContext->batchState.descriptorSetIndexCurrent++;
     surfaceContext->batchState.descriptorSetIsUsed = false;
+    /* initialize the new working batch descriptor set to known default state */
+    _korl_vulkan_batchDescriptorSetClear();
 }
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
@@ -1881,6 +1907,8 @@ done:
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->batchState.currentPipeline = context->pipelinesCount;
+    /* clear the state of the first batch descriptor set */
+    _korl_vulkan_batchDescriptorSetClear();
 }
 korl_internal void korl_vulkan_frameEnd(void)
 {
@@ -2047,7 +2075,7 @@ korl_internal void korl_vulkan_setProjectionFov(
         korl_math_m4f32_projectionFov(horizontalFovDegrees, viewportWidthOverHeight, clipNear, clipFar);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_flushBatchDescriptorSet();
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2088,7 +2116,7 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
         korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_flushBatchDescriptorSet();
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2118,7 +2146,7 @@ korl_internal void korl_vulkan_setView(
     const Korl_Math_M4f32 m4f32View = korl_math_m4f32_lookAt(&positionEye, &positionTarget, &worldUpNormal);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_flushBatchDescriptorSet();
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2137,7 +2165,32 @@ korl_internal void korl_vulkan_setView(
 }
 korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale)
 {
-    korl_assert(!"@todo: implement");
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    korl_assert(surfaceContext->frameStackCounter == 1);
+    /* create the model matrix */
+    const Korl_Math_M4f32 m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(rotation, scale, position);
+    /* ensure the current descriptor set index of the batch state is not being 
+        used by any previously batched geometry */
+    _korl_vulkan_batchDescriptorSetFlush();
+    /* calculate the stride of each batch descriptor set UBO within the buffer */
+    KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
+    vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
+    const VkDeviceSize batchUboStride = korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
+    /* send the data for the matrix into the staging buffer memory */
+    KORL_ZERO_STACK(void*, mappedDeviceMemory);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+            swapChainImageContext->bufferStagingUbo->byteOffset + surfaceContext->batchState.descriptorSetIndexCurrent*batchUboStride, 
+            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+            0/*flags*/, &mappedDeviceMemory));
+    _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
+    ubo->m4f32Model = m4f32Model;
+    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
 {
@@ -2279,7 +2332,7 @@ done_conditionallySelectLoadedAsset:
     /* we're about to modify the batch descriptor set state, so let's make sure 
         the batch pipeline doesn't have any pending geometry for the current 
         descriptor set index */
-    _korl_vulkan_flushBatchDescriptorSet();
+    _korl_vulkan_batchDescriptorSetFlush();
     /* select the loaded texture device asset for any future textured draw operations */
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
