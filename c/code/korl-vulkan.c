@@ -564,9 +564,10 @@ korl_internal bool _korl_vulkan_pipeline_isMetaDataSame(_Korl_Vulkan_Pipeline p0
 korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
 {
     KORL_ZERO_STACK(_Korl_Vulkan_Pipeline, pipeline);
-    pipeline.primitiveTopology             = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pipeline.useIndexBuffer                = true;
-    pipeline.flagsOptionalVertexAttributes = _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
+    pipeline.primitiveTopology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pipeline.flagsOptionalVertexAttributes   = _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
+    pipeline.useDepthTestAndWriteDepthBuffer = true;
+    pipeline.useIndexBuffer                  = true;
     return pipeline;
 }
 korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
@@ -698,8 +699,8 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    createInfoDepthStencil.depthTestEnable  = VK_TRUE;
-    createInfoDepthStencil.depthWriteEnable = VK_TRUE;
+    createInfoDepthStencil.depthTestEnable  = context->pipelines[pipelineIndex].useDepthTestAndWriteDepthBuffer ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthWriteEnable = context->pipelines[pipelineIndex].useDepthTestAndWriteDepthBuffer ? VK_TRUE : VK_FALSE;
     createInfoDepthStencil.depthCompareOp   = VK_COMPARE_OP_LESS;
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1847,6 +1848,30 @@ korl_internal void korl_vulkan_batch(
     surfaceContext->batchState.pipelineVertexCount += vertexCount;
     surfaceContext->batchState.descriptorSetIsUsed  = true;
 }
+korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool value)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* if there is no pipeline selected, create a default pipeline meta data, 
+        modify it to have the desired render state for this call, then set the 
+        current pipeline meta data to this value */
+    _Korl_Vulkan_Pipeline pipelineMetaData;
+    if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
+        pipelineMetaData = _korl_vulkan_pipeline_default();
+    else/* otherwise, we want to just modify the current selected pipeline state 
+            to have the desired render state for this call */
+        pipelineMetaData = context->pipelines[surfaceContext->batchState.currentPipeline];
+    pipelineMetaData.useDepthTestAndWriteDepthBuffer = value;
+    _korl_vulkan_setPipelineMetaData(pipelineMetaData);
+}
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar)
 {
@@ -1885,7 +1910,7 @@ korl_internal void korl_vulkan_setProjectionFov(
     ubo->m4f32Projection = m4f32Projection;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
-korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 halfDepth)
+korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
@@ -1907,8 +1932,8 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
     const f32 right =  width / 2;
     const f32 bottom = -fixedHeight / 2;
     const f32 top    =  fixedHeight / 2;
-    const f32 far    = -halfDepth;
-    const f32 near   =  halfDepth;
+    const f32 far    = -depth;
+    const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
     Korl_Math_M4f32 m4f32Projection = 
         korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
     /* ensure the current descriptor set index of the batch state is not being 

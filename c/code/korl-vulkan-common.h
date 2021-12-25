@@ -38,12 +38,13 @@ typedef struct _Korl_Vulkan_Pipeline
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself */
     VkPrimitiveTopology primitiveTopology;
-    ///@todo: blend equations
     enum _Korl_Vulkan_Pipeline_OptionalVertexAttributeFlags
     {
         _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR = 1 << 0, 
         _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV    = 1 << 1
     } flagsOptionalVertexAttributes;
+    bool useDepthTestAndWriteDepthBuffer;
+    ///@todo: blend equations
     /* ---------------------------------------------------------------------- */
     /* render state that has nothing to do with the pipeline itself */
     bool useIndexBuffer;

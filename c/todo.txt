@@ -69,6 +69,7 @@
 [x] gfx: vulkan: orthographic projection - for drawing HUDs
 [x] gfx: vulkan: model transform for batch pipelines
 [x] gfx: vulkan: depth buffer
+[x] gfx: vulkan: optionally disable depth checking in render pipeline
 [ ] gfx: mesh generation abstraction; make drawing primitive meshes (quads, circles, etc) easier
 	- motivation: we don't want to have to declare a bunch of vertex attribute 
 		arrays and calculate them all individually each time we want to draw primitive meshes

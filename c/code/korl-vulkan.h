@@ -50,9 +50,10 @@ korl_internal void korl_vulkan_batch(
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
     const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* uvs);
+korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool value);
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
-korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 halfDepth);
+korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth);
 korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
 korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale);

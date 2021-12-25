@@ -111,11 +111,7 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     korl_shared_const f32 CAMERA_DISTANCE = 1;
     const Korl_Math_V3f32 cameraPosition = {.xyz = {CAMERA_DISTANCE*cosf(cameraRadians),CAMERA_DISTANCE*sinf(cameraRadians),1}};
     /* these UBO calls should affect all the batched draw calls which follow */
-#if 0/* this is just to quickly test the orthographic projection math, and it seems like it's working! :D */
-    korl_vulkan_setProjectionOrthographicFixedHeight(1.f, 10.f);
-#else
     korl_vulkan_setProjectionFov(90, 0.001f, 10);
-#endif
     korl_vulkan_setView(cameraPosition, KORL_MATH_V3F32_ZERO, KORL_MATH_V3F32_Z);
     /* let's try just drawing some triangles */
     {
@@ -175,6 +171,7 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     /* let's try changing the VP xforms & drawing a HUD */
     korl_vulkan_setProjectionOrthographicFixedHeight(600, 1.f);
     korl_vulkan_setView((Korl_Math_V3f32){0, 0, 0}, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1), KORL_MATH_V3F32_Y);
+    korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(false);
     // now let's draw a quad somewhere on the HUD //
     {
         const Korl_Math_V3f32 position = {.xyz = {250.f*cosf(cameraRadians), 250.f*sinf(cameraRadians), 0}};
