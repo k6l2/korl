@@ -856,101 +856,6 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
     korl_assert(newPipelineIndex < context->pipelinesCount);//sanity check!
     surfaceContext->batchState.currentPipeline = newPipelineIndex;
 }
-korl_internal void _korl_vulkan_batchVertexIndices(u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices)
-{
-    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
-    /* simplification - just make sure that the vertex index data can at least 
-        fit in the staging buffer */
-    korl_assert(vertexIndexCount <= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING);
-    /* if the staging buffer has too much in it, we need to flush it */
-    if(vertexIndexCount + surfaceContext->batchState.vertexIndexCountStaging > _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING)
-        _korl_vulkan_flushBatchStaging();
-    /* copy all the vertex indices to the memory region which is occupied by the 
-        vertex index staging buffer */
-    KORL_ZERO_STACK(void*, mappedDeviceMemory);
-    _KORL_VULKAN_CHECK(
-        vkMapMemory(
-            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
-            /*offset*/swapChainImageContext->bufferStagingBatchIndices->byteOffset, 
-            /*bytes*/vertexIndexCount * sizeof(Korl_Vulkan_VertexIndex), 
-            0/*flags*/, &mappedDeviceMemory));
-    memcpy(
-        mappedDeviceMemory, vertexIndices, 
-        vertexIndexCount * sizeof(Korl_Vulkan_VertexIndex));
-    /* loop over all the vertex indices we just added to staging and modify the 
-        indices to match the offset of the current total vertices we have 
-        batched so far in staging + device memory for the current pipeline batch */
-    Korl_Vulkan_VertexIndex* copyVertexIndices = 
-        KORL_C_CAST(Korl_Vulkan_VertexIndex*, mappedDeviceMemory);
-    for(u32 i = 0; i < vertexIndexCount; i++)
-        copyVertexIndices[i] += 
-            korl_checkCast_u32_to_u16(surfaceContext->batchState.pipelineVertexCount);
-    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
-    /* update book keeping */
-    surfaceContext->batchState.vertexIndexCountStaging  += vertexIndexCount;
-    surfaceContext->batchState.pipelineVertexIndexCount += vertexIndexCount;
-}
-korl_internal void _korl_vulkan_batchVertexAttributes(u32 vertexCount, const Korl_Vulkan_Position* positions, const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* uvs)
-{
-    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
-    /* let's simplify things here and make sure that the vertex data we're 
-        trying to batch is guaranteed to fit inside the empty staging buffer at 
-        least */
-    korl_assert(vertexCount <= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING);
-    /* if the staging buffer has too much in it, we need to flush it */
-    if(vertexCount + surfaceContext->batchState.vertexCountStaging > _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING)
-        _korl_vulkan_flushBatchStaging();
-    /* copy all the vertex data to staging */
-    KORL_ZERO_STACK(void*, mappedDeviceMemory);
-    // copy the positions in mapped staging memory //
-    korl_assert(positions != NULL);
-    _KORL_VULKAN_CHECK(
-        vkMapMemory(
-            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
-            /*offset*/swapChainImageContext->bufferStagingBatchPositions->byteOffset, 
-            /*bytes*/vertexCount * sizeof(Korl_Vulkan_Position), 
-            0/*flags*/, &mappedDeviceMemory));
-    memcpy(
-        mappedDeviceMemory, positions, 
-        vertexCount * sizeof(Korl_Vulkan_Position));
-    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
-    // stage the colors in mapped staging memory //
-    if(colors)
-    {
-        _KORL_VULKAN_CHECK(
-            vkMapMemory(
-                context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
-                /*offset*/swapChainImageContext->bufferStagingBatchColors->byteOffset, 
-                /*bytes*/vertexCount * sizeof(Korl_Vulkan_Color), 
-                0/*flags*/, &mappedDeviceMemory));
-        memcpy(
-            mappedDeviceMemory, colors, 
-            vertexCount * sizeof(Korl_Vulkan_Color));
-        vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
-    }
-    // stage the UVs in mapped staging memory //
-    if(uvs)
-    {
-        _KORL_VULKAN_CHECK(
-            vkMapMemory(
-                context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
-                /*offset*/swapChainImageContext->bufferStagingBatchUvs->byteOffset, 
-                /*bytes*/vertexCount * sizeof(Korl_Vulkan_Uv), 
-                0/*flags*/, &mappedDeviceMemory));
-        memcpy(
-            mappedDeviceMemory, uvs, 
-            vertexCount * sizeof(Korl_Vulkan_Uv));
-        vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
-    }
-    /* update the staging metrics */
-    surfaceContext->batchState.vertexCountStaging  += vertexCount;
-    surfaceContext->batchState.pipelineVertexCount += vertexCount;
-    surfaceContext->batchState.descriptorSetIsUsed  = true;
-}
 /**
  * Calling this ensures that the current descriptor set index of the surface 
  * context batch state is pointing to unused batch descriptor sets, flushing the 
@@ -1803,13 +1708,20 @@ korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
     surfaceContext->deferredResizeX = sizeX;
     surfaceContext->deferredResizeY = sizeY;
 }
-korl_internal void korl_vulkan_batchTriangles_color(
+korl_internal void korl_vulkan_batch(
+    Korl_Vulkan_PrimitiveType primitiveType, 
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color* colors)
+    const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* uvs)
 {
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* basic parameter sanity checks */
+    if(vertexIndexCount)
+        korl_assert(vertexIndices);
+    korl_assert(vertexCount);
+    korl_assert(positions);
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     korl_assert(surfaceContext->frameStackCounter == 1);
@@ -1823,82 +1735,117 @@ korl_internal void korl_vulkan_batchTriangles_color(
     _Korl_Vulkan_Pipeline pipelineMetaData;
     if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
         pipelineMetaData = _korl_vulkan_pipeline_default();
-    /* otherwise, we want to just modify the current selected pipeline state 
-        to have the desired render state for this call */
-    else
+    else/* otherwise, we want to just modify the current selected pipeline state 
+            to have the desired render state for this call */
         pipelineMetaData = context->pipelines[surfaceContext->batchState.currentPipeline];
-    pipelineMetaData.primitiveTopology              = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pipelineMetaData.useIndexBuffer                 = true;
-    pipelineMetaData.flagsOptionalVertexAttributes |=  _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
-    pipelineMetaData.flagsOptionalVertexAttributes &= ~_KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV;
+    switch(primitiveType)
+    {
+        case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:
+            pipelineMetaData.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            break;
+        case KORL_VULKAN_PRIMITIVETYPE_LINES:
+            pipelineMetaData.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            break;
+    }
+    pipelineMetaData.useIndexBuffer = vertexIndexCount > 0;
+    if(colors)
+        pipelineMetaData.flagsOptionalVertexAttributes |=  _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
+    else
+        pipelineMetaData.flagsOptionalVertexAttributes &= ~_KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
+    if(uvs)
+        pipelineMetaData.flagsOptionalVertexAttributes |=  _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV;
+    else
+        pipelineMetaData.flagsOptionalVertexAttributes &= ~_KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV;
     _korl_vulkan_setPipelineMetaData(pipelineMetaData);
     /* now that the batch pipeline is setup, we can batch the vertices */
-    _korl_vulkan_batchVertexIndices(vertexIndexCount, vertexIndices);
-    _korl_vulkan_batchVertexAttributes(vertexCount, positions, colors, NULL);
-}
-korl_internal void korl_vulkan_batchTriangles_uv(
-    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
-    u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Uv* vertexTextureUvs)
-{
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-    /* if there is no pipeline selected, create a default pipeline meta data, 
-        modify it to have the desired render state for this call, then set the 
-        current pipeline meta data to this value */
-    _Korl_Vulkan_Pipeline pipelineMetaData;
-    if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
-        pipelineMetaData = _korl_vulkan_pipeline_default();
-    /* otherwise, we want to just modify the current selected pipeline state 
-        to have the desired render state for this call */
-    else
-        pipelineMetaData = context->pipelines[surfaceContext->batchState.currentPipeline];
-    pipelineMetaData.primitiveTopology              = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pipelineMetaData.useIndexBuffer                 = true;
-    pipelineMetaData.flagsOptionalVertexAttributes |=  _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV;
-    pipelineMetaData.flagsOptionalVertexAttributes &= ~_KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
-    _korl_vulkan_setPipelineMetaData(pipelineMetaData);
-    /* now that the batch pipeline is setup, we can batch the vertices */
-    _korl_vulkan_batchVertexIndices(vertexIndexCount, vertexIndices);
-    _korl_vulkan_batchVertexAttributes(vertexCount, positions, NULL, vertexTextureUvs);
-}
-korl_internal void korl_vulkan_batchLines_color(
-    u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color* colors)
-{
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-    /* if there is no pipeline selected, create a default pipeline meta data, 
-        modify it to have the desired render state for this call, then set the 
-        current pipeline meta data to this value */
-    _Korl_Vulkan_Pipeline pipelineMetaData;
-    if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
-        pipelineMetaData = _korl_vulkan_pipeline_default();
-    /* otherwise, we want to just modify the current selected pipeline state 
-        to have the desired render state for this call */
-    else
-        pipelineMetaData = context->pipelines[surfaceContext->batchState.currentPipeline];
-    pipelineMetaData.primitiveTopology              = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    pipelineMetaData.useIndexBuffer                 = false;
-    pipelineMetaData.flagsOptionalVertexAttributes |=  _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
-    pipelineMetaData.flagsOptionalVertexAttributes &= ~_KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV;
-    _korl_vulkan_setPipelineMetaData(pipelineMetaData);
-    /* now that the batch pipeline is setup, we can batch the vertices */
-    _korl_vulkan_batchVertexAttributes(vertexCount, positions, colors, NULL);
+    /* ------ batch the vertex indices, if necessary ------ */
+    if(vertexIndexCount)
+    {
+        /* simplification - just make sure that the vertex index data can at least 
+            fit in the staging buffer */
+        korl_assert(vertexIndexCount <= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING);
+        /* if the staging buffer has too much in it, we need to flush it */
+        if(vertexIndexCount + surfaceContext->batchState.vertexIndexCountStaging > _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING)
+            _korl_vulkan_flushBatchStaging();
+        /* copy all the vertex indices to the memory region which is occupied by the 
+            vertex index staging buffer */
+        KORL_ZERO_STACK(void*, mappedDeviceMemory);
+        _KORL_VULKAN_CHECK(
+            vkMapMemory(
+                context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+                /*offset*/swapChainImageContext->bufferStagingBatchIndices->byteOffset, 
+                /*bytes*/vertexIndexCount * sizeof(Korl_Vulkan_VertexIndex), 
+                0/*flags*/, &mappedDeviceMemory));
+        memcpy(
+            mappedDeviceMemory, vertexIndices, 
+            vertexIndexCount * sizeof(Korl_Vulkan_VertexIndex));
+        /* loop over all the vertex indices we just added to staging and modify the 
+            indices to match the offset of the current total vertices we have 
+            batched so far in staging + device memory for the current pipeline batch */
+        Korl_Vulkan_VertexIndex* copyVertexIndices = 
+            KORL_C_CAST(Korl_Vulkan_VertexIndex*, mappedDeviceMemory);
+        for(u32 i = 0; i < vertexIndexCount; i++)
+            copyVertexIndices[i] += 
+                korl_checkCast_u32_to_u16(surfaceContext->batchState.pipelineVertexCount);
+        vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+        /* update book keeping */
+        surfaceContext->batchState.vertexIndexCountStaging  += vertexIndexCount;
+        surfaceContext->batchState.pipelineVertexIndexCount += vertexIndexCount;
+    }
+    /* ----- okay, now we can batch all necessary vertex attributes ----- */
+    /* let's simplify things here and make sure that the vertex data we're 
+        trying to batch is guaranteed to fit inside the empty staging buffer at 
+        least */
+    korl_assert(vertexCount <= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING);
+    /* if the staging buffer has too much in it, we need to flush it */
+    if(vertexCount + surfaceContext->batchState.vertexCountStaging > _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING)
+        _korl_vulkan_flushBatchStaging();
+    /* copy all the vertex data to staging */
+    KORL_ZERO_STACK(void*, mappedDeviceMemory);
+    // copy the positions in mapped staging memory //
+    korl_assert(positions != NULL);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+            /*offset*/swapChainImageContext->bufferStagingBatchPositions->byteOffset, 
+            /*bytes*/vertexCount * sizeof(Korl_Vulkan_Position), 
+            0/*flags*/, &mappedDeviceMemory));
+    memcpy(
+        mappedDeviceMemory, positions, 
+        vertexCount * sizeof(Korl_Vulkan_Position));
+    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+    // stage the colors in mapped staging memory //
+    if(colors)
+    {
+        _KORL_VULKAN_CHECK(
+            vkMapMemory(
+                context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+                /*offset*/swapChainImageContext->bufferStagingBatchColors->byteOffset, 
+                /*bytes*/vertexCount * sizeof(Korl_Vulkan_Color), 
+                0/*flags*/, &mappedDeviceMemory));
+        memcpy(
+            mappedDeviceMemory, colors, 
+            vertexCount * sizeof(Korl_Vulkan_Color));
+        vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+    }
+    // stage the UVs in mapped staging memory //
+    if(uvs)
+    {
+        _KORL_VULKAN_CHECK(
+            vkMapMemory(
+                context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+                /*offset*/swapChainImageContext->bufferStagingBatchUvs->byteOffset, 
+                /*bytes*/vertexCount * sizeof(Korl_Vulkan_Uv), 
+                0/*flags*/, &mappedDeviceMemory));
+        memcpy(
+            mappedDeviceMemory, uvs, 
+            vertexCount * sizeof(Korl_Vulkan_Uv));
+        vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+    }
+    /* update the staging metrics */
+    surfaceContext->batchState.vertexCountStaging  += vertexCount;
+    surfaceContext->batchState.pipelineVertexCount += vertexCount;
+    surfaceContext->batchState.descriptorSetIsUsed  = true;
 }
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar)

@@ -105,7 +105,9 @@ typedef struct _Korl_Memory_AllocatorLinear
     u$ bytes;
     void* nextAllocationAddress;
     /** support for realloc/free for arbitrary allocations 
-     * - offsets are relative to the start address of this struct */
+     * - offsets are relative to the start address of this struct 
+     * - offsets point to the allocation content itself, NOT the allocation 
+     *   meta data page! */
     KORL_MEMORY_POOL_DECLARE(u32, allocationOffsets, 1024);
 } _Korl_Memory_AllocatorLinear;
 typedef struct _Korl_Memory_AllocationMeta
@@ -122,7 +124,7 @@ typedef struct _Korl_Memory_AllocationMeta
      */
     u$ bytes;
 } _Korl_Memory_AllocationMeta;
-KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
+korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -192,7 +194,7 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
     }
     return allocationAddress;
 }
-KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
+korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -218,15 +220,13 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
         this is currently a constraint of this allocator */
     korl_assert(KORL_C_CAST(u$, allocation) % pageBytes == 0);
     /* ensure that the offset of this address is recorded in the allocator 
-        - remember: the allocation offset should point to the allocation's meta 
-                    data page, not the allocation itself! */
+        - remember: the allocation offset should point to the allocation's 
+                    content, NOT the allocation's meta data page! */
     const u32 allocationOffset = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, allocation) - KORL_C_CAST(u8*, allocator));
     u32 allocationOffsetIndex = 0;
     for(; allocationOffsetIndex < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); ++allocationOffsetIndex)
-    {
         if(allocator->allocationOffsets[allocationOffsetIndex] == allocationOffset)
             break;
-    }
     korl_assert(allocationOffsetIndex < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets));
     /* determine the range of pages occupied by the allocation */
     // get the address of the allocation's metadata page //
@@ -264,7 +264,7 @@ KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
         korl_assert(oldProtect == PAGE_READWRITE);
     }
 }
-KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate)
+korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -449,6 +449,53 @@ done:
     }
     return allocation;
 }
+korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_EMPTY(korl_memory_allocatorLinear_empty)
+{
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
+    const u$ pageBytes = korl_memory_pageBytes();
+    /* release the protection on the allocator pages */
+    {
+        DWORD oldProtect;
+        korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect));
+        korl_assert(oldProtect == PAGE_NOACCESS);
+    }
+    /* eliminate all allocations */
+    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); a++)
+    {
+        /* VirtualProtect the region of memory occupied by each allocation to 
+            prevent anything from being able to access it normally ever again! */
+        /* get the allocation's meta data address */
+        _Korl_Memory_AllocationMeta*const allocationMeta = 
+            KORL_C_CAST(_Korl_Memory_AllocationMeta*, 
+                        KORL_C_CAST(u8*, allocator) + allocator->allocationOffsets[a] - pageBytes);
+        /* release the protection of the meta data page */
+        {
+            DWORD oldProtect;
+            korl_assert(VirtualProtect(allocationMeta, sizeof(*allocationMeta), PAGE_READWRITE, &oldProtect));
+            korl_assert(oldProtect == PAGE_NOACCESS);
+        }
+        /* calculate how many bytes the allocation occupies in TOTAL 
+            (content + meta data) */
+        const u$ allocationTotalBytes = pageBytes + allocationMeta->bytes;
+        /* VirtualProtect this entire region of memory, since these pages must 
+            be comitted to memory! */
+        {
+            DWORD oldProtect;
+            korl_assert(VirtualProtect(allocationMeta, allocationTotalBytes, PAGE_NOACCESS, &oldProtect));
+            korl_assert(oldProtect == PAGE_READWRITE);
+        }
+    }
+    KORL_MEMORY_POOL_EMPTY(allocator->allocationOffsets);
+    /* update the allocator metrics */
+    const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
+    allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
+    /* protect the allocator pages once again */
+    {
+        DWORD oldProtect;
+        korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_NOACCESS, &oldProtect));
+        korl_assert(oldProtect == PAGE_READWRITE);
+    }
+}
 korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxBytes)
 {
     /* @safety: ensure that the thread calling this function is the main thread 
@@ -488,5 +535,6 @@ korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxByte
     result.callbackAllocate   = korl_memory_allocatorLinear_allocate;
     result.callbackReallocate = korl_memory_allocatorLinear_reallocate;
     result.callbackFree       = korl_memory_allocatorLinear_free;
+    result.callbackEmpty      = korl_memory_allocatorLinear_empty;
     return result;
 }

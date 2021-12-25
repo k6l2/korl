@@ -45,24 +45,11 @@ korl_internal void korl_vulkan_frameEnd(void);
  * swap chain right before the next draw operation in \c korl_vulkan_draw .
  */
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
-#if 0/** @simplify: all the batch calls below can just be a single API */
 korl_internal void korl_vulkan_batch(
     Korl_Vulkan_PrimitiveType primitiveType, 
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
-    u32 vertexCount, const Korl_Vulkan_Position* positions, const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* vertexTextureUvs);
-#else
-korl_internal void korl_vulkan_batchTriangles_color(
-    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color* colors);
-korl_internal void korl_vulkan_batchTriangles_uv(
-    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
-    u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Uv* vertexTextureUvs);
-korl_internal void korl_vulkan_batchLines_color(
-    u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color* colors);
-#endif
+    const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* uvs);
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
 korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 halfDepth);

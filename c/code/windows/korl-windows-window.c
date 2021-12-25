@@ -101,7 +101,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 /** @hack: this is just scaffolding to build immediate batched rendering */
 #include "korl-math.h"
 #include <math.h>
-korl_internal void _korl_windows_window_step(void)
+korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeapStack)
 {
     /* simple camera rotation around the +Z axis (counter-clockwise) */
     korl_shared_variable f32 cameraRadians = 0;
@@ -141,13 +141,13 @@ korl_internal void _korl_windows_window_step(void)
             , {0, 0} };
         korl_vulkan_useImageAssetAsTexture(L"test-assets/birb.jpg");
         korl_vulkan_setModel((Korl_Math_V3f32){0,0,0.4f}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
-        korl_vulkan_batchTriangles_uv(
+        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_TRIANGLES, 
             korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, vertexTextureUvs);
+            korl_arraySize(vertexPositions), vertexPositions, NULL, vertexTextureUvs);
         korl_vulkan_setModel((Korl_Math_V3f32){0,0,0}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
-        korl_vulkan_batchTriangles_uv(
+        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_TRIANGLES, 
             korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, vertexTextureUvs);
+            korl_arraySize(vertexPositions), vertexPositions, NULL, vertexTextureUvs);
     }
     /* let's also draw some lines */
     {
@@ -168,8 +168,9 @@ korl_internal void _korl_windows_window_step(void)
         _STATIC_ASSERT(
             korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
         korl_vulkan_setModel((Korl_Math_V3f32){0,0,0}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
-        korl_vulkan_batchLines_color(
-            korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_LINES, 
+            /*vertexIndexCount*/0, /*indices*/NULL, 
+            korl_arraySize(vertexPositions), vertexPositions, vertexColors, NULL);
     }
     /* let's try changing the VP xforms & drawing a HUD */
     korl_vulkan_setProjectionOrthographicFixedHeight(600, 1.f);
@@ -193,16 +194,18 @@ korl_internal void _korl_windows_window_step(void)
             , 1, 2, 3 };
         _STATIC_ASSERT(
             korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
-        korl_vulkan_batchTriangles_color(
+        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_TRIANGLES, 
             korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, vertexColors);
+            korl_arraySize(vertexPositions), vertexPositions, vertexColors, NULL);
     }
 }
 korl_internal void korl_windows_window_loop(void)
 {
+    Korl_Memory_Allocator allocatorHeapStack = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
     bool quit = false;
     while(!quit)
     {
+        allocatorHeapStack.callbackEmpty(allocatorHeapStack.userData);
         KORL_ZERO_STACK(MSG, windowMessage);
         while(
             PeekMessage(
@@ -216,7 +219,7 @@ korl_internal void korl_windows_window_loop(void)
         if(quit)
             break;
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
-        _korl_windows_window_step();
+        _korl_windows_window_step(allocatorHeapStack);
         korl_vulkan_frameEnd();
     }
 }
