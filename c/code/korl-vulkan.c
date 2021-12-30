@@ -1427,10 +1427,10 @@ korl_internal void korl_vulkan_createSurface(
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout));
     /* load required built-in shader assets */
-    Korl_AssetCache_AssetData assetShaderBatchVertexColor     = korl_assetCache_get(L"build/korl-batch-color.vert.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchVertexTexture   = korl_assetCache_get(L"build/korl-batch-texture.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchFragmentColor   = korl_assetCache_get(L"build/korl-batch-color.frag.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchFragmentTexture = korl_assetCache_get(L"build/korl-batch-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchVertexColor     = korl_assetCache_get(L"build/shaders/korl-batch-color.vert.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchVertexTexture   = korl_assetCache_get(L"build/shaders/korl-batch-texture.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchFragmentColor   = korl_assetCache_get(L"build/shaders/korl-batch-color.frag.spv"  , KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchFragmentTexture = korl_assetCache_get(L"build/shaders/korl-batch-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
     createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

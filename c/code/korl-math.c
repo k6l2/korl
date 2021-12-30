@@ -84,6 +84,13 @@ korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl
         +  vA->elements[1] * vB->elements[1]
         +  vA->elements[2] * vB->elements[2];
 }
+korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
+{
+    vA.elements[0] += vB.elements[0];
+    vA.elements[1] += vB.elements[1];
+    vA.elements[2] += vB.elements[2];
+    return vA;
+}
 korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const Korl_Math_V3f32*const vB)
 {
     vA.elements[0] -= vB->elements[0];

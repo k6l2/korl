@@ -4,6 +4,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-vulkan-memory.h"
+#include "korl-math.h"
 #define _KORL_VULKAN_MAX_ASSET_NAME_LENGTH 64
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
@@ -134,6 +135,7 @@ typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
+    /** @performance: pass model as push constant instead?  Timings required.  */
     Korl_Math_M4f32 m4f32Model;
     /** @performance: pre-calculate the ViewProjection matrix; probably good 
      * for performance, but I would like to do timings for this */
@@ -234,6 +236,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     u32 deferredResizeX, deferredResizeY;
     /** expected to be nullified at the end of each call to \c frameBegin() */
     _Korl_Vulkan_SurfaceContextBatchState batchState;
+    /** @unused: I'm not actually making use of this state anywhere at the 
+     * moment, so this is currently useless. */
     bool hasStencilComponent;
     _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer;
 } _Korl_Vulkan_SurfaceContext;

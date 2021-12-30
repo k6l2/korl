@@ -5,6 +5,7 @@
 #include "korl-vulkan.h"
 #include "korl-windows-vulkan.h"
 #include "korl-math.h"
+#include "korl-gfx.h"
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
@@ -99,102 +100,35 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
 /** @hack: this is just scaffolding to build immediate batched rendering */
-#include "korl-math.h"
-#include <math.h>
 korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeapStack)
 {
-    /* simple camera rotation around the +Z axis (counter-clockwise) */
-    korl_shared_variable f32 cameraRadians = 0;
-    cameraRadians += 0.01f;
-    while(cameraRadians >= 2*KORL_PI32)
-        cameraRadians -= 2*KORL_PI32;
-    korl_shared_const f32 CAMERA_DISTANCE = 1;
-    const Korl_Math_V3f32 cameraPosition = {.xyz = {CAMERA_DISTANCE*cosf(cameraRadians),CAMERA_DISTANCE*sinf(cameraRadians),1}};
-    /* these UBO calls should affect all the batched draw calls which follow */
-    korl_vulkan_setProjectionFov(90, 0.001f, 10);
-    korl_vulkan_setView(cameraPosition, KORL_MATH_V3F32_ZERO, KORL_MATH_V3F32_Z);
-    /* let's try just drawing some triangles */
+    korl_shared_variable bool initialized = false;
+    korl_shared_variable Korl_Gfx_Camera camera3d;
+    if(!initialized)
     {
-        korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
-            { {-0.5f, -0.5f, 0.f}
-            , { 0.5f, -0.5f, 0.f}
-            , { 0.5f,  0.5f, 0.f}
-            , {-0.5f,  0.5f, 0.f} };
-        korl_shared_const Korl_Vulkan_Color vertexColors[] = 
-            { {255,   0,   0}
-            , {  0, 255,   0}
-            , {  0,   0, 255}
-            , {255, 255, 255} };
-        korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
-            { 0, 1, 3
-            , 1, 2, 3 };
-        _STATIC_ASSERT(
-            korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
-        korl_shared_const Korl_Vulkan_Uv vertexTextureUvs[] = 
-            { {0, 1}
-            , {1, 1}
-            , {1, 0}
-            , {0, 0} };
-        korl_vulkan_useImageAssetAsTexture(L"test-assets/birb.jpg");
-        korl_vulkan_setModel((Korl_Math_V3f32){0,0,0.4f}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
-        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_TRIANGLES, 
-            korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, NULL, vertexTextureUvs);
-        korl_vulkan_setModel((Korl_Math_V3f32){0,0,0}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
-        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_TRIANGLES, 
-            korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, NULL, vertexTextureUvs);
+        camera3d = korl_gfx_createCameraFov(90.f, 0.001f, 10.f, (Korl_Vulkan_Position){1, 0, 1}, KORL_MATH_V3F32_ZERO);
+        initialized = true;
     }
-    /* let's also draw some lines */
-    {
-        korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
-            { {0.f, 0.f, 0.f}
-            , {1.f, 0.f, 0.f} 
-            , {0.f, 0.f, 0.f} 
-            , {0.f, 1.f, 0.f} 
-            , {0.f, 0.f, 0.f} 
-            , {0.f, 0.f, 1.f} };
-        korl_shared_const Korl_Vulkan_Color vertexColors[] = 
-            { {255,   0,   0}
-            , {255,   0,   0}
-            , {0  , 255,   0}
-            , {0  , 255,   0}
-            , {0  ,   0, 255}
-            , {0  ,   0, 255} };
-        _STATIC_ASSERT(
-            korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
-        korl_vulkan_setModel((Korl_Math_V3f32){0,0,0}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1,1,1});
-        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_LINES, 
-            /*vertexIndexCount*/0, /*indices*/NULL, 
-            korl_arraySize(vertexPositions), vertexPositions, vertexColors, NULL);
-    }
-    /* let's try changing the VP xforms & drawing a HUD */
-    korl_vulkan_setProjectionOrthographicFixedHeight(600, 1.f);
-    korl_vulkan_setView((Korl_Math_V3f32){0, 0, 0}, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1), KORL_MATH_V3F32_Y);
-    korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(false);
-    // now let's draw a quad somewhere on the HUD //
-    {
-        const Korl_Math_V3f32 position = {.xyz = {250.f*cosf(cameraRadians), 250.f*sinf(cameraRadians), 0}};
-        korl_vulkan_setModel(position, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V3f32){1, 1, 1});
-        korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
-            { {-100.5f, -100.5f, 0.f}
-            , { 100.5f, -100.5f, 0.f}
-            , { 100.5f,  100.5f, 0.f}
-            , {-100.5f,  100.5f, 0.f} };
-        korl_shared_const Korl_Vulkan_Color vertexColors[] = 
-            { {255,   0,   0}
-            , {  0, 255,   0}
-            , {  0,   0, 255}
-            , {255, 255, 255} };
-        korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
-            { 0, 1, 3
-            , 1, 2, 3 };
-        _STATIC_ASSERT(
-            korl_arraySize(vertexPositions) == korl_arraySize(vertexColors));
-        korl_vulkan_batch(KORL_VULKAN_PRIMITIVETYPE_TRIANGLES, 
-            korl_arraySize(vertexIndices), vertexIndices, 
-            korl_arraySize(vertexPositions), vertexPositions, vertexColors, NULL);
-    }
+    korl_gfx_cameraFov_rotateAroundTarget(&camera3d, KORL_MATH_V3F32_Z, 0.01f);
+    korl_gfx_useCamera(&camera3d);
+    Korl_Gfx_Batch*const birbSprite = korl_gfx_createBatchRectangleTextured(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, L"test-assets/birb.jpg");
+    korl_gfx_batch(birbSprite, KORL_GFX_BATCH_FLAG_NONE);
+    korl_gfx_batchSetPosition(birbSprite, (Korl_Vulkan_Position){0, 0, 0.4f});
+    korl_gfx_batch(birbSprite, KORL_GFX_BATCH_FLAG_NONE);
+    Korl_Gfx_Batch*const originAxes = korl_gfx_createBatchLines(allocatorHeapStack, 3);
+    korl_gfx_batchSetLine(originAxes, 0, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){1, 0, 0}, (Korl_Vulkan_Color){255,   0,   0});
+    korl_gfx_batchSetLine(originAxes, 1, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 1, 0}, (Korl_Vulkan_Color){  0, 255,   0});
+    korl_gfx_batchSetLine(originAxes, 2, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 0, 1}, (Korl_Vulkan_Color){  0,   0, 255});
+    korl_gfx_batch(originAxes, KORL_GFX_BATCH_FLAG_NONE);
+    Korl_Gfx_Camera cameraHud = korl_gfx_createCameraOrthoFixedHeight(600.f, 1.f);
+    korl_gfx_useCamera(&cameraHud);
+    Korl_Gfx_Batch*const hudBox = korl_gfx_createBatchRectangleColored(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, (Korl_Vulkan_Color){255, 255, 255});
+    korl_gfx_batchSetPosition(hudBox, (Korl_Vulkan_Position){250.f*camera3d.position.xyz.x, 250.f*camera3d.position.xyz.y, 0});
+    korl_gfx_batchSetScale(hudBox, (Korl_Vulkan_Position){200, 200, 200});
+    korl_gfx_batchSetVertexColor(hudBox, 0, (Korl_Vulkan_Color){255,   0,   0});
+    korl_gfx_batchSetVertexColor(hudBox, 1, (Korl_Vulkan_Color){  0, 255,   0});
+    korl_gfx_batchSetVertexColor(hudBox, 2, (Korl_Vulkan_Color){  0,   0, 255});
+    korl_gfx_batch(hudBox, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
 }
 korl_internal void korl_windows_window_loop(void)
 {
