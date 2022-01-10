@@ -8,12 +8,16 @@
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
-typedef Korl_Math_V3u8  Korl_Vulkan_Color;
+typedef Korl_Math_V3u8  Korl_Vulkan_Color;///@consistency: rename to Korl_Vulkan_Color3u8
+typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;
+/** A value of \c 0 is designated as an INVALID texture handle */
+typedef u16             Korl_Vulkan_TextureHandle;
 typedef enum Korl_Vulkan_PrimitiveType
 {
     KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,
     KORL_VULKAN_PRIMITIVETYPE_LINES
 } Korl_Vulkan_PrimitiveType;
+korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void korl_vulkan_construct(void);
 korl_internal void korl_vulkan_destroy(void);
 /** 
@@ -58,3 +62,5 @@ korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
 korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale);
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
+korl_internal Korl_Vulkan_TextureHandle korl_vulkan_createTexture(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer);
+korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandle);

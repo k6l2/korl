@@ -129,6 +129,8 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     korl_gfx_batchSetVertexColor(hudBox, 1, (Korl_Vulkan_Color){  0, 255,   0});
     korl_gfx_batchSetVertexColor(hudBox, 2, (Korl_Vulkan_Color){  0,   0, 255});
     korl_gfx_batch(hudBox, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"Yo what's up?", 32.f);
+    korl_gfx_batch(hudText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
 }
 korl_internal void korl_windows_window_loop(void)
 {

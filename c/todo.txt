@@ -22,6 +22,8 @@
 	- how much memory is allocated for the ENTIRE program?
 	- how much the allocated memory are we using?
 	- WHERE do all our allocations originate?
+	- report any memory leaks (without manually cleaning them up) just before 
+	  execution of the program ends
 [ ] time metrics
 	- add thread to time metrics
 	- "start" a time probe recording period (frames)
@@ -76,12 +78,13 @@
 	- similar to SFML shape classes API, but without the unnecessary OOP baggage
 	[x] add a heap-controlled linear "stack" allocator whose contents are cleared
 		at the beginning of each frame
-[ ] gfx: draw text
-	[ ] option: temporarily draw mesh font (stb_easy_font)
-	[ ] option: sprite font
-	[ ] option: TTF
-		[ ] TTF glyph cache
-		[ ] batch text using glyph cache asset
+[+] gfx: draw text
+	[-] option: temporarily draw mesh font (stb_easy_font)
+	[~] option: sprite font
+	[+] option: TTF
+		[+] TTF glyph cache
+		[+] batch text using glyph cache asset
+[ ] immediate GUI
 [ ] keyboard input
 [ ] mouse input
 [ ] game pad input (XInput)

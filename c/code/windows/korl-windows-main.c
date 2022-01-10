@@ -8,20 +8,24 @@
 #include "korl-file.h"
 #include "korl-assetCache.h"
 #include "korl-stb-image.h"
+#include "korl-stb-truetype.h"
+#include "korl-gfx.h"
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
-    korl_log(INFO, "start ---------------------------------------------------");
+    korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_memory_initialize();
-    korl_stb_image_initialize();// depends on memory module
-    korl_file_initialize();// depends on memory module
-    korl_assetCache_initialize();// depends on {memory, file, stb_image} modules
+    korl_stb_image_initialize();   // depends on memory module
+    korl_stb_truetype_initialize();// depends on memory module
+    korl_file_initialize();        // depends on memory module
+    korl_gfx_initialize();         // depends on memory module
+    korl_assetCache_initialize();  // depends on {memory, file, stb_image} modules
     korl_vulkan_construct();
     korl_windows_window_initialize();
     korl_windows_window_create(1024, 576);
     korl_windows_window_loop();
     korl_vulkan_destroy();
-    korl_log(INFO, "end -----------------------------------------------------");
+    korl_log(INFO, "korl_windows_main END ----------------------------------------------------------");
     ExitProcess(KORL_EXIT_SUCCESS);
 }
 #include "korl-assert.c"
@@ -38,3 +42,4 @@ void __stdcall korl_windows_main(void)
 #include "korl-file.c"
 #include "korl-assetCache.c"
 #include "korl-stb-image.c"
+#include "korl-stb-truetype.c"

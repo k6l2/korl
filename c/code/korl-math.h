@@ -64,6 +64,18 @@ typedef union Korl_Math_V3u8
     } rgb;
     u8 elements[3];
 } Korl_Math_V3u8;
+typedef union Korl_Math_V4u8
+{
+    struct
+    {
+        u8 x, y, z, w;
+    } xyz;
+    struct
+    {
+        u8 r, g, b, a;
+    } rgba;
+    u8 elements[4];
+} Korl_Math_V4u8;
 korl_internal inline u64 korl_math_kilobytes(u64 x);
 korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);

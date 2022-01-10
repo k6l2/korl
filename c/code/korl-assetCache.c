@@ -45,8 +45,8 @@ korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
         if(a < KORL_MEMORY_POOL_SIZE(context->assets))
             return context->assets[a].assetData;
     }
-    /* @todo: lazy load asset if KORL_ASSETCACHE_GET_FLAGS_LAZY is specified */
-    /* @todo: only assert that the file loaded when we're not lazy loading */
+    /** @todo: lazy load asset if KORL_ASSETCACHE_GET_FLAGS_LAZY is specified */
+    /** @todo: only assert that the file loaded when we're not lazy loading */
     korl_assert(!KORL_MEMORY_POOL_ISFULL(context->assets));
     korl_assert(
         korl_file_load(

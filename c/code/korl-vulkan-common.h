@@ -5,6 +5,7 @@
 #include "korl-globalDefines.h"
 #include "korl-vulkan-memory.h"
 #include "korl-math.h"
+#include "korl-vulkan.h"
 #define _KORL_VULKAN_MAX_ASSET_NAME_LENGTH 64
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
@@ -52,11 +53,31 @@ typedef struct _Korl_Vulkan_Pipeline
 } _Korl_Vulkan_Pipeline;
 typedef struct _Korl_Vulkan_DeviceAsset
 {
-    /** @speed: comparisons between asset strings are going to be slow, so maybe 
-     * we should create a hash table for asset identifiers at some point.  
-     * simple hash functions:  http://www.cse.yorku.ca/~oz/hash.html */
-    wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
-    _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
+    enum _Korl_Vulkan_DeviceAsset_Type
+    {
+        _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE, 
+        _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE
+    } type;
+    union
+    {
+        struct
+        {
+            /** @speed: comparisons between asset strings are going to be slow, so maybe 
+             * we should create a hash table for asset identifiers at some point.  
+             * simple hash functions:  http://www.cse.yorku.ca/~oz/hash.html */
+            /** @speed: even if we do end up needing to store the asset strings, it 
+             * would likely be better if we store the strings in a separate string pool, 
+             * and store a handle to that string here for faster iteration over device 
+             * assets - we're wasting like an entire cache line per device asset lol */
+            wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
+            _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
+        } assetTexture;
+        struct
+        {
+            Korl_Vulkan_TextureHandle handle;
+            _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
+        } texture;
+    } subType;
 } _Korl_Vulkan_DeviceAsset;
 typedef struct _Korl_Vulkan_Context
 {
@@ -125,6 +146,7 @@ typedef struct _Korl_Vulkan_Context
     /* database for assets that exist on the device 
         (textures, shaders, buffers, etc) */
     KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceAsset, deviceAssets, 1024);
+    Korl_Vulkan_TextureHandle deviceAssetsNextTextureHandle;
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
