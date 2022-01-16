@@ -11,6 +11,14 @@ typedef struct Korl_Gfx_Camera
     } type;
     Korl_Math_V3f32 position;
     Korl_Math_V3f32 target;
+    /** Store viewport scissor coordinates as ratios so they can always be valid 
+     * up until the time the camera gets used to draw, allowing the swap chain 
+     * dimensions to change however it likes without requiring us to update 
+     * these values.  The downside is that these coordinates must eventually be 
+     * transformed into integral values at some point, so some kind of rounding 
+     * strategy must occur. */
+    Korl_Math_V2f32 viewportScissorRatioPosition;
+    Korl_Math_V2f32 viewportScissorRatioSize;
     union
     {
         struct
@@ -57,7 +65,8 @@ korl_internal void korl_gfx_initialize(void);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);
 korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
-korl_internal void korl_gfx_useCamera(const Korl_Gfx_Camera*const camera);
+korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);
+korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight);
 korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags);
 /** @simplify: is it possible to just have a "createRectangle" function, 
  * and then add texture or color components to it in later calls?  And if 

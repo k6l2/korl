@@ -581,20 +581,21 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     korl_assert(pipelineIndex < context->pipelinesCount);
     korl_assert(context->pipelines[pipelineIndex].pipeline == VK_NULL_HANDLE);
+    _Korl_Vulkan_Pipeline*const pipeline = &context->pipelines[pipelineIndex];
     /* set fixed functions & other pipeline parameters */
     KORL_ZERO_STACK_ARRAY(VkVertexInputBindingDescription, vertexInputBindings, 3);
     uint32_t vertexBindingDescriptionCount = 1;
     vertexInputBindings[0].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
     vertexInputBindings[0].stride    = sizeof(Korl_Vulkan_Position);
     vertexInputBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
     {
         vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
         vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Color);
         vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         vertexBindingDescriptionCount++;
     }
-    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
     {
         vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
         vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Uv);
@@ -607,7 +608,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     vertexAttributes[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
     vertexAttributes[0].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
     vertexAttributes[0].offset   = 0;// we're not using interleaved vertex data
-    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
     {
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
         vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R8G8B8_UNORM;
@@ -615,7 +616,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
         vertexAttributeDescriptionCount++;
     }
-    if(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
     {
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
         vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R32G32_SFLOAT;
@@ -631,7 +632,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     createInfoVertexInput.vertexAttributeDescriptionCount = vertexAttributeDescriptionCount;
     KORL_ZERO_STACK(VkPipelineInputAssemblyStateCreateInfo, createInfoInputAssembly);
     createInfoInputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    createInfoInputAssembly.topology = context->pipelines[pipelineIndex].primitiveTopology;
+    createInfoInputAssembly.topology = pipeline->primitiveTopology;
     VkViewport viewPort;
     viewPort.x        = 0.f;
     viewPort.y        = 0.f;
@@ -639,16 +640,13 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     viewPort.height   = KORL_C_CAST(float, surfaceContext->swapChainImageExtent.height);
     viewPort.minDepth = 0.f;
     viewPort.maxDepth = 1.f;
-    VkRect2D scissor;
-    scissor.extent   = surfaceContext->swapChainImageExtent;
-    scissor.offset.x = 0;
-    scissor.offset.y = 0;
     KORL_ZERO_STACK(VkPipelineViewportStateCreateInfo, createInfoViewport);
     createInfoViewport.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     createInfoViewport.viewportCount = 1;
     createInfoViewport.pViewports    = &viewPort;
     createInfoViewport.scissorCount  = 1;
-    createInfoViewport.pScissors     = &scissor;
+    /* no longer used, since we are using dynamic scissor commands instead */
+    //createInfoViewport.pScissors     = &scissor;
     KORL_ZERO_STACK(VkPipelineRasterizationStateCreateInfo, createInfoRasterizer);
     createInfoRasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     createInfoRasterizer.polygonMode = VK_POLYGON_MODE_FILL;
@@ -675,8 +673,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     createInfoColorBlend.attachmentCount = 1;
     createInfoColorBlend.pAttachments    = &colorBlendAttachment;
     VkDynamicState dynamicStates[] = 
-        { VK_DYNAMIC_STATE_VIEWPORT
-        , VK_DYNAMIC_STATE_LINE_WIDTH };
+        { VK_DYNAMIC_STATE_SCISSOR };
     KORL_ZERO_STACK(VkPipelineDynamicStateCreateInfo, createInfoDynamicState);
     createInfoDynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     createInfoDynamicState.dynamicStateCount = korl_arraySize(dynamicStates);
@@ -686,26 +683,26 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    if(      context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
-        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
+    if(      pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
+        && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
         createInfoShaderStages[0].module = context->shaderBatchVertColor;
-    else if( context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
-        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
+    else if( pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
+        && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
         createInfoShaderStages[0].module = context->shaderBatchVertTexture;
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    if(      context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
-        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
+    if(      pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
+        && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
         createInfoShaderStages[1].module = context->shaderBatchFragColor;
-    else if( context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
-        && !(context->pipelines[pipelineIndex].flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
+    else if( pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
+        && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
         createInfoShaderStages[1].module = context->shaderBatchFragTexture;
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    createInfoDepthStencil.depthTestEnable  = context->pipelines[pipelineIndex].useDepthTestAndWriteDepthBuffer ? VK_TRUE : VK_FALSE;
-    createInfoDepthStencil.depthWriteEnable = context->pipelines[pipelineIndex].useDepthTestAndWriteDepthBuffer ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthTestEnable  = pipeline->useDepthTestAndWriteDepthBuffer ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthWriteEnable = pipeline->useDepthTestAndWriteDepthBuffer ? VK_TRUE : VK_FALSE;
     createInfoDepthStencil.depthCompareOp   = VK_COMPARE_OP_LESS;
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -718,14 +715,14 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     createInfoPipeline.pMultisampleState   = &createInfoMultisample;
     createInfoPipeline.pColorBlendState    = &createInfoColorBlend;
     createInfoPipeline.pDepthStencilState  = &createInfoDepthStencil;
+    createInfoPipeline.pDynamicState       = &createInfoDynamicState;
     createInfoPipeline.layout              = context->pipelineLayout;
     createInfoPipeline.renderPass          = context->renderPass;
     createInfoPipeline.subpass             = 0;
     _KORL_VULKAN_CHECK(
         vkCreateGraphicsPipelines(
             context->device, VK_NULL_HANDLE/*pipeline cache*/, 
-            1, &createInfoPipeline, context->allocator, 
-            &context->pipelines[pipelineIndex].pipeline));
+            1, &createInfoPipeline, context->allocator, &pipeline->pipeline));
 }
 /**
  * \return The index of the pipeline in \c context->pipelines , or 
@@ -1718,6 +1715,14 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
     vkCmdBeginRenderPass(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         &beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
+    /* before calling any drawing commands, we must define the scissor since we 
+        are currently using dynamic scissor settings in our pipelines */
+    KORL_ZERO_STACK(VkRect2D, scissor);
+    scissor.offset = (VkOffset2D){.x = 0, .y = 0};
+    scissor.extent = surfaceContext->swapChainImageExtent;
+    vkCmdSetScissor(
+        surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+        0/*firstScissor*/, 1/*scissorCount*/, &scissor);
     /* clear the state of the first batch descriptor set */
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
@@ -2095,6 +2100,34 @@ korl_internal void korl_vulkan_setView(
     _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
     ubo->m4f32View = m4f32View;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+}
+korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void)
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    return (Korl_Math_V2u32){ .xy.x = surfaceContext->swapChainImageExtent.width
+                            , .xy.y = surfaceContext->swapChainImageExtent.height };
+}
+korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
+{
+    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* we're changing render state, so need to make sure we're not going to 
+        modify already batched draw calls */
+    _korl_vulkan_flushBatchPipeline();
+    /* submit a dynamic scissor adjustment to the command buffer */
+    KORL_ZERO_STACK(VkRect2D, scissor);
+    scissor.offset = (VkOffset2D){.x = x, .y = y};
+    scissor.extent = (VkExtent2D){.width = width, .height = height};
+    vkCmdSetScissor(
+        surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+        0/*firstScissor*/, 1/*scissorCount*/, &scissor);
 }
 korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale)
 {

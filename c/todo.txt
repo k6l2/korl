@@ -84,7 +84,78 @@
 	[+] option: TTF
 		[+] TTF glyph cache
 		[+] batch text using glyph cache asset
+[x] gfx: dynamic scissor region for easier GUI rendering
 [ ] immediate GUI
+	[ ] OPTION: just build DearImGui w/ C bindings & link statically
+	[ ] OPTION: DIY
+		[ ] create a window
+			[ ] begin API
+			[ ] end API
+			[ ] output geometry batches for all gui batches
+			[ ] batch all the geometry batches; display window rectangle
+		[ ] (un)focus window
+			[ ] process OS mouse input events
+			[ ] check if the user clicked on a window from the previous frame
+			[ ] clicked nothing? => unfocus all windows
+			[ ] clicked something? => set the window under the cursor to focus
+				- process windows from front->back here so occluded windows get tested last
+			[ ] when a window is focused:
+				- change background color?
+				- draw an outline?
+		[ ] move window
+			[ ] remember the last window we clicked on, as well as window-space position of the mouse cursor during the click
+			[ ] if the mouse button is still down, we did click on a window, & we've moved a certain distance, then enter a `move-window` state
+			[ ] if we're in the move window state, set the window position relative to the mouse cursor & the window-space click offset
+		[ ] (un)focus multiple windows
+			[ ] create >1 windows
+			[ ] implement & test focus & movement for each of them running simultaneously
+		[ ] add window title bar
+			[ ] draw a c string for the window's title (overloading the unique address identifier for the igui window itself probably)
+			[ ] assign a scissor region to the window's geometry batch, preventing the title bar text or anything else from drawing outside the window region (test this with a window title longer than the window size)
+			[ ] prevent the window title bar from ever leaving the application viewport when being moved around, to prevent windows from becoming inaccessible
+			[ ] use different color for title bar on focused windows
+			[ ] add optional flags to window begin API to choose whether or not to use a title bar
+		[ ] prevent windows that don't have a title bar from ever leaving the application viewport
+		[ ] add text gui element
+			[ ] begin API
+			[ ] end API; probably able to overload this for _all_ gui elements
+			- don't handle newlines; just render the text on a single line
+		[ ] add window auto-size capability
+			[ ] add optional flags to window begin API to specify this
+			[ ] define a minimum window size to prevent creation of impossible to use windows
+		[ ] add button gui element
+			[ ] use the same logic as the text gui element, except add a rectangle to indicate mouse interaction state
+			[ ] check if the mouse is hovering over any window from the previous frame
+				- perfrom this check from front->back to maintain window Z-order
+			[ ] hovered over a window? => propogate this event to the gui element unique to this location
+				- for now, there is no such concept as a GUI DAG (gui elements containing other gui elements), so it's okay to just assume that each gui element in this window occupies a unique set of window coordinates
+			[ ] onHovered for button gui element: highlight the button color
+			[ ] onPressed for button gui element: (only if mouse cursor is still in the button) highlight the button a different color
+			[ ] onRelease for button gui element: (only if mouse cursor is still in the button) set the state of the button to CLICKED
+			[ ] at the end of each frame
+				[ ] reset all the button guis PRESSED states if the mouse button is no longer pressed
+				[ ] reset all the button guis CLICKED states
+		[ ] add ability for windows (without auto-size style) to be resized
+			[ ] onHovered near the window border: highlight the set of borders to be resized
+			[ ] onPressed near the window border: highlight the set of borders to be resized in a different color
+				[ ] if we JUST pressed, initialize the resize state
+			[ ] onMoved (while in resize state): set the window position/size accordingly
+			[ ] obey minimum window size, as defined in the window auto-size feature
+		[ ] add ability for windows w/ title bar to collapse
+			[ ] draw a little icon in the upper-right corner of title bar
+			[ ] onHovered for the collapse button: highlight the button
+			[ ] onPressed for the collapse button: (only if mouse cursor is still in the button) highlight the button in a different color
+			[ ] onRelease for the collapse button: (only if mouse cursor is still in the button) toggle the collapse state for the window
+		[ ] add variadic formatted text to the text gui element
+		[ ] add horizontal scroll bars for windows
+			- test with really long text gui elements
+		[ ] add vertical scroll bars for windows
+			- test with a window filled with a large # of text gui elements
+		[ ] add ability to close windows w/ title bar
+			[ ] draw close icon in upper-right
+			[ ] onHovered for close button: highlight the button
+			[ ] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
+			[ ] onRelease for close button: (only if mouse cursor is still in the button) close the window
 [ ] keyboard input
 [ ] mouse input
 [ ] game pad input (XInput)

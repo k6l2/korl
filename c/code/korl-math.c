@@ -12,6 +12,15 @@ korl_internal inline u64 korl_math_gigabytes(u64 x)
 {
     return 1024 * korl_math_megabytes(x);
 }
+korl_internal inline u32 korl_math_round_f32_to_u32(f32 x)
+{
+    /** maybe in the future, we can have a general solution? 
+     * https://stackoverflow.com/a/497079 */
+    x = roundf(x);
+    korl_assert(x >= 0.0f);
+    korl_assert(x <= (f32)0xFFFFFFFF);
+    return KORL_C_CAST(u32, x);
+}
 korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple)
 {
     /* derived from this source: https://stackoverflow.com/a/9194117 */

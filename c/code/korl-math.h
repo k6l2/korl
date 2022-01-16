@@ -5,6 +5,14 @@
     ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 #define KORL_MATH_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define KORL_MATH_MAX(a,b) ((a) > (b) ? (a) : (b))
+typedef union Korl_Math_V2u32
+{
+    struct
+    {
+        u32 x, y;
+    } xy;
+    u32 elements[2];
+} Korl_Math_V2u32;
 typedef union Korl_Math_V2f32
 {
     struct
@@ -79,6 +87,7 @@ typedef union Korl_Math_V4u8
 korl_internal inline u64 korl_math_kilobytes(u64 x);
 korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);
+korl_internal inline u32 korl_math_round_f32_to_u32(f32 x);
 korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple);
 korl_internal inline bool korl_math_isNearlyZero(f32 x);
 /**  Thanks, Bruce Dawson!  Source: 

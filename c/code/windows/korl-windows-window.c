@@ -110,7 +110,7 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
         initialized = true;
     }
     korl_gfx_cameraFov_rotateAroundTarget(&camera3d, KORL_MATH_V3F32_Z, 0.01f);
-    korl_gfx_useCamera(&camera3d);
+    korl_gfx_useCamera(camera3d);
     Korl_Gfx_Batch*const birbSprite = korl_gfx_createBatchRectangleTextured(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, L"test-assets/birb.jpg");
     korl_gfx_batch(birbSprite, KORL_GFX_BATCH_FLAG_NONE);
     korl_gfx_batchSetPosition(birbSprite, (Korl_Vulkan_Position){0, 0, 0.4f});
@@ -121,16 +121,29 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     korl_gfx_batchSetLine(originAxes, 2, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 0, 1}, (Korl_Vulkan_Color){  0,   0, 255});
     korl_gfx_batch(originAxes, KORL_GFX_BATCH_FLAG_NONE);
     Korl_Gfx_Camera cameraHud = korl_gfx_createCameraOrthoFixedHeight(600.f, 1.f);
-    korl_gfx_useCamera(&cameraHud);
+    korl_gfx_useCamera(cameraHud);
+    Korl_Gfx_Batch*const originAxesHud = korl_gfx_createBatchLines(allocatorHeapStack, 3);
+    korl_gfx_batchSetScale(originAxesHud, (Korl_Vulkan_Position){100, 100, 100});
+    korl_gfx_batchSetLine(originAxesHud, 0, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){1, 0, 0}, (Korl_Vulkan_Color){255,   0,   0});
+    korl_gfx_batchSetLine(originAxesHud, 1, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 1, 0}, (Korl_Vulkan_Color){  0, 255,   0});
+    korl_gfx_batch(originAxesHud, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
     Korl_Gfx_Batch*const hudBox = korl_gfx_createBatchRectangleColored(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, (Korl_Vulkan_Color){255, 255, 255});
     korl_gfx_batchSetPosition(hudBox, (Korl_Vulkan_Position){250.f*camera3d.position.xyz.x, 250.f*camera3d.position.xyz.y, 0});
     korl_gfx_batchSetScale(hudBox, (Korl_Vulkan_Position){200, 200, 200});
     korl_gfx_batchSetVertexColor(hudBox, 0, (Korl_Vulkan_Color){255,   0,   0});
     korl_gfx_batchSetVertexColor(hudBox, 1, (Korl_Vulkan_Color){  0, 255,   0});
     korl_gfx_batchSetVertexColor(hudBox, 2, (Korl_Vulkan_Color){  0,   0, 255});
+    korl_gfx_cameraSetScissorPercent(&cameraHud, 0,0, 0.5f,1);
+    korl_gfx_useCamera(cameraHud);
     korl_gfx_batch(hudBox, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"Yo what's up?", 32.f);
+    korl_gfx_cameraSetScissorPercent(&cameraHud, 0,0, 1,1);
+    korl_gfx_useCamera(cameraHud);
+    Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"the quick, brown fox jumped over the lazy dog?...", 32.f);
+    korl_gfx_batchSetPosition(hudText, (Korl_Vulkan_Position){-350, 0, 0});
     korl_gfx_batch(hudText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    Korl_Gfx_Batch*const hudText2 = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"THE QUICK, BROWN FOX JUMPED OVER THE LAZY DOG!", 32.f);
+    korl_gfx_batchSetPosition(hudText2, (Korl_Vulkan_Position){-350, -64, 0});
+    korl_gfx_batch(hudText2, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
 }
 korl_internal void korl_windows_window_loop(void)
 {

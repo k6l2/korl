@@ -11,7 +11,7 @@ typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
 typedef Korl_Math_V3u8  Korl_Vulkan_Color;///@consistency: rename to Korl_Vulkan_Color3u8
 typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;
 /** A value of \c 0 is designated as an INVALID texture handle */
-typedef u16             Korl_Vulkan_TextureHandle;
+typedef u16 Korl_Vulkan_TextureHandle;
 typedef enum Korl_Vulkan_PrimitiveType
 {
     KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,
@@ -60,6 +60,13 @@ korl_internal void korl_vulkan_setProjectionFov(
 korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth);
 korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
+korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void);
+/**
+ * Values of parameters are in window-space coordinates.  The upper-left corner 
+ * of the viewport is the origin, and the lower-right corner lies in the 
+ * positive range of both axes.
+ */
+korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height);
 korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale);
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
 korl_internal Korl_Vulkan_TextureHandle korl_vulkan_createTexture(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer);
