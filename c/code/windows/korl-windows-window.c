@@ -136,7 +136,7 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     korl_gfx_cameraSetScissorPercent(&cameraHud, 0,0, 0.5f,1);
     korl_gfx_useCamera(cameraHud);
     korl_gfx_batch(hudBox, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    korl_gfx_cameraSetScissorPercent(&cameraHud, 0,0, 1,1);
+    cameraHud = korl_gfx_createCameraOrtho(1.f);
     korl_gfx_useCamera(cameraHud);
     Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"the quick, brown fox jumped over the lazy dog?...", 32.f);
     korl_gfx_batchSetPosition(hudText, (Korl_Vulkan_Position){-350, 0, 0});

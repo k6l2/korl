@@ -7,7 +7,8 @@ typedef struct Korl_Gfx_Camera
     enum
     {
         KORL_GFX_CAMERA_TYPE_PERSPECTIVE,
-        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC
+        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC,
+        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT,
     } type;
     Korl_Math_V3f32 position;
     Korl_Math_V3f32 target;
@@ -27,6 +28,10 @@ typedef struct Korl_Gfx_Camera
             f32 clipNear;
             f32 clipFar;
         } perspective;
+        struct
+        {
+            f32 clipDepth;
+        } orthographic;
         struct
         {
             f32 fixedHeight;
@@ -63,6 +68,7 @@ typedef enum Korl_Gfx_Batch_Flags
 } Korl_Gfx_Batch_Flags;
 korl_internal void korl_gfx_initialize(void);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target);
+korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrtho(f32 clipDepth);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);
 korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
 korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);

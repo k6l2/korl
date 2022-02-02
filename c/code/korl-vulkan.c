@@ -2022,6 +2022,46 @@ korl_internal void korl_vulkan_setProjectionFov(
     ubo->m4f32Projection = m4f32Projection;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
+korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* create the projection matrix */
+    const f32 left   = -KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)  / 2.f;
+    const f32 right  =  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)  / 2.f;
+    const f32 bottom = -KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) / 2.f;
+    const f32 top    =  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) / 2.f;
+    const f32 far    = -depth;
+    const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+    Korl_Math_M4f32 m4f32Projection = 
+        korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+    /* ensure the current descriptor set index of the batch state is not being 
+        used by any previously batched geometry */
+    _korl_vulkan_batchDescriptorSetFlush();
+    /* calculate the stride of each batch descriptor set UBO within the buffer */
+    KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
+    vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
+    const VkDeviceSize batchUboStride = korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
+    /* send the data for the matrix into the staging buffer memory */
+    KORL_ZERO_STACK(void*, mappedDeviceMemory);
+    _KORL_VULKAN_CHECK(
+        vkMapMemory(
+            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+            swapChainImageContext->bufferStagingUbo->byteOffset + surfaceContext->batchState.descriptorSetIndexCurrent*batchUboStride, 
+            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+            0/*flags*/, &mappedDeviceMemory));
+    _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
+    ubo->m4f32Projection = m4f32Projection;
+    vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+}
 korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
@@ -2039,11 +2079,11 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
         KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width) / 
         KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
     /* w / fixedHeight == windowAspectRatio */
-    const f32 width = fixedHeight * viewportWidthOverHeight;
-    const f32 left  = -width / 2;
-    const f32 right =  width / 2;
-    const f32 bottom = -fixedHeight / 2;
-    const f32 top    =  fixedHeight / 2;
+    const f32 width  = fixedHeight * viewportWidthOverHeight;
+    const f32 left   = -width       / 2.f;
+    const f32 right  =  width       / 2.f;
+    const f32 bottom = -fixedHeight / 2.f;
+    const f32 top    =  fixedHeight / 2.f;
     const f32 far    = -depth;
     const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
     Korl_Math_M4f32 m4f32Projection = 

@@ -85,6 +85,7 @@
 		[+] TTF glyph cache
 		[+] batch text using glyph cache asset
 [x] gfx: dynamic scissor region for easier GUI rendering
+[x] gfx: orthographic projection (non-fixed height, same dimensions as the swapchain)
 [ ] immediate GUI
 	[ ] OPTION: just build DearImGui w/ C bindings & link statically
 	[ ] OPTION: DIY
@@ -156,6 +157,8 @@
 			[ ] onHovered for close button: highlight the button
 			[ ] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[ ] onRelease for close button: (only if mouse cursor is still in the button) close the window
+[ ] Windows: assume manual control over DPI-awareness
+[ ] gui: gracefully scale graphics based on renderer DPI scale
 [ ] keyboard input
 [ ] mouse input
 [ ] game pad input (XInput)

@@ -57,6 +57,7 @@ korl_internal void korl_vulkan_batch(
 korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool value);
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
+korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth);
 korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth);
 korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);

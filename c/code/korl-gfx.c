@@ -216,10 +216,21 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f3
     result.subCamera.perspective.fovHorizonDegrees = fovHorizonDegrees;
     return result;
 }
+korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrtho(f32 clipDepth)
+{
+    KORL_ZERO_STACK(Korl_Gfx_Camera, result);
+    result.type                                        = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC;
+    result.position                                    = KORL_MATH_V3F32_ZERO;
+    result.target                                      = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
+    result.viewportScissorRatioPosition                = (Korl_Math_V2f32){.xy = {0, 0}};
+    result.viewportScissorRatioSize                    = (Korl_Math_V2f32){.xy = {1, 1}};
+    result.subCamera.orthographicFixedHeight.clipDepth = clipDepth;
+    return result;
+}
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
-    result.type                                          = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC;
+    result.type                                          = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
     result.position                                      = KORL_MATH_V3F32_ZERO;
     result.target                                        = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
     result.viewportScissorRatioPosition                  = (Korl_Math_V2f32){.xy = {0, 0}};
@@ -256,6 +267,10 @@ korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera)
         korl_vulkan_setView(camera.position, camera.target, KORL_MATH_V3F32_Z);
         }break;
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
+        korl_vulkan_setProjectionOrthographic(camera.subCamera.orthographicFixedHeight.clipDepth);
+        korl_vulkan_setView(camera.position, camera.target, KORL_MATH_V3F32_Y);
+        }break;
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
         korl_vulkan_setProjectionOrthographicFixedHeight(camera.subCamera.orthographicFixedHeight.fixedHeight, camera.subCamera.orthographicFixedHeight.clipDepth);
         korl_vulkan_setView(camera.position, camera.target, KORL_MATH_V3F32_Y);
         }break;
