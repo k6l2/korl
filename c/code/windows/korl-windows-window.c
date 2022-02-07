@@ -23,10 +23,9 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
         surfaceUserData.hInstance = createStruct->hInstance;
         surfaceUserData.hWnd      = hWnd;
-        korl_vulkan_createSurface(
-            &surfaceUserData, 
-            clientRect.right  - clientRect.left, 
-            clientRect.bottom - clientRect.top);
+        korl_vulkan_createSurface(&surfaceUserData, 
+                                  clientRect.right  - clientRect.left, 
+                                  clientRect.bottom - clientRect.top);
         }break;
     case WM_DESTROY:{
         korl_vulkan_destroySurface();
@@ -53,8 +52,7 @@ korl_internal void korl_windows_window_initialize(void)
     /* Note: Windows will automatically delete Window class brushes when they 
         are unregistered, so we don't need to clean this up.  Also, stock 
         objects do not need to be cleaned up, so we gucci. */
-    HBRUSH hBrushWindowBackground = 
-        KORL_C_CAST(HBRUSH, GetStockObject(BLACK_BRUSH));
+    HBRUSH hBrushWindowBackground = KORL_C_CAST(HBRUSH, GetStockObject(BLACK_BRUSH));
     if(!hBrushWindowBackground) korl_logLastError("GetStockObject failed!");
     /* create a window class */
     KORL_ZERO_STACK(WNDCLASSEX, windowClass);
@@ -88,15 +86,13 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     const BOOL successAdjustClientRect = 
         AdjustWindowRect(&rectCenteredClient, windowStyle, FALSE/*menu?*/);
     if(!successAdjustClientRect) korl_logLastError("AdjustWindowRect failed!");
-    const HWND hWnd = 
-        CreateWindowEx(
-            0/*extended style flags*/, g_korl_windows_window_className, _T("KORL C"), 
-            windowStyle, 
-            rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
-            rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
-            rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
-            NULL/*hWndParent*/, NULL/*hMenu*/, hInstance, 
-            NULL/*lpParam; passed to WM_CREATE*/);
+    const HWND hWnd = CreateWindowEx(0/*extended style flags*/, g_korl_windows_window_className, _T("KORL C"), 
+                                     windowStyle, 
+                                     rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
+                                     rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
+                                     rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
+                                     NULL/*hWndParent*/, NULL/*hMenu*/, hInstance, 
+                                     NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
 /** @hack: this is just scaffolding to build immediate batched rendering */
@@ -109,6 +105,8 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
         camera3d = korl_gfx_createCameraFov(90.f, 0.001f, 10.f, (Korl_Vulkan_Position){1, 0, 1}, KORL_MATH_V3F32_ZERO);
         initialized = true;
     }
+    korl_gui_windowBegin(L"first window");
+    korl_gui_windowEnd();
     korl_gfx_cameraFov_rotateAroundTarget(&camera3d, KORL_MATH_V3F32_Z, 0.01f);
     korl_gfx_useCamera(camera3d);
     Korl_Gfx_Batch*const birbSprite = korl_gfx_createBatchRectangleTextured(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, L"test-assets/birb.jpg");
@@ -153,10 +151,8 @@ korl_internal void korl_windows_window_loop(void)
     {
         allocatorHeapStack.callbackEmpty(allocatorHeapStack.userData);
         KORL_ZERO_STACK(MSG, windowMessage);
-        while(
-            PeekMessage(
-                &windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
-                0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
+        while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
+                          0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
         {
             if(windowMessage.message == WM_QUIT) quit = true;
             const BOOL messageTranslated = TranslateMessage(&windowMessage);
@@ -164,8 +160,10 @@ korl_internal void korl_windows_window_loop(void)
         }
         if(quit)
             break;
+        korl_gui_frameBegin();
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         _korl_windows_window_step(allocatorHeapStack);
+        korl_gui_frameEnd(allocatorHeapStack);
         korl_vulkan_frameEnd();
     }
 }

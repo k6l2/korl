@@ -89,11 +89,11 @@
 [ ] immediate GUI
 	[ ] OPTION: just build DearImGui w/ C bindings & link statically
 	[ ] OPTION: DIY
-		[ ] create a window
-			[ ] begin API
-			[ ] end API
-			[ ] output geometry batches for all gui batches
-			[ ] batch all the geometry batches; display window rectangle
+		[x] create a window
+			[x] begin API
+			[x] end API
+			[x] output geometry batches for all gui batches
+			[x] batch all the geometry batches; display window rectangle
 		[ ] (un)focus window
 			[ ] process OS mouse input events
 			[ ] check if the user clicked on a window from the previous frame

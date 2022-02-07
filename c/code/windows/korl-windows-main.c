@@ -10,6 +10,7 @@
 #include "korl-stb-image.h"
 #include "korl-stb-truetype.h"
 #include "korl-gfx.h"
+#include "korl-gui.h"
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
@@ -19,6 +20,7 @@ void __stdcall korl_windows_main(void)
     korl_stb_truetype_initialize();// depends on memory module
     korl_file_initialize();        // depends on memory module
     korl_gfx_initialize();         // depends on memory module
+    korl_gui_initialize();         // depends on memory module
     korl_assetCache_initialize();  // depends on {memory, file, stb_image} modules
     korl_vulkan_construct();
     korl_windows_window_initialize();
@@ -43,3 +45,4 @@ void __stdcall korl_windows_main(void)
 #include "korl-assetCache.c"
 #include "korl-stb-image.c"
 #include "korl-stb-truetype.c"
+#include "korl-gui.c"
