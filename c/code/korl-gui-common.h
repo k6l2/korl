@@ -27,5 +27,8 @@ typedef struct
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */
     bool isTopLevelWindowActive;
+    /** This flag is raised when we're in a "drag state".  */
+    bool isMouseDown;
+    Korl_Math_V2f32 mouseDownWindowOffset;
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;

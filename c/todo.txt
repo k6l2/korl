@@ -105,13 +105,12 @@
 				- draw an outline?
 			[x] test with multiple windows
 				- when a new window gets created, set its position to be offset relative to the top-level window
-		[ ] move window
-			[ ] remember the last window we clicked on, as well as window-space position of the mouse cursor during the click
-			[ ] if the mouse button is still down, we did click on a window, & we've moved a certain distance, then enter a `move-window` state
-			[ ] if we're in the move window state, set the window position relative to the mouse cursor & the window-space click offset
-		[ ] (un)focus multiple windows
-			[ ] create >1 windows
-			[ ] implement & test focus & movement for each of them running simultaneously
+		[x] move window
+			[x] remember the last window we clicked on, as well as window-space position of the mouse cursor during the click
+			[-] if the mouse button is still down, we did click on a window, & we've moved a certain distance, then enter a `move-window` state
+				- actually, now that I'm thinking about it, this is overly complex and unnecessary, so we can probably just only be able to move a window when the mouse-down event does NOT get captured by any widgets contained within
+				- for now, since there are no widgets, if we mouse down in a window, we just immediately enter the "moving" state
+			[x] if we're in the move window state, set the window position relative to the mouse cursor & the window-space click offset
 		[ ] add window title bar
 			[ ] draw a c string for the window's title (overloading the unique address identifier for the igui window itself probably)
 			[ ] assign a scissor region to the window's geometry batch, preventing the title bar text or anything else from drawing outside the window region (test this with a window title longer than the window size)
@@ -159,6 +158,7 @@
 			[ ] onHovered for close button: highlight the button
 			[ ] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[ ] onRelease for close button: (only if mouse cursor is still in the button) close the window
+		[ ] draw outline around windows to make it easier to distinguish between overlapping windows
 [ ] Windows: assume manual control over DPI-awareness
 [ ] gui: gracefully scale graphics based on renderer DPI scale
 [ ] keyboard input

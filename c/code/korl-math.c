@@ -53,11 +53,48 @@ korl_internal inline f32 korl_math_abs(f32 x)
         return x;
     return -x;
 }
+korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v)
+{
+    return sqrtf(korl_math_v2f32_magnitudeSquared(v));
+}
+korl_internal f32 korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v)
+{
+    return powf(v->elements[0], 2) + powf(v->elements[1], 2);
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_normal(Korl_Math_V2f32 v)
+{
+    const f32 magnitude = korl_math_v2f32_magnitude(&v);
+    return korl_math_v2f32_normalKnownMagnitude(v, magnitude);
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f32 v, f32 magnitude)
+{
+    if(korl_math_isNearlyZero(magnitude))
+    {
+        v.elements[0] = 0;
+        v.elements[1] = 0;
+        return v;
+    }
+    v.elements[0] /= magnitude;
+    v.elements[1] /= magnitude;
+    return v;
+}
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     vA.elements[0] += vB.elements[0];
     vA.elements[1] += vB.elements[1];
     return vA;
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, const Korl_Math_V2f32*const vB)
+{
+    vA.elements[0] -= vB->elements[0];
+    vA.elements[1] -= vB->elements[1];
+    return vA;
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, f32 scalar)
+{
+    v.elements[0] *= scalar;
+    v.elements[1] *= scalar;
+    return v;
 }
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {

@@ -32,3 +32,9 @@ korl_internal u32 korl_checkCast_i$_to_u32(i$ x)
     korl_assert(x <= 0xFFFFFFFF);
     return KORL_C_CAST(u32, x);
 }
+korl_internal f32 korl_checkCast_i$_to_f32(i$ x)
+{
+    const f32 result = KORL_C_CAST(f32, x);
+    korl_assert(KORL_C_CAST(i$, result) == x);
+    return result;
+}
