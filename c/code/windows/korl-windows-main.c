@@ -46,3 +46,4 @@ void __stdcall korl_windows_main(void)
 #include "korl-stb-image.c"
 #include "korl-stb-truetype.c"
 #include "korl-gui.c"
+#include "korl-windows-gui.c"

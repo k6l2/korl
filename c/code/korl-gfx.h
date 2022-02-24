@@ -30,12 +30,14 @@ typedef struct Korl_Gfx_Camera
         } perspective;
         struct
         {
+            Korl_Math_V2f32 originAnchor;
             f32 clipDepth;
         } orthographic;
         struct
         {
-            f32 fixedHeight;
+            Korl_Math_V2f32 originAnchor;
             f32 clipDepth;
+            f32 fixedHeight;
         } orthographicFixedHeight;
     } subCamera;
 } Korl_Gfx_Camera;
@@ -73,6 +75,17 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHei
 korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
 korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);
 korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight);
+/** Translate the camera such that the orthographic camera's origin is located 
+ * at the position in the swapchain's coordinate space relative to the 
+ * bottom-left corner.
+ * Negative size ratio values are valid.
+ * This function does NOT flip the coordinate space or anything like that!
+ * Examples:
+ * - by default (without calling this function) the origin will be 
+ *   \c {0.5f,0.5f}, which is the center of the screen
+ * - if you want the origin to be in the bottom-left corner of the window, pass 
+ *   \c {0.f,0.f} as size ratio coordinates */
+korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY);
 korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags);
 /** @simplify: is it possible to just have a "createRectangle" function, 
  * and then add texture or color components to it in later calls?  And if 
@@ -84,7 +97,7 @@ korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Fla
  *  - the resulting API might become more complex anyways, and increase friction 
  *    for the user */
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleTextured(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, const wchar_t* assetNameTexture);
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, Korl_Vulkan_Color color);
+korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color);
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator allocator, u32 lineCount);
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator allocator, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight);
 korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position);

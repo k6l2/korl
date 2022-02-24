@@ -94,15 +94,17 @@
 			[x] end API
 			[x] output geometry batches for all gui batches
 			[x] batch all the geometry batches; display window rectangle
-		[ ] (un)focus window
-			[ ] process OS mouse input events
-			[ ] check if the user clicked on a window from the previous frame
-			[ ] clicked nothing? => unfocus all windows
-			[ ] clicked something? => set the window under the cursor to focus
+		[x] (un)focus window
+			[x] process OS mouse input events
+			[x] check if the user clicked on a window from the previous frame
+			[x] clicked nothing? => unfocus all windows
+			[x] clicked something? => set the window under the cursor to focus
 				- process windows from front->back here so occluded windows get tested last
-			[ ] when a window is focused:
+			[x] when a window is focused:
 				- change background color?
 				- draw an outline?
+			[x] test with multiple windows
+				- when a new window gets created, set its position to be offset relative to the top-level window
 		[ ] move window
 			[ ] remember the last window we clicked on, as well as window-space position of the mouse cursor during the click
 			[ ] if the mouse button is still down, we did click on a window, & we've moved a certain distance, then enter a `move-window` state

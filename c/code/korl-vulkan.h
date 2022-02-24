@@ -57,8 +57,16 @@ korl_internal void korl_vulkan_batch(
 korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool value);
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
-korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth);
-korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth);
+/** 
+ * \param originRatioX adjust the position of the origin relative to the size 
+ * of the swap chain.  A value of \c 0.5f will center the origin on the screen.  
+ * A value of \c 0.f will center the origin on the left side of the screen.
+ * \param originRatioY adjust the position of the origin relative to the size 
+ * of the swap chain.  A value of \c 0.5f will center the origin on the screen.  
+ * A value of \c 0.f will center the origin on the top of the screen.
+ */
+korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRatioX, f32 originRatioY);
+korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth, f32 originRatioX, f32 originRatioY);
 korl_internal void korl_vulkan_setView(
     Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
 korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void);

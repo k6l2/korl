@@ -21,6 +21,7 @@ typedef union Korl_Math_V2f32
     } xy;
     f32 elements[2];
 } Korl_Math_V2f32;
+const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {.xy = {0, 0}};
 typedef union Korl_Math_V3f32
 {
     struct
@@ -97,6 +98,7 @@ korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 eps
 /** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);
 korl_internal inline f32 korl_math_abs(f32 x);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);

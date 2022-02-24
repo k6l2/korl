@@ -6,6 +6,7 @@
 #include "korl-windows-vulkan.h"
 #include "korl-math.h"
 #include "korl-gfx.h"
+#include "korl-windows-gui.h"
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
@@ -107,6 +108,10 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     }
     korl_gui_windowBegin(L"first window");
     korl_gui_windowEnd();
+    korl_gui_windowBegin(L"second window");
+    korl_gui_windowEnd();
+    korl_gui_windowBegin(L"third window");
+    korl_gui_windowEnd();
     korl_gfx_cameraFov_rotateAroundTarget(&camera3d, KORL_MATH_V3F32_Z, 0.01f);
     korl_gfx_useCamera(camera3d);
     Korl_Gfx_Batch*const birbSprite = korl_gfx_createBatchRectangleTextured(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, L"test-assets/birb.jpg");
@@ -121,11 +126,12 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     Korl_Gfx_Camera cameraHud = korl_gfx_createCameraOrthoFixedHeight(600.f, 1.f);
     korl_gfx_useCamera(cameraHud);
     Korl_Gfx_Batch*const originAxesHud = korl_gfx_createBatchLines(allocatorHeapStack, 3);
+    //korl_gfx_batchSetPosition(originAxesHud, (Korl_Vulkan_Position){1, 0, 0});//rounding error in the bottom-left corner causes the y-axis to not be shown :(
     korl_gfx_batchSetScale(originAxesHud, (Korl_Vulkan_Position){100, 100, 100});
     korl_gfx_batchSetLine(originAxesHud, 0, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){1, 0, 0}, (Korl_Vulkan_Color){255,   0,   0});
     korl_gfx_batchSetLine(originAxesHud, 1, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 1, 0}, (Korl_Vulkan_Color){  0, 255,   0});
     korl_gfx_batch(originAxesHud, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    Korl_Gfx_Batch*const hudBox = korl_gfx_createBatchRectangleColored(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, (Korl_Vulkan_Color){255, 255, 255});
+    Korl_Gfx_Batch*const hudBox = korl_gfx_createBatchRectangleColored(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Vulkan_Color){255, 255, 255});
     korl_gfx_batchSetPosition(hudBox, (Korl_Vulkan_Position){250.f*camera3d.position.xyz.x, 250.f*camera3d.position.xyz.y, 0});
     korl_gfx_batchSetScale(hudBox, (Korl_Vulkan_Position){200, 200, 200});
     korl_gfx_batchSetVertexColor(hudBox, 0, (Korl_Vulkan_Color){255,   0,   0});
@@ -157,6 +163,7 @@ korl_internal void korl_windows_window_loop(void)
             if(windowMessage.message == WM_QUIT) quit = true;
             const BOOL messageTranslated = TranslateMessage(&windowMessage);
             const LRESULT messageResult  = DispatchMessage (&windowMessage);
+            korl_gui_windows_processMessage(&windowMessage);
         }
         if(quit)
             break;

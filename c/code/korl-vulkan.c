@@ -2022,7 +2022,7 @@ korl_internal void korl_vulkan_setProjectionFov(
     ubo->m4f32Projection = m4f32Projection;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
-korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth)
+korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRatioX, f32 originRatioY)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
@@ -2035,10 +2035,10 @@ korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth)
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return;
     /* create the projection matrix */
-    const f32 left   = -KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)  / 2.f;
-    const f32 right  =  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)  / 2.f;
-    const f32 bottom = -KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) / 2.f;
-    const f32 top    =  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) / 2.f;
+    const f32 left   = 0.f - originRatioX*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width );
+    const f32 bottom = 0.f - originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
+    const f32 right  = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width ) - originRatioX*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width );
+    const f32 top    = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) - originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
     const f32 far    = -depth;
     const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
     Korl_Math_M4f32 m4f32Projection = 
@@ -2062,7 +2062,7 @@ korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth)
     ubo->m4f32Projection = m4f32Projection;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
 }
-korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth)
+korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth, f32 originRatioX, f32 originRatioY)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
@@ -2080,10 +2080,10 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
         KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
     /* w / fixedHeight == windowAspectRatio */
     const f32 width  = fixedHeight * viewportWidthOverHeight;
-    const f32 left   = -width       / 2.f;
-    const f32 right  =  width       / 2.f;
-    const f32 bottom = -fixedHeight / 2.f;
-    const f32 top    =  fixedHeight / 2.f;
+    const f32 left   = 0.f - originRatioX*width;
+    const f32 bottom = 0.f - originRatioY*fixedHeight;
+    const f32 right  = width       - originRatioX*width;
+    const f32 top    = fixedHeight - originRatioY*fixedHeight;
     const f32 far    = -depth;
     const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
     Korl_Math_M4f32 m4f32Projection = 

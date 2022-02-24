@@ -1,4 +1,5 @@
 #include "korl-math.h"
+#include "korl-assert.h"
 #include <math.h>
 korl_internal inline u64 korl_math_kilobytes(u64 x)
 {
@@ -51,6 +52,12 @@ korl_internal inline f32 korl_math_abs(f32 x)
     if(x >= 0)
         return x;
     return -x;
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    vA.elements[0] += vB.elements[0];
+    vA.elements[1] += vB.elements[1];
+    return vA;
 }
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {
@@ -302,9 +309,9 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
     f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax)
 {
-    korl_assert(xMin < xMax);
-    korl_assert(yMin < yMax);
-    korl_assert(zMin < zMax);
+    korl_assert(!korl_math_isNearlyZero(xMin - xMax));
+    korl_assert(!korl_math_isNearlyZero(yMin - yMax));
+    korl_assert(!korl_math_isNearlyZero(xMin - xMax));
     /* derive orthographic matrix using the power of math, people! 
         - we're given 6 coordinates which define the AABB in eye-space that we 
           want to map into clip-space 
@@ -317,7 +324,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
     result.rc.r0c0 =              2 / (xMax - xMin);
     result.rc.r0c3 = -(xMax + xMin) / (xMax - xMin);
     result.rc.r1c1 =              2 / (yMax - yMin);
-    result.rc.r1c3 = -(yMax + yMin) / (yMax - yMin);
+    result.rc.r1c3 =  (yMax + yMin) / (yMax - yMin);
     result.rc.r2c2 =    1 / (zMin - zMax);
     result.rc.r2c3 = zMin / (zMin - zMax);
     result.rc.r3c3 = 1;
