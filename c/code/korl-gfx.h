@@ -12,14 +12,22 @@ typedef struct Korl_Gfx_Camera
     } type;
     Korl_Math_V3f32 position;
     Korl_Math_V3f32 target;
-    /** Store viewport scissor coordinates as ratios so they can always be valid 
-     * up until the time the camera gets used to draw, allowing the swap chain 
-     * dimensions to change however it likes without requiring us to update 
-     * these values.  The downside is that these coordinates must eventually be 
-     * transformed into integral values at some point, so some kind of rounding 
-     * strategy must occur. */
-    Korl_Math_V2f32 viewportScissorRatioPosition;
-    Korl_Math_V2f32 viewportScissorRatioSize;
+    /** If the viewport scissor coordinates are stored as ratios, they can 
+     * always be valid up until the time the camera gets used to draw, allowing 
+     * the swap chain dimensions to change however it likes without requiring us 
+     * to update these values.  The downside is that these coordinates must 
+     * eventually be transformed into integral values at some point, so some 
+     * kind of rounding strategy must occur.
+     * The scissor coordinates are relative to the upper-left corner of the swap 
+     * chain, with the lower-right corner of the swap chain lying in the 
+     * positive coordinate space of both axes.  */
+    Korl_Math_V2f32 _viewportScissorPosition;// should default to {0,0}
+    Korl_Math_V2f32 _viewportScissorSize;// should default to {1,1}
+    enum
+    {
+        KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO,// default
+        KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE,
+    } _scissorType;
     union
     {
         struct
@@ -74,6 +82,11 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrtho(f32 clipDepth);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);
 korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
 korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);
+/** @todo: maybe change the scissor parameters to be an integral data type, 
+ * since at some point a rounding strategy must occur anyways, and this 
+ * information is obscured by this API, just for the sake of making it easier to 
+ * call with f32 data... Which, I don't know if that's a great tradeoff honestly */
+korl_internal void korl_gfx_cameraSetScissor(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY);
 korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight);
 /** Translate the camera such that the orthographic camera's origin is located 
  * at the position in the swapchain's coordinate space relative to the 
@@ -99,8 +112,16 @@ korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Fla
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleTextured(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, const wchar_t* assetNameTexture);
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color);
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator allocator, u32 lineCount);
+/** 
+ * \param assetNameFont If this value is \c NULL , a default internal font asset 
+ * will be used.
+ */
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator allocator, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight);
 korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position);
 korl_internal void korl_gfx_batchSetScale(Korl_Gfx_Batch*const context, Korl_Vulkan_Position scale);
 korl_internal void korl_gfx_batchSetVertexColor(Korl_Gfx_Batch*const context, u32 vertexIndex, Korl_Vulkan_Color color);
 korl_internal void korl_gfx_batchSetLine(Korl_Gfx_Batch*const context, u32 lineIndex, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color color);
+korl_internal f32 korl_gfx_batchTextGetAabbSizeX(Korl_Gfx_Batch*const context);
+korl_internal f32 korl_gfx_batchTextGetAabbSizeY(Korl_Gfx_Batch*const context);
+korl_internal void korl_gfx_batchRectangleSetSize(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size);
+korl_internal void korl_gfx_batchRectangleSetColor(Korl_Gfx_Batch*const context, Korl_Vulkan_Color color);

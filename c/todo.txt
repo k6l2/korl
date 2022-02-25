@@ -111,13 +111,13 @@
 				- actually, now that I'm thinking about it, this is overly complex and unnecessary, so we can probably just only be able to move a window when the mouse-down event does NOT get captured by any widgets contained within
 				- for now, since there are no widgets, if we mouse down in a window, we just immediately enter the "moving" state
 			[x] if we're in the move window state, set the window position relative to the mouse cursor & the window-space click offset
-		[ ] add window title bar
-			[ ] draw a c string for the window's title (overloading the unique address identifier for the igui window itself probably)
-			[ ] assign a scissor region to the window's geometry batch, preventing the title bar text or anything else from drawing outside the window region (test this with a window title longer than the window size)
-			[ ] prevent the window title bar from ever leaving the application viewport when being moved around, to prevent windows from becoming inaccessible
-			[ ] use different color for title bar on focused windows
-			[ ] add optional flags to window begin API to choose whether or not to use a title bar
-		[ ] prevent windows that don't have a title bar from ever leaving the application viewport
+		[x] add window title bar
+			[x] draw a c string for the window's title (overloading the unique address identifier for the igui window itself probably)
+			[x] assign a scissor region to the window's geometry batch, preventing the title bar text or anything else from drawing outside the window region (test this with a window title longer than the window size)
+			[x] prevent the window title bar from ever leaving the application viewport when being moved around, to prevent windows from becoming inaccessible
+			[x] use different color for title bar on focused windows
+			[x] add optional flags to window begin API to choose whether or not to use a title bar
+		[x] prevent windows that don't have a title bar from ever leaving the application viewport
 		[ ] add text gui element
 			[ ] begin API
 			[ ] end API; probably able to overload this for _all_ gui elements
@@ -163,7 +163,22 @@
 [ ] gui: gracefully scale graphics based on renderer DPI scale
 [ ] keyboard input
 [ ] mouse input
-[ ] game pad input (XInput)
+[ ] game pad input
+	- just open devices directly using HID & RawInput APIs
+	[ ] DS4
+		[ ] USB protocol
+			https://github.com/MysteriousJ/Joystick-Input-Examples
+			[ ] binary inputs
+			[ ] analog inputs
+			[ ] touch pad inputs
+			[ ] gyro/accel inputs
+				http://gyrowiki.jibbsmart.com/blog:finding-gravity-with-sensor-fusion
+				- perhaps we can just expose a "sensor fusion" input API to the user instead of just raw IMU inputs?...
+			[ ] force-feedback output
+		[ ] Bluetooth protocol
+	[ ] XBOX360
+	[ ] XBOX One
+	[ ] DS3
 [ ] create sample project
 [ ] build all sample projects
 [ ] time metrics: draw graph of all probed threads
@@ -181,9 +196,5 @@
 [ ] collision resolution (???)
 [ ] networking: UDP
 [ ] networking: reliable packets
-[ ] game pad input (RawInput)
-	[ ] logitech pad (D mode)
-	[ ] DS4
-	[ ] DS3
 [ ] prevent Windows from going to sleep with no user input
 	https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate?redirectedfrom=MSDN

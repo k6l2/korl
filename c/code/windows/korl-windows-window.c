@@ -106,11 +106,11 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
         camera3d = korl_gfx_createCameraFov(90.f, 0.001f, 10.f, (Korl_Vulkan_Position){1, 0, 1}, KORL_MATH_V3F32_ZERO);
         initialized = true;
     }
-    korl_gui_windowBegin(L"first window");
+    korl_gui_windowBegin(L"first window", KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
     korl_gui_windowEnd();
-    korl_gui_windowBegin(L"second window");
+    korl_gui_windowBegin(L"second window", KORL_GUI_WINDOW_STYLE_FLAG_NONE);
     korl_gui_windowEnd();
-    korl_gui_windowBegin(L"third window");
+    korl_gui_windowBegin(L"third window - the quick brown fox jumps over the lazy dog", KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
     korl_gui_windowEnd();
     korl_gfx_cameraFov_rotateAroundTarget(&camera3d, KORL_MATH_V3F32_Z, 0.01f);
     korl_gfx_useCamera(camera3d);
@@ -142,10 +142,10 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     korl_gfx_batch(hudBox, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
     cameraHud = korl_gfx_createCameraOrtho(1.f);
     korl_gfx_useCamera(cameraHud);
-    Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"the quick, brown fox jumped over the lazy dog?...", 32.f);
+    Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, NULL, L"the quick, brown fox jumped over the lazy dog?...", 32.f);
     korl_gfx_batchSetPosition(hudText, (Korl_Vulkan_Position){-350, 0, 0});
     korl_gfx_batch(hudText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    Korl_Gfx_Batch*const hudText2 = korl_gfx_createBatchText(allocatorHeapStack, L"test-assets/lulusma/Lulusma-x3oGK.otf", L"THE QUICK, BROWN FOX JUMPED OVER THE LAZY DOG!", 32.f);
+    Korl_Gfx_Batch*const hudText2 = korl_gfx_createBatchText(allocatorHeapStack, NULL, L"THE QUICK, BROWN FOX JUMPED OVER THE LAZY DOG!", 32.f);
     korl_gfx_batchSetPosition(hudText2, (Korl_Vulkan_Position){-350, -64, 0});
     korl_gfx_batch(hudText2, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
 }

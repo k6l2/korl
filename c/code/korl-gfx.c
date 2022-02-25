@@ -37,12 +37,12 @@ korl_internal bool _korl_gfx_isVisibleCharacter(wchar_t c)
  * , bottom-right
  * , top-right
  * , top-left ] */
-korl_internal void _korl_gfx_textLazyGenerateMesh(Korl_Gfx_Batch*const batch)
+korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     if(!batch->_assetNameFont || batch->_fontTextureHandle)
         return;
-    Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags);
     if(!assetDataFont.data)
         return;
 #if 0 /* some thoughts on ways to store/manage glyph cache data */
@@ -202,16 +202,15 @@ korl_internal void korl_gfx_initialize(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     korl_memory_nullify(context, sizeof(*context));
-    context->allocator = korl_memory_createAllocatorLinear(korl_math_megabytes(2));
+    context->allocator = korl_memory_createAllocatorLinear(korl_math_megabytes(4));
 }
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
-    result.type                                    = KORL_GFX_CAMERA_TYPE_PERSPECTIVE;
     result.position                                = position;
     result.target                                  = target;
-    result.viewportScissorRatioPosition            = (Korl_Math_V2f32){.xy = {0, 0}};
-    result.viewportScissorRatioSize                = (Korl_Math_V2f32){.xy = {1, 1}};
+    result._viewportScissorPosition                = (Korl_Math_V2f32){.xy = {0, 0}};
+    result._viewportScissorSize                    = (Korl_Math_V2f32){.xy = {1, 1}};
     result.subCamera.perspective.clipNear          = clipNear;
     result.subCamera.perspective.clipFar           = clipFar;
     result.subCamera.perspective.fovHorizonDegrees = fovHorizonDegrees;
@@ -223,8 +222,8 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrtho(f32 clipDepth)
     result.type                                = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC;
     result.position                            = KORL_MATH_V3F32_ZERO;
     result.target                              = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
-    result.viewportScissorRatioPosition        = (Korl_Math_V2f32){.xy = {0, 0}};
-    result.viewportScissorRatioSize            = (Korl_Math_V2f32){.xy = {1, 1}};
+    result._viewportScissorPosition            = (Korl_Math_V2f32){.xy = {0, 0}};
+    result._viewportScissorSize                = (Korl_Math_V2f32){.xy = {1, 1}};
     result.subCamera.orthographic.clipDepth    = clipDepth;
     result.subCamera.orthographic.originAnchor = (Korl_Math_V2f32){.xy = {0.5f, 0.5f}};
     return result;
@@ -235,8 +234,8 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHei
     result.type                                           = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
     result.position                                       = KORL_MATH_V3F32_ZERO;
     result.target                                         = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
-    result.viewportScissorRatioPosition                   = (Korl_Math_V2f32){.xy = {0, 0}};
-    result.viewportScissorRatioSize                       = (Korl_Math_V2f32){.xy = {1, 1}};
+    result._viewportScissorPosition                       = (Korl_Math_V2f32){.xy = {0, 0}};
+    result._viewportScissorSize                           = (Korl_Math_V2f32){.xy = {1, 1}};
     result.subCamera.orthographicFixedHeight.fixedHeight  = fixedHeight;
     result.subCamera.orthographicFixedHeight.clipDepth    = clipDepth;
     result.subCamera.orthographicFixedHeight.originAnchor = (Korl_Math_V2f32){.xy = {0.5f, 0.5f}};
@@ -255,14 +254,27 @@ korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const c
 korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera)
 {
     const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
-    korl_assert(camera.viewportScissorRatioPosition.xy.x >= 0 && camera.viewportScissorRatioPosition.xy.x <= 1);
-    korl_assert(camera.viewportScissorRatioPosition.xy.y >= 0 && camera.viewportScissorRatioPosition.xy.y <= 1);
-    korl_assert(camera.viewportScissorRatioSize.xy.x >= 0 && camera.viewportScissorRatioSize.xy.x <= 1);
-    korl_assert(camera.viewportScissorRatioSize.xy.y >= 0 && camera.viewportScissorRatioSize.xy.y <= 1);
-    korl_vulkan_setScissor(korl_math_round_f32_to_u32(camera.viewportScissorRatioPosition.xy.x * swapchainSize.xy.x),
-                           korl_math_round_f32_to_u32(camera.viewportScissorRatioPosition.xy.y * swapchainSize.xy.y),
-                           korl_math_round_f32_to_u32(camera.viewportScissorRatioSize.xy.x * swapchainSize.xy.x), 
-                           korl_math_round_f32_to_u32(camera.viewportScissorRatioSize.xy.y * swapchainSize.xy.y));
+    switch(camera._scissorType)
+    {
+    case KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO:{
+        korl_assert(camera._viewportScissorPosition.xy.x >= 0 && camera._viewportScissorPosition.xy.x <= 1);
+        korl_assert(camera._viewportScissorPosition.xy.y >= 0 && camera._viewportScissorPosition.xy.y <= 1);
+        korl_assert(camera._viewportScissorSize.xy.x >= 0 && camera._viewportScissorSize.xy.x <= 1);
+        korl_assert(camera._viewportScissorSize.xy.y >= 0 && camera._viewportScissorSize.xy.y <= 1);
+        korl_vulkan_setScissor(korl_math_round_f32_to_u32(camera._viewportScissorPosition.xy.x * swapchainSize.xy.x), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorPosition.xy.y * swapchainSize.xy.y), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorSize.xy.x * swapchainSize.xy.x), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorSize.xy.y * swapchainSize.xy.y));
+        break;}
+    case KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE:{
+        korl_assert(camera._viewportScissorPosition.xy.x >= 0);
+        korl_assert(camera._viewportScissorPosition.xy.y >= 0);
+        korl_vulkan_setScissor(korl_math_round_f32_to_u32(camera._viewportScissorPosition.xy.x), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorPosition.xy.y), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorSize.xy.x), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorSize.xy.y));
+        break;}
+    }
     switch(camera.type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
@@ -279,12 +291,33 @@ korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera)
         }break;
     }
 }
+korl_internal void korl_gfx_cameraSetScissor(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
+{
+    f32 x2 = x + sizeX;
+    f32 y2 = y + sizeY;
+    if(x < 0) x = 0;
+    if(y < 0) y = 0;
+    if(x2 < 0) x2 = 0;
+    if(y2 < 0) y2 = 0;
+    context->_viewportScissorPosition.xy.x = x;
+    context->_viewportScissorPosition.xy.y = y;
+    context->_viewportScissorSize.xy.x     = x2 - x;
+    context->_viewportScissorSize.xy.y     = y2 - y;
+    context->_scissorType                  = KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE;
+}
 korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
 {
-    context->viewportScissorRatioPosition.xy.x = viewportRatioX;
-    context->viewportScissorRatioPosition.xy.y = viewportRatioY;
-    context->viewportScissorRatioSize.xy.x     = viewportRatioWidth;
-    context->viewportScissorRatioSize.xy.y     = viewportRatioHeight;
+    f32 x2 = viewportRatioX + viewportRatioWidth;
+    f32 y2 = viewportRatioY + viewportRatioHeight;
+    if(viewportRatioX < 0) viewportRatioX = 0;
+    if(viewportRatioY < 0) viewportRatioY = 0;
+    if(x2 < 0) x2 = 0;
+    if(y2 < 0) y2 = 0;
+    context->_viewportScissorPosition.xy.x = viewportRatioX;
+    context->_viewportScissorPosition.xy.y = viewportRatioY;
+    context->_viewportScissorSize.xy.x     = x2 - viewportRatioX;
+    context->_viewportScissorSize.xy.y     = y2 - viewportRatioY;
+    context->_scissorType                  = KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO;
 }
 korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
 {
@@ -306,7 +339,7 @@ korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const con
 }
 korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
 {
-    _korl_gfx_textLazyGenerateMesh(batch);
+    _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAGS_LAZY);
     if(batch->_vertexCount <= 0)
     {
         korl_log(WARNING, "attempted batch is empty");
@@ -442,6 +475,10 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator al
 }
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator allocator, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight)
 {
+    korl_assert(text);
+    korl_assert(textPixelHeight >= 1.f);
+    if(!assetNameFont)
+        assetNameFont = L"test-assets/lulusma/Lulusma-x3oGK.otf";
     /* calculate required amount of memory for the batch */
     const u$ assetNameFontBufferSize = korl_memory_stringSize(assetNameFont) + 1;
     const u$ assetNameFontBytes = assetNameFontBufferSize * sizeof(*assetNameFont);
@@ -497,7 +534,7 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator all
     // make an initial attempt to generate the text mesh using the font asset, 
     //  and if the asset isn't available at the moment, there is nothing we can 
     //  do about it for now except defer until a later time //
-    _korl_gfx_textLazyGenerateMesh(result);
+    _korl_gfx_textGenerateMesh(result, KORL_ASSETCACHE_GET_FLAGS_LAZY);
     /* return the batch */
     return result;
 }
@@ -523,4 +560,52 @@ korl_internal void korl_gfx_batchSetLine(Korl_Gfx_Batch*const context, u32 lineI
     context->_vertexPositions[2*lineIndex + 1] = p1;
     context->_vertexColors[2*lineIndex + 0] = color;
     context->_vertexColors[2*lineIndex + 1] = color;
+}
+korl_internal f32 korl_gfx_batchTextGetAabbSizeX(Korl_Gfx_Batch*const batchContext)
+{
+    korl_assert(batchContext->_text && batchContext->_assetNameFont);
+    _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    if(!batchContext->_fontTextureHandle)
+        return 0.f;
+    f32 minX = KORL_F32_MAX;
+    f32 maxX = KORL_F32_MIN;
+    for(u$ c = 0; c < batchContext->_vertexCount; c++)
+    {
+        minX = KORL_MATH_MIN(minX, batchContext->_vertexPositions[c].xyz.x);
+        maxX = KORL_MATH_MAX(maxX, batchContext->_vertexPositions[c].xyz.x);
+    }
+    return maxX - minX;
+}
+korl_internal f32 korl_gfx_batchTextGetAabbSizeY(Korl_Gfx_Batch*const batchContext)
+{
+    korl_assert(batchContext->_text && batchContext->_assetNameFont);
+    _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    if(!batchContext->_fontTextureHandle)
+        return 0.f;
+    f32 minY = KORL_F32_MAX;
+    f32 maxY = KORL_F32_MIN;
+    for(u$ c = 0; c < batchContext->_vertexCount; c++)
+    {
+        minY = KORL_MATH_MIN(minY, batchContext->_vertexPositions[c].xyz.y);
+        maxY = KORL_MATH_MAX(maxY, batchContext->_vertexPositions[c].xyz.y);
+    }
+    return maxY - minY;
+}
+korl_internal void korl_gfx_batchRectangleSetSize(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
+{
+    korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
+    const f32 originalSizeX = context->_vertexPositions[2].xyz.x - context->_vertexPositions[0].xyz.x;
+    const f32 originalSizeY = context->_vertexPositions[2].xyz.y - context->_vertexPositions[0].xyz.y;
+    for(u$ c = 0; c < context->_vertexCount; c++)
+    {
+        context->_vertexPositions[c].xyz.x = size.xy.x * (context->_vertexPositions[c].xyz.x / originalSizeX);
+        context->_vertexPositions[c].xyz.y = size.xy.y * (context->_vertexPositions[c].xyz.y / originalSizeY);
+    }
+}
+korl_internal void korl_gfx_batchRectangleSetColor(Korl_Gfx_Batch*const context, Korl_Vulkan_Color color)
+{
+    korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
+    korl_assert(context->_vertexColors);
+    for(u$ c = 0; c < context->_vertexCount; c++)
+        context->_vertexColors[c] = color;
 }

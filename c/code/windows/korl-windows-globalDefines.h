@@ -17,6 +17,7 @@
         #undef far // fuck you too, Microsoft!
     #endif
 #pragma warning(pop)
+#include <windowsx.h>
 /* for _T macro */
 #include <tchar.h>
 #pragma warning(push)

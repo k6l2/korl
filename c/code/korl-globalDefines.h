@@ -46,6 +46,9 @@ _STATIC_ASSERT(sizeof(u32) == 4);
 _STATIC_ASSERT(sizeof(u64) == 8);
 _STATIC_ASSERT(sizeof(f32) == 4);
 _STATIC_ASSERT(sizeof(f64) == 8);
+/* definitions for useful values of these primitive types */
+#define KORL_F32_MIN (1e-37f)
+#define KORL_F32_MAX (1e+37f)
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
 #define korl_arraySize(array) (sizeof(array) / sizeof(array[0]))
