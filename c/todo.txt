@@ -122,9 +122,9 @@
 			[x] begin API
 			[-] end API; probably able to overload this for _all_ gui elements
 			- don't handle newlines; just render the text on a single line
-		[ ] add window auto-size capability
-			[ ] add optional flags to window begin API to specify this
-			[ ] define a minimum window size to prevent creation of impossible to use windows
+		[x] add window auto-size capability
+			[x] add optional flags to window begin API to specify this
+			[x] define a minimum window size to prevent creation of impossible to use windows
 		[ ] add button gui element
 			[ ] use the same logic as the text gui element, except add a rectangle to indicate mouse interaction state
 			[ ] check if the mouse is hovering over any window from the previous frame

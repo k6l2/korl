@@ -8,6 +8,7 @@ typedef struct
 {
     const void* identifier;
     bool usedThisFrame;
+    bool isFirstFrame;
     Korl_Math_V2f32 position;// relative to the upper-left corner of the window
     Korl_Math_V2f32 size;
     u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum

@@ -98,6 +98,7 @@ korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 eps
 /** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);
 korl_internal inline f32 korl_math_abs(f32 x);
+/* V2f32 **********************************************************************/
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v);
 korl_internal f32 korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_normal(Korl_Math_V2f32 v);
@@ -105,6 +106,9 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, f32 scalar);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+/* V3f32 **********************************************************************/
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);
@@ -114,17 +118,20 @@ korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl
 korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar);
+/* V4f32 **********************************************************************/
 korl_internal f32 korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v);
 korl_internal f32 korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v);
 korl_internal Korl_Math_V4f32 korl_math_v4f32_normal(Korl_Math_V4f32 v);
 korl_internal Korl_Math_V4f32 korl_math_v4f32_normalKnownMagnitude(Korl_Math_V4f32 v, f32 magnitude);
 korl_internal f32 korl_math_v4f32_dot(const Korl_Math_V4f32*const vA, const Korl_Math_V4f32*const vB);
+/* Quaternion *****************************************************************/
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q);
 korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized);
 korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized);
+/* M4f32 **********************************************************************/
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation);
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vTranslation);
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vScale, Korl_Math_V3f32 vTranslation);

@@ -96,6 +96,18 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, 
     v.elements[1] *= scalar;
     return v;
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    vA.elements[0] = KORL_MATH_MIN(vA.elements[0], vB.elements[0]);
+    vA.elements[1] = KORL_MATH_MIN(vA.elements[1], vB.elements[1]);
+    return vA;
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    vA.elements[0] = KORL_MATH_MAX(vA.elements[0], vB.elements[0]);
+    vA.elements[1] = KORL_MATH_MAX(vA.elements[1], vB.elements[1]);
+    return vA;
+}
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {
     return sqrtf(korl_math_v3f32_magnitudeSquared(v));

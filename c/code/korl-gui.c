@@ -38,9 +38,11 @@ korl_internal void korl_gui_windowBegin(const wchar_t* identifier, Korl_Gui_Wind
                                                  (Korl_Math_V2f32){ 32.f, -32.f });
     korl_assert(!KORL_MEMORY_POOL_ISFULL(context->windows));
     _Korl_Gui_Window*const newWindow = KORL_MEMORY_POOL_ADD(context->windows);
-    newWindow->identifier = identifier;
-    newWindow->position   = nextWindowPosition;
-    newWindow->size       = (Korl_Math_V2f32){ 128.f, 128.f };
+    korl_memory_nullify(newWindow, sizeof(*newWindow));
+    newWindow->identifier   = identifier;
+    newWindow->position     = nextWindowPosition;
+    newWindow->size         = (Korl_Math_V2f32){ 128.f, 128.f };
+    newWindow->isFirstFrame = true;
     context->currentWindowIndex = korl_checkCast_u$_to_u8(KORL_MEMORY_POOL_SIZE(context->windows) - 1);
 done_currentWindowIndexValid:
     context->windows[context->currentWindowIndex].usedThisFrame = true;
@@ -113,6 +115,51 @@ korl_internal void korl_gui_frameEnd(void)
             windowColor   = context->style.colorWindowActive;
             titleBarColor = context->style.colorTitleBarActive;
         }
+        if(window->isFirstFrame || (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE))
+        {
+            window->isFirstFrame = false;
+            /* iterate over all this window's widgets, obtaining their AABBs & 
+                accumulating their geometry to determine how big the window 
+                needs to be */
+            /** @abstract-widget-iteration */
+            Korl_Math_V2f32 widgetCursor = korl_math_v2f32_subtract(window->position, (Korl_Math_V2f32){.xy.x = 0, .xy.y = context->style.windowTitleBarPixelSizeY});
+            Korl_Math_V2f32 contentAabbMin = window->position;
+            Korl_Math_V2f32 contentAabbMax = window->position;
+            for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
+            {
+                _Korl_Gui_Widget*const widget = &context->widgets[j];
+                if(widget->parentWindowIdentifier != window->identifier)
+                    continue;
+                widgetCursor.xy.y -= context->style.widgetSpacingY;
+                switch(widget->type)
+                {
+                case KORL_GUI_WIDGET_TYPE_TEXT:{
+                    Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY);
+                    const f32 batchTextAabbSizeX = korl_gfx_batchTextGetAabbSizeX(batchText);
+                    const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
+                    const Korl_Math_V2f32 batchTextAabbMin = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x =                  0, .xy.y = batchTextAabbSizeY});
+                    const Korl_Math_V2f32 batchTextAabbMax = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){.xy.x = batchTextAabbSizeX, .xy.y =                  0});
+                    contentAabbMin = korl_math_v2f32_min(contentAabbMin, batchTextAabbMin);
+                    contentAabbMax = korl_math_v2f32_max(contentAabbMax, batchTextAabbMax);
+                    widgetCursor.xy.y -= batchTextAabbSizeY;
+                    break;}
+                }
+            }
+            /* take the AABB of the window's title bar into account as well */
+            if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
+            {
+                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY);
+                contentAabbMax.xy.x = KORL_MATH_MAX(contentAabbMax.xy.x, window->position.xy.x + korl_gfx_batchTextGetAabbSizeX(batchWindowTitleText));
+            }
+            /* size the window based on the above metrics */
+            window->size.xy.x = contentAabbMax.xy.x - contentAabbMin.xy.x;
+            window->size.xy.y = contentAabbMax.xy.y - contentAabbMin.xy.y;
+            /* prevent the window from being too small */
+            if(window->size.xy.y < context->style.windowTitleBarPixelSizeY)
+                window->size.xy.y = context->style.windowTitleBarPixelSizeY;
+            if(window->size.xy.x < context->style.windowTitleBarPixelSizeY)
+                window->size.xy.x = context->style.windowTitleBarPixelSizeY;
+        }
         korl_gfx_cameraSetScissor(&guiCamera, 
                                   window->position.xy.x, 
                                  -window->position.xy.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/, 
@@ -141,13 +188,14 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         }
         /* render all this window's widgets within the window panel */
+        /** @abstract-widget-iteration */
         Korl_Math_V2f32 widgetCursor = korl_math_v2f32_subtract(window->position, (Korl_Math_V2f32){.xy.x = 0, .xy.y = context->style.windowTitleBarPixelSizeY});
         for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
         {
-            widgetCursor.xy.y -= context->style.widgetSpacingY;
             _Korl_Gui_Widget*const widget = &context->widgets[j];
             if(widget->parentWindowIdentifier != window->identifier)
                 continue;
+            widgetCursor.xy.y -= context->style.widgetSpacingY;
             switch(widget->type)
             {
             case KORL_GUI_WIDGET_TYPE_TEXT:{

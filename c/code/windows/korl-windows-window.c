@@ -170,8 +170,8 @@ korl_internal void korl_windows_window_loop(void)
         }
         if(quit)
             break;
-        korl_gui_frameBegin();
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
+        korl_gui_frameBegin();
         _korl_windows_window_step(allocatorHeapStack);
         korl_gui_frameEnd();
         korl_vulkan_frameEnd();
