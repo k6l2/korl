@@ -75,4 +75,5 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s);
 korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize);
 korl_internal void korl_memory_nullify(void*const p, size_t bytes);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
+korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_Allocator allocator, const wchar_t* format, va_list vaList);
 korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxBytes);

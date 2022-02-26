@@ -10,4 +10,5 @@ korl_internal void korl_gui_windowEnd(void);
 /** Prepare a new GUI batch for the current application frame.  The user _must_ 
  * call \c korl_gui_frameEnd after each call to \c korl_gui_frameBegin . */
 korl_internal void korl_gui_frameBegin(void);
-korl_internal void korl_gui_frameEnd(Korl_Memory_Allocator allocatorStack);
+korl_internal void korl_gui_frameEnd(void);
+korl_internal void korl_gui_widgetTextFormat(const wchar_t* textFormat, ...);

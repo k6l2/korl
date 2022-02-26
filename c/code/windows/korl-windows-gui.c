@@ -32,7 +32,7 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             context->isMouseDown = true;
             context->mouseDownWindowOffset = korl_math_v2f32_subtract((Korl_Math_V2f32){ korl_checkCast_i$_to_f32(mouseX)
                                                                                        , korl_checkCast_i$_to_f32(mouseY) }, 
-                                                                      &window->position);
+                                                                      window->position);
             /* bring this window to the "front" & activate it, while maintaining 
                 the order of the existing windows */
             _Korl_Gui_Window temp = context->windows[w];
@@ -75,7 +75,7 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             break;
         context->windows[KORL_MEMORY_POOL_SIZE(context->windows) - 1].position = korl_math_v2f32_subtract((Korl_Math_V2f32){ korl_checkCast_i$_to_f32(mouseX)
                                                                                                                            , korl_checkCast_i$_to_f32(mouseY) }, 
-                                                                                                          &context->mouseDownWindowOffset);
+                                                                                                          context->mouseDownWindowOffset);
         break;}
 #if 0
     /*case WM_LBUTTONDBLCLK:*/

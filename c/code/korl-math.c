@@ -84,10 +84,10 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_
     vA.elements[1] += vB.elements[1];
     return vA;
 }
-korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, const Korl_Math_V2f32*const vB)
+korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
-    vA.elements[0] -= vB->elements[0];
-    vA.elements[1] -= vB->elements[1];
+    vA.elements[0] -= vB.elements[0];
+    vA.elements[1] -= vB.elements[1];
     return vA;
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, f32 scalar)
@@ -144,11 +144,11 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_
     vA.elements[2] += vB.elements[2];
     return vA;
 }
-korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, const Korl_Math_V3f32*const vB)
+korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
-    vA.elements[0] -= vB->elements[0];
-    vA.elements[1] -= vB->elements[1];
-    vA.elements[2] -= vB->elements[2];
+    vA.elements[0] -= vB.elements[0];
+    vA.elements[1] -= vB.elements[1];
+    vA.elements[2] -= vB.elements[2];
     return vA;
 }
 korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar)
@@ -384,7 +384,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
         of the view matrix: https://www.3dgep.com/understanding-the-view-matrix/ */
     /* our camera eye-space will be left-handed, with the camera looking down 
         the +Z axis, and +Y being UP */
-    const Korl_Math_V3f32 cameraZ = korl_math_v3f32_normal(korl_math_v3f32_subtract(*positionTarget, positionEye));
+    const Korl_Math_V3f32 cameraZ = korl_math_v3f32_normal(korl_math_v3f32_subtract(*positionTarget, *positionEye));
     const Korl_Math_V3f32 cameraX = korl_math_v3f32_cross(&cameraZ, worldUpNormal);
     const Korl_Math_V3f32 cameraY = korl_math_v3f32_cross(&cameraZ, &cameraX);
     /* the view matrix is simply the inverse of the camera transform, and since 

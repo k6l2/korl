@@ -118,9 +118,9 @@
 			[x] use different color for title bar on focused windows
 			[x] add optional flags to window begin API to choose whether or not to use a title bar
 		[x] prevent windows that don't have a title bar from ever leaving the application viewport
-		[ ] add text gui element
-			[ ] begin API
-			[ ] end API; probably able to overload this for _all_ gui elements
+		[x] add text gui element
+			[x] begin API
+			[-] end API; probably able to overload this for _all_ gui elements
 			- don't handle newlines; just render the text on a single line
 		[ ] add window auto-size capability
 			[ ] add optional flags to window begin API to specify this
@@ -150,8 +150,10 @@
 			[ ] onRelease for the collapse button: (only if mouse cursor is still in the button) toggle the collapse state for the window
 		[ ] add variadic formatted text to the text gui element
 		[ ] add horizontal scroll bars for windows
+			[ ] [shift]+mouse_scroll controls (only when hovering over this window)
 			- test with really long text gui elements
 		[ ] add vertical scroll bars for windows
+			[ ] mouse_scroll controls (only when hovering over this window)
 			- test with a window filled with a large # of text gui elements
 		[ ] add ability to close windows w/ title bar
 			[ ] draw close icon in upper-right
@@ -159,6 +161,20 @@
 			[ ] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[ ] onRelease for close button: (only if mouse cursor is still in the button) close the window
 		[ ] draw outline around windows to make it easier to distinguish between overlapping windows
+[ ] change KORL application subsystem from CONSOLE=>WINDOWS
+	[ ] dump KORL logs to a file
+		[ ] in development builds, immediately dump each log into the file without caring about file size
+		[ ] in release builds, accumulate logs in a finite-sized circular buffer, and write them to a file when the program ends
+		[ ] in either case, this process needs to be THREAD-SAFE!
+	[ ] use korl-gui to display release build logs in real-time
+		[ ] stop accumulating logs when the mouse hovers over the console
+		[ ] implement text selection
+		[ ] implement clipboard support (auto-copy text once it is selected)
+		[ ] simplify: get rid of the log meta data tags
+			[ ] change log line color based on log level
+			[ ] click on log line to open the file which emitted it in a text editor (& preferably jump to the line number; is this possible?)
+			[ ] change timestamp to be a millisend delta since the previous log timestamp
+				[ ] only display timestamp when mouse is hovering over this log line?...
 [ ] Windows: assume manual control over DPI-awareness
 [ ] gui: gracefully scale graphics based on renderer DPI scale
 [ ] keyboard input

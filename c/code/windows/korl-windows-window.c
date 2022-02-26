@@ -107,6 +107,9 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
         initialized = true;
     }
     korl_gui_windowBegin(L"first window", KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
+    korl_gui_widgetTextFormat(L"%s", "Hello, sir! Can you spare a breb? o^o");
+    korl_gui_widgetTextFormat(L"PLS, sir! I only wish for a breb...");
+    korl_gui_widgetTextFormat(L"PLEEZ!");
     korl_gui_windowEnd();
     korl_gui_windowBegin(L"second window", KORL_GUI_WINDOW_STYLE_FLAG_NONE);
     korl_gui_windowEnd();
@@ -170,7 +173,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_gui_frameBegin();
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         _korl_windows_window_step(allocatorHeapStack);
-        korl_gui_frameEnd(allocatorHeapStack);
+        korl_gui_frameEnd();
         korl_vulkan_frameEnd();
     }
 }

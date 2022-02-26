@@ -97,6 +97,15 @@ korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
             return false;
     return true;
 }
+korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_Allocator allocator, const wchar_t* format, va_list vaList)
+{
+    const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
+    korl_assert(bufferSize > 0);
+    wchar_t*const result = (wchar_t*)allocator.callbackAllocate(allocator.userData, bufferSize * sizeof(wchar_t), __FILEW__, __LINE__);
+    const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
+    korl_assert(charactersWritten == bufferSize - 1);
+    return result;
+}
 typedef struct _Korl_Memory_AllocatorLinear
 {
     /** @redundant: technically we don't need this, since we can just call 

@@ -247,7 +247,7 @@ korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const c
     const Korl_Math_V3f32 newTargetOffset = 
         korl_math_quaternion_transformV3f32(
             korl_math_quaternion_fromAxisRadians(axisOfRotation, radians, false), 
-            korl_math_v3f32_subtract(context->position, &context->target), 
+            korl_math_v3f32_subtract(context->position, context->target), 
             true);
     context->position = korl_math_v3f32_add(context->target, newTargetOffset);
 }
