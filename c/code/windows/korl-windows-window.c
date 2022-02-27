@@ -101,17 +101,31 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
 {
     korl_shared_variable bool initialized = false;
     korl_shared_variable Korl_Gfx_Camera camera3d;
+    korl_shared_variable bool buttonClicked = false;
     if(!initialized)
     {
         camera3d = korl_gfx_createCameraFov(90.f, 0.001f, 10.f, (Korl_Vulkan_Position){1, 0, 1}, KORL_MATH_V3F32_ZERO);
         initialized = true;
     }
+    u8 guiButtonActuations;
     korl_gui_windowBegin(L"first window", KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-    korl_gui_widgetTextFormat(L"%s", "Hello, sir! Can you spare a breb? o^o");
-    korl_gui_widgetTextFormat(L"PLS, sir! I only wish for a breb...");
-    korl_gui_widgetTextFormat(L"PLEEZ!");
+        korl_gui_widgetTextFormat(L"%s", "Hello, sir! Can you spare a breb? o^o");
+        korl_gui_widgetTextFormat(L"PLS, sir! I only wish for a breb...");
+        korl_gui_widgetTextFormat(L"PLEEZ!");
     korl_gui_windowEnd();
-    korl_gui_windowBegin(L"second window", KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+    korl_gui_windowBegin(L"second window", KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE);
+        if(guiButtonActuations = korl_gui_widgetButtonFormat(L"Hey, kid!  Click me!"))
+        {
+            korl_log(INFO, "You clicked the button %u time(s)!", guiButtonActuations);
+            buttonClicked = !buttonClicked;
+        }
+        if(buttonClicked)
+        {
+            korl_gui_widgetTextFormat(L"YO, WHat the fuuuuuuu-?");
+            korl_gui_widgetTextFormat(L"--------------------------------");
+            korl_gui_widgetTextFormat(L"'-'");
+            korl_gui_widgetTextFormat(L"YOU WANT SOME PENIS ENLARGEMENT PILLS?!");
+        }
     korl_gui_windowEnd();
     korl_gui_windowBegin(L"third window - the quick brown fox jumps over the lazy dog", KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
     korl_gui_windowEnd();

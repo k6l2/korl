@@ -125,18 +125,19 @@
 		[x] add window auto-size capability
 			[x] add optional flags to window begin API to specify this
 			[x] define a minimum window size to prevent creation of impossible to use windows
-		[ ] add button gui element
-			[ ] use the same logic as the text gui element, except add a rectangle to indicate mouse interaction state
-			[ ] check if the mouse is hovering over any window from the previous frame
+		[x] add button gui element
+			[x] use the same logic as the text gui element, except add a rectangle to indicate mouse interaction state
+			[x] check if the mouse is hovering over any window from the previous frame
 				- perfrom this check from front->back to maintain window Z-order
-			[ ] hovered over a window? => propogate this event to the gui element unique to this location
+			[x] hovered over a window? => propogate this event to the gui element unique to this location
 				- for now, there is no such concept as a GUI DAG (gui elements containing other gui elements), so it's okay to just assume that each gui element in this window occupies a unique set of window coordinates
-			[ ] onHovered for button gui element: highlight the button color
-			[ ] onPressed for button gui element: (only if mouse cursor is still in the button) highlight the button a different color
-			[ ] onRelease for button gui element: (only if mouse cursor is still in the button) set the state of the button to CLICKED
-			[ ] at the end of each frame
-				[ ] reset all the button guis PRESSED states if the mouse button is no longer pressed
-				[ ] reset all the button guis CLICKED states
+			[x] onHovered for button gui element: highlight the button color
+			[x] onPressed for button gui element: (only if mouse cursor is still in the button) highlight the button a different color
+			[x] onRelease for button gui element: (only if mouse cursor is still in the button) set the state of the button to CLICKED
+				- after considering this, I am going to accumulate button actuations in a counter instead of just a simple boolean state, since we are processing event-driven inputs; this allows us to process clicks CORRECTLY in the even that our frames are lagging for some reason
+			[x] at the end of each frame
+				[x] reset all the button guis PRESSED states if the mouse button is no longer pressed
+				[x] reset all the button guis CLICKED states
 		[ ] add ability for windows (without auto-size style) to be resized
 			[ ] onHovered near the window border: highlight the set of borders to be resized
 			[ ] onPressed near the window border: highlight the set of borders to be resized in a different color

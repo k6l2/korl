@@ -4,6 +4,128 @@
 #include "korl-assert.h"
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
+korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    korl_assert(context->frameSequenceCounter == 1);
+    korl_assert(context->currentWindowIndex < KORL_MEMORY_POOL_SIZE(context->windows));
+    Korl_MemoryPool_Size widgetIndex = korl_arraySize(context->widgets);
+    /* check to see if this widget's identifier set is already registered */
+    for(Korl_MemoryPool_Size w = 0; w < KORL_MEMORY_POOL_SIZE(context->widgets); ++w)
+    {
+        if(    context->widgets[w].parentWindowIdentifier == context->windows[context->currentWindowIndex].identifier
+            && context->widgets[w].identifier == identifier)
+        {
+            widgetIndex = w;
+            goto widgetIndexValid;
+        }
+    }
+    /* otherwise, allocate a new widget */
+    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->widgets));
+    widgetIndex = KORL_MEMORY_POOL_SIZE(context->widgets);
+    KORL_MEMORY_POOL_ADD(context->widgets);
+    _Korl_Gui_Widget* widget = &context->widgets[widgetIndex];
+    korl_memory_nullify(widget, sizeof(*widget));
+    widget->identifier             = identifier;
+    widget->parentWindowIdentifier = context->windows[context->currentWindowIndex].identifier;
+    widget->type                   = widgetType;
+widgetIndexValid:
+    widget = &context->widgets[widgetIndex];
+    korl_assert(widget->type == widgetType);
+    widget->usedThisFrame = true;
+    /** @todo: do we need to reassign the order of the widgets for the current window?  
+     * I wont bother with this until I learn a little bit about API usage... */
+    return widget;
+}
+korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window, 
+                                                   Korl_Math_V2f32*const out_contentAabbMin, Korl_Math_V2f32*const out_contentAabbMax, 
+                                                   bool batchGraphics)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    Korl_Math_V2f32 widgetCursor = window->position;
+    if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
+        widgetCursor = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x = 0, .xy.y = context->style.windowTitleBarPixelSizeY});
+    for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
+    {
+        _Korl_Gui_Widget*const widget = &context->widgets[j];
+        if(widget->parentWindowIdentifier != window->identifier)
+            continue;
+        widgetCursor.xy.y -= context->style.widgetSpacingY;
+        switch(widget->type)
+        {
+        case KORL_GUI_WIDGET_TYPE_TEXT:{
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY);
+            const f32 batchTextAabbSizeX = korl_gfx_batchTextGetAabbSizeX(batchText);
+            const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
+            widget->cachedAabbMin = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x =                  0, .xy.y = batchTextAabbSizeY});
+            widget->cachedAabbMax = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){.xy.x = batchTextAabbSizeX, .xy.y =                  0});
+            widget->cachedIsInteractive = false;
+            if(batchGraphics)
+            {
+                /** @robustness: instead of using the AABB of this text batch, 
+                 * we should be using the font's metrics!  Probably??  
+                 * Different text batches of the same font will yield different 
+                 * sizes here, which will cause widget sizes to vary... */
+                korl_gfx_batchSetPosition(batchText, (Korl_Vulkan_Position){ .xyz.x = widgetCursor.xy.x
+                                                                           , .xyz.y = widgetCursor.xy.y - batchTextAabbSizeY
+                                                                           , .xyz.z = 0.f });
+                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+            }
+            break;}
+        case KORL_GUI_WIDGET_TYPE_BUTTON:{
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.button.displayText, context->style.windowTextPixelSizeY);
+            const f32 batchTextAabbSizeX = korl_gfx_batchTextGetAabbSizeX(batchText);
+            const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
+            const f32 buttonAabbSizeX = batchTextAabbSizeX + context->style.widgetButtonLabelMargin * 2.f;
+            const f32 buttonAabbSizeY = batchTextAabbSizeY + context->style.widgetButtonLabelMargin * 2.f;
+            widget->cachedAabbMin = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x =               0, .xy.y = buttonAabbSizeY});
+            widget->cachedAabbMax = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){.xy.x = buttonAabbSizeX, .xy.y =               0});
+            widget->cachedIsInteractive = true;
+            if(batchGraphics)
+            {
+                Korl_Gfx_Batch*const batchButton = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
+                                                                                        (Korl_Math_V2f32){ .xy.x = buttonAabbSizeX
+                                                                                                         , .xy.y = buttonAabbSizeY}, 
+                                                                                        (Korl_Math_V2f32){.xy.x = 0.f, .xy.y = 1.f}, 
+                                                                                        context->style.colorButtonInactive);
+                korl_gfx_batchSetPosition(batchButton, (Korl_Vulkan_Position){ .xyz.x = widgetCursor.xy.x
+                                                                             , .xyz.y = widgetCursor.xy.y
+                                                                             , .xyz.z = 0.f });
+                if(    context->mouseHoverPosition.xy.x >= widget->cachedAabbMin.xy.x 
+                    && context->mouseHoverPosition.xy.x <= widget->cachedAabbMax.xy.x 
+                    && context->mouseHoverPosition.xy.y >= widget->cachedAabbMin.xy.y 
+                    && context->mouseHoverPosition.xy.y <= widget->cachedAabbMax.xy.y)
+                {
+                    if(context->isMouseDown && !context->isWindowDragged && context->identifierMouseDownWidget == widget->identifier)
+                    {
+                        korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonPressed);
+                    }
+                    else if(context->isMouseHovering && context->identifierMouseHoveredWidget == widget->identifier)
+                    {
+                        korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonActive);
+                    }
+                }
+                korl_gfx_batch(batchButton, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                /** @robustness: instead of using the AABB of this text batch, 
+                 * we should be using the font's metrics!  Probably??  
+                 * Different text batches of the same font will yield different 
+                 * sizes here, which will cause widget sizes to vary... */
+                korl_gfx_batchSetPosition(batchText, (Korl_Vulkan_Position){ .xyz.x = widgetCursor.xy.x + context->style.widgetButtonLabelMargin
+                                                                           , .xyz.y = widgetCursor.xy.y - context->style.widgetButtonLabelMargin - batchTextAabbSizeY
+                                                                           , .xyz.z = 0.f });
+                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+            }
+            break;}
+        }
+        if(out_contentAabbMin)
+        {
+            korl_assert(out_contentAabbMax);
+            *out_contentAabbMin = korl_math_v2f32_min(*out_contentAabbMin, widget->cachedAabbMin);
+            *out_contentAabbMax = korl_math_v2f32_max(*out_contentAabbMax, widget->cachedAabbMax);
+        }
+        widgetCursor.xy.y -= widget->cachedAabbMax.xy.y - widget->cachedAabbMin.xy.y;
+    }
+}
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_nullify(&_korl_gui_context, sizeof(_korl_gui_context));
@@ -12,10 +134,14 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.colorWindowActive        = (Korl_Vulkan_Color){.rgb.r =  32, .rgb.g =  32, .rgb.b =  32};
     _korl_gui_context.style.colorTitleBar            = (Korl_Vulkan_Color){.rgb.r =   0, .rgb.g =  32, .rgb.b =   0};
     _korl_gui_context.style.colorTitleBarActive      = (Korl_Vulkan_Color){.rgb.r =  60, .rgb.g = 125, .rgb.b =  50};
+    _korl_gui_context.style.colorButtonInactive      = (Korl_Vulkan_Color){.rgb.r =   0, .rgb.g =  32, .rgb.b =   0};
+    _korl_gui_context.style.colorButtonActive        = (Korl_Vulkan_Color){.rgb.r =  60, .rgb.g = 125, .rgb.b =  50};
+    _korl_gui_context.style.colorButtonPressed       = (Korl_Vulkan_Color){.rgb.r =   0, .rgb.g =   8, .rgb.b =   0};
     _korl_gui_context.style.fontWindowText           = NULL;// just use the default font inside korl-gfx
     _korl_gui_context.style.windowTextPixelSizeY     = 16.f;
     _korl_gui_context.style.windowTitleBarPixelSizeY = 20.f;
     _korl_gui_context.style.widgetSpacingY           = 3.f;
+    _korl_gui_context.style.widgetButtonLabelMargin  = 4.f;
 }
 korl_internal void korl_gui_windowBegin(const wchar_t* identifier, Korl_Gui_Window_Style_Flags styleFlags)
 {
@@ -122,29 +248,9 @@ korl_internal void korl_gui_frameEnd(void)
                 accumulating their geometry to determine how big the window 
                 needs to be */
             /** @abstract-widget-iteration */
-            Korl_Math_V2f32 widgetCursor = korl_math_v2f32_subtract(window->position, (Korl_Math_V2f32){.xy.x = 0, .xy.y = context->style.windowTitleBarPixelSizeY});
             Korl_Math_V2f32 contentAabbMin = window->position;
             Korl_Math_V2f32 contentAabbMax = window->position;
-            for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
-            {
-                _Korl_Gui_Widget*const widget = &context->widgets[j];
-                if(widget->parentWindowIdentifier != window->identifier)
-                    continue;
-                widgetCursor.xy.y -= context->style.widgetSpacingY;
-                switch(widget->type)
-                {
-                case KORL_GUI_WIDGET_TYPE_TEXT:{
-                    Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY);
-                    const f32 batchTextAabbSizeX = korl_gfx_batchTextGetAabbSizeX(batchText);
-                    const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
-                    const Korl_Math_V2f32 batchTextAabbMin = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x =                  0, .xy.y = batchTextAabbSizeY});
-                    const Korl_Math_V2f32 batchTextAabbMax = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){.xy.x = batchTextAabbSizeX, .xy.y =                  0});
-                    contentAabbMin = korl_math_v2f32_min(contentAabbMin, batchTextAabbMin);
-                    contentAabbMax = korl_math_v2f32_max(contentAabbMax, batchTextAabbMax);
-                    widgetCursor.xy.y -= batchTextAabbSizeY;
-                    break;}
-                }
-            }
+            _korl_gui_processWidgetGraphics(window, &contentAabbMin, &contentAabbMax, false);
             /* take the AABB of the window's title bar into account as well */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
@@ -188,67 +294,28 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         }
         /* render all this window's widgets within the window panel */
-        /** @abstract-widget-iteration */
-        Korl_Math_V2f32 widgetCursor = korl_math_v2f32_subtract(window->position, (Korl_Math_V2f32){.xy.x = 0, .xy.y = context->style.windowTitleBarPixelSizeY});
-        for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
-        {
-            _Korl_Gui_Widget*const widget = &context->widgets[j];
-            if(widget->parentWindowIdentifier != window->identifier)
-                continue;
-            widgetCursor.xy.y -= context->style.widgetSpacingY;
-            switch(widget->type)
-            {
-            case KORL_GUI_WIDGET_TYPE_TEXT:{
-                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY);
-                const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
-                /** @robustness: instead of using the AABB of this text batch, 
-                 * we should be using the font's metrics!  Probably??  
-                 * Different text batches of the same font will yield different 
-                 * sizes here, which will cause widget sizes to vary... */
-                korl_gfx_batchSetPosition(batchText, (Korl_Vulkan_Position){ .xyz.x = widgetCursor.xy.x
-                                                                           , .xyz.y = widgetCursor.xy.y - batchTextAabbSizeY
-                                                                           , .xyz.z = 0.f });
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                widgetCursor.xy.y -= batchTextAabbSizeY;
-                break;}
-            }
-        }
+        _korl_gui_processWidgetGraphics(window, NULL, NULL, true);
     }
     KORL_MEMORY_POOL_RESIZE(context->windows, windowsRemaining);
 }
 korl_internal void korl_gui_widgetTextFormat(const wchar_t* textFormat, ...)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex < KORL_MEMORY_POOL_SIZE(context->windows));
-    Korl_MemoryPool_Size widgetIndex = korl_arraySize(context->widgets);
-    /* check to see if this widget's identifier set is already registered */
-    for(Korl_MemoryPool_Size w = 0; w < KORL_MEMORY_POOL_SIZE(context->widgets); ++w)
-    {
-        if(    context->widgets[w].parentWindowIdentifier == context->windows[context->currentWindowIndex].identifier
-            && context->widgets[w].identifier == textFormat)
-        {
-            widgetIndex = w;
-            goto widgetIndexValid;
-        }
-    }
-    /* otherwise, allocate a new widget */
-    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->widgets));
-    widgetIndex = KORL_MEMORY_POOL_SIZE(context->widgets);
-    KORL_MEMORY_POOL_ADD(context->widgets);
-    korl_memory_nullify(&context->widgets[widgetIndex], sizeof(context->widgets[widgetIndex]));
-    context->widgets[widgetIndex].identifier             = textFormat;
-    context->widgets[widgetIndex].parentWindowIdentifier = context->windows[context->currentWindowIndex].identifier;
-    context->widgets[widgetIndex].type                   = KORL_GUI_WIDGET_TYPE_TEXT;
-widgetIndexValid:
-    _Korl_Gui_Widget*const widget = &context->widgets[widgetIndex];
-    korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_TEXT);
-    widget->usedThisFrame = true;
-    /** @todo: do we need to reassign the order of the widgets for the current window?  
-     * I wont bother with this until I learn a little bit about API usage... */
-    /* setup the widget with the provided formatted text string */
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT);
     va_list vaList;
     va_start(vaList, textFormat);
     widget->subType.text.displayText = korl_memory_stringFormat(context->allocatorStack, textFormat, vaList);
     va_end(vaList);
+}
+korl_internal u8 korl_gui_widgetButtonFormat(const wchar_t* textFormat, ...)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON);
+    va_list vaList;
+    va_start(vaList, textFormat);
+    widget->subType.button.displayText = korl_memory_stringFormat(context->allocatorStack, textFormat, vaList);
+    va_end(vaList);
+    const u8 resultActuationCount = widget->subType.button.actuationCount;
+    widget->subType.button.actuationCount = 0;
+    return resultActuationCount;
 }

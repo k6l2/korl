@@ -11,6 +11,16 @@ if not exist "build" (
 )
 cd "build"
 rem ----- create the command to build the EXE -----
+rem 4061: enumerator 'X' in switch of enum '<X>' is not explicitly handled by a 
+rem       case label; WHO CARES?  4062 will prevent us from not having at least 
+rem       a default case to handle these enum values, which should catch most of 
+rem       these types of bugs, assuming you write decent default case logic...  
+rem       I just don't think this warning is useful since it seems more useful 
+rem       to have the ability to switch on a subset of enum values, and dump the 
+rem       rest into the default case.
+rem 4706: assignment within conditional expression; I will leave this off until 
+rem       the day that I ever make a mistake which this would have caught
+set disableUselessWarnings=/wd4061 /wd4706
 rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)
@@ -39,7 +49,8 @@ rem treat warnings as errors
 set buildCommand=%buildCommand% /WX
 rem enable all warnings
 set buildCommand=%buildCommand% /Wall
-rem disable warnings that are not useful while debugging
+rem disable warnings that are not useful for the current configuration
+set buildCommand=%buildCommand% %disableUselessWarnings%
 set buildCommand=%buildCommand% %disableReleaseWarnings%
 set buildCommand=%buildCommand% %disableOptimizationWarnings%
 rem So... for some reason this switch completely DESTROYS compile times (nearly 

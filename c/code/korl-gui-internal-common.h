@@ -4,7 +4,7 @@
 #include "korl-math.h"
 #include "korl-memory.h"
 #include "korl-vulkan.h"
-typedef struct
+typedef struct _Korl_Gui_Window
 {
     const void* identifier;
     bool usedThisFrame;
@@ -13,14 +13,18 @@ typedef struct
     Korl_Math_V2f32 size;
     u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum
 } _Korl_Gui_Window;
-typedef struct
+typedef struct _Korl_Gui_Widget
 {
     const void* parentWindowIdentifier;
     const void* identifier;
     bool usedThisFrame;
+    Korl_Math_V2f32 cachedAabbMin;// invalid until after the next call to korl_gui_frameEnd
+    Korl_Math_V2f32 cachedAabbMax;// invalid until after the next call to korl_gui_frameEnd
+    bool cachedIsInteractive;
     enum
     {
         KORL_GUI_WIDGET_TYPE_TEXT,
+        KORL_GUI_WIDGET_TYPE_BUTTON,
     } type;
     union
     {
@@ -28,20 +32,30 @@ typedef struct
         {
             const wchar_t* displayText;
         } text;
+        struct
+        {
+            const wchar_t* displayText;
+            u8 actuationCount;
+        } button;
     } subType;
 } _Korl_Gui_Widget;
-typedef struct
+typedef struct _Korl_Gui_Context
 {
+    Korl_Memory_Allocator allocatorStack;
     struct
     {
         Korl_Vulkan_Color colorWindow;
         Korl_Vulkan_Color colorWindowActive;
         Korl_Vulkan_Color colorTitleBar;
         Korl_Vulkan_Color colorTitleBarActive;
+        Korl_Vulkan_Color colorButtonInactive;
+        Korl_Vulkan_Color colorButtonActive;
+        Korl_Vulkan_Color colorButtonPressed;
         const wchar_t* fontWindowText;
         f32 windowTextPixelSizeY;
         f32 windowTitleBarPixelSizeY;
         f32 widgetSpacingY;
+        f32 widgetButtonLabelMargin;
     } style;
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value == korl_arraySize(windows), a new window 
@@ -59,8 +73,12 @@ typedef struct
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */
     bool isTopLevelWindowActive;
-    bool isMouseDown;// This flag is raised when we're in a "drag state".
+    bool isMouseDown;// This flag is raised when we mouse down inside a window
+    bool isWindowDragged;// only raised when we click a window outside of widgets
     Korl_Math_V2f32 mouseDownWindowOffset;
-    Korl_Memory_Allocator allocatorStack;
+    const void* identifierMouseDownWidget;
+    bool isMouseHovering;
+    const void* identifierMouseHoveredWidget;
+    Korl_Math_V2f32 mouseHoverPosition;
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;
