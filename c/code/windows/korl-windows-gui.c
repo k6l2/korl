@@ -100,21 +100,6 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             }
         }
         context->isMouseDown = false;
-        /* bind the windows to the bounds of the swapchain, such that there will 
-            always be a square of grabable geometry on the window whose 
-            dimensions equal the height of the window title bar style at minimum */
-        const Korl_Math_V2u32 swapChainSize = korl_vulkan_getSwapchainSize();
-        for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
-        {
-            if(context->windows[w].position.xy.x < -context->windows[w].size.xy.x + context->style.windowTitleBarPixelSizeY)
-                context->windows[w].position.xy.x = -context->windows[w].size.xy.x + context->style.windowTitleBarPixelSizeY;
-            if(context->windows[w].position.xy.x > swapChainSize.xy.x - context->style.windowTitleBarPixelSizeY)
-                context->windows[w].position.xy.x = swapChainSize.xy.x - context->style.windowTitleBarPixelSizeY;
-            if(context->windows[w].position.xy.y > 0)
-                context->windows[w].position.xy.y = 0;
-            if(context->windows[w].position.xy.y < -KORL_C_CAST(f32, swapChainSize.xy.y) + context->style.windowTitleBarPixelSizeY)
-                context->windows[w].position.xy.y = -KORL_C_CAST(f32, swapChainSize.xy.y) + context->style.windowTitleBarPixelSizeY;
-        }
         if(!ReleaseCapture())
             korl_logLastError("ReleaseCapture failed!");
         break;}

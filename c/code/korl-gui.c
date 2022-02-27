@@ -218,6 +218,7 @@ korl_internal void korl_gui_frameEnd(void)
     Korl_Gfx_Camera guiCamera = korl_gfx_createCameraOrtho(1.f);
     korl_gfx_cameraOrthoSetOriginAnchor(&guiCamera, 0.f, 1.f);
     Korl_MemoryPool_Size windowsRemaining = 0;
+    const Korl_Math_V2u32 swapChainSize = korl_vulkan_getSwapchainSize();
     for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->windows); ++i)
     {
         _Korl_Gui_Window*const window = &context->windows[i];
@@ -266,6 +267,18 @@ korl_internal void korl_gui_frameEnd(void)
             if(window->size.xy.x < context->style.windowTitleBarPixelSizeY)
                 window->size.xy.x = context->style.windowTitleBarPixelSizeY;
         }
+        /* bind the windows to the bounds of the swapchain, such that there will 
+            always be a square of grabable geometry on the window whose 
+            dimensions equal the height of the window title bar style at minimum */
+        if(window->position.xy.x < -window->size.xy.x + context->style.windowTitleBarPixelSizeY)
+            window->position.xy.x = -window->size.xy.x + context->style.windowTitleBarPixelSizeY;
+        if(window->position.xy.x > swapChainSize.xy.x - context->style.windowTitleBarPixelSizeY)
+            window->position.xy.x = swapChainSize.xy.x - context->style.windowTitleBarPixelSizeY;
+        if(window->position.xy.y > 0)
+            window->position.xy.y = 0;
+        if(window->position.xy.y < -KORL_C_CAST(f32, swapChainSize.xy.y) + context->style.windowTitleBarPixelSizeY)
+            window->position.xy.y = -KORL_C_CAST(f32, swapChainSize.xy.y) + context->style.windowTitleBarPixelSizeY;
+        /**/
         korl_gfx_cameraSetScissor(&guiCamera, 
                                   window->position.xy.x, 
                                  -window->position.xy.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/, 
