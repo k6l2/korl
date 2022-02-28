@@ -139,12 +139,12 @@
 			[x] at the end of each frame
 				[x] reset all the button guis PRESSED states if the mouse button is no longer pressed
 				[x] reset all the button guis CLICKED states
-		[ ] add ability for windows (without auto-size style) to be resized
+		[x] add ability for windows (without auto-size style) to be resized
 			[x] onHovered near the window border: highlight the set of borders to be resized
-			[ ] onPressed near the window border: highlight the set of borders to be resized in a different color
-				[ ] if we JUST pressed, initialize the resize state
-			[ ] onMoved (while in resize state): set the window position/size accordingly
-			[ ] obey minimum window size, as defined in the window auto-size feature
+			[x] onPressed near the window border: highlight the set of borders to be resized in a different color
+				[x] if we JUST pressed, initialize the resize state
+			[x] onMoved (while in resize state): set the window position/size accordingly
+			[x] obey minimum window size, as defined in the window auto-size feature
 		[ ] add ability for windows w/ title bar to collapse
 			[ ] draw a little icon in the upper-right corner of title bar
 			[ ] onHovered for the collapse button: highlight the button

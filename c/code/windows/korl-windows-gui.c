@@ -18,6 +18,7 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
         context->isTopLevelWindowActive    = false;
         context->isMouseDown               = false;
         context->isWindowDragged           = false;
+        context->isWindowResizing          = false;
         context->identifierMouseDownWidget = NULL;
         /* check to see if we clicked on any windows from the previous frame 
             - note that we're processing windows from front->back, since 
@@ -34,6 +35,8 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                 continue;
             context->isMouseDown     = true;
             context->isWindowDragged = true;
+            if(context->mouseHoverWindowEdgeFlags)
+                context->isWindowResizing = true;
             /* check to see if we clicked on any widgets from the previous frame */
             for(u$ wi = 0; wi < KORL_MEMORY_POOL_SIZE(context->widgets); wi++)
             {
@@ -48,7 +51,8 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                     context->mouseHoverPosition = (Korl_Math_V2f32){ korl_checkCast_i$_to_f32(mouseX)
                                                                    , korl_checkCast_i$_to_f32(mouseY) };
                     context->identifierMouseDownWidget = widget->identifier;
-                    context->isWindowDragged = false;
+                    context->isWindowDragged  = false;
+                    context->isWindowResizing = false;
                     break;
                 }
             }
@@ -114,9 +118,36 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
         if(context->isMouseDown)
         {
             if(context->isWindowDragged)
-                /* if we're click-dragging a window, update the window's new 
-                    position relative to the original mouse-down position */
-                context->windows[KORL_MEMORY_POOL_SIZE(context->windows) - 1].position = korl_math_v2f32_subtract(mousePosition, context->mouseDownWindowOffset);
+            {
+                _Korl_Gui_Window*const window = &context->windows[KORL_MEMORY_POOL_SIZE(context->windows) - 1];
+                if(context->mouseHoverWindowEdgeFlags)
+                {
+                    /* obtain the window's AABB */
+                    Korl_Math_V2f32 windowAabbMin = { window->position.xy.x
+                                                    , window->position.xy.y - window->size.xy.y };
+                    Korl_Math_V2f32 windowAabbMax = { window->position.xy.x + window->size.xy.x
+                                                    , window->position.xy.y };
+                    /* adjust the AABB values based on which edge flags we're 
+                        controlling, & ensure that the final AABB is valid */
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT)
+                        windowAabbMin.xy.x = KORL_MATH_MIN(mousePosition.xy.x, windowAabbMax.xy.x - context->style.windowTitleBarPixelSizeY);
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)
+                        windowAabbMax.xy.x = KORL_MATH_MAX(mousePosition.xy.x, windowAabbMin.xy.x + context->style.windowTitleBarPixelSizeY);
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP)
+                        windowAabbMax.xy.y = KORL_MATH_MAX(mousePosition.xy.y, windowAabbMin.xy.y + context->style.windowTitleBarPixelSizeY);
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN)
+                        windowAabbMin.xy.y = KORL_MATH_MIN(mousePosition.xy.y, windowAabbMax.xy.y - context->style.windowTitleBarPixelSizeY);
+                    /* set the window position/size based on the new AABB */
+                    window->position.xy.x = windowAabbMin.xy.x;
+                    window->position.xy.y = windowAabbMax.xy.y;
+                    window->size.xy.x = windowAabbMax.xy.x - windowAabbMin.xy.x;
+                    window->size.xy.y = windowAabbMax.xy.y - windowAabbMin.xy.y;
+                }
+                else
+                    /* if we're click-dragging a window, update the window's new 
+                        position relative to the original mouse-down position */
+                    window->position = korl_math_v2f32_subtract(mousePosition, context->mouseDownWindowOffset);
+            }
             else
                 context->mouseHoverPosition = mousePosition;
         }
@@ -159,6 +190,8 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                         && context->mouseHoverPosition.xy.x <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x )
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_RIGHT;
                 }
+                if(!(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
+                    context->mouseHoverWindowEdgeFlags = 0;
                 context->isMouseHovering = true;
                 context->mouseHoverPosition = mousePosition;
                 context->identifierMouseHoveredWindow = window->identifier;

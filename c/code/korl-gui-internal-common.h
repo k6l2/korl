@@ -84,6 +84,7 @@ typedef struct _Korl_Gui_Context
     bool isTopLevelWindowActive;
     bool isMouseDown;// This flag is raised when we mouse down inside a window
     bool isWindowDragged;// only raised when we click a window outside of widgets
+    bool isWindowResizing;// only raised when we click a window's resize edge
     Korl_Math_V2f32 mouseDownWindowOffset;
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
