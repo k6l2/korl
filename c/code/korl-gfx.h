@@ -118,6 +118,7 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator al
  */
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator allocator, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight);
 korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position);
+korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position);
 korl_internal void korl_gfx_batchSetScale(Korl_Gfx_Batch*const context, Korl_Vulkan_Position scale);
 korl_internal void korl_gfx_batchSetVertexColor(Korl_Gfx_Batch*const context, u32 vertexIndex, Korl_Vulkan_Color color);
 korl_internal void korl_gfx_batchSetLine(Korl_Gfx_Batch*const context, u32 lineIndex, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color color);

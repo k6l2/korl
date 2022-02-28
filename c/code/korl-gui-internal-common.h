@@ -4,6 +4,11 @@
 #include "korl-math.h"
 #include "korl-memory.h"
 #include "korl-vulkan.h"
+/** the edges of the window must have their own individual AABBs to allow mouse 
+ * interactions with them (window is hovered, resize windows), and this value 
+ * defines how far from the edges of each window AABB this collision region is 
+ * in both dimensions */
+korl_global_const f32 WINDOW_AABB_EDGE_THICKNESS = 6.f;
 typedef struct _Korl_Gui_Window
 {
     const void* identifier;
@@ -46,6 +51,10 @@ typedef struct _Korl_Gui_Context
     {
         Korl_Vulkan_Color colorWindow;
         Korl_Vulkan_Color colorWindowActive;
+        Korl_Vulkan_Color colorWindowBorder;
+        Korl_Vulkan_Color colorWindowBorderHovered;
+        Korl_Vulkan_Color colorWindowBorderResize;
+        Korl_Vulkan_Color colorWindowBorderActive;
         Korl_Vulkan_Color colorTitleBar;
         Korl_Vulkan_Color colorTitleBarActive;
         Korl_Vulkan_Color colorButtonInactive;
@@ -79,6 +88,14 @@ typedef struct _Korl_Gui_Context
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
     const void* identifierMouseHoveredWidget;
+    const void* identifierMouseHoveredWindow;
+    enum
+    {
+        KORL_GUI_MOUSE_HOVER_FLAG_LEFT  = 1<<0,
+        KORL_GUI_MOUSE_HOVER_FLAG_RIGHT = 1<<1,
+        KORL_GUI_MOUSE_HOVER_FLAG_UP    = 1<<2,
+        KORL_GUI_MOUSE_HOVER_FLAG_DOWN  = 1<<3,
+    } mouseHoverWindowEdgeFlags;
     Korl_Math_V2f32 mouseHoverPosition;
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;

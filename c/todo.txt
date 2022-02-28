@@ -122,6 +122,7 @@
 			[x] begin API
 			[-] end API; probably able to overload this for _all_ gui elements
 			- don't handle newlines; just render the text on a single line
+			- I also made this accept variadic args for formatted text!
 		[x] add window auto-size capability
 			[x] add optional flags to window begin API to specify this
 			[x] define a minimum window size to prevent creation of impossible to use windows
@@ -139,7 +140,7 @@
 				[x] reset all the button guis PRESSED states if the mouse button is no longer pressed
 				[x] reset all the button guis CLICKED states
 		[ ] add ability for windows (without auto-size style) to be resized
-			[ ] onHovered near the window border: highlight the set of borders to be resized
+			[x] onHovered near the window border: highlight the set of borders to be resized
 			[ ] onPressed near the window border: highlight the set of borders to be resized in a different color
 				[ ] if we JUST pressed, initialize the resize state
 			[ ] onMoved (while in resize state): set the window position/size accordingly
@@ -149,7 +150,6 @@
 			[ ] onHovered for the collapse button: highlight the button
 			[ ] onPressed for the collapse button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[ ] onRelease for the collapse button: (only if mouse cursor is still in the button) toggle the collapse state for the window
-		[ ] add variadic formatted text to the text gui element
 		[ ] add horizontal scroll bars for windows
 			[ ] [shift]+mouse_scroll controls (only when hovering over this window)
 			- test with really long text gui elements
@@ -162,6 +162,7 @@
 			[ ] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[ ] onRelease for close button: (only if mouse cursor is still in the button) close the window
 		[ ] draw outline around windows to make it easier to distinguish between overlapping windows
+			- probably want to make this a batch of line primitives, so it's only a 1 pixel outline (we really don't need more than this...)
 [ ] change KORL application subsystem from CONSOLE=>WINDOWS
 	[ ] dump KORL logs to a file
 		[ ] in development builds, immediately dump each log into the file without caring about file size

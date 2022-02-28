@@ -26,10 +26,11 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
         {
             const _Korl_Gui_Window*const window = &context->windows[w];
             korl_assert(window->identifier);
-            if(!(   mouseX >= window->position.xy.x 
-                 && mouseX <= window->position.xy.x + window->size.xy.x 
-                 && mouseY <= window->position.xy.y 
-                 && mouseY >= window->position.xy.y - window->size.xy.y))
+            const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS/2.f : 0.f;
+            if(!(   mouseX >= window->position.xy.x                     - windowAabbExpansion 
+                 && mouseX <= window->position.xy.x + window->size.xy.x + windowAabbExpansion 
+                 && mouseY <= window->position.xy.y                     + windowAabbExpansion 
+                 && mouseY >= window->position.xy.y - window->size.xy.y - windowAabbExpansion))
                 continue;
             context->isMouseDown     = true;
             context->isWindowDragged = true;
@@ -126,17 +127,41 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                 relative to the window */
             context->isMouseHovering              = false;
             context->identifierMouseHoveredWidget = NULL;
+            context->identifierMouseHoveredWindow = NULL;
+            context->mouseHoverWindowEdgeFlags    = 0;
             for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
             {
                 const _Korl_Gui_Window*const window = &context->windows[w];
                 korl_assert(window->identifier);
-                if(!(   mouseX >= window->position.xy.x 
-                     && mouseX <= window->position.xy.x + window->size.xy.x 
-                     && mouseY <= window->position.xy.y 
-                     && mouseY >= window->position.xy.y - window->size.xy.y))
+                const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS/2.f : 0.f;
+                if(!(   mouseX >= window->position.xy.x                     - windowAabbExpansion 
+                     && mouseX <= window->position.xy.x + window->size.xy.x + windowAabbExpansion 
+                     && mouseY <= window->position.xy.y                     + windowAabbExpansion 
+                     && mouseY >= window->position.xy.y - window->size.xy.y - windowAabbExpansion))
                     continue;
+                if(    context->mouseHoverPosition.xy.x >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
+                    && context->mouseHoverPosition.xy.x <= window->position.xy.x + window->size.xy.x + WINDOW_AABB_EDGE_THICKNESS)
+                {
+                    if(    context->mouseHoverPosition.xy.y >= window->position.xy.y - WINDOW_AABB_EDGE_THICKNESS 
+                        && context->mouseHoverPosition.xy.y <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS)
+                        context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_UP;
+                    if(    context->mouseHoverPosition.xy.y >= window->position.xy.y - WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y 
+                        && context->mouseHoverPosition.xy.y <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y)
+                        context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_DOWN;
+                }
+                if(    context->mouseHoverPosition.xy.y >= window->position.xy.y - window->size.xy.y - WINDOW_AABB_EDGE_THICKNESS 
+                    && context->mouseHoverPosition.xy.y <= window->position.xy.y                     + WINDOW_AABB_EDGE_THICKNESS)
+                {
+                    if(    context->mouseHoverPosition.xy.x >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
+                        && context->mouseHoverPosition.xy.x <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS)
+                        context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_LEFT;
+                    if(    context->mouseHoverPosition.xy.x >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x 
+                        && context->mouseHoverPosition.xy.x <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x )
+                        context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_RIGHT;
+                }
                 context->isMouseHovering = true;
                 context->mouseHoverPosition = mousePosition;
+                context->identifierMouseHoveredWindow = window->identifier;
                 for(u$ wi = 0; wi < KORL_MEMORY_POOL_SIZE(context->widgets); wi++)
                 {
                     _Korl_Gui_Widget*const widget = &context->widgets[wi];
