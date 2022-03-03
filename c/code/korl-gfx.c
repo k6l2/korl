@@ -551,6 +551,10 @@ korl_internal void korl_gfx_batchSetScale(Korl_Gfx_Batch*const context, Korl_Vul
 {
     context->_scale = scale;
 }
+korl_internal void korl_gfx_batchSetRotation(Korl_Gfx_Batch*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)
+{
+    context->_rotation = korl_math_quaternion_fromAxisRadians(axisOfRotation, radians, false);
+}
 korl_internal void korl_gfx_batchSetVertexColor(Korl_Gfx_Batch*const context, u32 vertexIndex, Korl_Vulkan_Color color)
 {
     korl_assert(context->_vertexCount > vertexIndex);

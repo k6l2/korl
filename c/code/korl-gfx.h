@@ -120,6 +120,7 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator all
 korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position);
 korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position);
 korl_internal void korl_gfx_batchSetScale(Korl_Gfx_Batch*const context, Korl_Vulkan_Position scale);
+korl_internal void korl_gfx_batchSetRotation(Korl_Gfx_Batch*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
 korl_internal void korl_gfx_batchSetVertexColor(Korl_Gfx_Batch*const context, u32 vertexIndex, Korl_Vulkan_Color color);
 korl_internal void korl_gfx_batchSetLine(Korl_Gfx_Batch*const context, u32 lineIndex, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color color);
 korl_internal f32 korl_gfx_batchTextGetAabbSizeX(Korl_Gfx_Batch*const context);

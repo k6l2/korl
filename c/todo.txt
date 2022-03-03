@@ -145,6 +145,12 @@
 				[x] if we JUST pressed, initialize the resize state
 			[x] onMoved (while in resize state): set the window position/size accordingly
 			[x] obey minimum window size, as defined in the window auto-size feature
+		[x] add ability to close windows w/ title bar
+			[x] draw close icon in upper-right
+			[x] onHovered for close button: highlight the button
+			[x] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
+			[x] onRelease for close button: (only if mouse cursor is still in the button) close the window
+		[ ] change the color of window outline to be the resize color when the mouse is hovering over the top-level window
 		[ ] add ability for windows w/ title bar to collapse
 			[ ] draw a little icon in the upper-right corner of title bar
 			[ ] onHovered for the collapse button: highlight the button
@@ -156,11 +162,6 @@
 		[ ] add vertical scroll bars for windows
 			[ ] mouse_scroll controls (only when hovering over this window)
 			- test with a window filled with a large # of text gui elements
-		[ ] add ability to close windows w/ title bar
-			[ ] draw close icon in upper-right
-			[ ] onHovered for close button: highlight the button
-			[ ] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
-			[ ] onRelease for close button: (only if mouse cursor is still in the button) close the window
 		[ ] draw outline around windows to make it easier to distinguish between overlapping windows
 			- probably want to make this a batch of line primitives, so it's only a 1 pixel outline (we really don't need more than this...)
 [ ] change KORL application subsystem from CONSOLE=>WINDOWS

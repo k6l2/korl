@@ -8,12 +8,15 @@
  * interactions with them (window is hovered, resize windows), and this value 
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
-korl_global_const f32 WINDOW_AABB_EDGE_THICKNESS = 6.f;
+korl_global_const f32 WINDOW_AABB_EDGE_THICKNESS = 8.f;
 typedef struct _Korl_Gui_Window
 {
     const void* identifier;
     bool usedThisFrame;
     bool isFirstFrame;
+    bool hasTitleBarButtonClose;
+    bool titleBarButtonPressedClose;
+    bool isOpen;
     Korl_Math_V2f32 position;// relative to the upper-left corner of the window
     Korl_Math_V2f32 size;
     u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum
@@ -60,6 +63,8 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color colorButtonInactive;
         Korl_Vulkan_Color colorButtonActive;
         Korl_Vulkan_Color colorButtonPressed;
+        Korl_Vulkan_Color colorButtonWindowTitleBarIcons;
+        Korl_Vulkan_Color colorButtonWindowCloseActive;
         const wchar_t* fontWindowText;
         f32 windowTextPixelSizeY;
         f32 windowTitleBarPixelSizeY;
@@ -88,6 +93,11 @@ typedef struct _Korl_Gui_Context
     Korl_Math_V2f32 mouseDownWindowOffset;
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
+    enum
+    {
+        KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAGS_NONE = 0,
+        KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE = 1 << 0,
+    } titlebarButtonFlagsMouseDown;
     const void* identifierMouseHoveredWidget;
     const void* identifierMouseHoveredWindow;
     enum

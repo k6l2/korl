@@ -15,19 +15,22 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
         const i32 mouseX =  GET_X_LPARAM(message->lParam);
         const i32 mouseY = -GET_Y_LPARAM(message->lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
         /* deactivate the top level window, in case it wasn't already */
-        context->isTopLevelWindowActive    = false;
-        context->isMouseDown               = false;
-        context->isWindowDragged           = false;
-        context->isWindowResizing          = false;
-        context->identifierMouseDownWidget = NULL;
+        context->isTopLevelWindowActive       = false;
+        context->isMouseDown                  = false;
+        context->isWindowDragged              = false;
+        context->isWindowResizing             = false;
+        context->identifierMouseDownWidget    = NULL;
+        context->titlebarButtonFlagsMouseDown = KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAGS_NONE;
         /* check to see if we clicked on any windows from the previous frame 
             - note that we're processing windows from front->back, since 
               windows[0] is always the farthest back window */
         for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
         {
             const _Korl_Gui_Window*const window = &context->windows[w];
+            if(!window->isOpen)
+                continue;
             korl_assert(window->identifier);
-            const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS/2.f : 0.f;
+            const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS : 0.f;
             if(!(   mouseX >= window->position.xy.x                     - windowAabbExpansion 
                  && mouseX <= window->position.xy.x + window->size.xy.x + windowAabbExpansion 
                  && mouseY <= window->position.xy.y                     + windowAabbExpansion 
@@ -38,6 +41,26 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             if(context->mouseHoverWindowEdgeFlags)
                 context->isWindowResizing = true;
             /* check to see if we clicked on any widgets from the previous frame */
+            if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
+            {
+                /* check to see if the mouse pressed the close button */
+                if(window->hasTitleBarButtonClose)
+                {
+                    const Korl_Math_V2f32 titleBarButtonCloseAabbMin = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
+                                                                       , .xy.y = window->position.xy.y                     - context->style.windowTitleBarPixelSizeY };
+                    const Korl_Math_V2f32 titleBarButtonCloseAabbMax = { .xy.x = window->position.xy.x + window->size.xy.x
+                                                                       , .xy.y = window->position.xy.y };
+                    if(    mouseX >= titleBarButtonCloseAabbMin.xy.x
+                        && mouseX <= titleBarButtonCloseAabbMax.xy.x
+                        && mouseY >= titleBarButtonCloseAabbMin.xy.y
+                        && mouseY <= titleBarButtonCloseAabbMax.xy.y)
+                    {
+                        context->titlebarButtonFlagsMouseDown |= KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE;
+                        context->isWindowDragged  = false;
+                        context->isWindowResizing = false;
+                    }
+                }
+            }
             for(u$ wi = 0; wi < KORL_MEMORY_POOL_SIZE(context->widgets); wi++)
             {
                 _Korl_Gui_Widget*const widget = &context->widgets[wi];
@@ -78,6 +101,34 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
     case WM_LBUTTONUP:{
         const i32 mouseX =  GET_X_LPARAM(message->lParam);
         const i32 mouseY = -GET_Y_LPARAM(message->lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
+        if(context->titlebarButtonFlagsMouseDown)
+        {
+            /* find the mouse-down window so we can check to see if we're still 
+                hovering a pressed title bar button, allowing us to perform a 
+                full button actuation */
+            for(u$ w = 0; w < KORL_MEMORY_POOL_SIZE(context->windows); w++)
+            {
+                _Korl_Gui_Window*const window = &context->windows[w];
+                if(!window->isOpen)
+                    continue;
+                if(window->identifier != context->identifierMouseHoveredWindow)
+                    continue;
+                if(context->titlebarButtonFlagsMouseDown & KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE)
+                {
+                    /* check to see if the mouse pressed the close button */
+                    const Korl_Math_V2f32 titleBarButtonCloseAabbMin = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
+                                                                       , .xy.y = window->position.xy.y                     - context->style.windowTitleBarPixelSizeY };
+                    const Korl_Math_V2f32 titleBarButtonCloseAabbMax = { .xy.x = window->position.xy.x + window->size.xy.x
+                                                                       , .xy.y = window->position.xy.y };
+                    if(    mouseX >= titleBarButtonCloseAabbMin.xy.x
+                        && mouseX <= titleBarButtonCloseAabbMax.xy.x
+                        && mouseY >= titleBarButtonCloseAabbMin.xy.y
+                        && mouseY <= titleBarButtonCloseAabbMax.xy.y)
+                        window->titleBarButtonPressedClose = true;
+                }
+                break;
+            }
+        }
         if(context->identifierMouseDownWidget)
         {
             /* find the mouse-down widget, and check to see if we're still 
@@ -104,7 +155,8 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                 break;
             }
         }
-        context->isMouseDown = false;
+        context->isMouseDown                  = false;
+        context->titlebarButtonFlagsMouseDown = KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAGS_NONE;
         if(!ReleaseCapture())
             korl_logLastError("ReleaseCapture failed!");
         break;}
@@ -156,38 +208,40 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             /* check to see whether or not we're hovering over any windows from 
                 the previous frame, and if we are record the cursor position 
                 relative to the window */
-            context->isMouseHovering              = false;
-            context->identifierMouseHoveredWidget = NULL;
-            context->identifierMouseHoveredWindow = NULL;
-            context->mouseHoverWindowEdgeFlags    = 0;
+            context->isMouseHovering               = false;
+            context->identifierMouseHoveredWidget  = NULL;
+            context->identifierMouseHoveredWindow  = NULL;
+            context->mouseHoverWindowEdgeFlags     = 0;
             for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
             {
                 const _Korl_Gui_Window*const window = &context->windows[w];
+                if(!window->isOpen)
+                    continue;
                 korl_assert(window->identifier);
-                const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS/2.f : 0.f;
+                const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS : 0.f;
                 if(!(   mouseX >= window->position.xy.x                     - windowAabbExpansion 
                      && mouseX <= window->position.xy.x + window->size.xy.x + windowAabbExpansion 
                      && mouseY <= window->position.xy.y                     + windowAabbExpansion 
                      && mouseY >= window->position.xy.y - window->size.xy.y - windowAabbExpansion))
                     continue;
-                if(    context->mouseHoverPosition.xy.x >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
-                    && context->mouseHoverPosition.xy.x <= window->position.xy.x + window->size.xy.x + WINDOW_AABB_EDGE_THICKNESS)
+                if(    mouseX >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
+                    && mouseX <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x)
                 {
-                    if(    context->mouseHoverPosition.xy.y >= window->position.xy.y - WINDOW_AABB_EDGE_THICKNESS 
-                        && context->mouseHoverPosition.xy.y <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS)
+                    if(    mouseY >= window->position.xy.y 
+                        && mouseY <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_UP;
-                    if(    context->mouseHoverPosition.xy.y >= window->position.xy.y - WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y 
-                        && context->mouseHoverPosition.xy.y <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y)
+                    if(    mouseY >= window->position.xy.y - window->size.xy.y - WINDOW_AABB_EDGE_THICKNESS 
+                        && mouseY <= window->position.xy.y - window->size.xy.y)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_DOWN;
                 }
-                if(    context->mouseHoverPosition.xy.y >= window->position.xy.y - window->size.xy.y - WINDOW_AABB_EDGE_THICKNESS 
-                    && context->mouseHoverPosition.xy.y <= window->position.xy.y                     + WINDOW_AABB_EDGE_THICKNESS)
+                if(    mouseY >= window->position.xy.y - WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y 
+                    && mouseY <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS)
                 {
-                    if(    context->mouseHoverPosition.xy.x >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
-                        && context->mouseHoverPosition.xy.x <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS)
+                    if(    mouseX >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
+                        && mouseX <= window->position.xy.x)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_LEFT;
-                    if(    context->mouseHoverPosition.xy.x >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x 
-                        && context->mouseHoverPosition.xy.x <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x )
+                    if(    mouseX >= window->position.xy.x + window->size.xy.x 
+                        && mouseX <= window->position.xy.x + window->size.xy.x + WINDOW_AABB_EDGE_THICKNESS )
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_RIGHT;
                 }
                 if(!(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
