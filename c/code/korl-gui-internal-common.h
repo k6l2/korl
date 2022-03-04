@@ -102,6 +102,7 @@ typedef struct _Korl_Gui_Context
     const void* identifierMouseHoveredWindow;
     enum
     {
+        KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,
         KORL_GUI_MOUSE_HOVER_FLAG_LEFT  = 1<<0,
         KORL_GUI_MOUSE_HOVER_FLAG_RIGHT = 1<<1,
         KORL_GUI_MOUSE_HOVER_FLAG_UP    = 1<<2,

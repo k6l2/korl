@@ -128,7 +128,7 @@ korl_internal void korl_gui_initialize(void)
     korl_memory_nullify(&_korl_gui_context, sizeof(_korl_gui_context));
     _korl_gui_context.allocatorStack                       = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color){.rgb.r =  16, .rgb.g =  16, .rgb.b =  16};
-    _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color){.rgb.r =  32, .rgb.g =  32, .rgb.b =  32};
+    _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color){.rgb.r =  24, .rgb.g =  24, .rgb.b =  24};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color){.rgb.r =   0, .rgb.g =   0, .rgb.b =   0};
     _korl_gui_context.style.colorWindowBorderHovered       = (Korl_Vulkan_Color){.rgb.r =   0, .rgb.g =  32, .rgb.b =   0};
     _korl_gui_context.style.colorWindowBorderResize        = (Korl_Vulkan_Color){.rgb.r = 255, .rgb.g = 255, .rgb.b = 255};
@@ -296,49 +296,12 @@ korl_internal void korl_gui_frameEnd(void)
             window->position.xy.y = 0;
         if(window->position.xy.y < -KORL_C_CAST(f32, swapChainSize.xy.y) + context->style.windowTitleBarPixelSizeY)
             window->position.xy.y = -KORL_C_CAST(f32, swapChainSize.xy.y) + context->style.windowTitleBarPixelSizeY;
-        /* before getting ready to batch the window panel & contents, let's draw 
-            some geometry around the window AABB to better indicate certain state */
+        /* draw the window panel */
         korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
         korl_gfx_useCamera(guiCamera);
-        Korl_Vulkan_Color colorBorder = context->style.colorWindowBorder;
-        if(context->isTopLevelWindowActive && i == KORL_MEMORY_POOL_SIZE(context->windows) - 1)
-            colorBorder = context->style.colorWindowBorderActive;
-        else if(context->isMouseHovering && context->identifierMouseHoveredWindow == window->identifier)
-            colorBorder = context->style.colorWindowBorderHovered;
-        Korl_Gfx_Batch*const batchWindowBorderVertical   = korl_gfx_createBatchRectangleColored(context->allocatorStack, (Korl_Math_V2f32){.xy.x =                       WINDOW_AABB_EDGE_THICKNESS, .xy.y = window->size.xy.y + 2*WINDOW_AABB_EDGE_THICKNESS}, KORL_ORIGIN_RATIO_UPPER_LEFT, colorBorder);
-        Korl_Gfx_Batch*const batchWindowBorderHorizontal = korl_gfx_createBatchRectangleColored(context->allocatorStack, (Korl_Math_V2f32){.xy.x = window->size.xy.x + 2*WINDOW_AABB_EDGE_THICKNESS, .xy.y =                       WINDOW_AABB_EDGE_THICKNESS}, KORL_ORIGIN_RATIO_UPPER_LEFT, colorBorder);
-        korl_gfx_batchSetPosition2d(batchWindowBorderVertical, (Korl_Math_V2f32){ .xy.x = window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS
-                                                                                , .xy.y = window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS });
-        if(context->identifierMouseHoveredWindow == window->identifier && (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
-            if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT)
-                korl_gfx_batchRectangleSetColor(batchWindowBorderVertical, context->style.colorWindowBorderResize);
-            else
-                korl_gfx_batchRectangleSetColor(batchWindowBorderVertical, colorBorder);
-        korl_gfx_batch(batchWindowBorderVertical, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        korl_gfx_batchSetPosition2d(batchWindowBorderVertical, (Korl_Math_V2f32){ .xy.x = window->position.xy.x + window->size.xy.x
-                                                                                , .xy.y = window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS });
-        if(context->identifierMouseHoveredWindow == window->identifier && (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
-            if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)
-                korl_gfx_batchRectangleSetColor(batchWindowBorderVertical, context->style.colorWindowBorderResize);
-            else
-                korl_gfx_batchRectangleSetColor(batchWindowBorderVertical, colorBorder);
-        korl_gfx_batch(batchWindowBorderVertical, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        korl_gfx_batchSetPosition2d(batchWindowBorderHorizontal, (Korl_Math_V2f32){ .xy.x = window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS
-                                                                                  , .xy.y = window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS });
-        if(context->identifierMouseHoveredWindow == window->identifier && (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
-            if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP)
-                korl_gfx_batchRectangleSetColor(batchWindowBorderHorizontal, context->style.colorWindowBorderResize);
-            else
-                korl_gfx_batchRectangleSetColor(batchWindowBorderHorizontal, colorBorder);
-        korl_gfx_batch(batchWindowBorderHorizontal, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        korl_gfx_batchSetPosition2d(batchWindowBorderHorizontal, (Korl_Math_V2f32){ .xy.x = window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS
-                                                                                  , .xy.y = window->position.xy.y - window->size.xy.y });
-        if(context->identifierMouseHoveredWindow == window->identifier && (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
-            if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN)
-                korl_gfx_batchRectangleSetColor(batchWindowBorderHorizontal, context->style.colorWindowBorderResize);
-            else
-                korl_gfx_batchRectangleSetColor(batchWindowBorderHorizontal, colorBorder);
-        korl_gfx_batch(batchWindowBorderHorizontal, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorStack, window->size, KORL_ORIGIN_RATIO_UPPER_LEFT, windowColor);
+        korl_gfx_batchSetPosition2d(batchWindowPanel, window->position);
+        korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         /* prepare to draw all the window's contents by cutting out a scissor 
             region the size of the window, preventing us from accidentally 
             render any pixels outside the window */
@@ -348,10 +311,6 @@ korl_internal void korl_gui_frameEnd(void)
                                    window->size.xy.x, 
                                    window->size.xy.y);
         korl_gfx_useCamera(guiCamera);
-        /* draw the window panel */
-        Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorStack, window->size, KORL_ORIGIN_RATIO_UPPER_LEFT, windowColor);
-        korl_gfx_batchSetPosition2d(batchWindowPanel, window->position);
-        korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
         {
             /* draw the window title bar */
@@ -407,6 +366,25 @@ korl_internal void korl_gui_frameEnd(void)
         }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
         /* render all this window's widgets within the window panel */
         _korl_gui_processWidgetGraphics(window, NULL, NULL, true);
+        /* batch window border AFTER contents are drawn */
+        Korl_Vulkan_Color colorBorder = context->style.colorWindowBorder;
+        if(context->isTopLevelWindowActive && i == KORL_MEMORY_POOL_SIZE(context->windows) - 1)
+            if(context->isMouseHovering 
+                && context->identifierMouseHoveredWindow == window->identifier
+                && context->mouseHoverWindowEdgeFlags == KORL_GUI_MOUSE_HOVER_FLAGS_NONE)
+                colorBorder = context->style.colorWindowBorderResize;
+            else
+                colorBorder = context->style.colorWindowBorderActive;
+        else if(context->isMouseHovering && context->identifierMouseHoveredWindow == window->identifier)
+            colorBorder = context->style.colorWindowBorderHovered;
+        Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorStack, 4);
+        korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y                    }, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y                    }, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder);
+        korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y - window->size.xy.y}, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y - window->size.xy.y}, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder);
+        korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y                    }, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y - window->size.xy.y}, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder);
+        korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y                    }, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y - window->size.xy.y}, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder);
+        korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
+        korl_gfx_useCamera(guiCamera);
+        korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
     }
     KORL_MEMORY_POOL_RESIZE(context->windows, windowsRemaining);
 }
