@@ -113,6 +113,8 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
         korl_gui_widgetTextFormat(L"%s", "Hello, sir! Can you spare a breb? o^o");
         korl_gui_widgetTextFormat(L"PLS, sir! I only wish for a breb...");
         korl_gui_widgetTextFormat(L"PLEEZ!");
+        korl_gui_widgetTextFormat(L"max f32 == %.10e", KORL_F32_MAX);
+        korl_gui_widgetTextFormat(L"min f32 == %.10e", KORL_F32_MIN);
     korl_gui_windowEnd();
     korl_gui_windowBegin(L"second window", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE);
         if(guiButtonActuations = korl_gui_widgetButtonFormat(L"Hey, kid!  Click me!"))
