@@ -30,7 +30,7 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             if(!window->isOpen)
                 continue;
             korl_assert(window->identifier);
-            const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS : 0.f;
+            const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
             if(!(   mouseX >= window->position.xy.x                     - windowAabbExpansion 
                  && mouseX <= window->position.xy.x + window->size.xy.x + windowAabbExpansion 
                  && mouseY <= window->position.xy.y                     + windowAabbExpansion 
@@ -218,30 +218,30 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                 if(!window->isOpen)
                     continue;
                 korl_assert(window->identifier);
-                const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? WINDOW_AABB_EDGE_THICKNESS : 0.f;
+                const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
                 if(!(   mouseX >= window->position.xy.x                     - windowAabbExpansion 
                      && mouseX <= window->position.xy.x + window->size.xy.x + windowAabbExpansion 
                      && mouseY <= window->position.xy.y                     + windowAabbExpansion 
                      && mouseY >= window->position.xy.y - window->size.xy.y - windowAabbExpansion))
                     continue;
-                if(    mouseX >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
-                    && mouseX <= window->position.xy.x + WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x)
+                if(    mouseX >= window->position.xy.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
+                    && mouseX <= window->position.xy.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x)
                 {
                     if(    mouseY >= window->position.xy.y 
-                        && mouseY <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS)
+                        && mouseY <= window->position.xy.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_UP;
-                    if(    mouseY >= window->position.xy.y - window->size.xy.y - WINDOW_AABB_EDGE_THICKNESS 
+                    if(    mouseY >= window->position.xy.y - window->size.xy.y - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
                         && mouseY <= window->position.xy.y - window->size.xy.y)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_DOWN;
                 }
-                if(    mouseY >= window->position.xy.y - WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y 
-                    && mouseY <= window->position.xy.y + WINDOW_AABB_EDGE_THICKNESS)
+                if(    mouseY >= window->position.xy.y - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y 
+                    && mouseY <= window->position.xy.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)
                 {
-                    if(    mouseX >= window->position.xy.x - WINDOW_AABB_EDGE_THICKNESS 
+                    if(    mouseX >= window->position.xy.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
                         && mouseX <= window->position.xy.x)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_LEFT;
                     if(    mouseX >= window->position.xy.x + window->size.xy.x 
-                        && mouseX <= window->position.xy.x + window->size.xy.x + WINDOW_AABB_EDGE_THICKNESS )
+                        && mouseX <= window->position.xy.x + window->size.xy.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS )
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_RIGHT;
                 }
                 if(!(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
