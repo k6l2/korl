@@ -151,11 +151,12 @@
 			[x] onPressed for close button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[x] onRelease for close button: (only if mouse cursor is still in the button) close the window
 		[x] change the color of window outline to be the resize color when the mouse is hovering over the top-level window
-		[ ] add ability for windows w/ title bar to collapse
-			[ ] draw a little icon in the upper-right corner of title bar
-			[ ] onHovered for the collapse button: highlight the button
-			[ ] onPressed for the collapse button: (only if mouse cursor is still in the button) highlight the button in a different color
-			[ ] onRelease for the collapse button: (only if mouse cursor is still in the button) toggle the collapse state for the window
+		[x] add ability for windows w/ title bar to collapse
+			[x] draw a little icon in the upper-right corner of title bar
+			[x] onHovered for the collapse button: highlight the button
+			[x] onPressed for the collapse button: (only if mouse cursor is still in the button) highlight the button in a different color
+			[x] onRelease for the collapse button: (only if mouse cursor is still in the button) toggle the collapse state for the window
+			[x] collapse window contents when button is toggled
 		[ ] add horizontal scroll bars for windows
 			[ ] [shift]+mouse_scroll controls (only when hovering over this window)
 			- test with really long text gui elements

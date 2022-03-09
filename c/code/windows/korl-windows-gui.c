@@ -20,7 +20,7 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
         context->isWindowDragged              = false;
         context->isWindowResizing             = false;
         context->identifierMouseDownWidget    = NULL;
-        context->titlebarButtonFlagsMouseDown = KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAGS_NONE;
+        context->titlebarButtonFlagsMouseDown = KORL_GUI_TITLEBAR_BUTTON_FLAGS_NONE;
         /* check to see if we clicked on any windows from the previous frame 
             - note that we're processing windows from front->back, since 
               windows[0] is always the farthest back window */
@@ -43,22 +43,34 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             /* check to see if we clicked on any widgets from the previous frame */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
+                Korl_Math_V2f32 titlebarButtonCursor = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
+                                                       , .xy.y = window->position.xy.y };
                 /* check to see if the mouse pressed the close button */
-                if(window->hasTitleBarButtonClose)
+                if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE)
                 {
-                    const Korl_Math_V2f32 titleBarButtonCloseAabbMin = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
-                                                                       , .xy.y = window->position.xy.y                     - context->style.windowTitleBarPixelSizeY };
-                    const Korl_Math_V2f32 titleBarButtonCloseAabbMax = { .xy.x = window->position.xy.x + window->size.xy.x
-                                                                       , .xy.y = window->position.xy.y };
-                    if(    mouseX >= titleBarButtonCloseAabbMin.xy.x
-                        && mouseX <= titleBarButtonCloseAabbMax.xy.x
-                        && mouseY >= titleBarButtonCloseAabbMin.xy.y
-                        && mouseY <= titleBarButtonCloseAabbMax.xy.y)
+                    if(    mouseX >= titlebarButtonCursor.xy.x
+                        && mouseX <= titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY
+                        && mouseY >= titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY
+                        && mouseY <= titlebarButtonCursor.xy.y)
                     {
-                        context->titlebarButtonFlagsMouseDown |= KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE;
+                        context->titlebarButtonFlagsMouseDown |= KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE;
                         context->isWindowDragged  = false;
                         context->isWindowResizing = false;
                     }
+                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+                }
+                if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE)
+                {
+                    if(    mouseX >= titlebarButtonCursor.xy.x
+                        && mouseX <= titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY
+                        && mouseY >= titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY
+                        && mouseY <= titlebarButtonCursor.xy.y)
+                    {
+                        context->titlebarButtonFlagsMouseDown |= KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE;
+                        context->isWindowDragged  = false;
+                        context->isWindowResizing = false;
+                    }
+                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
                 }
             }
             for(u$ wi = 0; wi < KORL_MEMORY_POOL_SIZE(context->widgets); wi++)
@@ -113,18 +125,27 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                     continue;
                 if(window->identifier != context->identifierMouseHoveredWindow)
                     continue;
-                if(context->titlebarButtonFlagsMouseDown & KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE)
+                Korl_Math_V2f32 titlebarButtonCursor = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
+                                                       , .xy.y = window->position.xy.y };
+                if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE)
                 {
-                    /* check to see if the mouse pressed the close button */
-                    const Korl_Math_V2f32 titleBarButtonCloseAabbMin = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
-                                                                       , .xy.y = window->position.xy.y                     - context->style.windowTitleBarPixelSizeY };
-                    const Korl_Math_V2f32 titleBarButtonCloseAabbMax = { .xy.x = window->position.xy.x + window->size.xy.x
-                                                                       , .xy.y = window->position.xy.y };
-                    if(    mouseX >= titleBarButtonCloseAabbMin.xy.x
-                        && mouseX <= titleBarButtonCloseAabbMax.xy.x
-                        && mouseY >= titleBarButtonCloseAabbMin.xy.y
-                        && mouseY <= titleBarButtonCloseAabbMax.xy.y)
-                        window->titleBarButtonPressedClose = true;
+                    if(context->titlebarButtonFlagsMouseDown & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE
+                        && mouseX >= titlebarButtonCursor.xy.x
+                        && mouseX <= titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY
+                        && mouseY >= titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY
+                        && mouseY <= titlebarButtonCursor.xy.y)
+                        window->titlebarButtonFlagsPressed |= KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE;
+                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+                }
+                if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE)
+                {
+                    if(context->titlebarButtonFlagsMouseDown & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE
+                        && mouseX >= titlebarButtonCursor.xy.x
+                        && mouseX <= titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY
+                        && mouseY >= titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY
+                        && mouseY <= titlebarButtonCursor.xy.y)
+                        window->titlebarButtonFlagsPressed |= KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE;
+                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
                 }
                 break;
             }
@@ -156,7 +177,7 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
             }
         }
         context->isMouseDown                  = false;
-        context->titlebarButtonFlagsMouseDown = KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAGS_NONE;
+        context->titlebarButtonFlagsMouseDown = KORL_GUI_TITLEBAR_BUTTON_FLAGS_NONE;
         if(!ReleaseCapture())
             korl_logLastError("ReleaseCapture failed!");
         break;}
@@ -225,7 +246,8 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                      && mouseY >= window->position.xy.y - window->size.xy.y - windowAabbExpansion))
                     continue;
                 if(    mouseX >= window->position.xy.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
-                    && mouseX <= window->position.xy.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x)
+                    && mouseX <= window->position.xy.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x
+                    && !window->isContentHidden/*disable resizing top/bottom edges when window content is hidden*/)
                 {
                     if(    mouseY >= window->position.xy.y 
                         && mouseY <= window->position.xy.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)

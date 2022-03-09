@@ -42,9 +42,11 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
                                                    bool batchGraphics)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
+    if(window->isContentHidden)
+        return;
     Korl_Math_V2f32 widgetCursor = window->position;
     if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
-        widgetCursor = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x = 0, .xy.y = context->style.windowTitleBarPixelSizeY});
+        widgetCursor.xy.y -= context->style.windowTitleBarPixelSizeY;
     for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
     {
         _Korl_Gui_Widget*const widget = &context->widgets[j];
@@ -180,13 +182,24 @@ done_currentWindowIndexValid:
     newWindow->styleFlags    = styleFlags;
     if(out_isOpen)
     {
-        newWindow->hasTitleBarButtonClose = true;
+        newWindow->titlebarButtonFlags |= KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE;
         newWindow->isOpen = *out_isOpen;
-        if(newWindow->titleBarButtonPressedClose)
+        if(newWindow->titlebarButtonFlagsPressed & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE)
             newWindow->isOpen = false;
         *out_isOpen = newWindow->isOpen;
     }
-    newWindow->titleBarButtonPressedClose = false;
+    else
+        newWindow->titlebarButtonFlags &= ~KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE;
+    newWindow->titlebarButtonFlags |= KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE;
+    if(newWindow->titlebarButtonFlagsPressed & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE)
+    {
+        newWindow->isContentHidden = !newWindow->isContentHidden;
+        if(newWindow->isContentHidden)
+            newWindow->hiddenContentPreviousSizeY = newWindow->size.xy.y;
+        else
+            newWindow->size.xy.y = newWindow->hiddenContentPreviousSizeY;
+    }
+    newWindow->titlebarButtonFlagsPressed = KORL_GUI_TITLEBAR_BUTTON_FLAGS_NONE;
 }
 korl_internal void korl_gui_windowEnd(void)
 {
@@ -272,8 +285,11 @@ korl_internal void korl_gui_frameEnd(void)
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
                 Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY);
-                const f32 titleBarOptimalSizeX = korl_gfx_batchTextGetAabbSizeX(batchWindowTitleText) 
-                                               + /*size required for close button*/context->style.windowTitleBarPixelSizeY;
+                f32 titleBarOptimalSizeX = korl_gfx_batchTextGetAabbSizeX(batchWindowTitleText);
+                if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE)
+                    titleBarOptimalSizeX += context->style.windowTitleBarPixelSizeY;
+                if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE)
+                    titleBarOptimalSizeX += context->style.windowTitleBarPixelSizeY;
                 contentAabbMax.xy.x = KORL_MATH_MAX(contentAabbMax.xy.x, window->position.xy.x + titleBarOptimalSizeX);
             }
             /* size the window based on the above metrics */
@@ -285,6 +301,8 @@ korl_internal void korl_gui_frameEnd(void)
             if(window->size.xy.x < context->style.windowTitleBarPixelSizeY)
                 window->size.xy.x = context->style.windowTitleBarPixelSizeY;
         }
+        if(window->isContentHidden)
+            window->size.xy.y = context->style.windowTitleBarPixelSizeY;
         /* bind the windows to the bounds of the swapchain, such that there will 
             always be a square of grabable geometry on the window whose 
             dimensions equal the height of the window title bar style at minimum */
@@ -324,31 +342,28 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batchSetPosition2d(batchWindowTitleText, (Korl_Math_V2f32){ .xy.x = window->position.xy.x
                                                                                , .xy.y = window->position.xy.y - context->style.windowTitleBarPixelSizeY + 3.f });
             korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-            /* draw the window title bar close button */
-            if(window->hasTitleBarButtonClose)
+            /**/
+            Korl_Math_V2f32 titlebarButtonCursor = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
+                                                   , .xy.y = window->position.xy.y };
+            if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE)
             {
                 korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){.xy.x = context->style.windowTitleBarPixelSizeY, .xy.y = context->style.windowTitleBarPixelSizeY});
-                Korl_Vulkan_Color colorButtonClose = context->style.colorTitleBar;
+                Korl_Vulkan_Color colorTitleBarButton = context->style.colorTitleBar;
                 if(context->identifierMouseHoveredWindow == window->identifier)
                 {
-                    const Korl_Math_V2f32 titleBarButtonCloseAabbMin = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
-                                                                       , .xy.y = window->position.xy.y                     - context->style.windowTitleBarPixelSizeY };
-                    const Korl_Math_V2f32 titleBarButtonCloseAabbMax = { .xy.x = window->position.xy.x + window->size.xy.x
-                                                                       , .xy.y = window->position.xy.y };
-                    if(    context->mouseHoverPosition.xy.x >= titleBarButtonCloseAabbMin.xy.x
-                        && context->mouseHoverPosition.xy.x <= titleBarButtonCloseAabbMax.xy.x
-                        && context->mouseHoverPosition.xy.y >= titleBarButtonCloseAabbMin.xy.y
-                        && context->mouseHoverPosition.xy.y <= titleBarButtonCloseAabbMax.xy.y)
+                    if(    context->mouseHoverPosition.xy.x >= titlebarButtonCursor.xy.x
+                        && context->mouseHoverPosition.xy.x <= titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY
+                        && context->mouseHoverPosition.xy.y >= titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY
+                        && context->mouseHoverPosition.xy.y <= titlebarButtonCursor.xy.y)
                     {
-                        if(context->titlebarButtonFlagsMouseDown & KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE)
-                            colorButtonClose = context->style.colorButtonPressed;
+                        if(context->titlebarButtonFlagsMouseDown & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE)
+                            colorTitleBarButton = context->style.colorButtonPressed;
                         else
-                            colorButtonClose = context->style.colorButtonWindowCloseActive;
+                            colorTitleBarButton = context->style.colorButtonWindowCloseActive;
                     }
                 }
-                korl_gfx_batchRectangleSetColor(batchWindowPanel, colorButtonClose);
-                korl_gfx_batchSetPosition2d(batchWindowPanel, (Korl_Math_V2f32){ .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
-                                                                               , .xy.y = window->position.xy.y });
+                korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
+                korl_gfx_batchSetPosition2d(batchWindowPanel, titlebarButtonCursor);
                 korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
                                                                                                            (Korl_Math_V2f32){ .xy.x = 0.1f*context->style.windowTitleBarPixelSizeY
@@ -356,13 +371,45 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                                            (Korl_Math_V2f32){0.5f, 0.5f}, 
                                                                                                            context->style.colorButtonWindowTitleBarIcons);
                 korl_gfx_batchSetPosition2d(batchWindowTitleCloseIconPiece, 
-                                            (Korl_Math_V2f32){ .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY/2.f
-                                                             , .xy.y = window->position.xy.y - context->style.windowTitleBarPixelSizeY/2.f });
+                                            (Korl_Math_V2f32){ .xy.x = titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY/2.f
+                                                             , .xy.y = titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY/2.f });
                 korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z,  KORL_PI32*0.25f);
                 korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z, -KORL_PI32*0.25f);
                 korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-            }//window->hasTitleBarButtonClose
+                titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+            }//window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE
+            if(window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE)
+            {
+                korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){.xy.x = context->style.windowTitleBarPixelSizeY, .xy.y = context->style.windowTitleBarPixelSizeY});
+                Korl_Vulkan_Color colorTitleBarButton = context->style.colorTitleBar;
+                if(context->identifierMouseHoveredWindow == window->identifier)
+                {
+                    if(    context->mouseHoverPosition.xy.x >= titlebarButtonCursor.xy.x
+                        && context->mouseHoverPosition.xy.x <= titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY
+                        && context->mouseHoverPosition.xy.y >= titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY
+                        && context->mouseHoverPosition.xy.y <= titlebarButtonCursor.xy.y)
+                    {
+                        if(context->titlebarButtonFlagsMouseDown & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE)
+                            colorTitleBarButton = context->style.colorButtonPressed;
+                        else
+                            colorTitleBarButton = context->style.colorTitleBarActive;
+                    }
+                }
+                korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
+                korl_gfx_batchSetPosition2d(batchWindowPanel, titlebarButtonCursor);
+                korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                Korl_Gfx_Batch*const batchWindowTitleIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
+                                                                                                      (Korl_Math_V2f32){ .xy.x =      context->style.windowTitleBarPixelSizeY
+                                                                                                                       , .xy.y = 0.1f*context->style.windowTitleBarPixelSizeY}, 
+                                                                                                      (Korl_Math_V2f32){0.5f, 0.5f}, 
+                                                                                                      context->style.colorButtonWindowTitleBarIcons);
+                korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece, 
+                                            (Korl_Math_V2f32){ .xy.x = titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY/2.f
+                                                             , .xy.y = titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY/2.f });
+                korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+            }//window->titlebarButtonFlags & KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE
         }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
         /* render all this window's widgets within the window panel */
         _korl_gui_processWidgetGraphics(window, NULL, NULL, true);

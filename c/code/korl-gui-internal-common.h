@@ -9,14 +9,22 @@
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
 korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
+typedef enum _Korl_Gui_TitlebarButtonFlags
+{
+    KORL_GUI_TITLEBAR_BUTTON_FLAGS_NONE = 0,
+    KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE = 1 << 0,
+    KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE  = 1 << 2,
+} _Korl_Gui_TitlebarButtonFlags;
 typedef struct _Korl_Gui_Window
 {
     const void* identifier;
     bool usedThisFrame;
     bool isFirstFrame;
-    bool hasTitleBarButtonClose;
-    bool titleBarButtonPressedClose;
+    _Korl_Gui_TitlebarButtonFlags titlebarButtonFlags;// flags raised indicate the button's presence
+    _Korl_Gui_TitlebarButtonFlags titlebarButtonFlagsPressed;// flags are raised when the corresponding titlebar button is pressed
     bool isOpen;
+    bool isContentHidden;
+    f32 hiddenContentPreviousSizeY;
     Korl_Math_V2f32 position;// relative to the upper-left corner of the window
     Korl_Math_V2f32 size;
     u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum
@@ -93,11 +101,7 @@ typedef struct _Korl_Gui_Context
     Korl_Math_V2f32 mouseDownWindowOffset;
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
-    enum
-    {
-        KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAGS_NONE = 0,
-        KORL_GUI_MOUSE_TITLEBAR_BUTTON_FLAG_CLOSE = 1 << 0,
-    } titlebarButtonFlagsMouseDown;
+    _Korl_Gui_TitlebarButtonFlags titlebarButtonFlagsMouseDown;
     const void* identifierMouseHoveredWidget;
     const void* identifierMouseHoveredWindow;
     enum
