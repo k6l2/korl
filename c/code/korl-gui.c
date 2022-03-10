@@ -159,6 +159,11 @@ korl_internal void korl_gui_windowBegin(const wchar_t* identifier, bool* out_isO
         if(context->windows[i].identifier == identifier)
         {
             context->currentWindowIndex = korl_checkCast_u$_to_u8(i);
+            if(!context->windows[i].isOpen && out_isOpen && *out_isOpen)
+            {
+                context->windows[i].isFirstFrame    = true;
+                context->windows[i].isContentHidden = false;
+            }
             goto done_currentWindowIndexValid;
         }
     }
@@ -174,12 +179,13 @@ korl_internal void korl_gui_windowBegin(const wchar_t* identifier, bool* out_isO
     newWindow->position     = nextWindowPosition;
     newWindow->size         = (Korl_Math_V2f32){ 128.f, 128.f };
     newWindow->isFirstFrame = true;
-    newWindow->isOpen = true;
+    newWindow->isOpen       = true;
     context->currentWindowIndex = korl_checkCast_u$_to_u8(KORL_MEMORY_POOL_SIZE(context->windows) - 1);
 done_currentWindowIndexValid:
     newWindow = &context->windows[context->currentWindowIndex];
-    newWindow->usedThisFrame = true;
-    newWindow->styleFlags    = styleFlags;
+    newWindow->usedThisFrame       = true;
+    newWindow->styleFlags          = styleFlags;
+    newWindow->titlebarButtonFlags = KORL_GUI_TITLEBAR_BUTTON_FLAGS_NONE;
     if(out_isOpen)
     {
         newWindow->titlebarButtonFlags |= KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE;
@@ -424,11 +430,20 @@ korl_internal void korl_gui_frameEnd(void)
                 colorBorder = context->style.colorWindowBorderActive;
         else if(context->isMouseHovering && context->identifierMouseHoveredWindow == window->identifier)
             colorBorder = context->style.colorWindowBorderHovered;
+        const Korl_Vulkan_Color colorBorderUp    = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color colorBorderRight = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color colorBorderDown  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color colorBorderLeft  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Math_V2f32 windowAabbMin = {window->position.xy.x                    , window->position.xy.y - window->size.xy.y};
+        const Korl_Math_V2f32 windowAabbMax = {window->position.xy.x + window->size.xy.x, window->position.xy.y                    };
         Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorStack, 4);
-        korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y                    }, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y                    }, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder);
-        korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y - window->size.xy.y}, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y - window->size.xy.y}, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder);
-        korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y                    }, (Korl_Vulkan_Position){window->position.xy.x                    , window->position.xy.y - window->size.xy.y}, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder);
-        korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y                    }, (Korl_Vulkan_Position){window->position.xy.x + window->size.xy.x, window->position.xy.y - window->size.xy.y}, (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder);
+        /** @hack:  I have no idea why, but the Vulkan renderer is not 
+         * drawing the upper-left corner of the window border correctly, so the 
+         * first line's x-coordinate is offset by a half pixel */
+        korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Vulkan_Position){windowAabbMin.xy.x - 0.5f, windowAabbMax.xy.y}, (Korl_Vulkan_Position){windowAabbMax.xy.x, windowAabbMax.xy.y}, colorBorderUp);
+        korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Vulkan_Position){windowAabbMax.xy.x       , windowAabbMax.xy.y}, (Korl_Vulkan_Position){windowAabbMax.xy.x, windowAabbMin.xy.y}, colorBorderRight);
+        korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Vulkan_Position){windowAabbMax.xy.x       , windowAabbMin.xy.y}, (Korl_Vulkan_Position){windowAabbMin.xy.x, windowAabbMin.xy.y}, colorBorderDown);
+        korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Vulkan_Position){windowAabbMin.xy.x       , windowAabbMin.xy.y}, (Korl_Vulkan_Position){windowAabbMin.xy.x, windowAabbMax.xy.y}, colorBorderLeft);
         korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
         korl_gfx_useCamera(guiCamera);
         korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);

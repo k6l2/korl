@@ -168,6 +168,11 @@ korl_internal void korl_gui_windows_processMessage(const MSG* message)
                 {
                 case KORL_GUI_WIDGET_TYPE_BUTTON:{
                     widget->subType.button.actuationCount++;
+                    /* cap the button actuation count at the maximum possible 
+                        value for that unsigned type, instead of wrapping around 
+                        back to zero if we overflow */
+                    if(widget->subType.button.actuationCount == 0)
+                        widget->subType.button.actuationCount--;
                     break;}
                 default:{
                     korl_log(ERROR, "mouse actuation not implemented for widget type==%u", widget->type);
