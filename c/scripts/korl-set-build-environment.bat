@@ -1,5 +1,10 @@
 @echo off
 rem ----- setup MSVC build tools -----
+set vswhere_location=%programfiles(x86)%\Microsoft Visual Studio\Installer\vswhere
+for /f "usebackq delims=#" %%a in (`"%vswhere_location%" -latest -property installationPath`) do (
+	echo Setting environment variable 'VsDevCmd_Path=%%a\Common7\Tools\VsDevCmd.bat'
+	set "VsDevCmd_Path=%%a\Common7\Tools\VsDevCmd.bat"
+)
 call "%VsDevCmd_Path%" -arch=amd64
 rem ----- set the project root directory -----
 set KORL_PROJECT_ROOT=%cd%
