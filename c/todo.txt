@@ -87,7 +87,8 @@
 [x] gfx: dynamic scissor region for easier GUI rendering
 [x] gfx: orthographic projection (non-fixed height, same dimensions as the swapchain)
 [ ] immediate GUI
-	[ ] OPTION: just build DearImGui w/ C bindings & link statically
+	[-] OPTION: just build DearImGui w/ C bindings & link statically
+		- naaaa, I'm going to just keep doing my own thing until I find that GUI API is too difficult and/or time-consuming
 	[ ] OPTION: DIY
 		[x] create a window
 			[x] begin API
@@ -157,14 +158,31 @@
 			[x] onPressed for the collapse button: (only if mouse cursor is still in the button) highlight the button in a different color
 			[x] onRelease for the collapse button: (only if mouse cursor is still in the button) toggle the collapse state for the window
 			[x] collapse window contents when button is toggled
-		[ ] add horizontal scroll bars for windows
-			[ ] [shift]+mouse_scroll controls (only when hovering over this window)
+		[x] add horizontal scroll bars for windows
+			[x] draw the scroll bar when window content is larger than the window's available content area
+			[x] onHovered: highlight the scroll bar
+			[x] onPressed: 
+				[x] highlight in a different color
+				[x] "activate" the scroll bar
+			[x] onMove: (while pressed) adjust the scroll position appropriately
+			[x] offset window drawn content according to scroll bar position
+			[x] [shift]+mouse_scroll controls (only when hovering over this window)
 			- test with really long text gui elements
-		[ ] add vertical scroll bars for windows
-			[ ] mouse_scroll controls (only when hovering over this window)
+		[x] add vertical scroll bars for windows
+			[x] draw the scroll bar when window content is larger than the window's available content area
+			[x] onHovered: highlight the scroll bar
+			[x] onPressed: 
+				[x] highlight in a different color
+				[x] "activate" the scroll bar
+			[x] onMove: (while pressed) adjust the scroll position appropriately
+			[x] offset window drawn content according to scroll bar position
+			[x] mouse_scroll controls (only when hovering over this window)
 			- test with a window filled with a large # of text gui elements
 		[x] draw outline around windows to make it easier to distinguish between overlapping windows
 			- probably want to make this a batch of line primitives, so it's only a 1 pixel outline (we really don't need more than this...)
+		[ ] do we REALLY need API for korl_gui_windowEnd?  It doesn't really seem like it...
+			- windows can automatically "end" when a new window is started
+			- windows can automatically "end" when the gui frame ends
 [ ] change KORL application subsystem from CONSOLE=>WINDOWS
 	[ ] dump KORL logs to a file
 		[ ] in development builds, immediately dump each log into the file without caring about file size

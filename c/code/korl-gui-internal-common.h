@@ -9,33 +9,40 @@
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
 korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
-typedef enum _Korl_Gui_TitlebarButtonFlags
+typedef enum _Korl_Gui_SpecialWidgetFlags
 {
-    KORL_GUI_TITLEBAR_BUTTON_FLAGS_NONE = 0,
-    KORL_GUI_TITLEBAR_BUTTON_FLAG_CLOSE = 1 << 0,
-    KORL_GUI_TITLEBAR_BUTTON_FLAG_HIDE  = 1 << 2,
-} _Korl_Gui_TitlebarButtonFlags;
+    KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE         = 0,
+    KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE  = 1 << 0,
+    KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE   = 1 << 1,
+    KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X  = 1 << 2,
+    KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y  = 1 << 3,
+} _Korl_Gui_SpecialWidgetFlags;
 typedef struct _Korl_Gui_Window
 {
-    const void* identifier;
+    const void* identifier;/// @todo: switch to use of a strong hash function instead of pointer
     bool usedThisFrame;
     bool isFirstFrame;
-    _Korl_Gui_TitlebarButtonFlags titlebarButtonFlags;// flags raised indicate the button's presence
-    _Korl_Gui_TitlebarButtonFlags titlebarButtonFlagsPressed;// flags are raised when the corresponding titlebar button is pressed
     bool isOpen;
     bool isContentHidden;
+    _Korl_Gui_SpecialWidgetFlags specialWidgetFlags;// flags raised indicate the presence of special widgets
+    _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsPressed;// flags are raised when the corresponding special widget is pressed
     f32 hiddenContentPreviousSizeY;
     Korl_Math_V2f32 position;// relative to the upper-left corner of the window
     Korl_Math_V2f32 size;
     u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum
+    Korl_Math_Aabb2f32 cachedContentAabb;// "content" refers to the accumulation of all widgets contained in this window
+    Korl_Math_V2f32 cachedAvailableContentSize;
+    f32 cachedScrollBarLengthX;
+    f32 cachedScrollBarLengthY;
+    f32 scrollBarPositionX;
+    f32 scrollBarPositionY;
 } _Korl_Gui_Window;
 typedef struct _Korl_Gui_Widget
 {
-    const void* parentWindowIdentifier;
-    const void* identifier;
+    const void* parentWindowIdentifier;/// @todo: switch to use of a strong hash function instead of pointer
+    const void* identifier;/// @todo: switch to use of a strong hash function instead of pointer
     bool usedThisFrame;
-    Korl_Math_V2f32 cachedAabbMin;// invalid until after the next call to korl_gui_frameEnd
-    Korl_Math_V2f32 cachedAabbMax;// invalid until after the next call to korl_gui_frameEnd
+    Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
     bool cachedIsInteractive;
     enum
     {
@@ -73,11 +80,15 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color colorButtonPressed;
         Korl_Vulkan_Color colorButtonWindowTitleBarIcons;
         Korl_Vulkan_Color colorButtonWindowCloseActive;
+        Korl_Vulkan_Color colorScrollBar;
+        Korl_Vulkan_Color colorScrollBarActive;
+        Korl_Vulkan_Color colorScrollBarPressed;
         const wchar_t* fontWindowText;
         f32 windowTextPixelSizeY;
         f32 windowTitleBarPixelSizeY;
         f32 widgetSpacingY;
         f32 widgetButtonLabelMargin;
+        f32 windowScrollBarPixelWidth;
     } style;
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value == korl_arraySize(windows), a new window 
@@ -99,11 +110,12 @@ typedef struct _Korl_Gui_Context
     bool isWindowDragged;// only raised when we click a window outside of widgets
     bool isWindowResizing;// only raised when we click a window's resize edge
     Korl_Math_V2f32 mouseDownWindowOffset;
+    Korl_Math_V2f32 mouseDownOffsetSpecialWidget;
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
-    _Korl_Gui_TitlebarButtonFlags titlebarButtonFlagsMouseDown;
-    const void* identifierMouseHoveredWidget;
-    const void* identifierMouseHoveredWindow;
+    _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
+    const void* identifierMouseHoveredWidget;/// @todo: switch to use of a strong hash function instead of pointer
+    const void* identifierMouseHoveredWindow;/// @todo: switch to use of a strong hash function instead of pointer
     enum
     {
         KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,

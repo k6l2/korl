@@ -410,3 +410,75 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     result.rc.r2c0 = cameraZ.xyz.x; result.rc.r2c1 = cameraZ.xyz.y; result.rc.r2c2 = cameraZ.xyz.z; result.rc.r2c3 = -korl_math_v3f32_dot(&cameraZ, positionEye);
     return result;
 }
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y)
+{
+    Korl_Math_Aabb2f32 result;
+    result.min.xy.x = KORL_MATH_MIN(p0x, p1x);
+    result.min.xy.y = KORL_MATH_MIN(p0y, p1y);
+    result.max.xy.x = KORL_MATH_MAX(p0x, p1x);
+    result.max.xy.y = KORL_MATH_MAX(p0y, p1y);
+    return result;
+}
+korl_internal Korl_Math_V2f32 korl_math_aabb2f32_size(Korl_Math_Aabb2f32 aabb)
+{
+    korl_assert(aabb.max.xy.x >= aabb.min.xy.x);
+    korl_assert(aabb.max.xy.y >= aabb.min.xy.y);
+    return korl_math_v2f32_subtract(aabb.max, aabb.min);
+}
+korl_internal bool korl_math_aabb2f32_contains(Korl_Math_Aabb2f32 aabb, f32 x, f32 y)
+{
+    return x >= aabb.min.xy.x && x <= aabb.max.xy.x 
+        && y >= aabb.min.xy.y && y <= aabb.max.xy.y;
+}
+korl_internal bool korl_math_aabb2f32_containsV2f32(Korl_Math_Aabb2f32 aabb, Korl_Math_V2f32 v)
+{
+    return korl_math_aabb2f32_contains(aabb, v.xy.x, v.xy.y);
+}
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_union(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB)
+{
+    Korl_Math_Aabb2f32 result;
+    result.min.xy.x = KORL_MATH_MIN(aabbA.min.xy.x, aabbB.min.xy.x);
+    result.min.xy.y = KORL_MATH_MIN(aabbA.min.xy.y, aabbB.min.xy.y);
+    result.max.xy.x = KORL_MATH_MAX(aabbA.max.xy.x, aabbB.max.xy.x);
+    result.max.xy.y = KORL_MATH_MAX(aabbA.max.xy.y, aabbB.max.xy.y);
+    return result;
+}
+korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z)
+{
+    Korl_Math_Aabb3f32 result;
+    result.min.xyz.x = KORL_MATH_MIN(p0x, p1x);
+    result.min.xyz.y = KORL_MATH_MIN(p0y, p1y);
+    result.min.xyz.z = KORL_MATH_MIN(p0z, p1z);
+    result.max.xyz.x = KORL_MATH_MAX(p0x, p1x);
+    result.max.xyz.y = KORL_MATH_MAX(p0y, p1y);
+    result.max.xyz.z = KORL_MATH_MAX(p0z, p1z);
+    return result;
+}
+korl_internal Korl_Math_V3f32 korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb)
+{
+    korl_assert(aabb.max.xyz.x >= aabb.min.xyz.x);
+    korl_assert(aabb.max.xyz.y >= aabb.min.xyz.y);
+    korl_assert(aabb.max.xyz.z >= aabb.min.xyz.z);
+    return korl_math_v3f32_subtract(aabb.max, aabb.min);
+}
+korl_internal bool korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z)
+{
+    return x >= aabb.min.xyz.x && x <= aabb.max.xyz.x 
+        && y >= aabb.min.xyz.y && y <= aabb.max.xyz.y 
+        && z >= aabb.min.xyz.z && z <= aabb.max.xyz.z;
+}
+korl_internal bool korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Korl_Math_V3f32 v)
+{
+    return korl_math_aabb3f32_contains(aabb, v.xyz.x, v.xyz.y, v.xyz.z);
+}
+korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB)
+{
+    Korl_Math_Aabb3f32 result;
+    result.min.xyz.x = KORL_MATH_MIN(aabbA.min.xyz.x, aabbB.min.xyz.x);
+    result.min.xyz.y = KORL_MATH_MIN(aabbA.min.xyz.y, aabbB.min.xyz.y);
+    result.min.xyz.z = KORL_MATH_MIN(aabbA.min.xyz.z, aabbB.min.xyz.z);
+    result.max.xyz.x = KORL_MATH_MAX(aabbA.max.xyz.x, aabbB.max.xyz.x);
+    result.max.xyz.y = KORL_MATH_MAX(aabbA.max.xyz.y, aabbB.max.xyz.y);
+    result.max.xyz.z = KORL_MATH_MAX(aabbA.max.xyz.z, aabbB.max.xyz.z);
+    return result;
+}

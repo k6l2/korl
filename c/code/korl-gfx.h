@@ -85,8 +85,14 @@ korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);
 /** @todo: maybe change the scissor parameters to be an integral data type, 
  * since at some point a rounding strategy must occur anyways, and this 
  * information is obscured by this API, just for the sake of making it easier to 
- * call with f32 data... Which, I don't know if that's a great tradeoff honestly */
+ * call with f32 data... Which, I don't know if that's a great tradeoff honestly.  
+ * 
+ * Note that scissor coordinates use swap chain coordinates, where the origin is 
+ * the upper-left corner of the swap chain, & {+X,+Y} points to the bottom-right.  */
 korl_internal void korl_gfx_cameraSetScissor(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY);
+/** 
+ * Note that scissor coordinates use swap chain coordinates, where the origin is 
+ * the upper-left corner of the swap chain, & {+X,+Y} points to the bottom-right.  */
 korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight);
 /** Translate the camera such that the orthographic camera's origin is located 
  * at the position in the swapchain's coordinate space relative to the 
@@ -118,7 +124,8 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator al
  */
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator allocator, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight);
 korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position);
-korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position);
+korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, f32 x, f32 y);
+korl_internal void korl_gfx_batchSetPosition2dV2f32(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position);
 korl_internal void korl_gfx_batchSetScale(Korl_Gfx_Batch*const context, Korl_Vulkan_Position scale);
 korl_internal void korl_gfx_batchSetRotation(Korl_Gfx_Batch*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
 korl_internal void korl_gfx_batchSetVertexColor(Korl_Gfx_Batch*const context, u32 vertexIndex, Korl_Vulkan_Color color);

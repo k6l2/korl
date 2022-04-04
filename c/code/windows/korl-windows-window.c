@@ -11,6 +11,7 @@ korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass"
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+    korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
     switch(uMsg)
     {
     case WM_CREATE:{
@@ -184,7 +185,6 @@ korl_internal void korl_windows_window_loop(void)
             if(windowMessage.message == WM_QUIT) quit = true;
             const BOOL messageTranslated = TranslateMessage(&windowMessage);
             const LRESULT messageResult  = DispatchMessage (&windowMessage);
-            korl_gui_windows_processMessage(&windowMessage);
         }
         if(quit)
             break;

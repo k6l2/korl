@@ -542,7 +542,12 @@ korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_
 {
     context->_position = position;
 }
-korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position)
+korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, f32 x, f32 y)
+{
+    context->_position.xyz.x = x;
+    context->_position.xyz.y = y;
+}
+korl_internal void korl_gfx_batchSetPosition2dV2f32(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position)
 {
     context->_position.xyz.x = position.xy.x;
     context->_position.xyz.y = position.xy.y;

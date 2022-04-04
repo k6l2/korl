@@ -85,6 +85,16 @@ typedef union Korl_Math_V4u8
     } rgba;
     u8 elements[4];
 } Korl_Math_V4u8;
+typedef struct Korl_Math_Aabb2f32
+{
+    Korl_Math_V2f32 min;
+    Korl_Math_V2f32 max;
+} Korl_Math_Aabb2f32;
+typedef struct Korl_Math_Aabb3f32
+{
+    Korl_Math_V3f32 min;
+    Korl_Math_V3f32 max;
+} Korl_Math_Aabb3f32;
 korl_internal inline u64 korl_math_kilobytes(u64 x);
 korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);
@@ -146,3 +156,15 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     const Korl_Math_V3f32*const positionEye, 
     const Korl_Math_V3f32*const positionTarget, 
     const Korl_Math_V3f32*const worldUpNormal);
+/* Aabb2f32 *******************************************************************/
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y);
+korl_internal Korl_Math_V2f32 korl_math_aabb2f32_size(Korl_Math_Aabb2f32 aabb);
+korl_internal bool korl_math_aabb2f32_contains(Korl_Math_Aabb2f32 aabb, f32 x, f32 y);
+korl_internal bool korl_math_aabb2f32_containsV2f32(Korl_Math_Aabb2f32 aabb, Korl_Math_V2f32 v);
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_union(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB);
+/* Aabb3f32 *******************************************************************/
+korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z);
+korl_internal Korl_Math_V3f32 korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb);
+korl_internal bool korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z);
+korl_internal bool korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Korl_Math_V3f32 v);
+korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB);
