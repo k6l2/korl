@@ -24,7 +24,7 @@
         if /Qspectre switch specified" I don't care about microshaft's shitty 
         API requiring spectre mitigation, only my own to some extent. */
     #pragma warning(disable : 5045)
-    /** @todo: do we actually need this header?  This API seems to suck ass compared to the stuff it supposedly "replaced", such as \c _vscwprintf & \c vswprintf_s */
+    //KORL-ISSUE-000-000-033: remove this header, since this API sucks
     #include <strsafe.h>/* for StringCchVPrintf */
 #pragma warning(pop)
 /* KORL application exit codes */

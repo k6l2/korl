@@ -8,7 +8,7 @@
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
-typedef Korl_Math_V3u8  Korl_Vulkan_Color;///@consistency: rename to Korl_Vulkan_Color3u8
+typedef Korl_Math_V3u8  Korl_Vulkan_Color;///KORL-ISSUE-000-000-026: rename to Korl_Vulkan_Color3u8
 typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;
 /** A value of \c 0 is designated as an INVALID texture handle */
 typedef u16 Korl_Vulkan_TextureHandle;
@@ -30,15 +30,12 @@ korl_internal void korl_vulkan_destroy(void);
 korl_internal void korl_vulkan_createSurface(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_destroySurface(void);
-#if 0/* @todo: bring these API back later when we want the ability to create 
-               pipelines using externally managed resources like shaders */
-/* @hack: shader loading should probably be more robust */
+#if 0//KORL-ISSUE-000-000-027: Vulkan; feature: add shader/pipeline resource API
 /** 
  * This must be called AFTER \c korl_vulkan_createSurface since shader modules 
  * require a device to be created!
  */
 korl_internal void korl_vulkan_loadShaders(void);
-/* @hack: pipeline creation should probably be a little more intelligent */
 korl_internal void korl_vulkan_createPipeline(void);
 #endif//0
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3]);

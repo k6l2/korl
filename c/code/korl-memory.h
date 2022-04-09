@@ -23,12 +23,8 @@ typedef u32 Korl_MemoryPool_Size;
 #define KORL_MEMORY_POOL_RESIZE(name, newSize) \
     ( korl_assert(newSize <= korl_arraySize(name)) \
     , name##_korlMemoryPoolSize = newSize )
-/** @simplify: we don't actually need to expose ANY of this allocator API right 
- * now for any reason - all the user of this module needs is the enumeration of 
- * what kind of allocator they are getting, then the dispatch can just all be 
- * done internally and the user doesn't have to deal with function pointer crap */
-/** @simplify: make some macros which automatically inject file + line for calls 
-    to these allocator functions so we don't have to think about it */
+//KORL-ISSUE-000-000-010
+//KORL-ISSUE-000-000-011
 #define KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(name)   void* name(void* userData, u$ bytes, wchar_t* file, int line)
 #define KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(name) void* name(void* userData, void* allocation, u$ bytes, wchar_t* file, int line)
 #define KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(name)       void  name(void* userData, void* allocation, wchar_t* file, int line)
@@ -48,10 +44,6 @@ typedef struct Korl_Memory_Allocator
 } Korl_Memory_Allocator;
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
-#if 0 //@unused
-korl_internal void* korl_memory_addressMin(void);
-korl_internal void* korl_memory_addressMax(void);
-#endif
 /**  Should function in the same way as memcmp from the C standard library.
  * \return \c -1 if the first byte that differs has a lower value in \c a than 
  *    in \c b, \c 1 if the first byte that differs has a higher value in \c a 

@@ -46,7 +46,7 @@ typedef struct _Korl_Vulkan_Pipeline
         _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV    = 1 << 1
     } flagsOptionalVertexAttributes;
     bool useDepthTestAndWriteDepthBuffer;
-    ///@todo: blend equations
+    //KORL-ISSUE-000-000-013: add blend equations
     /* ---------------------------------------------------------------------- */
     /* render state that has nothing to do with the pipeline itself */
     bool useIndexBuffer;
@@ -62,13 +62,8 @@ typedef struct _Korl_Vulkan_DeviceAsset
     {
         struct
         {
-            /** @speed: comparisons between asset strings are going to be slow, so maybe 
-             * we should create a hash table for asset identifiers at some point.  
-             * simple hash functions:  http://www.cse.yorku.ca/~oz/hash.html */
-            /** @speed: even if we do end up needing to store the asset strings, it 
-             * would likely be better if we store the strings in a separate string pool, 
-             * and store a handle to that string here for faster iteration over device 
-             * assets - we're wasting like an entire cache line per device asset lol */
+            //KORL-PERFORMANCE-000-000-007: hash strings
+            //KORL-PERFORMANCE-000-000-008: add string pool implementation
             wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
             _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
         } assetTexture;
@@ -97,9 +92,7 @@ typedef struct _Korl_Vulkan_Context
     PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif// KORL_DEBUG
-    /**
-     * @todo: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
-     */
+    //KORL-ISSUE-000-000-014: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
     /* for now we're just going to have a single window with Vulkan rendering, 
         so we only have to make one device, ergo we only need one global 
         instance of these variables */
@@ -116,15 +109,12 @@ typedef struct _Korl_Vulkan_Context
     VkCommandPool commandPoolGraphics;
     /** Used to issue commands to transfer memory to device-local storage */
     VkCommandPool commandPoolTransfer;
-    /**
-     * @todo: store a collection of shader modules which can be referenced by 
-     * external API, and store built-in shaders in known positions
-     */
+    //KORL-ISSUE-000-000-015: add shader module collection
     VkShaderModule shaderBatchVertColor;
     VkShaderModule shaderBatchVertTexture;
     VkShaderModule shaderBatchFragColor;
     VkShaderModule shaderBatchFragTexture;
-    /** @robustness: use KORL_MEMORY_POOL_* API */
+    //KORL-ISSUE-000-000-016: robustness: use KORL_MEMORY_POOL_* API, or something similar
     u32 pipelinesCount;
     _Korl_Vulkan_Pipeline pipelines[1024];
     /* pipeline layouts (uniform data) are (potentially) shared between 
@@ -157,10 +147,9 @@ typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
-    /** @performance: pass model as push constant instead?  Timings required.  */
+    //KORL-PERFORMANCE-000-000-009: pass model as push constant instead?  Timings required.
     Korl_Math_M4f32 m4f32Model;
-    /** @performance: pre-calculate the ViewProjection matrix; probably good 
-     * for performance, but I would like to do timings for this */
+    //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
 } _Korl_Vulkan_SwapChainImageBatchUbo;
 /* Ensure _Korl_Vulkan_SwapChainImageBatchUbo member alignment here: */
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Projection) & 16) == 0);
@@ -177,9 +166,7 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchUvs;
-    /** @speed: do we REALLY not need device-local memory for this?  I don't 
-     * trust the tutorial writer(s) about this.  Maybe this can be probed at 
-     * some point. */
+    //KORL-ISSUE-000-000-017: do we REALLY not need device-local memory for this?
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchIndices;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchPositions;
@@ -258,9 +245,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     u32 deferredResizeX, deferredResizeY;
     /** expected to be nullified at the end of each call to \c frameBegin() */
     _Korl_Vulkan_SurfaceContextBatchState batchState;
-    /** @unused: I'm not actually making use of this state anywhere at the 
-     * moment, so this is currently useless. */
-    bool hasStencilComponent;
+    bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
     _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;

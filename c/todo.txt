@@ -89,7 +89,7 @@
 [x] immediate GUI
 	[-] OPTION: just build DearImGui w/ C bindings & link statically
 		- naaaa, I'm going to just keep doing my own thing until I find that GUI API is too difficult and/or time-consuming
-	[ ] OPTION: DIY
+	[x] OPTION: DIY
 		[x] create a window
 			[x] begin API
 			[x] end API

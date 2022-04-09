@@ -59,11 +59,9 @@ typedef struct Korl_Gfx_Batch
     u32 _vertexCount;
     f32 _textPixelHeight;
     wchar_t* _assetNameTexture;
-    /** @memory: you will never have a texture & font asset at the same time, so 
-     * we could potentially overload this to the same string pointer */
+    //KORL-PERFORMANCE-000-000-002
     wchar_t* _assetNameFont;
-    /** @memory: once again, only used by text batches; create a PTU here to 
-     * save space? */
+    //KORL-PERFORMANCE-000-000-003
     wchar_t* _text;
     Korl_Vulkan_TextureHandle _fontTextureHandle;
     Korl_Vulkan_VertexIndex* _vertexIndices;
@@ -82,13 +80,10 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrtho(f32 clipDepth);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);
 korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
 korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);
-/** @todo: maybe change the scissor parameters to be an integral data type, 
- * since at some point a rounding strategy must occur anyways, and this 
- * information is obscured by this API, just for the sake of making it easier to 
- * call with f32 data... Which, I don't know if that's a great tradeoff honestly.  
- * 
- * Note that scissor coordinates use swap chain coordinates, where the origin is 
- * the upper-left corner of the swap chain, & {+X,+Y} points to the bottom-right.  */
+/** Note that scissor coordinates use swap chain coordinates, where the origin 
+ * is the upper-left corner of the swap chain, & {+X,+Y} points to the 
+ * bottom-right.  */
+//KORL-ISSUE-000-000-004
 korl_internal void korl_gfx_cameraSetScissor(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY);
 /** 
  * Note that scissor coordinates use swap chain coordinates, where the origin is 
@@ -106,15 +101,7 @@ korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const contex
  *   \c {0.f,0.f} as size ratio coordinates */
 korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY);
 korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags);
-/** @simplify: is it possible to just have a "createRectangle" function, 
- * and then add texture or color components to it in later calls?  And if 
- * so, is this API good (benefits/detriments to usability/readability/performance?)? 
- * My initial thoughts on this are:
- *  - this would introduce unnecessary performance penalties since we cannot 
- *    know ahead of time what memory to allocate for the batch (whether or not 
- *    we need UVs, colors, etc.)
- *  - the resulting API might become more complex anyways, and increase friction 
- *    for the user */
+//KORL-ISSUE-000-000-005
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleTextured(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, const wchar_t* assetNameTexture);
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color);
 korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator allocator, u32 lineCount);

@@ -507,10 +507,7 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
     queueSubmitInfo.commandBufferCount = 1;
     queueSubmitInfo.pCommandBuffers    = &commandBuffer;
     _KORL_VULKAN_CHECK(vkQueueSubmit(context->queueGraphics, 1, &queueSubmitInfo, VK_NULL_HANDLE/*fence*/));
-    /** @bandwidth: this is very heavy handed!  It would be better if this 
-     * process could happen in the background while we wait on a fence or 
-     * something so that the graphicsQueue can keep going unimpeded and program 
-     * execution can continue batching more vertices. */
+    //KORL-PERFORMANCE-000-000-012: bandwidth: heavy-handed locking mechanism
     _KORL_VULKAN_CHECK(vkQueueWaitIdle(context->queueGraphics));
     /* release the command buffer memory back to the pool now that we're done */
     vkFreeCommandBuffers(context->device, context->commandPoolTransfer, 1, &commandBuffer);
@@ -787,9 +784,7 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
         0/*first binding*/, 
         korl_arraySize(batchVertexBuffers), batchVertexBuffers, 
         batchVertexBufferOffsets);
-    /** @speed: binding descriptor sets is an expensive operation, and it's 
-     * likely that we will not need to do so each time the batch pipeline is 
-     * flushed */
+    //KORL-PERFORMANCE-000-000-013: speed: only bind descriptor sets when needed
     vkCmdBindDescriptorSets(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineLayout, 
@@ -922,12 +917,7 @@ korl_internal void _korl_vulkan_transferImageBufferToTexture(
             0/*flags*/, &mappedStagingMemory));
     memcpy(mappedStagingMemory, sourceImageR8G8B8A8, imageBytes);
     vkUnmapMemory(context->device, context->deviceMemoryLinearAssetsStaging.deviceMemory);
-    /** @bandwidth: we don't actually need to submit this buffer right now!  It 
-     * should be possible to maintain a command buffer for at least the duration 
-     * of a frame (if not > 1 frame), and ONLY submit/flush the commands once 
-     * any of the following conditions are met:  
-     * - the staging asset buffer fills up
-     * - we reach the end of the frame & the staging asset buffer is NOT empty */
+    //KORL-PERFORMANCE-000-000-014: bandwidth: batch these buffer transfers
     /* transfer the staging memory to the device-local texture memory */
     KORL_ZERO_STACK(VkCommandBufferAllocateInfo, commandBufferAllocateInfo);
     commandBufferAllocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -989,10 +979,7 @@ korl_internal void _korl_vulkan_transferImageBufferToTexture(
     queueSubmitInfo.commandBufferCount = 1;
     queueSubmitInfo.pCommandBuffers    = &commandBuffer;
     _KORL_VULKAN_CHECK(vkQueueSubmit(context->queueGraphics, 1, &queueSubmitInfo, VK_NULL_HANDLE/*fence*/));
-    /** @bandwidth: this is very heavy handed!  It would be better if this 
-     * process could happen in the background while we wait on a fence or 
-     * something so that the graphicsQueue can keep going unimpeded and program 
-     * execution can continue batching more vertices. */
+    //KORL-PERFORMANCE-000-000-012: bandwidth: heavy-handed locking mechanism
     _KORL_VULKAN_CHECK(vkQueueWaitIdle(context->queueGraphics));
     vkFreeCommandBuffers(context->device, context->commandPoolTransfer, 1, &commandBuffer);
     /* now that the staging assets have been moved to the device-local memory, 
@@ -1064,9 +1051,7 @@ korl_internal void korl_vulkan_construct(void)
             extensionProperties[e].extensionName, 
             extensionProperties[e].specVersion);
     /* create the VkInstance */
-    /* @robustness: cross-check this list of extension names with the 
-        extensionProperties queried above to check if they are all provided by 
-        the platform */
+    //KORL-ISSUE-000-000-024: robustness: cross-check this list of extensions
     const char* enabledExtensions[] = 
         { VK_KHR_SURFACE_EXTENSION_NAME
 #if defined(_WIN32)
@@ -1461,12 +1446,7 @@ korl_internal void korl_vulkan_createSurface(
     /* --- create batch descriptor set layout --- */
     // not really sure where this should go, but I know that it just needs to 
     //    be created BEFORE the pipelines are created, since they are used there //
-    /** @suboptimal: we're shoving all the descriptors necessary for our batch 
-     * rendering into a single descriptor set, but it's likely that some of the 
-     * descriptors will have to change much more frequently during a frame, ergo, 
-     * it is likely that splitting this descriptor set layout into multiple, and 
-     * consequently having multiple descriptor sets for batch rendering per 
-     * frame, will end up being more efficient */
+    //KORL-PERFORMANCE-000-000-015: split this into multiple descriptor sets based on change frequency
     KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 2);
     descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_UBO;
     descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1657,7 +1637,7 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
             context->pipelines[p].pipeline = VK_NULL_HANDLE;
             _korl_vulkan_createPipeline(p);
         }
-        /** @todo: re-record command buffers?... (waste of time probably) */
+        //KORL-ISSUE-000-000-025: re-record command buffers?...
         /* clear the deferred resize flag for the next frame */
         surfaceContext->deferredResize = false;
     }
@@ -2289,8 +2269,7 @@ korl_internal Korl_Vulkan_TextureHandle korl_vulkan_createTexture(u32 sizeX, u32
     /* transfer the staging image buffer to the device-local texture object */
     _korl_vulkan_transferImageBufferToTexture(imageBuffer, sizeX, sizeY, deviceImage);
     /* create a new texture handle to uniquely identify the texture device asset */
-    /** @speed: this is stupid & obviously slow; consider storing texture assets 
-     * in a fixed-size table, allowing constant time lookups for each handle */
+    //KORL-PERFORMANCE-000-000-016: speed: consider storing texture assets in a fixed-size table
     Korl_Vulkan_TextureHandle textureHandle = 0;
     for(Korl_Vulkan_TextureHandle t = 1; t < (Korl_Vulkan_TextureHandle)~0; t++)
     {

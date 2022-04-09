@@ -18,13 +18,6 @@ void* _stbtt_allocate(u$ bytes)
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
     return context->allocator.callbackAllocate(context->allocator.userData, bytes, L""__FILE__, __LINE__);
 }
-#if 0/// @unused
-void* _stbtt_reallocate(void* allocation, u$ bytes)
-{
-    _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
-    return context->allocator.callbackReallocate(context->allocator.userData, allocation, bytes, L""__FILE__, __LINE__);
-}
-#endif
 void _stbtt_free(void* allocation)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;

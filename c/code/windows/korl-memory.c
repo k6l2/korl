@@ -22,18 +22,7 @@ korl_internal u$ korl_memory_pageBytes(void)
     _Korl_Memory_Context*const context = &_korl_memory_context;
     return context->systemInfo.dwPageSize;
 }
-#if 0// @unused
-korl_internal void* korl_memory_addressMin(void)
-{
-    return _korl_memory_systemInfo.lpMinimumApplicationAddress;
-}
-korl_internal void* korl_memory_addressMax(void)
-{
-    return _korl_memory_systemInfo.lpMaximumApplicationAddress;
-}
-#endif
-/** @todo: move this into an OS-independent file since this isn't using any OS-
- * specific code - @pull-out-os-agnostic */
+//KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes)
 {
     const u8* aBytes = KORL_C_CAST(const u8*, a);
@@ -88,7 +77,7 @@ korl_internal void korl_memory_nullify(void*const p, size_t bytes)
 {
     SecureZeroMemory(p, bytes);
 }
-/** @todo: @pull-out-os-agnostic */
+//KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
 {
     const void*const pEnd = KORL_C_CAST(const u8*, p) + bytes;
@@ -108,10 +97,8 @@ korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_Allocator allocator,
 }
 typedef struct _Korl_Memory_AllocatorLinear
 {
-    /** @redundant: technically we don't need this, since we can just call 
-        QueryVirtualMemoryInformation */
     /** total amount of reserved virtual address space, including this struct */
-    u$ bytes;
+    u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
     void* nextAllocationAddress;
     /** support for realloc/free for arbitrary allocations 
      * - offsets are relative to the start address of this struct 
@@ -362,8 +349,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLin
         else
         {
             const u$ oldAllocationBytes = allocationMeta->bytes;
-            /** @copypasta: same code that runs in the `done` label (not sure if 
-             * there is a good way to take this out though) */
+            //KORL-ISSUE-000-000-031: copypasta
             /* protect the allocation's metadata page so we can call other 
                 allocator API safely */
             {
@@ -507,10 +493,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_EMPTY(korl_memory_allocatorLinear_e
 }
 korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxBytes)
 {
-    /* @safety: ensure that the thread calling this function is the main thread 
-        to ensure that the function pointers of the Korl_Memory_Allocator will 
-        always be valid, since the main program module (should) never be 
-        reloaded */
+    //KORL-ISSUE-000-000-032: safety: check thread Id; NOT THREAD-SAFE!
     korl_assert(maxBytes > 0);
     korl_assert(maxBytes >= sizeof(_Korl_Memory_AllocatorLinear));
     KORL_ZERO_STACK(Korl_Memory_Allocator, result);

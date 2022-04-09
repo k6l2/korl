@@ -282,8 +282,7 @@ korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qR
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vTranslation)
 {
-    /** @speed: most likely there is a MUCH more efficient way to build a matrix 
-        using these parameters */
+    //KORL-PERFORMANCE-000-000-004
     Korl_Math_M4f32 m4Rotation = korl_math_makeM4f32_rotate(qRotation);
     Korl_Math_M4f32 m4Translation = KORL_MATH_M4F32_IDENTITY;
     m4Translation.rc.r0c3 = vTranslation.xyz.x;
@@ -293,8 +292,7 @@ korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quat
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vScale, Korl_Math_V3f32 vTranslation)
 {
-    /** @speed: most likely there is a MUCH more efficient way to build a matrix 
-        using these parameters */
+    //KORL-PERFORMANCE-000-000-004
     Korl_Math_M4f32 m4Rotation = korl_math_makeM4f32_rotate(qRotation);
     Korl_Math_M4f32 m4Translation = KORL_MATH_M4F32_IDENTITY;
     m4Translation.rc.r0c3 = vTranslation.xyz.x;
@@ -319,8 +317,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*co
 #pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
 korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
 {
-    /** @speed: once again, not doing the most efficient thing here, but until 
-     * this causes actual performance issues IDGAF */
+    //KORL-PERFORMANCE-000-000-005
     /** used to perform dot product with the columns of mB */
     const Korl_Math_M4f32 mBTranspose = korl_math_m4f32_transpose(mB);
     Korl_Math_M4f32 result;// no need to initialize to anything, since we will write to all elements
@@ -384,9 +381,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     const Korl_Math_V3f32*const positionTarget, 
     const Korl_Math_V3f32*const worldUpNormal)
 {
-    /* @speed: could potentially just compile this out for "release" builds, but 
-               like who actually cares??  The performance gain from doing so is 
-               most likely not at all worth it for all I know.  PRE-MATURE OPT! */
+    //KORL-PERFORMANCE-000-000-006
     /* sanity check to ensure that worldUpNormal is, in fact, normalized! */
     korl_assert(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(worldUpNormal), 1));
     Korl_Math_M4f32 result = KORL_MATH_M4F32_IDENTITY;

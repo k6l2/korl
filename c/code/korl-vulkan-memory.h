@@ -21,20 +21,7 @@ typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
 } _Korl_Vulkan_DeviceMemory_Allocation_Type;
 typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
 {
-    /* @polymorphic-tagged-union
-        We essentially need "virtual constructor/destructor" logic for this 
-        data type, since this logic is specific to the device object type (we 
-        need to use different Vulkan API for these tasks).
-        It's worth noting that I have found this to be a common enough design 
-        pattern that at one point I created a simple C++ parser which 
-        automatically generated dispatch routines for virtual functions (kcpp?), 
-        which theoretically might make development of these constructs easier.  
-        Although, I am not yet _entirely_ convinced that this is the case just 
-        yet.  Generated v-tables are not a panacea, and still don't properly 
-        solve issues associated with function pointer tables, such as hot code 
-        reloading, so such a feature might need a bit more effort to make it 
-        easy-to-use like C++ virtuals, but also not complete shit under the hood 
-        that we can't fix (like C++ virtuals).  */
+    //KORL-ISSUE-000-000-021: polymorphic-tagged-union
     _Korl_Vulkan_DeviceMemory_Allocation_Type type;
     union 
     {
@@ -55,18 +42,15 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     VkDeviceSize byteOffset;
     VkDeviceSize byteSize;
 } _Korl_Vulkan_DeviceMemory_Alloctation;
+//KORL-ISSUE-000-000-022: add support for memory allocators to decommit pages
+//KORL-ISSUE-000-000-023: add support for memory allocators to defragment pages
 /**
  * This is the "dumbest" possible allocator - we literally just allocate a big 
  * chunk of memory, and then bind (allocate) new device objects one right after 
  * another contiguously.  We don't do any defragmentation, and we don't even 
  * have the ability to "free" objects, really (except when the entire allocator 
  * needs to be destroyed).  But, for the purposes of prototyping, this will do 
- * just fine for now.  
- * @todo: if we ever start having more "shippable" asset pipelines, we will need 
- *        a more intelligent allocator which allows things like:
- *        - dynamic growth
- *        - "freeing" allocations
- *        - defragmentation
+ * just fine for now.
  */
 typedef struct _Korl_Vulkan_DeviceMemoryLinear
 {

@@ -39,7 +39,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_log(VERBOSE, "WM_SIZE - clientSize: %ux%u", clientWidth, clientHeight);
         korl_vulkan_deferredResize(clientWidth, clientHeight);
         } break;
-    /* @todo: WM_PAINT, ValidateRect(hWnd, NULL); ??? */
+    //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
     default: 
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
@@ -97,7 +97,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
                                      NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
-/** @hack: this is just scaffolding to build immediate batched rendering */
+//KORL-ISSUE-000-000-035: hack: delete this function later
 korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeapStack)
 {
     korl_shared_variable bool initialized = false;

@@ -19,7 +19,7 @@ typedef enum _Korl_Gui_SpecialWidgetFlags
 } _Korl_Gui_SpecialWidgetFlags;
 typedef struct _Korl_Gui_Window
 {
-    const void* identifier;/// @todo: switch to use of a strong hash function instead of pointer
+    const void* identifier;//KORL-ISSUE-000-000-006
     bool usedThisFrame;
     bool isFirstFrame;
     bool isOpen;
@@ -39,8 +39,8 @@ typedef struct _Korl_Gui_Window
 } _Korl_Gui_Window;
 typedef struct _Korl_Gui_Widget
 {
-    const void* parentWindowIdentifier;/// @todo: switch to use of a strong hash function instead of pointer
-    const void* identifier;/// @todo: switch to use of a strong hash function instead of pointer
+    const void* parentWindowIdentifier;//KORL-ISSUE-000-000-006
+    const void* identifier;//KORL-ISSUE-000-000-006
     bool usedThisFrame;
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
     bool cachedIsInteractive;
@@ -114,8 +114,8 @@ typedef struct _Korl_Gui_Context
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
-    const void* identifierMouseHoveredWidget;/// @todo: switch to use of a strong hash function instead of pointer
-    const void* identifierMouseHoveredWindow;/// @todo: switch to use of a strong hash function instead of pointer
+    const void* identifierMouseHoveredWidget;//KORL-ISSUE-000-000-006
+    const void* identifierMouseHoveredWindow;//KORL-ISSUE-000-000-006
     enum
     {
         KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,

@@ -25,9 +25,6 @@ korl_internal void korl_assertConditionFailed(
             obtained via GetLastError(), but we're too deep in critical error 
             handling already for this to be useful */
     }
-    /** @todo: In the case that we're deploying this application (not running in 
-     * a debugger) maybe do one or more of the following things:
-     * - offer a choice to continue execution
-     * - offer a choice to write a memory dump to disk */
+    //KORL-ISSUE-000-000-028: improve assert fail user experience in production
     ExitProcess(KORL_EXIT_FAIL_ASSERT);
 }

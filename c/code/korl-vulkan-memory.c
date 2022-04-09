@@ -66,13 +66,7 @@ korl_internal void _korl_vulkan_deviceMemoryLinear_create(
         VkImage dummyImage;
         VkFormat dummyFormat = VK_FORMAT_R8G8B8A8_SRGB;
         if(imageUsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-            /** @HACK: this is a really stupid way of making sure the allocator 
-             * can handle depth image buffers.  Instead of doing it this way, we 
-             * should have some way of iterating over all possible format 
-             * combinations which could potentially be used with this allocator 
-             * and create a dummy image for each combination.  If we don't 
-             * remove this hack, we will always be limited to just one type of 
-             * image buffer per allocator! */
+            //KORL-ISSUE-000-000-019: HACK!  poor allocator configuration for images
             dummyFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
         KORL_ZERO_STACK(VkImageCreateInfo, imageCreateInfo);
         imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -153,10 +147,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     /* bind the buffer to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
-    /* @robustness: ensure that device objects respect `bufferImageGranularity`, 
-                    obtained from `VkPhysicalDeviceLimits`, if we ever have NON-
-                    LINEAR device objects in the same allocation (in addition to 
-                    respecting memory alignment requirements, of course).  */
+    //KORL-ISSUE-000-000-020: ensure that device objects respect `bufferImageGranularity`
     const VkDeviceSize alignedOffset = korl_math_roundUpPowerOf2(deviceMemoryLinear->bytesAllocated, memoryRequirements.alignment);
     // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
     korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);
@@ -202,10 +193,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     /* bind the image to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
-    /** @robustness: ensure that device objects respect `bufferImageGranularity`, 
-                    obtained from `VkPhysicalDeviceLimits`, if we ever have NON-
-                    LINEAR device objects in the same allocation (in addition to 
-                    respecting memory alignment requirements, of course).  */
+    //KORL-ISSUE-000-000-020: ensure that device objects respect `bufferImageGranularity`
     const VkDeviceSize alignedOffset = korl_math_roundUpPowerOf2(deviceMemoryLinear->bytesAllocated, memoryRequirements.alignment);
     // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
     korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);
@@ -239,7 +227,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     createInfoSampler.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     createInfoSampler.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     createInfoSampler.anisotropyEnable        = VK_TRUE;
-    createInfoSampler.maxAnisotropy           = physicalDeviceProperties.limits.maxSamplerAnisotropy;/// @performance: setting this to a lower value will trade off performance for quality
+    createInfoSampler.maxAnisotropy           = physicalDeviceProperties.limits.maxSamplerAnisotropy;//KORL-PERFORMANCE-000-000-011: quality trade-off
     createInfoSampler.borderColor             = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
     createInfoSampler.unnormalizedCoordinates = VK_FALSE;
     createInfoSampler.compareEnable           = VK_FALSE;
@@ -284,10 +272,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     /* bind the image to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
-    /** @robustness: ensure that device objects respect `bufferImageGranularity`, 
-                    obtained from `VkPhysicalDeviceLimits`, if we ever have NON-
-                    LINEAR device objects in the same allocation (in addition to 
-                    respecting memory alignment requirements, of course).  */
+    //KORL-ISSUE-000-000-020: ensure that device objects respect `bufferImageGranularity`
     const VkDeviceSize alignedOffset = korl_math_roundUpPowerOf2(deviceMemoryLinear->bytesAllocated, memoryRequirements.alignment);
     // ensure the allocation can fit in the allocator!  Maybe handle this gracefully in the future?
     korl_assert(alignedOffset + memoryRequirements.size <= deviceMemoryLinear->byteSize);

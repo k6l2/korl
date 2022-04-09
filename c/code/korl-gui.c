@@ -33,8 +33,7 @@ widgetIndexValid:
     widget = &context->widgets[widgetIndex];
     korl_assert(widget->type == widgetType);
     widget->usedThisFrame = true;
-    /** @todo: do we need to reassign the order of the widgets for the current window?  
-     * I wont bother with this until I learn a little bit about API usage... */
+    //KORL-ISSUE-000-000-007
     return widget;
 }
 /**
@@ -69,10 +68,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             widget->cachedIsInteractive = false;
             if(batchGraphics)
             {
-                /** @robustness: instead of using the AABB of this text batch, 
-                 * we should be using the font's metrics!  Probably??  
-                 * Different text batches of the same font will yield different 
-                 * sizes here, which will cause widget sizes to vary... */
+                //KORL-ISSUE-000-000-008
                 korl_gfx_batchSetPosition2d(batchText, 
                                             widgetCursor.xy.x, 
                                             widgetCursor.xy.y - batchTextAabbSizeY);
@@ -108,10 +104,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
                     }
                 }
                 korl_gfx_batch(batchButton, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                /** @robustness: instead of using the AABB of this text batch, 
-                 * we should be using the font's metrics!  Probably??  
-                 * Different text batches of the same font will yield different 
-                 * sizes here, which will cause widget sizes to vary... */
+                //KORL-ISSUE-000-000-008
                 korl_gfx_batchSetPosition2d(batchText, 
                                             widgetCursor.xy.x + context->style.widgetButtonLabelMargin, 
                                             widgetCursor.xy.y - context->style.widgetButtonLabelMargin - batchTextAabbSizeY);
@@ -550,9 +543,7 @@ korl_internal void korl_gui_frameEnd(void)
         const Korl_Math_Aabb2f32 windowAabb = korl_math_aabb2f32_fromPoints(window->position.xy.x                    , window->position.xy.y - window->size.xy.y, 
                                                                             window->position.xy.x + window->size.xy.x, window->position.xy.y                    );
         Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorStack, 4);
-        /** @hack:  I have no idea why, but the Vulkan renderer is not 
-         * drawing the upper-left corner of the window border correctly, so the 
-         * first line's x-coordinate is offset by a half pixel */
+        //KORL-ISSUE-000-000-009
         korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Vulkan_Position){windowAabb.min.xy.x - 0.5f, windowAabb.max.xy.y}, (Korl_Vulkan_Position){windowAabb.max.xy.x, windowAabb.max.xy.y}, colorBorderUp);
         korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Vulkan_Position){windowAabb.max.xy.x       , windowAabb.max.xy.y}, (Korl_Vulkan_Position){windowAabb.max.xy.x, windowAabb.min.xy.y}, colorBorderRight);
         korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Vulkan_Position){windowAabb.max.xy.x       , windowAabb.min.xy.y}, (Korl_Vulkan_Position){windowAabb.min.xy.x, windowAabb.min.xy.y}, colorBorderDown);
