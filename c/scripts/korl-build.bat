@@ -60,7 +60,8 @@ set buildCommand=%buildCommand% %disableOptimizationWarnings%
 rem So... for some reason this switch completely DESTROYS compile times (nearly 
 rem     a 2x increase! wtf?) Consequently, I am keeping this commented out for 
 rem     now.
-rem set buildCommand=%buildCommand% /std:c17
+rem KORL-ISSUE-000-000-037: remove later :(
+set buildCommand=%buildCommand% /std:c++20
 rem disable annoying verbose compiler output
 set buildCommand=%buildCommand% /nologo
 rem KORL-specific pre-processor definitions
