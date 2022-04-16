@@ -38,6 +38,9 @@
 	- infinite loop (unresponsive program) detection
 [x] create a window
 [ ] create a dynamic application code module
+	[ ] get rid of stored pointers
+		[ ] KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+		[ ] KORL-ISSUE-000-000-010: memory allocator API: just return allocator handles instead of function pointers
 [x] gfx: vulkan - initialize graphics context
 [x] gfx: vulkan - draw empty color buffer to the window
 [ ] multi-threading: create a job queue + worker threads
@@ -195,9 +198,41 @@
 				- not really... also, less work to just leave it as required API... EH, maybe I'll just put this on the back burner
 [ ] change KORL application subsystem from CONSOLE=>WINDOWS
 	[ ] dump KORL logs to a file
-		[ ] in development builds, immediately dump each log into the file without caring about file size
-		[ ] in release builds, accumulate logs in a finite-sized circular buffer, and write them to a file when the program ends
-		[ ] in either case, this process needs to be THREAD-SAFE!
+		[x] KORL-ISSUE-000-000-033: remove strsafe.h
+		- requirement: we do not want UNBOUNDED log buffers or files which can just grow forever
+			- log memory buffers
+				- one fixed-size buffer, which after being filled becomes immutable
+				- one circular buffer, which only begins filling/cycling when the first buffer is filled
+			- log file buffers
+				- similar to the memory buffers, we can have two size capacities for a single log file
+					- base capacity: some large capacity which, when reached, we stop writing to the log file
+					- overrun capacity: in the event that we ever reach the base capacity, we can just flush the circular memory buffer into the file at log module shutdown
+					- in development environments, individual log file capacity should be completely UNBOUNDED!!!  Obtaining large logs seems much more important than saving developer disk space
+				- in addition to individual file capacity, we should employ a log file rotation scheme to have a maximum total disk capacity for log output
+					-in release environments, rotation max-file count should be LOW
+					-in development environments, this should be HIGH
+		- consideration: at least on Windows, it should be perfectly fine to open a file handle to the log file and leave it open for the duration of application runtime
+		- requirement: performance: do we need log messages to be output to the log file IMMEDIATELY?
+			- in development environments, this seems VERY useful, since otherwise we wouldn't be able to get this info until end-of-frame if we're stepping through code, by rendering log output to some GUI
+			- in production environments, this seems basically completely worthless, so we should be able to just get away with flushing logs to file one per frame at least
+				- to clarify, what seems worthless here is logging IMMEDIATELY upon execution of log print API since we're never going to be hooking this into a debugger (are we?...)
+			- okay... I am just going to make a decision here:  to start, we'll just make ALL log prints SYNCHRONOUS, meaning that we will guarantee that when the log print function ends the message _will_ be written out to the log file
+			- if _synchronous_ log prints turn out to be too much of a performance hog, we'll start doing _asynchronous_ file ops
+			- but hold on... why would anyone ever WANT _synchronous_ log print API?  upon thinking about this again, it just seems pointless, since in a development environment, we would just be stepping through the debugger anyways, which is like a million times better than writing logs
+			- OKAY... so upon reading more on Windows Overlapped I/O API, it apparently behaves basically the same as KORL jobs!
+		[ ] send log strings to a memory buffer that grows as-needed, until a maximum size
+		[ ] once maximum size of log memory buffer is reached, begin treating the second half as a circular buffer
+		[ ] open a file handle to the log file
+			[ ] todo[0]: make a separate API to initialize log file dump?
+				since we can't really do this during log module initialization
+		[ ] on log module initialization, perform log file rotation before opening file handle
+		[ ] on log, start an overlapped write to the file, pointing to the appropriate offset(s) in the memory buffer
+			- store the associated OVERLAPPED struct in a dynamically sizing array
+		[ ] maybe once per frame, flush the OVERLAPPED struct buffer using HasOverlappedIoCompleted to remove completed tasks
+		[ ] on log module shutdown, use GetOverlappedResult on each of the log file write tasks to make sure they all finish
+		[ ] in release builds, don't write to file if we've reached a maximum file size
+		[ ] on log module shutdown, in release builds, if max file size was reached, _sync_ write the circular memory buffer to the end of the file
+		[ ] this process needs to be THREAD-SAFE!
 	[ ] use korl-gui to display release build logs in real-time
 		[ ] stop accumulating logs when the mouse hovers over the console
 		[ ] implement text selection

@@ -1,12 +1,16 @@
 #include "korl-windows-window.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
-#include "korl-io.h"
+#include "korl-log.h"
 #include "korl-vulkan.h"
 #include "korl-windows-vulkan.h"
 #include "korl-math.h"
 #include "korl-gfx.h"
 #include "korl-windows-gui.h"
+#include "platform-game-interface.h"
+GAME_INITIALIZE(korl_game_initialize);
+GAME_UPDATE(korl_game_update);
+GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent);
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
@@ -33,6 +37,12 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
+    case WM_KEYDOWN:{
+        //korl_game_onKeyboardEvent(, true);
+        break;}
+    case WM_KEYUP:{
+        //korl_game_onKeyboardEvent(, false);
+        break;}
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
         const UINT clientHeight = HIWORD(lParam);
@@ -173,6 +183,8 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
 }
 korl_internal void korl_windows_window_loop(void)
 {
+    KORL_ZERO_STACK(GameMemory, gameMemory);
+    korl_game_initialize(&gameMemory);
     Korl_Memory_Allocator allocatorHeapStack = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
     bool quit = false;
     while(!quit)
@@ -190,7 +202,9 @@ korl_internal void korl_windows_window_loop(void)
             break;
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         korl_gui_frameBegin();
-        _korl_windows_window_step(allocatorHeapStack);
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
+        korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true/*TODO: fix me later*/);
+        //_korl_windows_window_step(allocatorHeapStack);
         korl_gui_frameEnd();
         korl_vulkan_frameEnd();
     }

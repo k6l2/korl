@@ -652,14 +652,14 @@ typedef enum
 #define KORL_GFX_BATCH(name) void name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
 #define KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name) Korl_Gfx_Batch* name(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, const wchar_t* assetNameTexture)
 typedef KORL_PLATFORM_ASSERT_FAILURE(fnSig_korlPlatformAssertFailure);
-struct KorlPlatformApi
+typedef struct KorlPlatformApi
 {
     fnSig_korlPlatformAssertFailure* assertFailure;
-};
-struct GameMemory
+} KorlPlatformApi;
+typedef struct GameMemory
 {
     KorlPlatformApi kpl;
-};
+} GameMemory;
 #define GAME_INITIALIZE(name) void name(GameMemory* memory)
 #define GAME_ON_KEYBOARD_EVENT(name) void name(SDL_KeyCode keyCode, bool isDown)
 /** 
@@ -668,4 +668,5 @@ struct GameMemory
 #define GAME_UPDATE(name) \
     bool name(f32 deltaSeconds, u32 windowSizeX, u32 windowSizeY, bool windowIsFocused)
 typedef GAME_INITIALIZE(fnSig_gameInitialize);
-typedef GAME_UPDATE(fnSig_gameUpdateAndDraw);
+typedef GAME_UPDATE(fnSig_gameUpdate);
+typedef GAME_ON_KEYBOARD_EVENT(fnSig_gameOnKeyboardEvent);
