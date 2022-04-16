@@ -20,27 +20,31 @@ rem       to have the ability to switch on a subset of enum values, and dump the
 rem       rest into the default case.
 rem 4706: assignment within conditional expression; I will leave this off until 
 rem       the day that I ever make a mistake which this would have caught
-set disableUselessWarnings=/wd4061 /wd4706
+rem 4710: function not inlined; I just don't care about this, and don't see 
+rem       myself caring about this anytime soon
+set disableUselessWarnings=/wd4061 /wd4706 /wd4710
 rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)
 rem 4189: local variable is initialized but not referenced; this is useful for 
 rem       debugging transient values, but introduces possible bugs so it 
 rem       shouldn't be part of release builds
+set disableReleaseWarnings=/wd4100 /wd4101 /wd4189
 rem 4820: 'x' bytes padding added after data member 'y'; data structures should 
 rem       be fully optimized in released builds, but during development this is 
 rem       just annoying
-set disableReleaseWarnings=/wd4100 /wd4101 /wd4189 /wd4820
 rem 5045: Compiler will insert Spectre mitigation for memory load if /Qspectre 
 rem       switch specified
-set disableOptimizationWarnings=/wd5045
+set disableOptimizationWarnings=/wd4820 /wd5045
 set buildCommand=cl
 rem :::::::::::::::::::::::::::: COMPILER SETTINGS :::::::::::::::::::::::::::::
-set buildCommand=%buildCommand% "%korl_root%\code\windows\korl-windows-main.c"
+set buildCommand=%buildCommand% "%korl_home%\code\windows\korl-windows-main.c"
+set buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\game.cpp"
+set buildCommand=%buildCommand% /I "%KORL_PROJECT_ROOT%\code"
 rem allow OS-specific code to include global headers/code
-set buildCommand=%buildCommand% /I "%korl_root%\code"
+set buildCommand=%buildCommand% /I "%korl_home%\code"
 rem include additional libraries
-set buildCommand=%buildCommand% /I "%korl_root%\code\stb"
+set buildCommand=%buildCommand% /I "%korl_home%\code\stb"
 rem set the executable's file name
 set buildCommand=%buildCommand% /Fe"%KORL_EXE_NAME%"
 rem set the VCX0.PDB file name
@@ -64,7 +68,7 @@ set buildCommand=%buildCommand% /D KORL_DEBUG=1
 rem use wide character implementations for Windows API
 set buildCommand=%buildCommand% /D UNICODE
 set buildCommand=%buildCommand% /D _UNICODE
-rem generate a PDB file, no "edit-and-continue" support
+rem generate debug symbols (a PDB file), Zi => no "edit-and-continue" support
 set buildCommand=%buildCommand% /Zi
 rem disable optimization
 set buildCommand=%buildCommand% /Od
@@ -95,18 +99,18 @@ rem we're no longer using the CRT, so we have to define a custom entry point
 set buildCommand=%buildCommand% /entry:korl_windows_main
 rem So this property is actually extremely important:  this tells Windows how to 
 rem     hook the executable up to the Windows environment, which determines what 
-rem     the application's capabilities are.  In the beginning, it makes sense 
-rem     for us to have a CONSOLE application, since we generally want to be able 
-rem     to print things out to the console to have a better idea of what the 
-rem     program is doing without having to step it through the debugger each 
-rem     time.  Once the application has the ability to render the log in a 
-rem     window, we can set this to be /subsystem:WINDOWS!
-set buildCommand=%buildCommand% /subsystem:CONSOLE
+rem     the application's capabilities are.  Generally, the applications KORL 
+rem     will be running will be GUI applications, so we specify that here.  This 
+rem     changes some behavior, such as not being able to hook standard streams 
+rem     into a console automatically, which is fine since that is generally a 
+rem     poor/outdated way of getting program input/output anyways.
+set buildCommand=%buildCommand% /subsystem:WINDOWS
 rem for ExitProcess, GetModuleHandle, etc...
 set buildCommand=%buildCommand% kernel32.lib
-rem for wvsprintf
+rem for Windows message APIs, MessageBox, etc...
 set buildCommand=%buildCommand% user32.lib
-rem for __stdio_common_vswprintf
+rem for C standard lib functions (math functions, etc.), also some STB libs are pulling in standard libs!
+rem KORL-ISSUE-000-000-036: (low priority) configure STB libs to not link to standard libraries
 set buildCommand=%buildCommand% ucrt.lib
 rem for CreateSolidBrush, & other GDI API
 set buildCommand=%buildCommand% Gdi32.lib
