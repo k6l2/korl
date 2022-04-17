@@ -17,6 +17,7 @@ enum KorlEnumLogLevel
     korl_logVariadicArguments(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \
         __FILEW__, __FUNCTIONW__, __LINE__, L ## format, ##__VA_ARGS__)
+korl_internal void korl_io_initialize(void);
 /** \note DO NOT CALL THIS!  Use \c korl_print instead! */
 korl_internal void korl_printVariadicArguments(unsigned variadicArgumentCount, 
     enum KorlEnumStandardStream standardStream, const wchar_t* format, ...);

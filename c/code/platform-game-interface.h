@@ -106,7 +106,7 @@ typedef enum Korl_KeyboardCode
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
     int lineNumber, const wchar_t* format, ...)
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
-    wchar_t* conditionString, const char* cStringFileName, int lineNumber)
+    const wchar_t* conditionString, const wchar_t* cStringFileName, int lineNumber)
 #define KORL_GFX_CREATE_CAMERA_ORTHO(name) Korl_Gfx_Camera name(f32 clipDepth)
 #define KORL_GFX_USE_CAMERA(name) void name(Korl_Gfx_Camera camera)
 #define KORL_GFX_BATCH(name) void name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)

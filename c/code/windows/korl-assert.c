@@ -2,10 +2,10 @@
 #include "korl-io.h"
 #include "korl-windows-globalDefines.h"
 korl_internal void korl_assertConditionFailed(
-    wchar_t* conditionString, const char* cStringFileName, int lineNumber)
+    const wchar_t* conditionString, const wchar_t* cStringFileName, int lineNumber)
 {
     /* write failed condition to standard error stream */
-    korl_log(ERROR, "ASSERT FAILED: \"%S\" {%i|%s}", 
+    korl_log(ERROR, "ASSERT FAILED: \"%S\" {%i|%S}", 
         conditionString, lineNumber, cStringFileName);
     if(IsDebuggerPresent())
     {

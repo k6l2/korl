@@ -14,6 +14,7 @@
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
 {
+    korl_io_initialize();
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_memory_initialize();
     korl_stb_image_initialize();

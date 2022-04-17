@@ -2,6 +2,8 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
 #include "korl-memory.h"
+#include "korl-assert.h"
+korl_global_variable bool _korl_io_errorAssertionTriggered;
 korl_internal unsigned _korl_countFormatSubstitutions(const wchar_t* format)
 {
     /* find the number of variable substitutions in the format string */
@@ -215,10 +217,17 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
         cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
         systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
         cStringFileName, cStringFunctionName, stackStringBuffer);
-    /* if we ever log an error while a debugger is attached, just break right 
-        now so we can figure out what's going on! */
-    if(IsDebuggerPresent() && logLevel <= KORL_LOG_LEVEL_ERROR)
-        DebugBreak();
+    if(logLevel <= KORL_LOG_LEVEL_ERROR && !_korl_io_errorAssertionTriggered)
+    {
+        _korl_io_errorAssertionTriggered = true;
+        /* if we ever log an error while a debugger is attached, just break right 
+            now so we can figure out what's going on! */
+        if(IsDebuggerPresent())
+            DebugBreak();
+        /* otherwise, we should call an assert at this point so the user at 
+            least gets the correct error message before the program continues */
+        korl_assertConditionFailed(stackStringBuffer, cStringFileName, lineNumber);
+    }
     return true;
 }
 korl_internal void _korl_logVaList(
@@ -247,6 +256,10 @@ korl_internal void _korl_logVaList(
         va_end(vaListCopy);
         stackStringSize *= 2;
     }
+}
+korl_internal void korl_io_initialize(void)
+{
+    _korl_io_errorAssertionTriggered = false;
 }
 korl_internal void korl_logVariadicArguments(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
