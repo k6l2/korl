@@ -56,7 +56,7 @@ korl_internal HANDLE _korl_windows_handleFromEnumStandardStream(
 }
 korl_internal bool _korl_printVaList_variableLengthStackString(
     unsigned stackStringBufferSize, enum KorlEnumStandardStream standardStream, 
-    unsigned variadicArgumentCount, wchar_t* format, va_list vaList)
+    unsigned variadicArgumentCount, const wchar_t* format, va_list vaList)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);
@@ -130,7 +130,7 @@ korl_internal bool _korl_printVaList_variableLengthStackString(
 }
 korl_internal void _korl_printVaList(
     enum KorlEnumStandardStream standardStream, unsigned variadicArgumentCount, 
-    wchar_t* format, va_list vaList)
+    const wchar_t* format, va_list vaList)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);
@@ -154,7 +154,7 @@ korl_internal void _korl_printVaList(
     }
 }
 korl_internal void korl_printVariadicArguments(unsigned variadicArgumentCount, 
-    enum KorlEnumStandardStream standardStream, wchar_t* format, ...)
+    enum KorlEnumStandardStream standardStream, const wchar_t* format, ...)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);
@@ -170,7 +170,7 @@ korl_internal void korl_printVariadicArguments(unsigned variadicArgumentCount,
 korl_internal bool _korl_logVaList_variableLengthStackString(
     unsigned stackStringBufferSize, unsigned variadicArgumentCount, 
     enum KorlEnumLogLevel logLevel, const wchar_t* cStringFileName, 
-    const wchar_t* cStringFunctionName, int lineNumber, wchar_t* format, 
+    const wchar_t* cStringFunctionName, int lineNumber, const wchar_t* format, 
     va_list vaList)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
@@ -224,7 +224,7 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
 korl_internal void _korl_logVaList(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
-    int lineNumber, wchar_t* format, va_list vaList)
+    int lineNumber, const wchar_t* format, va_list vaList)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);
@@ -251,7 +251,7 @@ korl_internal void _korl_logVaList(
 korl_internal void korl_logVariadicArguments(
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
-    int lineNumber, wchar_t* format, ...)
+    int lineNumber, const wchar_t* format, ...)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);

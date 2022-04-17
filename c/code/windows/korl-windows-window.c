@@ -7,11 +7,13 @@
 #include "korl-math.h"
 #include "korl-gfx.h"
 #include "korl-windows-gui.h"
+#include "korl-assert.h"
 #include "platform-game-interface.h"
 GAME_INITIALIZE(korl_game_initialize);
 GAME_UPDATE(korl_game_update);
 GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent);
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
+korl_global_variable Korl_KeyboardCode g_korl_windows_window_virtualKeyMap[0xFF];
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
@@ -37,11 +39,14 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
-    case WM_KEYDOWN:{
-        //korl_game_onKeyboardEvent(, true);
-        break;}
+    case WM_KEYDOWN:
     case WM_KEYUP:{
-        //korl_game_onKeyboardEvent(, false);
+        if(wParam >= korl_arraySize(g_korl_windows_window_virtualKeyMap))
+        {
+            korl_log(WARNING, "wParam virtual key code is out of range");
+            break;
+        }
+        korl_game_onKeyboardEvent(g_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN);
         break;}
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
@@ -57,6 +62,52 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 }
 korl_internal void korl_windows_window_initialize(void)
 {
+    korl_memory_nullify(g_korl_windows_window_virtualKeyMap, sizeof(g_korl_windows_window_virtualKeyMap));
+    for(u32 i = 0; i <= 9; ++i)
+        g_korl_windows_window_virtualKeyMap[0x30 + i] = KORL_KEY_TENKEYLESS_0 + i;
+    for(u32 i = 0; i <= 26; ++i)
+        g_korl_windows_window_virtualKeyMap[0x41 + i] = KORL_KEY_A + i;
+    for(u32 i = 0; i <= 9; ++i)
+        g_korl_windows_window_virtualKeyMap[0x60 + i] = KORL_KEY_NUMPAD_0 + i;
+    for(u32 i = 0; i <= 12; ++i)
+        g_korl_windows_window_virtualKeyMap[0x70 + i] = KORL_KEY_F1 + i;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_COMMA] =  KORL_KEY_COMMA;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_PERIOD] =  KORL_KEY_PERIOD;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_2] =  KORL_KEY_SLASH_FORWARD;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_5] =  KORL_KEY_SLASH_BACK;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_4] =  KORL_KEY_CURLYBRACE_LEFT;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_6] =  KORL_KEY_CURLYBRACE_RIGHT;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_1] =  KORL_KEY_SEMICOLON;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_7] =  KORL_KEY_QUOTE;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_3] =  KORL_KEY_GRAVE;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_MINUS] =  KORL_KEY_TENKEYLESS_MINUS;
+    g_korl_windows_window_virtualKeyMap[VK_OEM_NEC_EQUAL] =  KORL_KEY_EQUALS;
+    g_korl_windows_window_virtualKeyMap[VK_BACK] =  KORL_KEY_BACKSPACE;
+    g_korl_windows_window_virtualKeyMap[VK_ESCAPE] =  KORL_KEY_ESCAPE;
+    g_korl_windows_window_virtualKeyMap[VK_RETURN] =  KORL_KEY_ENTER;
+    g_korl_windows_window_virtualKeyMap[VK_SPACE] =  KORL_KEY_SPACE;
+    g_korl_windows_window_virtualKeyMap[VK_TAB] =  KORL_KEY_TAB;
+    g_korl_windows_window_virtualKeyMap[VK_SHIFT] =  KORL_KEY_SHIFT_LEFT;
+    g_korl_windows_window_virtualKeyMap[VK_SHIFT] =  KORL_KEY_SHIFT_RIGHT;
+    g_korl_windows_window_virtualKeyMap[VK_CONTROL] =  KORL_KEY_CONTROL_LEFT;
+    g_korl_windows_window_virtualKeyMap[VK_CONTROL] =  KORL_KEY_CONTROL_RIGHT;
+    g_korl_windows_window_virtualKeyMap[VK_MENU] =  KORL_KEY_ALT_LEFT;
+    g_korl_windows_window_virtualKeyMap[VK_MENU] =  KORL_KEY_ALT_RIGHT;
+    g_korl_windows_window_virtualKeyMap[VK_UP] =  KORL_KEY_ARROW_UP;
+    g_korl_windows_window_virtualKeyMap[VK_DOWN] =  KORL_KEY_ARROW_DOWN;
+    g_korl_windows_window_virtualKeyMap[VK_LEFT] =  KORL_KEY_ARROW_LEFT;
+    g_korl_windows_window_virtualKeyMap[VK_RIGHT] =  KORL_KEY_ARROW_RIGHT;
+    g_korl_windows_window_virtualKeyMap[VK_INSERT] =  KORL_KEY_INSERT;
+    g_korl_windows_window_virtualKeyMap[VK_DELETE] =  KORL_KEY_DELETE;
+    g_korl_windows_window_virtualKeyMap[VK_HOME] =  KORL_KEY_HOME;
+    g_korl_windows_window_virtualKeyMap[VK_END] =  KORL_KEY_END;
+    g_korl_windows_window_virtualKeyMap[VK_PRIOR] =  KORL_KEY_PAGE_UP;
+    g_korl_windows_window_virtualKeyMap[VK_NEXT] =  KORL_KEY_PAGE_DOWN;
+    g_korl_windows_window_virtualKeyMap[VK_DECIMAL] =  KORL_KEY_NUMPAD_PERIOD;
+    g_korl_windows_window_virtualKeyMap[VK_DIVIDE] =  KORL_KEY_NUMPAD_DIVIDE;
+    g_korl_windows_window_virtualKeyMap[VK_MULTIPLY] =  KORL_KEY_NUMPAD_MULTIPLY;
+    g_korl_windows_window_virtualKeyMap[VK_SUBTRACT] =  KORL_KEY_NUMPAD_MINUS;
+    g_korl_windows_window_virtualKeyMap[VK_ADD] =  KORL_KEY_NUMPAD_ADD;
     /* note: since this is a global shared handle, it does NOT need to be 
         cleaned up via DestroyCursor later */
     const HCURSOR hCursorArrow = LoadCursor(NULL, IDC_ARROW);
@@ -184,6 +235,12 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
 korl_internal void korl_windows_window_loop(void)
 {
     KORL_ZERO_STACK(GameMemory, gameMemory);
+    gameMemory.kpl.assertFailure                   = korl_assertConditionFailed;
+    gameMemory.kpl.log                             = korl_logVariadicArguments;
+    gameMemory.kpl.gfxCreateCameraOrtho            = korl_gfx_createCameraOrtho;
+    gameMemory.kpl.gfxUseCamera                    = korl_gfx_useCamera;
+    gameMemory.kpl.gfxBatch                        = korl_gfx_batch;
+    gameMemory.kpl.gfxCreateBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;
     korl_game_initialize(&gameMemory);
     Korl_Memory_Allocator allocatorHeapStack = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
     bool quit = false;
