@@ -233,13 +233,14 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
 korl_internal void korl_windows_window_loop(void)
 {
     KORL_ZERO_STACK(GameMemory, gameMemory);
-    gameMemory.kpl.assertFailure                   = korl_assertConditionFailed;
-    gameMemory.kpl.log                             = korl_logVariadicArguments;
-    gameMemory.kpl.gfxCreateCameraOrtho            = korl_gfx_createCameraOrtho;
-    gameMemory.kpl.gfxUseCamera                    = korl_gfx_useCamera;
-    gameMemory.kpl.gfxBatch                        = korl_gfx_batch;
-    gameMemory.kpl.gfxCreateBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;
-    korl_game_initialize(&gameMemory);
+    KORL_ZERO_STACK(KorlPlatformApi, korlApi);
+    korlApi.korl_assertConditionFailed            = korl_assertConditionFailed;
+    korlApi.korl_logVariadicArguments             = korl_logVariadicArguments;
+    korlApi.korl_gfx_createCameraOrtho            = korl_gfx_createCameraOrtho;
+    korlApi.korl_gfx_useCamera                    = korl_gfx_useCamera;
+    korlApi.korl_gfx_batch                        = korl_gfx_batch;
+    korlApi.korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;
+    korl_game_initialize(&gameMemory, korlApi);
     Korl_Memory_Allocator allocatorHeapStack = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
     bool quit = false;
     while(!quit)

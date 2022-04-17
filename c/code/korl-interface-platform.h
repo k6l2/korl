@@ -119,10 +119,10 @@ typedef KORL_GFX_BATCH(fnSig_korlGfxBatch);
 typedef KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(fnSig_korlGfxCreateBatchRectangleTextured);
 typedef struct KorlPlatformApi
 {
-    fnSig_korlPlatformLog* log;
-    fnSig_korlPlatformAssertFailure* assertFailure;
-    fnSig_korlGfxCreateCameraOrtho* gfxCreateCameraOrtho;
-    fnSig_korlGfxUseCamera* gfxUseCamera;
-    fnSig_korlGfxBatch* gfxBatch;
-    fnSig_korlGfxCreateBatchRectangleTextured* gfxCreateBatchRectangleTextured;
+    fnSig_korlPlatformAssertFailure*           korl_assertConditionFailed;
+    fnSig_korlPlatformLog*                     korl_logVariadicArguments;
+    fnSig_korlGfxCreateCameraOrtho*            korl_gfx_createCameraOrtho;
+    fnSig_korlGfxUseCamera*                    korl_gfx_useCamera;
+    fnSig_korlGfxBatch*                        korl_gfx_batch;
+    fnSig_korlGfxCreateBatchRectangleTextured* korl_gfx_createBatchRectangleTextured;
 } KorlPlatformApi;

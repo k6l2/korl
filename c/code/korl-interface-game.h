@@ -1,6 +1,6 @@
 #pragma once
 #include "korl-interface-game-memory.h"// contains the game-specific definition of GameMemory struct
-#define GAME_INITIALIZE(name) void name(GameMemory* memory)
+#define GAME_INITIALIZE(name) void name(GameMemory* memory, KorlPlatformApi korlApi)
 #define GAME_ON_KEYBOARD_EVENT(name) void name(Korl_KeyboardCode keyCode, bool isDown)
 /** 
  * @return false if the platform should close the game application
