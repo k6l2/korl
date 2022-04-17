@@ -126,17 +126,3 @@ typedef struct KorlPlatformApi
     fnSig_korlGfxBatch* gfxBatch;
     fnSig_korlGfxCreateBatchRectangleTextured* gfxCreateBatchRectangleTextured;
 } KorlPlatformApi;
-typedef struct GameMemory
-{
-    KorlPlatformApi kpl;
-} GameMemory;
-#define GAME_INITIALIZE(name) void name(GameMemory* memory)
-#define GAME_ON_KEYBOARD_EVENT(name) void name(Korl_KeyboardCode keyCode, bool isDown)
-/** 
- * @return false if the platform should close the game application
- */
-#define GAME_UPDATE(name) \
-    bool name(f32 deltaSeconds, u32 windowSizeX, u32 windowSizeY, bool windowIsFocused)
-typedef GAME_INITIALIZE(fnSig_gameInitialize);
-typedef GAME_UPDATE(fnSig_gameUpdate);
-typedef GAME_ON_KEYBOARD_EVENT(fnSig_gameOnKeyboardEvent);
