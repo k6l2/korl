@@ -4,16 +4,48 @@
 #include "korl-assert.h"
 #include "korl-io.h"
 #define _KORL_MEMORY_INVALID_BYTE_PATTERN 0xFE
+typedef struct _Korl_Memory_Allocator
+{
+    void* userData;
+    Korl_Memory_AllocatorHandle handle;
+    Korl_Memory_AllocatorType type;
+} _Korl_Memory_Allocator;
 typedef struct _Korl_Memory_Context
 {
     SYSTEM_INFO systemInfo;
     DWORD mainThreadId;
+    KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, 64);
 } _Korl_Memory_Context;
+typedef struct _Korl_Memory_AllocatorLinear
+{
+    /** total amount of reserved virtual address space, including this struct */
+    u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
+    void* nextAllocationAddress;
+    /** support for realloc/free for arbitrary allocations 
+     * - offsets are relative to the start address of this struct 
+     * - offsets point to the allocation content itself, NOT the allocation 
+     *   meta data page! */
+    KORL_MEMORY_POOL_DECLARE(u32, allocationOffsets, 1024);
+} _Korl_Memory_AllocatorLinear;
+typedef struct _Korl_Memory_AllocationMeta
+{
+    const wchar_t* file;
+    int line;
+    /** 
+     * The amount of actual memory used by the caller.  The grand total amount 
+     * of memory used by an allocation will likely be the sum of the following:  
+     * - the allocation meta data
+     * - the actual memory used by the caller
+     * - any additional padding required by the allocator (likely to round 
+     *   everything up to the nearest page size)
+     */
+    u$ bytes;
+} _Korl_Memory_AllocationMeta;
 korl_global_variable _Korl_Memory_Context _korl_memory_context;
 korl_internal void korl_memory_initialize(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_memory_nullify(&context->systemInfo, sizeof(context->systemInfo));
+    korl_memory_nullify(context, sizeof(*context));
     GetSystemInfo(&context->systemInfo);
     context->mainThreadId = GetCurrentThreadId();
 }
@@ -86,41 +118,16 @@ korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
             return false;
     return true;
 }
-korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_Allocator allocator, const wchar_t* format, va_list vaList)
+korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
 {
     const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
-    wchar_t*const result = (wchar_t*)allocator.callbackAllocate(allocator.userData, bufferSize * sizeof(wchar_t), __FILEW__, __LINE__);
+    wchar_t*const result = (wchar_t*)korl_memory_allocate(allocatorHandle, bufferSize * sizeof(wchar_t));
     const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
 }
-typedef struct _Korl_Memory_AllocatorLinear
-{
-    /** total amount of reserved virtual address space, including this struct */
-    u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
-    void* nextAllocationAddress;
-    /** support for realloc/free for arbitrary allocations 
-     * - offsets are relative to the start address of this struct 
-     * - offsets point to the allocation content itself, NOT the allocation 
-     *   meta data page! */
-    KORL_MEMORY_POOL_DECLARE(u32, allocationOffsets, 1024);
-} _Korl_Memory_AllocatorLinear;
-typedef struct _Korl_Memory_AllocationMeta
-{
-    const wchar_t* file;
-    int line;
-    /** 
-     * The amount of actual memory used by the caller.  The grand total amount 
-     * of memory used by an allocation will likely be the sum of the following:  
-     * - the allocation meta data
-     * - the actual memory used by the caller
-     * - any additional padding required by the allocator (likely to round 
-     *   everything up to the nearest page size)
-     */
-    u$ bytes;
-} _Korl_Memory_AllocationMeta;
-korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinear_allocate)
+korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserData, u$ bytes, wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -129,7 +136,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinea
         korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
         return NULL;
     }
-    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     void* allocationAddress = NULL;
     /* release the protection on the allocator pages */
     {
@@ -190,7 +197,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(korl_memory_allocatorLinea
     }
     return allocationAddress;
 }
-korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_free)
+korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, void* allocation, wchar_t *file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -199,7 +206,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_fr
         korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
         return;
     }
-    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     const u$ pageBytes = korl_memory_pageBytes();
     /* release the protection on the allocator pages */
     {
@@ -260,7 +267,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(korl_memory_allocatorLinear_fr
         korl_assert(oldProtect == PAGE_READWRITE);
     }
 }
-korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLinear_reallocate)
+korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUserData, void* allocation, u$ bytes, wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -269,13 +276,13 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLin
         korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
         return NULL;
     }
-    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     const u$ pageBytes = korl_memory_pageBytes();
     korl_assert(allocator->bytes % pageBytes == 0);
     const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
     /* if allocation is NULL, just call `allocate` */
     if(allocation == NULL)
-        return korl_memory_allocatorLinear_allocate(allocator, bytes, file, line);
+        return _korl_memory_allocator_linear_allocate(allocator, bytes, file, line);
     /* release the protection on the allocator pages */
     {
         DWORD oldProtect;
@@ -311,7 +318,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLin
         korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_NOACCESS, &oldProtect));
         korl_assert(oldProtect == PAGE_READWRITE);
         /* now we can just free & return */
-        korl_memory_allocatorLinear_free(userData, allocation, file, line);
+        _korl_memory_allocator_linear_free(allocatorUserData, allocation, file, line);
         return NULL;
     }
     // get the address of the allocation's metadata page //
@@ -365,7 +372,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLin
                 korl_assert(oldProtect == PAGE_READWRITE);
             }
             /* create a new allocation */
-            void*const newAllocation = korl_memory_allocatorLinear_allocate(allocator, bytes, file, line);
+            void*const newAllocation = _korl_memory_allocator_linear_allocate(allocator, bytes, file, line);
             if(!newAllocation)
                 korl_log(WARNING, "failed to create a new allocation");
             else
@@ -375,7 +382,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocatorLin
                       the memory regions do NOT overlap */
                 CopyMemory(newAllocation, allocation, oldAllocationBytes);
                 /* free the old allocation */
-                korl_memory_allocatorLinear_free(allocator, allocation, file, line);
+                _korl_memory_allocator_linear_free(allocator, allocation, file, line);
             }
             return newAllocation;
         }
@@ -444,9 +451,9 @@ done:
     }
     return allocation;
 }
-korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_EMPTY(korl_memory_allocatorLinear_empty)
+korl_internal void _korl_memory_allocator_linear_empty(void* allocatorUserData)
 {
-    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, userData);
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     const u$ pageBytes = korl_memory_pageBytes();
     /* release the protection on the allocator pages */
     {
@@ -491,12 +498,11 @@ korl_internal KORL_MEMORY_ALLOCATOR_CALLBACK_EMPTY(korl_memory_allocatorLinear_e
         korl_assert(oldProtect == PAGE_READWRITE);
     }
 }
-korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxBytes)
+korl_internal void* _korl_memory_allocator_createLinear(u$ maxBytes)
 {
-    //KORL-ISSUE-000-000-032: safety: check thread Id; NOT THREAD-SAFE!
+    void* result = NULL;
     korl_assert(maxBytes > 0);
     korl_assert(maxBytes >= sizeof(_Korl_Memory_AllocatorLinear));
-    KORL_ZERO_STACK(Korl_Memory_Allocator, result);
     /* calculate how many pages we need in virtual address space to satisfy maxBytes */
     const u$ pageCount = (maxBytes + (korl_memory_pageBytes() - 1)) / korl_memory_pageBytes();
     const u$ pageBytes = pageCount * korl_memory_pageBytes();
@@ -505,10 +511,10 @@ korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxByte
         VirtualAlloc(NULL/*optional start address; NULL=>let OS choose for us*/, pageBytes, MEM_RESERVE, PAGE_NOACCESS);
     if(resultVirtualAlloc == NULL)
         korl_logLastError("VirtualAlloc failed!");
-    result.userData = resultVirtualAlloc;
+    result = resultVirtualAlloc;
     /* commit the first pages for the allocator itself */
     resultVirtualAlloc = 
-        VirtualAlloc(result.userData, sizeof(_Korl_Memory_AllocatorLinear), MEM_COMMIT, PAGE_READWRITE);
+        VirtualAlloc(result, sizeof(_Korl_Memory_AllocatorLinear), MEM_COMMIT, PAGE_READWRITE);
     if(resultVirtualAlloc == NULL)
         korl_logLastError("VirtualAlloc failed!");
     /* initialize the memory of the allocator userData */
@@ -523,10 +529,106 @@ korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxByte
         korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_NOACCESS, &oldProtect));
         korl_assert(oldProtect == PAGE_READWRITE);
     }
-    /* populate the allocator callback function pointers */
-    result.callbackAllocate   = korl_memory_allocatorLinear_allocate;
-    result.callbackReallocate = korl_memory_allocatorLinear_reallocate;
-    result.callbackFree       = korl_memory_allocatorLinear_free;
-    result.callbackEmpty      = korl_memory_allocatorLinear_empty;
+    /**/
     return result;
+}
+korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Memory_AllocatorHandle handle)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+        if(context->allocators[a].handle == handle)
+            return &context->allocators[a];
+    korl_log(WARNING, "no allocator found for handle %u", handle);
+    return NULL;
+}
+korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->allocators));
+    Korl_Memory_AllocatorHandle newHandle = 0;
+    for(Korl_Memory_AllocatorHandle h = 1; h <= KORL_MEMORY_POOL_CAPACITY(context->allocators); h++)
+    {
+        newHandle = h;
+        for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+            if(context->allocators[a].handle == h)
+            {
+                newHandle = 0;
+                break;
+            }
+        if(newHandle)
+            break;
+    }
+    korl_assert(newHandle);
+    _Korl_Memory_Allocator* newAllocator = KORL_MEMORY_POOL_ADD(context->allocators);
+    korl_memory_nullify(newAllocator, sizeof(*newAllocator));
+    newAllocator->type   = type;
+    newAllocator->handle = newHandle;
+    switch(type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        newAllocator->userData = _korl_memory_allocator_createLinear(maxBytes);
+        break;}
+    default:{
+        korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", type);
+        break;}
+    }
+    return newAllocator->handle;
+}
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        return _korl_memory_allocator_linear_allocate(allocator->userData, bytes, file, line);}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+    return NULL;
+}
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        return _korl_memory_allocator_linear_reallocate(allocator->userData, allocation, bytes, file, line);}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+    return NULL;
+}
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        _korl_memory_allocator_linear_free(allocator->userData, allocation, file, line);
+        return;}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+}
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+     _korl_memory_allocator_linear_empty(allocator->userData);
+        return;}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }

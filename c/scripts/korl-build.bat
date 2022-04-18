@@ -10,6 +10,12 @@ if not exist "build" (
     mkdir "build"
 )
 cd "build"
+rem automatically call the script to build shaders for the first time if the 
+rem     directory doesn't exist, since there will always be a non-zero amount of 
+rem     compiled shaders, as KORL ships with built-in batching pipelines
+if not exist "shaders" (
+    call korl-build-glsl.bat
+)
 rem ----- create the command to build the EXE -----
 rem 4061: enumerator 'X' in switch of enum '<X>' is not explicitly handled by a 
 rem       case label; WHO CARES?  4062 will prevent us from not having at least 

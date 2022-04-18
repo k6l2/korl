@@ -2,53 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-vulkan.h"
-typedef struct Korl_Gfx_Camera
-{
-    enum
-    {
-        KORL_GFX_CAMERA_TYPE_PERSPECTIVE,
-        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC,
-        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT,
-    } type;
-    Korl_Math_V3f32 position;
-    Korl_Math_V3f32 target;
-    /** If the viewport scissor coordinates are stored as ratios, they can 
-     * always be valid up until the time the camera gets used to draw, allowing 
-     * the swap chain dimensions to change however it likes without requiring us 
-     * to update these values.  The downside is that these coordinates must 
-     * eventually be transformed into integral values at some point, so some 
-     * kind of rounding strategy must occur.
-     * The scissor coordinates are relative to the upper-left corner of the swap 
-     * chain, with the lower-right corner of the swap chain lying in the 
-     * positive coordinate space of both axes.  */
-    Korl_Math_V2f32 _viewportScissorPosition;// should default to {0,0}
-    Korl_Math_V2f32 _viewportScissorSize;// should default to {1,1}
-    enum
-    {
-        KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO,// default
-        KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE,
-    } _scissorType;
-    union
-    {
-        struct
-        {
-            f32 fovHorizonDegrees;
-            f32 clipNear;
-            f32 clipFar;
-        } perspective;
-        struct
-        {
-            Korl_Math_V2f32 originAnchor;
-            f32 clipDepth;
-        } orthographic;
-        struct
-        {
-            Korl_Math_V2f32 originAnchor;
-            f32 clipDepth;
-            f32 fixedHeight;
-        } orthographicFixedHeight;
-    } subCamera;
-} Korl_Gfx_Camera;
+#include "korl-interface-platform.h"
 typedef struct Korl_Gfx_Batch
 {
     Korl_Vulkan_PrimitiveType primitiveType;
@@ -69,17 +23,12 @@ typedef struct Korl_Gfx_Batch
     Korl_Vulkan_Color*       _vertexColors;
     Korl_Vulkan_Uv*          _vertexUvs;
 } Korl_Gfx_Batch;
-typedef enum Korl_Gfx_Batch_Flags
-{
-    KORL_GFX_BATCH_FLAG_NONE = 0, 
-    KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0
-} Korl_Gfx_Batch_Flags;
 korl_internal void korl_gfx_initialize(void);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target);
-korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrtho(f32 clipDepth);
+korl_internal KORL_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho);
 korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);
 korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians);
-korl_internal void korl_gfx_useCamera(Korl_Gfx_Camera camera);
+korl_internal KORL_GFX_USE_CAMERA(korl_gfx_useCamera);
 /** Note that scissor coordinates use swap chain coordinates, where the origin 
  * is the upper-left corner of the swap chain, & {+X,+Y} points to the 
  * bottom-right.  */
@@ -100,16 +49,16 @@ korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const contex
  * - if you want the origin to be in the bottom-left corner of the window, pass 
  *   \c {0.f,0.f} as size ratio coordinates */
 korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY);
-korl_internal void korl_gfx_batch(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags);
+korl_internal KORL_GFX_BATCH(korl_gfx_batch);
 //KORL-ISSUE-000-000-005
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleTextured(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, const wchar_t* assetNameTexture);
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_Allocator allocator, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color);
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_Allocator allocator, u32 lineCount);
+korl_internal KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured);
+korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color);
+korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount);
 /** 
  * \param assetNameFont If this value is \c NULL , a default internal font asset 
  * will be used.
  */
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_Allocator allocator, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight);
+korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight);
 korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position);
 korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, f32 x, f32 y);
 korl_internal void korl_gfx_batchSetPosition2dV2f32(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position);

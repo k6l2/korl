@@ -4,29 +4,29 @@
 #include "korl-assert.h"
 typedef struct _Korl_Stb_Image_Context
 {
-    Korl_Memory_Allocator allocator;
+    Korl_Memory_AllocatorHandle allocatorHandle;
 } _Korl_Stb_Image_Context;
 korl_global_variable _Korl_Stb_Image_Context _korl_stb_image_context;
 korl_internal void korl_stb_image_initialize(void)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     korl_memory_nullify(context, sizeof(*context));
-    context->allocator = korl_memory_createAllocatorLinear(korl_math_megabytes(16));
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16));
 }
 void* _stbi_allocate(u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
-    return context->allocator.callbackAllocate(context->allocator.userData, bytes, L""__FILE__, __LINE__);
+    return korl_memory_allocate(context->allocatorHandle, bytes);
 }
 void* _stbi_reallocate(void* allocation, u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
-    return context->allocator.callbackReallocate(context->allocator.userData, allocation, bytes, L""__FILE__, __LINE__);
+    return korl_memory_reallocate(context->allocatorHandle, allocation, bytes);
 }
 void _stbi_free(void* allocation)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
-    context->allocator.callbackFree(context->allocator.userData, allocation, L""__FILE__, __LINE__);
+    korl_memory_free(context->allocatorHandle, allocation);
 }
 #define STBI_ASSERT(x)        korl_assert(x)
 #define STBI_MALLOC(sz)       _stbi_allocate(sz)

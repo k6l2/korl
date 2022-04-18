@@ -1,11 +1,13 @@
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-interface-platform.h"
 typedef u32 Korl_MemoryPool_Size;
 /**
  * \note This does NOT initialize the memory to a valid known state.
  */
 #define KORL_MEMORY_POOL_DECLARE(type, name, size) type name[size]; Korl_MemoryPool_Size name##_korlMemoryPoolSize
 #define KORL_MEMORY_POOL_SIZE(name) (name##_korlMemoryPoolSize)
+#define KORL_MEMORY_POOL_CAPACITY(name) (sizeof(name) / sizeof((name)[0]))
 #define KORL_MEMORY_POOL_ISFULL(name) (name##_korlMemoryPoolSize >= korl_arraySize(name))
 /**
  * \return a pointer to the added element
@@ -23,25 +25,6 @@ typedef u32 Korl_MemoryPool_Size;
 #define KORL_MEMORY_POOL_RESIZE(name, newSize) \
     ( korl_assert(newSize <= korl_arraySize(name)) \
     , name##_korlMemoryPoolSize = newSize )
-//KORL-ISSUE-000-000-010
-//KORL-ISSUE-000-000-011
-#define KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE(name)   void* name(void* userData, u$ bytes, wchar_t* file, int line)
-#define KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(name) void* name(void* userData, void* allocation, u$ bytes, wchar_t* file, int line)
-#define KORL_MEMORY_ALLOCATOR_CALLBACK_FREE(name)       void  name(void* userData, void* allocation, wchar_t* file, int line)
-#define KORL_MEMORY_ALLOCATOR_CALLBACK_EMPTY(name)      void  name(void* userData)
-typedef KORL_MEMORY_ALLOCATOR_CALLBACK_ALLOCATE  (korl_memory_allocator_callback_allocate);
-typedef KORL_MEMORY_ALLOCATOR_CALLBACK_REALLOCATE(korl_memory_allocator_callback_reallocate);
-typedef KORL_MEMORY_ALLOCATOR_CALLBACK_FREE      (korl_memory_allocator_callback_free);
-typedef KORL_MEMORY_ALLOCATOR_CALLBACK_EMPTY     (korl_memory_allocator_callback_empty);
-typedef struct Korl_Memory_Allocator
-{
-    /** data to be passed to the allocator's callback API */
-    void* userData;
-    korl_memory_allocator_callback_allocate*   callbackAllocate;
-    korl_memory_allocator_callback_reallocate* callbackReallocate;
-    korl_memory_allocator_callback_free*       callbackFree;
-    korl_memory_allocator_callback_empty*      callbackEmpty;
-} Korl_Memory_Allocator;
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
 /**  Should function in the same way as memcmp from the C standard library.
@@ -67,5 +50,12 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s);
 korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize);
 korl_internal void korl_memory_nullify(void*const p, size_t bytes);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
-korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_Allocator allocator, const wchar_t* format, va_list vaList);
-korl_internal Korl_Memory_Allocator korl_memory_createAllocatorLinear(u$ maxBytes);
+korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList);
+korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE  (korl_memory_allocator_allocate);
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate);
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE      (korl_memory_allocator_free);
+korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY     (korl_memory_allocator_empty);
+#define korl_memory_allocate(handle, bytes)               korl_memory_allocator_allocate(handle, bytes, __FILEW__, __LINE__)
+#define korl_memory_reallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__)
+#define korl_memory_free(handle, allocation)              korl_memory_allocator_free(handle, allocation, __FILEW__, __LINE__)

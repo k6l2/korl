@@ -12,7 +12,7 @@ typedef struct _Korl_AssetCache_Context
 {
     KORL_MEMORY_POOL_DECLARE(_Korl_AssetCache_Asset, assets, _KORL_ASSETCACHE_ASSET_COUNT_MAX);
     /** this allocator will store all the data for the raw assets */
-    Korl_Memory_Allocator allocator;
+    Korl_Memory_AllocatorHandle allocatorHandle;
 } _Korl_AssetCache_Context;
 #undef _KORL_ASSETCACHE_ASSET_NAME_SIZE_MAX
 #undef _KORL_ASSETCACHE_ASSET_COUNT_MAX
@@ -21,7 +21,7 @@ korl_internal void korl_assetCache_initialize(void)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
     korl_memory_nullify(context, sizeof(*context));
-    context->allocator = korl_memory_createAllocatorLinear(korl_math_gigabytes(1));
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_gigabytes(1));
 }
 korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)
@@ -51,7 +51,7 @@ korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     korl_assert(
         korl_file_load(
             assetName, KORL_FILE_PATHTYPE_CURRENTWORKINGDIRECTORY, 
-            &context->allocator, &resultAsset.data, &resultAsset.dataBytes));
+            context->allocatorHandle, &resultAsset.data, &resultAsset.dataBytes));
     /* since the asset has just been loaded, add it to the asset manager */
     _Korl_AssetCache_Asset*const newAsset = KORL_MEMORY_POOL_ADD(context->assets);
     const i$ charactersCopied = 

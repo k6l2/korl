@@ -60,7 +60,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
         switch(widget->type)
         {
         case KORL_GUI_WIDGET_TYPE_TEXT:{
-            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY);
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY);
             const f32 batchTextAabbSizeX = korl_gfx_batchTextGetAabbSizeX(batchText);
             const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
             widget->cachedAabb.min = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){.xy.x =                  0, .xy.y = batchTextAabbSizeY});
@@ -76,7 +76,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             }
             break;}
         case KORL_GUI_WIDGET_TYPE_BUTTON:{
-            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, widget->subType.button.displayText, context->style.windowTextPixelSizeY);
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.button.displayText, context->style.windowTextPixelSizeY);
             const f32 batchTextAabbSizeX = korl_gfx_batchTextGetAabbSizeX(batchText);
             const f32 batchTextAabbSizeY = korl_gfx_batchTextGetAabbSizeY(batchText);
             const f32 buttonAabbSizeX = batchTextAabbSizeX + context->style.widgetButtonLabelMargin * 2.f;
@@ -86,7 +86,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             widget->cachedIsInteractive = true;
             if(batchGraphics)
             {
-                Korl_Gfx_Batch*const batchButton = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
+                Korl_Gfx_Batch*const batchButton = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
                                                                                         (Korl_Math_V2f32){ .xy.x = buttonAabbSizeX
                                                                                                          , .xy.y = buttonAabbSizeY}, 
                                                                                         (Korl_Math_V2f32){.xy.x = 0.f, .xy.y = 1.f}, 
@@ -119,7 +119,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_nullify(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorStack                       = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color){.rgb.r =  16, .rgb.g =  16, .rgb.b =  16};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color){.rgb.r =  24, .rgb.g =  24, .rgb.b =  24};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color){.rgb.r =   0, .rgb.g =   0, .rgb.b =   0};
@@ -215,7 +215,7 @@ korl_internal void korl_gui_frameBegin(void)
     korl_assert(context->frameSequenceCounter == 0);
     context->frameSequenceCounter++;
     context->currentWindowIndex = korl_arraySize(context->windows);
-    context->allocatorStack.callbackEmpty(context->allocatorStack.userData);
+    korl_memory_allocator_empty(context->allocatorHandleStack);
 }
 korl_internal void korl_gui_frameEnd(void)
 {
@@ -284,7 +284,7 @@ korl_internal void korl_gui_frameEnd(void)
             /* take the AABB of the window's title bar into account as well */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
-                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY);
+                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY);
                 f32 titleBarOptimalSizeX = korl_gfx_batchTextGetAabbSizeX(batchWindowTitleText);
                 if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
                     titleBarOptimalSizeX += context->style.windowTitleBarPixelSizeY;
@@ -317,7 +317,7 @@ korl_internal void korl_gui_frameEnd(void)
         /* draw the window panel */
         korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
         korl_gfx_useCamera(guiCamera);
-        Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorStack, window->size, KORL_ORIGIN_RATIO_UPPER_LEFT, windowColor);
+        Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, window->size, KORL_ORIGIN_RATIO_UPPER_LEFT, windowColor);
         korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, window->position);
         korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         /* prepare to draw all the window's contents by cutting out a scissor 
@@ -338,7 +338,7 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batchSetVertexColor(batchWindowPanel, 1, context->style.colorTitleBar);
             korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             /* draw the window title bar text */
-            Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY);
+            Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY);
             korl_gfx_batchSetPosition2d(batchWindowTitleText, 
                                         window->position.xy.x, 
                                         window->position.xy.y - context->style.windowTitleBarPixelSizeY + 3.f);
@@ -361,11 +361,12 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
                 korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
                 korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
-                                                                                                           (Korl_Math_V2f32){ .xy.x = 0.1f*context->style.windowTitleBarPixelSizeY
-                                                                                                                            , .xy.y =      context->style.windowTitleBarPixelSizeY}, 
-                                                                                                           (Korl_Math_V2f32){0.5f, 0.5f}, 
-                                                                                                           context->style.colorButtonWindowTitleBarIcons);
+                Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = 
+                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
+                                                         (Korl_Math_V2f32){ .xy.x = 0.1f*context->style.windowTitleBarPixelSizeY
+                                                                          , .xy.y =      context->style.windowTitleBarPixelSizeY}, 
+                                                         (Korl_Math_V2f32){0.5f, 0.5f}, 
+                                                         context->style.colorButtonWindowTitleBarIcons);
                 korl_gfx_batchSetPosition2d(batchWindowTitleCloseIconPiece, 
                                             titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY/2.f, 
                                             titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY/2.f);
@@ -390,11 +391,12 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
                 korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
                 korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                Korl_Gfx_Batch*const batchWindowTitleIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
-                                                                                                      (Korl_Math_V2f32){ .xy.x =      context->style.windowTitleBarPixelSizeY
-                                                                                                                       , .xy.y = 0.1f*context->style.windowTitleBarPixelSizeY}, 
-                                                                                                      (Korl_Math_V2f32){0.5f, 0.5f}, 
-                                                                                                      context->style.colorButtonWindowTitleBarIcons);
+                Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
+                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
+                                                         (Korl_Math_V2f32){ .xy.x =      context->style.windowTitleBarPixelSizeY
+                                                                          , .xy.y = 0.1f*context->style.windowTitleBarPixelSizeY}, 
+                                                         (Korl_Math_V2f32){0.5f, 0.5f}, 
+                                                         context->style.colorButtonWindowTitleBarIcons);
                 korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece, 
                                             titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY/2.f, 
                                             titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY/2.f);
@@ -453,7 +455,7 @@ korl_internal void korl_gui_frameEnd(void)
             window->scrollBarPositionX = KORL_MATH_CLAMP(window->scrollBarPositionX, 0.f, scrollBarRangeX);
             const f32 scrollBarPositionX = window->position.xy.x + window->scrollBarPositionX;
             /* batch scroll bar graphics */
-            batchScrollBarX = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
+            batchScrollBarX = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
                                                                    (Korl_Math_V2f32){window->cachedScrollBarLengthX, context->style.windowScrollBarPixelWidth}, 
                                                                    (Korl_Math_V2f32){0.f, 0.f}, 
                                                                    context->style.colorScrollBar);
@@ -481,7 +483,7 @@ korl_internal void korl_gui_frameEnd(void)
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
                 scrollBarPositionY -= context->style.windowTitleBarPixelSizeY;
             /* batch scroll bar graphics */
-            batchScrollBarY = korl_gfx_createBatchRectangleColored(context->allocatorStack, 
+            batchScrollBarY = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
                                                                    (Korl_Math_V2f32){context->style.windowScrollBarPixelWidth, window->cachedScrollBarLengthY}, 
                                                                    (Korl_Math_V2f32){1.f, 1.f}, 
                                                                    context->style.colorScrollBar);
@@ -542,7 +544,7 @@ korl_internal void korl_gui_frameEnd(void)
         const Korl_Vulkan_Color colorBorderLeft  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
         const Korl_Math_Aabb2f32 windowAabb = korl_math_aabb2f32_fromPoints(window->position.xy.x                    , window->position.xy.y - window->size.xy.y, 
                                                                             window->position.xy.x + window->size.xy.x, window->position.xy.y                    );
-        Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorStack, 4);
+        Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);
         //KORL-ISSUE-000-000-009
         korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Vulkan_Position){windowAabb.min.xy.x - 0.5f, windowAabb.max.xy.y}, (Korl_Vulkan_Position){windowAabb.max.xy.x, windowAabb.max.xy.y}, colorBorderUp);
         korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Vulkan_Position){windowAabb.max.xy.x       , windowAabb.max.xy.y}, (Korl_Vulkan_Position){windowAabb.max.xy.x, windowAabb.min.xy.y}, colorBorderRight);
@@ -560,7 +562,7 @@ korl_internal void korl_gui_widgetTextFormat(const wchar_t* textFormat, ...)
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT);
     va_list vaList;
     va_start(vaList, textFormat);
-    widget->subType.text.displayText = korl_memory_stringFormat(context->allocatorStack, textFormat, vaList);
+    widget->subType.text.displayText = korl_memory_stringFormat(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
 }
 korl_internal u8 korl_gui_widgetButtonFormat(const wchar_t* textFormat, ...)
@@ -569,7 +571,7 @@ korl_internal u8 korl_gui_widgetButtonFormat(const wchar_t* textFormat, ...)
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON);
     va_list vaList;
     va_start(vaList, textFormat);
-    widget->subType.button.displayText = korl_memory_stringFormat(context->allocatorStack, textFormat, vaList);
+    widget->subType.button.displayText = korl_memory_stringFormat(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
     const u8 resultActuationCount = widget->subType.button.actuationCount;
     widget->subType.button.actuationCount = 0;

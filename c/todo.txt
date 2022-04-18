@@ -40,7 +40,7 @@
 [ ] create a dynamic application code module
 	[ ] get rid of stored pointers
 		[ ] KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
-		[ ] KORL-ISSUE-000-000-010: memory allocator API: just return allocator handles instead of function pointers
+		[x] KORL-ISSUE-000-000-010: memory allocator API: just return allocator handles instead of function pointers
 [x] gfx: vulkan - initialize graphics context
 [x] gfx: vulkan - draw empty color buffer to the window
 [ ] multi-threading: create a job queue + worker threads

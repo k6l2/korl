@@ -1,6 +1,8 @@
 #include "korl-file.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"
+#include "korl-assert.h"
+#include "korl-io.h"
 typedef struct _Korl_File_Context
 {
     wchar_t currentWorkingDirectory[MAX_PATH];
@@ -56,7 +58,7 @@ korl_internal void korl_file_initialize(void)
 }
 korl_internal bool korl_file_load(
     const wchar_t*const fileName, Korl_File_PathType pathType, 
-    const Korl_Memory_Allocator*const allocator, 
+    Korl_Memory_AllocatorHandle allocatorHandle, 
     void** out_data, u32* out_dataBytes)
 {
     wchar_t filePath[MAX_PATH];
@@ -70,7 +72,7 @@ korl_internal bool korl_file_load(
     const DWORD fileSize = GetFileSize(hFile, NULL/*high file size DWORD*/);
     if(fileSize == INVALID_FILE_SIZE)
         korl_logLastError("GetFileSize failed!");
-    void*const allocation = allocator->callbackAllocate(allocator->userData, fileSize, L""__FILE__, __LINE__);
+    void*const allocation = korl_memory_allocate(allocatorHandle, fileSize);
     korl_assert(allocation);
     DWORD bytesRead = 0;
     if(!ReadFile(hFile, allocation, fileSize, &bytesRead, NULL/*lpOverlapped*/))

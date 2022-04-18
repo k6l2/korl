@@ -261,10 +261,7 @@ korl_internal void korl_io_initialize(void)
 {
     _korl_io_errorAssertionTriggered = false;
 }
-korl_internal void korl_logVariadicArguments(
-    unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, 
-    const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, 
-    int lineNumber, const wchar_t* format, ...)
+korl_internal KORL_PLATFORM_LOG(korl_logVariadicArguments)
 {
     const unsigned formatSubstitutions = _korl_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);

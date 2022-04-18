@@ -51,7 +51,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #define KORL_F32_MAX (3.402823466e+38F)
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
-#define korl_arraySize(array) (sizeof(array) / sizeof(array[0]))
+#define korl_arraySize(array) (sizeof(array) / sizeof((array)[0]))
 /** C macro trick to automatically determine how many variadic arguments were 
  * passed to a macro.  ASSUMPTION: we are never going to pass more than 70 
  * arguments to a macro!  SOURCE: https://stackoverflow.com/a/36015150 */

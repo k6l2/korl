@@ -64,7 +64,7 @@ typedef struct _Korl_Gui_Widget
 } _Korl_Gui_Widget;
 typedef struct _Korl_Gui_Context
 {
-    Korl_Memory_Allocator allocatorStack;
+    Korl_Memory_AllocatorHandle allocatorHandleStack;
     struct
     {
         Korl_Vulkan_Color colorWindow;

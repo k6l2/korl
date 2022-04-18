@@ -1,8 +1,8 @@
 #include "korl-assert.h"
 #include "korl-io.h"
 #include "korl-windows-globalDefines.h"
-korl_internal void korl_assertConditionFailed(
-    const wchar_t* conditionString, const wchar_t* cStringFileName, int lineNumber)
+#include "korl-interface-platform.h"
+korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)
 {
     /* write failed condition to standard error stream */
     korl_log(ERROR, "ASSERT FAILED: \"%S\" {%i|%S}", 

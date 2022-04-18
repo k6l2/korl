@@ -8,8 +8,8 @@
 [ ] KORL-ISSUE-000-000-007: do we need to reassign the order of the widgets for the current window?  I wont bother with this until I learn a little bit about API usage...
 [ ] KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
 [ ] KORL-ISSUE-000-000-009: I have no idea why, but the Vulkan renderer is not drawing the upper-left corner of the window border correctly, so the first line's x-coordinate is offset by a half pixel
-[ ] KORL-ISSUE-000-000-010: memory allocator API: we don't actually need to expose ANY of this allocator API right now for any reason - all the user of this module needs is the enumeration of what kind of allocator they are getting, then the dispatch can just all be done internally and the user doesn't have to deal with function pointer crap.  In addition, we do NOT want the application storing any pointers!  We want to just store a handle to an allocator which is managed by the OS layer!
-[ ] KORL-ISSUE-000-000-011: simplify: make some macros which automatically inject file + line for calls to these allocator functions so we don't have to think about it
+[x] KORL-ISSUE-000-000-010: memory allocator API: we don't actually need to expose ANY of this allocator API right now for any reason - all the user of this module needs is the enumeration of what kind of allocator they are getting, then the dispatch can just all be done internally and the user doesn't have to deal with function pointer crap.  In addition, we do NOT want the application storing any pointers!  We want to just store a handle to an allocator which is managed by the OS layer!
+[x] KORL-ISSUE-000-000-011: simplify: make some macros which automatically inject file + line for calls to these allocator functions so we don't have to think about it
 [ ] KORL-ISSUE-000-000-012: add a cleanup function to verify that there are not memory leaks
 [ ] KORL-ISSUE-000-000-013: add blend equations
 [ ] KORL-ISSUE-000-000-014: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
@@ -30,7 +30,7 @@
 [ ] KORL-ISSUE-000-000-029: pull out platform-agnostic code from platform-specific code module
 [ ] KORL-ISSUE-000-000-030: redundant: technically we don't need this, since we can just call QueryVirtualMemoryInformation
 [ ] KORL-ISSUE-000-000-031: copypasta: same code that runs in the `done` label (not sure if there is a good way to take this out though)
-[ ] KORL-ISSUE-000-000-032: safety: ensure that the thread calling this function is the main thread to ensure that the function pointers of the Korl_Memory_Allocator will always be valid, since the main program module (should) never be reloaded
+[x] KORL-ISSUE-000-000-032: safety: ensure that the thread calling this function is the main thread to ensure that the function pointers of the Korl_Memory_Allocator will always be valid, since the main program module (should) never be reloaded
 [x] KORL-ISSUE-000-000-033: do we actually need `strsafe.h`?  This API seems to suck ass compared to the stuff it supposedly "replaced", such as \c _vscwprintf & \c vswprintf_s
 [ ] KORL-ISSUE-000-000-034: investigate: WM_PAINT, ValidateRect(hWnd, NULL); ???  I'm not actually sure if this is necessary, so maybe this is very low priority.
 [ ] KORL-ISSUE-000-000-035: hack: delete this scaffolding once we have application/KORL separation at the project level

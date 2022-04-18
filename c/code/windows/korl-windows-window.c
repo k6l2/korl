@@ -157,6 +157,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
 }
 //KORL-ISSUE-000-000-035: hack: delete this function later
+#if 0
 korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeapStack)
 {
     korl_shared_variable bool initialized = false;
@@ -230,6 +231,7 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     korl_gfx_batchSetPosition(hudText2, (Korl_Vulkan_Position){-350, -64, 0});
     korl_gfx_batch(hudText2, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
 }
+#endif
 korl_internal void korl_windows_window_loop(void)
 {
     KORL_ZERO_STACK(GameMemory, gameMemory);
@@ -241,11 +243,12 @@ korl_internal void korl_windows_window_loop(void)
     korlApi.korl_gfx_batch                        = korl_gfx_batch;
     korlApi.korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;
     korl_game_initialize(&gameMemory, korlApi);
-    Korl_Memory_Allocator allocatorHeapStack = korl_memory_createAllocatorLinear(korl_math_megabytes(1));
+    Korl_Memory_AllocatorHandle allocatorHandleHeapStack = 
+        korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
     bool quit = false;
     while(!quit)
     {
-        allocatorHeapStack.callbackEmpty(allocatorHeapStack.userData);
+        korl_memory_allocator_empty(allocatorHandleHeapStack);
         KORL_ZERO_STACK(MSG, windowMessage);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
                           0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
