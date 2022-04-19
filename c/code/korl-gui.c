@@ -143,7 +143,19 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.widgetButtonLabelMargin        = 4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
 }
-korl_internal void korl_gui_windowBegin(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
+korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    if(!fontAssetName)
+    {
+        context->style.fontWindowText = NULL;
+        return;
+    }
+    const i$ resultStringCopy = korl_memory_stringCopy(fontAssetName, context->fontAssetName, korl_arraySize(context->fontAssetName));
+    korl_assert(resultStringCopy > 0);
+    context->style.fontWindowText = context->fontAssetName;
+}
+korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
@@ -202,7 +214,7 @@ done_currentWindowIndexValid:
     }
     newWindow->specialWidgetFlagsPressed = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
 }
-korl_internal void korl_gui_windowEnd(void)
+korl_internal KORL_PLATFORM_GUI_WINDOW_END(korl_gui_windowEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
@@ -556,7 +568,7 @@ korl_internal void korl_gui_frameEnd(void)
     }
     KORL_MEMORY_POOL_RESIZE(context->windows, windowsRemaining);
 }
-korl_internal void korl_gui_widgetTextFormat(const wchar_t* textFormat, ...)
+korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT);
@@ -565,7 +577,7 @@ korl_internal void korl_gui_widgetTextFormat(const wchar_t* textFormat, ...)
     widget->subType.text.displayText = korl_memory_stringFormat(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
 }
-korl_internal u8 korl_gui_widgetButtonFormat(const wchar_t* textFormat, ...)
+korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON);

@@ -1,6 +1,12 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-math.h"
+#include "korl-gui-common.h"
+#define KORL_PLATFORM_GUI_SET_FONT_ASSET(name) void name(const wchar_t* fontAssetName)
+#define KORL_PLATFORM_GUI_WINDOW_BEGIN(name) void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
+#define KORL_PLATFORM_GUI_WINDOW_END(name) void name(void)
+#define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name) void name(const wchar_t* textFormat, ...)
+#define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8 name(const wchar_t* textFormat, ...)
 typedef enum Korl_KeyboardCode
     { KORL_KEY_UNKNOWN
     , KORL_KEY_A
@@ -191,6 +197,11 @@ typedef KORL_GFX_CREATE_CAMERA_ORTHO             (fnSig_korlGfxCreateCameraOrtho
 typedef KORL_GFX_USE_CAMERA                      (fnSig_korlGfxUseCamera);
 typedef KORL_GFX_BATCH                           (fnSig_korlGfxBatch);
 typedef KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korlGfxCreateBatchRectangleTextured);
+typedef KORL_PLATFORM_GUI_SET_FONT_ASSET         (fnSig_korl_gui_setFontAsset);
+typedef KORL_PLATFORM_GUI_WINDOW_BEGIN           (fnSig_korl_gui_windowBegin);
+typedef KORL_PLATFORM_GUI_WINDOW_END             (fnSig_korl_gui_windowEnd);
+typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT     (fnSig_korl_gui_widgetTextFormat);
+typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT   (fnSig_korl_gui_widgetButtonFormat);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE(nameExtension) \
     fnSig_korlPlatformAssertFailure*           korl_assertConditionFailed            ## nameExtension;\
     fnSig_korlPlatformLog*                     korl_logVariadicArguments             ## nameExtension;\
@@ -203,7 +214,12 @@ typedef KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korlGfxCreateBatchRectan
     fnSig_korlGfxCreateCameraOrtho*            korl_gfx_createCameraOrtho            ## nameExtension;\
     fnSig_korlGfxUseCamera*                    korl_gfx_useCamera                    ## nameExtension;\
     fnSig_korlGfxBatch*                        korl_gfx_batch                        ## nameExtension;\
-    fnSig_korlGfxCreateBatchRectangleTextured* korl_gfx_createBatchRectangleTextured ## nameExtension;
+    fnSig_korlGfxCreateBatchRectangleTextured* korl_gfx_createBatchRectangleTextured ## nameExtension;\
+    fnSig_korl_gui_setFontAsset*               korl_gui_setFontAsset                 ## nameExtension;\
+    fnSig_korl_gui_windowBegin*                korl_gui_windowBegin                  ## nameExtension;\
+    fnSig_korl_gui_windowEnd*                  korl_gui_windowEnd                    ## nameExtension;\
+    fnSig_korl_gui_widgetTextFormat*           korl_gui_widgetTextFormat             ## nameExtension;\
+    fnSig_korl_gui_widgetButtonFormat*         korl_gui_widgetButtonFormat           ## nameExtension;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName, apiMemberExtension) \
     (apiVariableName).korl_assertConditionFailed            ## apiMemberExtension = korl_assertConditionFailed;\
     (apiVariableName).korl_logVariadicArguments             ## apiMemberExtension = korl_logVariadicArguments;\
@@ -216,7 +232,12 @@ typedef KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korlGfxCreateBatchRectan
     (apiVariableName).korl_gfx_createCameraOrtho            ## apiMemberExtension = korl_gfx_createCameraOrtho;\
     (apiVariableName).korl_gfx_useCamera                    ## apiMemberExtension = korl_gfx_useCamera;\
     (apiVariableName).korl_gfx_batch                        ## apiMemberExtension = korl_gfx_batch;\
-    (apiVariableName).korl_gfx_createBatchRectangleTextured ## apiMemberExtension = korl_gfx_createBatchRectangleTextured;
+    (apiVariableName).korl_gfx_createBatchRectangleTextured ## apiMemberExtension = korl_gfx_createBatchRectangleTextured;\
+    (apiVariableName).korl_gui_setFontAsset                 ## apiMemberExtension = korl_gui_setFontAsset;\
+    (apiVariableName).korl_gui_windowBegin                  ## apiMemberExtension = korl_gui_windowBegin;\
+    (apiVariableName).korl_gui_windowEnd                    ## apiMemberExtension = korl_gui_windowEnd;\
+    (apiVariableName).korl_gui_widgetTextFormat             ## apiMemberExtension = korl_gui_widgetTextFormat;\
+    (apiVariableName).korl_gui_widgetButtonFormat           ## apiMemberExtension = korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName, apiMemberExtension, shimExtension) \
     korl_assertConditionFailed            ## shimExtension = (apiVariableName).korl_assertConditionFailed            ## apiMemberExtension;\
     korl_logVariadicArguments             ## shimExtension = (apiVariableName).korl_logVariadicArguments             ## apiMemberExtension;\
@@ -229,7 +250,12 @@ typedef KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korlGfxCreateBatchRectan
     korl_gfx_createCameraOrtho            ## shimExtension = (apiVariableName).korl_gfx_createCameraOrtho            ## apiMemberExtension;\
     korl_gfx_useCamera                    ## shimExtension = (apiVariableName).korl_gfx_useCamera                    ## apiMemberExtension;\
     korl_gfx_batch                        ## shimExtension = (apiVariableName).korl_gfx_batch                        ## apiMemberExtension;\
-    korl_gfx_createBatchRectangleTextured ## shimExtension = (apiVariableName).korl_gfx_createBatchRectangleTextured ## apiMemberExtension;
+    korl_gfx_createBatchRectangleTextured ## shimExtension = (apiVariableName).korl_gfx_createBatchRectangleTextured ## apiMemberExtension;\
+    korl_gui_setFontAsset                 ## shimExtension = (apiVariableName).korl_gui_setFontAsset                 ## apiMemberExtension;\
+    korl_gui_windowBegin                  ## shimExtension = (apiVariableName).korl_gui_windowBegin                  ## apiMemberExtension;\
+    korl_gui_windowEnd                    ## shimExtension = (apiVariableName).korl_gui_windowEnd                    ## apiMemberExtension;\
+    korl_gui_widgetTextFormat             ## shimExtension = (apiVariableName).korl_gui_widgetTextFormat             ## apiMemberExtension;\
+    korl_gui_widgetButtonFormat           ## shimExtension = (apiVariableName).korl_gui_widgetButtonFormat           ## apiMemberExtension;
 typedef struct KorlPlatformApi
 {
     KORL_INTERFACE_PLATFORM_API_DECLARE(_)

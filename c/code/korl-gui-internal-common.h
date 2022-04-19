@@ -90,6 +90,7 @@ typedef struct _Korl_Gui_Context
         f32 widgetButtonLabelMargin;
         f32 windowScrollBarPixelWidth;
     } style;
+    wchar_t fontAssetName[64];//buffer to store font asset name configured via setFontAsset API
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value == korl_arraySize(windows), a new window 
      * must be started before calling any widget API. */

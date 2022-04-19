@@ -44,7 +44,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             korl_log(WARNING, "wParam virtual key code is out of range");
             break;
         }
-        korl_game_onKeyboardEvent(g_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN);
+        korl_game_onKeyboardEvent(g_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
         break;}
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
@@ -257,7 +257,11 @@ korl_internal void korl_windows_window_loop(void)
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         korl_gui_frameBegin();
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
-        korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true/*TODO: fix me later*/);
+        if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true/*TODO: fix me later*/))
+        {
+            korl_vulkan_destroySurface();
+            break;
+        }
         //KORL-ISSUE-000-000-035: hack: delete this
         //_korl_windows_window_step(allocatorHeapStack);
         korl_gui_frameEnd();
