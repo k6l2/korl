@@ -10,6 +10,7 @@
 #include "korl-assert.h"
 #include "korl-interface-platform.h"
 #include "korl-interface-game.h"
+#include "korl-gui.h"
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
 korl_global_variable Korl_KeyboardCode g_korl_windows_window_virtualKeyMap[0xFF];
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
@@ -236,7 +237,7 @@ korl_internal void korl_windows_window_loop(void)
 {
     KORL_ZERO_STACK(GameMemory, gameMemory);
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
-    KORL_INTERFACE_PLATFORM_API_SET(korlApi, _);
+    KORL_INTERFACE_PLATFORM_API_SET(korlApi);
     korl_game_initialize(&gameMemory, korlApi);
     Korl_Memory_AllocatorHandle allocatorHandleHeapStack = 
         korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));

@@ -202,61 +202,61 @@ typedef KORL_PLATFORM_GUI_WINDOW_BEGIN           (fnSig_korl_gui_windowBegin);
 typedef KORL_PLATFORM_GUI_WINDOW_END             (fnSig_korl_gui_windowEnd);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT     (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT   (fnSig_korl_gui_widgetButtonFormat);
-#define KORL_INTERFACE_PLATFORM_API_DECLARE(nameExtension) \
-    fnSig_korlPlatformAssertFailure*           korl_assertConditionFailed            ## nameExtension;\
-    fnSig_korlPlatformLog*                     korl_logVariadicArguments             ## nameExtension;\
-    fnSig_korl_memory_zero*                    korl_memory_zero                      ## nameExtension;\
-    fnSig_korl_memory_allocator_create*        korl_memory_allocator_create          ## nameExtension;\
-    fnSig_korl_memory_allocator_allocate*      korl_memory_allocator_allocate        ## nameExtension;\
-    fnSig_korl_memory_allocator_reallocate*    korl_memory_allocator_reallocate      ## nameExtension;\
-    fnSig_korl_memory_allocator_free*          korl_memory_allocator_free            ## nameExtension;\
-    fnSig_korl_memory_allocator_empty*         korl_memory_allocator_empty           ## nameExtension;\
-    fnSig_korlGfxCreateCameraOrtho*            korl_gfx_createCameraOrtho            ## nameExtension;\
-    fnSig_korlGfxUseCamera*                    korl_gfx_useCamera                    ## nameExtension;\
-    fnSig_korlGfxBatch*                        korl_gfx_batch                        ## nameExtension;\
-    fnSig_korlGfxCreateBatchRectangleTextured* korl_gfx_createBatchRectangleTextured ## nameExtension;\
-    fnSig_korl_gui_setFontAsset*               korl_gui_setFontAsset                 ## nameExtension;\
-    fnSig_korl_gui_windowBegin*                korl_gui_windowBegin                  ## nameExtension;\
-    fnSig_korl_gui_windowEnd*                  korl_gui_windowEnd                    ## nameExtension;\
-    fnSig_korl_gui_widgetTextFormat*           korl_gui_widgetTextFormat             ## nameExtension;\
-    fnSig_korl_gui_widgetButtonFormat*         korl_gui_widgetButtonFormat           ## nameExtension;
-#define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName, apiMemberExtension) \
-    (apiVariableName).korl_assertConditionFailed            ## apiMemberExtension = korl_assertConditionFailed;\
-    (apiVariableName).korl_logVariadicArguments             ## apiMemberExtension = korl_logVariadicArguments;\
-    (apiVariableName).korl_memory_zero                      ## apiMemberExtension = korl_memory_zero;\
-    (apiVariableName).korl_memory_allocator_create          ## apiMemberExtension = korl_memory_allocator_create;\
-    (apiVariableName).korl_memory_allocator_allocate        ## apiMemberExtension = korl_memory_allocator_allocate;\
-    (apiVariableName).korl_memory_allocator_reallocate      ## apiMemberExtension = korl_memory_allocator_reallocate;\
-    (apiVariableName).korl_memory_allocator_free            ## apiMemberExtension = korl_memory_allocator_free;\
-    (apiVariableName).korl_memory_allocator_empty           ## apiMemberExtension = korl_memory_allocator_empty;\
-    (apiVariableName).korl_gfx_createCameraOrtho            ## apiMemberExtension = korl_gfx_createCameraOrtho;\
-    (apiVariableName).korl_gfx_useCamera                    ## apiMemberExtension = korl_gfx_useCamera;\
-    (apiVariableName).korl_gfx_batch                        ## apiMemberExtension = korl_gfx_batch;\
-    (apiVariableName).korl_gfx_createBatchRectangleTextured ## apiMemberExtension = korl_gfx_createBatchRectangleTextured;\
-    (apiVariableName).korl_gui_setFontAsset                 ## apiMemberExtension = korl_gui_setFontAsset;\
-    (apiVariableName).korl_gui_windowBegin                  ## apiMemberExtension = korl_gui_windowBegin;\
-    (apiVariableName).korl_gui_windowEnd                    ## apiMemberExtension = korl_gui_windowEnd;\
-    (apiVariableName).korl_gui_widgetTextFormat             ## apiMemberExtension = korl_gui_widgetTextFormat;\
-    (apiVariableName).korl_gui_widgetButtonFormat           ## apiMemberExtension = korl_gui_widgetButtonFormat;
-#define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName, apiMemberExtension, shimExtension) \
-    korl_assertConditionFailed            ## shimExtension = (apiVariableName).korl_assertConditionFailed            ## apiMemberExtension;\
-    korl_logVariadicArguments             ## shimExtension = (apiVariableName).korl_logVariadicArguments             ## apiMemberExtension;\
-    korl_memory_zero                      ## shimExtension = (apiVariableName).korl_memory_zero                      ## apiMemberExtension;\
-    korl_memory_allocator_create          ## shimExtension = (apiVariableName).korl_memory_allocator_create          ## apiMemberExtension;\
-    korl_memory_allocator_allocate        ## shimExtension = (apiVariableName).korl_memory_allocator_allocate        ## apiMemberExtension;\
-    korl_memory_allocator_reallocate      ## shimExtension = (apiVariableName).korl_memory_allocator_reallocate      ## apiMemberExtension;\
-    korl_memory_allocator_free            ## shimExtension = (apiVariableName).korl_memory_allocator_free            ## apiMemberExtension;\
-    korl_memory_allocator_empty           ## shimExtension = (apiVariableName).korl_memory_allocator_empty           ## apiMemberExtension;\
-    korl_gfx_createCameraOrtho            ## shimExtension = (apiVariableName).korl_gfx_createCameraOrtho            ## apiMemberExtension;\
-    korl_gfx_useCamera                    ## shimExtension = (apiVariableName).korl_gfx_useCamera                    ## apiMemberExtension;\
-    korl_gfx_batch                        ## shimExtension = (apiVariableName).korl_gfx_batch                        ## apiMemberExtension;\
-    korl_gfx_createBatchRectangleTextured ## shimExtension = (apiVariableName).korl_gfx_createBatchRectangleTextured ## apiMemberExtension;\
-    korl_gui_setFontAsset                 ## shimExtension = (apiVariableName).korl_gui_setFontAsset                 ## apiMemberExtension;\
-    korl_gui_windowBegin                  ## shimExtension = (apiVariableName).korl_gui_windowBegin                  ## apiMemberExtension;\
-    korl_gui_windowEnd                    ## shimExtension = (apiVariableName).korl_gui_windowEnd                    ## apiMemberExtension;\
-    korl_gui_widgetTextFormat             ## shimExtension = (apiVariableName).korl_gui_widgetTextFormat             ## apiMemberExtension;\
-    korl_gui_widgetButtonFormat           ## shimExtension = (apiVariableName).korl_gui_widgetButtonFormat           ## apiMemberExtension;
+#define KORL_INTERFACE_PLATFORM_API_DECLARE \
+    fnSig_korlPlatformAssertFailure*           korl_assertConditionFailed;\
+    fnSig_korlPlatformLog*                     korl_logVariadicArguments;\
+    fnSig_korl_memory_zero*                    korl_memory_zero;\
+    fnSig_korl_memory_allocator_create*        korl_memory_allocator_create;\
+    fnSig_korl_memory_allocator_allocate*      korl_memory_allocator_allocate;\
+    fnSig_korl_memory_allocator_reallocate*    korl_memory_allocator_reallocate;\
+    fnSig_korl_memory_allocator_free*          korl_memory_allocator_free;\
+    fnSig_korl_memory_allocator_empty*         korl_memory_allocator_empty;\
+    fnSig_korlGfxCreateCameraOrtho*            korl_gfx_createCameraOrtho;\
+    fnSig_korlGfxUseCamera*                    korl_gfx_useCamera;\
+    fnSig_korlGfxBatch*                        korl_gfx_batch;\
+    fnSig_korlGfxCreateBatchRectangleTextured* korl_gfx_createBatchRectangleTextured;\
+    fnSig_korl_gui_setFontAsset*               korl_gui_setFontAsset;\
+    fnSig_korl_gui_windowBegin*                korl_gui_windowBegin;\
+    fnSig_korl_gui_windowEnd*                  korl_gui_windowEnd;\
+    fnSig_korl_gui_widgetTextFormat*           korl_gui_widgetTextFormat;\
+    fnSig_korl_gui_widgetButtonFormat*         korl_gui_widgetButtonFormat;
+#define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
+    (apiVariableName).korl_assertConditionFailed             = korl_assertConditionFailed;\
+    (apiVariableName).korl_logVariadicArguments              = korl_logVariadicArguments;\
+    (apiVariableName).korl_memory_zero                       = korl_memory_zero;\
+    (apiVariableName).korl_memory_allocator_create           = korl_memory_allocator_create;\
+    (apiVariableName).korl_memory_allocator_allocate         = korl_memory_allocator_allocate;\
+    (apiVariableName).korl_memory_allocator_reallocate       = korl_memory_allocator_reallocate;\
+    (apiVariableName).korl_memory_allocator_free             = korl_memory_allocator_free;\
+    (apiVariableName).korl_memory_allocator_empty            = korl_memory_allocator_empty;\
+    (apiVariableName).korl_gfx_createCameraOrtho             = korl_gfx_createCameraOrtho;\
+    (apiVariableName).korl_gfx_useCamera                     = korl_gfx_useCamera;\
+    (apiVariableName).korl_gfx_batch                         = korl_gfx_batch;\
+    (apiVariableName).korl_gfx_createBatchRectangleTextured  = korl_gfx_createBatchRectangleTextured;\
+    (apiVariableName).korl_gui_setFontAsset                  = korl_gui_setFontAsset;\
+    (apiVariableName).korl_gui_windowBegin                   = korl_gui_windowBegin;\
+    (apiVariableName).korl_gui_windowEnd                     = korl_gui_windowEnd;\
+    (apiVariableName).korl_gui_widgetTextFormat              = korl_gui_widgetTextFormat;\
+    (apiVariableName).korl_gui_widgetButtonFormat            = korl_gui_widgetButtonFormat;
+#define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
+    korl_assertConditionFailed            = (apiVariableName).korl_assertConditionFailed;\
+    korl_logVariadicArguments             = (apiVariableName).korl_logVariadicArguments;\
+    korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
+    korl_memory_allocator_create          = (apiVariableName).korl_memory_allocator_create;\
+    korl_memory_allocator_allocate        = (apiVariableName).korl_memory_allocator_allocate;\
+    korl_memory_allocator_reallocate      = (apiVariableName).korl_memory_allocator_reallocate;\
+    korl_memory_allocator_free            = (apiVariableName).korl_memory_allocator_free;\
+    korl_memory_allocator_empty           = (apiVariableName).korl_memory_allocator_empty;\
+    korl_gfx_createCameraOrtho            = (apiVariableName).korl_gfx_createCameraOrtho;\
+    korl_gfx_useCamera                    = (apiVariableName).korl_gfx_useCamera;\
+    korl_gfx_batch                        = (apiVariableName).korl_gfx_batch;\
+    korl_gfx_createBatchRectangleTextured = (apiVariableName).korl_gfx_createBatchRectangleTextured;\
+    korl_gui_setFontAsset                 = (apiVariableName).korl_gui_setFontAsset;\
+    korl_gui_windowBegin                  = (apiVariableName).korl_gui_windowBegin;\
+    korl_gui_windowEnd                    = (apiVariableName).korl_gui_windowEnd;\
+    korl_gui_widgetTextFormat             = (apiVariableName).korl_gui_widgetTextFormat;\
+    korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;
 typedef struct KorlPlatformApi
 {
-    KORL_INTERFACE_PLATFORM_API_DECLARE(_)
+    KORL_INTERFACE_PLATFORM_API_DECLARE
 } KorlPlatformApi;
