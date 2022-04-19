@@ -45,7 +45,7 @@ korl_global_variable _Korl_Memory_Context _korl_memory_context;
 korl_internal void korl_memory_initialize(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_memory_nullify(context, sizeof(*context));
+    korl_memory_zero(context, sizeof(*context));
     GetSystemInfo(&context->systemInfo);
     context->mainThreadId = GetCurrentThreadId();
 }
@@ -105,9 +105,9 @@ korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destinat
         charsCopied *= -1;
     return charsCopied;
 }
-korl_internal void korl_memory_nullify(void*const p, size_t bytes)
+korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero)
 {
-    SecureZeroMemory(p, bytes);
+    SecureZeroMemory(memory, bytes);
 }
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
@@ -519,7 +519,7 @@ korl_internal void* _korl_memory_allocator_createLinear(u$ maxBytes)
         korl_logLastError("VirtualAlloc failed!");
     /* initialize the memory of the allocator userData */
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, resultVirtualAlloc);
-    korl_memory_nullify(allocator, sizeof(*allocator));
+    korl_memory_zero(allocator, sizeof(*allocator));
     const u$ allocatorPages = (sizeof(*allocator) + (korl_memory_pageBytes() - 1)) / korl_memory_pageBytes();
     allocator->bytes                 = pageBytes;
     allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocator) + allocatorPages*korl_memory_pageBytes();
@@ -562,7 +562,7 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
     }
     korl_assert(newHandle);
     _Korl_Memory_Allocator* newAllocator = KORL_MEMORY_POOL_ADD(context->allocators);
-    korl_memory_nullify(newAllocator, sizeof(*newAllocator));
+    korl_memory_zero(newAllocator, sizeof(*newAllocator));
     newAllocator->type   = type;
     newAllocator->handle = newHandle;
     switch(type)

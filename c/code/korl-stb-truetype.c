@@ -10,7 +10,7 @@ korl_global_variable _Korl_Stb_TrueType_Context _korl_stb_truetype_context;
 korl_internal void korl_stb_truetype_initialize(void)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
-    korl_memory_nullify(context, sizeof(*context));
+    korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(512));
 }
 void* _stbtt_allocate(u$ bytes)

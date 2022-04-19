@@ -1,6 +1,14 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
+/* macro for automatically initializing stack variables to 0 */
+#define KORL_ZERO_STACK(variableType, variableIdentifier) \
+    variableType variableIdentifier;\
+    korl_memory_zero(&(variableIdentifier), sizeof(variableIdentifier));
+/* same as KORL_ZERO_STACK, except for arrays */
+#define KORL_ZERO_STACK_ARRAY(variableType, variableIdentifier, arraySize) \
+    variableType variableIdentifier[arraySize]; \
+    korl_memory_zero(variableIdentifier, sizeof(variableIdentifier));
 typedef u32 Korl_MemoryPool_Size;
 /**
  * \note This does NOT initialize the memory to a valid known state.
@@ -48,7 +56,7 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s);
  * multiplied by -1 is returned.
  */
 korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize);
-korl_internal void korl_memory_nullify(void*const p, size_t bytes);
+korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList);
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);

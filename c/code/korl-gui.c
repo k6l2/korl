@@ -25,7 +25,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier,
     widgetIndex = KORL_MEMORY_POOL_SIZE(context->widgets);
     KORL_MEMORY_POOL_ADD(context->widgets);
     _Korl_Gui_Widget* widget = &context->widgets[widgetIndex];
-    korl_memory_nullify(widget, sizeof(*widget));
+    korl_memory_zero(widget, sizeof(*widget));
     widget->identifier             = identifier;
     widget->parentWindowIdentifier = context->windows[context->currentWindowIndex].identifier;
     widget->type                   = widgetType;
@@ -118,7 +118,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
 }
 korl_internal void korl_gui_initialize(void)
 {
-    korl_memory_nullify(&_korl_gui_context, sizeof(_korl_gui_context));
+    korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
     _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color){.rgb.r =  16, .rgb.g =  16, .rgb.b =  16};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color){.rgb.r =  24, .rgb.g =  24, .rgb.b =  24};
@@ -169,7 +169,7 @@ korl_internal void korl_gui_windowBegin(const wchar_t* identifier, bool* out_isO
                                                  (Korl_Math_V2f32){ 32.f, -32.f });
     korl_assert(!KORL_MEMORY_POOL_ISFULL(context->windows));
     _Korl_Gui_Window* newWindow = KORL_MEMORY_POOL_ADD(context->windows);
-    korl_memory_nullify(newWindow, sizeof(*newWindow));
+    korl_memory_zero(newWindow, sizeof(*newWindow));
     newWindow->identifier   = identifier;
     newWindow->position     = nextWindowPosition;
     newWindow->size         = (Korl_Math_V2f32){ 128.f, 128.f };

@@ -60,7 +60,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 }
 korl_internal void korl_windows_window_initialize(void)
 {
-    korl_memory_nullify(g_korl_windows_window_virtualKeyMap, sizeof(g_korl_windows_window_virtualKeyMap));
+    korl_memory_zero(g_korl_windows_window_virtualKeyMap, sizeof(g_korl_windows_window_virtualKeyMap));
     for(u32 i = 0; i <= 9; ++i)
         g_korl_windows_window_virtualKeyMap[0x30 + i] = KORL_KEY_TENKEYLESS_0 + i;
     for(u32 i = 0; i <= 26; ++i)
@@ -236,12 +236,7 @@ korl_internal void korl_windows_window_loop(void)
 {
     KORL_ZERO_STACK(GameMemory, gameMemory);
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
-    korlApi.korl_assertConditionFailed            = korl_assertConditionFailed;
-    korlApi.korl_logVariadicArguments             = korl_logVariadicArguments;
-    korlApi.korl_gfx_createCameraOrtho            = korl_gfx_createCameraOrtho;
-    korlApi.korl_gfx_useCamera                    = korl_gfx_useCamera;
-    korlApi.korl_gfx_batch                        = korl_gfx_batch;
-    korlApi.korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;
+    KORL_INTERFACE_PLATFORM_API_SET(korlApi, _);
     korl_game_initialize(&gameMemory, korlApi);
     Korl_Memory_AllocatorHandle allocatorHandleHeapStack = 
         korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));

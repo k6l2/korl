@@ -190,7 +190,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
 korl_internal void korl_gfx_initialize(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    korl_memory_nullify(context, sizeof(*context));
+    korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, 
                                                             korl_math_megabytes(4));
 }

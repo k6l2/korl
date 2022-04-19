@@ -1125,7 +1125,7 @@ korl_internal void korl_vulkan_destroy(void)
 #endif// KORL_DEBUG
     vkDestroyInstance(context->instance, context->allocator);
     /* nullify the context after cleaning up properly for safety */
-    korl_memory_nullify(context, sizeof(*context));
+    korl_memory_zero(context, sizeof(*context));
 }
 korl_internal void korl_vulkan_createSurface(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY)
@@ -1218,7 +1218,7 @@ korl_internal void korl_vulkan_createSurface(
             korl_arraySize(createInfoDeviceQueueFamilies));
         VkDeviceQueueCreateInfo*const createInfo = 
             &createInfoDeviceQueueFamilies[createInfoDeviceQueueFamiliesSize];
-        korl_memory_nullify(createInfo, sizeof(*createInfo));
+        korl_memory_zero(createInfo, sizeof(*createInfo));
         createInfo->sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         createInfo->queueFamilyIndex = context->queueFamilyMetaData.indexQueueUnion.indices[f];
         createInfo->queueCount       = korl_arraySize(QUEUE_PRIORITIES);
@@ -1576,7 +1576,7 @@ korl_internal void korl_vulkan_destroySurface(void)
         _korl_vulkan_deviceMemoryLinear_destroy(&swapChainImageContext->deviceMemoryLinearHostVisible);
         _korl_vulkan_deviceMemoryLinear_destroy(&swapChainImageContext->deviceMemoryLinearDeviceLocal);
     }
-    korl_memory_nullify(surfaceContext, sizeof(*surfaceContext));
+    korl_memory_zero(surfaceContext, sizeof(*surfaceContext));
     /* destroy the device-specific resources */
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssetsStaging);
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssets);
@@ -1728,7 +1728,7 @@ done:
     korl_assert(surfaceContext->frameStackCounter == 0);
     surfaceContext->frameStackCounter++;
     /* clear the vertex batch metrics for the upcoming frame */
-    korl_memory_nullify(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
+    korl_memory_zero(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->batchState.currentPipeline = context->pipelinesCount;

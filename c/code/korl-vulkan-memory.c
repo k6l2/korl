@@ -25,7 +25,7 @@ korl_internal void _korl_vulkan_deviceMemory_allocation_destroy(_Korl_Vulkan_Dev
     default:
         korl_assert(!"device object type not implemented!");
     }
-    korl_memory_nullify(allocation, sizeof(*allocation));
+    korl_memory_zero(allocation, sizeof(*allocation));
 }
 korl_internal void _korl_vulkan_deviceMemoryLinear_create(
     _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
@@ -111,7 +111,7 @@ korl_internal void _korl_vulkan_deviceMemoryLinear_destroy(_Korl_Vulkan_DeviceMe
     for(unsigned a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
         _korl_vulkan_deviceMemory_allocation_destroy(&deviceMemoryLinear->allocations[a]);
     vkFreeMemory(context->device, deviceMemoryLinear->deviceMemory, context->allocator);
-    korl_memory_nullify(deviceMemoryLinear, sizeof(*deviceMemoryLinear));
+    korl_memory_zero(deviceMemoryLinear, sizeof(*deviceMemoryLinear));
 }
 /**
  * Iterate over each allocation and destroy it, effectively emptying the allocator.

@@ -24,11 +24,15 @@ rem       these types of bugs, assuming you write decent default case logic...
 rem       I just don't think this warning is useful since it seems more useful 
 rem       to have the ability to switch on a subset of enum values, and dump the 
 rem       rest into the default case.
+rem 4505: unreferenced function with internal linkage has been removed; this is 
+rem       completely useless as far as I can tell, since if we try to call a 
+rem       function that isn't defined in the module, the compiler will complain
+rem 4514: unreferenced inline function has been removed; see 4505
 rem 4706: assignment within conditional expression; I will leave this off until 
 rem       the day that I ever make a mistake which this would have caught
 rem 4710: function not inlined; I just don't care about this, and don't see 
 rem       myself caring about this anytime soon
-set disableUselessWarnings=/wd4061 /wd4706 /wd4710
+set disableUselessWarnings=/wd4061 /wd4505 /wd4514 /wd4706 /wd4710
 rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)

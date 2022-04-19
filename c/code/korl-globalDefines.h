@@ -94,11 +94,9 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #endif//0
 /* macro for c-style casts to improve project searchability */
 #define KORL_C_CAST(type,variable) ((type)(variable))
-/* macro for automatically initializing stack variables to 0 */
-#define KORL_ZERO_STACK(variableType, variableIdentifier) \
-    variableType variableIdentifier;\
-    memset(&(variableIdentifier), 0, sizeof(variableIdentifier));
-/* same as KORL_ZERO_STACK, except for arrays */
-#define KORL_ZERO_STACK_ARRAY(variableType, variableIdentifier, arraySize) \
-    variableType variableIdentifier[arraySize]; \
-    memset(variableIdentifier, 0, sizeof(variableIdentifier));
+/* macro for C/C++ compatible struct initializer lists */
+#ifdef __cplusplus
+    #define KORL_STRUCT_INITIALIZE(type) type
+#else
+    #define KORL_STRUCT_INITIALIZE(type) (type)
+#endif

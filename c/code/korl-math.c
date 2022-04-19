@@ -1,6 +1,14 @@
 #include "korl-math.h"
-#include "korl-assert.h"
 #include <math.h>
+#ifndef KORL_MATH_ASSERT
+    #include "korl-assert.h"
+    #define KORL_MATH_ASSERT(condition) korl_assert(condition)
+#endif
+#ifndef KORL_MATH_ZERO_STACK
+    #include "korl-memory.h"
+    #define KORL_MATH_ZERO_STACK(variableType, variableIdentifier) \
+        KORL_ZERO_STACK(variableType, variableIdentifier)
+#endif
 korl_internal inline u64 korl_math_kilobytes(u64 x)
 {
     return 1024 * x;
@@ -18,17 +26,17 @@ korl_internal inline u32 korl_math_round_f32_to_u32(f32 x)
     /** maybe in the future, we can have a general solution? 
      * https://stackoverflow.com/a/497079 */
     x = roundf(x);
-    korl_assert(x >= 0.0f);
-    korl_assert(x <= (f32)0xFFFFFFFF);
+    KORL_MATH_ASSERT(x >= 0.0f);
+    KORL_MATH_ASSERT(x <= (f32)0xFFFFFFFF);
     return KORL_C_CAST(u32, x);
 }
 korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple)
 {
     /* derived from this source: https://stackoverflow.com/a/9194117 */
     // ensure multiple is non-zero
-    korl_assert(powerOf2Multiple);
+    KORL_MATH_ASSERT(powerOf2Multiple);
     // ensure multiple is a power of two
-    korl_assert((powerOf2Multiple & (powerOf2Multiple - 1)) == 0);
+    KORL_MATH_ASSERT((powerOf2Multiple & (powerOf2Multiple - 1)) == 0);
     return (value + (powerOf2Multiple - 1)) & ~(powerOf2Multiple - 1);
 }
 korl_internal inline bool korl_math_isNearlyZero(f32 x)
@@ -211,7 +219,7 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Mat
     if(!axisIsNormalized)
         axis = korl_math_v3f32_normal(axis);
     const f32 sine = sinf(radians/2);
-    return (Korl_Math_Quaternion){.xyzw = {
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {
         sine * axis.xyz.x, 
         sine * axis.xyz.y, 
         sine * axis.xyz.z, 
@@ -223,7 +231,7 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quate
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
-    return (Korl_Math_Quaternion){.xyzw = {
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {
         qA.xyzw.w*qB.xyzw.x + qA.xyzw.x*qB.xyzw.w + qA.xyzw.y*qB.xyzw.z - qA.xyzw.z*qB.xyzw.y,
         qA.xyzw.w*qB.xyzw.y - qA.xyzw.x*qB.xyzw.z + qA.xyzw.y*qB.xyzw.w + qA.xyzw.z*qB.xyzw.x,
         qA.xyzw.w*qB.xyzw.z + qA.xyzw.x*qB.xyzw.y - qA.xyzw.y*qB.xyzw.x + qA.xyzw.z*qB.xyzw.w,
@@ -231,29 +239,29 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quate
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q)
 {
-	return (Korl_Math_Quaternion){.xyzw = {-q.xyzw.x, -q.xyzw.y, -q.xyzw.z, q.xyzw.w}};
+	return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {-q.xyzw.x, -q.xyzw.y, -q.xyzw.z, q.xyzw.w}};
 }
 korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized)
 {
     if(!qIsNormalized)
         q = korl_math_v4f32_normal(q);
     q = korl_math_quaternion_hamilton(
-            korl_math_quaternion_hamilton(q, (Korl_Math_Quaternion){.xyzw = {v.xy.x, v.xy.y, 0, 0}}), 
+            korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {v.xy.x, v.xy.y, 0, 0}}), 
             korl_math_quaternion_conjugate(q));
-    return (Korl_Math_V2f32){.xy = {q.xyzw.x, q.xyzw.y}};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){.xy = {q.xyzw.x, q.xyzw.y}};
 }
 korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized)
 {
     if(!qIsNormalized)
         q = korl_math_v4f32_normal(q);
     q = korl_math_quaternion_hamilton(
-            korl_math_quaternion_hamilton(q, (Korl_Math_Quaternion){.xyzw = {v.xyz.x, v.xyz.y, v.xyz.z, 0}}), 
-            korl_math_quaternion_conjugate(q));
-    return (Korl_Math_V3f32){.xyz = {q.xyzw.x, q.xyzw.y, q.xyzw.z}};
+        korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {v.xyz.x, v.xyz.y, v.xyz.z, 0}}), 
+        korl_math_quaternion_conjugate(q));
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xyz = {q.xyzw.x, q.xyzw.y, q.xyzw.z}};
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation)
 {
-    KORL_ZERO_STACK(Korl_Math_M4f32, result);
+    KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
     /* https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix */
     const f32 sqW = qRotation.xyzw.w*qRotation.xyzw.w;
     const f32 sqX = qRotation.xyzw.x*qRotation.xyzw.x;
@@ -307,7 +315,7 @@ korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math
 }
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m)
 {
-    KORL_ZERO_STACK(Korl_Math_M4f32, result);
+    KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
     for(unsigned r = 0; r < 4; r++)
         for(unsigned c = 0; c < 4; c++)
             result.rows[r].elements[c] = m->rows[c].elements[r];
@@ -331,9 +339,9 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
     f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
     f32 clipNear, f32 clipFar)
 {
-    KORL_ZERO_STACK(Korl_Math_M4f32, result);
-    korl_assert(!korl_math_isNearlyZero(horizontalFovDegrees));
-    korl_assert(!korl_math_isNearlyEqual(clipNear, clipFar) && clipNear < clipFar);
+    KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
+    KORL_MATH_ASSERT(!korl_math_isNearlyZero(horizontalFovDegrees));
+    KORL_MATH_ASSERT(!korl_math_isNearlyEqual(clipNear, clipFar) && clipNear < clipFar);
     const f32 horizontalFovRadians = horizontalFovDegrees*KORL_PI32/180.f;
     const f32 tanHalfFov = tanf(horizontalFovRadians / 2.f);
     /* Good sources for how to derive this matrix:
@@ -355,9 +363,9 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
     f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax)
 {
-    korl_assert(!korl_math_isNearlyZero(xMin - xMax));
-    korl_assert(!korl_math_isNearlyZero(yMin - yMax));
-    korl_assert(!korl_math_isNearlyZero(xMin - xMax));
+    KORL_MATH_ASSERT(!korl_math_isNearlyZero(xMin - xMax));
+    KORL_MATH_ASSERT(!korl_math_isNearlyZero(yMin - yMax));
+    KORL_MATH_ASSERT(!korl_math_isNearlyZero(xMin - xMax));
     /* derive orthographic matrix using the power of math, people! 
         - we're given 6 coordinates which define the AABB in eye-space that we 
           want to map into clip-space 
@@ -366,7 +374,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
           values must be in the range [0,1] without extensions
             - zMin maps to 0
             - zMax maps to 1 */
-    KORL_ZERO_STACK(Korl_Math_M4f32, result);
+    KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
     result.rc.r0c0 =              2 / (xMax - xMin);
     result.rc.r0c3 = -(xMax + xMin) / (xMax - xMin);
     result.rc.r1c1 =              2 / (yMax - yMin);
@@ -383,7 +391,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
 {
     //KORL-PERFORMANCE-000-000-006
     /* sanity check to ensure that worldUpNormal is, in fact, normalized! */
-    korl_assert(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(worldUpNormal), 1));
+    KORL_MATH_ASSERT(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(worldUpNormal), 1));
     Korl_Math_M4f32 result = KORL_MATH_M4F32_IDENTITY;
     /* Even though this author uses "column-major" memory layout for matrices 
         for some reason, which makes everything really fucking confusing most of 
@@ -416,8 +424,8 @@ korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y,
 }
 korl_internal Korl_Math_V2f32 korl_math_aabb2f32_size(Korl_Math_Aabb2f32 aabb)
 {
-    korl_assert(aabb.max.xy.x >= aabb.min.xy.x);
-    korl_assert(aabb.max.xy.y >= aabb.min.xy.y);
+    KORL_MATH_ASSERT(aabb.max.xy.x >= aabb.min.xy.x);
+    KORL_MATH_ASSERT(aabb.max.xy.y >= aabb.min.xy.y);
     return korl_math_v2f32_subtract(aabb.max, aabb.min);
 }
 korl_internal bool korl_math_aabb2f32_contains(Korl_Math_Aabb2f32 aabb, f32 x, f32 y)
@@ -451,9 +459,9 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y,
 }
 korl_internal Korl_Math_V3f32 korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb)
 {
-    korl_assert(aabb.max.xyz.x >= aabb.min.xyz.x);
-    korl_assert(aabb.max.xyz.y >= aabb.min.xyz.y);
-    korl_assert(aabb.max.xyz.z >= aabb.min.xyz.z);
+    KORL_MATH_ASSERT(aabb.max.xyz.x >= aabb.min.xyz.x);
+    KORL_MATH_ASSERT(aabb.max.xyz.y >= aabb.min.xyz.y);
+    KORL_MATH_ASSERT(aabb.max.xyz.z >= aabb.min.xyz.z);
     return korl_math_v3f32_subtract(aabb.max, aabb.min);
 }
 korl_internal bool korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z)
