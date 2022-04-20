@@ -2,11 +2,11 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-gui-common.h"
-#define KORL_PLATFORM_GUI_SET_FONT_ASSET(name) void name(const wchar_t* fontAssetName)
-#define KORL_PLATFORM_GUI_WINDOW_BEGIN(name) void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
-#define KORL_PLATFORM_GUI_WINDOW_END(name) void name(void)
-#define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name) void name(const wchar_t* textFormat, ...)
-#define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8 name(const wchar_t* textFormat, ...)
+#define KORL_PLATFORM_GUI_SET_FONT_ASSET(name)       void name(const wchar_t* fontAssetName)
+#define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
+#define KORL_PLATFORM_GUI_WINDOW_END(name)           void name(void)
+#define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
+#define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
 typedef enum Korl_KeyboardCode
     { KORL_KEY_UNKNOWN
     , KORL_KEY_A
@@ -124,10 +124,10 @@ typedef enum Korl_Memory_AllocatorType
     KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
 } Korl_Memory_AllocatorType;
 #define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void* name(Korl_Memory_AllocatorHandle handle, u$ bytes, wchar_t* file, int line)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void* name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, wchar_t* file, int line)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void  name(Korl_Memory_AllocatorHandle handle, void* allocation, wchar_t* file, int line)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void  name(Korl_Memory_AllocatorHandle handle)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, wchar_t* file, int line)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, wchar_t* file, int line)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, wchar_t* file, int line)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
 typedef struct Korl_Gfx_Camera
 {
     enum
@@ -181,10 +181,10 @@ typedef enum Korl_Gfx_Batch_Flags
     KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0
 } Korl_Gfx_Batch_Flags;
 typedef struct Korl_Gfx_Batch Korl_Gfx_Batch;
-#define KORL_GFX_CREATE_CAMERA_ORTHO(name)              Korl_Gfx_Camera name(f32 clipDepth)
-#define KORL_GFX_USE_CAMERA(name)                       void name(Korl_Gfx_Camera camera)
-#define KORL_GFX_BATCH(name)                            void name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
-#define KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name)  Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, const wchar_t* assetNameTexture)
+#define KORL_GFX_CREATE_CAMERA_ORTHO(name)             Korl_Gfx_Camera name(f32 clipDepth)
+#define KORL_GFX_USE_CAMERA(name)                      void            name(Korl_Gfx_Camera camera)
+#define KORL_GFX_BATCH(name)                           void            name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
+#define KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name) Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, const wchar_t* assetNameTexture)
 typedef KORL_PLATFORM_LOG                        (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_ASSERT_FAILURE             (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_MEMORY_ZERO                (fnSig_korl_memory_zero);

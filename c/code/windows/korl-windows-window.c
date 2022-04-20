@@ -35,7 +35,6 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
                                   clientRect.bottom - clientRect.top);
         }break;
     case WM_DESTROY:{
-        korl_vulkan_destroySurface();
         PostQuitMessage(KORL_EXIT_SUCCESS);
         } break;
     case WM_KEYDOWN:
@@ -239,12 +238,14 @@ korl_internal void korl_windows_window_loop(void)
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
     korl_game_initialize(&gameMemory, korlApi);
-    Korl_Memory_AllocatorHandle allocatorHandleHeapStack = 
-        korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
+    //KORL-ISSUE-000-000-035: hack: delete this later
+    //Korl_Memory_AllocatorHandle allocatorHandleHeapStack = 
+    //    korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
     bool quit = false;
     while(!quit)
     {
-        korl_memory_allocator_empty(allocatorHandleHeapStack);
+        //KORL-ISSUE-000-000-035: hack: delete this later
+        //korl_memory_allocator_empty(allocatorHandleHeapStack);
         KORL_ZERO_STACK(MSG, windowMessage);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
                           0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
@@ -260,7 +261,6 @@ korl_internal void korl_windows_window_loop(void)
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
         if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true/*TODO: fix me later*/))
         {
-            korl_vulkan_destroySurface();
             break;
         }
         //KORL-ISSUE-000-000-035: hack: delete this
@@ -268,4 +268,5 @@ korl_internal void korl_windows_window_loop(void)
         korl_gui_frameEnd();
         korl_vulkan_frameEnd();
     }
+    korl_vulkan_destroySurface();
 }
