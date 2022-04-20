@@ -194,7 +194,7 @@ korl_internal void korl_gfx_initialize(void)
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, 
                                                             korl_math_megabytes(4));
 }
-korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target)
+korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.position                                = position;
@@ -206,7 +206,7 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraFov(f32 fovHorizonDegrees, f3
     result.subCamera.perspective.fovHorizonDegrees = fovHorizonDegrees;
     return result;
 }
-korl_internal KORL_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho)
+korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.type                                = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC;
@@ -218,7 +218,7 @@ korl_internal KORL_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho)
     result.subCamera.orthographic.originAnchor = (Korl_Math_V2f32){.xy = {0.5f, 0.5f}};
     return result;
 }
-korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHeight, f32 clipDepth)
+korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(korl_gfx_createCameraOrthoFixedHeight)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.type                                           = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
@@ -231,7 +231,7 @@ korl_internal Korl_Gfx_Camera korl_gfx_createCameraOrthoFixedHeight(f32 fixedHei
     result.subCamera.orthographicFixedHeight.originAnchor = (Korl_Math_V2f32){.xy = {0.5f, 0.5f}};
     return result;
 }
-korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)
+korl_internal KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(korl_gfx_cameraFov_rotateAroundTarget)
 {
     korl_assert(context->type == KORL_GFX_CAMERA_TYPE_PERSPECTIVE);
     const Korl_Math_V3f32 newTargetOffset = 
@@ -241,7 +241,7 @@ korl_internal void korl_gfx_cameraFov_rotateAroundTarget(Korl_Gfx_Camera*const c
             true);
     context->position = korl_math_v3f32_add(context->target, newTargetOffset);
 }
-korl_internal KORL_GFX_USE_CAMERA(korl_gfx_useCamera)
+korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
 {
     const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
     switch(camera._scissorType)
@@ -281,7 +281,7 @@ korl_internal KORL_GFX_USE_CAMERA(korl_gfx_useCamera)
         }break;
     }
 }
-korl_internal void korl_gfx_cameraSetScissor(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
+korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR(korl_gfx_cameraSetScissor)
 {
     f32 x2 = x + sizeX;
     f32 y2 = y + sizeY;
@@ -295,7 +295,7 @@ korl_internal void korl_gfx_cameraSetScissor(Korl_Gfx_Camera*const context, f32 
     context->_viewportScissorSize.xy.y     = y2 - y;
     context->_scissorType                  = KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE;
 }
-korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
+korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(korl_gfx_cameraSetScissorPercent)
 {
     f32 x2 = viewportRatioX + viewportRatioWidth;
     f32 y2 = viewportRatioY + viewportRatioHeight;
@@ -309,7 +309,7 @@ korl_internal void korl_gfx_cameraSetScissorPercent(Korl_Gfx_Camera*const contex
     context->_viewportScissorSize.xy.y     = y2 - viewportRatioY;
     context->_scissorType                  = KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO;
 }
-korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
+korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOrthoSetOriginAnchor)
 {
     const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
     switch(context->type)
@@ -327,7 +327,7 @@ korl_internal void korl_gfx_cameraOrthoSetOriginAnchor(Korl_Gfx_Camera*const con
         }break;
     }
 }
-korl_internal KORL_GFX_BATCH(korl_gfx_batch)
+korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
     _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAGS_LAZY);
     if(batch->_vertexCount <= 0)
@@ -350,7 +350,7 @@ korl_internal KORL_GFX_BATCH(korl_gfx_batch)
         batch->_vertexIndexCount, batch->_vertexIndices, 
         batch->_vertexCount, batch->_vertexPositions, batch->_vertexColors, batch->_vertexUvs);
 }
-korl_internal KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured)
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured)
 {
     /* calculate required amount of memory for the batch */
     const u$ assetNameTextureSize = korl_memory_stringSize(assetNameTexture) + 1;
@@ -401,7 +401,7 @@ korl_internal KORL_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRecta
     /* return the batch */
     return result;
 }
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color)
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBatchRectangleColored)
 {
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
@@ -444,7 +444,7 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchRectangleColored(Korl_Memory_A
     /**/
     return result;
 }
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
 {
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
@@ -463,7 +463,7 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchLines(Korl_Memory_AllocatorHan
     /* return the batch */
     return result;
 }
-korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight)
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
 {
     korl_assert(text);
     korl_assert(textPixelHeight >= 1.f);
@@ -528,35 +528,35 @@ korl_internal Korl_Gfx_Batch* korl_gfx_createBatchText(Korl_Memory_AllocatorHand
     /* return the batch */
     return result;
 }
-korl_internal void korl_gfx_batchSetPosition(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION(korl_gfx_batchSetPosition)
 {
     context->_position = position;
 }
-korl_internal void korl_gfx_batchSetPosition2d(Korl_Gfx_Batch*const context, f32 x, f32 y)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION_2D(korl_gfx_batchSetPosition2d)
 {
     context->_position.xyz.x = x;
     context->_position.xyz.y = y;
 }
-korl_internal void korl_gfx_batchSetPosition2dV2f32(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION_2D_V2F32(korl_gfx_batchSetPosition2dV2f32)
 {
     context->_position.xyz.x = position.xy.x;
     context->_position.xyz.y = position.xy.y;
 }
-korl_internal void korl_gfx_batchSetScale(Korl_Gfx_Batch*const context, Korl_Vulkan_Position scale)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_SCALE(korl_gfx_batchSetScale)
 {
     context->_scale = scale;
 }
-korl_internal void korl_gfx_batchSetRotation(Korl_Gfx_Batch*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_ROTATION(korl_gfx_batchSetRotation)
 {
     context->_rotation = korl_math_quaternion_fromAxisRadians(axisOfRotation, radians, false);
 }
-korl_internal void korl_gfx_batchSetVertexColor(Korl_Gfx_Batch*const context, u32 vertexIndex, Korl_Vulkan_Color color)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_VERTEX_COLOR(korl_gfx_batchSetVertexColor)
 {
     korl_assert(context->_vertexCount > vertexIndex);
     korl_assert(context->_vertexColors);
     context->_vertexColors[vertexIndex] = color;
 }
-korl_internal void korl_gfx_batchSetLine(Korl_Gfx_Batch*const context, u32 lineIndex, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color color)
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_LINE(korl_gfx_batchSetLine)
 {
     korl_assert(context->_vertexCount > 2*lineIndex + 1);
     korl_assert(context->_vertexColors);
@@ -565,7 +565,7 @@ korl_internal void korl_gfx_batchSetLine(Korl_Gfx_Batch*const context, u32 lineI
     context->_vertexColors[2*lineIndex + 0] = color;
     context->_vertexColors[2*lineIndex + 1] = color;
 }
-korl_internal f32 korl_gfx_batchTextGetAabbSizeX(Korl_Gfx_Batch*const batchContext)
+korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB_SIZE_X(korl_gfx_batchTextGetAabbSizeX)
 {
     korl_assert(batchContext->_text && batchContext->_assetNameFont);
     _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAGS_LAZY);
@@ -580,7 +580,7 @@ korl_internal f32 korl_gfx_batchTextGetAabbSizeX(Korl_Gfx_Batch*const batchConte
     }
     return maxX - minX;
 }
-korl_internal f32 korl_gfx_batchTextGetAabbSizeY(Korl_Gfx_Batch*const batchContext)
+korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB_SIZE_Y(korl_gfx_batchTextGetAabbSizeY)
 {
     korl_assert(batchContext->_text && batchContext->_assetNameFont);
     _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAGS_LAZY);
@@ -595,7 +595,7 @@ korl_internal f32 korl_gfx_batchTextGetAabbSizeY(Korl_Gfx_Batch*const batchConte
     }
     return maxY - minY;
 }
-korl_internal void korl_gfx_batchRectangleSetSize(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
+korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(korl_gfx_batchRectangleSetSize)
 {
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     const f32 originalSizeX = context->_vertexPositions[2].xyz.x - context->_vertexPositions[0].xyz.x;
@@ -606,7 +606,7 @@ korl_internal void korl_gfx_batchRectangleSetSize(Korl_Gfx_Batch*const context, 
         context->_vertexPositions[c].xyz.y = size.xy.y * (context->_vertexPositions[c].xyz.y / originalSizeY);
     }
 }
-korl_internal void korl_gfx_batchRectangleSetColor(Korl_Gfx_Batch*const context, Korl_Vulkan_Color color)
+korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(korl_gfx_batchRectangleSetColor)
 {
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     korl_assert(context->_vertexColors);
