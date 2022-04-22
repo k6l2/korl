@@ -3,26 +3,6 @@
 #include "korl-math.h"
 #include "korl-vulkan.h"
 #include "korl-interface-platform.h"
-typedef struct Korl_Gfx_Batch
-{
-    Korl_Vulkan_PrimitiveType primitiveType;
-    Korl_Vulkan_Position _position;
-    Korl_Vulkan_Position _scale;
-    Korl_Math_Quaternion _rotation;
-    u32 _vertexIndexCount;
-    u32 _vertexCount;
-    f32 _textPixelHeight;
-    wchar_t* _assetNameTexture;
-    //KORL-PERFORMANCE-000-000-002
-    wchar_t* _assetNameFont;
-    //KORL-PERFORMANCE-000-000-003
-    wchar_t* _text;
-    Korl_Vulkan_TextureHandle _fontTextureHandle;
-    Korl_Vulkan_VertexIndex* _vertexIndices;
-    Korl_Vulkan_Position*    _vertexPositions;
-    Korl_Vulkan_Color*       _vertexColors;
-    Korl_Vulkan_Uv*          _vertexUvs;
-} Korl_Gfx_Batch;
 korl_internal void korl_gfx_initialize(void);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho);
@@ -53,6 +33,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch);
 //KORL-ISSUE-000-000-005
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured);
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBatchRectangleColored);
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTriangles);
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines);
 /** 
  * \param assetNameFont If this value is \c NULL , a default internal font asset 
@@ -63,8 +44,10 @@ korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION(korl_gfx_batchSetPosition);
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION_2D(korl_gfx_batchSetPosition2d);
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION_2D_V2F32(korl_gfx_batchSetPosition2dV2f32);
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_SCALE(korl_gfx_batchSetScale);
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_QUATERNION(korl_gfx_batchSetQuaternion);
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_ROTATION(korl_gfx_batchSetRotation);
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_VERTEX_COLOR(korl_gfx_batchSetVertexColor);
+korl_internal KORL_PLATFORM_GFX_BATCH_ADD_LINE(korl_gfx_batchAddLine);
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_LINE(korl_gfx_batchSetLine);
 korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB_SIZE_X(korl_gfx_batchTextGetAabbSizeX);
 korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB_SIZE_Y(korl_gfx_batchTextGetAabbSizeY);

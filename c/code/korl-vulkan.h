@@ -53,8 +53,7 @@ korl_internal void korl_vulkan_setProjectionFov(
  */
 korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRatioX, f32 originRatioY);
 korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth, f32 originRatioX, f32 originRatioY);
-korl_internal void korl_vulkan_setView(
-    Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
+korl_internal void korl_vulkan_setView(Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
 korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void);
 /**
  * Values of parameters are in window-space coordinates.  The upper-left corner 

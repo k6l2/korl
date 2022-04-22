@@ -108,11 +108,17 @@ korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 eps
 /** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);
 korl_internal inline f32 korl_math_abs(f32 x);
+korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator);
+korl_internal inline f32 korl_math_acos(f32 x);
+korl_internal inline f32 korl_math_ceil(f32 x);
 /* V2f32 **********************************************************************/
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v);
 korl_internal f32 korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_normal(Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f32 v, f32 magnitude);
+korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, f32 scalar);

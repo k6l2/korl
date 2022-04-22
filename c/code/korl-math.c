@@ -61,6 +61,18 @@ korl_internal inline f32 korl_math_abs(f32 x)
         return x;
     return -x;
 }
+korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator)
+{
+    return fmodf(numerator, denominator);
+}
+korl_internal inline f32 korl_math_acos(f32 x)
+{
+    return acosf(x);
+}
+korl_internal inline f32 korl_math_ceil(f32 x)
+{
+    return ceilf(x);
+}
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v)
 {
     return sqrtf(korl_math_v2f32_magnitudeSquared(v));
@@ -85,6 +97,19 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f
     v.elements[0] /= magnitude;
     v.elements[1] /= magnitude;
     return v;
+}
+korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    return vA.xy.x*vB.xy.y - vA.xy.y*vB.xy.x;
+}
+korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    return vA.elements[0] * vB.elements[0]
+        +  vA.elements[1] * vB.elements[1];
+}
+korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    return korl_math_acos(korl_math_v2f32_dot(korl_math_v2f32_normal(vA), korl_math_v2f32_normal(vB)));
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {

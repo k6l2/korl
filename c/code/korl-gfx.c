@@ -364,6 +364,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_memory_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
+    result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
     result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
@@ -412,6 +413,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_memory_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
+    result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
     result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
@@ -444,22 +446,43 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     /**/
     return result;
 }
-korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTriangles)
 {
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + 2 * lineCount * sizeof(Korl_Vulkan_Position)
-        + 2 * lineCount * sizeof(Korl_Vulkan_Color);
+        + 3*triangleCount * sizeof(Korl_Vulkan_Position)
+        + 3*triangleCount * sizeof(Korl_Vulkan_Color);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_memory_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
+    result->allocatorHandle   = allocatorHandle;
+    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
+    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexCount      = 3*triangleCount;
+    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*, result + 1);
+    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color*   , KORL_C_CAST(u8*, result->_vertexPositions) + 3*triangleCount*sizeof(Korl_Vulkan_Position));
+    /* return the batch */
+    return result;
+}
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
+{
+    /* calculate required amount of memory for the batch */
+    const u$ totalBytes = sizeof(Korl_Gfx_Batch)
+        + 2*lineCount * sizeof(Korl_Vulkan_Position)
+        + 2*lineCount * sizeof(Korl_Vulkan_Color);
+    /* allocate the memory */
+    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
+        korl_memory_allocate(allocatorHandle, totalBytes));
+    /* initialize the batch struct */
+    result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_LINES;
     result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
     result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexCount      = 2 * lineCount;
+    result->_vertexCount      = 2*lineCount;
     result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*, result + 1);
-    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color*   , KORL_C_CAST(u8*, result->_vertexPositions ) + 2*lineCount*sizeof(Korl_Vulkan_Position));
+    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color*   , KORL_C_CAST(u8*, result->_vertexPositions) + 2*lineCount*sizeof(Korl_Vulkan_Position));
     /* return the batch */
     return result;
 }
@@ -492,6 +515,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_memory_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
+    result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
     result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
@@ -546,6 +570,10 @@ korl_internal KORL_PLATFORM_GFX_BATCH_SET_SCALE(korl_gfx_batchSetScale)
 {
     context->_scale = scale;
 }
+korl_internal KORL_PLATFORM_GFX_BATCH_SET_QUATERNION(korl_gfx_batchSetQuaternion)
+{
+    context->_rotation = quaternion;
+}
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_ROTATION(korl_gfx_batchSetRotation)
 {
     context->_rotation = korl_math_quaternion_fromAxisRadians(axisOfRotation, radians, false);
@@ -555,6 +583,26 @@ korl_internal KORL_PLATFORM_GFX_BATCH_SET_VERTEX_COLOR(korl_gfx_batchSetVertexCo
     korl_assert(context->_vertexCount > vertexIndex);
     korl_assert(context->_vertexColors);
     context->_vertexColors[vertexIndex] = color;
+}
+korl_internal KORL_PLATFORM_GFX_BATCH_ADD_LINE(korl_gfx_batchAddLine)
+{
+    korl_assert(pContext);
+    korl_assert(*pContext);
+    const u32 newVertexCount = (*pContext)->_vertexCount + 2;
+    const u$ newTotalBytes = sizeof(Korl_Gfx_Batch)
+        + newVertexCount * sizeof(Korl_Vulkan_Position)
+        + newVertexCount * sizeof(Korl_Vulkan_Color);
+    (*pContext) = KORL_C_CAST(Korl_Gfx_Batch*, 
+        korl_memory_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
+    korl_assert(*pContext);
+    (*pContext)->_vertexCount     = newVertexCount;
+    (*pContext)->_vertexPositions = KORL_C_CAST(Korl_Vulkan_Position*, (*pContext) + 1);
+    (*pContext)->_vertexColors    = KORL_C_CAST(Korl_Vulkan_Color*   , KORL_C_CAST(u8*, (*pContext)->_vertexPositions) + newVertexCount*sizeof(Korl_Vulkan_Position));
+    /* set the properties of the new line */
+    (*pContext)->_vertexPositions[newVertexCount - 2] = p0;
+    (*pContext)->_vertexPositions[newVertexCount - 1] = p1;
+    (*pContext)->_vertexColors[newVertexCount - 2] = color0;
+    (*pContext)->_vertexColors[newVertexCount - 1] = color1;
 }
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_LINE(korl_gfx_batchSetLine)
 {

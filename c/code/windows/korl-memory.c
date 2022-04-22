@@ -277,9 +277,6 @@ korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUser
         return NULL;
     }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
-    const u$ pageBytes = korl_memory_pageBytes();
-    korl_assert(allocator->bytes % pageBytes == 0);
-    const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
     /* if allocation is NULL, just call `allocate` */
     if(allocation == NULL)
         return _korl_memory_allocator_linear_allocate(allocator, bytes, file, line);
@@ -289,6 +286,9 @@ korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUser
         korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect));
         korl_assert(oldProtect == PAGE_NOACCESS);
     }
+    const u$ pageBytes = korl_memory_pageBytes();
+    korl_assert(allocator->bytes % pageBytes == 0);
+    const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
     /* ensure that this address is actually within the allocator's range */
     korl_assert(KORL_C_CAST(u8*, allocation) >= KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes)
              && KORL_C_CAST(u8*, allocation) <  KORL_C_CAST(u8*, allocator) + allocator->bytes);
