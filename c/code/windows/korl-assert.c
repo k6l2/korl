@@ -1,5 +1,5 @@
 #include "korl-assert.h"
-#include "korl-io.h"
+#include "korl-log.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"
 korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)

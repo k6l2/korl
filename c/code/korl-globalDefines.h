@@ -118,6 +118,6 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #define korl_assert(condition) \
     ((condition) ? (void)0 : korl_assertConditionFailed(L""#condition, __FILEW__, __LINE__))
 #define korl_log(logLevel, format, ...) \
-    korl_logVariadicArguments(\
+    _korl_log_variadic(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \
         __FILEW__, __FUNCTIONW__, __LINE__, L ## format, ##__VA_ARGS__)

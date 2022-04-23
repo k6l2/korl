@@ -2,7 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-windows-globalDefines.h"
 #define korl_logLastError(cStringMessage, ...) \
-    korl_logVariadicArguments(\
+    _korl_log_variadic(\
         1 + KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_ERROR, \
         __FILEW__, __FUNCTIONW__, __LINE__, \
         cStringMessage L"  GetLastError=0x%x", ##__VA_ARGS__, GetLastError())

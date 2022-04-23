@@ -120,6 +120,11 @@ enum KorlEnumLogLevel
     , KORL_LOG_LEVEL_WARNING
     , KORL_LOG_LEVEL_INFO
     , KORL_LOG_LEVEL_VERBOSE };
+/** Note that `logLevel` must be passed as the final word of the associated 
+ * identifier in the `KorlEnumLogLevel` enumeration.
+ * example usage: 
+ *  korl_shared_const wchar_t*const USER_NAME = L"Kyle";
+ *  korl_log(INFO, "hey there, %S!", USER_NAME); */
 #define KORL_PLATFORM_LOG(name) void name(\
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, \
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
@@ -296,7 +301,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widget
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure*             korl_assertConditionFailed;\
-    fnSig_korlPlatformLog*                       korl_logVariadicArguments;\
+    fnSig_korlPlatformLog*                       _korl_log_variadic;\
     fnSig_korl_timeStamp*                        korl_timeStamp;\
     fnSig_korl_memory_zero*                      korl_memory_zero;\
     fnSig_korl_memory_copy*                      korl_memory_copy;\
@@ -340,7 +345,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gui_widgetButtonFormat*           korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName).korl_assertConditionFailed            = korl_assertConditionFailed;\
-    (apiVariableName).korl_logVariadicArguments             = korl_logVariadicArguments;\
+    (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
     (apiVariableName).korl_memory_copy                      = korl_memory_copy;\
@@ -384,7 +389,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     korl_assertConditionFailed            = (apiVariableName).korl_assertConditionFailed;\
-    korl_logVariadicArguments             = (apiVariableName).korl_logVariadicArguments;\
+    _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
     korl_memory_copy                      = (apiVariableName).korl_memory_copy;\

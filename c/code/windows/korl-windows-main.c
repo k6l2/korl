@@ -1,6 +1,6 @@
 #include "korl-globalDefines.h"
 #include "korl-windows-globalDefines.h"
-#include "korl-io.h"
+#include "korl-log.h"
 #include "korl-memory.h"
 #include "korl-windows-window.h"
 #include "korl-assert.h"
@@ -19,13 +19,14 @@ void __stdcall korl_windows_main(void)
 int main(int argc, char** argv)
 #endif
 {
-    korl_io_initialize();
-    korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_memory_initialize();
+    korl_log_initialize();//@todo[0]: UH OH.. the log system depends on the file module to dump logs to a file.. maybe create another API in log module to initiate the file dump?
+    //KORL-FEATURE-000-000-000: hook into Windows exception handler for crash reporting
+    korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();
+    korl_file_initialize();
     korl_stb_image_initialize();
     korl_stb_truetype_initialize();
-    korl_file_initialize();
     korl_assetCache_initialize();
     korl_vulkan_construct();
     korl_gfx_initialize();
@@ -35,6 +36,7 @@ int main(int argc, char** argv)
     korl_windows_window_loop();
     korl_vulkan_destroy();
     korl_log(INFO, "korl_windows_main END ----------------------------------------------------------");
+    korl_log_shutDown();
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
     ExitProcess(KORL_EXIT_SUCCESS);
 #else
@@ -42,7 +44,7 @@ int main(int argc, char** argv)
 #endif
 }
 #include "korl-assert.c"
-#include "korl-io.c"
+#include "korl-log.c"
 #include "korl-windows-utilities.c"
 #include "korl-math.c"
 #include "korl-memory.c"
