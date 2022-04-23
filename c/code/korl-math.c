@@ -1,4 +1,5 @@
 #include "korl-math.h"
+#include "korl-checkCast.h"
 #include <math.h>
 #ifndef KORL_MATH_ASSERT
     #define KORL_MATH_ASSERT(condition) korl_assert(condition)
@@ -70,6 +71,38 @@ korl_internal inline f32 korl_math_acos(f32 x)
 korl_internal inline f32 korl_math_ceil(f32 x)
 {
     return ceilf(x);
+}
+korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2)
+{
+    KORL_ZERO_STACK(Korl_Math_Rng_WichmannHill, result);
+    /** seed parameters should be in the range [1, 30_000] */
+    result.seed[0] = korl_checkCast_i$_to_u16((seed0 % 30000) + 1);
+    result.seed[1] = korl_checkCast_i$_to_u16((seed1 % 30000) + 1);
+    result.seed[2] = korl_checkCast_i$_to_u16((seed2 % 30000) + 1);
+    return result;
+}
+korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed)
+{
+    KORL_ZERO_STACK(Korl_Math_Rng_WichmannHill, result);
+    /* break the provided seed into parts by doing the following:
+        - take the bottom 16 bits
+        - wrap to the range [0, 29999]
+        - +1 to move to the range [1, 30000], which is the desired seed range */
+    result.seed[0] = (( seed        & 0xFFFF) % 30000) + 1;
+    result.seed[1] = (((seed >> 16) & 0xFFFF) % 30000) + 1;
+    result.seed[2] = (((seed >> 32) & 0xFFFF) % 30000) + 1;
+    return result;
+}
+korl_internal inline f32 korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_WichmannHill*const context)
+{
+    korl_shared_const u16 WICHMANN_HILL_CONSTS[] = { 30269, 30307, 30323 };
+    context->seed[0] = korl_checkCast_i$_to_u16((171 * context->seed[0]) % WICHMANN_HILL_CONSTS[0]);
+    context->seed[1] = korl_checkCast_i$_to_u16((172 * context->seed[1]) % WICHMANN_HILL_CONSTS[1]);
+    context->seed[2] = korl_checkCast_i$_to_u16((170 * context->seed[2]) % WICHMANN_HILL_CONSTS[2]);
+    return korl_math_fmod(   context->seed[0] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[0])
+                           + context->seed[1] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[1])
+                           + context->seed[2] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[2]), 
+                          1);
 }
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v)
 {

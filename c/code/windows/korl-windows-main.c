@@ -11,6 +11,7 @@
 #include "korl-stb-truetype.h"
 #include "korl-gfx.h"
 #include "korl-gui.h"
+#include "korl-time.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -21,6 +22,7 @@ int main(int argc, char** argv)
     korl_io_initialize();
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_memory_initialize();
+    korl_time_initialize();
     korl_stb_image_initialize();
     korl_stb_truetype_initialize();
     korl_file_initialize();
@@ -56,3 +58,4 @@ int main(int argc, char** argv)
 #include "korl-stb-truetype.c"
 #include "korl-gui.c"
 #include "korl-windows-gui.c"
+#include "korl-time.c"

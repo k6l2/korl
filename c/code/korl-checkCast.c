@@ -1,5 +1,4 @@
 #include "korl-checkCast.h"
-#include "korl-assert.h"
 korl_internal u16 korl_checkCast_u32_to_u16(u32 x)
 {
     korl_assert(x < 0xFFFF);
@@ -25,6 +24,12 @@ korl_internal u$ korl_checkCast_i$_to_u$(i$ x)
 {
     korl_assert(x >= 0);
     return KORL_C_CAST(u$, x);
+}
+korl_internal u16 korl_checkCast_i$_to_u16(i$ x)
+{
+    korl_assert(x >= 0);
+    korl_assert(x <= 0xFFFF);
+    return KORL_C_CAST(u16, x);
 }
 korl_internal u32 korl_checkCast_i$_to_u32(i$ x)
 {

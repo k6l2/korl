@@ -2,6 +2,15 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-gui-common.h"
+/** Do not use this value directly, since the meaning of this data is 
+ * platform-dependent.  Instead, use the platform APIs which uses this type.  
+ * This value should represent the highest possible time resolution 
+ * (microseconds) of the platform, but it should only be valid for the current 
+ * session of the underlying hardware.  (Do NOT save this value to disk and then 
+ * expect it to be correct when you load it from disk on another 
+ * session/machine!) */
+typedef u64 PlatformTimeStamp;
+#define KORL_PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name(void)
 typedef enum Korl_KeyboardCode
     { KORL_KEY_UNKNOWN
     , KORL_KEY_A
@@ -241,8 +250,9 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB_SIZE_Y(name)       f32             name(Korl_Gfx_Batch*const batchContext)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(name)         void            name(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(name)        void            name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color color)
-typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
+typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
+typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
 typedef KORL_PLATFORM_MEMORY_COPY                         (fnSig_korl_memory_copy);
 typedef KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR             (fnSig_korl_memory_allocator_create);
@@ -285,6 +295,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure*             korl_assertConditionFailed;\
     fnSig_korlPlatformLog*                       korl_logVariadicArguments;\
+    fnSig_korl_timeStamp*                        korl_timeStamp;\
     fnSig_korl_memory_zero*                      korl_memory_zero;\
     fnSig_korl_memory_copy*                      korl_memory_copy;\
     fnSig_korl_memory_allocator_create*          korl_memory_allocator_create;\
@@ -325,50 +336,52 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gui_widgetTextFormat*             korl_gui_widgetTextFormat;\
     fnSig_korl_gui_widgetButtonFormat*           korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
-    (apiVariableName).korl_assertConditionFailed             = korl_assertConditionFailed;\
-    (apiVariableName).korl_logVariadicArguments              = korl_logVariadicArguments;\
-    (apiVariableName).korl_memory_zero                       = korl_memory_zero;\
-    (apiVariableName).korl_memory_copy                       = korl_memory_copy;\
-    (apiVariableName).korl_memory_allocator_create           = korl_memory_allocator_create;\
-    (apiVariableName).korl_memory_allocator_allocate         = korl_memory_allocator_allocate;\
-    (apiVariableName).korl_memory_allocator_reallocate       = korl_memory_allocator_reallocate;\
-    (apiVariableName).korl_memory_allocator_free             = korl_memory_allocator_free;\
-    (apiVariableName).korl_memory_allocator_empty            = korl_memory_allocator_empty;\
-    (apiVariableName).korl_gfx_createCameraFov               = korl_gfx_createCameraFov;\
-    (apiVariableName).korl_gfx_createCameraOrtho             = korl_gfx_createCameraOrtho;\
-    (apiVariableName).korl_gfx_createCameraOrthoFixedHeight  = korl_gfx_createCameraOrthoFixedHeight;\
-    (apiVariableName).korl_gfx_cameraFov_rotateAroundTarget  = korl_gfx_cameraFov_rotateAroundTarget;\
-    (apiVariableName).korl_gfx_useCamera                     = korl_gfx_useCamera;\
-    (apiVariableName).korl_gfx_cameraSetScissor              = korl_gfx_cameraSetScissor;\
-    (apiVariableName).korl_gfx_cameraSetScissorPercent       = korl_gfx_cameraSetScissorPercent;\
-    (apiVariableName).korl_gfx_cameraOrthoSetOriginAnchor    = korl_gfx_cameraOrthoSetOriginAnchor;\
-    (apiVariableName).korl_gfx_batch                         = korl_gfx_batch;\
-    (apiVariableName).korl_gfx_createBatchRectangleTextured  = korl_gfx_createBatchRectangleTextured;\
-    (apiVariableName).korl_gfx_createBatchRectangleColored   = korl_gfx_createBatchRectangleColored;\
-    (apiVariableName).korl_gfx_createBatchTriangles          = korl_gfx_createBatchTriangles;\
-    (apiVariableName).korl_gfx_createBatchLines              = korl_gfx_createBatchLines;\
-    (apiVariableName).korl_gfx_createBatchText               = korl_gfx_createBatchText;\
-    (apiVariableName).korl_gfx_batchSetPosition              = korl_gfx_batchSetPosition;\
-    (apiVariableName).korl_gfx_batchSetPosition2d            = korl_gfx_batchSetPosition2d;\
-    (apiVariableName).korl_gfx_batchSetPosition2dV2f32       = korl_gfx_batchSetPosition2dV2f32;\
-    (apiVariableName).korl_gfx_batchSetScale                 = korl_gfx_batchSetScale;\
-    (apiVariableName).korl_gfx_batchSetQuaternion            = korl_gfx_batchSetQuaternion;\
-    (apiVariableName).korl_gfx_batchSetRotation              = korl_gfx_batchSetRotation;\
-    (apiVariableName).korl_gfx_batchSetVertexColor           = korl_gfx_batchSetVertexColor;\
-    (apiVariableName).korl_gfx_batchAddLine                  = korl_gfx_batchAddLine;\
-    (apiVariableName).korl_gfx_batchSetLine                  = korl_gfx_batchSetLine;\
-    (apiVariableName).korl_gfx_batchTextGetAabbSizeX         = korl_gfx_batchTextGetAabbSizeX;\
-    (apiVariableName).korl_gfx_batchTextGetAabbSizeY         = korl_gfx_batchTextGetAabbSizeY;\
-    (apiVariableName).korl_gfx_batchRectangleSetSize         = korl_gfx_batchRectangleSetSize;\
-    (apiVariableName).korl_gfx_batchRectangleSetColor        = korl_gfx_batchRectangleSetColor;\
-    (apiVariableName).korl_gui_setFontAsset                  = korl_gui_setFontAsset;\
-    (apiVariableName).korl_gui_windowBegin                   = korl_gui_windowBegin;\
-    (apiVariableName).korl_gui_windowEnd                     = korl_gui_windowEnd;\
-    (apiVariableName).korl_gui_widgetTextFormat              = korl_gui_widgetTextFormat;\
-    (apiVariableName).korl_gui_widgetButtonFormat            = korl_gui_widgetButtonFormat;
+    (apiVariableName).korl_assertConditionFailed            = korl_assertConditionFailed;\
+    (apiVariableName).korl_logVariadicArguments             = korl_logVariadicArguments;\
+    (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
+    (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
+    (apiVariableName).korl_memory_copy                      = korl_memory_copy;\
+    (apiVariableName).korl_memory_allocator_create          = korl_memory_allocator_create;\
+    (apiVariableName).korl_memory_allocator_allocate        = korl_memory_allocator_allocate;\
+    (apiVariableName).korl_memory_allocator_reallocate      = korl_memory_allocator_reallocate;\
+    (apiVariableName).korl_memory_allocator_free            = korl_memory_allocator_free;\
+    (apiVariableName).korl_memory_allocator_empty           = korl_memory_allocator_empty;\
+    (apiVariableName).korl_gfx_createCameraFov              = korl_gfx_createCameraFov;\
+    (apiVariableName).korl_gfx_createCameraOrtho            = korl_gfx_createCameraOrtho;\
+    (apiVariableName).korl_gfx_createCameraOrthoFixedHeight = korl_gfx_createCameraOrthoFixedHeight;\
+    (apiVariableName).korl_gfx_cameraFov_rotateAroundTarget = korl_gfx_cameraFov_rotateAroundTarget;\
+    (apiVariableName).korl_gfx_useCamera                    = korl_gfx_useCamera;\
+    (apiVariableName).korl_gfx_cameraSetScissor             = korl_gfx_cameraSetScissor;\
+    (apiVariableName).korl_gfx_cameraSetScissorPercent      = korl_gfx_cameraSetScissorPercent;\
+    (apiVariableName).korl_gfx_cameraOrthoSetOriginAnchor   = korl_gfx_cameraOrthoSetOriginAnchor;\
+    (apiVariableName).korl_gfx_batch                        = korl_gfx_batch;\
+    (apiVariableName).korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;\
+    (apiVariableName).korl_gfx_createBatchRectangleColored  = korl_gfx_createBatchRectangleColored;\
+    (apiVariableName).korl_gfx_createBatchTriangles         = korl_gfx_createBatchTriangles;\
+    (apiVariableName).korl_gfx_createBatchLines             = korl_gfx_createBatchLines;\
+    (apiVariableName).korl_gfx_createBatchText              = korl_gfx_createBatchText;\
+    (apiVariableName).korl_gfx_batchSetPosition             = korl_gfx_batchSetPosition;\
+    (apiVariableName).korl_gfx_batchSetPosition2d           = korl_gfx_batchSetPosition2d;\
+    (apiVariableName).korl_gfx_batchSetPosition2dV2f32      = korl_gfx_batchSetPosition2dV2f32;\
+    (apiVariableName).korl_gfx_batchSetScale                = korl_gfx_batchSetScale;\
+    (apiVariableName).korl_gfx_batchSetQuaternion           = korl_gfx_batchSetQuaternion;\
+    (apiVariableName).korl_gfx_batchSetRotation             = korl_gfx_batchSetRotation;\
+    (apiVariableName).korl_gfx_batchSetVertexColor          = korl_gfx_batchSetVertexColor;\
+    (apiVariableName).korl_gfx_batchAddLine                 = korl_gfx_batchAddLine;\
+    (apiVariableName).korl_gfx_batchSetLine                 = korl_gfx_batchSetLine;\
+    (apiVariableName).korl_gfx_batchTextGetAabbSizeX        = korl_gfx_batchTextGetAabbSizeX;\
+    (apiVariableName).korl_gfx_batchTextGetAabbSizeY        = korl_gfx_batchTextGetAabbSizeY;\
+    (apiVariableName).korl_gfx_batchRectangleSetSize        = korl_gfx_batchRectangleSetSize;\
+    (apiVariableName).korl_gfx_batchRectangleSetColor       = korl_gfx_batchRectangleSetColor;\
+    (apiVariableName).korl_gui_setFontAsset                 = korl_gui_setFontAsset;\
+    (apiVariableName).korl_gui_windowBegin                  = korl_gui_windowBegin;\
+    (apiVariableName).korl_gui_windowEnd                    = korl_gui_windowEnd;\
+    (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
+    (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     korl_assertConditionFailed            = (apiVariableName).korl_assertConditionFailed;\
     korl_logVariadicArguments             = (apiVariableName).korl_logVariadicArguments;\
+    korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
     korl_memory_copy                      = (apiVariableName).korl_memory_copy;\
     korl_memory_allocator_create          = (apiVariableName).korl_memory_allocator_create;\

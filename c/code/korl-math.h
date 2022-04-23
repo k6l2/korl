@@ -95,6 +95,10 @@ typedef struct Korl_Math_Aabb3f32
     Korl_Math_V3f32 min;
     Korl_Math_V3f32 max;
 } Korl_Math_Aabb3f32;
+typedef struct Korl_Math_Rng_WichmannHill
+{
+    u16 seed[3];
+} Korl_Math_Rng_WichmannHill;
 korl_internal inline u64 korl_math_kilobytes(u64 x);
 korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);
@@ -111,6 +115,10 @@ korl_internal inline f32 korl_math_abs(f32 x);
 korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator);
 korl_internal inline f32 korl_math_acos(f32 x);
 korl_internal inline f32 korl_math_ceil(f32 x);
+/* RNG ************************************************************************/
+korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2);
+korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed);
+korl_internal inline f32 korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_WichmannHill*const context);
 /* V2f32 **********************************************************************/
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v);
 korl_internal f32 korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v);
