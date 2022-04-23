@@ -447,6 +447,51 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     /**/
     return result;
 }
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
+{
+    /* we can't really make a circle shape with < 3 points around the circumference */
+    korl_assert(pointCount >= 3);
+    /* calculate required amount of memory for the batch */
+    const u$ indices = 3*pointCount;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
+    const u$ vertices = 1/*for center vertex*/+pointCount;
+    const u$ totalBytes = sizeof(Korl_Gfx_Batch)
+        + indices * sizeof(Korl_Vulkan_VertexIndex)
+        + vertices * sizeof(Korl_Vulkan_Position)
+        + vertices * sizeof(Korl_Vulkan_Color);
+    /* allocate the memory */
+    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
+        korl_allocate(allocatorHandle, totalBytes));
+    /* initialize the batch struct */
+    result->allocatorHandle   = allocatorHandle;
+    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
+    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
+    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexIndexCount = korl_checkCast_u$_to_u32(indices);
+    result->_vertexCount      = korl_checkCast_u$_to_u32(vertices);
+    result->_vertexIndices    = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
+    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*   , KORL_C_CAST(u8*, result->_vertexIndices   ) + indices*sizeof(Korl_Vulkan_VertexIndex));
+    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color*      , KORL_C_CAST(u8*, result->_vertexPositions ) + vertices*sizeof(Korl_Vulkan_Position));
+    /* initialize the batch's dynamic data */
+    // vertex[0] is always the center point of the circle //
+    result->_vertexPositions[0] = (Korl_Vulkan_Position){0,0,0};
+    const f32 deltaRadians = 2*KORL_PI32 / pointCount;
+    for(u32 p = 0; p < pointCount; p++)
+    {
+        const f32 spokeRadians = p*deltaRadians;
+        const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(radius, spokeRadians);
+        result->_vertexPositions[1 + p] = (Korl_Vulkan_Position){.xyz.x = spoke.xy.x, .xyz.y = spoke.xy.y, .xyz.z = 0};
+    }
+    for(u$ c = 0; c < vertices; c++)
+        result->_vertexColors[c] = color;
+    for(u32 p = 0; p < pointCount; p++)
+    {
+        result->_vertexIndices[3*p + 0] = 0;
+        result->_vertexIndices[3*p + 1] = korl_vulkan_safeCast_u$_to_vertexIndex(p + 1);
+        result->_vertexIndices[3*p + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(((p + 1) % pointCount) + 1);
+    }
+    /**/
+    return result;
+}
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTriangles)
 {
     /* calculate required amount of memory for the batch */

@@ -58,6 +58,7 @@
 [ ] KORL-PERFORMANCE-000-000-015: Vulkan; we're shoving all the descriptors necessary for our batch rendering into a single descriptor set, but it's likely that some of the descriptors will have to change much more frequently during a frame, ergo, it is likely that splitting this descriptor set layout into multiple, and consequently having multiple descriptor sets for batch rendering per frame, will end up being more efficient
 [ ] KORL-PERFORMANCE-000-000-016: Vulkan; speed: this is stupid & obviously slow; consider storing texture assets in a fixed-size table, allowing constant time lookups for each handle
 [ ] KORL-PERFORMANCE-000-000-017: GFX; separate batch capacity with batch vertex/index counts themselves, allowing us to perform less reallocations (assuming this ever becomes a perf issue)
+[ ] KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
 [ ] KORL-FEATURE-000-000-000: add vectored exception handler so we can generate crash dumps & flush logs
 [ ] KORL-FEATURE-000-000-001: GFX: add support for outlined geometry (requires refactoring this API to use >= 1 sub-batches per Batch)
 [ ] KORL-FEATURE-000-000-002: GFX: add support for outlined text (not sure how to do this with stbtt, maybe check how other implementations do this?)

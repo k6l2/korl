@@ -234,6 +234,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH(name)                            void            name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name)  Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, const wchar_t* assetNameTexture)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(name)   Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color color)
+#define KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(name)              Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color color)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(name)           Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, u32 triangleCount)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_LINES(name)               Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(name)                Korl_Gfx_Batch* name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight)
@@ -271,6 +272,7 @@ typedef KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR  (fnSig_korl_gfx_camera
 typedef KORL_PLATFORM_GFX_BATCH                           (fnSig_korl_gfx_batch);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korl_gfx_createBatchRectangleTextured);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED  (fnSig_korl_gfx_createBatchRectangleColored);
+typedef KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE             (fnSig_korl_gfx_createBatchCircle);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES          (fnSig_korl_gfx_createBatchTriangles);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_LINES              (fnSig_korl_gfx_createBatchLines);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_TEXT               (fnSig_korl_gfx_createBatchText);
@@ -314,6 +316,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gfx_batch*                        korl_gfx_batch;\
     fnSig_korl_gfx_createBatchRectangleTextured* korl_gfx_createBatchRectangleTextured;\
     fnSig_korl_gfx_createBatchRectangleColored*  korl_gfx_createBatchRectangleColored;\
+    fnSig_korl_gfx_createBatchCircle*            korl_gfx_createBatchCircle;\
     fnSig_korl_gfx_createBatchTriangles*         korl_gfx_createBatchTriangles;\
     fnSig_korl_gfx_createBatchLines*             korl_gfx_createBatchLines;\
     fnSig_korl_gfx_createBatchText*              korl_gfx_createBatchText;\
@@ -357,6 +360,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gfx_batch                        = korl_gfx_batch;\
     (apiVariableName).korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;\
     (apiVariableName).korl_gfx_createBatchRectangleColored  = korl_gfx_createBatchRectangleColored;\
+    (apiVariableName).korl_gfx_createBatchCircle            = korl_gfx_createBatchCircle;\
     (apiVariableName).korl_gfx_createBatchTriangles         = korl_gfx_createBatchTriangles;\
     (apiVariableName).korl_gfx_createBatchLines             = korl_gfx_createBatchLines;\
     (apiVariableName).korl_gfx_createBatchText              = korl_gfx_createBatchText;\
@@ -400,6 +404,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_gfx_batch                        = (apiVariableName).korl_gfx_batch;\
     korl_gfx_createBatchRectangleTextured = (apiVariableName).korl_gfx_createBatchRectangleTextured;\
     korl_gfx_createBatchRectangleColored  = (apiVariableName).korl_gfx_createBatchRectangleColored;\
+    korl_gfx_createBatchCircle            = (apiVariableName).korl_gfx_createBatchCircle;\
     korl_gfx_createBatchTriangles         = (apiVariableName).korl_gfx_createBatchTriangles;\
     korl_gfx_createBatchLines             = (apiVariableName).korl_gfx_createBatchLines;\
     korl_gfx_createBatchText              = (apiVariableName).korl_gfx_createBatchText;\
