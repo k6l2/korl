@@ -213,7 +213,8 @@ korl_internal bool _korl_logVaList_variableLengthStackString(
     KORL_ZERO_STACK(SYSTEMTIME, systemTimeLocal);
     GetLocalTime(&systemTimeLocal);
     // print out the the log entry alone side the meta data //
-    korl_print(printStream, L"{%-7s|%02i:%02i'%02i\"%03i|%5i|%S|%S} %S\n", 
+    //KORL-ISSUE-000-000-042: fix the issue with all the %s formatted strings being WRONG in the platform layer
+    korl_print(printStream, L"{%-7S|%02i:%02i'%02i\"%03i|%5i|%s|%s} %s\n", 
         cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
         systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
         cStringFileName, cStringFunctionName, stackStringBuffer);

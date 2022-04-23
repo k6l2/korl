@@ -104,6 +104,12 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_Wichma
                            + context->seed[2] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[2]), 
                           1);
 }
+korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_WichmannHill*const context, f32 range0, f32 range1)
+{
+    const f32 rangeMax = KORL_MATH_MAX(range0, range1);
+    const f32 rangeMin = KORL_MATH_MIN(range0, range1);
+    return rangeMin + (rangeMax - rangeMin)*korl_math_rng_wichmannHill_f32_0_1(context);
+}
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radians)
 {
     return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32)
