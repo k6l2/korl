@@ -100,3 +100,24 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #else
     #define KORL_STRUCT_INITIALIZE(type) (type)
 #endif
+/* convenience macros specifically for korl-memory module, which automatically 
+    inject file/line information */
+#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate(handle, bytes, __FILEW__, __LINE__)
+#define korl_reallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__)
+#define korl_free(handle, allocation)              korl_memory_allocator_free(handle, allocation, __FILEW__, __LINE__)
+/* macro for automatically initializing stack variables to 0 */
+#define KORL_ZERO_STACK(variableType, variableIdentifier) \
+    variableType variableIdentifier;\
+    korl_memory_zero(&(variableIdentifier), sizeof(variableIdentifier));
+/* same as KORL_ZERO_STACK, except for arrays */
+#define KORL_ZERO_STACK_ARRAY(variableType, variableIdentifier, arraySize) \
+    variableType variableIdentifier[arraySize]; \
+    korl_memory_zero(variableIdentifier, sizeof(variableIdentifier));
+/* Having the game manage its own copy of these macros means we don't have to 
+    include platform-specific KORL modules! */
+#define korl_assert(condition) \
+    ((condition) ? (void)0 : korl_assertConditionFailed(L""#condition, __FILEW__, __LINE__))
+#define korl_log(logLevel, format, ...) \
+    korl_logVariadicArguments(\
+        KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \
+        __FILEW__, __FUNCTIONW__, __LINE__, L ## format, ##__VA_ARGS__)

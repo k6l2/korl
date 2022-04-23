@@ -2,6 +2,7 @@
 #include "korl-io.h"
 #include "korl-assetCache.h"
 #include "korl-memory.h"
+#include "korl-memoryPool.h"
 #include "korl-vulkan.h"
 #include "korl-assert.h"
 #include "stb/stb_truetype.h"
@@ -91,7 +92,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
             + GLYPH_ALPHA_BUFFER_SIZE_XY*GLYPH_ALPHA_BUFFER_SIZE_XY
             + GLYPH_DATA_SIZE*sizeof(stbtt_bakedchar);
         /* allocate the required memory from the korl-gfx context allocator */
-        *newFontCache = korl_memory_allocate(context->allocatorHandle, fontCacheRequiredBytes);
+        *newFontCache = korl_allocate(context->allocatorHandle, fontCacheRequiredBytes);
         /* initialize the memory 
             - note that it should already all be nullified by the allocator
             - the data structures referenced by the _Korl_Gfx_FontCache struct 
@@ -133,8 +134,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
          *     - the VK_FORMAT_R8G8B8A8_SRGB format */
         //KORL-PERFORMANCE-000-000-001
         // allocate a temp R8G8B8A8-format image buffer //
-        Korl_Vulkan_Color4u8*const tempImageBuffer = korl_memory_allocate(context->allocatorHandle, 
-                                                                          sizeof(Korl_Vulkan_Color4u8) * (*newFontCache)->alphaGlyphImageBufferSizeX * (*newFontCache)->alphaGlyphImageBufferSizeY);
+        Korl_Vulkan_Color4u8*const tempImageBuffer = korl_allocate(context->allocatorHandle, 
+                                                                   sizeof(Korl_Vulkan_Color4u8) * (*newFontCache)->alphaGlyphImageBufferSizeX * (*newFontCache)->alphaGlyphImageBufferSizeY);
         // "expand" the stbtt font bitmap into the image buffer //
         for(u$ y = 0; y < (*newFontCache)->alphaGlyphImageBufferSizeY; y++)
             for(u$ x = 0; x < (*newFontCache)->alphaGlyphImageBufferSizeX; x++)
@@ -145,7 +146,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                                                              (*newFontCache)->alphaGlyphImageBufferSizeY, 
                                                                              tempImageBuffer);
         // free the temporary R8G8B8A8-format image buffer //
-        korl_memory_free(context->allocatorHandle, tempImageBuffer);
+        korl_free(context->allocatorHandle, tempImageBuffer);
     }
     /* at this point, we should have an index to a valid font cache which 
         contains all the data necessary about the glyphs will want to render for 
@@ -362,7 +363,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
         + 4 * sizeof(Korl_Vulkan_Uv);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_memory_allocate(allocatorHandle, totalBytes));
+        korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
@@ -411,7 +412,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
         + 4 * sizeof(Korl_Vulkan_Color);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_memory_allocate(allocatorHandle, totalBytes));
+        korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
@@ -454,7 +455,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTrian
         + 3*triangleCount * sizeof(Korl_Vulkan_Color);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_memory_allocate(allocatorHandle, totalBytes));
+        korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
@@ -474,7 +475,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
         + 2*lineCount * sizeof(Korl_Vulkan_Color);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_memory_allocate(allocatorHandle, totalBytes));
+        korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_LINES;
@@ -513,7 +514,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
         + textVisibleCharacterCount * 4*sizeof(Korl_Vulkan_Uv);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_memory_allocate(allocatorHandle, totalBytes));
+        korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle   = allocatorHandle;
     result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
@@ -593,7 +594,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH_ADD_LINE(korl_gfx_batchAddLine)
         + newVertexCount * sizeof(Korl_Vulkan_Position)
         + newVertexCount * sizeof(Korl_Vulkan_Color);
     (*pContext) = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_memory_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
+        korl_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
     korl_assert(*pContext);
     (*pContext)->_vertexCount     = newVertexCount;
     (*pContext)->_vertexPositions = KORL_C_CAST(Korl_Vulkan_Position*, (*pContext) + 1);

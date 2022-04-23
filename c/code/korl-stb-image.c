@@ -16,17 +16,17 @@ korl_internal void korl_stb_image_initialize(void)
 void* _stbi_allocate(u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
-    return korl_memory_allocate(context->allocatorHandle, bytes);
+    return korl_allocate(context->allocatorHandle, bytes);
 }
 void* _stbi_reallocate(void* allocation, u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
-    return korl_memory_reallocate(context->allocatorHandle, allocation, bytes);
+    return korl_reallocate(context->allocatorHandle, allocation, bytes);
 }
 void _stbi_free(void* allocation)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
-    korl_memory_free(context->allocatorHandle, allocation);
+    korl_free(context->allocatorHandle, allocation);
 }
 #define STBI_ASSERT(x)        korl_assert(x)
 #define STBI_MALLOC(sz)       _stbi_allocate(sz)

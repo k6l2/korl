@@ -3,6 +3,7 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-memoryPool.h"
 #include "korl-vulkan-memory.h"
 #include "korl-math.h"
 #include "korl-vulkan.h"

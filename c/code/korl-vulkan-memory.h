@@ -6,6 +6,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-memory.h"
+#include "korl-memoryPool.h"
 #include <vulkan/vulkan.h>
 typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
 {

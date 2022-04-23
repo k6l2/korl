@@ -1,4 +1,5 @@
 #include "korl-memory.h"
+#include "korl-memoryPool.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-checkCast.h"
 #include "korl-assert.h"
@@ -109,6 +110,10 @@ korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero)
 {
     SecureZeroMemory(memory, bytes);
 }
+korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy)
+{
+    CopyMemory(destination, source, bytes);
+}
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
 {
@@ -122,12 +127,12 @@ korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allo
 {
     const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
-    wchar_t*const result = (wchar_t*)korl_memory_allocate(allocatorHandle, bufferSize * sizeof(wchar_t));
+    wchar_t*const result = (wchar_t*)korl_allocate(allocatorHandle, bufferSize * sizeof(wchar_t));
     const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
 }
-korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserData, u$ bytes, wchar_t* file, int line)
+korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserData, u$ bytes, const wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -197,7 +202,7 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
     }
     return allocationAddress;
 }
-korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, void* allocation, wchar_t *file, int line)
+korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, void* allocation, const wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
@@ -267,7 +272,7 @@ korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, v
         korl_assert(oldProtect == PAGE_READWRITE);
     }
 }
-korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUserData, void* allocation, u$ bytes, wchar_t* file, int line)
+korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUserData, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */

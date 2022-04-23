@@ -4,6 +4,7 @@
 #include "korl-gui-internal-common.h"
 #include "korl-checkCast.h"
 #include "korl-vulkan.h"
+#include "korl-memoryPool.h"
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;

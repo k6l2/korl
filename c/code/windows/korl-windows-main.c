@@ -11,8 +11,12 @@
 #include "korl-stb-truetype.h"
 #include "korl-gfx.h"
 #include "korl-gui.h"
+#if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
+#else
+int main(int argc, char** argv)
+#endif
 {
     korl_io_initialize();
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
@@ -29,7 +33,11 @@ void __stdcall korl_windows_main(void)
     korl_windows_window_loop();
     korl_vulkan_destroy();
     korl_log(INFO, "korl_windows_main END ----------------------------------------------------------");
+#if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
     ExitProcess(KORL_EXIT_SUCCESS);
+#else
+    return KORL_EXIT_SUCCESS;
+#endif
 }
 #include "korl-assert.c"
 #include "korl-io.c"

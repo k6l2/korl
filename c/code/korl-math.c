@@ -1,11 +1,9 @@
 #include "korl-math.h"
 #include <math.h>
 #ifndef KORL_MATH_ASSERT
-    #include "korl-assert.h"
     #define KORL_MATH_ASSERT(condition) korl_assert(condition)
 #endif
 #ifndef KORL_MATH_ZERO_STACK
-    #include "korl-memory.h"
     #define KORL_MATH_ZERO_STACK(variableType, variableIdentifier) \
         KORL_ZERO_STACK(variableType, variableIdentifier)
 #endif

@@ -16,12 +16,12 @@ korl_internal void korl_stb_truetype_initialize(void)
 void* _stbtt_allocate(u$ bytes)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
-    return korl_memory_allocate(context->allocatorHandle, bytes);
+    return korl_allocate(context->allocatorHandle, bytes);
 }
 void _stbtt_free(void* allocation)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
-    korl_memory_free(context->allocatorHandle, allocation);
+    korl_free(context->allocatorHandle, allocation);
 }
 #define STBTT_malloc(x,u) ((void)(u),_stbtt_allocate(x))
 #define STBTT_free(x,u)   ((void)(u),_stbtt_free(x))

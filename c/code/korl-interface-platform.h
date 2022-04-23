@@ -118,15 +118,16 @@ enum KorlEnumLogLevel
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, int lineNumber)
 #define KORL_PLATFORM_MEMORY_ZERO(name) void name(void* memory, u$ bytes)
+#define KORL_PLATFORM_MEMORY_COPY(name) void name(void* destination, const void* source, u$ bytes)
 typedef u16 Korl_Memory_AllocatorHandle;
 typedef enum Korl_Memory_AllocatorType
 {
     KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
 } Korl_Memory_AllocatorType;
 #define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, wchar_t* file, int line)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, wchar_t* file, int line)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, wchar_t* file, int line)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
@@ -243,6 +244,7 @@ typedef struct Korl_Gfx_Batch
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
+typedef KORL_PLATFORM_MEMORY_COPY                         (fnSig_korl_memory_copy);
 typedef KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR             (fnSig_korl_memory_allocator_create);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_allocator_allocate);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE         (fnSig_korl_memory_allocator_reallocate);
@@ -284,6 +286,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korlPlatformAssertFailure*             korl_assertConditionFailed;\
     fnSig_korlPlatformLog*                       korl_logVariadicArguments;\
     fnSig_korl_memory_zero*                      korl_memory_zero;\
+    fnSig_korl_memory_copy*                      korl_memory_copy;\
     fnSig_korl_memory_allocator_create*          korl_memory_allocator_create;\
     fnSig_korl_memory_allocator_allocate*        korl_memory_allocator_allocate;\
     fnSig_korl_memory_allocator_reallocate*      korl_memory_allocator_reallocate;\
@@ -325,6 +328,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_assertConditionFailed             = korl_assertConditionFailed;\
     (apiVariableName).korl_logVariadicArguments              = korl_logVariadicArguments;\
     (apiVariableName).korl_memory_zero                       = korl_memory_zero;\
+    (apiVariableName).korl_memory_copy                       = korl_memory_copy;\
     (apiVariableName).korl_memory_allocator_create           = korl_memory_allocator_create;\
     (apiVariableName).korl_memory_allocator_allocate         = korl_memory_allocator_allocate;\
     (apiVariableName).korl_memory_allocator_reallocate       = korl_memory_allocator_reallocate;\
@@ -366,6 +370,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_assertConditionFailed            = (apiVariableName).korl_assertConditionFailed;\
     korl_logVariadicArguments             = (apiVariableName).korl_logVariadicArguments;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
+    korl_memory_copy                      = (apiVariableName).korl_memory_copy;\
     korl_memory_allocator_create          = (apiVariableName).korl_memory_allocator_create;\
     korl_memory_allocator_allocate        = (apiVariableName).korl_memory_allocator_allocate;\
     korl_memory_allocator_reallocate      = (apiVariableName).korl_memory_allocator_reallocate;\

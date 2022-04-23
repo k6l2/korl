@@ -72,7 +72,7 @@ korl_internal bool korl_file_load(
     const DWORD fileSize = GetFileSize(hFile, NULL/*high file size DWORD*/);
     if(fileSize == INVALID_FILE_SIZE)
         korl_logLastError("GetFileSize failed!");
-    void*const allocation = korl_memory_allocate(allocatorHandle, fileSize);
+    void*const allocation = korl_allocate(allocatorHandle, fileSize);
     korl_assert(allocation);
     DWORD bytesRead = 0;
     if(!ReadFile(hFile, allocation, fileSize, &bytesRead, NULL/*lpOverlapped*/))

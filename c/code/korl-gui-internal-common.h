@@ -3,6 +3,7 @@
 #include "korl-gui-common.h"
 #include "korl-math.h"
 #include "korl-memory.h"
+#include "korl-memoryPool.h"
 #include "korl-vulkan.h"
 /** the edges of the window must have their own individual AABBs to allow mouse 
  * interactions with them (window is hovered, resize windows), and this value 

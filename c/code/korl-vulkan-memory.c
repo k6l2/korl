@@ -1,5 +1,6 @@
 #include "korl-vulkan-memory.h"
 #include "korl-vulkan-common.h"
+#include "korl-memoryPool.h"
 korl_internal void _korl_vulkan_deviceMemory_allocation_destroy(_Korl_Vulkan_DeviceMemory_Alloctation*const allocation)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;

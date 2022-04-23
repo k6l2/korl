@@ -93,7 +93,9 @@ rem set the stack dynamic allocator probe to be the max value
 rem     this allows us to disable dynamic stack allocation features
 rem set buildCommand=%buildCommand% /Gs2147483647
 rem disable exception handling unwind code generation
-set buildCommand=%buildCommand% /EHa-
+rem set buildCommand=%buildCommand% /EHa-
+rem KORL-ISSUE-000-000-041: build: remove exception handling code generation from platform (use the above setting instead)
+set buildCommand=%buildCommand% /EHsc
 rem display the full path of source code files passed in diagnostics
 set buildCommand=%buildCommand% /FC
 rem ----------------------------- LINKER SETTINGS ------------------------------
@@ -107,7 +109,8 @@ rem set buildCommand=%buildCommand% /stack:0x100000,0x100000
 rem do not link to the C runtime (CRT) libraries
 rem set buildCommand=%buildCommand% /nodefaultlib
 rem we're no longer using the CRT, so we have to define a custom entry point
-set buildCommand=%buildCommand% /entry:korl_windows_main
+rem KORL-ISSUE-000-000-036: (low priority) we are actually using the CRT, so we need this
+rem set buildCommand=%buildCommand% /entry:korl_windows_main
 rem So this property is actually extremely important:  this tells Windows how to 
 rem     hook the executable up to the Windows environment, which determines what 
 rem     the application's capabilities are.  Generally, the applications KORL 
@@ -122,7 +125,7 @@ rem for Windows message APIs, MessageBox, etc...
 set buildCommand=%buildCommand% user32.lib
 rem for C standard lib functions (math functions, etc.), also some STB libs are pulling in standard libs!
 rem KORL-ISSUE-000-000-036: (low priority) configure STB libs to not link to standard libraries
-set buildCommand=%buildCommand% ucrt.lib
+rem set buildCommand=%buildCommand% ucrt.lib
 rem for CreateSolidBrush, & other GDI API
 set buildCommand=%buildCommand% Gdi32.lib
 set buildCommand=%buildCommand% vulkan-1.lib
