@@ -377,7 +377,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
     result->_vertexUvs        = KORL_C_CAST(Korl_Vulkan_Uv*         , KORL_C_CAST(u8*, result->_vertexPositions ) + 4*sizeof(Korl_Vulkan_Position));
     /* initialize the batch's dynamic data */
     if(korl_memory_stringCopy(assetNameTexture, result->_assetNameTexture, assetNameTextureSize) != korl_checkCast_u$_to_i$(assetNameTextureSize))
-        korl_log(ERROR, "failed to copy asset name \"%s\" to batch", assetNameTexture);
+        korl_log(ERROR, "failed to copy asset name \"%ls\" to batch", assetNameTexture);
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
         { 0, 1, 3
         , 1, 2, 3 };
@@ -576,10 +576,10 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     /* initialize the batch's dynamic data */
     if(    korl_memory_stringCopy(assetNameFont, result->_assetNameFont, assetNameFontBufferSize) 
         != korl_checkCast_u$_to_i$(assetNameFontBufferSize))
-        korl_log(ERROR, "failed to copy asset name \"%s\" to batch", assetNameFont);
+        korl_log(ERROR, "failed to copy asset name \"%ls\" to batch", assetNameFont);
     if(    korl_memory_stringCopy(text, result->_text, textBufferSize) 
         != korl_checkCast_u$_to_i$(textBufferSize))
-        korl_log(ERROR, "failed to copy text \"%s\" to batch", text);
+        korl_log(ERROR, "failed to copy text \"%ls\" to batch", text);
     // the one thing we can store right now without the need for any other data 
     //  is the vertex indices of each glyph quad //
     for(u$ c = 0; c < textVisibleCharacterCount; c++)

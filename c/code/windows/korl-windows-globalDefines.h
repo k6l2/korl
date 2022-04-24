@@ -19,6 +19,7 @@
 #pragma warning(pop)
 #include <windowsx.h>/* for GET_X_LPARAM, GET_Y_LPARAM, etc... */
 #include <tchar.h>/* for _T macro */
+#include <shellapi.h>/* for CommandLineToArgv */
 /* KORL application exit codes */
 #define KORL_EXIT_SUCCESS 0
 #define KORL_EXIT_FAIL_ASSERT 1

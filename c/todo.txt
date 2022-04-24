@@ -197,6 +197,12 @@
 			- on the other hand, is it really that bad to keep it required?
 				- not really... also, less work to just leave it as required API... EH, maybe I'll just put this on the back burner
 [ ] change KORL application subsystem from CONSOLE=>WINDOWS
+	[x] always send log output to debugger when present
+	[x] optionally write log output to a Windows console (optionally, since Windows GUI applications are really stupid; see below for details)
+		- Windows kernel is dumb and _can't_ do this: 
+			https://devblogs.microsoft.com/oldnewthing/20090101-00/?p=19643
+		- We might as well do something like this & call it a day:
+			https://stackoverflow.com/a/30102947
 	[ ] dump KORL logs to a file
 		[x] KORL-ISSUE-000-000-033: remove strsafe.h
 		- requirement: we do not want UNBOUNDED log buffers or files which can just grow forever

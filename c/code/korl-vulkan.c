@@ -45,11 +45,11 @@ korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
     if(!(messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT))
         messageTypeString[2] = ' ';
     if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-        korl_log(ERROR  , "{%s} %s", messageTypeString, pCallbackData->pMessage);
+        korl_log(ERROR  , "{%hs} %hs", messageTypeString, pCallbackData->pMessage);
     else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        korl_log(WARNING, "{%s} %s", messageTypeString, pCallbackData->pMessage);
+        korl_log(WARNING, "{%hs} %hs", messageTypeString, pCallbackData->pMessage);
     else
-        korl_log(INFO   , "{%s} %s", messageTypeString, pCallbackData->pMessage);
+        korl_log(INFO   , "{%hs} %hs", messageTypeString, pCallbackData->pMessage);
     /* according to documentation, we MUST always return VK_FALSE! */
     return VK_FALSE;
 }
@@ -1015,7 +1015,7 @@ korl_internal void korl_vulkan_construct(void)
         "{\"name\"[specVersion, implementationVersion]}:");
     for(u32 l = 0; l < layerCount; l++)
     {
-        korl_log(INFO, "layer[%u]=\"%s\"[%u, %u]", l, 
+        korl_log(INFO, "layer[%u]=\"%hs\"[%u, %u]", l, 
             layerProperties[l].layerName, layerProperties[l].specVersion, 
             layerProperties[l].implementationVersion);
     }
@@ -1047,7 +1047,7 @@ korl_internal void korl_vulkan_construct(void)
     korl_log(INFO, "Provided extensions supported by this platform "
         "{\"name\"[specVersion]}:");
     for(u32 e = 0; e < extensionCount; e++)
-        korl_log(INFO, "extension[%u]=\"%s\"[%u]", e, 
+        korl_log(INFO, "extension[%u]=\"%hs\"[%u]", e, 
             extensionProperties[e].extensionName, 
             extensionProperties[e].specVersion);
     /* create the VkInstance */
@@ -1188,7 +1188,7 @@ korl_internal void korl_vulkan_createSurface(
         }
     }
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
-    korl_log(INFO, "chosen physical device: \"%s\"", 
+    korl_log(INFO, "chosen physical device: \"%hs\"", 
         devicePropertiesBest.deviceName);
     /* determine how many queue families we need, which determines how many 
         VkDeviceQueueCreateInfo structs we will need to create the logical 
@@ -2215,7 +2215,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
     if(!imagePixels)
     {
-        korl_log(ERROR, "stbi_load_from_memory failed! (%S)", assetName);
+        korl_log(ERROR, "stbi_load_from_memory failed! (%ls)", assetName);
         goto done_conditionallySelectLoadedAsset;
     }
     /* allocate a device-local image object for the texture */
@@ -2232,7 +2232,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     asset->type                                  = _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE;
     asset->subType.assetTexture.deviceAllocation = deviceImage;
     if(korl_memory_stringCopy(assetName, asset->subType.assetTexture.name, korl_arraySize(asset->subType.assetTexture.name)) <= 0)
-        korl_log(ERROR, "copy assetName failed! \"%s\"", assetName);
+        korl_log(ERROR, "copy assetName failed! \"%ls\"", assetName);
     deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
 done_conditionallySelectLoadedAsset:
     /* if we do not have a valid index for a loaded device asset, just do nothing */

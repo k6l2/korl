@@ -5,7 +5,7 @@
 korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)
 {
     /* write failed condition to standard error stream */
-    korl_log(ERROR, "ASSERT FAILED: \"%S\" {%i|%S}", 
+    korl_log(ERROR, "ASSERT FAILED: \"%ls\" {%i|%ls}", 
         conditionString, lineNumber, cStringFileName);
     if(IsDebuggerPresent())
     {

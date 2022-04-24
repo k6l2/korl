@@ -158,7 +158,11 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
         [nextAllocationAddress, lastReservedAddress] */
     const u$ allocationPages = ((bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
     const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
-    korl_assert(KORL_C_CAST(u8*, allocator->nextAllocationAddress) + allocationPages*pageBytes < allocatorEnd);
+    if(KORL_C_CAST(u8*, allocator->nextAllocationAddress) + allocationPages*pageBytes > allocatorEnd)
+    {
+        korl_log(WARNING, "linear allocator out of memory");
+        goto protectAllocator_return_allocationAddress;
+    }
     /* commit the pages of this allocation */
     const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
     _Korl_Memory_AllocationMeta*const metaPageAddress = 
@@ -194,6 +198,7 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
     u32*const newAllocationOffset = KORL_MEMORY_POOL_ADD(allocator->allocationOffsets);
     allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocationAddress) + allocationPages*pageBytes;
     *newAllocationOffset             = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, allocationAddress) - KORL_C_CAST(u8*, allocator));
+protectAllocator_return_allocationAddress:
     /* protect the allocator pages until the time comes to actually use it */
     {
         DWORD oldProtect;
@@ -401,7 +406,7 @@ korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUser
         const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
         /* if we don't have enough room to grow, we can effectively just abort 
             here without changing anything internally */
-        if(KORL_C_CAST(u8*, allocationMeta) + allocationPages*pageBytes >= allocatorEnd)
+        if(KORL_C_CAST(u8*, allocationMeta) + allocationPages*pageBytes > allocatorEnd)
         {
             allocation = NULL;
             korl_log(WARNING, "failed to grow the allocation - not enough space");

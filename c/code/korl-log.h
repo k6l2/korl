@@ -1,7 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
-korl_internal void korl_log_initialize(void);
+korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole);
 /** Logs will not get saved to disk until this API is called!  We should not 
  * care about reading logs in real-time from a file (using the tail command for 
  * example).  Even though such a feature would be neat to have, it is completely 

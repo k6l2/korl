@@ -170,7 +170,7 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
     }
     u8 guiButtonActuations;
     korl_gui_windowBegin(L"first window", NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-        korl_gui_widgetTextFormat(L"%s", "Hello, sir! Can you spare a breb? o^o");
+        korl_gui_widgetTextFormat(L"%hs", "Hello, sir! Can you spare a breb? o^o");
         korl_gui_widgetTextFormat(L"PLS, sir! I only wish for a breb...");
         korl_gui_widgetTextFormat(L"PLEEZ!");
         korl_gui_widgetTextFormat(L"max f32 == %.10e", KORL_F32_MAX);

@@ -124,7 +124,7 @@ enum KorlEnumLogLevel
  * identifier in the `KorlEnumLogLevel` enumeration.
  * example usage: 
  *  korl_shared_const wchar_t*const USER_NAME = L"Kyle";
- *  korl_log(INFO, "hey there, %S!", USER_NAME); */
+ *  korl_log(INFO, "hey there, %ls!", USER_NAME); */
 #define KORL_PLATFORM_LOG(name) void name(\
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, \
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \

@@ -118,9 +118,11 @@ rem     will be running will be GUI applications, so we specify that here.  This
 rem     changes some behavior, such as not being able to hook standard streams 
 rem     into a console automatically, which is fine since that is generally a 
 rem     poor/outdated way of getting program input/output anyways.
-set buildCommand=%buildCommand% /subsystem:CONSOLE
+set buildCommand=%buildCommand% /subsystem:WINDOWS
 rem for ExitProcess, GetModuleHandle, etc...
 set buildCommand=%buildCommand% kernel32.lib
+rem for CommandLineToArgvW
+set buildCommand=%buildCommand% Shell32.lib
 rem for Windows message APIs, MessageBox, etc...
 set buildCommand=%buildCommand% user32.lib
 rem for C standard lib functions (math functions, etc.), also some STB libs are pulling in standard libs!
