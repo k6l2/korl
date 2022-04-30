@@ -226,8 +226,8 @@
 			- if _synchronous_ log prints turn out to be too much of a performance hog, we'll start doing _asynchronous_ file ops
 			- but hold on... why would anyone ever WANT _synchronous_ log print API?  upon thinking about this again, it just seems pointless, since in a development environment, we would just be stepping through the debugger anyways, which is like a million times better than writing logs
 			- OKAY... so upon reading more on Windows Overlapped I/O API, it apparently behaves basically the same as KORL jobs!
-		[ ] send log strings to a memory buffer that grows as-needed, until a maximum size
-		[ ] once maximum size of log memory buffer is reached, begin treating the second half as a circular buffer
+		[x] send log strings to a memory buffer that grows as-needed, until a maximum size
+		[x] once maximum size of log memory buffer is reached, begin treating the second half as a circular buffer
 		[ ] open a file handle to the log file
 			[ ] todo[0]: make a separate API to initialize log file dump?
 				since we can't really do this during log module initialization
@@ -248,6 +248,7 @@
 			[ ] click on log line to open the file which emitted it in a text editor (& preferably jump to the line number; is this possible?)
 			[ ] change timestamp to be a millisend delta since the previous log timestamp
 				[ ] only display timestamp when mouse is hovering over this log line?...
+	[ ] resolve @todo tags
 [ ] Windows: assume manual control over DPI-awareness
 [ ] gui: gracefully scale graphics based on renderer DPI scale
 [ ] keyboard input

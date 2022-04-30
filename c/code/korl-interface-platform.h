@@ -138,6 +138,11 @@ typedef enum Korl_Memory_AllocatorType
 {
     KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
 } Korl_Memory_AllocatorType;
+/** As of right now, the smallest possible value for \c maxBytes for a linear 
+ * allocator is 16 kilobytes (4 pages), since two pages are required for the 
+ * allocator struct, and a minimum of two pages are required for each allocation 
+ * (one for the meta data page, and one for the actual allocation itself).  
+ * This behavior is subject to change in the future. */
 #define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
