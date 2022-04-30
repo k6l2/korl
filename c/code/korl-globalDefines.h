@@ -10,7 +10,7 @@
 /* for wchar_t */
 #include <stddef.h>
 /* support for stdalign.h, since MSVC just doesn't have this I guess */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__cplusplus)
     #define alignof _Alignof
     #define alignas(byteCount) __declspec(align(byteCount))
 #endif// defined(_MSC_VER)

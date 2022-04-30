@@ -57,8 +57,8 @@ rem include additional libraries
 set buildCommand=%buildCommand% /I "%korl_home%\code\stb"
 rem set the executable's file name
 set buildCommand=%buildCommand% /Fe"%KORL_EXE_NAME%"
-rem set the VCX0.PDB file name
-set buildCommand=%buildCommand% /Fd"VC_%KORL_EXE_NAME%"
+rem Set the VCX0.PDB file name.  Only relevant when used with /Zi
+set buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_EXE_NAME%.pdb"
 rem treat warnings as errors
 set buildCommand=%buildCommand% /WX
 rem enable all warnings
@@ -79,8 +79,10 @@ set buildCommand=%buildCommand% /D KORL_DEBUG=1
 rem use wide character implementations for Windows API
 set buildCommand=%buildCommand% /D UNICODE
 set buildCommand=%buildCommand% /D _UNICODE
-rem generate debug symbols (a PDB file), Zi => no "edit-and-continue" support
-set buildCommand=%buildCommand% /Zi
+rem generate debug symbols 
+rem   Zi => no "edit-and-continue" support + a "VCX.pdb" PDB file
+rem   Z7 => no "edit-and-continue" support, no "VCX.pdb" PDB file, not compatible w/ incremental linking, potentially faster?
+set buildCommand=%buildCommand% /Z7
 rem disable optimization
 set buildCommand=%buildCommand% /Od
 rem generate compiler intrinsics
@@ -98,12 +100,19 @@ rem KORL-ISSUE-000-000-041: build: remove exception handling code generation fro
 set buildCommand=%buildCommand% /EHsc
 rem display the full path of source code files passed in diagnostics
 set buildCommand=%buildCommand% /FC
+rem KORL-ISSUE-000-000-044: build: for deployments, consider using /ZH:SHA_256 to generate more robust PDB hashes
+rem for multi-line errors/warnings, the additional info lines are all placed on 
+rem the same line, instead of being broken up into multiple lines
+set buildCommand=%buildCommand% /WL
 rem ----------------------------- LINKER SETTINGS ------------------------------
 set buildCommand=%buildCommand% /link
 rem set the PDB file name
 set buildCommand=%buildCommand% /pdb:"%KORL_EXE_NAME%.pdb"
 rem generate a map file (manifest of program symbols)
 set buildCommand=%buildCommand% /map:"%KORL_EXE_NAME%.map"
+rem we don't need to prepare for any subsequent incremental links, so disable 
+rem any generation of padding/THUNKS; also disables generation of *.ilk files
+set buildCommand=%buildCommand% /INCREMENTAL:NO
 rem reserve AND commit 1MB of stack space, preventing dynamic stack allocations
 rem set buildCommand=%buildCommand% /stack:0x100000,0x100000
 rem do not link to the C runtime (CRT) libraries
@@ -125,7 +134,8 @@ rem for CommandLineToArgvW
 set buildCommand=%buildCommand% Shell32.lib
 rem for Windows message APIs, MessageBox, etc...
 set buildCommand=%buildCommand% user32.lib
-rem for C standard lib functions (math functions, etc.), also some STB libs are pulling in standard libs!
+rem for C standard lib functions (math functions, etc.), also some STB libs are 
+rem pulling in standard libs!
 rem KORL-ISSUE-000-000-036: (low priority) configure STB libs to not link to standard libraries
 rem set buildCommand=%buildCommand% ucrt.lib
 rem for CreateSolidBrush, & other GDI API
