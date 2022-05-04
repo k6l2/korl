@@ -27,7 +27,16 @@ korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destinat
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
-korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList);
+korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
+korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList);
+/**
+ * \return the number of characters copied from \c format into \c buffer , 
+ * INCLUDING the null terminator.  If the \c format cannot be copied into the 
+ * \c buffer then the size of \c format , INCLUDING the null terminator, 
+ * multiplied by -1, is returned.
+ */
+korl_internal i$ korl_memory_stringFormatBuffer(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...);
+korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList);
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE  (korl_memory_allocator_allocate);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate);

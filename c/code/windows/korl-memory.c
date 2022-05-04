@@ -123,14 +123,41 @@ korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
             return false;
     return true;
 }
-korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
+korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    wchar_t*const result = korl_memory_stringFormatVaList(allocatorHandle, format, args);
+    va_end(args);
+    return result;
+}
+korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
 {
     const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
     wchar_t*const result = (wchar_t*)korl_allocate(allocatorHandle, bufferSize * sizeof(wchar_t));
+    korl_assert(result);
     const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
+}
+korl_internal i$ korl_memory_stringFormatBuffer(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    i$ result = korl_memory_stringFormatBufferVaList(buffer, bufferBytes, format, args);
+    va_end(args);
+    return result;
+}
+korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
+{
+    const int bufferSize = _vscwprintf(format, vaList);// excludes null terminator
+    korl_assert(bufferSize >= 0);
+    if(korl_checkCast_i$_to_u$(bufferSize + 1/*for null terminator*/) > bufferBytes / sizeof(*buffer))
+        return -(bufferSize + 1/*for null terminator*/);
+    const int charactersWritten = vswprintf_s(buffer, bufferBytes/sizeof(*buffer), format, vaList);// excludes null terminator
+    korl_assert(charactersWritten == bufferSize);
+    return charactersWritten + 1/*for null terminator*/;
 }
 korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserData, u$ bytes, const wchar_t* file, int line)
 {

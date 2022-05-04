@@ -79,6 +79,7 @@ set buildCommand=%buildCommand% /D KORL_DEBUG=1
 rem use wide character implementations for Windows API
 set buildCommand=%buildCommand% /D UNICODE
 set buildCommand=%buildCommand% /D _UNICODE
+set buildCommand=%buildCommand% /D KORL_APP_NAME=%KORL_EXE_NAME%
 rem generate debug symbols 
 rem   Zi => no "edit-and-continue" support + a "VCX.pdb" PDB file
 rem   Z7 => no "edit-and-continue" support, no "VCX.pdb" PDB file, not compatible w/ incremental linking, potentially faster?
@@ -104,7 +105,7 @@ rem KORL-ISSUE-000-000-044: build: for deployments, consider using /ZH:SHA_256 t
 rem for multi-line errors/warnings, the additional info lines are all placed on 
 rem the same line, instead of being broken up into multiple lines
 set buildCommand=%buildCommand% /WL
-rem ----------------------------- LINKER SETTINGS ------------------------------
+rem ::::::::::::::::::::::::::::: LINKER SETTINGS ::::::::::::::::::::::::::::::
 set buildCommand=%buildCommand% /link
 rem set the PDB file name
 set buildCommand=%buildCommand% /pdb:"%KORL_EXE_NAME%.pdb"
@@ -134,6 +135,8 @@ rem for CommandLineToArgvW
 set buildCommand=%buildCommand% Shell32.lib
 rem for Windows message APIs, MessageBox, etc...
 set buildCommand=%buildCommand% user32.lib
+rem for combaseapi.h stuff (CoTaskMemFree etc...)
+set buildCommand=%buildCommand% Ole32.lib
 rem for C standard lib functions (math functions, etc.), also some STB libs are 
 rem pulling in standard libs!
 rem KORL-ISSUE-000-000-036: (low priority) configure STB libs to not link to standard libraries

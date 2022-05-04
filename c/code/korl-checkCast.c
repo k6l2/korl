@@ -9,6 +9,11 @@ korl_internal u8 korl_checkCast_u$_to_u8(u$ x)
     korl_assert(x <= 0xFF);
     return KORL_C_CAST(u8, x);
 }
+korl_internal u16 korl_checkCast_u$_to_u16(u$ x)
+{
+    korl_assert(x <= 0xFFFF);
+    return KORL_C_CAST(u16, x);
+}
 korl_internal u32 korl_checkCast_u$_to_u32(u$ x)
 {
     korl_assert(x <= 0xFFFFFFFF);

@@ -228,17 +228,17 @@
 			- OKAY... so upon reading more on Windows Overlapped I/O API, it apparently behaves basically the same as KORL jobs!
 		[x] send log strings to a memory buffer that grows as-needed, until a maximum size
 		[x] once maximum size of log memory buffer is reached, begin treating the second half as a circular buffer
-		[ ] open a file handle to the log file
-			[ ] todo[0]: make a separate API to initialize log file dump?
+		[x] open a file handle to the log file
+			[x] todo[0]: make a separate API to initialize log file dump?
 				since we can't really do this during log module initialization
-		[ ] on log module initialization, perform log file rotation before opening file handle
-		[ ] on log, start an overlapped write to the file, pointing to the appropriate offset(s) in the memory buffer
+		[x] on log module initialization, perform log file rotation before opening file handle
+		[x] on log, start an overlapped write to the file, pointing to the appropriate offset(s) in the memory buffer
 			- store the associated OVERLAPPED struct in a dynamically sizing array
-		[ ] maybe once per frame, flush the OVERLAPPED struct buffer using HasOverlappedIoCompleted to remove completed tasks
-		[ ] on log module shutdown, use GetOverlappedResult on each of the log file write tasks to make sure they all finish
+		[x] maybe once per frame, flush the OVERLAPPED struct buffer using HasOverlappedIoCompleted to remove completed tasks
+		[x] on log module shutdown, use GetOverlappedResult on each of the log file write tasks to make sure they all finish
 		[ ] in release builds, don't write to file if we've reached a maximum file size
 		[ ] on log module shutdown, in release builds, if max file size was reached, _sync_ write the circular memory buffer to the end of the file
-		[ ] this process needs to be THREAD-SAFE!
+		[x] this process needs to be THREAD-SAFE!
 	[ ] use korl-gui to display release build logs in real-time
 		[ ] stop accumulating logs when the mouse hovers over the console
 		[ ] implement text selection

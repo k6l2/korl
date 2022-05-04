@@ -47,6 +47,8 @@ _STATIC_ASSERT(sizeof(u64) == 8);
 _STATIC_ASSERT(sizeof(f32) == 4);
 _STATIC_ASSERT(sizeof(f64) == 8);
 /* definitions for useful values of these primitive types */
+#define KORL_U16_MAX 0xFFFF
+#define KORL_U32_MAX 0xFFFFFFFF
 #define KORL_F32_MIN (1.175494351e-38F)
 #define KORL_F32_MAX (3.402823466e+38F)
 /** calculate the size of an array 
@@ -121,3 +123,8 @@ _STATIC_ASSERT(sizeof(f64) == 8);
     _korl_log_variadic(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \
         __FILEW__, __FUNCTIONW__, __LINE__, L ## format, ##__VA_ARGS__)
+/* Allow the pre-processor to store compiler definitions as string literals
+    Example: TCHAR APPLICATION_NAME[] = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
+    Source: https://stackoverflow.com/a/39108392 */
+#define _KORL_DEFINE_TO_CSTR(define) #define
+#define KORL_DEFINE_TO_CSTR(d) _KORL_DEFINE_TO_CSTR(d)

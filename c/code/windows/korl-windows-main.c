@@ -22,7 +22,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_memory_initialize();
     /* process arguments passed to the program */
     bool useLogOutputDebugger = false;
-    bool useLogOutputConsole = false;
+    bool useLogOutputConsole  = false;
     {
         wchar_t* cStringCommandLine = GetCommandLine();// memory managed by Windows
         int argc = 0;
@@ -35,11 +35,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                 useLogOutputConsole = true;
         korl_assert(LocalFree(argv) == NULL);
     }
-    korl_log_initialize(useLogOutputDebugger, useLogOutputConsole);//@todo[0]: UH OH.. the log system depends on the file module to dump logs to a file.. maybe create another API in log module to initiate the file dump?
+    korl_log_initialize(useLogOutputDebugger, useLogOutputConsole);
     //KORL-FEATURE-000-000-000: hook into Windows exception handler for crash reporting
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();
     korl_file_initialize();
+    korl_log_initiateFile();
     korl_stb_image_initialize();
     korl_stb_truetype_initialize();
     korl_assetCache_initialize();

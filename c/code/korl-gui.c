@@ -574,7 +574,7 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT);
     va_list vaList;
     va_start(vaList, textFormat);
-    widget->subType.text.displayText = korl_memory_stringFormat(context->allocatorHandleStack, textFormat, vaList);
+    widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
 }
 korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat)
@@ -583,7 +583,7 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON);
     va_list vaList;
     va_start(vaList, textFormat);
-    widget->subType.button.displayText = korl_memory_stringFormat(context->allocatorHandleStack, textFormat, vaList);
+    widget->subType.button.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
     const u8 resultActuationCount = widget->subType.button.actuationCount;
     widget->subType.button.actuationCount = 0;

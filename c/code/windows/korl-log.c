@@ -1,9 +1,11 @@
 #include "korl-log.h"
 #include "korl-memory.h"
+#include "korl-memoryPool.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-math.h"
 #include "korl-assert.h"
 #include "korl-checkCast.h"
+#include "korl-file.h"
 #include <stdio.h>// for freopen_s
 /* NOTE:  Windows implementation of %S & %s is NON-STANDARD, so as with here, we 
     need to make sure to _never_ use just %s or %S, and instead opt to use 
@@ -12,6 +14,7 @@
     String format documentation can be found here:
     https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-170#width */
 #define _KORL_LOG_META_DATA_STRING L"{%-7ls|%02i:%02i'%02i\"%03i|%5i|%ls|%ls} "
+#define _KORL_LOG_FILE_ROTATION_MAX 10
 #if 0//@todo: debugging values, delete later
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 128*sizeof(wchar_t);
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 256*sizeof(wchar_t);
@@ -19,6 +22,11 @@ korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 256*sizeof(wchar_t);
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 1024*sizeof(wchar_t);
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*1024*sizeof(wchar_t);// about 2 megabytes
 #endif
+typedef struct _Korl_Log_AsyncWriteDescriptor
+{
+    Korl_File_AsyncWriteHandle handle;
+    void* buffer;
+} _Korl_Log_AsyncWriteDescriptor;
 typedef struct _Korl_Log_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
@@ -35,6 +43,9 @@ typedef struct _Korl_Log_Context
     bool errorAssertionTriggered;
     bool useLogOutputDebugger;
     bool useLogOutputConsole;
+    Korl_File_Descriptor fileDescriptor;
+    KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
+    u$ logFileBytesWritten;
 } _Korl_Log_Context;
 korl_global_variable _Korl_Log_Context _korl_log_context;
 korl_internal unsigned _korl_log_countFormatSubstitutions(const wchar_t* format)
@@ -184,7 +195,38 @@ korl_internal void _korl_log_vaList(
         korl_assert(0 <= fwprintf(stdout, L"%ls", logLineBuffer));
     /* we're done with the transient buffer, so we can free it now */
     EnterCriticalSection(&(context->criticalSection));
-    korl_free(context->allocatorHandle, logLineBuffer);
+    /* ----- write logLineBuffer to log file ----- */
+    if((context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE) 
+        && context->logFileBytesWritten < _KORL_LOG_BUFFER_BYTES_MAX / 2)
+    {
+        /* clean out async write descriptors that have finished 
+            until the pool has room for one more operation */
+        do
+        {
+            for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors);)
+                /* I have no idea about the performance characteristics of 
+                    korl_file_asyncWriteWait yet, but if it's too slow I might 
+                    have to change this up...  My hope is that all these calls 
+                    will finish super quickly and we'll be on our way, while 
+                    simultaneously freeing up space in the pool for new async 
+                    write operations */
+                if(korl_file_asyncWriteWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
+                {
+                    korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
+                    KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
+                }
+                else
+                    i++;
+        } while (KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
+        _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
+        asyncWriteDescriptor->buffer = logLineBuffer;
+        //@todo: we may or may not need to specify the offset to begin writing 
+        //       to the file for each async call, but I'm not sure
+        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, logLineBuffer, logLineSize*sizeof(*(logLineBuffer)));
+        context->logFileBytesWritten += logLineSize*sizeof(*(logLineBuffer));
+    }
+    else/* otherwise we can just free the temporary log line buffer now */
+        korl_free(context->allocatorHandle, logLineBuffer);
     LeaveCriticalSection(&(context->criticalSection));
     if(logLevel <= KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
     {
@@ -250,9 +292,57 @@ korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOut
             korl_log(INFO, "configured to output logs to console");
     }
 }
+korl_internal void korl_log_initiateFile(void)
+{
+    _Korl_Log_Context*const context = &_korl_log_context;
+    wchar_t logFileName[256];
+    korl_assert(0 < korl_memory_stringFormatBuffer(logFileName, sizeof(logFileName), L"%ws.log", KORL_APPLICATION_NAME));
+    /* perform log file rotation */
+    for(i$ f = _KORL_LOG_FILE_ROTATION_MAX - 2; f >= 0; f--)
+    {
+        wchar_t logFileNameCurrent[256];
+        if(f == 0)
+            korl_assert(0 < korl_memory_stringFormatBuffer(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log", KORL_APPLICATION_NAME));
+        else
+            korl_assert(0 < korl_memory_stringFormatBuffer(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log.%lli", KORL_APPLICATION_NAME, f));
+        wchar_t logFileNameNext[256];
+        korl_assert(0 < korl_memory_stringFormatBuffer(logFileNameNext, sizeof(logFileNameNext), L"%ws.log.%lli", KORL_APPLICATION_NAME, f + 1));
+        korl_file_renameReplace(KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameCurrent, KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameNext);
+    }
+    /**/
+    korl_assert(korl_file_openAsync(KORL_FILE_PATHTYPE_LOCAL_DATA, 
+                                    logFileName, 
+                                    &context->fileDescriptor));
+    /* It is highly likely that we have processed logs before initiateFile was 
+        called, so we must now asynchronously flush the contents of the log 
+        buffer to the log file. */
+    EnterCriticalSection(&(context->criticalSection));
+    const u$ charactersToWrite = KORL_MATH_MIN(context->bufferedCharacters, 
+                                               // we will write a maximum of half of the maximum log buffer 
+                                               // size, because the second half of the buffer is a circular 
+                                               // buffer whose size we cannot possibly know ahead of time
+                                               _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)) / 2);
+    if(charactersToWrite)
+    {
+        wchar_t* tempBuffer = korl_allocate(context->allocatorHandle, charactersToWrite*sizeof(*(context->buffer)));
+        korl_memory_copy(tempBuffer, context->buffer, charactersToWrite*sizeof(*(context->buffer)));
+        korl_assert(!KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
+        _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
+        asyncWriteDescriptor->buffer = tempBuffer;
+        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, tempBuffer, charactersToWrite*sizeof(*(context->buffer)));
+        context->logFileBytesWritten += charactersToWrite*sizeof(*(context->buffer));
+    }
+    LeaveCriticalSection(&(context->criticalSection));
+}
 korl_internal void korl_log_shutDown(void)
 {
-    //@TODO[1]: get the file path to save the log file in
-    //@TODO[1]: perform log file rotation
-    //@TODO[1]: write buffer out to log file
+    _Korl_Log_Context*const context = &_korl_log_context;
+    korl_assert(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE);
+    //@TODO[1]: dump the circular buffer synchronously
+    for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors); i++)
+    {
+        korl_assert(korl_file_asyncWriteWait(&context->asyncWriteDescriptors[i].handle, KORL_U32_MAX));
+        korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
+    }
+    korl_file_close(&context->fileDescriptor);
 }

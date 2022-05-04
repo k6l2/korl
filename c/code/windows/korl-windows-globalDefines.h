@@ -1,4 +1,5 @@
 #pragma once
+#include "korl-globalDefines.h"
 #ifndef NOMINMAX
     #define NOMINMAX
 #endif
@@ -10,16 +11,19 @@
         It seems Windows.h doesn't conform well to C, surprise surprise! */
     #pragma warning(disable : 4255)
     #include <Windows.h>
-    #ifdef near
-        #undef near // fuck you too, Microsoft!
-    #endif
-    #ifdef far
-        #undef far // fuck you too, Microsoft!
-    #endif
 #pragma warning(pop)
 #include <windowsx.h>/* for GET_X_LPARAM, GET_Y_LPARAM, etc... */
 #include <tchar.h>/* for _T macro */
 #include <shellapi.h>/* for CommandLineToArgv */
+#include <ShlObj_core.h>/* for SHGetKnownFolderPath; NOTE: this shitty API uses `near` & `far` keyword defines, which come from Windows.h */
+#ifdef near// defined from somewhere inside Windows.h
+    #undef near // fuck you too, Microsoft!
+#endif
+#ifdef far// defined from somewhere inside Windows.h
+    #undef far // fuck you too, Microsoft!
+#endif
 /* KORL application exit codes */
 #define KORL_EXIT_SUCCESS 0
 #define KORL_EXIT_FAIL_ASSERT 1
+/* Windows application-wide constants */
+korl_global_const TCHAR KORL_APPLICATION_NAME[] = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);

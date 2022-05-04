@@ -51,7 +51,7 @@ korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     korl_assert(!KORL_MEMORY_POOL_ISFULL(context->assets));
     korl_assert(
         korl_file_load(
-            assetName, KORL_FILE_PATHTYPE_CURRENTWORKINGDIRECTORY, 
+            assetName, KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
             context->allocatorHandle, &resultAsset.data, &resultAsset.dataBytes));
     /* since the asset has just been loaded, add it to the asset manager */
     _Korl_AssetCache_Asset*const newAsset = KORL_MEMORY_POOL_ADD(context->assets);
