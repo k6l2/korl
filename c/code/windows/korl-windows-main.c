@@ -24,20 +24,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     /* process arguments passed to the program */
     bool useLogOutputDebugger = false;
     bool useLogOutputConsole  = false;
+    bool useLogFileBig        = false;
+    //bool useLog               = true;// @todo
     {
         wchar_t* cStringCommandLine = GetCommandLine();// memory managed by Windows
         int argc = 0;
         wchar_t** argv = CommandLineToArgvW(cStringCommandLine, &argc);
         korl_assert(argv);
         for(int a = 0; a < argc; a++)
-            if(0 == korl_memory_stringCompare(argv[a], L"--log-debugger"))
+            if(     0 == korl_memory_stringCompare(argv[a], L"--log-debugger"))
                 useLogOutputDebugger = true;
             else if(0 == korl_memory_stringCompare(argv[a], L"--log-console"))
                 useLogOutputConsole = true;
+            else if(0 == korl_memory_stringCompare(argv[a], L"--log-file-big"))
+                useLogFileBig = true;
         korl_assert(LocalFree(argv) == NULL);
     }
     /**/
-    korl_log_initialize(useLogOutputDebugger, useLogOutputConsole);
+    korl_log_initialize(useLogOutputDebugger, useLogOutputConsole, useLogFileBig);
     //KORL-FEATURE-000-000-000: hook into Windows exception handler for crash reporting
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();

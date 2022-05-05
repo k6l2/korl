@@ -240,7 +240,8 @@
 			I'm just going to always write to file probably?.. & cap file size to circular buffer size or something
 		[x] on log module shutdown, in release builds, if max file size was reached, _sync_ write the circular memory buffer to the end of the file
 		[x] this process needs to be THREAD-SAFE!
-	[ ] use korl-gui to display release build logs in real-time
+	[~] use korl-gui to display release build logs in real-time
+		Actually I might just do this later, since this might be annoying and there are a lot of other more important things to do
 		[ ] stop accumulating logs when the mouse hovers over the console
 		[ ] implement text selection
 		[ ] implement clipboard support (auto-copy text once it is selected)
@@ -249,6 +250,8 @@
 			[ ] click on log line to open the file which emitted it in a text editor (& preferably jump to the line number; is this possible?)
 			[ ] change timestamp to be a millisend delta since the previous log timestamp
 				[ ] only display timestamp when mouse is hovering over this log line?...
+	[x] add an option to disable max log file capacity limitations
+	[ ] add an option to disable logs entirely for less performance interference
 	[ ] resolve @todo tags
 [ ] Windows: assume manual control over DPI-awareness
 [ ] gui: gracefully scale graphics based on renderer DPI scale

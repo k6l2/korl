@@ -39,11 +39,12 @@ typedef struct _Korl_Log_Context
      * why? because we want to truncate huge logs, and the most important data 
      * in a log is most likely at the beginning & end */
     wchar_t* buffer;
-    u$ bufferedCharacters;//@todo: is this actually useful for anything?  right now we aren't actually using this for any real circular buffer logic or anything, in favor of bufferOffset
+    u$ bufferedCharacters;
     u$ bufferOffset;// the head of the buffer, where we will next write log text
     bool errorAssertionTriggered;
     bool useLogOutputDebugger;
     bool useLogOutputConsole;
+    bool useLogFileBig;
     Korl_File_Descriptor fileDescriptor;
     KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
     u$ logFileBytesWritten;
@@ -197,7 +198,8 @@ korl_internal void _korl_log_vaList(
     EnterCriticalSection(&(context->criticalSection));
     /* ----- write logLineBuffer to log file ----- */
     if((context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE) 
-        && context->logFileBytesWritten < _KORL_LOG_BUFFER_BYTES_MAX / 2)
+        && (   context->logFileBytesWritten < _KORL_LOG_BUFFER_BYTES_MAX / 2
+            || context->useLogFileBig))
     {
         /* clean out async write descriptors that have finished 
             until the pool has room for one more operation */
@@ -223,7 +225,9 @@ korl_internal void _korl_log_vaList(
         //@todo: we may or may not need to specify the offset to begin writing 
         //       to the file for each async call, but I'm not sure.  See:
         //       https://stackoverflow.com/a/31787459
-        const u$ reliableBufferBytesRemaining = (_KORL_LOG_BUFFER_BYTES_MAX / 2) - context->logFileBytesWritten;
+        const u$ reliableBufferBytesRemaining = context->useLogFileBig 
+            ? logLineSize * sizeof(*logLineBuffer)
+            : (_KORL_LOG_BUFFER_BYTES_MAX / 2) - context->logFileBytesWritten;
         /* if the logFileBytesWritten is going to exceed _KORL_LOG_BUFFER_BYTES_MAX / 2,
             we need to clamp this write operation to that value, so that 
             when the circular buffer is written on log shutdown, we either 
@@ -255,14 +259,15 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
                      cStringFunctionName, lineNumber, format, vaList);
     va_end(vaList);
 }
-korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole)
+korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
-    _korl_log_context.allocatorHandle          = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4));
-    _korl_log_context.bufferBytes              = _KORL_LOG_BUFFER_BYTES_MIN;
-    _korl_log_context.buffer                   = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandle, _korl_log_context.bufferBytes));
-    _korl_log_context.useLogOutputDebugger     = useLogOutputDebugger;
-    _korl_log_context.useLogOutputConsole      = useLogOutputConsole;
+    _korl_log_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4));
+    _korl_log_context.bufferBytes          = _KORL_LOG_BUFFER_BYTES_MIN;
+    _korl_log_context.buffer               = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandle, _korl_log_context.bufferBytes));
+    _korl_log_context.useLogOutputDebugger = useLogOutputDebugger;
+    _korl_log_context.useLogOutputConsole  = useLogOutputConsole;
+    _korl_log_context.useLogFileBig        = useLogFileBig;
     InitializeCriticalSection(&_korl_log_context.criticalSection);
     /* if we need to ouptut logs to a console, initialize the console here 
         Sources:
@@ -325,11 +330,13 @@ korl_internal void korl_log_initiateFile(void)
         called, so we must now asynchronously flush the contents of the log 
         buffer to the log file. */
     EnterCriticalSection(&(context->criticalSection));
-    const u$ charactersToWrite = KORL_MATH_MIN(context->bufferedCharacters, 
-                                               // we will write a maximum of half of the maximum log buffer 
-                                               // size, because the second half of the buffer is a circular 
-                                               // buffer whose size we cannot possibly know ahead of time
-                                               _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)) / 2);
+    const u$ maxInitCharacters = context->useLogFileBig 
+        ? context->bufferedCharacters 
+        : // we will write a maximum of half of the maximum log buffer 
+          // size, because the second half of the buffer is a circular 
+          // buffer whose size we cannot possibly know ahead of time
+          _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)) / 2;
+    const u$ charactersToWrite = KORL_MATH_MIN(context->bufferedCharacters, maxInitCharacters);
     if(charactersToWrite)
     {
         wchar_t* tempBuffer = korl_allocate(context->allocatorHandle, charactersToWrite*sizeof(*(context->buffer)));
@@ -351,7 +358,13 @@ korl_internal void korl_log_shutDown(void)
         korl_assert(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, KORL_U32_MAX));
         korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
     }
-    if(context->bufferedCharacters > _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)))
+    if(context->useLogFileBig)
+    {
+        /* we don't have to do any sync writing here with the circular buffer, 
+            since we would have already submitted write jobs for every line up 
+            until this point anyway; do nothing */
+    }
+    else if(context->bufferedCharacters > _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)))
     {
         /* the log file has to be cut, since we lost log data during writes to 
             the circular buffer which wrapped to the beginning */
