@@ -117,6 +117,10 @@ korl_internal void _korl_file_LpoverlappedCompletionRoutine(DWORD dwErrorCode, D
     pAsyncOp->writeBuffer = NULL;
     pAsyncOp->salt++;
 }
+korl_internal void _korl_file_LpoverlappedCompletionRoutine_noAsyncOp(DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered, LPOVERLAPPED lpOverlapped)
+{
+    korl_assert(dwErrorCode == ERROR_SUCCESS);
+}
 korl_internal void korl_file_initialize(void)
 {
     _Korl_File_Context*const context = &_korl_file_context;
@@ -213,7 +217,7 @@ korl_internal Korl_File_AsyncWriteHandle korl_file_writeAsync(Korl_File_Descript
     pAsyncOp->writeBuffer           = buffer;
     pAsyncOp->handleFile            = fileDescriptor.handle;
     pAsyncOp->overlapped.Offset     = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
-    pAsyncOp->overlapped.OffsetHigh = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file //@todo: validate that this will actually work?...
+    pAsyncOp->overlapped.OffsetHigh = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
     /* dispatch the async write command */
     const BOOL resultWriteFileEx = WriteFileEx(fileDescriptor.handle, 
                                                buffer, korl_checkCast_u$_to_u32(bufferBytes), 
@@ -223,16 +227,24 @@ korl_internal Korl_File_AsyncWriteHandle korl_file_writeAsync(Korl_File_Descript
     return (Korl_File_AsyncWriteHandle){.components={ .salt  = context->asyncPool[i].salt
                                                     , .index = korl_checkCast_u$_to_u16(i) }};
 }
-korl_internal bool korl_file_asyncWriteWait(Korl_File_AsyncWriteHandle* handle, u32 timeoutMilliseconds)
+korl_internal bool korl_file_writeAsyncWait(Korl_File_AsyncWriteHandle* handle, u32 timeoutMilliseconds)
 {
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(handle->components.index < korl_arraySize(context->asyncPool));
     _Korl_File_AsyncOpertion*const pAsyncOp = &context->asyncPool[handle->components.index];
     korl_assert(pAsyncOp->salt == handle->components.salt);
     DWORD numberOfBytesTransferred = 0;
+    DWORD dwTimeoutMilliseconds = timeoutMilliseconds;
+    if(timeoutMilliseconds == KORL_U32_MAX)
+        /* at first glance, this is generally going to be a completely useless 
+            transformation, but I'm putting this here on the remote off chance 
+            that these constants and/or types (DWORD, INFINITE) ever change from 
+            being unsigned 32-bit for some reason, which at least will likely 
+            give a compile-time warning/error. */
+        dwTimeoutMilliseconds = INFINITE;
     const BOOL resultGetOverlappedResult = 
         GetOverlappedResultEx(pAsyncOp->handleFile, &(pAsyncOp->overlapped), 
-                              &numberOfBytesTransferred, timeoutMilliseconds, 
+                              &numberOfBytesTransferred, dwTimeoutMilliseconds, 
                               TRUE/*yes, we want to call the I/O completion routine*/);
     if(!resultGetOverlappedResult)
     {
@@ -256,18 +268,33 @@ korl_internal bool korl_file_asyncWriteWait(Korl_File_AsyncWriteHandle* handle, 
     /* the async operation is complete, and we didn't have to queue the I/O 
         completion routine */
     // clean up the async operation slot //
+    // NOTE: this is copypasta from _korl_file_LpoverlappedCompletionRoutine
     pAsyncOp->writeBuffer = NULL;
     pAsyncOp->salt++;
 done_asyncComplete:
     handle->components.index = KORL_U16_MAX;// invalidate the caller's async operation handle
     return true;
 }
-#if 0
-korl_internal void korl_file_write(Korl_File_Handle fileHandle, const void* data, u$ dataBytes)
+korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const void* data, u$ dataBytes)
 {
-    const HANDLE hFile = fileHandle;
+    DWORD bytesWritten = 0;
+    if(fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_ASYNC)
+    {
+        KORL_ZERO_STACK(OVERLAPPED, overlapped);
+        overlapped.Offset     = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
+        overlapped.OffsetHigh = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
+        korl_assert(WriteFileEx(fileDescriptor.handle, data, korl_checkCast_u$_to_u32(dataBytes), 
+                                &overlapped, _korl_file_LpoverlappedCompletionRoutine_noAsyncOp));
+        korl_assert(GetOverlappedResultEx(fileDescriptor.handle, &overlapped, 
+                                          &bytesWritten, INFINITE, 
+                                          FALSE/*we don't care about calling the I/O completion function*/));
+        goto done_checkBytesWritten;
+    }
+    if(!WriteFile(fileDescriptor.handle, data, korl_checkCast_u$_to_u32(dataBytes), &bytesWritten, NULL/*no overlapped*/))
+        korl_logLastError("WriteFile failed!");
+done_checkBytesWritten:
+    korl_assert(bytesWritten == korl_checkCast_u$_to_u32(dataBytes));
 }
-#endif
 korl_internal bool korl_file_load(
     const wchar_t*const fileName, Korl_File_PathType pathType, 
     Korl_Memory_AllocatorHandle allocatorHandle, 

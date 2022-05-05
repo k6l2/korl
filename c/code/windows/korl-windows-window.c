@@ -1,6 +1,8 @@
 #include "korl-windows-window.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
+#include "korl-log.h"
+#include "korl-time.h"
 #include "korl-vulkan.h"
 #include "korl-windows-vulkan.h"
 #include "korl-math.h"
@@ -258,10 +260,8 @@ korl_internal void korl_windows_window_loop(void)
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         korl_gui_frameBegin();
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
-        if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true/*TODO: fix me later*/))
-        {
+        if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true/*@TODO: fix me later; https://stackoverflow.com/a/466372 */))
             break;
-        }
         //KORL-ISSUE-000-000-035: hack: delete this
         //_korl_windows_window_step(allocatorHeapStack);
         korl_gui_frameEnd();

@@ -203,7 +203,7 @@
 			https://devblogs.microsoft.com/oldnewthing/20090101-00/?p=19643
 		- We might as well do something like this & call it a day:
 			https://stackoverflow.com/a/30102947
-	[ ] dump KORL logs to a file
+	[x] dump KORL logs to a file
 		[x] KORL-ISSUE-000-000-033: remove strsafe.h
 		- requirement: we do not want UNBOUNDED log buffers or files which can just grow forever
 			- log memory buffers
@@ -236,8 +236,9 @@
 			- store the associated OVERLAPPED struct in a dynamically sizing array
 		[x] maybe once per frame, flush the OVERLAPPED struct buffer using HasOverlappedIoCompleted to remove completed tasks
 		[x] on log module shutdown, use GetOverlappedResult on each of the log file write tasks to make sure they all finish
-		[ ] in release builds, don't write to file if we've reached a maximum file size
-		[ ] on log module shutdown, in release builds, if max file size was reached, _sync_ write the circular memory buffer to the end of the file
+		[-] in release builds, don't write to file if we've reached a maximum file size
+			I'm just going to always write to file probably?.. & cap file size to circular buffer size or something
+		[x] on log module shutdown, in release builds, if max file size was reached, _sync_ write the circular memory buffer to the end of the file
 		[x] this process needs to be THREAD-SAFE!
 	[ ] use korl-gui to display release build logs in real-time
 		[ ] stop accumulating logs when the mouse hovers over the console

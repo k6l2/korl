@@ -19,6 +19,7 @@ void __stdcall korl_windows_main(void)
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 #endif
 {
+    korl_assert_initialize();
     korl_memory_initialize();
     /* process arguments passed to the program */
     bool useLogOutputDebugger = false;
@@ -35,6 +36,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                 useLogOutputConsole = true;
         korl_assert(LocalFree(argv) == NULL);
     }
+    /**/
     korl_log_initialize(useLogOutputDebugger, useLogOutputConsole);
     //KORL-FEATURE-000-000-000: hook into Windows exception handler for crash reporting
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");

@@ -2,11 +2,29 @@
 #include "korl-log.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"
+typedef struct _Korl_Assert_Context
+{
+    bool firstAssertLogged;
+} _Korl_Assert_Context;
+korl_global_variable _Korl_Assert_Context _korl_assert_context;
+korl_internal void korl_assert_initialize(void)
+{
+    korl_memory_zero(&_korl_assert_context, sizeof(_korl_assert_context));
+}
 korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)
 {
     /* write failed condition to standard error stream */
-    korl_log(ERROR, "ASSERT FAILED: \"%ls\" {%i|%ls}", 
-        conditionString, lineNumber, cStringFileName);
+    if(!_korl_assert_context.firstAssertLogged)
+    {
+        /* we use a flag here to only log the first assert failure, which is 
+            necessary in the case of the assert being fired from inside the log 
+            module itself, and really if the program has failed an assert, we 
+            probably only care about the first one anyway, since all execution 
+            after this is suspect */
+        _korl_assert_context.firstAssertLogged = true;
+        korl_log(ERROR, "ASSERT FAILED: \"%ls\" {%i|%ls}", 
+                 conditionString, lineNumber, cStringFileName);
+    }
     if(IsDebuggerPresent())
     {
         OutputDebugString(_T("KORL ASSERTION FAILED: \""));

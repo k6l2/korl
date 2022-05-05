@@ -15,9 +15,10 @@
     https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-170#width */
 #define _KORL_LOG_META_DATA_STRING L"{%-7ls|%02i:%02i'%02i\"%03i|%5i|%ls|%ls} "
 #define _KORL_LOG_FILE_ROTATION_MAX 10
-#if 0//@todo: debugging values, delete later
-korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 128*sizeof(wchar_t);
-korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 256*sizeof(wchar_t);
+#if 1//@todo: debugging values, delete later
+korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 512*sizeof(wchar_t);
+korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*sizeof(wchar_t);
+//korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 32*1024*sizeof(wchar_t);
 #else
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 1024*sizeof(wchar_t);
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*1024*sizeof(wchar_t);// about 2 megabytes
@@ -135,7 +136,6 @@ korl_internal void _korl_log_vaList(
     /* allocate string buffer for log meta data tag + formatted message */
     EnterCriticalSection(&(context->criticalSection));
     u$ bufferSize = context->bufferBytes / sizeof(wchar_t);
-    //@todo: delete?// const u$ bufferOffset = context->bufferedCharacters % bufferSize;
     wchar_t* buffer = &(context->buffer[context->bufferOffset]);
     // bufferAvailable: the # of characters we have the ability to write to the 
     //                  buffer (NOTE: _only_ the final character must be a '\0')
@@ -205,12 +205,12 @@ korl_internal void _korl_log_vaList(
         {
             for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors);)
                 /* I have no idea about the performance characteristics of 
-                    korl_file_asyncWriteWait yet, but if it's too slow I might 
+                    korl_file_writeAsyncWait yet, but if it's too slow I might 
                     have to change this up...  My hope is that all these calls 
                     will finish super quickly and we'll be on our way, while 
                     simultaneously freeing up space in the pool for new async 
                     write operations */
-                if(korl_file_asyncWriteWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
+                if(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
                 {
                     korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
                     KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
@@ -221,9 +221,17 @@ korl_internal void _korl_log_vaList(
         _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
         asyncWriteDescriptor->buffer = logLineBuffer;
         //@todo: we may or may not need to specify the offset to begin writing 
-        //       to the file for each async call, but I'm not sure
-        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, logLineBuffer, logLineSize*sizeof(*(logLineBuffer)));
-        context->logFileBytesWritten += logLineSize*sizeof(*(logLineBuffer));
+        //       to the file for each async call, but I'm not sure.  See:
+        //       https://stackoverflow.com/a/31787459
+        const u$ reliableBufferBytesRemaining = (_KORL_LOG_BUFFER_BYTES_MAX / 2) - context->logFileBytesWritten;
+        /* if the logFileBytesWritten is going to exceed _KORL_LOG_BUFFER_BYTES_MAX / 2,
+            we need to clamp this write operation to that value, so that 
+            when the circular buffer is written on log shutdown, we either 
+            just write the rest of the buffer, or we cut the file log & 
+            do two separate circular buffer writes if necessary */
+        u$ logFileLineBytes = KORL_MATH_MIN(logLineSize * sizeof(*logLineBuffer), reliableBufferBytesRemaining);
+        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, logLineBuffer, logFileLineBytes);
+        context->logFileBytesWritten += logFileLineBytes;
     }
     else/* otherwise we can just free the temporary log line buffer now */
         korl_free(context->allocatorHandle, logLineBuffer);
@@ -338,11 +346,34 @@ korl_internal void korl_log_shutDown(void)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
     korl_assert(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE);
-    //@TODO[1]: dump the circular buffer synchronously
     for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors); i++)
     {
-        korl_assert(korl_file_asyncWriteWait(&context->asyncWriteDescriptors[i].handle, KORL_U32_MAX));
+        korl_assert(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, KORL_U32_MAX));
         korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
+    }
+    if(context->bufferedCharacters > _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)))
+    {
+        /* the log file has to be cut, since we lost log data during writes to 
+            the circular buffer which wrapped to the beginning */
+        korl_shared_const wchar_t LOG_MESSAGE_CUT[] = L"\n\n----- LOG FILE CUT -----\n\n\n";
+        korl_file_write(context->fileDescriptor, LOG_MESSAGE_CUT, sizeof(LOG_MESSAGE_CUT));
+        const wchar_t*const bufferEnd = context->buffer + (_KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)));
+        const wchar_t*const bufferA = context->buffer + context->bufferOffset;
+        const u$ bufferSizeA = bufferEnd - 1/*null terminator at the last position*/ - bufferA;
+        korl_file_write(context->fileDescriptor, bufferA, bufferSizeA*sizeof(*(context->buffer)));
+        if(context->bufferOffset > (_KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer))) / 2)
+        {
+            const wchar_t*const bufferB = context->buffer + (_KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer))) / 2;
+            const u$ bufferSizeB = bufferA - bufferB;
+            korl_file_write(context->fileDescriptor, bufferB, bufferSizeB*sizeof(*(context->buffer)));
+        }
+    }
+    else if (context->bufferedCharacters > _KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)) / 2)
+    {
+        /* we can just write the remaining buffer directly to the log file */
+        const u$ remainingCharacters  = context->bufferedCharacters - (_KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)) / 2);
+        const void*const bufferOffset = context->buffer             + (_KORL_LOG_BUFFER_BYTES_MAX / sizeof(*(context->buffer)) / 2);
+        korl_file_write(context->fileDescriptor, bufferOffset, remainingCharacters*sizeof(*(context->buffer)));
     }
     korl_file_close(&context->fileDescriptor);
 }
