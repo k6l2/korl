@@ -25,7 +25,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     bool useLogOutputDebugger = false;
     bool useLogOutputConsole  = false;
     bool useLogFileBig        = false;
-    //bool useLog               = true;// @todo
+    bool logFileEnabled       = true;
     {
         wchar_t* cStringCommandLine = GetCommandLine();// memory managed by Windows
         int argc = 0;
@@ -38,6 +38,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                 useLogOutputConsole = true;
             else if(0 == korl_memory_stringCompare(argv[a], L"--log-file-big"))
                 useLogFileBig = true;
+            else if(0 == korl_memory_stringCompare(argv[a], L"--log-file-disable"))
+                logFileEnabled = false;
         korl_assert(LocalFree(argv) == NULL);
     }
     /**/
@@ -46,7 +48,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();
     korl_file_initialize();
-    korl_log_initiateFile();
+    if(logFileEnabled)
+        korl_log_initiateFile();
     korl_stb_image_initialize();
     korl_stb_truetype_initialize();
     korl_assetCache_initialize();

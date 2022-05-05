@@ -251,7 +251,7 @@
 			[ ] change timestamp to be a millisend delta since the previous log timestamp
 				[ ] only display timestamp when mouse is hovering over this log line?...
 	[x] add an option to disable max log file capacity limitations
-	[ ] add an option to disable logs entirely for less performance interference
+	[x] add an option to disable logs entirely for less performance interference
 	[ ] resolve @todo tags
 [ ] Windows: assume manual control over DPI-awareness
 [ ] gui: gracefully scale graphics based on renderer DPI scale

@@ -84,13 +84,17 @@ korl_internal void _korl_log_vaList(
     int lineNumber, const wchar_t* format, va_list vaList)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
+    /* get the current time, used in the log's timestamp metadata */
+    KORL_ZERO_STACK(SYSTEMTIME, systemTimeLocal);
+    GetLocalTime(&systemTimeLocal);
+    /**/
     if(logLevel <= KORL_LOG_LEVEL_ERROR && IsDebuggerPresent())
         /* if we ever log an error while a debugger is attached, just break 
             right now so we can figure out what's going on! */
         DebugBreak();
-    /* get the current time, used in the log's timestamp metadata */
-    KORL_ZERO_STACK(SYSTEMTIME, systemTimeLocal);
-    GetLocalTime(&systemTimeLocal);
+    /* we can skip most of this if there are no log outputs enabled */
+    if(context->fileDescriptor.flags == 0 && !context->useLogOutputDebugger && !context->useLogOutputConsole)
+        goto logOutputDone;
     /* calculate the buffer size required for the formatted log message & meta data tag */
     const wchar_t* cStringLogLevel = L"???";
     switch(logLevel)
@@ -240,6 +244,7 @@ korl_internal void _korl_log_vaList(
     else/* otherwise we can just free the temporary log line buffer now */
         korl_free(context->allocatorHandle, logLineBuffer);
     LeaveCriticalSection(&(context->criticalSection));
+logOutputDone:
     if(logLevel <= KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
     {
         /* when we're not attached to a debugger (for example, in 
@@ -352,7 +357,10 @@ korl_internal void korl_log_initiateFile(void)
 korl_internal void korl_log_shutDown(void)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
-    korl_assert(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE);
+    if(!(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE))
+    {
+        goto skipFileCleanup;
+    }
     for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors); i++)
     {
         korl_assert(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, KORL_U32_MAX));
@@ -389,4 +397,6 @@ korl_internal void korl_log_shutDown(void)
         korl_file_write(context->fileDescriptor, bufferOffset, remainingCharacters*sizeof(*(context->buffer)));
     }
     korl_file_close(&context->fileDescriptor);
+skipFileCleanup:
+    return;
 }
