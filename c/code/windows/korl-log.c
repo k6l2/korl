@@ -15,14 +15,8 @@
     https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-170#width */
 #define _KORL_LOG_META_DATA_STRING L"{%-7ls|%02i:%02i'%02i\"%03i|%5i|%ls|%ls} "
 #define _KORL_LOG_FILE_ROTATION_MAX 10
-#if 1//@todo: debugging values, delete later
-korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 512*sizeof(wchar_t);
-korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*sizeof(wchar_t);
-//korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 32*1024*sizeof(wchar_t);
-#else
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 1024*sizeof(wchar_t);
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*1024*sizeof(wchar_t);// about 2 megabytes
-#endif
 typedef struct _Korl_Log_AsyncWriteDescriptor
 {
     Korl_File_AsyncWriteHandle handle;
@@ -226,9 +220,7 @@ korl_internal void _korl_log_vaList(
         } while (KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
         _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
         asyncWriteDescriptor->buffer = logLineBuffer;
-        //@todo: we may or may not need to specify the offset to begin writing 
-        //       to the file for each async call, but I'm not sure.  See:
-        //       https://stackoverflow.com/a/31787459
+        //KORL-ISSUE-000-000-046: log: test to validate order of async log writes
         const u$ reliableBufferBytesRemaining = context->useLogFileBig 
             ? logLineSize * sizeof(*logLineBuffer)
             : (_KORL_LOG_BUFFER_BYTES_MAX / 2) - context->logFileBytesWritten;

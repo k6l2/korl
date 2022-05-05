@@ -196,7 +196,7 @@
 				- not really...
 			- on the other hand, is it really that bad to keep it required?
 				- not really... also, less work to just leave it as required API... EH, maybe I'll just put this on the back burner
-[ ] change KORL application subsystem from CONSOLE=>WINDOWS
+[x] change KORL application subsystem from CONSOLE=>WINDOWS
 	[x] always send log output to debugger when present
 	[x] optionally write log output to a Windows console (optionally, since Windows GUI applications are really stupid; see below for details)
 		- Windows kernel is dumb and _can't_ do this: 
@@ -252,7 +252,7 @@
 				[ ] only display timestamp when mouse is hovering over this log line?...
 	[x] add an option to disable max log file capacity limitations
 	[x] add an option to disable logs entirely for less performance interference
-	[ ] resolve @todo tags
+	[x] resolve (at)todo tags
 [ ] Windows: assume manual control over DPI-awareness
 [ ] gui: gracefully scale graphics based on renderer DPI scale
 [ ] keyboard input
