@@ -40,6 +40,7 @@ typedef struct _Korl_Log_Context
     bool useLogOutputConsole;
     bool useLogFileBig;
     bool logFileEnabled;
+    bool disableMetaTags;
     Korl_File_Descriptor fileDescriptor;
     KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
     u$ logFileBytesWritten;
@@ -113,19 +114,25 @@ korl_internal void _korl_log_vaList(
     korl_assert(bufferSizeFormat  > 0);
     korl_assert(bufferSizeMetaTag > 0);
     /* write the full log line to a transient buffer */
-    const u$ logLineSize = bufferSizeMetaTag + bufferSizeFormat;//_excluding_ the null terminator
+    const u$ logLineSize = context->disableMetaTags 
+        ? bufferSizeFormat 
+        : bufferSizeMetaTag + bufferSizeFormat;//_excluding_ the null terminator
     EnterCriticalSection(&(context->criticalSection));
     wchar_t*const logLineBuffer = KORL_C_CAST(wchar_t*, 
         korl_allocate(context->allocatorHandle, 
                       (logLineSize + 1/*null terminator*/)*sizeof(wchar_t)));
     LeaveCriticalSection(&(context->criticalSection));
     int charactersWrittenTotal = 0;
-    int charactersWritten = swprintf_s(logLineBuffer, bufferSizeMetaTag + 1/*for '\0'*/, _KORL_LOG_META_DATA_STRING, 
+    int charactersWritten;
+    if(!context->disableMetaTags)
+    {
+        charactersWritten = swprintf_s(logLineBuffer, bufferSizeMetaTag + 1/*for '\0'*/, _KORL_LOG_META_DATA_STRING, 
                                        cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
                                        systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
                                        cStringFileName, cStringFunctionName);
-    korl_assert(charactersWritten == bufferSizeMetaTag);
-    charactersWrittenTotal += charactersWritten;
+        korl_assert(charactersWritten == bufferSizeMetaTag);
+        charactersWrittenTotal += charactersWritten;
+    }
     charactersWritten = vswprintf_s(logLineBuffer + charactersWrittenTotal, bufferSizeFormat, format, vaList);
     korl_assert(charactersWritten == bufferSizeFormat - 1/*we haven't written the `\n` yet*/);
     charactersWrittenTotal += charactersWritten;
@@ -171,9 +178,9 @@ korl_internal void _korl_log_vaList(
         : NULL;
     if(bufferOverflow)
         context->bufferOffset = (bufferSize / 2)/*start of the circular portion of the buffer*/ 
-            + ((bufferSizeMetaTag + bufferSizeFormat) - bufferAvailable)/*offset by the remaining log text that must be written to bufferOverflow*/;
+            + (logLineSize - bufferAvailable)/*offset by the remaining log text that must be written to bufferOverflow*/;
     korl_assert(context->bufferOffset < bufferSize - 1);
-    context->bufferedCharacters += bufferSizeMetaTag + bufferSizeFormat;
+    context->bufferedCharacters += logLineSize;
     /* ----- write logLineBuffer to buffer/bufferOverflow ----- */
     if(bufferAvailable >= logLineSize)
         // we can fit the entire log line into the buffer //
@@ -257,7 +264,7 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
                      cStringFunctionName, lineNumber, format, vaList);
     va_end(vaList);
 }
-korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig)
+korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
     _korl_log_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4));
@@ -267,6 +274,7 @@ korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOut
     _korl_log_context.useLogOutputConsole  = useLogOutputConsole;
     _korl_log_context.useLogFileBig        = useLogFileBig;
     _korl_log_context.logFileEnabled       = true;// assume we will use a log file eventually, until the user specifies we wont
+    _korl_log_context.disableMetaTags      = disableMetaTags;
     InitializeCriticalSection(&_korl_log_context.criticalSection);
     /* if we need to ouptut logs to a console, initialize the console here 
         Sources:

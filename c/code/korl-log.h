@@ -1,7 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
-korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig);
+korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags);
 /** \param logFileEnabled Required to tell the log system that for the rest of 
  * the application's runtime, we do or do not need to worry about log file I/O.  
  * Otherwise, in the case that all log outputs are disabled, we would be wasting 

@@ -1,5 +1,6 @@
 #include "korl-globalDefines.h"
 #include "korl-windows-globalDefines.h"
+#include "korl-commandLine.h"
 #include "korl-log.h"
 #include "korl-memory.h"
 #include "korl-windows-window.h"
@@ -19,36 +20,32 @@ void __stdcall korl_windows_main(void)
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 #endif
 {
+    bool commandLineEndProgram;
+    bool useLogOutputDebugger;
+    bool useLogOutputConsole;
+    bool useLogFileBig;
+    bool logFileDisable;
+    const Korl_CommandLine_ArgumentDescriptor descriptors[] = 
+        { {&useLogOutputDebugger, KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-debugger"    , L"-ld" , L"Send log output to the debugger, if we are attached to one."}
+        , {&useLogOutputConsole , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-console"     , L"-lc" , L"Send log output to a console.  If the calling process has a console, it will be used.  Otherwise, a new console will be created."}
+        , {&useLogFileBig       , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-big"    , L"-lfb", L"Disable the internal mechanism to limit the size of the log file to some maximum value.  Without this, log files will be cut if capacity is reached; only the beginning/end of the logs will be written to the file."}
+        , {&logFileDisable      , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-disable", L"-lfd", L"Disable logging to a file."} };
     korl_assert_initialize();
     korl_memory_initialize();
-    /* process arguments passed to the program */
-    bool useLogOutputDebugger = false;
-    bool useLogOutputConsole  = false;
-    bool useLogFileBig        = false;
-    bool logFileEnabled       = true;
+    commandLineEndProgram = korl_commandLine_parse(descriptors, korl_arraySize(descriptors));
+    korl_log_initialize(useLogOutputDebugger | commandLineEndProgram, 
+                        useLogOutputConsole  | commandLineEndProgram, 
+                        useLogFileBig, commandLineEndProgram);
+    if(commandLineEndProgram)
     {
-        wchar_t* cStringCommandLine = GetCommandLine();// memory managed by Windows
-        int argc = 0;
-        wchar_t** argv = CommandLineToArgvW(cStringCommandLine, &argc);
-        korl_assert(argv);
-        for(int a = 0; a < argc; a++)
-            if(     0 == korl_memory_stringCompare(argv[a], L"--log-debugger"))
-                useLogOutputDebugger = true;
-            else if(0 == korl_memory_stringCompare(argv[a], L"--log-console"))
-                useLogOutputConsole = true;
-            else if(0 == korl_memory_stringCompare(argv[a], L"--log-file-big"))
-                useLogFileBig = true;
-            else if(0 == korl_memory_stringCompare(argv[a], L"--log-file-disable"))
-                logFileEnabled = false;
-        korl_assert(LocalFree(argv) == NULL);
+        korl_commandLine_logUsage(descriptors, korl_arraySize(descriptors));
+        return KORL_EXIT_SUCCESS;
     }
-    /**/
-    korl_log_initialize(useLogOutputDebugger, useLogOutputConsole, useLogFileBig);
     //KORL-FEATURE-000-000-000: hook into Windows exception handler for crash reporting
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();
     korl_file_initialize();
-    korl_log_initiateFile(logFileEnabled);
+    korl_log_initiateFile(!logFileDisable);
     korl_stb_image_initialize();
     korl_stb_truetype_initialize();
     korl_assetCache_initialize();
@@ -69,6 +66,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 }
 #include "korl-assert.c"
 #include "korl-log.c"
+#include "korl-commandLine.c"
 #include "korl-windows-utilities.c"
 #include "korl-math.c"
 #include "korl-memory.c"
