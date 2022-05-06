@@ -1116,16 +1116,15 @@ korl_internal void korl_vulkan_destroy(void)
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(
         context->instance, context->debugMessenger, context->allocator);
+    vkDestroyInstance(context->instance, context->allocator);
+    /* nullify the context after cleaning up properly for safety */
+    korl_memory_zero(context, sizeof(*context));
 #else
     /* we only need to manually destroy the vulkan module if we're running a 
         debug build, since the validation layers require us to properly clean up 
         before the program ends, but for release builds we really don't care at 
         all about wasting time like this if we don't have to */
-    return;
 #endif// KORL_DEBUG
-    vkDestroyInstance(context->instance, context->allocator);
-    /* nullify the context after cleaning up properly for safety */
-    korl_memory_zero(context, sizeof(*context));
 }
 korl_internal void korl_vulkan_createSurface(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY)

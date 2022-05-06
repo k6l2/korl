@@ -1,4 +1,3 @@
-#include "korl-stb-image.h"
 #include "korl-memory.h"
 #include "korl-math.h"
 #include "korl-assert.h"
@@ -13,24 +12,27 @@ korl_internal void korl_stb_image_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16));
 }
-void* _stbi_allocate(u$ bytes)
+void* _korl_stb_image_allocate(u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     return korl_allocate(context->allocatorHandle, bytes);
 }
-void* _stbi_reallocate(void* allocation, u$ bytes)
+void* _korl_stb_image_reallocate(void* allocation, u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     return korl_reallocate(context->allocatorHandle, allocation, bytes);
 }
-void _stbi_free(void* allocation)
+void _korl_stb_image_free(void* allocation)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     korl_free(context->allocatorHandle, allocation);
 }
 #define STBI_ASSERT(x)        korl_assert(x)
-#define STBI_MALLOC(sz)       _stbi_allocate(sz)
-#define STBI_REALLOC(p,newsz) _stbi_reallocate(p,newsz)
-#define STBI_FREE(p)          _stbi_free(p)
+#define STBI_MALLOC(sz)       _korl_stb_image_allocate(sz)
+#define STBI_REALLOC(p,newsz) _korl_stb_image_reallocate(p,newsz)
+#define STBI_FREE(p)          _korl_stb_image_free(p)
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
+#pragma warning(push)
+    #pragma warning(disable:4702)// stb_image is doing assert(0), which causes unreachable code, and that's OK
+    #include "stb/stb_image.h"
+#pragma warning(pop)

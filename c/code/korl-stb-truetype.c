@@ -13,18 +13,21 @@ korl_internal void korl_stb_truetype_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(512));
 }
-void* _stbtt_allocate(u$ bytes)
+void* _korl_stb_truetype_allocate(u$ bytes)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
     return korl_allocate(context->allocatorHandle, bytes);
 }
-void _stbtt_free(void* allocation)
+void _korl_stb_truetype_free(void* allocation)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
     korl_free(context->allocatorHandle, allocation);
 }
-#define STBTT_malloc(x,u) ((void)(u),_stbtt_allocate(x))
-#define STBTT_free(x,u)   ((void)(u),_stbtt_free(x))
+#define STBTT_malloc(x,u) ((void)(u),_korl_stb_truetype_allocate(x))
+#define STBTT_free(x,u)   ((void)(u),_korl_stb_truetype_free(x))
 #define STBTT_assert(x)   korl_assert(x)
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "stb/stb_truetype.h"
+#pragma warning(push)
+    #pragma warning(disable:4702)// stb_truetype is doing assert(0), which causes unreachable code, and that's OK
+    #include "stb/stb_truetype.h"
+#pragma warning(pop)

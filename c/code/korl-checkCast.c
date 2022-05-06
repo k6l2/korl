@@ -1,4 +1,6 @@
 #include "korl-checkCast.h"
+#pragma warning(push)
+#pragma warning(disable:4755)/* in optimized builds, it is possible for the compiler to find conditions in which one of the paths of these checks will never be executed, and that is fine by me (for now) */
 korl_internal u16 korl_checkCast_u32_to_u16(u32 x)
 {
     korl_assert(x < 0xFFFF);
@@ -48,3 +50,4 @@ korl_internal f32 korl_checkCast_i$_to_f32(i$ x)
     korl_assert(KORL_C_CAST(i$, result) == x);
     return result;
 }
+#pragma warning(pop)
