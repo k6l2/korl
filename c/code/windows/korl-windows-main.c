@@ -45,6 +45,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();
     const PlatformTimeStamp timeStampInitializeStart = korl_timeStamp();
+    korl_windows_window_initialize();
+    korl_windows_window_create(1024, 576);
     korl_file_initialize();
     korl_log_initiateFile(!logFileDisable);
     korl_stb_image_initialize();
@@ -53,8 +55,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_vulkan_construct();
     korl_gfx_initialize();
     korl_gui_initialize();
-    korl_windows_window_initialize();
-    korl_windows_window_create(1024, 576);
     korl_log(INFO, "KORL initialization completed in %f seconds!", korl_time_secondsSinceTimeStamp(timeStampInitializeStart));
     korl_windows_window_loop();
     korl_vulkan_destroy();

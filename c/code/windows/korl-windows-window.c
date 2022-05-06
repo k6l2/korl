@@ -13,6 +13,11 @@
 #include "korl-interface-game.h"
 #include "korl-gui.h"
 korl_global_const TCHAR g_korl_windows_window_className[] = _T("KorlWindowClass");
+typedef struct _Korl_Windows_Window_Context
+{
+    HWND handleWindow;// for now, we will only ever have _one_ window
+} _Korl_Windows_Window_Context;
+korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode g_korl_windows_window_virtualKeyMap[0xFF];
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
@@ -21,19 +26,6 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     switch(uMsg)
     {
     case WM_CREATE:{
-        const CREATESTRUCT*const createStruct = 
-            KORL_C_CAST(CREATESTRUCT*, lParam);
-        /* obtain the client rect of the window */
-        RECT clientRect;
-        if(!GetClientRect(hWnd, &clientRect))
-            korl_logLastError("GetClientRect failed!");
-        /* create vulkan surface for this window */
-        KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
-        surfaceUserData.hInstance = createStruct->hInstance;
-        surfaceUserData.hWnd      = hWnd;
-        korl_vulkan_createSurface(&surfaceUserData, 
-                                  clientRect.right  - clientRect.left, 
-                                  clientRect.bottom - clientRect.top);
         }break;
     case WM_DESTROY:{
         PostQuitMessage(KORL_EXIT_SUCCESS);
@@ -61,6 +53,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 }
 korl_internal void korl_windows_window_initialize(void)
 {
+    korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     korl_memory_zero(g_korl_windows_window_virtualKeyMap, sizeof(g_korl_windows_window_virtualKeyMap));
     for(u32 i = 0; i <= 9; ++i)
         g_korl_windows_window_virtualKeyMap[0x30 + i] = KORL_KEY_TENKEYLESS_0 + i;
@@ -148,14 +141,16 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     const BOOL successAdjustClientRect = 
         AdjustWindowRect(&rectCenteredClient, windowStyle, FALSE/*menu?*/);
     if(!successAdjustClientRect) korl_logLastError("AdjustWindowRect failed!");
-    const HWND hWnd = CreateWindowEx(0/*extended style flags*/, g_korl_windows_window_className, _T("KORL C"), 
-                                     windowStyle, 
+    const HWND hWnd = CreateWindowEx(0/*extended style flags*/, g_korl_windows_window_className, 
+                                     KORL_APPLICATION_NAME, windowStyle, 
                                      rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
                                      rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
                                      rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
                                      NULL/*hWndParent*/, NULL/*hMenu*/, hInstance, 
                                      NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
+    korl_assert(_korl_windows_window_context.handleWindow == NULL);
+    _korl_windows_window_context.handleWindow = hWnd;
 }
 //KORL-ISSUE-000-000-035: hack: delete this function later
 #if 0
@@ -235,6 +230,25 @@ korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeap
 #endif
 korl_internal void korl_windows_window_loop(void)
 {
+    /* get a handle to the file used to create the calling process */
+    const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
+    korl_assert(hInstance);
+    /* now we can create the Vulkan surfaces for the windows that were created 
+        before the Vulkan module was initialized */
+    {
+        /* obtain the client rect of the window */
+        RECT clientRect;
+        if(!GetClientRect(_korl_windows_window_context.handleWindow, &clientRect))
+            korl_logLastError("GetClientRect failed!");
+        /* create vulkan surface for this window */
+        KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
+        surfaceUserData.hInstance = hInstance;
+        surfaceUserData.hWnd      = _korl_windows_window_context.handleWindow;
+        korl_vulkan_createSurface(&surfaceUserData, 
+                                  clientRect.right  - clientRect.left, 
+                                  clientRect.bottom - clientRect.top);
+    }
+    /**/
     KORL_ZERO_STACK(GameMemory, gameMemory);
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
