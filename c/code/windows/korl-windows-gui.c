@@ -28,7 +28,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         /* check to see if we clicked on any windows from the previous frame 
             - note that we're processing windows from front->back, since 
               windows[0] is always the farthest back window */
-        for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
+        for(i$ w = KORL_C_CAST(i$, KORL_MEMORY_POOL_SIZE(context->windows)) - 1; w >= 0; w--)
         {
             const _Korl_Gui_Window*const window = &context->windows[w];
             if(!window->isOpen)

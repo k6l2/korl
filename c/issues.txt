@@ -43,7 +43,7 @@
 [x] KORL-ISSUE-000-000-042: fix the issue with all the %s formatted strings being WRONG in the platform layer!!! (excluding: **\stb, submodules/korl/code)  I'm not sure what caused this, but I should probably finish the log refactor branch first before fixing this issue...
 [x] KORL-ISSUE-000-000-043: memory: when allocations fail, log a warning & return NULL instead of failing an assert
 [x] KORL-ISSUE-000-000-044: build: for deployments, consider using /ZH:SHA_256 to generate more robust PDB hashes
-[ ] KORL-ISSUE-000-000-045: windows: pass window focus state to game module; https://stackoverflow.com/a/466372
+[x] KORL-ISSUE-000-000-045: windows: pass window focus state to game module; https://stackoverflow.com/a/466372
 [ ] KORL-ISSUE-000-000-046: log: test to validate order of async log writes; we may or may not need to specify the offset to begin writing to the file for each async call, but I'm not sure.  See: https://stackoverflow.com/a/31787459
 [x] KORL-ISSUE-000-000-047: build: separate game & platform module translation units into their own commands to allow separate compilation options & potentially multithreaded builds
 [x] KORL-ISSUE-000-000-048: build: configure "release" build mode to test more optimized code, so we can actually benchmark stuff

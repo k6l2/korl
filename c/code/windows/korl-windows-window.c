@@ -260,8 +260,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});
         korl_gui_frameBegin();
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
-        //KORL-ISSUE-000-000-045: windows: pass window focus state to game
-        if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, true))
+        if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, GetFocus() != NULL))
             break;
         //KORL-ISSUE-000-000-035: hack: delete this
         //_korl_windows_window_step(allocatorHeapStack);
