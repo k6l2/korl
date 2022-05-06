@@ -11,6 +11,7 @@
  * session/machine!) */
 typedef u64 PlatformTimeStamp;
 #define KORL_PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name(void)
+#define KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
 typedef enum Korl_KeyboardCode
     { KORL_KEY_UNKNOWN
     , KORL_KEY_A
@@ -264,6 +265,7 @@ typedef struct Korl_Gfx_Batch
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
+typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secondsSinceTimeStamp);
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
 typedef KORL_PLATFORM_MEMORY_COPY                         (fnSig_korl_memory_copy);
 typedef KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR             (fnSig_korl_memory_allocator_create);
@@ -308,6 +310,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korlPlatformAssertFailure*             korl_assertConditionFailed;\
     fnSig_korlPlatformLog*                       _korl_log_variadic;\
     fnSig_korl_timeStamp*                        korl_timeStamp;\
+    fnSig_korl_time_secondsSinceTimeStamp*       korl_time_secondsSinceTimeStamp;\
     fnSig_korl_memory_zero*                      korl_memory_zero;\
     fnSig_korl_memory_copy*                      korl_memory_copy;\
     fnSig_korl_memory_allocator_create*          korl_memory_allocator_create;\
@@ -352,6 +355,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_assertConditionFailed            = korl_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
+    (apiVariableName).korl_time_secondsSinceTimeStamp       = korl_time_secondsSinceTimeStamp;\
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
     (apiVariableName).korl_memory_copy                      = korl_memory_copy;\
     (apiVariableName).korl_memory_allocator_create          = korl_memory_allocator_create;\
@@ -396,6 +400,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_assertConditionFailed            = (apiVariableName).korl_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
+    korl_time_secondsSinceTimeStamp       = (apiVariableName).korl_time_secondsSinceTimeStamp;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
     korl_memory_copy                      = (apiVariableName).korl_memory_copy;\
     korl_memory_allocator_create          = (apiVariableName).korl_memory_allocator_create;\

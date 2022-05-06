@@ -25,3 +25,15 @@ korl_internal KORL_PLATFORM_GET_TIMESTAMP(korl_timeStamp)
         korl_logLastError("QueryPerformanceCounter failed");
     return timeStampUnion.timeStamp;
 }
+korl_internal KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP(korl_time_secondsSinceTimeStamp)
+{
+    _Korl_Time_TimeStampUnion timeStampUnionPrevious;
+    timeStampUnionPrevious.timeStamp = pts;
+    KORL_ZERO_STACK(_Korl_Time_TimeStampUnion, timeStampUnion);
+    if(!QueryPerformanceCounter(&timeStampUnion.largeInt))
+        korl_logLastError("QueryPerformanceCounter failed");
+    /* calculate the # of seconds between the previous timestamp and the current timestamp */
+    korl_assert(timeStampUnion.largeInt.QuadPart >= timeStampUnionPrevious.largeInt.QuadPart);
+    const LONGLONG perfCountDiff = timeStampUnion.largeInt.QuadPart - timeStampUnionPrevious.largeInt.QuadPart;
+    return KORL_C_CAST(f32, perfCountDiff) / KORL_C_CAST(f32, _korl_time_perfCounterHz.QuadPart);
+}
