@@ -48,8 +48,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_log(INFO, "korl_windows_main START --------------------------------------------------------");
     korl_time_initialize();
     korl_file_initialize();
-    if(logFileEnabled)
-        korl_log_initiateFile();
+    korl_log_initiateFile(logFileEnabled);
     korl_stb_image_initialize();
     korl_stb_truetype_initialize();
     korl_assetCache_initialize();

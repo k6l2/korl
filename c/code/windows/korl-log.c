@@ -39,6 +39,7 @@ typedef struct _Korl_Log_Context
     bool useLogOutputDebugger;
     bool useLogOutputConsole;
     bool useLogFileBig;
+    bool logFileEnabled;
     Korl_File_Descriptor fileDescriptor;
     KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
     u$ logFileBytesWritten;
@@ -87,7 +88,7 @@ korl_internal void _korl_log_vaList(
             right now so we can figure out what's going on! */
         DebugBreak();
     /* we can skip most of this if there are no log outputs enabled */
-    if(context->fileDescriptor.flags == 0 && !context->useLogOutputDebugger && !context->useLogOutputConsole)
+    if(!context->logFileEnabled && !context->useLogOutputDebugger && !context->useLogOutputConsole)
         goto logOutputDone;
     /* calculate the buffer size required for the formatted log message & meta data tag */
     const wchar_t* cStringLogLevel = L"???";
@@ -265,6 +266,7 @@ korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOut
     _korl_log_context.useLogOutputDebugger = useLogOutputDebugger;
     _korl_log_context.useLogOutputConsole  = useLogOutputConsole;
     _korl_log_context.useLogFileBig        = useLogFileBig;
+    _korl_log_context.logFileEnabled       = true;// assume we will use a log file eventually, until the user specifies we wont
     InitializeCriticalSection(&_korl_log_context.criticalSection);
     /* if we need to ouptut logs to a console, initialize the console here 
         Sources:
@@ -302,9 +304,12 @@ korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOut
             korl_log(INFO, "configured to output logs to console");
     }
 }
-korl_internal void korl_log_initiateFile(void)
+korl_internal void korl_log_initiateFile(bool logFileEnabled)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
+    context->logFileEnabled = logFileEnabled;
+    if(!logFileEnabled)
+        return;
     wchar_t logFileName[256];
     korl_assert(0 < korl_memory_stringFormatBuffer(logFileName, sizeof(logFileName), L"%ws.log", KORL_APPLICATION_NAME));
     /* perform log file rotation */
