@@ -33,7 +33,7 @@
 [x] KORL-ISSUE-000-000-032: safety: ensure that the thread calling this function is the main thread to ensure that the function pointers of the Korl_Memory_Allocator will always be valid, since the main program module (should) never be reloaded
 [x] KORL-ISSUE-000-000-033: do we actually need `strsafe.h`?  This API seems to suck ass compared to the stuff it supposedly "replaced", such as \c _vscwprintf & \c vswprintf_s
 [ ] KORL-ISSUE-000-000-034: investigate: WM_PAINT, ValidateRect(hWnd, NULL); ???  I'm not actually sure if this is necessary, so maybe this is very low priority.
-[ ] KORL-ISSUE-000-000-035: hack: delete this scaffolding once we have application/KORL separation at the project level
+[x] KORL-ISSUE-000-000-035: hack: delete this scaffolding once we have application/KORL separation at the project level
 [~] KORL-ISSUE-000-000-036: (low priority) configure STB libs to not link to standard libraries at some point?  This should give us better stability & help clean up our application symbols in general
 [x] KORL-ISSUE-000-000-037: remove C++20 flag from compile when game module is separate translation unit
 [ ] KORL-ISSUE-000-000-038: GUI: text AABBs are not being calculated correctly.  Example: try making a text widget that displays "[E][S][D][F]".  Observed behavior: the calculated AABB includes nothing below the text baseline it seems?...

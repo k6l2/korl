@@ -152,82 +152,6 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     korl_assert(_korl_windows_window_context.handleWindow == NULL);
     _korl_windows_window_context.handleWindow = hWnd;
 }
-//KORL-ISSUE-000-000-035: hack: delete this function later
-#if 0
-korl_internal void _korl_windows_window_step(Korl_Memory_Allocator allocatorHeapStack)
-{
-    korl_shared_variable bool initialized = false;
-    korl_shared_variable Korl_Gfx_Camera camera3d;
-    korl_shared_variable bool buttonClicked = false;
-    korl_shared_variable bool thirdWindowOpen = false;
-    if(!initialized)
-    {
-        camera3d = korl_gfx_createCameraFov(90.f, 0.001f, 10.f, (Korl_Vulkan_Position){1, 0, 1}, KORL_MATH_V3F32_ZERO);
-        initialized = true;
-    }
-    u8 guiButtonActuations;
-    korl_gui_windowBegin(L"first window", NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-        korl_gui_widgetTextFormat(L"%hs", "Hello, sir! Can you spare a breb? o^o");
-        korl_gui_widgetTextFormat(L"PLS, sir! I only wish for a breb...");
-        korl_gui_widgetTextFormat(L"PLEEZ!");
-        korl_gui_widgetTextFormat(L"max f32 == %.10e", KORL_F32_MAX);
-        korl_gui_widgetTextFormat(L"min f32 == %.10e", KORL_F32_MIN);
-    korl_gui_windowEnd();
-    korl_gui_windowBegin(L"second window", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE);
-        if(guiButtonActuations = korl_gui_widgetButtonFormat(L"Hey, kid!  Click me!"))
-        {
-            korl_log(INFO, "You clicked the button %u time(s)!", guiButtonActuations);
-            buttonClicked = !buttonClicked;
-            thirdWindowOpen |= buttonClicked;
-        }
-        if(buttonClicked)
-        {
-            korl_gui_widgetTextFormat(L"YO, WHat the fuuuuuuu-?");
-            korl_gui_widgetTextFormat(L"--------------------------------");
-            korl_gui_widgetTextFormat(L"'-'");
-            korl_gui_widgetTextFormat(L"YOU WANT SOME PENIS ENLARGEMENT PILLS?!");
-        }
-    korl_gui_windowEnd();
-    korl_gui_windowBegin(L"third window - the quick brown fox jumps over the lazy dog", &thirdWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-    korl_gui_windowEnd();
-    korl_gfx_cameraFov_rotateAroundTarget(&camera3d, KORL_MATH_V3F32_Z, 0.01f);
-    korl_gfx_useCamera(camera3d);
-    Korl_Gfx_Batch*const birbSprite = korl_gfx_createBatchRectangleTextured(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, L"test-assets/birb.jpg");
-    korl_gfx_batch(birbSprite, KORL_GFX_BATCH_FLAG_NONE);
-    korl_gfx_batchSetPosition(birbSprite, (Korl_Vulkan_Position){0, 0, 0.4f});
-    korl_gfx_batch(birbSprite, KORL_GFX_BATCH_FLAG_NONE);
-    Korl_Gfx_Batch*const originAxes = korl_gfx_createBatchLines(allocatorHeapStack, 3);
-    korl_gfx_batchSetLine(originAxes, 0, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){1, 0, 0}, (Korl_Vulkan_Color){255,   0,   0});
-    korl_gfx_batchSetLine(originAxes, 1, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 1, 0}, (Korl_Vulkan_Color){  0, 255,   0});
-    korl_gfx_batchSetLine(originAxes, 2, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 0, 1}, (Korl_Vulkan_Color){  0,   0, 255});
-    korl_gfx_batch(originAxes, KORL_GFX_BATCH_FLAG_NONE);
-    Korl_Gfx_Camera cameraHud = korl_gfx_createCameraOrthoFixedHeight(600.f, 1.f);
-    korl_gfx_useCamera(cameraHud);
-    Korl_Gfx_Batch*const originAxesHud = korl_gfx_createBatchLines(allocatorHeapStack, 3);
-    //korl_gfx_batchSetPosition(originAxesHud, (Korl_Vulkan_Position){1, 0, 0});//rounding error in the bottom-left corner causes the y-axis to not be shown :(
-    korl_gfx_batchSetScale(originAxesHud, (Korl_Vulkan_Position){100, 100, 100});
-    korl_gfx_batchSetLine(originAxesHud, 0, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){1, 0, 0}, (Korl_Vulkan_Color){255,   0,   0});
-    korl_gfx_batchSetLine(originAxesHud, 1, (Korl_Vulkan_Position){0, 0, 0}, (Korl_Vulkan_Position){0, 1, 0}, (Korl_Vulkan_Color){  0, 255,   0});
-    korl_gfx_batch(originAxesHud, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    Korl_Gfx_Batch*const hudBox = korl_gfx_createBatchRectangleColored(allocatorHeapStack, (Korl_Math_V2f32){1, 1}, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Vulkan_Color){255, 255, 255});
-    korl_gfx_batchSetPosition(hudBox, (Korl_Vulkan_Position){250.f*camera3d.position.xyz.x, 250.f*camera3d.position.xyz.y, 0});
-    korl_gfx_batchSetScale(hudBox, (Korl_Vulkan_Position){200, 200, 200});
-    korl_gfx_batchSetVertexColor(hudBox, 0, (Korl_Vulkan_Color){255,   0,   0});
-    korl_gfx_batchSetVertexColor(hudBox, 1, (Korl_Vulkan_Color){  0, 255,   0});
-    korl_gfx_batchSetVertexColor(hudBox, 2, (Korl_Vulkan_Color){  0,   0, 255});
-    korl_gfx_cameraSetScissorPercent(&cameraHud, 0,0, 0.5f,1);
-    korl_gfx_useCamera(cameraHud);
-    korl_gfx_batch(hudBox, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    cameraHud = korl_gfx_createCameraOrtho(1.f);
-    korl_gfx_useCamera(cameraHud);
-    Korl_Gfx_Batch*const hudText = korl_gfx_createBatchText(allocatorHeapStack, NULL, L"the quick, brown fox jumped over the lazy dog?...", 32.f);
-    korl_gfx_batchSetPosition(hudText, (Korl_Vulkan_Position){-350, 0, 0});
-    korl_gfx_batch(hudText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    Korl_Gfx_Batch*const hudText2 = korl_gfx_createBatchText(allocatorHeapStack, NULL, L"THE QUICK, BROWN FOX JUMPED OVER THE LAZY DOG!", 32.f);
-    korl_gfx_batchSetPosition(hudText2, (Korl_Vulkan_Position){-350, -64, 0});
-    korl_gfx_batch(hudText2, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-}
-#endif
 korl_internal void korl_windows_window_loop(void)
 {
     /* get a handle to the file used to create the calling process */
@@ -253,14 +177,9 @@ korl_internal void korl_windows_window_loop(void)
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
     korl_game_initialize(&gameMemory, korlApi);
-    //KORL-ISSUE-000-000-035: hack: delete this later
-    //Korl_Memory_AllocatorHandle allocatorHandleHeapStack = 
-    //    korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
     bool quit = false;
     while(!quit)
     {
-        //KORL-ISSUE-000-000-035: hack: delete this later
-        //korl_memory_allocator_empty(allocatorHandleHeapStack);
         KORL_ZERO_STACK(MSG, windowMessage);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
                           0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
@@ -276,8 +195,6 @@ korl_internal void korl_windows_window_loop(void)
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
         if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, GetFocus() != NULL))
             break;
-        //KORL-ISSUE-000-000-035: hack: delete this
-        //_korl_windows_window_step(allocatorHeapStack);
         korl_gui_frameEnd();
         korl_vulkan_frameEnd();
     }
