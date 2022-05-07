@@ -4,6 +4,7 @@
 #include "korl-assert.h"
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
+#include "korl-time.h"
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -237,7 +238,7 @@ korl_internal void korl_gui_frameEnd(void)
     context->frameSequenceCounter--;
     /* nullify widgets which weren't used this frame */
     Korl_MemoryPool_Size widgetsRemaining = 0;
-    korl_time_probe("nullify unused widgets", 
+    korl_time_probeStart(nullify_unused_widgets);
     for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->widgets); i++)
     {
         _Korl_Gui_Widget*const widget = &context->widgets[i];
@@ -254,10 +255,10 @@ korl_internal void korl_gui_frameEnd(void)
             continue;
     }
     KORL_MEMORY_POOL_RESIZE(context->widgets, widgetsRemaining);
-    );//time_probe
+    korl_time_probeStop(nullify_unused_widgets);
     /* for each of the windows that we ended up using for this frame, generate 
         the necessary draw commands for them */
-    const Korl_Time_ProbeHandle timeProbeHandleDraw = korl_timeProbeBegin("generate draw commands");
+    korl_time_probeStart(generate_draw_commands);
     Korl_Gfx_Camera guiCamera = korl_gfx_createCameraOrtho(1.f);
     korl_gfx_cameraOrthoSetOriginAnchor(&guiCamera, 0.f, 1.f);
     Korl_MemoryPool_Size windowsRemaining = 0;
@@ -290,7 +291,7 @@ korl_internal void korl_gui_frameEnd(void)
         }
         if(window->isFirstFrame || (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE))
         {
-            korl_time_probe("calculate window AABB", 
+            korl_time_probeStart(calculate_window_AABB);
             window->isFirstFrame = false;
             /* iterate over all this window's widgets, obtaining their AABBs & 
                 accumulating their geometry to determine how big the window 
@@ -316,7 +317,7 @@ korl_internal void korl_gui_frameEnd(void)
                 window->size.xy.y = context->style.windowTitleBarPixelSizeY;
             if(window->size.xy.x < context->style.windowTitleBarPixelSizeY)
                 window->size.xy.x = context->style.windowTitleBarPixelSizeY;
-            );//time_probe
+            korl_time_probeStop(calculate_window_AABB);
         }
         if(window->isContentHidden)
             window->size.xy.y = context->style.windowTitleBarPixelSizeY;
@@ -571,7 +572,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_useCamera(guiCamera);
         korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
     }
-    korl_time_probeEnd(timeProbeHandleDraw);
+    korl_time_probeStop(generate_draw_commands);
     KORL_MEMORY_POOL_RESIZE(context->windows, windowsRemaining);
 }
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)

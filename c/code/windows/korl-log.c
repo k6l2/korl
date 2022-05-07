@@ -75,7 +75,31 @@ korl_internal unsigned _korl_log_countFormatSubstitutions(const wchar_t* format)
             }
             /* check if next character is a width specifier */
             if(nextChar == '*')
+            {
                 formatSubstitutions++;// parameter needed for width specifier
+                f++;
+                nextChar = *(f+1);
+                korl_assert(nextChar);
+            }
+            else
+            {
+                // consume width number characters //
+                while(nextChar && nextChar >= '0' && nextChar <= '9')
+                {
+                    f++;
+                    nextChar = *(f+1);
+                    korl_assert(nextChar);
+                }
+            }
+            if(nextChar == '.')
+            {
+                /* check if next character is a precision specifier */
+                f++;
+                nextChar = *(f+1);
+                korl_assert(nextChar);
+                if(nextChar == '*')
+                    formatSubstitutions++;// parameter needed for precision specifier
+            }
             //KORL-ISSUE-000-000-051: countFormatSubstitutions: take precision '*' into account
             formatSubstitutions++;// parameter needed for the format specifier
             korl_assert(formatSubstitutions != 0);//check for overflow
@@ -128,7 +152,7 @@ korl_internal void _korl_log_vaList(
     EnterCriticalSection(&(context->criticalSection));
     wchar_t*const logLineBuffer = KORL_C_CAST(wchar_t*, 
         korl_allocate(context->allocatorHandle, 
-                      (logLineSize + 1/*null terminator*/)*sizeof(wchar_t)));
+                      (logLineSize + 1/*null terminator*/)*sizeof(*logLineBuffer)));
     LeaveCriticalSection(&(context->criticalSection));
     int charactersWrittenTotal = 0;
     int charactersWritten;
@@ -150,7 +174,7 @@ korl_internal void _korl_log_vaList(
     korl_assert(korl_checkCast_i$_to_u$(charactersWrittenTotal) == logLineSize);
     /* allocate string buffer for log meta data tag + formatted message */
     EnterCriticalSection(&(context->criticalSection));
-    u$ bufferSize = context->bufferBytes / sizeof(wchar_t);
+    u$ bufferSize = context->bufferBytes / sizeof(*context->buffer);
     wchar_t* buffer = &(context->buffer[context->bufferOffset]);
     // bufferAvailable: the # of characters we have the ability to write to the 
     //                  buffer (NOTE: _only_ the final character must be a '\0')
@@ -171,7 +195,7 @@ korl_internal void _korl_log_vaList(
             korl_assert(context->buffer);
             /* recalculate the buffer metrics */
             context->bufferBytes = newBufferBytes;
-            bufferSize = newBufferBytes / sizeof(wchar_t);
+            bufferSize = newBufferBytes / sizeof(*context->buffer);
             buffer = &(context->buffer[context->bufferOffset]);
             bufferAvailable = bufferSize - 1 - context->bufferOffset;// see above for details of this calculation
         }

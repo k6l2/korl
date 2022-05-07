@@ -355,7 +355,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
 {
     /* calculate required amount of memory for the batch */
     const u$ assetNameTextureSize = korl_memory_stringSize(assetNameTexture) + 1;
-    const u$ assetNameTextureBytes = assetNameTextureSize * sizeof(wchar_t);
+    const u$ assetNameTextureBytes = assetNameTextureSize * sizeof(*assetNameTexture);
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
         + assetNameTextureBytes
         + 6 * sizeof(Korl_Vulkan_VertexIndex)

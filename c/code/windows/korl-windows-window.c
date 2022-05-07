@@ -176,7 +176,9 @@ korl_internal void korl_windows_window_loop(void)
     KORL_ZERO_STACK(GameMemory, gameMemory);
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
-    korl_time_probe("game initialization", korl_game_initialize(&gameMemory, korlApi););
+    korl_time_probeStart(game_initialization);
+    korl_game_initialize(&gameMemory, korlApi);
+    korl_time_probeStop(game_initialization);
     korl_log(INFO, "KORL initialization time probe report:");
     korl_time_probeLogReport();
     u$ frameCount = 0;
@@ -189,28 +191,29 @@ korl_internal void korl_windows_window_loop(void)
             korl_time_probeLogReport();
         }
         korl_time_probeReset();
-        const Korl_Time_ProbeHandle timeProbeHandleMainLoop = korl_timeProbeBegin("Main Loop");
+        korl_time_probeStart(Main_Loop);
         KORL_ZERO_STACK(MSG, windowMessage);
-        korl_time_probe("process window messages", 
-            while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
-                              0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
-            {
-                if(windowMessage.message == WM_QUIT) quit = true;
-                const BOOL messageTranslated = TranslateMessage(&windowMessage);
-                const LRESULT messageResult  = DispatchMessage (&windowMessage);
-            });
+        korl_time_probeStart(process_window_messages);
+        while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
+                          0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
+        {
+            if(windowMessage.message == WM_QUIT) quit = true;
+            const BOOL messageTranslated = TranslateMessage(&windowMessage);
+            const LRESULT messageResult  = DispatchMessage (&windowMessage);
+        }
+        korl_time_probeStop(process_window_messages);
         if(quit)
             break;
-        KORL_ZERO_STACK(Korl_Math_V2u32, swapchainSize);
-        korl_time_probe("vulkan frame begin"       , korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f}););
-        korl_time_probe("gui frame begin"          , korl_gui_frameBegin(););
-        korl_time_probe("vulkan get swapchain size", swapchainSize = korl_vulkan_getSwapchainSize(););
-        korl_time_probe("game update", 
-            if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, GetFocus() != NULL))
-                break;);
-        korl_time_probe("gui frame end"   , korl_gui_frameEnd(););
-        korl_time_probe("vulkan frame end", korl_vulkan_frameEnd(););
-        korl_time_probeEnd(timeProbeHandleMainLoop);
+        korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});                   korl_time_probeStop(vulkan_frame_begin);
+        korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                                korl_time_probeStop(gui_frame_begin);
+        korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);
+        korl_time_probeStart(game_update);
+        if(!korl_game_update(1/60.f, swapchainSize.xy.x, swapchainSize.xy.y, GetFocus() != NULL))
+            break;
+        korl_time_probeStop(game_update);
+        korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
+        korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
+        korl_time_probeStop(Main_Loop);
         if(frameCount < ~(u$)0) frameCount++;
     }
     korl_vulkan_destroySurface();

@@ -31,8 +31,7 @@ typedef union _Korl_Time_TimeStampUnion
     PlatformTimeStamp timeStamp;
 } _Korl_Time_TimeStampUnion;
 _STATIC_ASSERT(sizeof(PlatformTimeStamp) <= sizeof(LARGE_INTEGER));
-korl_internal void _korl_time_timeStampExtractDifference(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB, 
-                                                         u$* out_minutes, u8* out_seconds, u16* out_milliseconds, u16* out_microseconds)
+korl_internal LONGLONG _korl_time_timeStampCountDifference(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB)
 {
     _Korl_Time_TimeStampUnion tsuA, tsuB;
     tsuA.timeStamp = ptsA;
@@ -44,23 +43,28 @@ korl_internal void _korl_time_timeStampExtractDifference(PlatformTimeStamp ptsA,
         tsuA.largeInt = tsuB.largeInt;
         tsuB.largeInt = temp;
     }
-    LONGLONG diff = tsuB.largeInt.QuadPart - tsuA.largeInt.QuadPart;
+    return tsuB.largeInt.QuadPart - tsuA.largeInt.QuadPart;
+}
+korl_internal void _korl_time_timeStampExtractDifference(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB, 
+                                                         u$* out_minutes, u8* out_seconds, u16* out_milliseconds, u16* out_microseconds)
+{
+    LONGLONG countDiff = _korl_time_timeStampCountDifference(ptsA, ptsB);
     const LONGLONG perfCountPerMinute      = _korl_time_perfCounterHz.QuadPart * 60;
     const LONGLONG perfCountPerMilliSecond = _korl_time_perfCounterHz.QuadPart / 1000;
     const LONGLONG perfCountPerMicroSecond = _korl_time_perfCounterHz.QuadPart / 1000000;
-    *out_minutes = diff / perfCountPerMinute;
-    diff %= perfCountPerMinute;
-    *out_seconds = korl_checkCast_i$_to_u8(diff / _korl_time_perfCounterHz.QuadPart);
-    diff %= _korl_time_perfCounterHz.QuadPart;
-    *out_milliseconds = korl_checkCast_i$_to_u16(diff / perfCountPerMilliSecond);
-    diff %= perfCountPerMilliSecond;
-    *out_microseconds = korl_checkCast_i$_to_u16(diff / perfCountPerMicroSecond);
+    *out_minutes = countDiff / perfCountPerMinute;
+    countDiff %= perfCountPerMinute;
+    *out_seconds = korl_checkCast_i$_to_u8(countDiff / _korl_time_perfCounterHz.QuadPart);
+    countDiff %= _korl_time_perfCounterHz.QuadPart;
+    *out_milliseconds = korl_checkCast_i$_to_u16(countDiff / perfCountPerMilliSecond);
+    countDiff %= perfCountPerMilliSecond;
+    *out_microseconds = korl_checkCast_i$_to_u16(countDiff / perfCountPerMicroSecond);
 }
 korl_internal void korl_time_initialize(void)
 {
     korl_memory_zero(&_korl_time_context, sizeof(_korl_time_context));
-    _korl_time_context.allocatorHandle    = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64));
-    _korl_time_context.timeProbesCapacity = 128;
+    _korl_time_context.allocatorHandle    = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(128));
+    _korl_time_context.timeProbesCapacity = 1024;/*comes out to ~48kB*/
     _korl_time_context.timeProbes         = korl_allocate(_korl_time_context.allocatorHandle, _korl_time_context.timeProbesCapacity * sizeof(*_korl_time_context.timeProbes));
     /* According to MSDN, this function is _guaranteed_ to succeed on all 
         versions of Windows >= XP, so we really should ensure that it does 
@@ -148,7 +152,7 @@ korl_internal void korl_time_probeLogReport(void)
      *  ║ mm:ss'mmm"uuu ----[probe_label] function_name; file_name.c:line
      */
     korl_assert(_korl_time_context.timeProbeStackDepth == 0);
-    korl_log(INFO, "╔════ Time probes report ═════ Duration format: mm:ss'mmm\"uuu ═════════════╗");
+    korl_log(INFO, "╔════ ⏲ Time Probes Report ═════ Duration Format: MM:ss'mmm\"uuu ═════════════╗");
     /* Before logging the actual report, let's do a pass to gather some metrics 
         to improve the appearance of the final report. */
     u$ longestProbeLabel = 0;
@@ -156,13 +160,18 @@ korl_internal void korl_time_probeLogReport(void)
     u$ deepestProbeDepth = 0;
     Korl_Time_ProbeHandle timeProbeStack[_KORL_TIME_PROBE_STACK_DEPTH_MAX];
     u$ timeProbeStackDepth = 0;
-    u$* timeProbeDirectChildren = korl_allocate(_korl_time_context.allocatorHandle, _korl_time_context.timeProbesCount * sizeof(*timeProbeDirectChildren));
+    u$*       timeProbeDirectChildren = korl_allocate(_korl_time_context.allocatorHandle, _korl_time_context.timeProbesCount * sizeof(*timeProbeDirectChildren));
     korl_assert(timeProbeDirectChildren);
+    LONGLONG* timeProbeCoverageCounts = korl_allocate(_korl_time_context.allocatorHandle, _korl_time_context.timeProbesCount * sizeof(*timeProbeCoverageCounts));
+    korl_assert(timeProbeCoverageCounts);
     for(Korl_Time_ProbeHandle tpi = 0; tpi < _korl_time_context.timeProbesCount; tpi++)
     {
         const _Korl_Time_Probe* timeProbe = &_korl_time_context.timeProbes[tpi];
         if(timeProbe->parent)
+        {
             timeProbeDirectChildren[timeProbe->parent - 1]++;
+            timeProbeCoverageCounts[timeProbe->parent - 1] += _korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd);
+        }
         if(timeProbe->label)
             longestProbeLabel = KORL_MATH_MAX(longestProbeLabel, korl_memory_stringSize(timeProbe->label));
         longestProbeFunction = KORL_MATH_MAX(longestProbeFunction, korl_memory_stringSize(timeProbe->function));
@@ -173,12 +182,24 @@ korl_internal void korl_time_probeLogReport(void)
     }
     /* okay, now we can print the full report, including flex juice 😎 */
     const u$ bufferDurationSize = 13/*duration time as described*/ + 2*deepestProbeDepth/*spacing required for probe depth tabbing style*/ + 1/*null terminator*/;
-    wchar_t* bufferDuration = korl_allocate(_korl_time_context.allocatorHandle, bufferDurationSize * sizeof(wchar_t));
+    wchar_t* bufferDuration = korl_allocate(_korl_time_context.allocatorHandle, bufferDurationSize * sizeof(*bufferDuration));
     korl_assert(bufferDuration);
+    // print help labels at the top so the reader can understand the report //
+    korl_log(INFO, "║ %*ws┌probe duration", 
+             (bufferDurationSize/2) - 1/*null terminator*/, L"");
+    korl_log(INFO, "║ %*ws│%*ws ┌coverage%%: what percentage of the duration is accounted for by child probes", 
+             (bufferDurationSize/2) - 1/*null terminator*/                       , L"", 
+             bufferDurationSize - ((bufferDurationSize/2) - 1/*null terminator*/), L"");
+    korl_log(INFO, "║ %*ws│%*ws │   %*ws┌probe label", 
+             (bufferDurationSize/2) - 1/*null terminator*/                       , L"", 
+             bufferDurationSize - ((bufferDurationSize/2) - 1/*null terminator*/), L"", 
+             longestProbeLabel/2                                                 , L"");
+    // print the actual report for each time probe //
     timeProbeStackDepth = 0;
     for(Korl_Time_ProbeHandle tpi = 0; tpi < _korl_time_context.timeProbesCount; tpi++)
     {
         const _Korl_Time_Probe*const timeProbe = &_korl_time_context.timeProbes[tpi];
+        /* assemble the formatted duration string for this probe */
         _korl_time_timeStampExtractDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd, 
                                               &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
         timeDiffMinutes = KORL_MATH_CLAMP(timeDiffMinutes, 0, 99);
@@ -213,18 +234,22 @@ korl_internal void korl_time_probeLogReport(void)
         }
         if(timeProbe->parent)
             timeProbeDirectChildren[timeProbe->parent - 1]--;
-        korl_log(INFO, "║ %ws [%-*ws] %-*ws; %ws:%i",
-                 bufferDuration, 
+        /**/
+        const f64 probeCoverageRatio = KORL_C_CAST(f64, timeProbeCoverageCounts[tpi]) 
+                                     / KORL_C_CAST(f64, _korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd));
+        korl_log(INFO, "║ %ws %3hhu%% [%-*ws] %-*ws; %ws:%i",
+                 bufferDuration, KORL_C_CAST(u8, probeCoverageRatio * 100), 
                  longestProbeLabel, timeProbe->label ? timeProbe->label : L"",
                  longestProbeFunction, timeProbe->function, file, timeProbe->line);
         timeProbeStack[timeProbeStackDepth++] = tpi + 1;
     }
     korl_free(_korl_time_context.allocatorHandle, bufferDuration);
+    korl_free(_korl_time_context.allocatorHandle, timeProbeCoverageCounts);
     korl_free(_korl_time_context.allocatorHandle, timeProbeDirectChildren);
     const PlatformTimeStamp timeStampEnd = korl_timeStamp();
     _korl_time_timeStampExtractDifference(timeStampStart, timeStampEnd, 
                                           &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
-    korl_log(INFO, "╚════ END of time probe report!  report time taken: %02llu:%02hhu'%03hu\"%03hu ═════════╝",
+    korl_log(INFO, "╚═════ END of time probe report!  Report time taken: %02llu:%02hhu'%03hu\"%03hu ═════════╝",
              timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds);
 }
 korl_internal void korl_time_probeReset(void)

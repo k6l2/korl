@@ -135,7 +135,7 @@ korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandl
 {
     const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
-    wchar_t*const result = (wchar_t*)korl_allocate(allocatorHandle, bufferSize * sizeof(wchar_t));
+    wchar_t*const result = (wchar_t*)korl_allocate(allocatorHandle, bufferSize * sizeof(*result));
     korl_assert(result);
     const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
     korl_assert(charactersWritten == bufferSize - 1);

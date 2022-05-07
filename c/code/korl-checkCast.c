@@ -21,6 +21,21 @@ korl_internal u32 korl_checkCast_u$_to_u32(u$ x)
     korl_assert(x <= 0xFFFFFFFF);
     return KORL_C_CAST(u32, x);
 }
+korl_internal i8 korl_checkCast_u$_to_i8(u$ x)
+{
+    korl_assert(x <= 0x7F);
+    return KORL_C_CAST(i8, x);
+}
+korl_internal i16 korl_checkCast_u$_to_i16(u$ x)
+{
+    korl_assert(x <= 0x7FFF);
+    return KORL_C_CAST(i16, x);
+}
+korl_internal i32 korl_checkCast_u$_to_i32(u$ x)
+{
+    korl_assert(x <= 0x7FFFFFFF);
+    return KORL_C_CAST(i32, x);
+}
 korl_internal i$ korl_checkCast_u$_to_i$(u$ x)
 {
     korl_shared_const u$ MAX_I$ = ((u$)(-1)) >> 1;

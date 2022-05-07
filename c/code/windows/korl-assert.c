@@ -22,8 +22,8 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)
             probably only care about the first one anyway, since all execution 
             after this is suspect */
         _korl_assert_context.firstAssertLogged = true;
-        korl_log(ERROR, "ASSERT FAILED: \"%ls\" {%i|%ls}", 
-                 conditionString, lineNumber, cStringFileName);
+        korl_log(ERROR, "ASSERT FAILED: \"%ls\" {%ls:%i}", 
+                 conditionString, cStringFileName, lineNumber);
     }
     if(IsDebuggerPresent())
     {
