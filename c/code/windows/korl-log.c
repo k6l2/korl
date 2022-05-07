@@ -7,7 +7,6 @@
 #include "korl-checkCast.h"
 #include "korl-file.h"
 #include <stdio.h>// for freopen_s
-#include <locale.h>// for setlocale
 /* NOTE:  Windows implementation of %S & %s is NON-STANDARD, so as with here, we 
     need to make sure to _never_ use just %s or %S, and instead opt to use 
     explicit string character width specifiers such as %hs or %ls.
