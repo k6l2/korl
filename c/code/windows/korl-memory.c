@@ -187,7 +187,7 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
     const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
     if(KORL_C_CAST(u8*, allocator->nextAllocationAddress) + allocationPages*pageBytes > allocatorEnd)
     {
-        korl_log(WARNING, "linear allocator out of memory");
+        korl_log(WARNING, "linear allocator out of memory");//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
         goto protectAllocator_return_allocationAddress;
     }
     /* commit the pages of this allocation */
@@ -223,7 +223,7 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
     }
     /* update allocator's metrics */
     u32*const newAllocationOffset = KORL_MEMORY_POOL_ADD(allocator->allocationOffsets);
-    allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocationAddress) + allocationPages*pageBytes;
+    allocator->nextAllocationAddress = KORL_C_CAST(u8*, metaPageAddress) + allocationPages*pageBytes;
     *newAllocationOffset             = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, allocationAddress) - KORL_C_CAST(u8*, allocator));
 protectAllocator_return_allocationAddress:
     /* protect the allocator pages until the time comes to actually use it */
@@ -297,6 +297,31 @@ korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, v
         /* if the allocator no longer has any allocations, we can safely start 
             re-using memory from the beginning of the allocator again */
         allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
+    else
+    {
+        /* set the next allocation address to be immediately after the current 
+            highest offset allocation */
+        u32 highestOffset = 0;
+        for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); ++i)
+            highestOffset = KORL_MATH_MAX(highestOffset, allocator->allocationOffsets[i]);
+        void*const highestAllocation = KORL_C_CAST(u8*, allocator) + highestOffset;
+        _Korl_Memory_AllocationMeta*const highestAllocationMeta = 
+            KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, highestAllocation) - pageBytes);
+        {
+            DWORD oldProtect;
+            const BOOL resultVirtualProtect = VirtualProtect(highestAllocationMeta, sizeof(*highestAllocationMeta), PAGE_READWRITE, &oldProtect);
+            if(!resultVirtualProtect)
+                korl_logLastError("VirtualProtect failed!");
+            korl_assert(oldProtect == PAGE_NOACCESS);
+        }
+        const u$ highestAllocationPages = ((highestAllocationMeta->bytes + (pageBytes - 1)) / pageBytes);// _excluding_ the meta data page
+        allocator->nextAllocationAddress = KORL_C_CAST(u8*, highestAllocation) + highestAllocationPages*pageBytes;
+        {
+            DWORD oldProtect;
+            korl_assert(VirtualProtect(highestAllocationMeta, sizeof(*highestAllocationMeta), PAGE_NOACCESS, &oldProtect));
+            korl_assert(oldProtect == PAGE_READWRITE);
+        }
+    }
     /* protect the allocator pages until the time comes to actually use it */
     {
         DWORD oldProtect;

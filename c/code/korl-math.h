@@ -2,7 +2,7 @@
 #include "korl-globalDefines.h"
 #define KORL_PI32 3.14159f
 #define KORL_MATH_CLAMP(x, min, max) \
-    ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
+    ((x) <= (min) ? (min) : ((x) > (max) ? (max) : (x)))
 #define KORL_MATH_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define KORL_MATH_MAX(a,b) ((a) > (b) ? (a) : (b))
 typedef union Korl_Math_V2u32

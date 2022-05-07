@@ -24,7 +24,7 @@
 	- WHERE do all our allocations originate?
 	- report any memory leaks (without manually cleaning them up) just before 
 	  execution of the program ends
-[ ] time metrics
+[x] time metrics
 	- add thread to time metrics
 	- "start" a time probe recording period (frames)
 	- "probe" arbitrary sections of code using labels & using thread ID

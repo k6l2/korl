@@ -7,13 +7,14 @@
 #include "korl-checkCast.h"
 #include "korl-file.h"
 #include <stdio.h>// for freopen_s
+#include <locale.h>// for setlocale
 /* NOTE:  Windows implementation of %S & %s is NON-STANDARD, so as with here, we 
     need to make sure to _never_ use just %s or %S, and instead opt to use 
     explicit string character width specifiers such as %hs or %ls.
     Source: https://stackoverflow.com/a/10001238
     String format documentation can be found here:
     https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-170#width */
-#define _KORL_LOG_META_DATA_STRING L"{%-7ls|%02i:%02i'%02i\"%03i|%5i|%ls|%ls} "
+#define _KORL_LOG_META_DATA_STRING L"╟%-7ls┆%02i:%02i'%02i\"%03i┆%5i┆%ls┆%ls╢ "
 #define _KORL_LOG_FILE_ROTATION_MAX 10
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MIN = 1024*sizeof(wchar_t);
 korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*1024*sizeof(wchar_t);// about 2 megabytes
@@ -54,7 +55,7 @@ korl_internal unsigned _korl_log_countFormatSubstitutions(const wchar_t* format)
     {
         if(*f != '%')
             continue;
-        const wchar_t nextChar = *(f+1);
+        wchar_t nextChar = *(f+1);
         /* for now, let's just make it illegal to have a trailing '%' at the end 
             of the format string */
         korl_assert(nextChar);
@@ -65,10 +66,19 @@ korl_internal unsigned _korl_log_countFormatSubstitutions(const wchar_t* format)
             f++;
         else
         {
-            /* if the current character is a '%', and there is a next 
-                character, and the next character is NOT a '%', that 
-                means this must be a variable substitution */
-            formatSubstitutions++;
+            /* check if the next character is a flag */
+            if(nextChar == '#' || nextChar == '0' || nextChar == '-' || nextChar == '+' || nextChar == ' ')
+            {
+                // consume the flag character //
+                f++;
+                nextChar = *(f+1);
+                korl_assert(nextChar);
+            }
+            /* check if next character is a width specifier */
+            if(nextChar == '*')
+                formatSubstitutions++;// parameter needed for width specifier
+            //KORL-ISSUE-000-000-051: countFormatSubstitutions: take precision '*' into account
+            formatSubstitutions++;// parameter needed for the format specifier
             korl_assert(formatSubstitutions != 0);//check for overflow
         }
     }
@@ -101,8 +111,7 @@ korl_internal void _korl_log_vaList(
     case KORL_LOG_LEVEL_VERBOSE:{cStringLogLevel = L"VERBOSE"; break;}
     }
     // only print the file name, not the full path!
-    for(const wchar_t* fileNameCursor = cStringFileName; *fileNameCursor; 
-    fileNameCursor++)
+    for(const wchar_t* fileNameCursor = cStringFileName; *fileNameCursor; fileNameCursor++)
         if(*fileNameCursor == '\\' || *fileNameCursor == '/')
             cStringFileName = fileNameCursor + 1;
     //  //
@@ -199,7 +208,16 @@ korl_internal void _korl_log_vaList(
         // if system debugger is also not present, OutputDebugString does nothing
         OutputDebugString(logLineBuffer);
     if(_korl_log_context.useLogOutputConsole)
-        korl_assert(0 <= fwprintf(stdout, L"%ls", logLineBuffer));
+    {
+        const HANDLE handleConsole = GetStdHandle(logLevel > KORL_LOG_LEVEL_ERROR 
+                                                  ? STD_OUTPUT_HANDLE 
+                                                  : STD_ERROR_HANDLE);
+        korl_assert(handleConsole != INVALID_HANDLE_VALUE);
+        korl_assert(0 != WriteConsole(handleConsole, logLineBuffer, 
+                                      korl_checkCast_u$_to_u32(logLineSize), 
+                                      NULL/*out_charsWritten; I don't care*/, 
+                                      NULL/*reserved; _must_ be NULL*/));
+    }
     /* we're done with the transient buffer, so we can free it now */
     EnterCriticalSection(&(context->criticalSection));
     /* ----- write logLineBuffer to log file ----- */
@@ -336,6 +354,9 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     korl_assert(korl_file_openAsync(KORL_FILE_PATHTYPE_LOCAL_DATA, 
                                     logFileName, 
                                     &context->fileDescriptor));
+    /* info about BOMs: https://unicode.org/faq/utf_bom.html */
+    korl_shared_const u8 BOM_UTF16_LITTLE_ENDIAN[] = { 0xFF,0xFE };// Byte Order Marker to indicate UTF-16LE; must be written to the beginnning of the file!
+    korl_file_write(context->fileDescriptor, BOM_UTF16_LITTLE_ENDIAN, sizeof(BOM_UTF16_LITTLE_ENDIAN));
     /* It is highly likely that we have processed logs before initiateFile was 
         called, so we must now asynchronously flush the contents of the log 
         buffer to the log file. */

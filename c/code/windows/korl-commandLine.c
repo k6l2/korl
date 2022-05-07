@@ -1,9 +1,8 @@
 #include "korl-commandLine.h"
 #include "korl-log.h"
 #include "korl-assert.h"
-korl_internal bool korl_commandLine_parse(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount)
+korl_internal void korl_commandLine_parse(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount)
 {
-    bool resultEndProgram = false;
     /* initialize argument data */
     for(u$ i = 0; i < descriptorCount; i++)
         switch(descriptors[i].type)
@@ -21,11 +20,6 @@ korl_internal bool korl_commandLine_parse(const Korl_CommandLine_ArgumentDescrip
     korl_assert(argv);
     for(int a = 0; a < argc; a++)
     {
-        if(0 == korl_memory_stringCompare(argv[a], L"--help"))
-        {
-            resultEndProgram = true;
-            break;
-        }
         for(u$ i = 0; i < descriptorCount; i++)
             if(    0 == korl_memory_stringCompare(argv[a], descriptors[i].argumentAlias)
                 || 0 == korl_memory_stringCompare(argv[a], descriptors[i].argument))
@@ -40,7 +34,6 @@ korl_internal bool korl_commandLine_parse(const Korl_CommandLine_ArgumentDescrip
                 }
     }
     korl_assert(LocalFree(argv) == NULL);
-    return resultEndProgram;
 }
 korl_internal void korl_commandLine_logUsage(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount)
 {

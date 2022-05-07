@@ -51,6 +51,9 @@ rem     disable annoying verbose compiler output
 set "_CL_=%_CL_% /nologo"
 rem     ONLY compile; do not link!
 set "_CL_=%_CL_% /c"
+rem     set source & execution character set to UTF-8; required in order to 
+rem     correctly store & display unicode characters apparently 😒
+set "_CL_=%_CL_% /utf-8"
 rem     treat warnings as errors
 set "_CL_=%_CL_% /WX"
 rem     enable all warnings

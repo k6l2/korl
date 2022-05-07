@@ -1740,7 +1740,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     /* if we got an invalid next swapchain image index, just do nothing */
     if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         goto done;
-    _korl_vulkan_flushBatchPipeline();
+    korl_time_probe("flush batch pipeline", _korl_vulkan_flushBatchPipeline(););
     vkCmdEndRenderPass(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex]);
     _KORL_VULKAN_CHECK(
         vkEndCommandBuffer(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex]));
@@ -1751,6 +1751,7 @@ korl_internal void korl_vulkan_frameEnd(void)
         { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     VkSemaphore submitGraphicsSignalSemaphores[] = 
         { surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreRenderDone };
+    korl_time_probe("submit gfx cmds to gfx q", 
     KORL_ZERO_STACK(VkSubmitInfo, submitInfoGraphics);
     submitInfoGraphics.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfoGraphics.waitSemaphoreCount   = korl_arraySize(submitGraphicsWaitSemaphores);
@@ -1769,7 +1770,9 @@ korl_internal void korl_vulkan_frameEnd(void)
         vkQueueSubmit(
             context->queueGraphics, 1, &submitInfoGraphics, 
             surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fence));
+    );//time_probe
     /* present the swap chain */
+    korl_time_probe("present swap chain", 
     VkSwapchainKHR presentInfoSwapChains[] = { surfaceContext->swapChain };
     KORL_ZERO_STACK(VkPresentInfoKHR, presentInfo);
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1779,6 +1782,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     presentInfo.pSwapchains        = presentInfoSwapChains;
     presentInfo.pImageIndices      = &surfaceContext->frameSwapChainImageIndex;
     _KORL_VULKAN_CHECK(vkQueuePresentKHR(context->queuePresent, &presentInfo));
+    );//time_probe
     /* advance to the next WIP frame index */
     surfaceContext->wipFrameCurrent = 
         (surfaceContext->wipFrameCurrent + 1) % 

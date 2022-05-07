@@ -15,5 +15,5 @@ typedef struct Korl_CommandLine_ArgumentDescriptor
 /** \return \c true if the program should immediately end execution, such as is 
  * the case when the program is called with the \c --help argument.  Returns 
  * \c false otherwise. */
-korl_internal bool korl_commandLine_parse(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount);
+korl_internal void korl_commandLine_parse   (const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount);
 korl_internal void korl_commandLine_logUsage(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount);
