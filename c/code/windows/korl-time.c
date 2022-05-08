@@ -152,7 +152,7 @@ korl_internal void korl_time_probeLogReport(void)
      *  ║ mm:ss'mmm"uuu ----[probe_label] function_name; file_name.c:line
      */
     korl_assert(_korl_time_context.timeProbeStackDepth == 0);
-    korl_log(INFO, "╔════ ⏲ Time Probes Report ═════ Duration Format: MM:ss'mmm\"uuu ═════════════╗");
+    korl_log(INFO, "╔════ ⏲ Time Probes Report ═════ Duration Format: MM:ss'mmm\"uuu ════════════╗");
     /* Before logging the actual report, let's do a pass to gather some metrics 
         to improve the appearance of the final report. */
     u$ longestProbeLabel = 0;

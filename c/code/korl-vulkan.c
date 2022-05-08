@@ -9,6 +9,7 @@
 #include "korl-assetCache.h"
 #include "korl-vulkan-common.h"
 #include "korl-stb-image.h"
+#include "korl-time.h"
 #if defined(_WIN32)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(_WIN32)
@@ -1990,7 +1991,7 @@ korl_internal void korl_vulkan_setProjectionFov(
         korl_math_m4f32_projectionFov(horizontalFovDegrees, viewportWidthOverHeight, clipNear, clipFar);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2030,7 +2031,7 @@ korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRa
         korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2075,7 +2076,7 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
         korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2109,7 +2110,7 @@ korl_internal void korl_vulkan_setView(
     const Korl_Math_M4f32 m4f32View = korl_math_m4f32_lookAt(&positionEye, &positionTarget, &worldUpNormal);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2170,7 +2171,7 @@ korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math
     const Korl_Math_M4f32 m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(rotation, scale, position);
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2248,7 +2249,7 @@ done_conditionallySelectLoadedAsset:
         the batch pipeline doesn't have any pending geometry for the current 
         descriptor set index 
         @vulkan-set-batch-texture-copy-pasta */
-    _korl_vulkan_batchDescriptorSetFlush();
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
     /* select the loaded texture device asset for any future textured draw operations */
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2333,7 +2334,9 @@ korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandl
         the batch pipeline doesn't have any pending geometry for the current 
         descriptor set index 
         @vulkan-set-batch-texture-copy-pasta */
-    _korl_vulkan_batchDescriptorSetFlush();
+    korl_time_probeStart(batch_descriptor_set_flush);
+    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    korl_time_probeStop(batch_descriptor_set_flush);
     /* select the loaded texture device asset for any future textured draw operations */
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

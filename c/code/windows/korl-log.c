@@ -24,7 +24,8 @@ typedef struct _Korl_Log_AsyncWriteDescriptor
 } _Korl_Log_AsyncWriteDescriptor;
 typedef struct _Korl_Log_Context
 {
-    Korl_Memory_AllocatorHandle allocatorHandle;
+    Korl_Memory_AllocatorHandle allocatorHandlePersistent;
+    Korl_Memory_AllocatorHandle allocatorHandleTransient;//KORL-ISSUE-000-000-052: log: potentially unnecessary allocator
     CRITICAL_SECTION criticalSection;
     u$ bufferBytes;
     /** we will split the log buffer into two parts:
@@ -100,7 +101,6 @@ korl_internal unsigned _korl_log_countFormatSubstitutions(const wchar_t* format)
                 if(nextChar == '*')
                     formatSubstitutions++;// parameter needed for precision specifier
             }
-            //KORL-ISSUE-000-000-051: countFormatSubstitutions: take precision '*' into account
             formatSubstitutions++;// parameter needed for the format specifier
             korl_assert(formatSubstitutions != 0);//check for overflow
         }
@@ -150,8 +150,18 @@ korl_internal void _korl_log_vaList(
         ? bufferSizeFormat 
         : bufferSizeMetaTag + bufferSizeFormat;//_excluding_ the null terminator
     EnterCriticalSection(&(context->criticalSection));
+    /* before allocating more from the transient buffer, let's see if we can 
+        clean up any pending async buffers so that we can prevent the linear 
+        allocator from overflowing */
+    //KORL-ISSUE-000-000-052: this code might not need to even need to exist with better allocation strategy!
+    for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors);)
+        if(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
+        {
+            korl_free(context->allocatorHandleTransient, context->asyncWriteDescriptors[i].buffer);
+            KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
+        }
     wchar_t*const logLineBuffer = KORL_C_CAST(wchar_t*, 
-        korl_allocate(context->allocatorHandle, 
+        korl_allocate(context->allocatorHandleTransient, 
                       (logLineSize + 1/*null terminator*/)*sizeof(*logLineBuffer)));
     LeaveCriticalSection(&(context->criticalSection));
     int charactersWrittenTotal = 0;
@@ -191,7 +201,7 @@ korl_internal void _korl_log_vaList(
         const u$ newBufferBytes = KORL_MATH_MIN(context->bufferBytes * 2, _KORL_LOG_BUFFER_BYTES_MAX);
         if(newBufferBytes != context->bufferBytes)
         {
-            context->buffer = KORL_C_CAST(wchar_t*, korl_reallocate(context->allocatorHandle, context->buffer, newBufferBytes));
+            context->buffer = KORL_C_CAST(wchar_t*, korl_reallocate(context->allocatorHandlePersistent, context->buffer, newBufferBytes));
             korl_assert(context->buffer);
             /* recalculate the buffer metrics */
             context->bufferBytes = newBufferBytes;
@@ -250,7 +260,7 @@ korl_internal void _korl_log_vaList(
     {
         /* clean out async write descriptors that have finished 
             until the pool has room for one more operation */
-        do
+        while (KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors))
         {
             for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors);)
                 /* I have no idea about the performance characteristics of 
@@ -261,12 +271,12 @@ korl_internal void _korl_log_vaList(
                     write operations */
                 if(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
                 {
-                    korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
+                    korl_free(context->allocatorHandleTransient, context->asyncWriteDescriptors[i].buffer);
                     KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
                 }
                 else
                     i++;
-        } while (KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
+        }
         _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
         asyncWriteDescriptor->buffer = logLineBuffer;
         //KORL-ISSUE-000-000-046: log: test to validate order of async log writes
@@ -283,7 +293,7 @@ korl_internal void _korl_log_vaList(
         context->logFileBytesWritten += logFileLineBytes;
     }
     else/* otherwise we can just free the temporary log line buffer now */
-        korl_free(context->allocatorHandle, logLineBuffer);
+        korl_free(context->allocatorHandleTransient, logLineBuffer);
     LeaveCriticalSection(&(context->criticalSection));
 logOutputDone:
     if(logLevel <= KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
@@ -308,14 +318,16 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
-    _korl_log_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4));
-    _korl_log_context.bufferBytes          = _KORL_LOG_BUFFER_BYTES_MIN;
-    _korl_log_context.buffer               = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandle, _korl_log_context.bufferBytes));
-    _korl_log_context.useLogOutputDebugger = useLogOutputDebugger;
-    _korl_log_context.useLogOutputConsole  = useLogOutputConsole;
-    _korl_log_context.useLogFileBig        = useLogFileBig;
-    _korl_log_context.logFileEnabled       = true;// assume we will use a log file eventually, until the user specifies we wont
-    _korl_log_context.disableMetaTags      = disableMetaTags;
+    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4));
+    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64));
+    _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
+    _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
+    _korl_log_context.useLogOutputDebugger      = useLogOutputDebugger;
+    _korl_log_context.useLogOutputConsole       = useLogOutputConsole;
+    _korl_log_context.useLogFileBig             = useLogFileBig;
+    _korl_log_context.logFileEnabled            = true;// assume we will use a log file eventually, until the user specifies we wont
+    _korl_log_context.disableMetaTags           = disableMetaTags;
+    korl_assert(_korl_log_context.buffer);
     InitializeCriticalSection(&_korl_log_context.criticalSection);
     /* if we need to ouptut logs to a console, initialize the console here 
         Sources:
@@ -393,7 +405,7 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     const u$ charactersToWrite = KORL_MATH_MIN(context->bufferedCharacters, maxInitCharacters);
     if(charactersToWrite)
     {
-        wchar_t* tempBuffer = korl_allocate(context->allocatorHandle, charactersToWrite*sizeof(*(context->buffer)));
+        wchar_t* tempBuffer = korl_allocate(context->allocatorHandleTransient, charactersToWrite*sizeof(*(context->buffer)));
         korl_memory_copy(tempBuffer, context->buffer, charactersToWrite*sizeof(*(context->buffer)));
         korl_assert(!KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
         _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
@@ -407,14 +419,10 @@ korl_internal void korl_log_shutDown(void)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
     if(!(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE))
-    {
         goto skipFileCleanup;
-    }
     for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors); i++)
-    {
         korl_assert(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, KORL_U32_MAX));
-        korl_free(context->allocatorHandle, context->asyncWriteDescriptors[i].buffer);
-    }
+    korl_memory_allocator_empty(context->allocatorHandleTransient);
     if(context->useLogFileBig)
     {
         /* we don't have to do any sync writing here with the circular buffer, 

@@ -468,7 +468,8 @@ korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUser
         const u$ allocationPagesOld = ((allocationMeta->bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
         {
             DWORD oldProtect;
-            korl_assert(VirtualProtect(allocationMeta, KORL_MATH_MAX(allocationPagesOld, allocationPages) * pageBytes, PAGE_NOACCESS, &oldProtect));
+            if(!VirtualProtect(allocationMeta, allocationPagesOld * pageBytes, PAGE_NOACCESS, &oldProtect))
+                korl_logLastError("VirtualProtect failed!");
             korl_assert(oldProtect == PAGE_READWRITE);
         }
         /* ensure that if the allocation grows, all the pages are comitted 

@@ -5,6 +5,7 @@
 #include "korl-memoryPool.h"
 #include "korl-vulkan.h"
 #include "korl-assert.h"
+#include "korl-time.h"
 #include "stb/stb_truetype.h"
 typedef struct _Korl_Gfx_FontCache
 {
@@ -330,7 +331,9 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 }
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
+    korl_time_probeStart(text_generate_mesh);
     _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    korl_time_probeStop(text_generate_mesh);
     if(batch->_vertexCount <= 0)
     {
         korl_log(WARNING, "attempted batch is empty");
@@ -344,12 +347,22 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     if(batch->_assetNameTexture)
         korl_vulkan_useImageAssetAsTexture(batch->_assetNameTexture);
     else if(batch->_assetNameFont)
+    {
+        korl_time_probeStart(vulkan_use_texture);
         korl_vulkan_useTexture(batch->_fontTextureHandle);
+        korl_time_probeStop(vulkan_use_texture);
+    }
+    korl_time_probeStart(vulkan_set_model);
     korl_vulkan_setModel(batch->_position, batch->_rotation, batch->_scale);
+    korl_time_probeStop(vulkan_set_model);
+    korl_time_probeStart(vulkan_set_depthTest);
     korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(!(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST));
+    korl_time_probeStop(vulkan_set_depthTest);
+    korl_time_probeStart(vulkan_batch);
     korl_vulkan_batch(batch->primitiveType, 
         batch->_vertexIndexCount, batch->_vertexIndices, 
         batch->_vertexCount, batch->_vertexPositions, batch->_vertexColors, batch->_vertexUvs);
+    korl_time_probeStop(vulkan_batch);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured)
 {
