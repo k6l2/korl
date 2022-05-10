@@ -36,6 +36,8 @@
 	- SEH interceptor
 	- stack overflow
 	- infinite loop (unresponsive program) detection
+	- is there a way to suspend all threads when an error is encountered?  
+		https://devblogs.microsoft.com/oldnewthing/20060223-14/?p=32173
 [x] create a window
 [ ] create a dynamic application code module
 	[ ] get rid of stored pointers

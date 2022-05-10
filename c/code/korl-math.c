@@ -143,7 +143,7 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f
 }
 korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
-    return vA.xy.x*vB.xy.y - vA.xy.y*vB.xy.x;
+    return vA.x*vB.y - vA.y*vB.x;
 }
 korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
@@ -166,11 +166,43 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, Korl_
     vA.elements[1] -= vB.elements[1];
     return vA;
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_multiply(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    vA.elements[0] *= vB.elements[0];
+    vA.elements[1] *= vB.elements[1];
+    return vA;
+}
 korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, f32 scalar)
 {
     v.elements[0] *= scalar;
     v.elements[1] *= scalar;
     return v;
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_divide(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    vA.elements[0] /= vB.elements[0];
+    vA.elements[1] /= vB.elements[1];
+    return vA;
+}
+korl_internal void korl_math_v2f32_assignAddScalar(Korl_Math_V2f32*const v, f32 scalar)
+{
+    v->elements[0] += scalar;
+    v->elements[1] += scalar;
+}
+korl_internal void korl_math_v2f32_assignSubtract(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB)
+{
+    vA->elements[0] -= vB.elements[0];
+    vA->elements[1] -= vB.elements[1];
+}
+korl_internal void korl_math_v2f32_assignSubtractScalar(Korl_Math_V2f32*const v, f32 scalar)
+{
+    v->elements[0] -= scalar;
+    v->elements[1] -= scalar;
+}
+korl_internal void korl_math_v2f32_assignMultiply(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB)
+{
+    vA->elements[0] *= vB.elements[0];
+    vA->elements[1] *= vB.elements[1];
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
@@ -214,9 +246,9 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f
 korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB)
 {
     Korl_Math_V3f32 result;
-    result.xyz.x = vA->xyz.y*vB->xyz.z - vA->xyz.z*vB->xyz.y;
-    result.xyz.y = vA->xyz.z*vB->xyz.x - vA->xyz.x*vB->xyz.z;
-    result.xyz.z = vA->xyz.x*vB->xyz.y - vA->xyz.y*vB->xyz.x;
+    result.x = vA->y*vB->z - vA->z*vB->y;
+    result.y = vA->z*vB->x - vA->x*vB->z;
+    result.z = vA->x*vB->y - vA->y*vB->x;
     return result;
 }
 korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB)
@@ -287,11 +319,11 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Mat
     if(!axisIsNormalized)
         axis = korl_math_v3f32_normal(axis);
     const f32 sine = sinf(radians/2);
-    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {
-        sine * axis.xyz.x, 
-        sine * axis.xyz.y, 
-        sine * axis.xyz.z, 
-        cosf(radians/2) }};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){
+        sine * axis.x, 
+        sine * axis.y, 
+        sine * axis.z, 
+        cosf(radians/2) };
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
@@ -299,61 +331,61 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quate
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {
-        qA.xyzw.w*qB.xyzw.x + qA.xyzw.x*qB.xyzw.w + qA.xyzw.y*qB.xyzw.z - qA.xyzw.z*qB.xyzw.y,
-        qA.xyzw.w*qB.xyzw.y - qA.xyzw.x*qB.xyzw.z + qA.xyzw.y*qB.xyzw.w + qA.xyzw.z*qB.xyzw.x,
-        qA.xyzw.w*qB.xyzw.z + qA.xyzw.x*qB.xyzw.y - qA.xyzw.y*qB.xyzw.x + qA.xyzw.z*qB.xyzw.w,
-        qA.xyzw.w*qB.xyzw.w - qA.xyzw.x*qB.xyzw.x - qA.xyzw.y*qB.xyzw.y - qA.xyzw.z*qB.xyzw.z }};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){
+        qA.w*qB.x + qA.x*qB.w + qA.y*qB.z - qA.z*qB.y,
+        qA.w*qB.y - qA.x*qB.z + qA.y*qB.w + qA.z*qB.x,
+        qA.w*qB.z + qA.x*qB.y - qA.y*qB.x + qA.z*qB.w,
+        qA.w*qB.w - qA.x*qB.x - qA.y*qB.y - qA.z*qB.z };
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q)
 {
-	return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {-q.xyzw.x, -q.xyzw.y, -q.xyzw.z, q.xyzw.w}};
+	return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){-q.x, -q.y, -q.z, q.w};
 }
 korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized)
 {
     if(!qIsNormalized)
         q = korl_math_v4f32_normal(q);
     q = korl_math_quaternion_hamilton(
-            korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {v.xy.x, v.xy.y, 0, 0}}), 
+            korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){v.x, v.y, 0.f, 0.f}), 
             korl_math_quaternion_conjugate(q));
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){.xy = {q.xyzw.x, q.xyzw.y}};
+    return q.xy;
 }
 korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized)
 {
     if(!qIsNormalized)
         q = korl_math_v4f32_normal(q);
     q = korl_math_quaternion_hamilton(
-        korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.xyzw = {v.xyz.x, v.xyz.y, v.xyz.z, 0}}), 
+        korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){v.x, v.y, v.z, 0.f}), 
         korl_math_quaternion_conjugate(q));
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xyz = {q.xyzw.x, q.xyzw.y, q.xyzw.z}};
+    return q.xyz;
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation)
 {
     KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
     /* https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix */
-    const f32 sqW = qRotation.xyzw.w*qRotation.xyzw.w;
-    const f32 sqX = qRotation.xyzw.x*qRotation.xyzw.x;
-    const f32 sqY = qRotation.xyzw.y*qRotation.xyzw.y;
-    const f32 sqZ = qRotation.xyzw.z*qRotation.xyzw.z;
+    const f32 sqW = qRotation.w*qRotation.w;
+    const f32 sqX = qRotation.x*qRotation.x;
+    const f32 sqY = qRotation.y*qRotation.y;
+    const f32 sqZ = qRotation.z*qRotation.z;
     const f32 inverseSquareLength = 1 / (sqW + sqX + sqY + sqZ);
-    result.rc.r0c0 = ( sqX - sqY - sqZ + sqW) * inverseSquareLength;
-    result.rc.r1c1 = (-sqX + sqY - sqZ + sqW) * inverseSquareLength;
-    result.rc.r2c2 = (-sqX - sqY + sqZ + sqW) * inverseSquareLength;
-    const f32 temp1 = qRotation.xyzw.x*qRotation.xyzw.y;
-    const f32 temp2 = qRotation.xyzw.z*qRotation.xyzw.w;
-    result.rc.r1c0 = 2*(temp1 + temp2) * inverseSquareLength;
-    result.rc.r0c1 = 2*(temp1 - temp2) * inverseSquareLength;
-    const f32 temp3 = qRotation.xyzw.x*qRotation.xyzw.z;
-    const f32 temp4 = qRotation.xyzw.y*qRotation.xyzw.w;
-    result.rc.r2c0 = 2*(temp3 - temp4) * inverseSquareLength;
-    result.rc.r0c2 = 2*(temp3 + temp4) * inverseSquareLength;
-    const f32 temp5 = qRotation.xyzw.y*qRotation.xyzw.z;
-    const f32 temp6 = qRotation.xyzw.x*qRotation.xyzw.w;
-    result.rc.r2c1 = 2*(temp5 + temp6) * inverseSquareLength;
-    result.rc.r1c2 = 2*(temp5 - temp6) * inverseSquareLength;
-    result.rc.r0c3 = result.rc.r1c3 = result.rc.r2c3 = 0;
-    result.rc.r3c0 = result.rc.r3c1 = result.rc.r3c2 = 0;
-    result.rc.r3c3 = 1;
+    result.r0c0 = ( sqX - sqY - sqZ + sqW) * inverseSquareLength;
+    result.r1c1 = (-sqX + sqY - sqZ + sqW) * inverseSquareLength;
+    result.r2c2 = (-sqX - sqY + sqZ + sqW) * inverseSquareLength;
+    const f32 temp1 = qRotation.x*qRotation.y;
+    const f32 temp2 = qRotation.z*qRotation.w;
+    result.r1c0 = 2*(temp1 + temp2) * inverseSquareLength;
+    result.r0c1 = 2*(temp1 - temp2) * inverseSquareLength;
+    const f32 temp3 = qRotation.x*qRotation.z;
+    const f32 temp4 = qRotation.y*qRotation.w;
+    result.r2c0 = 2*(temp3 - temp4) * inverseSquareLength;
+    result.r0c2 = 2*(temp3 + temp4) * inverseSquareLength;
+    const f32 temp5 = qRotation.y*qRotation.z;
+    const f32 temp6 = qRotation.x*qRotation.w;
+    result.r2c1 = 2*(temp5 + temp6) * inverseSquareLength;
+    result.r1c2 = 2*(temp5 - temp6) * inverseSquareLength;
+    result.r0c3 = result.r1c3 = result.r2c3 = 0;
+    result.r3c0 = result.r3c1 = result.r3c2 = 0;
+    result.r3c3 = 1;
     return result;
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vTranslation)
@@ -361,9 +393,9 @@ korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quat
     //KORL-PERFORMANCE-000-000-004
     Korl_Math_M4f32 m4Rotation = korl_math_makeM4f32_rotate(qRotation);
     Korl_Math_M4f32 m4Translation = KORL_MATH_M4F32_IDENTITY;
-    m4Translation.rc.r0c3 = vTranslation.xyz.x;
-    m4Translation.rc.r1c3 = vTranslation.xyz.y;
-    m4Translation.rc.r2c3 = vTranslation.xyz.z;
+    m4Translation.r0c3 = vTranslation.x;
+    m4Translation.r1c3 = vTranslation.y;
+    m4Translation.r2c3 = vTranslation.z;
     return korl_math_m4f32_multiply(&m4Translation, &m4Rotation);
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vScale, Korl_Math_V3f32 vTranslation)
@@ -371,13 +403,13 @@ korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math
     //KORL-PERFORMANCE-000-000-004
     Korl_Math_M4f32 m4Rotation = korl_math_makeM4f32_rotate(qRotation);
     Korl_Math_M4f32 m4Translation = KORL_MATH_M4F32_IDENTITY;
-    m4Translation.rc.r0c3 = vTranslation.xyz.x;
-    m4Translation.rc.r1c3 = vTranslation.xyz.y;
-    m4Translation.rc.r2c3 = vTranslation.xyz.z;
+    m4Translation.r0c3 = vTranslation.x;
+    m4Translation.r1c3 = vTranslation.y;
+    m4Translation.r2c3 = vTranslation.z;
     Korl_Math_M4f32 m4Scale = KORL_MATH_M4F32_IDENTITY;
-	m4Scale.rc.r0c0 = vScale.xyz.x;
-	m4Scale.rc.r1c1 = vScale.xyz.y;
-	m4Scale.rc.r2c2 = vScale.xyz.z;
+	m4Scale.r0c0 = vScale.x;
+	m4Scale.r1c1 = vScale.y;
+	m4Scale.r2c2 = vScale.z;
     Korl_Math_M4f32 m4ScaleRotate = korl_math_m4f32_multiply(&m4Rotation, &m4Scale);
     return korl_math_m4f32_multiply(&m4Translation, &m4ScaleRotate);
 }
@@ -421,11 +453,11 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
           `VK_EXT_depth_range_unrestricted` is used, but who wants to do that?)
         - clipNear maps to Z==0 in clip-space
         - clipFar  maps to Z==1 in clip-space */
-    result.rc.r0c0 = 1.f / tanHalfFov;
-    result.rc.r1c1 = viewportWidthOverHeight / tanHalfFov;
-    result.rc.r2c2 =            -clipFar  / (clipNear - clipFar);
-    result.rc.r2c3 = (clipNear * clipFar) / (clipNear - clipFar);
-    result.rc.r3c2 = 1;
+    result.r0c0 = 1.f / tanHalfFov;
+    result.r1c1 = viewportWidthOverHeight / tanHalfFov;
+    result.r2c2 =            -clipFar  / (clipNear - clipFar);
+    result.r2c3 = (clipNear * clipFar) / (clipNear - clipFar);
+    result.r3c2 = 1;
     return result;
 }
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
@@ -443,13 +475,13 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
             - zMin maps to 0
             - zMax maps to 1 */
     KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
-    result.rc.r0c0 =              2 / (xMax - xMin);
-    result.rc.r0c3 = -(xMax + xMin) / (xMax - xMin);
-    result.rc.r1c1 =              2 / (yMax - yMin);
-    result.rc.r1c3 =  (yMax + yMin) / (yMax - yMin);
-    result.rc.r2c2 =    1 / (zMin - zMax);
-    result.rc.r2c3 = zMin / (zMin - zMax);
-    result.rc.r3c3 = 1;
+    result.r0c0 =              2 / (xMax - xMin);
+    result.r0c3 = -(xMax + xMin) / (xMax - xMin);
+    result.r1c1 =              2 / (yMax - yMin);
+    result.r1c3 =  (yMax + yMin) / (yMax - yMin);
+    result.r2c2 =    1 / (zMin - zMax);
+    result.r2c3 = zMin / (zMin - zMax);
+    result.r3c3 = 1;
     return result;
 }
 korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
@@ -476,80 +508,119 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     /* additionally, we can combine the inverse camera translation into the same 
         matrix as the inverse rotation by manually doing the row-column dot 
         products ourselves, and putting them in the 4th column */
-    result.rc.r0c0 = cameraX.xyz.x; result.rc.r0c1 = cameraX.xyz.y; result.rc.r0c2 = cameraX.xyz.z; result.rc.r0c3 = -korl_math_v3f32_dot(&cameraX, positionEye);
-    result.rc.r1c0 = cameraY.xyz.x; result.rc.r1c1 = cameraY.xyz.y; result.rc.r1c2 = cameraY.xyz.z; result.rc.r1c3 = -korl_math_v3f32_dot(&cameraY, positionEye);
-    result.rc.r2c0 = cameraZ.xyz.x; result.rc.r2c1 = cameraZ.xyz.y; result.rc.r2c2 = cameraZ.xyz.z; result.rc.r2c3 = -korl_math_v3f32_dot(&cameraZ, positionEye);
+    result.r0c0 = cameraX.x; result.r0c1 = cameraX.y; result.r0c2 = cameraX.z; result.r0c3 = -korl_math_v3f32_dot(&cameraX, positionEye);
+    result.r1c0 = cameraY.x; result.r1c1 = cameraY.y; result.r1c2 = cameraY.z; result.r1c3 = -korl_math_v3f32_dot(&cameraY, positionEye);
+    result.r2c0 = cameraZ.x; result.r2c1 = cameraZ.y; result.r2c2 = cameraZ.z; result.r2c3 = -korl_math_v3f32_dot(&cameraZ, positionEye);
     return result;
 }
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y)
 {
     Korl_Math_Aabb2f32 result;
-    result.min.xy.x = KORL_MATH_MIN(p0x, p1x);
-    result.min.xy.y = KORL_MATH_MIN(p0y, p1y);
-    result.max.xy.x = KORL_MATH_MAX(p0x, p1x);
-    result.max.xy.y = KORL_MATH_MAX(p0y, p1y);
+    result.min.x = KORL_MATH_MIN(p0x, p1x);
+    result.min.y = KORL_MATH_MIN(p0y, p1y);
+    result.max.x = KORL_MATH_MAX(p0x, p1x);
+    result.max.y = KORL_MATH_MAX(p0y, p1y);
     return result;
+}
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY)
+{
+    const Korl_Math_V2f32 expandV2 = {expandX, expandY};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Aabb2f32){.min = korl_math_v2f32_subtract(aabb.min, expandV2), 
+                                                      .max = korl_math_v2f32_add     (aabb.max, expandV2)};
+}
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpandedV2(Korl_Math_V2f32 v, f32 expandX, f32 expandY)
+{
+    const Korl_Math_V2f32 expandV2 = {expandX, expandY};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Aabb2f32){.min = korl_math_v2f32_subtract(v, expandV2), 
+                                                      .max = korl_math_v2f32_add     (v, expandV2)};
+}
+korl_internal void korl_math_aabb2f32_expand(Korl_Math_Aabb2f32*const aabb, f32 expandXY)
+{
+    korl_math_v2f32_assignSubtractScalar(&aabb->min, expandXY);
+    korl_math_v2f32_assignAddScalar     (&aabb->max, expandXY);
 }
 korl_internal Korl_Math_V2f32 korl_math_aabb2f32_size(Korl_Math_Aabb2f32 aabb)
 {
-    KORL_MATH_ASSERT(aabb.max.xy.x >= aabb.min.xy.x);
-    KORL_MATH_ASSERT(aabb.max.xy.y >= aabb.min.xy.y);
+    KORL_MATH_ASSERT(aabb.max.x >= aabb.min.x);
+    KORL_MATH_ASSERT(aabb.max.y >= aabb.min.y);
     return korl_math_v2f32_subtract(aabb.max, aabb.min);
 }
 korl_internal bool korl_math_aabb2f32_contains(Korl_Math_Aabb2f32 aabb, f32 x, f32 y)
 {
-    return x >= aabb.min.xy.x && x <= aabb.max.xy.x 
-        && y >= aabb.min.xy.y && y <= aabb.max.xy.y;
+    return x >= aabb.min.x && x <= aabb.max.x 
+        && y >= aabb.min.y && y <= aabb.max.y;
 }
 korl_internal bool korl_math_aabb2f32_containsV2f32(Korl_Math_Aabb2f32 aabb, Korl_Math_V2f32 v)
 {
-    return korl_math_aabb2f32_contains(aabb, v.xy.x, v.xy.y);
+    return korl_math_aabb2f32_contains(aabb, v.x, v.y);
 }
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_union(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB)
 {
     Korl_Math_Aabb2f32 result;
-    result.min.xy.x = KORL_MATH_MIN(aabbA.min.xy.x, aabbB.min.xy.x);
-    result.min.xy.y = KORL_MATH_MIN(aabbA.min.xy.y, aabbB.min.xy.y);
-    result.max.xy.x = KORL_MATH_MAX(aabbA.max.xy.x, aabbB.max.xy.x);
-    result.max.xy.y = KORL_MATH_MAX(aabbA.max.xy.y, aabbB.max.xy.y);
+    result.min.x = KORL_MATH_MIN(aabbA.min.x, aabbB.min.x);
+    result.min.y = KORL_MATH_MIN(aabbA.min.y, aabbB.min.y);
+    result.max.x = KORL_MATH_MAX(aabbA.max.x, aabbB.max.x);
+    result.max.y = KORL_MATH_MAX(aabbA.max.y, aabbB.max.y);
     return result;
 }
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z)
 {
     Korl_Math_Aabb3f32 result;
-    result.min.xyz.x = KORL_MATH_MIN(p0x, p1x);
-    result.min.xyz.y = KORL_MATH_MIN(p0y, p1y);
-    result.min.xyz.z = KORL_MATH_MIN(p0z, p1z);
-    result.max.xyz.x = KORL_MATH_MAX(p0x, p1x);
-    result.max.xyz.y = KORL_MATH_MAX(p0y, p1y);
-    result.max.xyz.z = KORL_MATH_MAX(p0z, p1z);
+    result.min.x = KORL_MATH_MIN(p0x, p1x);
+    result.min.y = KORL_MATH_MIN(p0y, p1y);
+    result.min.z = KORL_MATH_MIN(p0z, p1z);
+    result.max.x = KORL_MATH_MAX(p0x, p1x);
+    result.max.y = KORL_MATH_MAX(p0y, p1y);
+    result.max.z = KORL_MATH_MAX(p0z, p1z);
     return result;
 }
 korl_internal Korl_Math_V3f32 korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb)
 {
-    KORL_MATH_ASSERT(aabb.max.xyz.x >= aabb.min.xyz.x);
-    KORL_MATH_ASSERT(aabb.max.xyz.y >= aabb.min.xyz.y);
-    KORL_MATH_ASSERT(aabb.max.xyz.z >= aabb.min.xyz.z);
+    KORL_MATH_ASSERT(aabb.max.x >= aabb.min.x);
+    KORL_MATH_ASSERT(aabb.max.y >= aabb.min.y);
+    KORL_MATH_ASSERT(aabb.max.z >= aabb.min.z);
     return korl_math_v3f32_subtract(aabb.max, aabb.min);
 }
 korl_internal bool korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z)
 {
-    return x >= aabb.min.xyz.x && x <= aabb.max.xyz.x 
-        && y >= aabb.min.xyz.y && y <= aabb.max.xyz.y 
-        && z >= aabb.min.xyz.z && z <= aabb.max.xyz.z;
+    return x >= aabb.min.x && x <= aabb.max.x 
+        && y >= aabb.min.y && y <= aabb.max.y 
+        && z >= aabb.min.z && z <= aabb.max.z;
 }
 korl_internal bool korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Korl_Math_V3f32 v)
 {
-    return korl_math_aabb3f32_contains(aabb, v.xyz.x, v.xyz.y, v.xyz.z);
+    return korl_math_aabb3f32_contains(aabb, v.x, v.y, v.z);
 }
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB)
 {
     Korl_Math_Aabb3f32 result;
-    result.min.xyz.x = KORL_MATH_MIN(aabbA.min.xyz.x, aabbB.min.xyz.x);
-    result.min.xyz.y = KORL_MATH_MIN(aabbA.min.xyz.y, aabbB.min.xyz.y);
-    result.min.xyz.z = KORL_MATH_MIN(aabbA.min.xyz.z, aabbB.min.xyz.z);
-    result.max.xyz.x = KORL_MATH_MAX(aabbA.max.xyz.x, aabbB.max.xyz.x);
-    result.max.xyz.y = KORL_MATH_MAX(aabbA.max.xyz.y, aabbB.max.xyz.y);
-    result.max.xyz.z = KORL_MATH_MAX(aabbA.max.xyz.z, aabbB.max.xyz.z);
+    result.min.x = KORL_MATH_MIN(aabbA.min.x, aabbB.min.x);
+    result.min.y = KORL_MATH_MIN(aabbA.min.y, aabbB.min.y);
+    result.min.z = KORL_MATH_MIN(aabbA.min.z, aabbB.min.z);
+    result.max.x = KORL_MATH_MAX(aabbA.max.x, aabbB.max.x);
+    result.max.y = KORL_MATH_MAX(aabbA.max.y, aabbB.max.y);
+    result.max.z = KORL_MATH_MAX(aabbA.max.z, aabbB.max.z);
     return result;
 }
+#ifdef __cplusplus
+korl_internal Korl_Math_Quaternion operator*(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
+{
+    return korl_math_quaternion_multiply(qA, qB);
+}
+korl_internal Korl_Math_V2f32 operator*(Korl_Math_Quaternion q, Korl_Math_V2f32 v)
+{
+    return korl_math_quaternion_transformV2f32(q, v, false);
+}
+korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    return korl_math_v2f32_add(vA, vB);
+}
+korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar)
+{
+    return korl_math_v2f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v)
+{
+    return korl_math_v2f32_multiplyScalar(v, scalar);
+}
+#endif//__cplusplus

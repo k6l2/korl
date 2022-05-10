@@ -16,8 +16,8 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
     case WM_LBUTTONDOWN:{
         const i32 mouseX =  GET_X_LPARAM(lParam);
         const i32 mouseY = -GET_Y_LPARAM(lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
-        const Korl_Math_V2f32 mouseV2f32 = { .xy.x = korl_checkCast_i$_to_f32(mouseX)
-                                           , .xy.y = korl_checkCast_i$_to_f32(mouseY)};
+        const Korl_Math_V2f32 mouseV2f32 = { korl_checkCast_i$_to_f32(mouseX)
+                                           , korl_checkCast_i$_to_f32(mouseY) };
         /* deactivate the top level window, in case it wasn't already */
         context->isTopLevelWindowActive       = false;
         context->isMouseDown                  = false;
@@ -36,8 +36,8 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             korl_assert(window->identifier);
             const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
             const Korl_Math_Aabb2f32 windowExpandedAabb = 
-                { .min = { window->position.xy.x                     - windowAabbExpansion, window->position.xy.y - window->size.xy.y - windowAabbExpansion }
-                , .max = { window->position.xy.x + window->size.xy.x + windowAabbExpansion, window->position.xy.y                     + windowAabbExpansion } };
+                { .min = { window->position.x                  - windowAabbExpansion, window->position.y - window->size.y - windowAabbExpansion }
+                , .max = { window->position.x + window->size.x + windowAabbExpansion, window->position.y                  + windowAabbExpansion } };
             if(!korl_math_aabb2f32_containsV2f32(windowExpandedAabb, mouseV2f32))
                 continue;
             context->isMouseDown     = true;
@@ -47,41 +47,41 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             /* check to see if we clicked on any widgets from the previous frame */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
-                Korl_Math_V2f32 titlebarButtonCursor = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
-                                                       , .xy.y = window->position.xy.y };
+                Korl_Math_V2f32 titlebarButtonCursor = { window->position.x + window->size.x - context->style.windowTitleBarPixelSizeY
+                                                       , window->position.y };
                 /* check to see if the mouse pressed the close button */
                 if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
                 {
                     const Korl_Math_Aabb2f32 aabbButton = 
-                        { .min = { titlebarButtonCursor.xy.x                                          , titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY }
-                        , .max = { titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.xy.y                                           } };
+                        { .min = { titlebarButtonCursor.x                                          , titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY }
+                        , .max = { titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y                                           } };
                     if(korl_math_aabb2f32_containsV2f32(aabbButton, mouseV2f32))
                     {
                         context->specialWidgetFlagsMouseDown |= KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE;
                         context->isWindowDragged  = false;
                         context->isWindowResizing = false;
                     }
-                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
                 }
                 if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
                 {
                     const Korl_Math_Aabb2f32 aabbButton = 
-                        { .min = { titlebarButtonCursor.xy.x                                          , titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY }
-                        , .max = { titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.xy.y                                           } };
+                        { .min = { titlebarButtonCursor.x                                          , titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY }
+                        , .max = { titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y                                           } };
                     if(korl_math_aabb2f32_containsV2f32(aabbButton, mouseV2f32))
                     {
                         context->specialWidgetFlagsMouseDown |= KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE;
                         context->isWindowDragged  = false;
                         context->isWindowResizing = false;
                     }
-                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
                 }
             }
             if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X)
             {
-                const f32 scrollBarPositionX = window->position.xy.x + window->scrollBarPositionX;
-                const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(scrollBarPositionX                                 , window->position.xy.y - window->size.xy.y, 
-                                                                                       scrollBarPositionX + window->cachedScrollBarLengthX, window->position.xy.y - window->size.xy.y + context->style.windowScrollBarPixelWidth);
+                const f32 scrollBarPositionX = window->position.x + window->scrollBarPositionX;
+                const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(scrollBarPositionX                                 , window->position.y - window->size.y, 
+                                                                                       scrollBarPositionX + window->cachedScrollBarLengthX, window->position.y - window->size.y + context->style.windowScrollBarPixelWidth);
                 if(korl_math_aabb2f32_containsV2f32(scrollBarAabb, mouseV2f32))
                 {
                     context->specialWidgetFlagsMouseDown |= KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X;
@@ -92,11 +92,11 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             }
             if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y)
             {
-                f32 scrollBarPositionY = window->position.xy.y - window->scrollBarPositionY;
+                f32 scrollBarPositionY = window->position.y - window->scrollBarPositionY;
                 if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
                     scrollBarPositionY -= context->style.windowTitleBarPixelSizeY;
-                const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(window->position.xy.x + window->size.xy.x                                           , scrollBarPositionY, 
-                                                                                       window->position.xy.x + window->size.xy.x - context->style.windowScrollBarPixelWidth, scrollBarPositionY - window->cachedScrollBarLengthY);
+                const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(window->position.x + window->size.x                                           , scrollBarPositionY, 
+                                                                                       window->position.x + window->size.x - context->style.windowScrollBarPixelWidth, scrollBarPositionY - window->cachedScrollBarLengthY);
                 if(korl_math_aabb2f32_containsV2f32(scrollBarAabb, mouseV2f32))
                 {
                     context->specialWidgetFlagsMouseDown |= KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y;
@@ -139,8 +139,8 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
     case WM_LBUTTONUP:{
         const i32 mouseX =  GET_X_LPARAM(lParam);
         const i32 mouseY = -GET_Y_LPARAM(lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
-        const Korl_Math_V2f32 mouseV2f32 = { .xy.x = korl_checkCast_i$_to_f32(mouseX)
-                                           , .xy.y = korl_checkCast_i$_to_f32(mouseY)};
+        const Korl_Math_V2f32 mouseV2f32 = { korl_checkCast_i$_to_f32(mouseX)
+                                           , korl_checkCast_i$_to_f32(mouseY) };
         if(context->specialWidgetFlagsMouseDown)
         {
             /* find the mouse-down window so we can check to see if we're still 
@@ -153,27 +153,27 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                     continue;
                 if(window->identifier != context->identifierMouseHoveredWindow)
                     continue;
-                Korl_Math_V2f32 titlebarButtonCursor = { .xy.x = window->position.xy.x + window->size.xy.x - context->style.windowTitleBarPixelSizeY
-                                                       , .xy.y = window->position.xy.y };
+                Korl_Math_V2f32 titlebarButtonCursor = { window->position.x + window->size.x - context->style.windowTitleBarPixelSizeY
+                                                       , window->position.y };
                 if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
                 {
                     const Korl_Math_Aabb2f32 aabbButton = 
-                        { .min = { titlebarButtonCursor.xy.x                                          , titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY }
-                        , .max = { titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.xy.y                                           } };
+                        { .min = { titlebarButtonCursor.x                                          , titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY }
+                        , .max = { titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y                                           } };
                     if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE
                         && korl_math_aabb2f32_containsV2f32(aabbButton, mouseV2f32))
                         window->specialWidgetFlagsPressed |= KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE;
-                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
                 }
                 if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
                 {
                     const Korl_Math_Aabb2f32 aabbButton = 
-                        { .min = { titlebarButtonCursor.xy.x                                          , titlebarButtonCursor.xy.y - context->style.windowTitleBarPixelSizeY }
-                        , .max = { titlebarButtonCursor.xy.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.xy.y                                           } };
+                        { .min = { titlebarButtonCursor.x                                          , titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY }
+                        , .max = { titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y                                           } };
                     if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE
                         && korl_math_aabb2f32_containsV2f32(aabbButton, mouseV2f32))
                         window->specialWidgetFlagsPressed |= KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE;
-                    titlebarButtonCursor.xy.x -= context->style.windowTitleBarPixelSizeY;
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
                 }
                 break;
             }
@@ -227,23 +227,23 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                 {
                     /* obtain the window's AABB */
                     Korl_Math_Aabb2f32 aabbWindow = 
-                        { .min = { window->position.xy.x                    , window->position.xy.y - window->size.xy.y }
-                        , .max = { window->position.xy.x + window->size.xy.x, window->position.xy.y                     } };
+                        { .min = { window->position.x                 , window->position.y - window->size.y }
+                        , .max = { window->position.x + window->size.x, window->position.y                  } };
                     /* adjust the AABB values based on which edge flags we're 
                         controlling, & ensure that the final AABB is valid */
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT)
-                        aabbWindow.min.xy.x = KORL_MATH_MIN(mouseV2f32.xy.x, aabbWindow.max.xy.x - context->style.windowTitleBarPixelSizeY);
+                        aabbWindow.min.x = KORL_MATH_MIN(mouseV2f32.x, aabbWindow.max.x - context->style.windowTitleBarPixelSizeY);
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)
-                        aabbWindow.max.xy.x = KORL_MATH_MAX(mouseV2f32.xy.x, aabbWindow.min.xy.x + context->style.windowTitleBarPixelSizeY);
+                        aabbWindow.max.x = KORL_MATH_MAX(mouseV2f32.x, aabbWindow.min.x + context->style.windowTitleBarPixelSizeY);
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP)
-                        aabbWindow.max.xy.y = KORL_MATH_MAX(mouseV2f32.xy.y, aabbWindow.min.xy.y + context->style.windowTitleBarPixelSizeY);
+                        aabbWindow.max.y = KORL_MATH_MAX(mouseV2f32.y, aabbWindow.min.y + context->style.windowTitleBarPixelSizeY);
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN)
-                        aabbWindow.min.xy.y = KORL_MATH_MIN(mouseV2f32.xy.y, aabbWindow.max.xy.y - context->style.windowTitleBarPixelSizeY);
+                        aabbWindow.min.y = KORL_MATH_MIN(mouseV2f32.y, aabbWindow.max.y - context->style.windowTitleBarPixelSizeY);
                     /* set the window position/size based on the new AABB */
-                    window->position.xy.x = aabbWindow.min.xy.x;
-                    window->position.xy.y = aabbWindow.max.xy.y;
-                    window->size.xy.x = aabbWindow.max.xy.x - aabbWindow.min.xy.x;
-                    window->size.xy.y = aabbWindow.max.xy.y - aabbWindow.min.xy.y;
+                    window->position.x = aabbWindow.min.x;
+                    window->position.y = aabbWindow.max.y;
+                    window->size.x = aabbWindow.max.x - aabbWindow.min.x;
+                    window->size.y = aabbWindow.max.y - aabbWindow.min.y;
                 }
                 else
                     /* if we're click-dragging a window, update the window's new 
@@ -254,16 +254,16 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             {
                 const Korl_Math_V2f32 mouseWindowOffset = korl_math_v2f32_subtract(mouseV2f32, window->position);
                 if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X)
-                    window->scrollBarPositionX = KORL_MATH_CLAMP(mouseWindowOffset.xy.x + context->mouseDownOffsetSpecialWidget.xy.x, 
+                    window->scrollBarPositionX = KORL_MATH_CLAMP(mouseWindowOffset.x + context->mouseDownOffsetSpecialWidget.x, 
                                                                  0.f, 
-                                                                 window->cachedAvailableContentSize.xy.x - window->cachedScrollBarLengthX);
+                                                                 window->cachedAvailableContentSize.x - window->cachedScrollBarLengthX);
                 if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y)
                 {
                     f32 scrollBarPositionY = 0.f;
                     if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
                         scrollBarPositionY -= context->style.windowTitleBarPixelSizeY;
-                    const f32 scrollBarAreaSizeY = window->size.xy.y + scrollBarPositionY;
-                    window->scrollBarPositionY = KORL_MATH_CLAMP(scrollBarPositionY - mouseWindowOffset.xy.y - context->mouseDownOffsetSpecialWidget.xy.y, 
+                    const f32 scrollBarAreaSizeY = window->size.y + scrollBarPositionY;
+                    window->scrollBarPositionY = KORL_MATH_CLAMP(scrollBarPositionY - mouseWindowOffset.y - context->mouseDownOffsetSpecialWidget.y, 
                                                                  0.f, 
                                                                  scrollBarAreaSizeY - window->cachedScrollBarLengthY);
                 }
@@ -287,29 +287,29 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                 korl_assert(window->identifier);
                 const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
                 const Korl_Math_Aabb2f32 windowExpandedAabb = 
-                    { .min = { window->position.xy.x                     - windowAabbExpansion, window->position.xy.y - window->size.xy.y - windowAabbExpansion }
-                    , .max = { window->position.xy.x + window->size.xy.x + windowAabbExpansion, window->position.xy.y                     + windowAabbExpansion } };
+                    { .min = { window->position.x                  - windowAabbExpansion, window->position.y - window->size.y - windowAabbExpansion }
+                    , .max = { window->position.x + window->size.x + windowAabbExpansion, window->position.y                  + windowAabbExpansion } };
                 if(!korl_math_aabb2f32_containsV2f32(windowExpandedAabb, mouseV2f32))
                     continue;
-                if(    mouseX >= window->position.xy.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
-                    && mouseX <= window->position.xy.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS + window->size.xy.x
+                if(    mouseX >= window->position.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
+                    && mouseX <= window->position.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS + window->size.x
                     && !window->isContentHidden/*disable resizing top/bottom edges when window content is hidden*/)
                 {
-                    if(    mouseY >= window->position.xy.y 
-                        && mouseY <= window->position.xy.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)
+                    if(    mouseY >= window->position.y 
+                        && mouseY <= window->position.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_UP;
-                    if(    mouseY >= window->position.xy.y - window->size.xy.y - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
-                        && mouseY <= window->position.xy.y - window->size.xy.y)
+                    if(    mouseY >= window->position.y - window->size.y - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
+                        && mouseY <= window->position.y - window->size.y)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_DOWN;
                 }
-                if(    mouseY >= window->position.xy.y - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS - window->size.xy.y 
-                    && mouseY <= window->position.xy.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)
+                if(    mouseY >= window->position.y - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS - window->size.y 
+                    && mouseY <= window->position.y + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS)
                 {
-                    if(    mouseX >= window->position.xy.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
-                        && mouseX <= window->position.xy.x)
+                    if(    mouseX >= window->position.x - _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS 
+                        && mouseX <= window->position.x)
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_LEFT;
-                    if(    mouseX >= window->position.xy.x + window->size.xy.x 
-                        && mouseX <= window->position.xy.x + window->size.xy.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS )
+                    if(    mouseX >= window->position.x + window->size.x 
+                        && mouseX <= window->position.x + window->size.x + _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS )
                         context->mouseHoverWindowEdgeFlags |= KORL_GUI_MOUSE_HOVER_FLAG_RIGHT;
                 }
                 if(!(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE))
@@ -353,8 +353,8 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             korl_assert(window->identifier);
             const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
             const Korl_Math_Aabb2f32 windowExpandedAabb = 
-                { .min = { window->position.xy.x                     - windowAabbExpansion, window->position.xy.y - window->size.xy.y - windowAabbExpansion }
-                , .max = { window->position.xy.x + window->size.xy.x + windowAabbExpansion, window->position.xy.y                     + windowAabbExpansion } };
+                { .min = { window->position.x                  - windowAabbExpansion, window->position.y - window->size.y - windowAabbExpansion }
+                , .max = { window->position.x + window->size.x + windowAabbExpansion, window->position.y                  + windowAabbExpansion } };
             if(!korl_math_aabb2f32_containsV2f32(windowExpandedAabb, mouseV2f32))
                 continue;
             /* if it is, modify the X/Y scroll position based on presence of [SHIFT] */

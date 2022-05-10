@@ -2130,8 +2130,8 @@ korl_internal void korl_vulkan_setView(
 korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    return (Korl_Math_V2u32){ .xy.x = surfaceContext->swapChainImageExtent.width
-                            , .xy.y = surfaceContext->swapChainImageExtent.height };
+    return (Korl_Math_V2u32){ surfaceContext->swapChainImageExtent.width
+                            , surfaceContext->swapChainImageExtent.height };
 }
 korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
 {

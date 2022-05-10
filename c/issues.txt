@@ -83,5 +83,5 @@
 [ ] KORL-FEATURE-000-000-008: time: see if it's possible to use ETW in Windows to sample stack frames automatically for auto-generated profiling
 [ ] KORL-FEATURE-000-000-009: time: display useful metrics in real-time using GUI or something
 [ ] KORL-FEATURE-000-000-010: game: support automatic hot-reloading of entire code module
-[ ] KORL-FEATURE-000-000-011: math: add C++ API layer for operator overloading support
+[x] KORL-FEATURE-000-000-011: math: add C++ API layer for operator overloading support
 [ ] KORL-FEATURE-000-000-012: time: add C++ API layer for RAII time probe support

@@ -10,6 +10,8 @@ rem       these types of bugs, assuming you write decent default case logic...
 rem       I just don't think this warning is useful since it seems more useful 
 rem       to have the ability to switch on a subset of enum values, and dump the 
 rem       rest into the default case.
+rem 4201: nonstandard extension used: nameless struct/union; this would be a 
+rem       problem if we cared about supporting C98 (these were added in C11)
 rem 4505: unreferenced function with internal linkage has been removed; this is 
 rem       completely useless as far as I can tell, since if we try to call a 
 rem       function that isn't defined in the module, the compiler will complain
@@ -21,7 +23,7 @@ rem       myself caring about this anytime soon
 rem 4711: function 'X' selected for automatic inline expansion; this only 
 rem       happens in optimized builds, and I don't really care about code size 
 rem       metrics or how the asm looks at all right now.  Maybe in the future...
-set KORL_DISABLED_WARNINGS=/wd4061 /wd4505 /wd4514 /wd4706 /wd4710 /wd4711
+set KORL_DISABLED_WARNINGS=/wd4061 /wd4201 /wd4505 /wd4514 /wd4706 /wd4710 /wd4711
 rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)

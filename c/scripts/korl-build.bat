@@ -107,6 +107,7 @@ IF %ERRORLEVEL% NEQ 0 (
     GOTO :ON_FAILURE_EXE
 )
 rem ----- report how long the script took -----
+:TIME_REPORT
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
     set /A "end=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
