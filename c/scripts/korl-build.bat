@@ -37,6 +37,7 @@ rem     We cannot define symbols with the '=' character using the CL environment
 rem         variable, so we have to use '#' instead.
 rem         See: https://docs.microsoft.com/en-us/cpp/build/reference/cl-environment-variables?view=msvc-170
 set "buildCommand=%buildCommand% /D KORL_APP_NAME#%KORL_EXE_NAME%"
+set "buildCommand=%buildCommand% /D KORL_APP_VERSION#%KORL_EXE_VERSION%"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
 echo cl.exe %CL% %buildCommand% %_CL_%
 echo:
@@ -98,6 +99,8 @@ rem     for combaseapi.h stuff (CoTaskMemFree etc...)
 set "buildCommand=%buildCommand% Ole32.lib"
 rem     for CreateSolidBrush, & other GDI API
 set "buildCommand=%buildCommand% Gdi32.lib"
+rem     for MiniDumpWriteDump
+set "buildCommand=%buildCommand% Dbghelp.lib"
 set "buildCommand=%buildCommand% vulkan-1.lib"
 echo %buildCommand%
 echo:

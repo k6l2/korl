@@ -25,5 +25,7 @@
 /* KORL application exit codes */
 #define KORL_EXIT_SUCCESS 0
 #define KORL_EXIT_FAIL_ASSERT 1
+#define KORL_EXIT_FAIL_EXCEPTION 0xDEADC0DE
 /* Windows application-wide constants */
-korl_global_const TCHAR KORL_APPLICATION_NAME[] = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
+korl_global_const TCHAR KORL_APPLICATION_NAME[]    = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
+korl_global_const TCHAR KORL_APPLICATION_VERSION[] = L""KORL_DEFINE_TO_CSTR(KORL_APP_VERSION);

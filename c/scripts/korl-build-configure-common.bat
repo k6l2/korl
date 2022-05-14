@@ -81,5 +81,6 @@ rem     we don't need to prepare for any subsequent incremental links, so
 rem     disable any generation of padding/THUNKS; also disables generation of 
 rem     *.ilk files
 set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /INCREMENTAL:NO"
-rem     we always want to create a PDB file for all build types
-set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /DEBUG:FASTLINK"
+rem     set the checksum in the header of the .exe file (required in order to 
+rem     allow WinDbg to verify the timestamp of the executable, apparently)
+set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /RELEASE"

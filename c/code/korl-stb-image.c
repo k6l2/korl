@@ -10,7 +10,7 @@ korl_internal void korl_stb_image_initialize(void)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16));
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), false);
 }
 void* _korl_stb_image_allocate(u$ bytes)
 {

@@ -4,25 +4,30 @@
 #include "korl-assert.h"
 typedef struct _Korl_File_AsyncOpertion
 {
+    const void* writeBuffer;// a non-NULL value indicates this AsyncOperation object is occupied
+    HANDLE handleFile;
     OVERLAPPED overlapped;
     u16 salt;
-    const void* writeBuffer;
-    HANDLE handleFile;
+    bool apcHasBeenCalled;
 } _Korl_File_AsyncOpertion;
 typedef struct _Korl_File_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     wchar_t* directoryLocalData;
     wchar_t  directoryCurrentWorking[MAX_PATH];
+    wchar_t  directoryTemporaryData[MAX_PATH];
+    wchar_t  directoryExecutable[MAX_PATH];
     DWORD sizeCurrentWorking;/** NOT including the null-terminator! */
     DWORD sizeLocalData;     /** NOT including the null-terminator! */
+    DWORD sizeTemporaryData; /** NOT including the null-terminator! */
+    DWORD sizeExecutable;    /** NOT including the null-terminator! */
     /** We cannot use a KORL_MEMORY_POOL here, because we need the memory 
-     *  locations of used OVERLAPPED structs to remain completely STATIC once in 
-     *  use by Windows.  
-     *  The indices into this pool should be considered as "handles" to users of 
-     *  this code module.
-     *  Individual elements of this pool are considered to be "unused" if the 
-     *  \c writeBuffer member == \c NULL */
+     * locations of used OVERLAPPED structs to remain completely STATIC once in 
+     * use by Windows.  
+     * The indices into this pool should be considered as "handles" to users of 
+     * this code module.
+     * Individual elements of this pool are considered to be "unused" if the 
+     * \c writeBuffer member == \c NULL .  */
     _Korl_File_AsyncOpertion asyncPool[64];
 } _Korl_File_Context;
 korl_global_variable _Korl_File_Context _korl_file_context;
@@ -113,9 +118,8 @@ korl_internal void _korl_file_LpoverlappedCompletionRoutine(DWORD dwErrorCode, D
             break;
         }
     korl_assert(pAsyncOp);
-    // clean up the async operation slot //
-    pAsyncOp->writeBuffer = NULL;
-    pAsyncOp->salt++;
+    korl_assert(pAsyncOp->writeBuffer);
+    pAsyncOp->apcHasBeenCalled = true;
 }
 korl_internal void _korl_file_LpoverlappedCompletionRoutine_noAsyncOp(DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered, LPOVERLAPPED lpOverlapped)
 {
@@ -125,15 +129,15 @@ korl_internal void korl_file_initialize(void)
 {
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64));
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), false);
     /* determine where the current working directory is in Windows */
     context->sizeCurrentWorking = 
-        GetCurrentDirectory(
-            korl_arraySize(context->directoryCurrentWorking), 
-            context->directoryCurrentWorking);
+        GetCurrentDirectory(korl_arraySize(context->directoryCurrentWorking), 
+                            context->directoryCurrentWorking);
     if(context->sizeCurrentWorking == 0)
         korl_logLastError("GetCurrentDirectory failed!");
     korl_assert(context->sizeCurrentWorking <= korl_arraySize(context->directoryCurrentWorking));
+    korl_log(INFO, "Current working directory: %ws", context->directoryCurrentWorking);
     /* determine where the application's local storage is in Windows */
     {
         wchar_t* pathLocalAppData;
@@ -164,6 +168,61 @@ korl_internal void korl_file_initialize(void)
             break;}
         }
     }
+    /* temporary data directory */
+    context->sizeTemporaryData = GetTempPath(korl_arraySize(context->directoryTemporaryData), context->directoryTemporaryData);
+    if(context->sizeTemporaryData == 0)
+        korl_logLastError("GetTempPath failed!");
+    {
+        i$ charsCopied = 
+            korl_memory_stringFormatBuffer(context->directoryTemporaryData + context->sizeTemporaryData, 
+                                           korl_arraySize(context->directoryTemporaryData) - context->sizeTemporaryData, 
+                                           L"%ws", KORL_APPLICATION_NAME);
+        korl_assert(charsCopied > 0);
+        context->sizeTemporaryData += korl_checkCast_i$_to_u32(charsCopied);
+    }
+    korl_log(INFO, "directoryTemporaryData=%ws", context->directoryTemporaryData);
+    if(!CreateDirectory(context->directoryTemporaryData, NULL))
+    {
+        const int errorCode = GetLastError();
+        switch(errorCode)
+        {
+        case ERROR_ALREADY_EXISTS:{
+            korl_log(INFO, "directory '%ws' already exists", context->directoryTemporaryData);
+            break;}
+        default:{
+            korl_logLastError("CreateDirectory('%ws') failed", context->directoryTemporaryData);
+            korl_assert(!"CreateDirectory(directoryTemporaryData) failed");
+            break;}
+        }
+    }
+    /* executable file directory */
+    context->sizeExecutable = GetModuleFileName(NULL/*executable file of current process*/, 
+                                                context->directoryExecutable, 
+                                                korl_arraySize(context->directoryExecutable));
+    if(context->sizeExecutable == 0)
+        korl_logLastError("GetModuleFileName failed!");
+    wchar_t* lastBackslash = context->directoryExecutable;
+    for(wchar_t* c = context->directoryExecutable; *c; c++)
+        if(*c == '\\')
+            lastBackslash = c;
+    *(lastBackslash + 1) = 0;
+    korl_log(INFO, "directoryExecutable=%ws", context->directoryExecutable);
+}
+korl_internal const wchar_t* korl_file_getPath(Korl_File_PathType type)
+{
+    switch(type)
+    {
+    case KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY:{
+        return _korl_file_context.directoryCurrentWorking;}
+    case KORL_FILE_PATHTYPE_LOCAL_DATA:{
+        return _korl_file_context.directoryLocalData;}
+    case KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY:{
+        return _korl_file_context.directoryExecutable;}
+    case KORL_FILE_PATHTYPE_TEMPORARY_DATA:{
+        return _korl_file_context.directoryTemporaryData;}
+    }
+    korl_log(ERROR, "unknown path type: %d", type);
+    return NULL;
 }
 korl_internal bool korl_file_openAsync(Korl_File_PathType pathType, 
                                        const wchar_t* fileName, 
@@ -214,6 +273,7 @@ korl_internal Korl_File_AsyncWriteHandle korl_file_writeAsync(Korl_File_Descript
             break;
     korl_assert(i < korl_arraySize(context->asyncPool));
     _Korl_File_AsyncOpertion*const pAsyncOp = &(context->asyncPool[i]);
+    korl_memory_zero(pAsyncOp, sizeof(*pAsyncOp));
     pAsyncOp->writeBuffer           = buffer;
     pAsyncOp->handleFile            = fileDescriptor.handle;
     pAsyncOp->overlapped.Offset     = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
@@ -242,38 +302,44 @@ korl_internal bool korl_file_writeAsyncWait(Korl_File_AsyncWriteHandle* handle, 
             being unsigned 32-bit for some reason, which at least will likely 
             give a compile-time warning/error. */
         dwTimeoutMilliseconds = INFINITE;
+    if(dwTimeoutMilliseconds == 0)
+        /* The "Asynchronous Procedure Call" will never be called until the 
+            thread which started the overlapped I/O operation enters an 
+            alertable wait state, and experimentally GetOverlappedResultEx does 
+            NOT actually call the APCs even if bAlertable is set to TRUE.  Ergo, 
+            we have no choice but to use some other API to do this, and SleepEx 
+            is apparently able to achieve this behavior.  We need to do this 
+            because the lifetime of the OVERLAPPED object used for the async 
+            operation _must_ remain valid for the entire operation & APC call */
+        SleepEx(0/*milliseconds*/, TRUE/*enter alertable wait state*/);
     const BOOL resultGetOverlappedResult = 
         GetOverlappedResultEx(pAsyncOp->handleFile, &(pAsyncOp->overlapped), 
                               &numberOfBytesTransferred, dwTimeoutMilliseconds, 
-                              TRUE/*yes, we want to call the I/O completion routine*/);
+                              TRUE/*calls the I/O completion routine IF dwTimeoutMilliseconds != 0*/);
     if(!resultGetOverlappedResult)
     {
         const DWORD errorCode = GetLastError();
-        if(     errorCode == ERROR_IO_INCOMPLETE)
-            // operation is still in progress, timeoutMilliseconds was == 0
-            return false;
-        else if(errorCode == WAIT_IO_COMPLETION)
+        switch(errorCode)
         {
-            /* the async operation is complete, and the completion routine has 
-                been queued */
-            goto done_asyncComplete;
-        }
-        else if(errorCode == WAIT_TIMEOUT)
-            // operation is still in progress, timeoutMilliseconds was > 0
+        case ERROR_IO_INCOMPLETE:// operation is still in progress, timeoutMilliseconds was == 0
+        case WAIT_IO_COMPLETION:// the async operation is complete, and the completion routine has been queued
+        case WAIT_TIMEOUT:// operation is still in progress, timeoutMilliseconds was > 0
             return false;
+        }
         /* if execution ever reaches here, we haven't accounted for some other 
             failure condition */
         korl_logLastError("GetOverlappedResultEx failed!");
     }
-    /* the async operation is complete, and we didn't have to queue the I/O 
-        completion routine */
-    // clean up the async operation slot //
-    // NOTE: this is copypasta from _korl_file_LpoverlappedCompletionRoutine
-    pAsyncOp->writeBuffer = NULL;
-    pAsyncOp->salt++;
-done_asyncComplete:
-    handle->components.index = KORL_U16_MAX;// invalidate the caller's async operation handle
-    return true;
+    if(pAsyncOp->apcHasBeenCalled)
+    {
+        // clean up the async operation slot //
+        pAsyncOp->writeBuffer = NULL;
+        pAsyncOp->salt++;
+        // invalidate the caller's async operation handle //
+        handle->components.index = KORL_U16_MAX;
+        return true;
+    }
+    return false;
 }
 korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const void* data, u$ dataBytes)
 {

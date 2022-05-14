@@ -10,6 +10,7 @@ typedef struct _Korl_Memory_Allocator
     void* userData;
     Korl_Memory_AllocatorHandle handle;
     Korl_Memory_AllocatorType type;
+    bool disableThreadSafetyChecks;
 } _Korl_Memory_Allocator;
 typedef struct _Korl_Memory_Context
 {
@@ -163,11 +164,6 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     /* for now, only support operations on the main thread */
-    if(GetCurrentThreadId() != _korl_memory_context.mainThreadId)
-    {
-        korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
-        return NULL;
-    }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     void* allocationAddress = NULL;
     /* release the protection on the allocator pages */
@@ -237,12 +233,6 @@ protectAllocator_return_allocationAddress:
 korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, void* allocation, const wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    /* for now, only support operations on the main thread */
-    if(GetCurrentThreadId() != _korl_memory_context.mainThreadId)
-    {
-        korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
-        return;
-    }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     const u$ pageBytes = korl_memory_pageBytes();
     /* release the protection on the allocator pages */
@@ -332,12 +322,6 @@ korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, v
 korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUserData, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    /* for now, only support operations on the main thread */
-    if(GetCurrentThreadId() != _korl_memory_context.mainThreadId)
-    {
-        korl_log(ERROR, "threadId(%llu) != mainThreadId(%llu)", GetCurrentThreadId(), context->mainThreadId);
-        return NULL;
-    }
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     /* if allocation is NULL, just call `allocate` */
     if(allocation == NULL)
@@ -598,7 +582,16 @@ korl_internal void* _korl_memory_allocator_createLinear(u$ maxBytes)
 korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Memory_AllocatorHandle handle)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_assert(GetCurrentThreadId() == context->mainThreadId);
+    /* NOTE: this is most likely not an issue, but this is obviously not 
+             thread-safe, even though this is very likely going to be called 
+             from many different threads in the event we want to do 
+             multi-threaded dynamic memory allocations, which is basically 100%.  
+             However, it's _likely_ nothing to worry about, since what is likely 
+             going to happen is that the allocators are going to be set up at 
+             the start of the program, and then the allocator memory pool will 
+             become read-only for the vast majority of operation.  It is worth 
+             noting that this is only okay if the above usage assumptions 
+             continue */
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
         if(context->allocators[a].handle == handle)
             return &context->allocators[a];
@@ -626,8 +619,9 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
     korl_assert(newHandle);
     _Korl_Memory_Allocator* newAllocator = KORL_MEMORY_POOL_ADD(context->allocators);
     korl_memory_zero(newAllocator, sizeof(*newAllocator));
-    newAllocator->type   = type;
-    newAllocator->handle = newHandle;
+    newAllocator->type                      = type;
+    newAllocator->handle                    = newHandle;
+    newAllocator->disableThreadSafetyChecks = disableThreadSafetyChecks;
     switch(type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
@@ -642,9 +636,13 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_assert(GetCurrentThreadId() == context->mainThreadId);
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
+    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return NULL;
+    }
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
@@ -656,9 +654,13 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allo
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_assert(GetCurrentThreadId() == context->mainThreadId);
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
+    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return NULL;
+    }
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
@@ -670,9 +672,13 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_re
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_assert(GetCurrentThreadId() == context->mainThreadId);
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
+    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return;
+    }
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
@@ -684,9 +690,13 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_assert(GetCurrentThreadId() == context->mainThreadId);
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
+    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return;
+    }
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{

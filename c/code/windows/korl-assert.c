@@ -22,8 +22,9 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)
             probably only care about the first one anyway, since all execution 
             after this is suspect */
         _korl_assert_context.firstAssertLogged = true;
-        korl_log(ERROR, "ASSERT FAILED: \"%ls\" {%ls:%i}", 
-                 conditionString, cStringFileName, lineNumber);
+        _korl_log_variadic(1, KORL_LOG_LEVEL_ERROR, 
+                           cStringFileName, cStringFunctionName, lineNumber, 
+                           L"ASSERT FAILED: \"%ws\"", conditionString);
     }
     if(IsDebuggerPresent())
     {
@@ -36,9 +37,8 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(korl_assertConditionFailed)
     {
         /* give the user a prompt indicating something went wrong */
         //const int resultMessageBox = 
-            MessageBox(
-                NULL/*hWnd*/, conditionString, 
-                _T("KORL ASSERTION FAILED!"), MB_ICONERROR);
+            MessageBox(NULL/*hWnd*/, conditionString, 
+                       _T("KORL ASSERTION FAILED!"), MB_ICONERROR);
         /* if resultMessageBox is 0, that means an error occurred, which can be 
             obtained via GetLastError(), but we're too deep in critical error 
             handling already for this to be useful */

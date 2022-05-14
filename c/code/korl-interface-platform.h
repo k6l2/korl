@@ -131,7 +131,8 @@ enum KorlEnumLogLevel
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
     int lineNumber, const wchar_t* format, ...)
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
-    const wchar_t* conditionString, const wchar_t* cStringFileName, int lineNumber)
+    const wchar_t* conditionString, const wchar_t* cStringFileName, \
+    const wchar_t* cStringFunctionName, int lineNumber)
 #define KORL_PLATFORM_MEMORY_ZERO(name) void name(void* memory, u$ bytes)
 #define KORL_PLATFORM_MEMORY_COPY(name) void name(void* destination, const void* source, u$ bytes)
 typedef u16 Korl_Memory_AllocatorHandle;
@@ -144,7 +145,7 @@ typedef enum Korl_Memory_AllocatorType
  * allocator struct, and a minimum of two pages are required for each allocation 
  * (one for the meta data page, and one for the actual allocation itself).  
  * This behavior is subject to change in the future. */
-#define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes)
+#define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes, bool disableThreadSafetyChecks)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)

@@ -124,7 +124,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1));
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), false);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color){ 16,  16,  16};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color){ 24,  24,  24};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color){  0,   0,   0};

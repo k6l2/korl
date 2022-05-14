@@ -4,6 +4,8 @@
 typedef enum Korl_File_PathType
     { KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY
     , KORL_FILE_PATHTYPE_LOCAL_DATA
+    , KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY
+    , KORL_FILE_PATHTYPE_TEMPORARY_DATA
 } Korl_File_PathType;
 typedef enum Korl_File_Descriptor_Flags
 {
@@ -26,6 +28,7 @@ typedef union Korl_File_AsyncWriteHandle
     u32 value;
 } Korl_File_AsyncWriteHandle;
 korl_internal void korl_file_initialize(void);
+korl_internal const wchar_t* korl_file_getPath(Korl_File_PathType type);
 /** \return \c true if the file was opened successfully, \c false otherwise.  
  * Upon successful execution, the file descriptor is stored in \c o_fileDescriptor. */
 korl_internal bool korl_file_openAsync(Korl_File_PathType pathType, 

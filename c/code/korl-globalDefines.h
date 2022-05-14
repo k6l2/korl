@@ -118,11 +118,15 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 /* Having the game manage its own copy of these macros means we don't have to 
     include platform-specific KORL modules! */
 #define korl_assert(condition) \
-    ((condition) ? (void)0 : korl_assertConditionFailed(L""#condition, __FILEW__, __LINE__))
+    ((condition) ? (void)0 : korl_assertConditionFailed(L""#condition, __FILEW__, __FUNCTIONW__, __LINE__))
 #define korl_log(logLevel, format, ...) \
     _korl_log_variadic(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \
         __FILEW__, __FUNCTIONW__, __LINE__, L ## format, ##__VA_ARGS__)
+#define korl_log_noMeta(logLevel, format, ...) \
+    _korl_log_variadic(\
+        KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \
+        NULL, NULL, -1, L ## format, ##__VA_ARGS__)
 /* Allow the pre-processor to store compiler definitions as string literals
     Example: TCHAR APPLICATION_NAME[] = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
     Source: https://stackoverflow.com/a/39108392 */

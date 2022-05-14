@@ -214,7 +214,8 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
         korl_time_probeStop(Main_Loop);
-        if(frameCount < ~(u$)0) frameCount++;
+        if(frameCount < ~(u$)0)
+            frameCount++;
     }
     korl_vulkan_destroySurface();
 }

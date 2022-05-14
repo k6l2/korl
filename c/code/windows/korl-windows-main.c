@@ -13,6 +13,7 @@
 #include "korl-gfx.h"
 #include "korl-gui.h"
 #include "korl-time.h"
+#include "korl-crash.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -42,13 +43,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         korl_commandLine_logUsage(descriptors, korl_arraySize(descriptors));
         return KORL_EXIT_SUCCESS;
     }
-    //KORL-FEATURE-000-000-000: hook into Windows exception handler for crash reporting
     korl_log(INFO, "korl_windows_main START ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄");
     korl_time_initialize();
     korl_time_probeStart(KORL_initialization);
     korl_time_probeStart(init_module_window);       korl_windows_window_initialize();       korl_time_probeStop(init_module_window);
     korl_time_probeStart(create_window);            korl_windows_window_create(1024, 576);  korl_time_probeStop(create_window);
     korl_time_probeStart(init_module_file);         korl_file_initialize();                 korl_time_probeStop(init_module_file);
+    korl_time_probeStart(init_module_crash);        korl_crash_initialize();                korl_time_probeStop(init_module_crash);
     korl_time_probeStart(init_module_log);          korl_log_initiateFile(!logFileDisable); korl_time_probeStop(init_module_log);
     korl_time_probeStart(init_module_stb_image);    korl_stb_image_initialize();            korl_time_probeStop(init_module_stb_image);
     korl_time_probeStart(init_module_stb_truetype); korl_stb_truetype_initialize();         korl_time_probeStop(init_module_stb_truetype);
@@ -86,3 +87,4 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 #include "korl-gui.c"
 #include "korl-windows-gui.c"
 #include "korl-time.c"
+#include "korl-crash.c"

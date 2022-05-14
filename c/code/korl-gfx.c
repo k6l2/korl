@@ -194,7 +194,7 @@ korl_internal void korl_gfx_initialize(void)
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, 
-                                                            korl_math_megabytes(4));
+                                                            korl_math_megabytes(4), false);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)
 {

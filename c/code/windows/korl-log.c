@@ -134,7 +134,7 @@ korl_internal void _korl_log_vaList(
     case KORL_LOG_LEVEL_VERBOSE:{cStringLogLevel = L"VERBOSE"; break;}
     }
     // only print the file name, not the full path!
-    for(const wchar_t* fileNameCursor = cStringFileName; *fileNameCursor; fileNameCursor++)
+    for(const wchar_t* fileNameCursor = cStringFileName; fileNameCursor && *fileNameCursor; fileNameCursor++)
         if(*fileNameCursor == '\\' || *fileNameCursor == '/')
             cStringFileName = fileNameCursor + 1;
     //  //
@@ -146,9 +146,10 @@ korl_internal void _korl_log_vaList(
     korl_assert(bufferSizeFormat  > 0);
     korl_assert(bufferSizeMetaTag > 0);
     /* write the full log line to a transient buffer */
-    const u$ logLineSize = context->disableMetaTags 
-        ? bufferSizeFormat 
-        : bufferSizeMetaTag + bufferSizeFormat;//_excluding_ the null terminator
+    const bool prependMetaTag = !context->disableMetaTags && cStringFileName && cStringFunctionName && lineNumber > 0;
+    const u$ logLineSize = prependMetaTag 
+        ? bufferSizeMetaTag + bufferSizeFormat//_excluding_ the null terminator
+        : bufferSizeFormat;
     EnterCriticalSection(&(context->criticalSection));
     /* before allocating more from the transient buffer, let's see if we can 
         clean up any pending async buffers so that we can prevent the linear 
@@ -166,7 +167,7 @@ korl_internal void _korl_log_vaList(
     LeaveCriticalSection(&(context->criticalSection));
     int charactersWrittenTotal = 0;
     int charactersWritten;
-    if(!context->disableMetaTags)
+    if(prependMetaTag)
     {
         charactersWritten = swprintf_s(logLineBuffer, bufferSizeMetaTag + 1/*for '\0'*/, _KORL_LOG_META_DATA_STRING, 
                                        cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
@@ -251,6 +252,20 @@ korl_internal void _korl_log_vaList(
                                       NULL/*out_charsWritten; I don't care*/, 
                                       NULL/*reserved; _must_ be NULL*/));
     }
+    if(logLevel <= KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
+    {
+        /* when we're not attached to a debugger (for example, in 
+            production), we should still assert that a critical issue has 
+            been logged at least for the first error */
+        context->errorAssertionTriggered = true;
+        logLineBuffer[logLineSize - 1] = L'\0';// temporarily remove the '\n'
+        /* we don't call the korl_assert macro here because we want to propagate 
+            the meta data of the CALLER of this error log entry to the user; the 
+            fact that the assert condition fails in the log module is irrelevant */
+        korl_assertConditionFailed(logLineBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, 
+                                   cStringFileName, cStringFunctionName, lineNumber);
+        logLineBuffer[logLineSize - 1] = L'\n';
+    }
     /* we're done with the transient buffer, so we can free it now */
     EnterCriticalSection(&(context->criticalSection));
     /* ----- write logLineBuffer to log file ----- */
@@ -296,14 +311,7 @@ korl_internal void _korl_log_vaList(
         korl_free(context->allocatorHandleTransient, logLineBuffer);
     LeaveCriticalSection(&(context->criticalSection));
 logOutputDone:
-    if(logLevel <= KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
-    {
-        /* when we're not attached to a debugger (for example, in 
-            production), we should still assert that a critical issue has 
-            been logged at least for the first error */
-        context->errorAssertionTriggered = true;
-        korl_assert(!"application has logged an error");
-    }
+    return;
 }
 korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 {
@@ -318,8 +326,8 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
-    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4));
-    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64));
+    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4) , true);
+    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), true);
     _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
     _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
     _korl_log_context.useLogOutputDebugger      = useLogOutputDebugger;
