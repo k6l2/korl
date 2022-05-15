@@ -117,7 +117,8 @@ typedef enum Korl_KeyboardCode
 #define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
 #define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
 enum KorlEnumLogLevel
-    { KORL_LOG_LEVEL_ERROR
+    { KORL_LOG_LEVEL_ASSERT
+    , KORL_LOG_LEVEL_ERROR
     , KORL_LOG_LEVEL_WARNING
     , KORL_LOG_LEVEL_INFO
     , KORL_LOG_LEVEL_VERBOSE };

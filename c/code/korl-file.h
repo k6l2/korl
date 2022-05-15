@@ -28,7 +28,6 @@ typedef union Korl_File_AsyncWriteHandle
     u32 value;
 } Korl_File_AsyncWriteHandle;
 korl_internal void korl_file_initialize(void);
-korl_internal const wchar_t* korl_file_getPath(Korl_File_PathType type);
 /** \return \c true if the file was opened successfully, \c false otherwise.  
  * Upon successful execution, the file descriptor is stored in \c o_fileDescriptor. */
 korl_internal bool korl_file_openAsync(Korl_File_PathType pathType, 
@@ -53,3 +52,4 @@ korl_internal bool korl_file_load(
     const wchar_t*const fileName, Korl_File_PathType pathType, 
     Korl_Memory_AllocatorHandle allocatorHandle, 
     void** out_data, u32* out_dataBytes);
+korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount);

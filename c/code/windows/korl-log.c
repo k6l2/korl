@@ -117,10 +117,13 @@ korl_internal void _korl_log_vaList(
     KORL_ZERO_STACK(SYSTEMTIME, systemTimeLocal);
     GetLocalTime(&systemTimeLocal);
     /**/
-    if(logLevel <= KORL_LOG_LEVEL_ERROR && IsDebuggerPresent())
+    if(logLevel <= KORL_LOG_LEVEL_ERROR)
+    {
         /* if we ever log an error while a debugger is attached, just break 
             right now so we can figure out what's going on! */
-        DebugBreak();
+        if(IsDebuggerPresent())
+            DebugBreak();
+    }
     /* we can skip most of this if there are no log outputs enabled */
     if(!context->logFileEnabled && !context->useLogOutputDebugger && !context->useLogOutputConsole)
         goto logOutputDone;
@@ -128,9 +131,10 @@ korl_internal void _korl_log_vaList(
     const wchar_t* cStringLogLevel = L"???";
     switch(logLevel)
     {
-    case KORL_LOG_LEVEL_INFO:   {cStringLogLevel = L"INFO";    break;}
-    case KORL_LOG_LEVEL_WARNING:{cStringLogLevel = L"WARNING"; break;}
+    case KORL_LOG_LEVEL_ASSERT: {cStringLogLevel = L"ASSERT";   break;}
     case KORL_LOG_LEVEL_ERROR:  {cStringLogLevel = L"ERROR";   break;}
+    case KORL_LOG_LEVEL_WARNING:{cStringLogLevel = L"WARNING"; break;}
+    case KORL_LOG_LEVEL_INFO:   {cStringLogLevel = L"INFO";    break;}
     case KORL_LOG_LEVEL_VERBOSE:{cStringLogLevel = L"VERBOSE"; break;}
     }
     // only print the file name, not the full path!
@@ -161,6 +165,8 @@ korl_internal void _korl_log_vaList(
             korl_free(context->allocatorHandleTransient, context->asyncWriteDescriptors[i].buffer);
             KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
         }
+        else
+            i++;
     wchar_t*const logLineBuffer = KORL_C_CAST(wchar_t*, 
         korl_allocate(context->allocatorHandleTransient, 
                       (logLineSize + 1/*null terminator*/)*sizeof(*logLineBuffer)));
@@ -252,7 +258,7 @@ korl_internal void _korl_log_vaList(
                                       NULL/*out_charsWritten; I don't care*/, 
                                       NULL/*reserved; _must_ be NULL*/));
     }
-    if(logLevel <= KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
+    if(logLevel == KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
     {
         /* when we're not attached to a debugger (for example, in 
             production), we should still assert that a critical issue has 
@@ -326,8 +332,8 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
-    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4) , true);
-    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), true);
+    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4), true);
+    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), true);
     _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
     _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
     _korl_log_context.useLogOutputDebugger      = useLogOutputDebugger;
