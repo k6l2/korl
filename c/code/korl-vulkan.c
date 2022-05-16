@@ -337,10 +337,8 @@ korl_internal void _korl_vulkan_createSwapChain(
         vkGetSwapchainImagesKHR(
             context->device, surfaceContext->swapChain, 
             &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/));
-    korl_assert(surfaceContext->swapChainImagesSize <= 
-        korl_arraySize(surfaceContext->swapChainImages));
-    surfaceContext->swapChainImagesSize = 
-        korl_arraySize(surfaceContext->swapChainImages);
+    surfaceContext->swapChainImagesSize = KORL_MATH_MIN(surfaceContext->swapChainImagesSize, 
+                                                        korl_arraySize(surfaceContext->swapChainImages));
     _KORL_VULKAN_CHECK(
         vkGetSwapchainImagesKHR(
             context->device, surfaceContext->swapChain, 
