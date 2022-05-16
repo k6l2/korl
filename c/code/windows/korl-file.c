@@ -468,64 +468,68 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
             return;
         }
     /* delete the oldest dump folder after we reach some maximum dump count */
-    wchar_t filePathOldest[MAX_PATH];
-    i$ filePathOldestSize = 0;
-    korl_assert(maxDumpCount > 0);
-    while(maxDumpCount <= _korl_file_findOldestFile(dumpDirectory, 
-                                                    L"*-*-*-*-*", 
-                                                    filePathOldest, 
-                                                    sizeof(filePathOldest), 
-                                                    &filePathOldestSize))
     {
-        /* apparently pFrom needs to be double null-terminated */
-        korl_assert(filePathOldestSize < korl_arraySize(filePathOldest) - 1);
-        filePathOldest[filePathOldestSize] = L'\0';
-        /**/
-        korl_log(INFO, "deleting oldest dump folder: %ws", filePathOldest);
-        KORL_ZERO_STACK(SHFILEOPSTRUCT, fileOpStruct);
-        fileOpStruct.wFunc  = FO_DELETE;
-        fileOpStruct.pFrom  = filePathOldest;
-        fileOpStruct.fFlags = FOF_NO_UI | FOF_NOCONFIRMATION;
-        const int resultFileOpDeleteRecursive = SHFileOperation(&fileOpStruct);
-        if(resultFileOpDeleteRecursive != 0)
-            korl_log(WARNING, "recursive delete of \"%ws\" failed; result=%i", 
-                     filePathOldest, resultFileOpDeleteRecursive);
+        wchar_t filePathOldest[MAX_PATH];
+        i$ filePathOldestSize = 0;
+        korl_assert(maxDumpCount > 0);
+        while(maxDumpCount <= _korl_file_findOldestFile(dumpDirectory, 
+                                                        L"*-*-*-*-*", 
+                                                        filePathOldest, 
+                                                        sizeof(filePathOldest), 
+                                                        &filePathOldestSize))
+        {
+            /* apparently pFrom needs to be double null-terminated */
+            korl_assert(filePathOldestSize < korl_arraySize(filePathOldest) - 1);
+            filePathOldest[filePathOldestSize] = L'\0';
+            /**/
+            korl_log(INFO, "deleting oldest dump folder: %ws", filePathOldest);
+            KORL_ZERO_STACK(SHFILEOPSTRUCT, fileOpStruct);
+            fileOpStruct.wFunc  = FO_DELETE;
+            fileOpStruct.pFrom  = filePathOldest;
+            fileOpStruct.fFlags = FOF_NO_UI | FOF_NOCONFIRMATION;
+            const int resultFileOpDeleteRecursive = SHFileOperation(&fileOpStruct);
+            if(resultFileOpDeleteRecursive != 0)
+                korl_log(WARNING, "recursive delete of \"%ws\" failed; result=%i", 
+                         filePathOldest, resultFileOpDeleteRecursive);
+        }
     }
     // Create a companion folder to store PDB files specifically for this dump! //
-    wchar_t pdbDirectory[MAX_PATH];
-    if(0 > korl_memory_stringFormatBuffer(pdbDirectory, sizeof(pdbDirectory), 
+    wchar_t directoryMemoryDump[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(directoryMemoryDump, sizeof(directoryMemoryDump), 
                                           L"%ws\\%ws-%04d%02d%02d-%02d%02d%02d-%ld-%ld", 
                                           dumpDirectory, KORL_APPLICATION_VERSION, 
                                           localTime.wYear, localTime.wMonth, localTime.wDay, 
                                           localTime.wHour, localTime.wMinute, localTime.wSecond, 
                                           GetCurrentProcessId(), GetCurrentThreadId()))
     {
-        korl_log(ERROR, "pdbDirectory failed");
+        korl_log(ERROR, "directoryMemoryDump failed");
         return;
     }
-    if(!CreateDirectory(pdbDirectory, NULL))
+    if(!CreateDirectory(directoryMemoryDump, NULL))
     {
-        korl_logLastError("CreateDirectory(%ws) failed!", pdbDirectory);
+        korl_logLastError("CreateDirectory(%ws) failed!", directoryMemoryDump);
         return;
     }
+    else
+        korl_log(INFO, "created MiniDump directory: %ws", directoryMemoryDump);
     // Create the mini dump! //
-    wchar_t fileNameMinidump[MAX_PATH];
-    if(0 > korl_memory_stringFormatBuffer(fileNameMinidump, sizeof(fileNameMinidump),
+    wchar_t pathFileWrite[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(pathFileWrite, sizeof(pathFileWrite),
                                           L"%s\\%s-%04d%02d%02d-%02d%02d%02d-0x%X-0x%X.dmp", 
-                                          pdbDirectory, KORL_APPLICATION_VERSION, 
+                                          directoryMemoryDump, KORL_APPLICATION_VERSION, 
                                           localTime.wYear, localTime.wMonth, localTime.wDay, 
                                           localTime.wHour, localTime.wMinute, localTime.wSecond, 
                                           GetCurrentProcessId(), GetCurrentThreadId()))
     {
-        korl_log(ERROR, "fileNameMinidump failed");
+        korl_log(ERROR, "pathFileWrite failed");
         return;
     }
-    const HANDLE hDumpFile = CreateFile(fileNameMinidump, GENERIC_READ|GENERIC_WRITE, 
+    const HANDLE hDumpFile = CreateFile(pathFileWrite, GENERIC_READ|GENERIC_WRITE, 
                                         FILE_SHARE_WRITE|FILE_SHARE_READ, 
                                         0, CREATE_ALWAYS, 0, 0);
     if(INVALID_HANDLE_VALUE == hDumpFile)
     {
-        korl_logLastError("CreateFile(%ws) failed!", fileNameMinidump);
+        korl_logLastError("CreateFile(%ws) failed!", pathFileWrite);
         return;
     }
     PEXCEPTION_POINTERS pExceptionPointers = KORL_C_CAST(PEXCEPTION_POINTERS, exceptionData);
@@ -540,114 +544,110 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         korl_logLastError("MiniDumpWriteDump failed!");
         return;
     }
-    korl_log(INFO, "Crash dump written to: %ws", fileNameMinidump);
-    // Attempt to copy the win32 application's pdb file to the dump location //
-#if 0//@TODO: do we need these???  Future Kyle here: yeah, this might be useful for development.  A likely scenario: to crash while building something, then make iterations which destroy the files that are in crypto-sync with the .dmp file, leaving the programmer with less data to refer back to when attempting to fix the crash
-        TCHAR szFileNameCopySource[MAX_PATH];
-        StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s.pdb"),
-                        g_pathToExe, APPLICATION_NAME);
-        StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s.pdb"), 
-                        szPdbDirectory, APPLICATION_NAME);
-        if(!CopyFile(szFileNameCopySource, szFileName, false))
+    korl_log(INFO, "MiniDump written to: %ws", pathFileWrite);
+    /* Attempt to copy the win32 application's symbol files to the dump 
+        location.  This will allow us to at LEAST view the call stack properly 
+        during development for all of our minidumps even after making source 
+        changes and subsequently rebuilding. */
+    wchar_t pathFileRead[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(pathFileRead, sizeof(pathFileRead), L"%ws\\%ws.exe", 
+                                          _korl_file_getPath(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY), 
+                                          KORL_APPLICATION_NAME))
+    {
+        korl_log(ERROR, "pathFileRead failed");
+        return;
+    }
+    if(0 > korl_memory_stringFormatBuffer(pathFileWrite, sizeof(pathFileWrite), L"%ws\\%ws.exe", 
+                                          directoryMemoryDump, KORL_APPLICATION_NAME))
+    {
+        korl_log(ERROR, "pathFileWrite failed");
+        return;
+    }
+    if(!CopyFile(pathFileRead, pathFileWrite, FALSE))
+        korl_log(WARNING, "CopyFile(%ws, %ws) failed!  GetLastError=0x%X", 
+                 pathFileRead, pathFileWrite, GetLastError());
+    else
+        korl_log(INFO, "copied file \"%ws\" to \"%ws\"", pathFileRead, pathFileWrite);
+    if(0 > korl_memory_stringFormatBuffer(pathFileRead, sizeof(pathFileRead), L"%ws\\%ws.pdb", 
+                                          _korl_file_getPath(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY), 
+                                          KORL_APPLICATION_NAME))
+    {
+        korl_log(ERROR, "pathFileRead failed");
+        return;
+    }
+    if(0 > korl_memory_stringFormatBuffer(pathFileWrite, sizeof(pathFileWrite), L"%ws\\%ws.pdb", 
+                                          directoryMemoryDump, KORL_APPLICATION_NAME))
+    {
+        korl_log(ERROR, "pathFileWrite failed");
+        return;
+    }
+    if(!CopyFile(pathFileRead, pathFileWrite, FALSE))
+        korl_log(WARNING, "CopyFile(%ws, %ws) failed!  GetLastError=0x%X", 
+                 pathFileRead, pathFileWrite, GetLastError());
+    else
+        korl_log(INFO, "copied file \"%ws\" to \"%ws\"", pathFileRead, pathFileWrite);
+#if 0/* In the future, we will have to do something a little more sophisticated 
+        like when we add the ability to hot-reload game code, since we'll have 
+        to implement rolling PDB files due to Windows filesystem constraints.  I 
+        have done this before in the original KORL prototype (KML), so I will 
+        leave some of that commented out here just in case I delete all that 
+        code before game hot-reloading is added: */
+    // Find the most recent game*.pdb file, then place the filename into 
+    //	`szFileNameCopySource` //
+    StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s*.pdb"),
+                    g_pathToExe, FILE_NAME_GAME_DLL);
+    WIN32_FIND_DATA findFileData;
+    HANDLE findHandleGameDll = 
+        FindFirstFile(szFileNameCopySource, &findFileData);
+    if(findHandleGameDll == INVALID_HANDLE_VALUE)
+    {
+        platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
+                    "Failed to begin search for '%s'!  GetLastError=%i",
+                    szFileNameCopySource, GetLastError());
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+    FILETIME creationTimeLatest = findFileData.ftCreationTime;
+    TCHAR fileNameGamePdb[MAX_PATH];
+    StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
+                    findFileData.cFileName);
+    while(BOOL findNextFileResult = 
+        FindNextFile(findHandleGameDll, &findFileData))
+    {
+        if(!findNextFileResult && GetLastError() != ERROR_NO_MORE_FILES)
         {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to copy '%s' to '%s'!  GetLastError=%i",
-                        szFileNameCopySource, szFileName, GetLastError());
-            return EXCEPTION_EXECUTE_HANDLER;
-        }
-        /* Attempt to copy the win32 application's VC_*.pdb file to the dump 
-            location */
-        StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\VC_%s.pdb"),
-                        g_pathToExe, APPLICATION_NAME);
-        StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\VC_%s.pdb"), 
-                        szPdbDirectory, APPLICATION_NAME);
-        if(!CopyFile(szFileNameCopySource, szFileName, false))
-        {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to copy '%s' to '%s'!  GetLastError=%i",
-                        szFileNameCopySource, szFileName, GetLastError());
-            return EXCEPTION_EXECUTE_HANDLER;
-        }
-        // Find the most recent game*.pdb file, then place the filename into 
-        //	`szFileNameCopySource` //
-        StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s*.pdb"),
-                        g_pathToExe, FILE_NAME_GAME_DLL);
-        WIN32_FIND_DATA findFileData;
-        HANDLE findHandleGameDll = 
-            FindFirstFile(szFileNameCopySource, &findFileData);
-        if(findHandleGameDll == INVALID_HANDLE_VALUE)
-        {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to begin search for '%s'!  GetLastError=%i",
+            platformLog("win32-crash", __LINE__, 
+                        PlatformLogCategory::K_ERROR,
+                        "Failed to find next for '%s'!  GetLastError=%i",
                         szFileNameCopySource, GetLastError());
             return EXCEPTION_EXECUTE_HANDLER;
         }
-        FILETIME creationTimeLatest = findFileData.ftCreationTime;
-        TCHAR fileNameGamePdb[MAX_PATH];
-        StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
-                        findFileData.cFileName);
-        while(BOOL findNextFileResult = 
-            FindNextFile(findHandleGameDll, &findFileData))
+        if(CompareFileTime(&findFileData.ftCreationTime, 
+                        &creationTimeLatest) > 0)
         {
-            if(!findNextFileResult && GetLastError() != ERROR_NO_MORE_FILES)
-            {
-                platformLog("win32-crash", __LINE__, 
-                            PlatformLogCategory::K_ERROR,
-                            "Failed to find next for '%s'!  GetLastError=%i",
-                            szFileNameCopySource, GetLastError());
-                return EXCEPTION_EXECUTE_HANDLER;
-            }
-            if(CompareFileTime(&findFileData.ftCreationTime, 
-                            &creationTimeLatest) > 0)
-            {
-                creationTimeLatest = findFileData.ftCreationTime;
-                StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
-                                findFileData.cFileName);
-            }
+            creationTimeLatest = findFileData.ftCreationTime;
+            StringCchPrintf(fileNameGamePdb, MAX_PATH, TEXT("%s"),
+                            findFileData.cFileName);
         }
-        if(!FindClose(findHandleGameDll))
-        {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to close search for '%s*.pdb'!  "
-                        "GetLastError=%i",
-                        FILE_NAME_GAME_DLL, GetLastError());
-            return EXCEPTION_EXECUTE_HANDLER;
-        }
-        // attempt to copy game's pdb file //
-        StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s"),
-                        g_pathToExe, fileNameGamePdb);
-        StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s"), 
-                        szPdbDirectory, fileNameGamePdb);
-        if(!CopyFile(szFileNameCopySource, szFileName, false))
-        {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to copy '%s' to '%s'!  GetLastError=%i",
-                        szFileNameCopySource, szFileName, GetLastError());
-            return EXCEPTION_EXECUTE_HANDLER;
-        }
-        /* attempt to copy the game's VC_*.pdb file */
-        StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\VC_%s"),
-                        g_pathToExe, fileNameGamePdb);
-        StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\VC_%s"), 
-                        szPdbDirectory, fileNameGamePdb);
-        if(!CopyFile(szFileNameCopySource, szFileName, false))
-        {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to copy '%s' to '%s'!  GetLastError=%i",
-                        szFileNameCopySource, szFileName, GetLastError());
-            return EXCEPTION_EXECUTE_HANDLER;
-        }
-        // Attempt to copy the win32 EXE file into the dump location //
-        StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s.exe"),
-                        g_pathToExe, APPLICATION_NAME);
-        StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s.exe"), 
-                        szPdbDirectory, APPLICATION_NAME);
-        if(!CopyFile(szFileNameCopySource, szFileName, false))
-        {
-            platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
-                        "Failed to copy '%s' to '%s'!  GetLastError=%i",
-                        szFileNameCopySource, szFileName, GetLastError());
-            return EXCEPTION_EXECUTE_HANDLER;
-        }
-#endif
+    }
+    if(!FindClose(findHandleGameDll))
+    {
+        platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
+                    "Failed to close search for '%s*.pdb'!  "
+                    "GetLastError=%i",
+                    FILE_NAME_GAME_DLL, GetLastError());
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+    // attempt to copy game's pdb file //
+    StringCchPrintf(szFileNameCopySource, MAX_PATH, TEXT("%s\\%s"),
+                    g_pathToExe, fileNameGamePdb);
+    StringCchPrintf(szFileName, MAX_PATH, TEXT("%s\\%s"), 
+                    szPdbDirectory, fileNameGamePdb);
+    if(!CopyFile(szFileNameCopySource, szFileName, false))
+    {
+        platformLog("win32-crash", __LINE__, PlatformLogCategory::K_ERROR,
+                    "Failed to copy '%s' to '%s'!  GetLastError=%i",
+                    szFileNameCopySource, szFileName, GetLastError());
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+#endif// ^ either recycle this code at some point, or just delete it
 }
