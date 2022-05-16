@@ -2,7 +2,6 @@
 #include "korl-memoryPool.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-checkCast.h"
-#include "korl-assert.h"
 #include "korl-log.h"
 #define _KORL_MEMORY_INVALID_BYTE_PATTERN 0xFE
 typedef struct _Korl_Memory_Allocator

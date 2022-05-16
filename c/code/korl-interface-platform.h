@@ -307,7 +307,7 @@ typedef KORL_PLATFORM_GUI_WINDOW_END                      (fnSig_korl_gui_window
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
-    fnSig_korlPlatformAssertFailure*             korl_assertConditionFailed;\
+    fnSig_korlPlatformAssertFailure*             _korl_crash_assertConditionFailed;\
     fnSig_korlPlatformLog*                       _korl_log_variadic;\
     fnSig_korl_timeStamp*                        korl_timeStamp;\
     fnSig_korl_time_secondsSinceTimeStamp*       korl_time_secondsSinceTimeStamp;\
@@ -351,7 +351,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gui_widgetTextFormat*             korl_gui_widgetTextFormat;\
     fnSig_korl_gui_widgetButtonFormat*           korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
-    (apiVariableName).korl_assertConditionFailed            = korl_assertConditionFailed;\
+    (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
     (apiVariableName).korl_time_secondsSinceTimeStamp       = korl_time_secondsSinceTimeStamp;\
@@ -395,7 +395,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
     (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
-    korl_assertConditionFailed            = (apiVariableName).korl_assertConditionFailed;\
+    _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_time_secondsSinceTimeStamp       = (apiVariableName).korl_time_secondsSinceTimeStamp;\

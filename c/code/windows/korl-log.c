@@ -3,7 +3,6 @@
 #include "korl-memoryPool.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-math.h"
-#include "korl-assert.h"
 #include "korl-checkCast.h"
 #include "korl-file.h"
 #include <stdio.h>// for freopen_s
@@ -268,8 +267,8 @@ korl_internal void _korl_log_vaList(
         /* we don't call the korl_assert macro here because we want to propagate 
             the meta data of the CALLER of this error log entry to the user; the 
             fact that the assert condition fails in the log module is irrelevant */
-        korl_assertConditionFailed(logLineBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, 
-                                   cStringFileName, cStringFunctionName, lineNumber);
+        _korl_crash_assertConditionFailed(logLineBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, 
+                                          cStringFileName, cStringFunctionName, lineNumber);
         logLineBuffer[logLineSize - 1] = L'\n';
     }
     /* we're done with the transient buffer, so we can free it now */
@@ -329,20 +328,27 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
                      cStringFunctionName, lineNumber, format, vaList);
     va_end(vaList);
 }
-korl_internal void korl_log_initialize(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
+korl_internal void korl_log_initialize(void)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
     _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4), true);
     _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), true);
     _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
     _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
-    _korl_log_context.useLogOutputDebugger      = useLogOutputDebugger;
-    _korl_log_context.useLogOutputConsole       = useLogOutputConsole;
-    _korl_log_context.useLogFileBig             = useLogFileBig;
     _korl_log_context.logFileEnabled            = true;// assume we will use a log file eventually, until the user specifies we wont
-    _korl_log_context.disableMetaTags           = disableMetaTags;
-    korl_assert(_korl_log_context.buffer);
     InitializeCriticalSection(&_korl_log_context.criticalSection);
+    /* there's no reason to have to assert that the buffer was created here, 
+        since an assertion will fire the moment we try to log something if it 
+        did, and the resulting error will likely be easy to catch, so I'm just 
+        going to leave this commented out for now */
+    //korl_assert(_korl_log_context.buffer);
+}
+korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
+{
+    _korl_log_context.useLogOutputDebugger = useLogOutputDebugger;
+    _korl_log_context.useLogOutputConsole  = useLogOutputConsole;
+    _korl_log_context.useLogFileBig        = useLogFileBig;
+    _korl_log_context.disableMetaTags      = disableMetaTags;
     /* if we need to ouptut logs to a console, initialize the console here 
         Sources:
         http://dslweb.nwnexus.com/~ast/dload/guicon.htm

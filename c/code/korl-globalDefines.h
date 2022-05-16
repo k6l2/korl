@@ -118,7 +118,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 /* Having the game manage its own copy of these macros means we don't have to 
     include platform-specific KORL modules! */
 #define korl_assert(condition) \
-    ((condition) ? (void)0 : korl_assertConditionFailed(L""#condition, __FILEW__, __FUNCTIONW__, __LINE__))
+    ((condition) ? (void)0 : _korl_crash_assertConditionFailed(L""#condition, __FILEW__, __FUNCTIONW__, __LINE__))
 #define korl_log(logLevel, format, ...) \
     _korl_log_variadic(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \

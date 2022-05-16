@@ -1,13 +1,15 @@
 #include "korl-crash.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-file.h"
+korl_global_const u32 _KORL_CRASH_MAX_DUMP_COUNT = 16;
+korl_global_variable bool _korl_crash_firstAssertLogged;
 korl_global_variable bool _korl_crash_hasReceivedException;
 korl_global_variable bool _korl_crash_hasWrittenCrashDump;
 korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPointers, const wchar_t* cStrOrigin)
 {
     if(!_korl_crash_hasWrittenCrashDump)
     {
-        korl_file_generateMemoryDump(pExceptionPointers, KORL_FILE_PATHTYPE_TEMPORARY_DATA, KORL_CRASH_MAX_DUMP_COUNT);
+        korl_file_generateMemoryDump(pExceptionPointers, KORL_FILE_PATHTYPE_TEMPORARY_DATA, _KORL_CRASH_MAX_DUMP_COUNT);
         _korl_crash_hasWrittenCrashDump = true;
     }
     korl_log(ASSERT, "Fatal Exception; \"%ws\"! ExceptionCode=0x%x", 
@@ -96,7 +98,9 @@ korl_internal LONG _korl_crash_unhandledExceptionFilter(PEXCEPTION_POINTERS pExc
 }
 korl_internal void korl_crash_initialize(void)
 {
+    _korl_crash_firstAssertLogged    = false;
     _korl_crash_hasReceivedException = false;
+    _korl_crash_hasWrittenCrashDump  = false;
     /* set up the unhandled exception filter */
     const LPTOP_LEVEL_EXCEPTION_FILTER exceptionFilterPrevious = 
         SetUnhandledExceptionFilter(_korl_crash_unhandledExceptionFilter);
@@ -119,4 +123,63 @@ korl_internal void korl_crash_initialize(void)
         korl_log(WARNING, "Failed to set & retrieve reserved stack size!  "
                           "The system probably won't be able to log stack "
                           "overflow exceptions.");
+}
+korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
+{
+    const bool isFirstAssert = !_korl_crash_firstAssertLogged;
+    /* write failed condition to standard error stream */
+    if(!_korl_crash_firstAssertLogged)
+    {
+        /* we use a flag here to only log the first assert failure, which is 
+            necessary in the case of the assert being fired from inside the log 
+            module itself, and really if the program has failed an assert, we 
+            probably only care about the first one anyway, since all execution 
+            after this is suspect */
+        _korl_crash_firstAssertLogged = true;
+        __try
+        {
+            RaiseException(STATUS_ASSERTION_FAILURE, 0, 0, NULL);
+        }
+        __except(korl_file_generateMemoryDump(GetExceptionInformation(), 
+                                              KORL_FILE_PATHTYPE_TEMPORARY_DATA, 
+                                              _KORL_CRASH_MAX_DUMP_COUNT), 
+                 EXCEPTION_EXECUTE_HANDLER)
+        {
+            _korl_log_variadic(1, KORL_LOG_LEVEL_ASSERT, 
+                               cStringFileName, cStringFunctionName, lineNumber, 
+                               L"ASSERT FAILED: \"%ws\"", conditionString);
+        }
+    }
+    if(IsDebuggerPresent())
+    {
+        OutputDebugString(_T("KORL ASSERTION FAILED: \""));
+        OutputDebugString(conditionString);
+        OutputDebugString(_T("\"\n"));
+        DebugBreak();
+    }
+    else if(isFirstAssert)
+    {
+        wchar_t messageBuffer[256];
+        korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
+                                       L"Condition: %ws\n"
+                                       L"Would you like to ignore it?", 
+                                       conditionString);
+        const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
+                                                messageBuffer, L"Assertion Failed!", 
+                                                MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);
+        if(resultMessageBox == 0)
+            korl_logLastError("MessageBox failed!");
+        else
+            switch(resultMessageBox)
+            {
+            case IDYES:{
+                return;
+                break;}
+            case IDNO:{
+                /* just do nothing, write a dump & abort */
+                break;}
+            }
+    }
+    korl_log_shutDown();
+    ExitProcess(KORL_EXIT_FAIL_ASSERT);
 }

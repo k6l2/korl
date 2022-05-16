@@ -8,7 +8,6 @@
 #include "korl-math.h"
 #include "korl-gfx.h"
 #include "korl-windows-gui.h"
-#include "korl-assert.h"
 #include "korl-interface-platform.h"
 #include "korl-interface-game.h"
 #include "korl-gui.h"

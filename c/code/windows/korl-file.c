@@ -1,7 +1,6 @@
 #include "korl-file.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"
-#include "korl-assert.h"
 #include <minidumpapiset.h>
 typedef struct _Korl_File_AsyncOpertion
 {
@@ -191,6 +190,7 @@ korl_internal u$ _korl_file_findOldestFile(const wchar_t* findFileDirectory, con
 }
 korl_internal void korl_file_initialize(void)
 {
+    //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), false);
@@ -228,7 +228,6 @@ korl_internal void korl_file_initialize(void)
             break;}
         default:{
             korl_logLastError("CreateDirectory('%ws') failed", context->directoryLocalData);
-            korl_assert(!"CreateDirectory(directoryLocalData) failed");
             break;}
         }
     }
@@ -255,7 +254,6 @@ korl_internal void korl_file_initialize(void)
             break;}
         default:{
             korl_logLastError("CreateDirectory('%ws') failed", context->directoryTemporaryData);
-            korl_assert(!"CreateDirectory(directoryTemporaryData) failed");
             break;}
         }
     }

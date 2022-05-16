@@ -4,7 +4,6 @@
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include "korl-vulkan.h"
-#include "korl-assert.h"
 #include "korl-time.h"
 #include "stb/stb_truetype.h"
 typedef struct _Korl_Gfx_FontCache

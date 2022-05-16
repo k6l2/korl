@@ -1,6 +1,5 @@
 #include "korl-memory.h"
 #include "korl-math.h"
-#include "korl-assert.h"
 typedef struct _Korl_Stb_Image_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;

@@ -1,6 +1,5 @@
 #include "korl-commandLine.h"
 #include "korl-log.h"
-#include "korl-assert.h"
 #include "korl-memory.h"
 #include "korl-checkCast.h"
 korl_internal void korl_commandLine_parse(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount)

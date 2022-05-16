@@ -1,7 +1,6 @@
 #include "korl-gui.h"
 #include "korl-memory.h"
 #include "korl-math.h"
-#include "korl-assert.h"
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
 #include "korl-time.h"
