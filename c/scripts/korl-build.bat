@@ -111,6 +111,7 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 rem ----- report how long the script took -----
 :TIME_REPORT
+set "_TIME_ELAPSED="
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
     set /A "end=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
@@ -122,19 +123,26 @@ if %ss% lss 10 set ss=0%ss%
 if %cc% lss 10 set cc=0%cc%
 IF %hh% LEQ 0 (
     IF %mm% LEQ 0 (
-        echo Build script finished. Time elapsed: %ss%.%cc% seconds.
+        set "_TIME_ELAPSED=%ss%.%cc% seconds"
     ) ELSE (
-        echo Build script finished. Time elapsed: %mm%:%ss%.%cc%
+        set "_TIME_ELAPSED=%mm%:%ss%.%cc%"
     )
 ) ELSE (
-    echo Build script finished. Time elapsed: %hh%:%mm%:%ss%.%cc%
+    set "_TIME_ELAPSED=%hh%:%mm%:%ss%.%cc%"
 )
+rem save previous codepage, then set codepage to UTF-8
+for /f "tokens=2 delims=:" %%a in ('chcp.com') do set "CONSOLE_CODEPAGE=%%a"
+set "CONSOLE_CODEPAGE=%CONSOLE_CODEPAGE: =%"
+chcp 65001 >NUL
+echo ♫ KORL build succeeded ♫. Time elapsed: %_TIME_ELAPSED%
+rem restore the codepage to its original value
+chcp %CONSOLE_CODEPAGE% >NUL
 rem ----- exit the script -----
 endlocal
 exit /b 0
 rem ----- exit on failures -----
 :ON_FAILURE_EXE
-echo KORL build failed! 1>&2
+echo KORL build FAILED! 1>&2
 endlocal
 rem We need to exit like this in order to be able to do things in the calling 
 rem     command prompt like `korl-build && build\korl-windows.exe` to allow us 
