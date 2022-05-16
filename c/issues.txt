@@ -91,3 +91,4 @@
 [ ] KORL-FEATURE-000-000-012: time: add C++ API layer for RAII time probe support
 [ ] KORL-FEATURE-000-000-013: time: report total time probe count in the report
 [ ] KORL-FEATURE-000-000-014: time: allow the user to filter the report display somehow to reduce clutter; perhaps allow the user to configure a maximum reported probe depth?  Or perhaps make probe categories or something?
+[ ] KORL-FEATURE-000-000-015: crash: detect infinite loops (unresponsive program)
