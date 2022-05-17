@@ -226,6 +226,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     const Korl_Math_V3f32*const positionEye, 
     const Korl_Math_V3f32*const positionTarget, 
     const Korl_Math_V3f32*const worldUpNormal);
+korl_internal bool korl_math_m4f32_isNearEqual(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB);
 /* Aabb2f32 *******************************************************************/
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY);

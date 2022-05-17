@@ -764,7 +764,7 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
-    _korl_vulkan_flushBatchStaging();
+    korl_time_probeStart(batch_staging_flush); _korl_vulkan_flushBatchStaging(); korl_time_probeStop(batch_staging_flush);
     if(surfaceContext->batchState.pipelineVertexCount <= 0)
         return;// do nothing if we haven't batched anything yet
     /* try to make sure we have selected a valid pipeline before going further */
@@ -871,7 +871,7 @@ korl_internal void _korl_vulkan_batchDescriptorSetFlush(void)
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     if(!surfaceContext->batchState.descriptorSetIsUsed)
         return;
-    _korl_vulkan_flushBatchPipeline();
+    korl_time_probeStart(batch_pipeline_flush); _korl_vulkan_flushBatchPipeline(); korl_time_probeStop(batch_pipeline_flush);
     /* copy the state of the non-UBO descriptors of the current batch 
         descriptor set to the next one */
     korl_assert(surfaceContext->batchState.descriptorSetIndexCurrent < _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS);
@@ -2074,9 +2074,14 @@ korl_internal void korl_vulkan_setProjectionFov(
         KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
     const Korl_Math_M4f32 m4f32Projection = 
         korl_math_m4f32_projectionFov(horizontalFovDegrees, viewportWidthOverHeight, clipNear, clipFar);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(korl_math_m4f32_isNearEqual(&m4f32Projection, &surfaceContext->batchState.m4f32Projection))
+        return;
+    korl_memory_copy(&surfaceContext->batchState.m4f32Projection, &m4f32Projection, sizeof(m4f32Projection));
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2114,9 +2119,14 @@ korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRa
     const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
     Korl_Math_M4f32 m4f32Projection = 
         korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(korl_math_m4f32_isNearEqual(&m4f32Projection, &surfaceContext->batchState.m4f32Projection))
+        return;
+    korl_memory_copy(&surfaceContext->batchState.m4f32Projection, &m4f32Projection, sizeof(m4f32Projection));
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2159,9 +2169,14 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
     const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
     Korl_Math_M4f32 m4f32Projection = 
         korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(korl_math_m4f32_isNearEqual(&m4f32Projection, &surfaceContext->batchState.m4f32Projection))
+        return;
+    korl_memory_copy(&surfaceContext->batchState.m4f32Projection, &m4f32Projection, sizeof(m4f32Projection));
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2193,9 +2208,14 @@ korl_internal void korl_vulkan_setView(
         return;
     /* create the view matrix */
     const Korl_Math_M4f32 m4f32View = korl_math_m4f32_lookAt(&positionEye, &positionTarget, &worldUpNormal);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(korl_math_m4f32_isNearEqual(&m4f32View, &surfaceContext->batchState.m4f32View))
+        return;
+    korl_memory_copy(&surfaceContext->batchState.m4f32View, &m4f32View, sizeof(m4f32View));
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    _korl_vulkan_batchDescriptorSetFlush();
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2229,13 +2249,18 @@ korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return;
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    KORL_ZERO_STACK(VkRect2D, scissor);
+    scissor.offset = (VkOffset2D){.x = x, .y = y};
+    scissor.extent = (VkExtent2D){.width = width, .height = height};
+    if(0 == korl_memory_compare(&scissor, &surfaceContext->batchState.scissor, sizeof(scissor)))
+        return;
+    korl_memory_copy(&surfaceContext->batchState.scissor, &scissor, sizeof(scissor));
     /* we're changing render state, so need to make sure we're not going to 
         modify already batched draw calls */
     _korl_vulkan_flushBatchPipeline();
     /* submit a dynamic scissor adjustment to the command buffer */
-    KORL_ZERO_STACK(VkRect2D, scissor);
-    scissor.offset = (VkOffset2D){.x = x, .y = y};
-    scissor.extent = (VkExtent2D){.width = width, .height = height};
     vkCmdSetScissor(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         0/*firstScissor*/, 1/*scissorCount*/, &scissor);
@@ -2254,9 +2279,14 @@ korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math
         return;
     /* create the model matrix */
     const Korl_Math_M4f32 m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(rotation, scale, position);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(korl_math_m4f32_isNearEqual(&m4f32Model, &surfaceContext->batchState.m4f32Model))
+        return;
+    korl_memory_copy(&surfaceContext->batchState.m4f32Model, &m4f32Model, sizeof(m4f32Model));
     /* ensure the current descriptor set index of the batch state is not being 
         used by any previously batched geometry */
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    korl_time_probeStart(batch_descriptorSet_flush); _korl_vulkan_batchDescriptorSetFlush(); korl_time_probeStop(batch_descriptorSet_flush);
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
@@ -2330,11 +2360,18 @@ done_conditionallySelectLoadedAsset:
     if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
         return;
     korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(    surfaceContext->batchState.textureImageView == context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView
+        && surfaceContext->batchState.textureSampler   == context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler)
+        return;
+    surfaceContext->batchState.textureImageView = context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView;
+    surfaceContext->batchState.textureSampler   = context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler;
     /* we're about to modify the batch descriptor set state, so let's make sure 
         the batch pipeline doesn't have any pending geometry for the current 
         descriptor set index 
         @vulkan-set-batch-texture-copy-pasta */
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    _korl_vulkan_batchDescriptorSetFlush();
     /* select the loaded texture device asset for any future textured draw operations */
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2415,12 +2452,19 @@ korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandl
         return;
     /* if the device asset exists & is valid, use it for batched texturing */
     korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(    surfaceContext->batchState.textureImageView == context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView
+        && surfaceContext->batchState.textureSampler   == context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler)
+        return;
+    surfaceContext->batchState.textureImageView = context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView;
+    surfaceContext->batchState.textureSampler   = context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler;
     /* we're about to modify the batch descriptor set state, so let's make sure 
         the batch pipeline doesn't have any pending geometry for the current 
         descriptor set index 
         @vulkan-set-batch-texture-copy-pasta */
     korl_time_probeStart(batch_descriptor_set_flush);
-    _korl_vulkan_batchDescriptorSetFlush();//KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency
+    _korl_vulkan_batchDescriptorSetFlush();
     korl_time_probeStop(batch_descriptor_set_flush);
     /* select the loaded texture device asset for any future textured draw operations */
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);

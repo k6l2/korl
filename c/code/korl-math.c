@@ -513,6 +513,13 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     result.r2c0 = cameraZ.x; result.r2c1 = cameraZ.y; result.r2c2 = cameraZ.z; result.r2c3 = -korl_math_v3f32_dot(&cameraZ, positionEye);
     return result;
 }
+korl_internal bool korl_math_m4f32_isNearEqual(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
+{
+    for(u8 i = 0; i < korl_arraySize(mA->elements); i++)
+        if(!korl_math_isNearlyEqual(mA->elements[i], mB->elements[i]))
+            return false;
+    return true;
+}
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y)
 {
     Korl_Math_Aabb2f32 result;

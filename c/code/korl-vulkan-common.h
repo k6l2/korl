@@ -205,6 +205,15 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     u32  pipelineVertexCount;
     u32  descriptorSetIndexCurrent;
     bool descriptorSetIsUsed;// true if ANY geometry has been staged using the current working batch descriptor set
+    /* descriptor set state cache; used to prevent the descriptor set from 
+        flushing unless we are _actually_ changing the state of the descriptor 
+        set, since this is likely to be an expensive operation */
+    Korl_Math_M4f32 m4f32Projection;
+    Korl_Math_M4f32 m4f32View;
+    Korl_Math_M4f32 m4f32Model;
+    VkRect2D scissor;
+    VkImageView textureImageView;
+    VkSampler   textureSampler;
 } _Korl_Vulkan_SurfaceContextBatchState;
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES 2
