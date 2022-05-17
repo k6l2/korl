@@ -114,6 +114,10 @@ korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy)
 {
     CopyMemory(destination, source, bytes);
 }
+korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move)
+{
+    MoveMemory(destination, source, bytes);
+}
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
 {

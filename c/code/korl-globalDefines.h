@@ -49,6 +49,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 /* definitions for useful values of these primitive types */
 #define KORL_U16_MAX 0xFFFF
 #define KORL_U32_MAX 0xFFFFFFFF
+//KORL-ISSUE-000-000-058: math: F32_MIN doesn't seem right
 #define KORL_F32_MIN (1.175494351e-38F)
 #define KORL_F32_MAX (3.402823466e+38F)
 /** calculate the size of an array 

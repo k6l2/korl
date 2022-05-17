@@ -26,6 +26,7 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s);
 korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize);
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
+korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
 korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList);

@@ -6,9 +6,9 @@ layout(binding = 0, row_major) uniform UniformBufferObject
     mat4 model;
 } ubo;
 layout(location = 0) in vec3 attributePosition;
-layout(location = 1) in vec3 attributeColor;
+layout(location = 1) in vec4 attributeColor;
 //layout(location = 2) in vec2 attributeUv;
-layout(location = 0) out vec3 fragmentColor;
+layout(location = 0) out vec4 fragmentColor;
 //layout(location = 1) out vec2 fragmentUv;
 void main() 
 {

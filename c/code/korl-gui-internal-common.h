@@ -68,22 +68,22 @@ typedef struct _Korl_Gui_Context
     Korl_Memory_AllocatorHandle allocatorHandleStack;
     struct
     {
-        Korl_Vulkan_Color colorWindow;
-        Korl_Vulkan_Color colorWindowActive;
-        Korl_Vulkan_Color colorWindowBorder;
-        Korl_Vulkan_Color colorWindowBorderHovered;
-        Korl_Vulkan_Color colorWindowBorderResize;
-        Korl_Vulkan_Color colorWindowBorderActive;
-        Korl_Vulkan_Color colorTitleBar;
-        Korl_Vulkan_Color colorTitleBarActive;
-        Korl_Vulkan_Color colorButtonInactive;
-        Korl_Vulkan_Color colorButtonActive;
-        Korl_Vulkan_Color colorButtonPressed;
-        Korl_Vulkan_Color colorButtonWindowTitleBarIcons;
-        Korl_Vulkan_Color colorButtonWindowCloseActive;
-        Korl_Vulkan_Color colorScrollBar;
-        Korl_Vulkan_Color colorScrollBarActive;
-        Korl_Vulkan_Color colorScrollBarPressed;
+        Korl_Vulkan_Color4u8 colorWindow;
+        Korl_Vulkan_Color4u8 colorWindowActive;
+        Korl_Vulkan_Color4u8 colorWindowBorder;
+        Korl_Vulkan_Color4u8 colorWindowBorderHovered;
+        Korl_Vulkan_Color4u8 colorWindowBorderResize;
+        Korl_Vulkan_Color4u8 colorWindowBorderActive;
+        Korl_Vulkan_Color4u8 colorTitleBar;
+        Korl_Vulkan_Color4u8 colorTitleBarActive;
+        Korl_Vulkan_Color4u8 colorButtonInactive;
+        Korl_Vulkan_Color4u8 colorButtonActive;
+        Korl_Vulkan_Color4u8 colorButtonPressed;
+        Korl_Vulkan_Color4u8 colorButtonWindowTitleBarIcons;
+        Korl_Vulkan_Color4u8 colorButtonWindowCloseActive;
+        Korl_Vulkan_Color4u8 colorScrollBar;
+        Korl_Vulkan_Color4u8 colorScrollBarActive;
+        Korl_Vulkan_Color4u8 colorScrollBarPressed;
         const wchar_t* fontWindowText;
         f32 windowTextPixelSizeY;
         f32 windowTitleBarPixelSizeY;

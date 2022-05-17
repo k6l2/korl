@@ -124,22 +124,22 @@ korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
     _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), false);
-    _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color){ 16,  16,  16};
-    _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color){ 24,  24,  24};
-    _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color){  0,   0,   0};
-    _korl_gui_context.style.colorWindowBorderHovered       = (Korl_Vulkan_Color){  0,  32,   0};
-    _korl_gui_context.style.colorWindowBorderResize        = (Korl_Vulkan_Color){255, 255, 255};
-    _korl_gui_context.style.colorWindowBorderActive        = (Korl_Vulkan_Color){ 60, 125,  50};
-    _korl_gui_context.style.colorTitleBar                  = (Korl_Vulkan_Color){  0,  32,   0};
-    _korl_gui_context.style.colorTitleBarActive            = (Korl_Vulkan_Color){ 60, 125,  50};
-    _korl_gui_context.style.colorButtonInactive            = (Korl_Vulkan_Color){  0,  32,   0};
-    _korl_gui_context.style.colorButtonActive              = (Korl_Vulkan_Color){ 60, 125,  50};
-    _korl_gui_context.style.colorButtonPressed             = (Korl_Vulkan_Color){  0,   8,   0};
-    _korl_gui_context.style.colorButtonWindowTitleBarIcons = (Korl_Vulkan_Color){255, 255, 255};
-    _korl_gui_context.style.colorButtonWindowCloseActive   = (Korl_Vulkan_Color){255,   0,   0};
-    _korl_gui_context.style.colorScrollBar                 = (Korl_Vulkan_Color){  8,   8,   8};
-    _korl_gui_context.style.colorScrollBarActive           = (Korl_Vulkan_Color){ 32,  32,  32};
-    _korl_gui_context.style.colorScrollBarPressed          = (Korl_Vulkan_Color){  0,   0,   0};
+    _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 230};
+    _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
+    _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
+    _korl_gui_context.style.colorWindowBorderHovered       = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
+    _korl_gui_context.style.colorWindowBorderResize        = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
+    _korl_gui_context.style.colorWindowBorderActive        = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
+    _korl_gui_context.style.colorTitleBar                  = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
+    _korl_gui_context.style.colorTitleBarActive            = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
+    _korl_gui_context.style.colorButtonInactive            = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
+    _korl_gui_context.style.colorButtonActive              = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
+    _korl_gui_context.style.colorButtonPressed             = (Korl_Vulkan_Color4u8){  0,   8,   0, 255};
+    _korl_gui_context.style.colorButtonWindowTitleBarIcons = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
+    _korl_gui_context.style.colorButtonWindowCloseActive   = (Korl_Vulkan_Color4u8){255,   0,   0, 255};
+    _korl_gui_context.style.colorScrollBar                 = (Korl_Vulkan_Color4u8){  8,   8,   8, 255};
+    _korl_gui_context.style.colorScrollBarActive           = (Korl_Vulkan_Color4u8){ 32,  32,  32, 255};
+    _korl_gui_context.style.colorScrollBarPressed          = (Korl_Vulkan_Color4u8){  0,   0,   0, 255};
     _korl_gui_context.style.fontWindowText                 = NULL;// just use the default font inside korl-gfx
     _korl_gui_context.style.windowTextPixelSizeY           = 16.f;
     _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;
@@ -285,8 +285,8 @@ korl_internal void korl_gui_frameEnd(void)
         if(!window->isOpen)
             continue;
         korl_shared_const Korl_Math_V2f32 KORL_ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
-        Korl_Vulkan_Color windowColor   = context->style.colorWindow;
-        Korl_Vulkan_Color titleBarColor = context->style.colorTitleBar;
+        Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
+        Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
         if(context->isTopLevelWindowActive && i == KORL_MEMORY_POOL_SIZE(context->windows) - 1)
         {
             windowColor   = context->style.colorWindowActive;
@@ -374,7 +374,7 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
                                                                                     titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
                 korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
-                Korl_Vulkan_Color colorTitleBarButton = context->style.colorTitleBar;
+                Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
                 if(    context->identifierMouseHoveredWindow == window->identifier
                     && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
                     if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
@@ -404,7 +404,7 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
                                                                                     titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
                 korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
-                Korl_Vulkan_Color colorTitleBarButton = context->style.colorTitleBar;
+                Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
                 if(    context->identifierMouseHoveredWindow == window->identifier
                     && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
                     if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
@@ -565,7 +565,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_time_probeStop(draw_widgets);
         korl_time_probeStart(draw_window_border);
         /* batch window border AFTER contents are drawn */
-        Korl_Vulkan_Color colorBorder = context->style.colorWindowBorder;
+        Korl_Vulkan_Color4u8 colorBorder = context->style.colorWindowBorder;
         if(context->isTopLevelWindowActive && i == KORL_MEMORY_POOL_SIZE(context->windows) - 1)
             if(context->isMouseHovering 
                 && context->identifierMouseHoveredWindow == window->identifier
@@ -575,10 +575,10 @@ korl_internal void korl_gui_frameEnd(void)
                 colorBorder = context->style.colorWindowBorderActive;
         else if(context->isMouseHovering && context->identifierMouseHoveredWindow == window->identifier)
             colorBorder = context->style.colorWindowBorderHovered;
-        const Korl_Vulkan_Color colorBorderUp    = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color colorBorderRight = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color colorBorderDown  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color colorBorderLeft  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderUp    = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderRight = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderDown  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderLeft  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
         const Korl_Math_Aabb2f32 windowAabb = korl_math_aabb2f32_fromPoints(window->position.x                 , window->position.y - window->size.y, 
                                                                             window->position.x + window->size.x, window->position.y                  );
         Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);

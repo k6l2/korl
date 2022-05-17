@@ -47,7 +47,13 @@ typedef struct _Korl_Vulkan_Pipeline
         _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV    = 1 << 1
     } flagsOptionalVertexAttributes;
     bool useDepthTestAndWriteDepthBuffer;
-    //KORL-ISSUE-000-000-013: add blend equations
+    bool blendEnabled;
+    VkBlendOp opColor;
+    VkBlendFactor factorColorSource;
+    VkBlendFactor factorColorTarget;
+    VkBlendOp opAlpha;
+    VkBlendFactor factorAlphaSource;
+    VkBlendFactor factorAlphaTarget;
     /* ---------------------------------------------------------------------- */
     /* render state that has nothing to do with the pipeline itself */
     bool useIndexBuffer;

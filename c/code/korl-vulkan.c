@@ -481,8 +481,8 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
             1, &bufferCopyPositions);
         KORL_ZERO_STACK(VkBufferCopy, bufferCopyColors);
         bufferCopyColors.srcOffset = 0;
-        bufferCopyColors.dstOffset = surfaceContext->batchState.vertexCountDevice *sizeof(Korl_Vulkan_Color);
-        bufferCopyColors.size      = surfaceContext->batchState.vertexCountStaging*sizeof(Korl_Vulkan_Color);
+        bufferCopyColors.dstOffset = surfaceContext->batchState.vertexCountDevice *sizeof(Korl_Vulkan_Color4u8);
+        bufferCopyColors.size      = surfaceContext->batchState.vertexCountStaging*sizeof(Korl_Vulkan_Color4u8);
         vkCmdCopyBuffer(
             commandBuffer, 
             swapChainImageContext->bufferStagingBatchColors->deviceObject.buffer, 
@@ -568,6 +568,13 @@ korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
     pipeline.flagsOptionalVertexAttributes   = _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
     pipeline.useDepthTestAndWriteDepthBuffer = true;
     pipeline.useIndexBuffer                  = true;
+    pipeline.blendEnabled                    = true;
+    pipeline.opColor                         = VK_BLEND_OP_ADD;
+    pipeline.factorColorSource               = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipeline.factorColorTarget               = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    pipeline.opAlpha                         = VK_BLEND_OP_ADD;
+    pipeline.factorAlphaSource               = VK_BLEND_FACTOR_ONE;
+    pipeline.factorAlphaTarget               = VK_BLEND_FACTOR_ZERO;
     return pipeline;
 }
 korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
@@ -586,7 +593,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
     {
         vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
-        vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Color);
+        vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Color4u8);
         vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         vertexBindingDescriptionCount++;
     }
@@ -606,7 +613,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
     {
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
-        vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R8G8B8_UNORM;
+        vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R8G8B8A8_UNORM;
         vertexAttributes[vertexAttributeDescriptionCount].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
         vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
         vertexAttributeDescriptionCount++;
@@ -656,13 +663,13 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     // enable alpha blending
     KORL_ZERO_STACK(VkPipelineColorBlendAttachmentState, colorBlendAttachment);
     colorBlendAttachment.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable         = VK_TRUE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
+    colorBlendAttachment.blendEnable         = pipeline->blendEnabled;
+    colorBlendAttachment.srcColorBlendFactor = pipeline->factorColorSource;
+    colorBlendAttachment.dstColorBlendFactor = pipeline->factorColorTarget;
+    colorBlendAttachment.colorBlendOp        = pipeline->opColor;
+    colorBlendAttachment.srcAlphaBlendFactor = pipeline->factorAlphaSource;
+    colorBlendAttachment.dstAlphaBlendFactor = pipeline->factorAlphaTarget;
+    colorBlendAttachment.alphaBlendOp        = pipeline->opAlpha;
     KORL_ZERO_STACK(VkPipelineColorBlendStateCreateInfo, createInfoColorBlend);
     createInfoColorBlend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     createInfoColorBlend.attachmentCount = 1;
@@ -775,7 +782,7 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
         the total number of attribs/indices in the buffer! */
     const VkDeviceSize batchVertexBufferOffsets[] = 
         { surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Position) - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Position)
-        , surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Color)    - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Color)
+        , surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Color4u8) - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Color4u8)
         , surfaceContext->batchState.vertexCountDevice*sizeof(Korl_Vulkan_Uv)       - surfaceContext->batchState.pipelineVertexCount*sizeof(Korl_Vulkan_Uv) };
     vkCmdBindVertexBuffers(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
@@ -983,6 +990,42 @@ korl_internal void _korl_vulkan_transferImageBufferToTexture(
     /* now that the staging assets have been moved to the device-local memory, 
         we can completely clear out the staging asset allocator */
     _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearAssetsStaging);
+}
+korl_internal VkBlendOp _korl_vulkan_blendOperation_to_vulkan(Korl_Vulkan_BlendOperation blendOp)
+{
+    switch(blendOp)
+    {
+    case(KORL_BLEND_OP_ADD):              return VK_BLEND_OP_ADD;
+    case(KORL_BLEND_OP_SUBTRACT):         return VK_BLEND_OP_SUBTRACT;
+    case(KORL_BLEND_OP_REVERSE_SUBTRACT): return VK_BLEND_OP_REVERSE_SUBTRACT;
+    case(KORL_BLEND_OP_MIN):              return VK_BLEND_OP_MIN;
+    case(KORL_BLEND_OP_MAX):              return VK_BLEND_OP_MAX;
+    }
+    korl_log(ERROR, "Unsupported blend operation: %d", blendOp);
+    return 0;
+}
+korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Vulkan_BlendFactor blendFactor)
+{
+    switch(blendFactor)
+    {
+    case(KORL_BLEND_FACTOR_ZERO):                     return VK_BLEND_FACTOR_ZERO;
+    case(KORL_BLEND_FACTOR_ONE):                      return VK_BLEND_FACTOR_ONE;
+    case(KORL_BLEND_FACTOR_SRC_COLOR):                return VK_BLEND_FACTOR_SRC_COLOR;
+    case(KORL_BLEND_FACTOR_ONE_MINUS_SRC_COLOR):      return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    case(KORL_BLEND_FACTOR_DST_COLOR):                return VK_BLEND_FACTOR_DST_COLOR;
+    case(KORL_BLEND_FACTOR_ONE_MINUS_DST_COLOR):      return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+    case(KORL_BLEND_FACTOR_SRC_ALPHA):                return VK_BLEND_FACTOR_SRC_ALPHA;
+    case(KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA):      return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    case(KORL_BLEND_FACTOR_DST_ALPHA):                return VK_BLEND_FACTOR_DST_ALPHA;
+    case(KORL_BLEND_FACTOR_ONE_MINUS_DST_ALPHA):      return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+    case(KORL_BLEND_FACTOR_CONSTANT_COLOR):           return VK_BLEND_FACTOR_CONSTANT_COLOR;
+    case(KORL_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR): return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+    case(KORL_BLEND_FACTOR_CONSTANT_ALPHA):           return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+    case(KORL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA): return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+    case(KORL_BLEND_FACTOR_SRC_ALPHA_SATURATE):       return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+    }
+    korl_log(ERROR, "Unsupported blend factor: %d", blendFactor);
+    return 0;
 }
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
@@ -1313,7 +1356,7 @@ korl_internal void korl_vulkan_createSurface(
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
             /*image usage flags*/0, 
-            korl_math_kilobytes(256));
+            korl_math_kilobytes(512));
         /* --- allocate vertex batch staging buffers --- */
         swapChainImageContext->bufferStagingBatchIndices = 
             _korl_vulkan_deviceMemoryLinear_allocateBuffer(
@@ -1328,7 +1371,7 @@ korl_internal void korl_vulkan_createSurface(
         swapChainImageContext->bufferStagingBatchColors = 
             _korl_vulkan_deviceMemoryLinear_allocateBuffer(
                 &swapChainImageContext->deviceMemoryLinearHostVisible, 
-                _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*sizeof(Korl_Vulkan_Color), 
+                _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING*sizeof(Korl_Vulkan_Color4u8), 
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE);
         swapChainImageContext->bufferStagingBatchUvs = 
             _korl_vulkan_deviceMemoryLinear_allocateBuffer(
@@ -1355,7 +1398,7 @@ korl_internal void korl_vulkan_createSurface(
         swapChainImageContext->bufferDeviceBatchColors = 
             _korl_vulkan_deviceMemoryLinear_allocateBuffer(
                 &swapChainImageContext->deviceMemoryLinearDeviceLocal, 
-                _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*sizeof(Korl_Vulkan_Color), 
+                _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE*sizeof(Korl_Vulkan_Color4u8), 
                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_SHARING_MODE_EXCLUSIVE);
         swapChainImageContext->bufferDeviceBatchUvs = 
             _korl_vulkan_deviceMemoryLinear_allocateBuffer(
@@ -1808,7 +1851,7 @@ korl_internal void korl_vulkan_batch(
     Korl_Vulkan_PrimitiveType primitiveType, 
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* uvs)
+    const Korl_Vulkan_Color4u8* colors, const Korl_Vulkan_Uv* uvs)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
@@ -1917,11 +1960,11 @@ korl_internal void korl_vulkan_batch(
             vkMapMemory(
                 context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
                 /*offset*/swapChainImageContext->bufferStagingBatchColors->byteOffset, 
-                /*bytes*/vertexCount * sizeof(Korl_Vulkan_Color), 
+                /*bytes*/vertexCount * sizeof(Korl_Vulkan_Color4u8), 
                 0/*flags*/, &mappedDeviceMemory));
         memcpy(
             mappedDeviceMemory, colors, 
-            vertexCount * sizeof(Korl_Vulkan_Color));
+            vertexCount * sizeof(Korl_Vulkan_Color4u8));
         vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
     }
     // stage the UVs in mapped staging memory //
@@ -1965,6 +2008,51 @@ korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool valu
             to have the desired render state for this call */
         pipelineMetaData = context->pipelines[surfaceContext->batchState.currentPipeline];
     pipelineMetaData.useDepthTestAndWriteDepthBuffer = value;
+    _korl_vulkan_setPipelineMetaData(pipelineMetaData);
+}
+korl_internal void korl_vulkan_batchBlend(bool enabled, 
+                                          Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, 
+                                          Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    korl_assert(surfaceContext->frameStackCounter == 1);
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* if there is no pipeline selected, create a default pipeline meta data, 
+        modify it to have the desired render state for this call, then set the 
+        current pipeline meta data to this value */
+    _Korl_Vulkan_Pipeline pipelineMetaData;
+    if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
+        pipelineMetaData = _korl_vulkan_pipeline_default();
+    else/* otherwise, we want to just modify the current selected pipeline state 
+            to have the desired render state for this call */
+        pipelineMetaData = context->pipelines[surfaceContext->batchState.currentPipeline];
+    pipelineMetaData.blendEnabled = enabled;// I'm sure this is fine, and VK_TRUE/FALSE is always going to be true/false
+    if(enabled)
+    {
+        pipelineMetaData.opColor = _korl_vulkan_blendOperation_to_vulkan(opColor);
+        pipelineMetaData.opAlpha = _korl_vulkan_blendOperation_to_vulkan(opAlpha);
+        pipelineMetaData.factorColorSource = _korl_vulkan_blendFactor_to_vulkan(factorColorSource);
+        pipelineMetaData.factorColorTarget = _korl_vulkan_blendFactor_to_vulkan(factorColorTarget);
+        pipelineMetaData.factorAlphaSource = _korl_vulkan_blendFactor_to_vulkan(factorAlphaSource);
+        pipelineMetaData.factorAlphaTarget = _korl_vulkan_blendFactor_to_vulkan(factorAlphaTarget);
+    }
+    else
+    {
+        const _Korl_Vulkan_Pipeline pipelineDefault = _korl_vulkan_pipeline_default();
+        pipelineMetaData.opColor           = pipelineDefault.opColor;
+        pipelineMetaData.factorColorSource = pipelineDefault.factorColorSource;
+        pipelineMetaData.factorColorTarget = pipelineDefault.factorColorTarget;
+        pipelineMetaData.opAlpha           = pipelineDefault.opAlpha;
+        pipelineMetaData.factorAlphaSource = pipelineDefault.factorAlphaSource;
+        pipelineMetaData.factorAlphaTarget = pipelineDefault.factorAlphaTarget;
+    }
     _korl_vulkan_setPipelineMetaData(pipelineMetaData);
 }
 korl_internal void korl_vulkan_setProjectionFov(

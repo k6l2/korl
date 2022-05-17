@@ -39,8 +39,11 @@ korl_internal void korl_vulkan_batch(
     Korl_Vulkan_PrimitiveType primitiveType, 
     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
     u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color* colors, const Korl_Vulkan_Uv* uvs);
+    const Korl_Vulkan_Color4u8* colors, const Korl_Vulkan_Uv* uvs);
 korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool value);
+korl_internal void korl_vulkan_batchBlend(bool enabled, 
+                                          Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, 
+                                          Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget);
 korl_internal void korl_vulkan_setProjectionFov(
     f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
 /** 
