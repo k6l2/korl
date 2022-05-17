@@ -238,8 +238,12 @@ korl_internal void korl_time_probeLogReport(void)
         /**/
         const f64 probeCoverageRatio = KORL_C_CAST(f64, timeProbeCoverageCounts[tpi]) 
                                      / KORL_C_CAST(f64, _korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd));
-        korl_log_noMeta(INFO, "║ %ws %3hhu%% [%-*ws] %-*ws; %ws:%i",
-                        bufferDuration, KORL_C_CAST(u8, probeCoverageRatio * 100), 
+        wchar_t bufferCoverageRatio[] = L"   ∞";
+        if(timeProbeDirectChildren[tpi])
+            korl_assert(0 < korl_memory_stringFormatBuffer(bufferCoverageRatio, sizeof(bufferCoverageRatio), 
+                                                           L"%3hhu%%", KORL_C_CAST(u8, probeCoverageRatio * 100)));
+        korl_log_noMeta(INFO, "║ %ws %ws [%-*ws] %-*ws; %ws:%i",
+                        bufferDuration, bufferCoverageRatio, 
                         longestProbeLabel, timeProbe->label ? timeProbe->label : L"",
                         longestProbeFunction, timeProbe->function, file, timeProbe->line);
         timeProbeStack[timeProbeStackDepth++] = tpi + 1;
