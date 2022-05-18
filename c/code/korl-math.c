@@ -622,6 +622,14 @@ korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     return korl_math_v2f32_add(vA, vB);
 }
+korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 v)
+{
+	return korl_math_v2f32_multiplyScalar(v, -1.f);
+}
+korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    return korl_math_v2f32_subtract(vA, vB);
+}
 korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar)
 {
     return korl_math_v2f32_multiplyScalar(v, scalar);
@@ -629,5 +637,17 @@ korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar)
 korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v)
 {
     return korl_math_v2f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V2f32& operator+=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
+{
+	vA.x += vB.x;
+	vA.y += vB.y;
+	return vA;
+}
+korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
+{
+	vA.x -= vB.x;
+	vA.y -= vB.y;
+	return vA;
 }
 #endif//__cplusplus
