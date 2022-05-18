@@ -162,19 +162,46 @@ typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Projection) & 16) == 0);
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View      ) & 16) == 0);
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Model     ) & 16) == 0);
+#define _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT 2// @async-staging-buffer-to-device-memory-transfers
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView imageView;
     VkFramebuffer frameBuffer;
-    VkFence fence;
+    /** we just use this to store a copy of the fence that belongs to the WIP 
+     * frame we're assigned to use; this is not an actual fence that we need to 
+     * manage.  The actual fence is managed by our parent _Korl_Vulkan_SurfaceContext */
+    VkFence fenceWipFrame;
+    /** This is used to keep track of which of the below staging buffers we are 
+     * currently writing to, in the range of 
+     * [0, _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT) 
+     * @async-staging-buffer-to-device-memory-transfers */
+    u8 stagingBufferIndex;
+    /** These fences will be tied to the submission of command buffers used to 
+     * transfer memory from the appropriate staging buffer to device-local 
+     * memory.  @async-staging-buffer-to-device-memory-transfers */
+    VkFence fenceStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    /** These semaphores will be tied to the submission of command buffers used 
+     * to transfer memory from the appropriate staging buffer to device-local 
+     * memory.  In \c frameEnd , the final \c vkQueueSubmit of the batch command 
+     * buffer is expected to wait on these semaphores to ensure that the staging 
+     * buffer data is fully transferred before batched rendering begins.  
+     * @async-staging-buffer-to-device-memory-transfers */
+    VkSemaphore semaphoreStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    /** Used to store the handle to a pending command buffer which was 
+     * configured to transfer staging buffer data to device-local memory from 
+     * the respective staging buffer index.  We need to store this handle 
+     * because we can only free the command buffer once it is no longer in a 
+     * PENDING state (vulkan spec VUID-vkFreeCommandBuffers-pCommandBuffers-00047), 
+     * and this state change happens asynchronously.  
+     * @async-staging-buffer-to-device-memory-transfers */
+    VkCommandBuffer commandBufferStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearHostVisible;
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearDeviceLocal;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchIndices;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchUvs;
-    //KORL-ISSUE-000-000-017: do we REALLY not need device-local memory for this?
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchIndices  [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors   [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchUvs      [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;//KORL-ISSUE-000-000-017: do we REALLY not need device-local memory for this?
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchIndices;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchPositions;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchColors;
