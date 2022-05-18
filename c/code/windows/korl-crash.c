@@ -159,11 +159,25 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
     }
     else if(isFirstAssert)
     {
-        wchar_t messageBuffer[256];
-        korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                       L"Condition: %ws\n"
-                                       L"Would you like to ignore it?", 
-                                       conditionString);
+        wchar_t messageBuffer[512];
+        i$ charactersCopied = 
+            korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
+                                           L"Condition: %ws\n"
+                                           L"Would you like to ignore it?", 
+                                           conditionString);
+        /* if the entire assert conditionString doesn't fit in our local assert 
+            message stack buffer, then let's just truncate the message and 
+            display as much as possible */
+        if(charactersCopied <= 0)
+        {
+            wchar_t conditionBuffer[512 - 45/*size of the rest of the assert message box text*/];
+            korl_memory_stringCopy(conditionString, conditionBuffer, korl_arraySize(conditionBuffer));
+            charactersCopied = 
+                korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
+                                               L"Condition: %ws\n"
+                                               L"Would you like to ignore it?", 
+                                               conditionBuffer);
+        }
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, L"Assertion Failed!", 
                                                 MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);

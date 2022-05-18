@@ -21,7 +21,8 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s);
  * \return the number of characters copied from \c source into \c destination , 
  * INCLUDING the null terminator.  If the \c source cannot be copied into the 
  * \c destination then the size of \c source INCLUDING the null terminator and 
- * multiplied by -1 is returned.
+ * multiplied by -1 is returned, and \c destination is filled with the maximum 
+ * number of characters that can be copied, including a null-terminator.
  */
 korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize);
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
