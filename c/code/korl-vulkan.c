@@ -444,7 +444,20 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
           surfaceContext->batchState.vertexIndexCountStaging
         + surfaceContext->batchState.vertexIndexCountDevice
             <= _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE);
+    /* @TODO: document this hack */
+    if(VK_NULL_HANDLE == swapChainImageContext->commandBufferStagingBuffers[swapChainImageContext->stagingBufferIndex])
+    {
+        korl_time_probeStart(re_create_semaphore);
+        vkDestroySemaphore(context->device, swapChainImageContext->semaphoreStagingBuffers[swapChainImageContext->stagingBufferIndex], context->allocator);
+        KORL_ZERO_STACK(VkSemaphoreCreateInfo, createInfoSemaphore);
+        createInfoSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        _KORL_VULKAN_CHECK(
+            vkCreateSemaphore(context->device, &createInfoSemaphore, context->allocator, 
+                              &swapChainImageContext->semaphoreStagingBuffers[swapChainImageContext->stagingBufferIndex]));
+        korl_time_probeStop(re_create_semaphore);
+    }
     /* record commands to transfer the data from staging to device-local memory */
+    korl_time_probeStart(record_transfer_commands);
     KORL_ZERO_STACK(VkCommandBufferAllocateInfo, commandBufferAllocateInfo);
     commandBufferAllocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     commandBufferAllocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -501,7 +514,9 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
             1, &bufferCopyUvs);
     }
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(swapChainImageContext->commandBufferStagingBuffers[swapChainImageContext->stagingBufferIndex]));
+    korl_time_probeStop(record_transfer_commands);
     /* submit the memory transfer commands to the device */
+    korl_time_probeStart(queue_submit);
     _KORL_VULKAN_CHECK(vkResetFences(context->device, 1, 
                                      &swapChainImageContext->fenceStagingBuffers[swapChainImageContext->stagingBufferIndex]));
     KORL_ZERO_STACK(VkSubmitInfo, queueSubmitInfo);
@@ -512,6 +527,7 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
     queueSubmitInfo.pSignalSemaphores    = &swapChainImageContext->semaphoreStagingBuffers[swapChainImageContext->stagingBufferIndex];
     _KORL_VULKAN_CHECK(vkQueueSubmit(context->queueGraphics, 1, &queueSubmitInfo, 
                                      swapChainImageContext->fenceStagingBuffers[swapChainImageContext->stagingBufferIndex]));
+    korl_time_probeStop(queue_submit);
     /* finish up; update our book-keeping */
     surfaceContext->batchState.vertexIndexCountDevice += surfaceContext->batchState.vertexIndexCountStaging;
     surfaceContext->batchState.vertexCountDevice      += surfaceContext->batchState.vertexCountStaging;
@@ -522,9 +538,11 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
         write to memory in the staging buffer _SAFELY_.  Because of this, we 
         must wait on the fence of the next staging buffer to be absolutely sure 
         that we aren't about to modify data that is being read from: */
+    korl_time_probeStart(wait_for_new_buffer_fence);
     _KORL_VULKAN_CHECK(vkWaitForFences(context->device, 1, 
                                        &swapChainImageContext->fenceStagingBuffers[swapChainImageContext->stagingBufferIndex], 
                                        VK_TRUE, UINT64_MAX));//KORL-PERFORMANCE-000-000-021: this is (hopefully) better than what we were doing before, but optimally we would have no wait here at all
+    korl_time_probeStop(wait_for_new_buffer_fence);
     /* Finally we can release the previous command buffer back to the pool, 
         because at this point we know for sure that the previous queue 
         submission has completed.  Note that these stored command buffer handles 
@@ -533,6 +551,7 @@ korl_internal void _korl_vulkan_flushBatchStaging(void)
         (vk spec VUID-vkFreeCommandBuffers-pCommandBuffers-00048). */
     vkFreeCommandBuffers(context->device, context->commandPoolTransfer, 1, 
                          &swapChainImageContext->commandBufferStagingBuffers[swapChainImageContext->stagingBufferIndex]);
+    swapChainImageContext->commandBufferStagingBuffers[swapChainImageContext->stagingBufferIndex] = VK_NULL_HANDLE;
 }
 /** 
  * \param memoryTypeBits Flags representing the incides in a list of memory 
@@ -789,6 +808,7 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
     /* try to make sure we have selected a valid pipeline before going further */
     korl_assert(surfaceContext->batchState.currentPipeline < context->pipelinesCount && context->pipelinesCount > 0);
     /* add batch draw commands to the command buffer */
+    korl_time_probeStart(batch_drawCommands);
     vkCmdBindPipeline(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelines[surfaceContext->batchState.currentPipeline].pipeline);
@@ -836,6 +856,7 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
             surfaceContext->batchState.pipelineVertexCount, 
             /*instance count*/1, /*firstIndex*/0, /*firstInstance*/0);
     }
+    korl_time_probeStop(batch_drawCommands);
    /* update book keeping */
    surfaceContext->batchState.pipelineVertexCount      = 0;
    surfaceContext->batchState.pipelineVertexIndexCount = 0;
@@ -893,6 +914,7 @@ korl_internal void _korl_vulkan_batchDescriptorSetFlush(void)
     korl_time_probeStart(batch_pipeline_flush); _korl_vulkan_flushBatchPipeline(); korl_time_probeStop(batch_pipeline_flush);
     /* copy the state of the non-UBO descriptors of the current batch 
         descriptor set to the next one */
+    korl_time_probeStart(copy_nonUBO_descriptors);
     korl_assert(surfaceContext->batchState.descriptorSetIndexCurrent < _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS);
     KORL_ZERO_STACK_ARRAY(VkCopyDescriptorSet, copyDescriptorSets, 1);
     copyDescriptorSets[0].sType           = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
@@ -906,7 +928,9 @@ korl_internal void _korl_vulkan_batchDescriptorSetFlush(void)
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
     const VkDeviceSize batchUboStride = korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
+    korl_time_probeStop(copy_nonUBO_descriptors);
     /* copy the previous UBO to the buffer slot occupied by the next one */
+    korl_time_probeStart(copy_previous_UBO);
     KORL_ZERO_STACK(void*, mappedDeviceMemory);
     _KORL_VULKAN_CHECK(
         vkMapMemory(
@@ -917,6 +941,7 @@ korl_internal void _korl_vulkan_batchDescriptorSetFlush(void)
     _Korl_Vulkan_SwapChainImageBatchUbo*const uboNext = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, KORL_C_CAST(u8*, mappedDeviceMemory) + batchUboStride);
     *uboNext = *ubo;
     vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
+    korl_time_probeStop(copy_previous_UBO);
     /* advance to the copied batch descriptor set */
     surfaceContext->batchState.descriptorSetIndexCurrent++;
     surfaceContext->batchState.descriptorSetIsUsed = false;
@@ -1758,6 +1783,14 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
     }
     swapChainImageContext->fenceWipFrame = 
         surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fence;
+    /* We can, and _should_, free & invalidate the staging=>device transfer 
+        command buffer handles at the beginning of each frame, since we 
+        definitely know that they are no longer in use! */
+    vkFreeCommandBuffers(context->device, context->commandPoolTransfer, 
+                         _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT, 
+                         swapChainImageContext->commandBufferStagingBuffers);
+    for(u8 s = 0; s < _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT; s++)
+        swapChainImageContext->commandBufferStagingBuffers[s] = VK_NULL_HANDLE;
     /* ----- begin the swap chain command buffer for this frame ----- */
     _KORL_VULKAN_CHECK(
         vkResetCommandBuffer(
@@ -1841,18 +1874,24 @@ korl_internal void korl_vulkan_frameEnd(void)
     _KORL_VULKAN_CHECK(
         vkEndCommandBuffer(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex]));
     /* submit graphics commands to the graphics queue */
-    VkSemaphore submitGraphicsWaitSemaphores[1/*semaphoreImageAvailable*/ + _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT] = 
-        { surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable };
-    for(u8 i = 0; i < _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT; i++)
-        submitGraphicsWaitSemaphores[1 + i] = swapChainImageContext->semaphoreStagingBuffers[i];
-    VkPipelineStageFlags submitGraphicsWaitStages[] = 
-        { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    uint32_t submitGraphicsWaitSemaphoreCount = 0;
+    VkSemaphore submitGraphicsWaitSemaphores[1/*semaphoreImageAvailable*/ + _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    submitGraphicsWaitSemaphores[submitGraphicsWaitSemaphoreCount++] = 
+        surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable;
+    // ONLY wait on staging buffer semaphores that we KNOW have been used to submit a memory transfer command buffer //
+    for(uint32_t i = 0; i < _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT; i++)
+        if(swapChainImageContext->commandBufferStagingBuffers[i] != VK_NULL_HANDLE)
+            submitGraphicsWaitSemaphores[submitGraphicsWaitSemaphoreCount++] = swapChainImageContext->semaphoreStagingBuffers[i];
+    VkPipelineStageFlags submitGraphicsWaitStages[1/*semaphoreImageAvailable*/ + _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
+    submitGraphicsWaitStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    for(uint32_t i = 1; i < submitGraphicsWaitSemaphoreCount; i++)
+        submitGraphicsWaitStages[i] = VK_PIPELINE_STAGE_TRANSFER_BIT;
     VkSemaphore submitGraphicsSignalSemaphores[] = 
         { surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreRenderDone };
     korl_time_probeStart(submit_gfx_cmds_to_gfx_q);
     KORL_ZERO_STACK(VkSubmitInfo, submitInfoGraphics);
     submitInfoGraphics.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfoGraphics.waitSemaphoreCount   = korl_arraySize(submitGraphicsWaitSemaphores);
+    submitInfoGraphics.waitSemaphoreCount   = submitGraphicsWaitSemaphoreCount;
     submitInfoGraphics.pWaitSemaphores      = submitGraphicsWaitSemaphores;
     submitInfoGraphics.pWaitDstStageMask    = submitGraphicsWaitStages;
     submitInfoGraphics.commandBufferCount   = 1;
