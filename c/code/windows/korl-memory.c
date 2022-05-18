@@ -714,3 +714,20 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
+korl_internal void korl_memory_logReport(void)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+    {
+        _Korl_Memory_Allocator*const allocator = &context->allocators[a];
+        switch(allocator->type)
+        {
+        case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+            break;}
+        default:{
+            korl_log(ERROR, "unknown allocator type '%i' not implemented", allocator->type);
+            break;}
+        }
+    }
+}
