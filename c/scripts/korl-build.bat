@@ -57,6 +57,7 @@ set "buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\%KORL_GAME_SOURCE_BAS
 rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
 set "buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
 set "buildCommand=%buildCommand% /std:c++20"
+set "buildCommand=%buildCommand% /EHa"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
 echo cl.exe %CL% %buildCommand% %_CL_%
 echo:
