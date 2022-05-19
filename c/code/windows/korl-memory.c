@@ -486,6 +486,10 @@ done:
         allocationMeta->bytes = bytes;
         allocationMeta->file  = file;
         allocationMeta->line  = line;
+        /* we need to update the allocator's next allocation address if we're 
+            the last allocation */ 
+        if(isLastAllocation)
+            allocator->nextAllocationAddress = KORL_C_CAST(u8*, allocation) + allocationPages*pageBytes;
     }
     /* protect the allocation's metadata page */
     {
