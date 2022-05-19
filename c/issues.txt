@@ -79,6 +79,8 @@
 [ ] KORL-PERFORMANCE-000-000-019: build: investigate potential benefits of running the platform/game translation units on separate threads
 [x] KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency; we should intelligently look at the last known state (for things like texture handle, etc) and ONLY flush batch descriptor sets if this changes, instead of ALWAYS flushing
 [ ] KORL-PERFORMANCE-000-000-021: Vulkan: this is better than what we were doing before, but optimally we would have no wait during batchFlushStaging at all
+[ ] KORL-PERFORMANCE-000-000-022: Vulkan: (minor) this function currently assumes that the caller is expecting to be able to safely write to the new staging buffer RIGHT AWAY, but in this special case we do NOT need to wait for the alternate staging buffer to be available!!!  We should add a parameter to this function to optionally ignore the `wait_for_new_buffer_fence` code that runs at the end of this function.
+[ ] KORL-PERFORMANCE-000-000-023: Vulkan: (20us per iteration) likely suboptimal use of Vulkan synchronization primitives
 [x] KORL-FEATURE-000-000-000: add vectored exception handler so we can generate crash dumps & flush logs
 [ ] KORL-FEATURE-000-000-001: GFX: add support for outlined geometry (requires refactoring this API to use >= 1 sub-batches per Batch)
 [ ] KORL-FEATURE-000-000-002: GFX: add support for outlined text (not sure how to do this with stbtt, maybe check how other implementations do this?)
