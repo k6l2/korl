@@ -81,6 +81,7 @@
 [ ] KORL-PERFORMANCE-000-000-021: Vulkan: this is better than what we were doing before, but optimally we would have no wait during batchFlushStaging at all
 [ ] KORL-PERFORMANCE-000-000-022: Vulkan: (minor) this function currently assumes that the caller is expecting to be able to safely write to the new staging buffer RIGHT AWAY, but in this special case we do NOT need to wait for the alternate staging buffer to be available!!!  We should add a parameter to this function to optionally ignore the `wait_for_new_buffer_fence` code that runs at the end of this function.
 [ ] KORL-PERFORMANCE-000-000-023: Vulkan: (20us per iteration) likely suboptimal use of Vulkan synchronization primitives
+[ ] KORL-PERFORMANCE-000-000-024: Log: (likely MAJOR): Can we get away with just not doing any transient buffer allcations (just use the primary buffer + circular buffer)?  Currently, our Linear allocation strategy is heavy-handed, sacrificing speed for safety.  This is to the point that I've noticed individual allocations can take upwards of 20-40us.  This is fine for one-off allocations here and there, but logs are generated all over the place right now.  I highly suspect that this is the vast majority of time loss in places that are pumping out tons of logs, such as for time probe reports!
 [x] KORL-FEATURE-000-000-000: add vectored exception handler so we can generate crash dumps & flush logs
 [ ] KORL-FEATURE-000-000-001: GFX: add support for outlined geometry (requires refactoring this API to use >= 1 sub-batches per Batch)
 [ ] KORL-FEATURE-000-000-002: GFX: add support for outlined text (not sure how to do this with stbtt, maybe check how other implementations do this?)
@@ -97,3 +98,5 @@
 [ ] KORL-FEATURE-000-000-013: time: report total time probe count in the report
 [ ] KORL-FEATURE-000-000-014: time: allow the user to filter the report display somehow to reduce clutter; perhaps allow the user to configure a maximum reported probe depth?  Or perhaps make probe categories or something?
 [ ] KORL-FEATURE-000-000-015: crash: detect infinite loops (unresponsive program)
+[ ] KORL-FEATURE-000-000-016: window: limit & regulate frame rate
+[ ] KORL-FEATURE-000-000-017: time: add ability to stash reports for later consumption; avoids the issue of not being able to probe the report itself, among other things

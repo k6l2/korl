@@ -290,6 +290,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_SurfaceContextBatchState batchState;
     bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
     _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer;
+    //@TODO: delete//VkFence fenceVSync;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

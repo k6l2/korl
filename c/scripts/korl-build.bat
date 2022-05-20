@@ -38,6 +38,7 @@ rem         variable, so we have to use '#' instead.
 rem         See: https://docs.microsoft.com/en-us/cpp/build/reference/cl-environment-variables?view=msvc-170
 set "buildCommand=%buildCommand% /D KORL_APP_NAME#%KORL_EXE_NAME%"
 set "buildCommand=%buildCommand% /D KORL_APP_VERSION#%KORL_EXE_VERSION%"
+set "buildCommand=%buildCommand% /D KORL_APP_TARGET_FRAME_HZ#%KORL_GAME_TARGET_FRAMES_PER_SECOND%"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
 echo cl.exe %CL% %buildCommand% %_CL_%
 echo:

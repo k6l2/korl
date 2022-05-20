@@ -26,10 +26,10 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     switch(uMsg)
     {
     case WM_CREATE:{
-        }break;
+        break;}
     case WM_DESTROY:{
         PostQuitMessage(KORL_EXIT_SUCCESS);
-        } break;
+        break;}
     case WM_KEYDOWN:
     case WM_KEYUP:{
         if(wParam >= korl_arraySize(g_korl_windows_window_virtualKeyMap))
@@ -44,7 +44,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         const UINT clientHeight = HIWORD(lParam);
         korl_log(VERBOSE, "WM_SIZE - clientSize: %ux%u", clientWidth, clientHeight);
         korl_vulkan_deferredResize(clientWidth, clientHeight);
-        } break;
+        break;}
     case WM_LBUTTONDOWN:
     case WM_MBUTTONDOWN:
     case WM_RBUTTONDOWN:
@@ -123,11 +123,44 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_game_onMouseEvent(mouseEvent);
         } break;
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
+    case WM_MOVE:{
+        break;}
     default: 
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
     return 0;// the most common user-handled result
 }
+#if 0//@TODO: delete
+korl_internal Korl_Time_Counts _korl_windows_window_queryDisplayRefreshTimeCounts(void)
+{
+    korl_shared_const DWORD DEFAULT_REFRESH_HZ = KORL_APP_TARGET_FRAME_HZ;
+    const HMONITOR nearestMonitor = 
+        MonitorFromWindow(_korl_windows_window_context.handleWindow, 
+                          MONITOR_DEFAULTTONEAREST);
+    KORL_ZERO_STACK(MONITORINFOEX, monitorInfo);
+    monitorInfo.cbSize = sizeof(monitorInfo);
+    if(!GetMonitorInfo(nearestMonitor, KORL_C_CAST(MONITORINFO*, &monitorInfo)))
+    {
+        korl_log(ERROR, "GetMonitorInfo failed!");
+        return korl_time_countsFromHz(korl_checkCast_u$_to_u16(DEFAULT_REFRESH_HZ));
+    }
+    KORL_ZERO_STACK(DEVMODE, monitorDevMode);
+    monitorDevMode.dmSize = sizeof(monitorDevMode);
+    if(!EnumDisplaySettings(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, 
+                            &monitorDevMode))
+    {
+        korl_log(ERROR, "EnumDisplaySettings failed!");
+        return korl_time_countsFromHz(korl_checkCast_u$_to_u16(DEFAULT_REFRESH_HZ));
+    }
+    if(monitorDevMode.dmDisplayFrequency < 2)
+    {
+        korl_log(WARNING, "Unknown hardware-defined refresh rate! "
+                 "Defaulting to %i hz...", DEFAULT_REFRESH_HZ);
+        return korl_time_countsFromHz(korl_checkCast_u$_to_u16(DEFAULT_REFRESH_HZ));
+    }
+    return korl_time_countsFromHz(korl_checkCast_u$_to_u16(monitorDevMode.dmDisplayFrequency));
+}
+#endif
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
@@ -258,17 +291,94 @@ korl_internal void korl_windows_window_loop(void)
     korl_time_probeStop(game_initialization);
     korl_log(INFO, "KORL initialization time probe report:");
     korl_time_probeLogReport();
-    u$ frameCount = 0;
+    u$ renderFrameCount = 0;
     bool quit = false;
+    /* For reference, this is essentially what the application developers who 
+        consume KORL have rated their application as the _maximum_ amount of 
+        time between logical frames to maintain a stable simulation.  It should 
+        be _OKAY_ to use smaller values, but definitely _NOT_ okay to use higher 
+        values. */
+    const Korl_Time_Counts timeCountsTargetGamePerFrame = korl_time_countsFromHz(KORL_APP_TARGET_FRAME_HZ);
+    const Korl_Time_Counts timeCountsSlowestFrame       = korl_time_countsFromHz(30);
+    Korl_Time_Counts gameTimeAccumulator                = 0;
+    PlatformTimeStamp timeStampLast                     = korl_timeStamp();
     while(!quit)
     {
-        if(frameCount > 0 && frameCount <= 2)
-        {
-            korl_log(INFO, "frame %llu time probe report:", frameCount - 1);
-            korl_time_probeLogReport();
-        }
+        /* frame rate regulation metrics */
+        const PlatformTimeStamp timeStampRenderLoopTop = korl_timeStamp();
+        const Korl_Time_Counts timeCountsElapsed = korl_time_timeStampCountDifference(timeStampLast, timeStampRenderLoopTop);
+        timeStampLast = timeStampRenderLoopTop;
+        gameTimeAccumulator += KORL_MATH_MIN(timeCountsElapsed, timeCountsSlowestFrame);
+        u$ logicalFramesToProcess = gameTimeAccumulator / timeCountsTargetGamePerFrame;
+        gameTimeAccumulator -= logicalFramesToProcess * timeCountsTargetGamePerFrame;
+        /* */
+        //@TODO: delete? or bring back reporting in another way with better usability
+        // if(renderFrameCount == 1 || renderFrameCount == 11)
+        // {
+        //     korl_log(INFO, "frame %llu time probe report:", renderFrameCount - 1);
+        //     korl_time_probeLogReport();
+        // }
         korl_time_probeReset();
         korl_time_probeStart(Main_Loop);
+#if 0//@TODO: delete
+        const Korl_Time_Counts timeCountsDisplayRefreshPerFrame = _korl_windows_window_queryDisplayRefreshTimeCounts();
+        /* We now have two numbers to use for loop timing: max time between 
+            game frames, and expected display refresh time.  These two times are 
+            _highly_ unlikely to be the same, or even be evenly divisible by 
+            each other.  We now must use this data to find a logical frame 
+            refresh time which satisfies the following constraints: 
+                - it _must_ be <= timeCountsTargetGamePerFrame
+                - we want (timeCountsDisplayRefreshPerFrame % timeCountsTargetGamePerFrame)
+                  to be as close to zero as possible */
+#endif
+        //@TODO: process window messages? (maybe not necessary actually...)
+        KORL_ZERO_STACK(MSG, windowMessage);
+        for(; logicalFramesToProcess; logicalFramesToProcess--)
+        {
+            timeStampLast = korl_timeStamp();
+            korl_time_probeStart(Logic_Loop);
+            korl_time_probeStart(process_window_messages);
+            while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
+                              0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
+            {
+                if(windowMessage.message == WM_QUIT) quit = true;
+                const BOOL messageTranslated = TranslateMessage(&windowMessage);
+                const LRESULT messageResult  = DispatchMessage (&windowMessage);
+            }
+            korl_time_probeStop(process_window_messages);
+            if(quit)
+                break;
+            korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);
+            /* only do rendering on the last logical frame */
+            if(logicalFramesToProcess == 1)
+            {
+                korl_time_probeStart(vulkan_frame_begin); korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f}); korl_time_probeStop(vulkan_frame_begin);
+            }
+            korl_time_probeStart(gui_frame_begin);    korl_gui_frameBegin();                              korl_time_probeStop(gui_frame_begin);
+            korl_time_probeStart(game_update);
+            if(!korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
+            {
+                quit = true;
+                break;
+            }
+            korl_time_probeStop(game_update);
+            korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
+            /* only do rendering on the last logical frame */
+            if(logicalFramesToProcess == 1)
+            {
+                korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
+            }
+            korl_time_probeStop(Logic_Loop);
+        }
+        if(quit)
+            break;
+        const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();
+        const Korl_Time_Counts timeCountsRenderLoopBottomToLast = korl_time_timeStampCountDifference(timeStampRenderLoopBottom, timeStampLast);
+        korl_time_probeStart(sleep);
+        if(timeCountsRenderLoopBottomToLast < timeCountsTargetGamePerFrame)
+            korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoopBottomToLast);
+        korl_time_probeStop(sleep);
+#if 0//@TODO: recycle
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
@@ -285,14 +395,15 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                                korl_time_probeStop(gui_frame_begin);
         korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);
         korl_time_probeStart(game_update);
-        if(!korl_game_update(1/60.f, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
+        if(!korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
         korl_time_probeStop(game_update);
         korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
+#endif
+        if(renderFrameCount < ~(u$)0)
+            renderFrameCount++;
         korl_time_probeStop(Main_Loop);
-        if(frameCount < ~(u$)0)
-            frameCount++;
     }
     korl_vulkan_destroySurface();
 }

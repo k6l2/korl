@@ -204,14 +204,34 @@ korl_internal void _korl_vulkan_createSwapChain(
     korl_assert(deviceSurfaceMetaData->formatsSize > 0);
     surfaceContext->swapChainSurfaceFormat = deviceSurfaceMetaData->formats[0];
     for(u32 f = 0; f < deviceSurfaceMetaData->formatsSize; f++)
-        if(    deviceSurfaceMetaData->formats[f].format == VK_FORMAT_B8G8R8A8_SRGB
+        if(    deviceSurfaceMetaData->formats[f].format     == VK_FORMAT_B8G8R8A8_SRGB
             && deviceSurfaceMetaData->formats[f].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             surfaceContext->swapChainSurfaceFormat = deviceSurfaceMetaData->formats[f];
             break;
         }
-    // the only present mode REQUIRED by the spec to be supported
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
+    for(u32 pm = 0; pm < deviceSurfaceMetaData->presentModesSize; pm++)
+        if(deviceSurfaceMetaData->presentModes[pm] == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            break;
+        }
+        else if(presentMode == VK_PRESENT_MODE_MAX_ENUM_KHR 
+                && deviceSurfaceMetaData->presentModes[pm] == VK_PRESENT_MODE_FIFO_KHR)
+            /* According to Vulkan spec, this is the only present mode that is 
+                required to be supported, which should guarantee that 
+                presentMode will be set to a valid mode. */
+            presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    korl_assert(presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR);
+    const wchar_t* presentModeString = NULL;
+    switch(presentMode)
+    {
+    case VK_PRESENT_MODE_MAILBOX_KHR: {presentModeString = L"VK_PRESENT_MODE_MAILBOX_KHR"; break;}
+    case VK_PRESENT_MODE_FIFO_KHR:    {presentModeString = L"VK_PRESENT_MODE_FIFO_KHR";    break;}
+    default:                          {presentModeString = L"INVALID";                     break;}
+    }
+    korl_log(INFO, "presentMode: %ws", presentModeString);
     surfaceContext->swapChainImageExtent = deviceSurfaceMetaData->capabilities.currentExtent;
     if(    surfaceContext->swapChainImageExtent.width  == 0xFFFFFFFF 
         && surfaceContext->swapChainImageExtent.height == 0xFFFFFFFF)
@@ -339,6 +359,7 @@ korl_internal void _korl_vulkan_createSwapChain(
             &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/));
     surfaceContext->swapChainImagesSize = KORL_MATH_MIN(surfaceContext->swapChainImagesSize, 
                                                         korl_arraySize(surfaceContext->swapChainImages));
+    korl_log(INFO, "swapChainImagesSize=%i", surfaceContext->swapChainImagesSize);
     _KORL_VULKAN_CHECK(
         vkGetSwapchainImagesKHR(
             context->device, surfaceContext->swapChain, 
@@ -1222,8 +1243,7 @@ korl_internal void korl_vulkan_destroy(void)
         all about wasting time like this if we don't have to */
 #endif// KORL_DEBUG
 }
-korl_internal void korl_vulkan_createSurface(
-    void* createSurfaceUserData, u32 sizeX, u32 sizeY)
+korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 sizeX, u32 sizeY)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -1502,6 +1522,13 @@ korl_internal void korl_vulkan_createSurface(
                 context->device, &createInfoFence, context->allocator, 
                 &surfaceContext->wipFrames[f].fence));
     }
+#if 0//@TODO: delete
+    /* create a fence which can be used to meter frame generation to match 
+        presentation rate (vertical-sync) */
+    _KORL_VULKAN_CHECK(
+        vkCreateFence(context->device, &createInfoFence, context->allocator, 
+                      &surfaceContext->fenceVSync));
+#endif
     /* --- create descriptor pool ---
         We shouldn't have to do this inside createSwapChain for similar reasons 
         to the internal memory buffers; we should know a priori what the maximum 
@@ -1695,6 +1722,7 @@ korl_internal void korl_vulkan_destroySurface(void)
             vkDestroySemaphore(context->device, swapChainImageContext->semaphoreStagingBuffers[s], context->allocator);
         }
     }
+    //@TODO: delete//vkDestroyFence(context->device, surfaceContext->fenceVSync, context->allocator);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));
     /* destroy the device-specific resources */
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssetsStaging);
@@ -1732,8 +1760,8 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
         /* if the resize area is zero, then we can't do anything because that is 
             an illegal vulkan state anyways!  This happens when the window gets 
             minimized or the user makes it really small for some reason... */
-        if(    surfaceContext->deferredResizeX == 0 
-            || surfaceContext->deferredResizeY == 0)
+        if(   surfaceContext->deferredResizeX == 0 
+           || surfaceContext->deferredResizeY == 0)
             goto done;
         korl_log(VERBOSE, "resizing to: %ux%u", 
             surfaceContext->deferredResizeX, surfaceContext->deferredResizeY);
@@ -1741,12 +1769,12 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
         _korl_vulkan_destroySwapChain();
         /* since the device surface meta data has changed, we need to query it */
         _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
-            _korl_vulkan_deviceSurfaceMetaData(
-                context->physicalDevice, surfaceContext->surface);
+            _korl_vulkan_deviceSurfaceMetaData(context->physicalDevice, 
+                                               surfaceContext->surface);
         /* re-create the swap chain & all resources which depend on it */
-        _korl_vulkan_createSwapChain(
-            surfaceContext->deferredResizeX, surfaceContext->deferredResizeY, 
-            &deviceSurfaceMetaData);
+        _korl_vulkan_createSwapChain(surfaceContext->deferredResizeX, 
+                                     surfaceContext->deferredResizeY, 
+                                     &deviceSurfaceMetaData);
         /* re-create pipelines */
         for(u32 p = 0; p < context->pipelinesCount; p++)
         {
@@ -1762,25 +1790,35 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
     }
     /* wait on the fence for the current WIP frame */
     _KORL_VULKAN_CHECK(
-        vkWaitForFences(
-            context->device, 1, 
-            &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fence, 
-            VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+        vkWaitForFences(context->device, 1, 
+                        &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fence, 
+                        VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
     /* acquire the next image from the swap chain */
+#if 0
     _KORL_VULKAN_CHECK(
-        vkAcquireNextImageKHR(
-            context->device, surfaceContext->swapChain, 
-            UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
-            surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable, 
-            VK_NULL_HANDLE/*fence*/, &surfaceContext->frameSwapChainImageIndex));
+        vkResetFences(context->device, 1, &surfaceContext->fenceVSync));
+    _KORL_VULKAN_CHECK(
+        vkAcquireNextImageKHR(context->device, surfaceContext->swapChain, 
+                              UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
+                              surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable, 
+                              surfaceContext->fenceVSync, &surfaceContext->frameSwapChainImageIndex));
+    _KORL_VULKAN_CHECK(
+        vkWaitForFences(context->device, 1, &surfaceContext->fenceVSync, 
+                        VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+#else//@TODO: delete one of these :|
+    _KORL_VULKAN_CHECK(
+        vkAcquireNextImageKHR(context->device, surfaceContext->swapChain, 
+                              UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
+                              surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable, 
+                              VK_NULL_HANDLE/*fence*/, &surfaceContext->frameSwapChainImageIndex));
+#endif
     swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     if(swapChainImageContext->fenceWipFrame != VK_NULL_HANDLE)
     {
         _KORL_VULKAN_CHECK(
-            vkWaitForFences(
-                context->device, 1, 
-                &swapChainImageContext->fenceWipFrame, 
-                VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+            vkWaitForFences(context->device, 1, 
+                            &swapChainImageContext->fenceWipFrame, 
+                            VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
     }
     swapChainImageContext->fenceWipFrame = 
         surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fence;
@@ -1794,15 +1832,14 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
         swapChainImageContext->commandBufferStagingBuffers[s] = VK_NULL_HANDLE;
     /* ----- begin the swap chain command buffer for this frame ----- */
     _KORL_VULKAN_CHECK(
-        vkResetCommandBuffer(
-            surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 0/*flags*/));
+        vkResetCommandBuffer(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+                             0/*flags*/));
     KORL_ZERO_STACK(VkCommandBufferBeginInfo, beginInfoCommandBuffer);
     beginInfoCommandBuffer.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfoCommandBuffer.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     _KORL_VULKAN_CHECK(
-        vkBeginCommandBuffer(
-            surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
-            &beginInfoCommandBuffer));
+        vkBeginCommandBuffer(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+                             &beginInfoCommandBuffer));
     // define the color we are going to clear the color attachment with when 
     //    the render pass begins:
     KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
@@ -1819,31 +1856,30 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
     beginInfoRenderPass.renderArea.extent = surfaceContext->swapChainImageExtent;
     beginInfoRenderPass.clearValueCount   = korl_arraySize(clearValues);
     beginInfoRenderPass.pClearValues      = clearValues;
-    vkCmdBeginRenderPass(
-        surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
-        &beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+                         &beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
     /* before calling any drawing commands, we must define the scissor since we 
         are currently using dynamic scissor settings in our pipelines */
     KORL_ZERO_STACK(VkRect2D, scissor);
     scissor.offset = (VkOffset2D){.x = 0, .y = 0};
     scissor.extent = surfaceContext->swapChainImageExtent;
-    vkCmdSetScissor(
-        surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
-        0/*firstScissor*/, 1/*scissorCount*/, &scissor);
+    vkCmdSetScissor(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+                    0/*firstScissor*/, 1/*scissorCount*/, &scissor);
     /* clear the state of the first batch descriptor set */
     /* calculate the stride of each batch descriptor set UBO within the buffer */
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
     vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
-    const VkDeviceSize batchUboStride = korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
+    const VkDeviceSize batchUboStride = 
+        korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+                                  physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
     /* now we can set the UBO in the buffer at the current batch descriptor set 
         index to be a known default set of values */
     KORL_ZERO_STACK(void*, mappedDeviceMemory);
     _KORL_VULKAN_CHECK(
-        vkMapMemory(
-            context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
-            swapChainImageContext->bufferStagingUbo->byteOffset + surfaceContext->batchState.descriptorSetIndexCurrent*batchUboStride, 
-            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
-            0/*flags*/, &mappedDeviceMemory));
+        vkMapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory, 
+                    swapChainImageContext->bufferStagingUbo->byteOffset + surfaceContext->batchState.descriptorSetIndexCurrent*batchUboStride, 
+                    /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
+                    0/*flags*/, &mappedDeviceMemory));
     _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
     ubo->m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     ubo->m4f32View       = KORL_MATH_M4F32_IDENTITY;
@@ -1916,7 +1952,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     korl_time_probeStart(present_swap_chain);
     VkSwapchainKHR presentInfoSwapChains[] = { surfaceContext->swapChain };
     KORL_ZERO_STACK(VkPresentInfoKHR, presentInfo);
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = korl_arraySize(submitGraphicsSignalSemaphores);
     presentInfo.pWaitSemaphores    = submitGraphicsSignalSemaphores;
     presentInfo.swapchainCount     = korl_arraySize(presentInfoSwapChains);
@@ -1961,7 +1997,8 @@ korl_internal void korl_vulkan_batch(
     korl_assert(positions);
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2079,7 +2116,8 @@ korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool valu
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2105,7 +2143,8 @@ korl_internal void korl_vulkan_batchBlend(bool enabled,
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2149,7 +2188,8 @@ korl_internal void korl_vulkan_setProjectionFov(
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2191,7 +2231,8 @@ korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRa
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2236,7 +2277,8 @@ korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHei
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2287,7 +2329,8 @@ korl_internal void korl_vulkan_setView(
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2330,7 +2373,8 @@ korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2358,7 +2402,8 @@ korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2395,7 +2440,8 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -2520,7 +2566,8 @@ korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandl
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
-    korl_assert(surfaceContext->frameStackCounter == 1);
+    if(surfaceContext->frameStackCounter != 1)
+        return;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
