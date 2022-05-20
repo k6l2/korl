@@ -111,6 +111,35 @@ typedef enum Korl_KeyboardCode
     , KORL_KEY_NUMPAD_ADD
     , KORL_KEY_COUNT// keep last!
 } Korl_KeyboardCode;
+
+typedef enum Korl_MouseButton
+    { KORL_MOUSE_BUTTON_LEFT
+    , KORL_MOUSE_BUTTON_MIDDLE
+    , KORL_MOUSE_BUTTON_RIGHT
+    , KORL_MOUSE_BUTTON_X1
+    , KORL_MOUSE_BUTTON_X2
+} Korl_MouseButton;
+
+typedef enum Korl_MouseEventType
+    { KORL_MOUSE_EVENT_BUTTON_DOWN
+    , KORL_MOUSE_EVENT_BUTTON_UP
+    , KORL_MOUSE_EVENT_WHEEL
+    , KORL_MOUSE_EVENT_HWHEEL
+    , KORL_MOUSE_EVENT_MOVE
+} Korl_MouseEventType;
+
+typedef struct Korl_MouseEvent
+{
+    Korl_MouseEventType type;
+    i32 x; // Mouse x position, measured from top-left
+    i32 y; // Mouse y position, measured from top-left. Negative is down.
+    union
+    {
+        Korl_MouseButton button;
+        i32 wheel;
+    } which;
+} Korl_MouseEvent;
+
 #define KORL_PLATFORM_GUI_SET_FONT_ASSET(name)       void name(const wchar_t* fontAssetName)
 #define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_PLATFORM_GUI_WINDOW_END(name)           void name(void)

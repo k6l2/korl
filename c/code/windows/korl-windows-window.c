@@ -18,6 +18,7 @@ typedef struct _Korl_Windows_Window_Context
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode g_korl_windows_window_virtualKeyMap[0xFF];
+
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
@@ -43,6 +44,83 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         const UINT clientHeight = HIWORD(lParam);
         korl_log(VERBOSE, "WM_SIZE - clientSize: %ux%u", clientWidth, clientHeight);
         korl_vulkan_deferredResize(clientWidth, clientHeight);
+        } break;
+    case WM_LBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_XBUTTONDOWN:{
+        Korl_MouseEvent mouseEvent;
+        mouseEvent.type = KORL_MOUSE_EVENT_BUTTON_DOWN;
+        if(uMsg == WM_LBUTTONDOWN)
+        {
+            mouseEvent.which.button = KORL_MOUSE_BUTTON_LEFT;
+        }
+        else if(uMsg == WM_MBUTTONDOWN)
+        {
+            mouseEvent.which.button = KORL_MOUSE_BUTTON_MIDDLE;
+        }
+        else if(uMsg == WM_RBUTTONDOWN)
+        {
+            mouseEvent.which.button = KORL_MOUSE_BUTTON_RIGHT;
+        }
+        else if(uMsg == WM_XBUTTONDOWN)
+        {
+            mouseEvent.which.button = (HIWORD(wParam) & XBUTTON1) ? KORL_MOUSE_BUTTON_X1 :
+                KORL_MOUSE_BUTTON_X2;
+        }
+        mouseEvent.x = GET_X_LPARAM(lParam);
+        mouseEvent.y = -GET_Y_LPARAM(lParam); 
+        korl_game_onMouseEvent(mouseEvent);
+        } break;
+    case WM_LBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_XBUTTONUP:{
+        Korl_MouseEvent mouseEvent;
+        mouseEvent.type = KORL_MOUSE_EVENT_BUTTON_UP;
+        if(uMsg == WM_LBUTTONUP)
+        {
+            mouseEvent.which.button = KORL_MOUSE_BUTTON_LEFT;
+        }
+        else if(uMsg == WM_MBUTTONUP)
+        {
+            mouseEvent.which.button = KORL_MOUSE_BUTTON_MIDDLE;
+        }
+        else if(uMsg == WM_RBUTTONUP)
+        {
+            mouseEvent.which.button = KORL_MOUSE_BUTTON_RIGHT;
+        }
+        else if(uMsg == WM_XBUTTONUP)
+        {
+            mouseEvent.which.button = (HIWORD(wParam) & XBUTTON1) ? KORL_MOUSE_BUTTON_X1 :
+                KORL_MOUSE_BUTTON_X2;
+        }
+        mouseEvent.x = GET_X_LPARAM(lParam);
+        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        korl_game_onMouseEvent(mouseEvent);
+        } break;
+    case WM_MOUSEMOVE:{
+        Korl_MouseEvent mouseEvent;
+        mouseEvent.type = KORL_MOUSE_EVENT_MOVE;
+        mouseEvent.x = GET_X_LPARAM(lParam);
+        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        korl_game_onMouseEvent(mouseEvent);
+        } break;
+    case WM_MOUSEWHEEL:{
+        Korl_MouseEvent mouseEvent;
+        mouseEvent.type = KORL_MOUSE_EVENT_WHEEL;
+        mouseEvent.which.wheel = GET_WHEEL_DELTA_WPARAM(wParam);
+        mouseEvent.x = GET_X_LPARAM(lParam);
+        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        korl_game_onMouseEvent(mouseEvent);
+        } break;
+    case WM_MOUSEHWHEEL:{
+        Korl_MouseEvent mouseEvent;
+        mouseEvent.type = KORL_MOUSE_EVENT_HWHEEL;
+        mouseEvent.which.wheel = GET_WHEEL_DELTA_WPARAM(wParam);
+        mouseEvent.x = GET_X_LPARAM(lParam);
+        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        korl_game_onMouseEvent(mouseEvent);
         } break;
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
     default: 
