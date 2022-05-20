@@ -3,6 +3,7 @@
 #include "korl-memory.h"
 #include "korl-log.h"
 #include "korl-interface-platform.h"
+#define _KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS 1
 typedef struct _Korl_Time_Probe
 {
     PlatformTimeStamp timeStampStart;
@@ -22,6 +23,8 @@ typedef struct _Korl_Time_Context
     Korl_Time_ProbeHandle timeProbesCount;
     Korl_Time_ProbeHandle timeProbeStack[_KORL_TIME_PROBE_STACK_DEPTH_MAX];
     u16 timeProbeStackDepth;
+    bool systemSupportsDesiredTimerGranularity;
+    bool sleepIsGranular;
 } _Korl_Time_Context;
 korl_global_variable _Korl_Time_Context _korl_time_context;
 korl_global_variable LARGE_INTEGER _korl_time_perfCounterHz;
@@ -65,6 +68,35 @@ korl_internal void korl_time_initialize(void)
     if(!successQueryPerformanceFrequency)
         korl_logLastError("QueryPerformanceFrequency failed");
     korl_assert(successQueryPerformanceFrequency);
+    // Determine if the system is capable of our desired timer granularity //
+    TIMECAPS timingCapabilities;
+    if(timeGetDevCaps(&timingCapabilities, sizeof(TIMECAPS)) == MMSYSERR_NOERROR)
+        _korl_time_context.systemSupportsDesiredTimerGranularity = 
+            (timingCapabilities.wPeriodMin <= _KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS);
+    else
+        korl_log(WARNING, "System doesn't support custom scheduler granularity."
+                          "  Sleep will not be called!");
+    // set scheduler granularity using timeBeginPeriod //
+    /* MSDN notes:  prior to Windows 10 version 2004, this used to be a _GLOBAL_ 
+        system setting, and greater care must be taken to ensure that we 
+        "clean up" this value (which we do in korl_time_shutDown), but I really 
+        don't care about that level of "support" for older Windows versions, 
+        since it seems like most people use Win10+ nowadays anyway.  At least 
+        Steam survey shows like < 5% of users use a version of Windows prior to 
+        Windows 10, for example.  Of course, I will go ahead and at least clean 
+        up this value when the time module shuts down for normal execution. */
+    _korl_time_context.sleepIsGranular = _korl_time_context.systemSupportsDesiredTimerGranularity &&
+        timeBeginPeriod(_KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS) == TIMERR_NOERROR;
+    if(!_korl_time_context.sleepIsGranular)
+        korl_log(WARNING, "System supports custom scheduler granularity, but "
+                          "setting this value has failed!  Sleep will not be "
+                          "called!");
+}
+korl_internal void korl_time_shutDown(void)
+{
+    if(_korl_time_context.sleepIsGranular 
+       && timeEndPeriod(_KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
+        korl_log(ERROR, "timeEndPeriod failed");
 }
 korl_internal KORL_PLATFORM_GET_TIMESTAMP(korl_timeStamp)
 {
@@ -110,11 +142,25 @@ korl_internal void korl_time_sleep(Korl_Time_Counts counts)
     u8 timeDiffSeconds;
     u16 timeDiffMilliseconds, timeDiffMicroseconds;
     _korl_time_timeStampExtractDifferenceCounts(counts, &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
+    /* we use this value to spin the CPU for a small amount of time each sleep 
+        attempt because Sleep is extremely inaccurate, and experimentally this 
+        improves Sleep accuracy _tramendously_, with likely very small CPU cost */
     korl_shared_const DWORD SLEEP_SLACK_MILLISECONDS = 1;
-    if(timeDiffMilliseconds > SLEEP_SLACK_MILLISECONDS)
+    if(timeDiffMilliseconds > SLEEP_SLACK_MILLISECONDS && _korl_time_context.sleepIsGranular)
         Sleep(timeDiffMilliseconds - SLEEP_SLACK_MILLISECONDS);
     while(korl_time_timeStampCountDifference(sleepStart, korl_timeStamp()) < counts)
-        Sleep(0);
+        if(_korl_time_context.sleepIsGranular)
+            Sleep(0);
+}
+korl_internal i$ korl_time_countsFormatBuffer(Korl_Time_Counts counts, wchar_t* buffer, u$ bufferBytes)
+{
+    u$ timeDiffMinutes;
+    u8 timeDiffSeconds;
+    u16 timeDiffMilliseconds, timeDiffMicroseconds;
+    _korl_time_timeStampExtractDifferenceCounts(counts, &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
+    return korl_memory_stringFormatBuffer(buffer, bufferBytes, 
+                                          L"% 2llu:% 2hhu'% 3hu\"% 3hu", 
+                                          timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds);
 }
 korl_internal Korl_Time_ProbeHandle korl_time_probeBegin(const wchar_t* file, const wchar_t* function, int line, const wchar_t* label)
 {

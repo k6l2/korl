@@ -103,6 +103,8 @@ rem     for CreateSolidBrush, & other GDI API
 set "buildCommand=%buildCommand% Gdi32.lib"
 rem     for MiniDumpWriteDump
 set "buildCommand=%buildCommand% Dbghelp.lib"
+rem     for timeDevGetCaps, timeDevGetTime, etc...
+set "buildCommand=%buildCommand% Winmm.lib"
 set "buildCommand=%buildCommand% vulkan-1.lib"
 echo %buildCommand%
 echo:

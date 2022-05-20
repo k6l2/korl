@@ -61,6 +61,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_vulkan_destroy();
     korl_log(INFO, "korl_windows_main END ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄🏁");
 shutdownSuccess:
+    korl_time_shutDown();
     korl_log_shutDown();
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
     ExitProcess(KORL_EXIT_SUCCESS);
