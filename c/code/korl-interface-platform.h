@@ -131,8 +131,8 @@ typedef enum Korl_MouseEventType
 typedef struct Korl_MouseEvent
 {
     Korl_MouseEventType type;
-    i32 x; // Mouse x position, measured from top-left
-    i32 y; // Mouse y position, measured from top-left. Negative is down.
+    i32 x; // Mouse x position, measured from bottom-left. Positive is right.
+    i32 y; // Mouse y position, measured from bottom-left. Positive is up.
     union
     {
         Korl_MouseButton button;

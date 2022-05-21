@@ -69,7 +69,8 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
                 KORL_MOUSE_BUTTON_X2;
         }
         mouseEvent.x = GET_X_LPARAM(lParam);
-        mouseEvent.y = -GET_Y_LPARAM(lParam); 
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
         korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_LBUTTONUP:
@@ -96,30 +97,49 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
                 KORL_MOUSE_BUTTON_X2;
         }
         mouseEvent.x = GET_X_LPARAM(lParam);
-        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
         korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_MOUSEMOVE:{
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_MOVE;
         mouseEvent.x = GET_X_LPARAM(lParam);
-        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
         korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_MOUSEWHEEL:{
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_WHEEL;
         mouseEvent.which.wheel = GET_WHEEL_DELTA_WPARAM(wParam);
-        mouseEvent.x = GET_X_LPARAM(lParam);
-        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        POINT mousePoint;
+        mousePoint.x = GET_X_LPARAM(lParam);
+        mousePoint.y = GET_Y_LPARAM(lParam);
+        if(!ScreenToClient(hWnd, &mousePoint))
+        {
+            korl_logLastError("ScreenToClient failed.");
+        }
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        mouseEvent.x = mousePoint.x;
+        mouseEvent.y = swapchainSize.y - mousePoint.y;
+        
         korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_MOUSEHWHEEL:{
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_HWHEEL;
         mouseEvent.which.wheel = GET_WHEEL_DELTA_WPARAM(wParam);
-        mouseEvent.x = GET_X_LPARAM(lParam);
-        mouseEvent.y = -GET_Y_LPARAM(lParam);
+        POINT mousePoint;
+        mousePoint.x = GET_X_LPARAM(lParam);
+        mousePoint.y = GET_Y_LPARAM(lParam);
+        if(!ScreenToClient(hWnd, &mousePoint))
+        {
+            korl_logLastError("ScreenToClient failed.");
+        }
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        mouseEvent.x = mousePoint.x;
+        mouseEvent.y = swapchainSize.y - mousePoint.y;
         korl_game_onMouseEvent(mouseEvent);
         } break;
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
