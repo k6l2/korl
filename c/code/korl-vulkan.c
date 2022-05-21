@@ -1740,6 +1740,43 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyCommandPool(context->device, context->commandPoolGraphics, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 }
+#if 0//@TODO: delete
+korl_internal bool korl_vulkan_hasFramesInProgress(void)
+{
+    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+#if 1
+    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
+    {
+        _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[i];
+        if(swapChainImageContext->fenceWipFrame == VK_NULL_HANDLE)
+            continue;
+        const VkResult resultGetFenceStatus = vkGetFenceStatus(context->device, swapChainImageContext->fenceWipFrame);
+        if(resultGetFenceStatus == VK_NOT_READY)
+            return true;
+        _KORL_VULKAN_CHECK(resultGetFenceStatus);
+    }
+#else
+    for(u32 f = 0; f < _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES; f++)
+    {
+#if 1
+        const VkResult resultGetFenceStatus = vkGetFenceStatus(context->device, surfaceContext->wipFrames[f].fence);
+        if(resultGetFenceStatus == VK_NOT_READY)
+            return true;
+        _KORL_VULKAN_CHECK(resultGetFenceStatus);
+#else
+        const VkResult resultWaitFence = 
+            vkWaitForFences(context->device, 1, &surfaceContext->wipFrames[f].fence, 
+                            VK_TRUE/*wait all*/, 0/*timeout; do not go to sleep!*/);
+        if(resultWaitFence == VK_TIMEOUT)
+            return true;
+        _KORL_VULKAN_CHECK(resultWaitFence);
+#endif
+    }
+#endif
+    return false;
+}
+#endif
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
 {
     _Korl_Vulkan_Context*const context                        = &g_korl_vulkan_context;

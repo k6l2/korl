@@ -130,37 +130,6 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     }
     return 0;// the most common user-handled result
 }
-#if 0//@TODO: delete
-korl_internal Korl_Time_Counts _korl_windows_window_queryDisplayRefreshTimeCounts(void)
-{
-    korl_shared_const DWORD DEFAULT_REFRESH_HZ = KORL_APP_TARGET_FRAME_HZ;
-    const HMONITOR nearestMonitor = 
-        MonitorFromWindow(_korl_windows_window_context.handleWindow, 
-                          MONITOR_DEFAULTTONEAREST);
-    KORL_ZERO_STACK(MONITORINFOEX, monitorInfo);
-    monitorInfo.cbSize = sizeof(monitorInfo);
-    if(!GetMonitorInfo(nearestMonitor, KORL_C_CAST(MONITORINFO*, &monitorInfo)))
-    {
-        korl_log(ERROR, "GetMonitorInfo failed!");
-        return korl_time_countsFromHz(korl_checkCast_u$_to_u16(DEFAULT_REFRESH_HZ));
-    }
-    KORL_ZERO_STACK(DEVMODE, monitorDevMode);
-    monitorDevMode.dmSize = sizeof(monitorDevMode);
-    if(!EnumDisplaySettings(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, 
-                            &monitorDevMode))
-    {
-        korl_log(ERROR, "EnumDisplaySettings failed!");
-        return korl_time_countsFromHz(korl_checkCast_u$_to_u16(DEFAULT_REFRESH_HZ));
-    }
-    if(monitorDevMode.dmDisplayFrequency < 2)
-    {
-        korl_log(WARNING, "Unknown hardware-defined refresh rate! "
-                 "Defaulting to %i hz...", DEFAULT_REFRESH_HZ);
-        return korl_time_countsFromHz(korl_checkCast_u$_to_u16(DEFAULT_REFRESH_HZ));
-    }
-    return korl_time_countsFromHz(korl_checkCast_u$_to_u16(monitorDevMode.dmDisplayFrequency));
-}
-#endif
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
@@ -302,15 +271,21 @@ korl_internal void korl_windows_window_loop(void)
     const Korl_Time_Counts timeCountsSlowestFrame       = korl_time_countsFromHz(30);
     Korl_Time_Counts gameTimeAccumulator                = 0;
     PlatformTimeStamp timeStampLast                     = korl_timeStamp();
+    typedef struct _Korl_Window_StatsLogicLoop
+    {
+        Korl_Time_Counts time;
+        bool framesInProgress;
+    } _Korl_Window_StatsLogicLoop;
     typedef struct _Korl_Window_LoopStats
     {
         Korl_Time_Counts timeRenderLoop;
-        KORL_MEMORY_POOL_DECLARE(Korl_Time_Counts, timeLogicLoops, 8);
+        KORL_MEMORY_POOL_DECLARE(_Korl_Window_StatsLogicLoop, logicLoops, 8);
     } _Korl_Window_LoopStats;
     KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 64);
     loopStats_korlMemoryPoolSize = 0;
     while(!quit)
     {
+#if 0
         /* frame rate regulation metrics */
         const PlatformTimeStamp timeStampRenderLoopTop = korl_timeStamp();
         const Korl_Time_Counts timeCountsElapsed = korl_time_timeStampCountDifference(timeStampLast, timeStampRenderLoopTop);
@@ -324,8 +299,9 @@ korl_internal void korl_windows_window_loop(void)
             : KORL_MEMORY_POOL_ADD(loopStats);
         if(stats)
             korl_memory_zero(stats, sizeof(*stats));
-#if 0//@TODO: delete? or bring back reporting in another way with better usability
-        if(renderFrameCount == 1 || renderFrameCount == 11)
+#if 1//KORL-FEATURE-000-000-017: time: add ability to stash reports for later consumption; delete this? or bring back reporting in another way with better usability
+        //@TODO: make sure this is disabled
+        if(renderFrameCount == 9)
         {
             korl_log(INFO, "frame %llu time probe report:", renderFrameCount - 1);
             korl_time_probeLogReport();
@@ -333,28 +309,19 @@ korl_internal void korl_windows_window_loop(void)
 #endif
         korl_time_probeReset();
         korl_time_probeStart(Main_Loop);
-#if 0//@TODO: delete
-        const Korl_Time_Counts timeCountsDisplayRefreshPerFrame = _korl_windows_window_queryDisplayRefreshTimeCounts();
-        /* We now have two numbers to use for loop timing: max time between 
-            game frames, and expected display refresh time.  These two times are 
-            _highly_ unlikely to be the same, or even be evenly divisible by 
-            each other.  We now must use this data to find a logical frame 
-            refresh time which satisfies the following constraints: 
-                - it _must_ be <= timeCountsTargetGamePerFrame
-                - we want (timeCountsDisplayRefreshPerFrame % timeCountsTargetGamePerFrame)
-                  to be as close to zero as possible */
-#endif
-        //@TODO: process window messages? (maybe not necessary actually...)
         KORL_ZERO_STACK(MSG, windowMessage);
         for(; logicalFramesToProcess; logicalFramesToProcess--)
         {
             timeStampLast = korl_timeStamp();
             korl_time_probeStart(Logic_Loop);
-            Korl_Time_Counts*const timeLogicLoop = stats 
-                ? KORL_MEMORY_POOL_ADD(stats->timeLogicLoops)
+            _Korl_Window_StatsLogicLoop*const statsLogicLoop = stats 
+                ? KORL_MEMORY_POOL_ADD(stats->logicLoops)
                 : NULL;
-            if(timeLogicLoop)
-                *timeLogicLoop = 0;
+            if(statsLogicLoop)
+            {
+                korl_memory_zero(statsLogicLoop, sizeof(*statsLogicLoop));
+                statsLogicLoop->framesInProgress = korl_vulkan_hasFramesInProgress();
+            }
             korl_time_probeStart(process_window_messages);
             while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
                               0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
@@ -393,8 +360,8 @@ korl_internal void korl_windows_window_loop(void)
                 korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsLogicLoopBottomToLast);
             korl_time_probeStop(sleep);
             const Korl_Time_Counts timeCountsLogicLoop = korl_time_probeStop(Logic_Loop);
-            if(timeLogicLoop)
-                *timeLogicLoop = timeCountsLogicLoop;
+            if(statsLogicLoop)
+                statsLogicLoop->time = timeCountsLogicLoop;
         }
         if(quit)
             break;
@@ -404,7 +371,14 @@ korl_internal void korl_windows_window_loop(void)
         if(timeCountsRenderLoopBottomToLast < timeCountsTargetGamePerFrame)
             korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoopBottomToLast);
         korl_time_probeStop(sleep);
-#if 0//@TODO: recycle
+#else//@TODO: recycle
+        _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
+            ? NULL
+            : KORL_MEMORY_POOL_ADD(loopStats);
+        if(stats)
+            korl_memory_zero(stats, sizeof(*stats));
+        korl_time_probeReset();
+        korl_time_probeStart(Main_Loop);
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
@@ -429,6 +403,13 @@ korl_internal void korl_windows_window_loop(void)
 #endif
         if(renderFrameCount < ~(u$)0)
             renderFrameCount++;
+        const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();
+        const Korl_Time_Counts timeCountsRenderLoop = korl_time_timeStampCountDifference(timeStampRenderLoopBottom, timeStampLast);
+        korl_time_probeStart(sleep);
+        if(timeCountsRenderLoop < timeCountsTargetGamePerFrame)
+            korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoop);
+        korl_time_probeStop(sleep);
+        timeStampLast = korl_timeStamp();
         const Korl_Time_Counts timeCountsMainLoop = korl_time_probeStop(Main_Loop);
         if(stats)
             stats->timeRenderLoop = timeCountsMainLoop;
@@ -446,14 +427,14 @@ korl_internal void korl_windows_window_loop(void)
             timeCountAverageRender = loopStats[s].timeRenderLoop;
         else if (s > 1)// avoid the first couple frames for now since there is a lot of spin-up work that throws off metrics
             timeCountAverageRender = (timeCountAverageRender + loopStats[s].timeRenderLoop) / 2;
-        for(Korl_MemoryPool_Size l = 0; l < KORL_MEMORY_POOL_SIZE(loopStats[s].timeLogicLoops); l++)
+        for(Korl_MemoryPool_Size l = 0; l < KORL_MEMORY_POOL_SIZE(loopStats[s].logicLoops); l++)
         {
             if(s == 2 && timeCountAverageLogic == 0)
                 timeCountAverageLogic = loopStats[s].timeRenderLoop;
             else if (s > 1)// avoid the first couple frames for now since there is a lot of spin-up work that throws off metrics
-                timeCountAverageLogic = (timeCountAverageLogic + loopStats[s].timeLogicLoops[l]) / 2;
-            korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].timeLogicLoops[l], durationBuffer, sizeof(durationBuffer)));
-            korl_log_noMeta(INFO, "    logicLoop[% 2u]: %ws", l, durationBuffer);
+                timeCountAverageLogic = (timeCountAverageLogic + loopStats[s].logicLoops[l].time) / 2;
+            korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].logicLoops[l].time, durationBuffer, sizeof(durationBuffer)));
+            korl_log_noMeta(INFO, "    logicLoop[% 2u]: %ws | %ws", l, durationBuffer, loopStats[s].logicLoops[l].framesInProgress ? L"Vulkan:WIP" : L"Vulkan:READY");
         }
     }
     korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageRender, durationBuffer, sizeof(durationBuffer)));
