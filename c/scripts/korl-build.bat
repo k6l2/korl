@@ -30,6 +30,7 @@ rem     to the janky MSVC "C98" setting (default).
 rem set "buildCommand=%buildCommand% /std:c11"
 rem     disable exception handling unwind code generation
 set "buildCommand=%buildCommand% /EHa-"
+set "buildCommand=%buildCommand% /D KORL_PLATFORM_WINDOWS"
 rem     use wide character implementations for Windows API
 set "buildCommand=%buildCommand% /D UNICODE"
 set "buildCommand=%buildCommand% /D _UNICODE"

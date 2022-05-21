@@ -9,9 +9,9 @@
 #include "korl-vulkan-common.h"
 #include "korl-stb-image.h"
 #include "korl-time.h"
-#if defined(_WIN32)
+#if defined(KORL_PLATFORM_WINDOWS)
 #include <vulkan/vulkan_win32.h>
-#endif// defined(_WIN32)
+#endif// defined(KORL_PLATFORM_WINDOWS)
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_UBO     0
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE 1
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION 0
@@ -1171,9 +1171,9 @@ korl_internal void korl_vulkan_construct(void)
     //KORL-ISSUE-000-000-024: robustness: cross-check this list of extensions
     const char* enabledExtensions[] = 
         { VK_KHR_SURFACE_EXTENSION_NAME
-#if defined(_WIN32)
+#if defined(KORL_PLATFORM_WINDOWS)
         , VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-#endif// defined(_WIN32)
+#endif// defined(KORL_PLATFORM_WINDOWS)
 #if KORL_DEBUG
         , VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 #endif// KORL_DEBUG
@@ -1303,8 +1303,49 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         }
     }
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
-    korl_log(INFO, "chosen physical device: \"%hs\"", 
-        devicePropertiesBest.deviceName);
+    const wchar_t* stringDeviceType = L"unknown";
+    switch(devicePropertiesBest.deviceType)
+    {
+    case VK_PHYSICAL_DEVICE_TYPE_OTHER:         { stringDeviceType = L"OTHER";          break;}
+    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:{ stringDeviceType = L"INTEGRATED_GPU"; break;}
+    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:  { stringDeviceType = L"DISCRETE_GPU";   break;}
+    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:   { stringDeviceType = L"VIRTUAL_GPU";    break;}
+    case VK_PHYSICAL_DEVICE_TYPE_CPU:           { stringDeviceType = L"CPU";            break;}
+    default:{break;}
+    }
+    u32 deviceDriverVersionVariant = VK_API_VERSION_VARIANT(devicePropertiesBest.driverVersion);
+    u32 deviceDriverVersionMajor   = VK_API_VERSION_MAJOR(devicePropertiesBest.driverVersion);
+    u32 deviceDriverVersionMinor   = VK_API_VERSION_MINOR(devicePropertiesBest.driverVersion);
+    u32 deviceDriverVersionPatch   = VK_API_VERSION_PATCH(devicePropertiesBest.driverVersion);
+    if(devicePropertiesBest.vendorID == 4318)// NVIDIA
+    {
+        deviceDriverVersionVariant = (devicePropertiesBest.driverVersion >> 22) & 0x3FF;
+        deviceDriverVersionMajor   = (devicePropertiesBest.driverVersion >> 14) & 0x0FF;
+        deviceDriverVersionMinor   = (devicePropertiesBest.driverVersion >>  6) & 0x0FF;
+        deviceDriverVersionPatch   = (devicePropertiesBest.driverVersion >>  0) &  0x3F;
+    }
+#ifdef KORL_PLATFORM_WINDOWS//KORL-ISSUE-000-000-060: Vulkan: test & verify driver version decoding on Intel+Windows
+    else if(devicePropertiesBest.vendorID == 0x8086)// Intel
+    {
+        deviceDriverVersionMajor = devicePropertiesBest.driverVersion >> 14;
+        deviceDriverVersionMinor = devicePropertiesBest.driverVersion & 0x3FFF;
+    }
+#endif
+    korl_log(INFO, "chosen physical device: \"%hs\"", devicePropertiesBest.deviceName);
+    korl_log(INFO, "vendorID=0x%X|%u, apiVersion=0x%X|%u|%u.%u.%u.%u, driverVersion=0x%X|%u|%u.%u.%u.%u, deviceID=0x%X|%u, deviceType=%ws", 
+             devicePropertiesBest.vendorID, devicePropertiesBest.vendorID, 
+             devicePropertiesBest.apiVersion, devicePropertiesBest.apiVersion, 
+             VK_API_VERSION_VARIANT(devicePropertiesBest.apiVersion), 
+             VK_API_VERSION_MAJOR(devicePropertiesBest.apiVersion), 
+             VK_API_VERSION_MINOR(devicePropertiesBest.apiVersion), 
+             VK_API_VERSION_PATCH(devicePropertiesBest.apiVersion), 
+             devicePropertiesBest.driverVersion, devicePropertiesBest.driverVersion, 
+             deviceDriverVersionVariant, 
+             deviceDriverVersionMajor, 
+             deviceDriverVersionMinor, 
+             deviceDriverVersionPatch, 
+             devicePropertiesBest.deviceID, devicePropertiesBest.deviceID, 
+             stringDeviceType);
     /* determine how many queue families we need, which determines how many 
         VkDeviceQueueCreateInfo structs we will need to create the logical 
         device with our specifications */

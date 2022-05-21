@@ -1,10 +1,10 @@
 #pragma once
-#if defined(_MSC_VER) && !defined(__cplusplus)
+#if defined(KORL_PLATFORM_WINDOWS) && !defined(__cplusplus)
     /* Windows SDK has a stupid bug in corecrt.h, and if we don't define this 
         here we get stupid warnings.  THANKS, MICROSHAFT!  SOURCE: 
         https://developercommunity.visualstudio.com/t/issue-in-corecrth-header-results-in-an-undefined-m/433021 */
     #define _CRT_HAS_CXX17 0
-#endif// def _MSC_VER
+#endif// def KORL_PLATFORM_WINDOWS
 /* C doesn't have bool by default until we include this I guess */
 #include <stdbool.h>
 /* for wchar_t */
