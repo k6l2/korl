@@ -214,8 +214,9 @@ korl_internal void _korl_vulkan_createSwapChain(
     for(u32 pm = 0; pm < deviceSurfaceMetaData->presentModesSize; pm++)
         if(deviceSurfaceMetaData->presentModes[pm] == VK_PRESENT_MODE_MAILBOX_KHR)
         {
-            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            break;
+            //@TODO: uncomment this
+            // presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            // break;
         }
         else if(presentMode == VK_PRESENT_MODE_MAX_ENUM_KHR 
                 && deviceSurfaceMetaData->presentModes[pm] == VK_PRESENT_MODE_FIFO_KHR)
