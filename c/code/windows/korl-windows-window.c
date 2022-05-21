@@ -285,93 +285,6 @@ korl_internal void korl_windows_window_loop(void)
     loopStats_korlMemoryPoolSize = 0;
     while(!quit)
     {
-#if 0
-        /* frame rate regulation metrics */
-        const PlatformTimeStamp timeStampRenderLoopTop = korl_timeStamp();
-        const Korl_Time_Counts timeCountsElapsed = korl_time_timeStampCountDifference(timeStampLast, timeStampRenderLoopTop);
-        timeStampLast = timeStampRenderLoopTop;
-        gameTimeAccumulator += KORL_MATH_MIN(timeCountsElapsed, timeCountsSlowestFrame);
-        u$ logicalFramesToProcess = gameTimeAccumulator / timeCountsTargetGamePerFrame;
-        gameTimeAccumulator -= logicalFramesToProcess * timeCountsTargetGamePerFrame;
-        /* */
-        _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
-            ? NULL
-            : KORL_MEMORY_POOL_ADD(loopStats);
-        if(stats)
-            korl_memory_zero(stats, sizeof(*stats));
-#if 1//KORL-FEATURE-000-000-017: time: add ability to stash reports for later consumption; delete this? or bring back reporting in another way with better usability
-        //@TODO: make sure this is disabled
-        if(renderFrameCount == 9)
-        {
-            korl_log(INFO, "frame %llu time probe report:", renderFrameCount - 1);
-            korl_time_probeLogReport();
-        }
-#endif
-        korl_time_probeReset();
-        korl_time_probeStart(Main_Loop);
-        KORL_ZERO_STACK(MSG, windowMessage);
-        for(; logicalFramesToProcess; logicalFramesToProcess--)
-        {
-            timeStampLast = korl_timeStamp();
-            korl_time_probeStart(Logic_Loop);
-            _Korl_Window_StatsLogicLoop*const statsLogicLoop = stats 
-                ? KORL_MEMORY_POOL_ADD(stats->logicLoops)
-                : NULL;
-            if(statsLogicLoop)
-            {
-                korl_memory_zero(statsLogicLoop, sizeof(*statsLogicLoop));
-                statsLogicLoop->framesInProgress = korl_vulkan_hasFramesInProgress();
-            }
-            korl_time_probeStart(process_window_messages);
-            while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
-                              0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
-            {
-                if(windowMessage.message == WM_QUIT) quit = true;
-                const BOOL messageTranslated = TranslateMessage(&windowMessage);
-                const LRESULT messageResult  = DispatchMessage (&windowMessage);
-            }
-            korl_time_probeStop(process_window_messages);
-            if(quit)
-                break;
-            korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);
-            /* only do rendering on the last logical frame */
-            if(logicalFramesToProcess == 1)
-            {
-                korl_time_probeStart(vulkan_frame_begin); korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f}); korl_time_probeStop(vulkan_frame_begin);
-            }
-            korl_time_probeStart(gui_frame_begin); korl_gui_frameBegin(); korl_time_probeStop(gui_frame_begin);
-            korl_time_probeStart(game_update);
-            if(!korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
-            {
-                quit = true;
-                break;
-            }
-            korl_time_probeStop(game_update);
-            korl_time_probeStart(gui_frame_end); korl_gui_frameEnd(); korl_time_probeStop(gui_frame_end);
-            /* only do rendering on the last logical frame */
-            if(logicalFramesToProcess == 1)
-            {
-                korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
-            }
-            const PlatformTimeStamp timeStampLogicLoopBottom = korl_timeStamp();
-            const Korl_Time_Counts timeCountsLogicLoopBottomToLast = korl_time_timeStampCountDifference(timeStampLogicLoopBottom, timeStampLast);
-            korl_time_probeStart(sleep);
-            if(timeCountsLogicLoopBottomToLast < timeCountsTargetGamePerFrame)
-                korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsLogicLoopBottomToLast);
-            korl_time_probeStop(sleep);
-            const Korl_Time_Counts timeCountsLogicLoop = korl_time_probeStop(Logic_Loop);
-            if(statsLogicLoop)
-                statsLogicLoop->time = timeCountsLogicLoop;
-        }
-        if(quit)
-            break;
-        const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();
-        const Korl_Time_Counts timeCountsRenderLoopBottomToLast = korl_time_timeStampCountDifference(timeStampRenderLoopBottom, timeStampLast);
-        korl_time_probeStart(sleep);
-        if(timeCountsRenderLoopBottomToLast < timeCountsTargetGamePerFrame)
-            korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoopBottomToLast);
-        korl_time_probeStop(sleep);
-#else//@TODO: recycle
         _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
             ? NULL
             : KORL_MEMORY_POOL_ADD(loopStats);
@@ -400,9 +313,8 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStop(game_update);
         korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
-#endif
-        if(renderFrameCount < ~(u$)0)
-            renderFrameCount++;
+        /* regulate frame rate to our game module's target frame rate */
+        //KORL-ISSUE-000-000-059: window: find a frame timing solution that works if vulkan API blocks for some reason
         const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();
         const Korl_Time_Counts timeCountsRenderLoop = korl_time_timeStampCountDifference(timeStampRenderLoopBottom, timeStampLast);
         korl_time_probeStart(sleep);
@@ -410,6 +322,8 @@ korl_internal void korl_windows_window_loop(void)
             korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoop);
         korl_time_probeStop(sleep);
         timeStampLast = korl_timeStamp();
+        if(renderFrameCount < ~(u$)0)
+            renderFrameCount++;
         const Korl_Time_Counts timeCountsMainLoop = korl_time_probeStop(Main_Loop);
         if(stats)
             stats->timeRenderLoop = timeCountsMainLoop;

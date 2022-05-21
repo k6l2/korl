@@ -1522,13 +1522,6 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                 context->device, &createInfoFence, context->allocator, 
                 &surfaceContext->wipFrames[f].fence));
     }
-#if 0//@TODO: delete
-    /* create a fence which can be used to meter frame generation to match 
-        presentation rate (vertical-sync) */
-    _KORL_VULKAN_CHECK(
-        vkCreateFence(context->device, &createInfoFence, context->allocator, 
-                      &surfaceContext->fenceVSync));
-#endif
     /* --- create descriptor pool ---
         We shouldn't have to do this inside createSwapChain for similar reasons 
         to the internal memory buffers; we should know a priori what the maximum 
@@ -1722,7 +1715,6 @@ korl_internal void korl_vulkan_destroySurface(void)
             vkDestroySemaphore(context->device, swapChainImageContext->semaphoreStagingBuffers[s], context->allocator);
         }
     }
-    //@TODO: delete//vkDestroyFence(context->device, surfaceContext->fenceVSync, context->allocator);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));
     /* destroy the device-specific resources */
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssetsStaging);
@@ -1740,43 +1732,6 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyCommandPool(context->device, context->commandPoolGraphics, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 }
-#if 0//@TODO: delete
-korl_internal bool korl_vulkan_hasFramesInProgress(void)
-{
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-#if 1
-    for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
-    {
-        _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[i];
-        if(swapChainImageContext->fenceWipFrame == VK_NULL_HANDLE)
-            continue;
-        const VkResult resultGetFenceStatus = vkGetFenceStatus(context->device, swapChainImageContext->fenceWipFrame);
-        if(resultGetFenceStatus == VK_NOT_READY)
-            return true;
-        _KORL_VULKAN_CHECK(resultGetFenceStatus);
-    }
-#else
-    for(u32 f = 0; f < _KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES; f++)
-    {
-#if 1
-        const VkResult resultGetFenceStatus = vkGetFenceStatus(context->device, surfaceContext->wipFrames[f].fence);
-        if(resultGetFenceStatus == VK_NOT_READY)
-            return true;
-        _KORL_VULKAN_CHECK(resultGetFenceStatus);
-#else
-        const VkResult resultWaitFence = 
-            vkWaitForFences(context->device, 1, &surfaceContext->wipFrames[f].fence, 
-                            VK_TRUE/*wait all*/, 0/*timeout; do not go to sleep!*/);
-        if(resultWaitFence == VK_TIMEOUT)
-            return true;
-        _KORL_VULKAN_CHECK(resultWaitFence);
-#endif
-    }
-#endif
-    return false;
-}
-#endif
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
 {
     _Korl_Vulkan_Context*const context                        = &g_korl_vulkan_context;
@@ -1831,24 +1786,11 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
                         &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fence, 
                         VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
     /* acquire the next image from the swap chain */
-#if 0
-    _KORL_VULKAN_CHECK(
-        vkResetFences(context->device, 1, &surfaceContext->fenceVSync));
-    _KORL_VULKAN_CHECK(
-        vkAcquireNextImageKHR(context->device, surfaceContext->swapChain, 
-                              UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
-                              surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable, 
-                              surfaceContext->fenceVSync, &surfaceContext->frameSwapChainImageIndex));
-    _KORL_VULKAN_CHECK(
-        vkWaitForFences(context->device, 1, &surfaceContext->fenceVSync, 
-                        VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
-#else//@TODO: delete one of these :|
     _KORL_VULKAN_CHECK(
         vkAcquireNextImageKHR(context->device, surfaceContext->swapChain, 
                               UINT64_MAX/*timeout; UINT64_MAX -> disable*/, 
                               surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable, 
                               VK_NULL_HANDLE/*fence*/, &surfaceContext->frameSwapChainImageIndex));
-#endif
     swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     if(swapChainImageContext->fenceWipFrame != VK_NULL_HANDLE)
     {

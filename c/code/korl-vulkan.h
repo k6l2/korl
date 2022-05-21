@@ -27,7 +27,6 @@ korl_internal void korl_vulkan_destroySurface(void);
 korl_internal void korl_vulkan_loadShaders(void);
 korl_internal void korl_vulkan_createPipeline(void);
 #endif//0
-//@TODO: delete this since it isn't even working//korl_internal bool korl_vulkan_hasFramesInProgress(void);
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3]);
 /** submit all batched graphics command buffers to the Vulkan device */
 korl_internal void korl_vulkan_frameEnd(void);
