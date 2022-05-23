@@ -224,6 +224,20 @@ korl_internal void _korl_vulkan_createSwapChain(
                 presentMode will be set to a valid mode. */
             presentMode = VK_PRESENT_MODE_FIFO_KHR;
     korl_assert(presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR);
+    korl_assert(presentMode == VK_PRESENT_MODE_MAILBOX_KHR);/* For now, we only support mailbox mode.  This is because in order to support something like FIFO, 
+                                                               which will cause the render thread to block on certain Vulkan API calls, we can only do the 
+                                                               following (as far as I know):
+                                                               - add a frame rate regulation logic in the render thread, which controls how many logical loops 
+                                                                 occur for every render loop
+                                                                 ISSUE: this will cause logic loops to be skipped occasionally when the logic loop consumption 
+                                                                        is de-synced from the render loop production, because we cannot know ahead of time how 
+                                                                        many logic loops need to occur before the next swap chain vsync
+                                                               - base the # of logic loops off the refresh rate of the window
+                                                                 ISSUE: potentially doable, but different implementation is required for "true" full-screen:
+                                                                        https://stackoverflow.com/a/18902024
+                                                               - put the logic loops on a thread separate from the render loops
+                                                                 ISSUE: making making logic run on a separate thread will open a bunch of different cans of 
+                                                                        worms all at once that I don't really want to deal with at the moment */
     const wchar_t* presentModeString = NULL;
     switch(presentMode)
     {

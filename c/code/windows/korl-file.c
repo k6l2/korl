@@ -188,6 +188,46 @@ korl_internal u$ _korl_file_findOldestFile(const wchar_t* findFileDirectory, con
         korl_logLastError("FindClose failed");
     return findFileCount;
 }
+korl_internal void _korl_file_copyFiles(const wchar_t* sourceDirectory, const wchar_t* sourcePattern, const wchar_t* destinationDirectory)
+{
+    wchar_t findFilePattern[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(findFilePattern, sizeof(findFilePattern),
+                                          L"%ws\\%ws", sourceDirectory, sourcePattern))
+    {
+        korl_logLastError("format findFilePattern failed");
+        return;
+    }
+    WIN32_FIND_DATA findFileData;
+    HANDLE findHandle = FindFirstFile(findFilePattern, &findFileData);
+    if(findHandle == INVALID_HANDLE_VALUE)
+    {
+        if(GetLastError() != ERROR_FILE_NOT_FOUND)
+            korl_logLastError("FindFirstFile(%ws) failed", findFilePattern);
+        return;
+    }
+    wchar_t pathSource[MAX_PATH];
+    wchar_t pathDestination[MAX_PATH];
+    for(;;)
+    {
+        korl_assert(0 < korl_memory_stringFormatBuffer(pathSource, sizeof(pathSource),
+                                                       L"%ws\\%ws", sourceDirectory, findFileData.cFileName));
+        korl_assert(0 < korl_memory_stringFormatBuffer(pathDestination, sizeof(pathDestination),
+                                                       L"%ws\\%ws", destinationDirectory, findFileData.cFileName));
+        if(!CopyFile(pathSource, pathDestination, FALSE))
+            korl_log(WARNING, "CopyFile(%ws, %ws) failed!  GetLastError=0x%X", 
+                     pathSource, pathDestination, GetLastError());
+        else
+            korl_log(INFO, "copied file \"%ws\" to \"%ws\"", pathSource, pathDestination);
+        const BOOL resultFindNextFile = FindNextFile(findHandle, &findFileData);
+        if(!resultFindNextFile)
+        {
+            korl_assert(GetLastError() == ERROR_NO_MORE_FILES);
+            break;
+        }
+    }
+    if(!FindClose(findHandle))
+        korl_logLastError("FindClose failed");
+}
 korl_internal void korl_file_initialize(void)
 {
     //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
@@ -531,13 +571,16 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         return;
     }
     PEXCEPTION_POINTERS pExceptionPointers = KORL_C_CAST(PEXCEPTION_POINTERS, exceptionData);
-    MINIDUMP_EXCEPTION_INFORMATION ExpParam = 
+    MINIDUMP_EXCEPTION_INFORMATION expParam = 
         { .ThreadId          = GetCurrentThreadId()
         , .ExceptionPointers = pExceptionPointers
         , .ClientPointers    = TRUE };
+    //KORL-ISSUE-000-000-062: crash: minidump memory optimization/focus
+    const MINIDUMP_TYPE dumpType = MiniDumpWithDataSegs 
+                                 | MiniDumpWithFullMemory 
+                                 | MiniDumpIgnoreInaccessibleMemory;
     if(!MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
-                          hDumpFile, MiniDumpWithDataSegs, &ExpParam, 
-                          NULL, NULL))
+                          hDumpFile, dumpType, &expParam, NULL, NULL))
     {
         korl_logLastError("MiniDumpWriteDump failed!");
         return;
@@ -547,6 +590,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         location.  This will allow us to at LEAST view the call stack properly 
         during development for all of our minidumps even after making source 
         changes and subsequently rebuilding. */
+    // Copy the executable //
     wchar_t pathFileRead[MAX_PATH];
     if(0 > korl_memory_stringFormatBuffer(pathFileRead, sizeof(pathFileRead), L"%ws\\%ws.exe", 
                                           _korl_file_getPath(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY), 
@@ -566,24 +610,8 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
                  pathFileRead, pathFileWrite, GetLastError());
     else
         korl_log(INFO, "copied file \"%ws\" to \"%ws\"", pathFileRead, pathFileWrite);
-    if(0 > korl_memory_stringFormatBuffer(pathFileRead, sizeof(pathFileRead), L"%ws\\%ws.pdb", 
-                                          _korl_file_getPath(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY), 
-                                          KORL_APPLICATION_NAME))
-    {
-        korl_log(ERROR, "pathFileRead failed");
-        return;
-    }
-    if(0 > korl_memory_stringFormatBuffer(pathFileWrite, sizeof(pathFileWrite), L"%ws\\%ws.pdb", 
-                                          directoryMemoryDump, KORL_APPLICATION_NAME))
-    {
-        korl_log(ERROR, "pathFileWrite failed");
-        return;
-    }
-    if(!CopyFile(pathFileRead, pathFileWrite, FALSE))
-        korl_log(WARNING, "CopyFile(%ws, %ws) failed!  GetLastError=0x%X", 
-                 pathFileRead, pathFileWrite, GetLastError());
-    else
-        korl_log(INFO, "copied file \"%ws\" to \"%ws\"", pathFileRead, pathFileWrite);
+    // Copy all PDB files //
+    _korl_file_copyFiles(_korl_file_getPath(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY), L"*.pdb", directoryMemoryDump);
 #if 0/* In the future, we will have to do something a little more sophisticated 
         like when we add the ability to hot-reload game code, since we'll have 
         to implement rolling PDB files due to Windows filesystem constraints.  I 

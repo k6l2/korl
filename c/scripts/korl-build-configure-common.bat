@@ -63,7 +63,7 @@ set "_CL_=%_CL_% /Wall"
 rem     generate debug symbols 
 rem   Zi => no "edit-and-continue" support + a "VCX.pdb" PDB file
 rem   Z7 => no "edit-and-continue" support, no "VCX.pdb" PDB file, not compatible w/ incremental linking, potentially faster?
-set "_CL_=%_CL_% /Z7"
+set "_CL_=%_CL_% /Zi"
 rem     generate compiler intrinsics
 set "_CL_=%_CL_% /Oi"
 rem     disable run-time type information (dynamic_cast, typeid)

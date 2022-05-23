@@ -1,7 +1,7 @@
 #include "korl-crash.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-file.h"
-korl_global_const u32 _KORL_CRASH_MAX_DUMP_COUNT = 16;
+korl_global_const u32 _KORL_CRASH_MAX_DUMP_COUNT = 8;
 korl_global_variable bool _korl_crash_firstAssertLogged;
 korl_global_variable bool _korl_crash_hasReceivedException;
 korl_global_variable bool _korl_crash_hasWrittenCrashDump;
@@ -16,7 +16,7 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
              cStrOrigin, pExceptionPointers->ExceptionRecord->ExceptionCode);
     if(IsDebuggerPresent())
         DebugBreak();
-    else if(!_korl_crash_hasReceivedException)
+    if(!_korl_crash_hasReceivedException)
     {
         _korl_crash_hasReceivedException = true;
         wchar_t messageBuffer[256];
@@ -24,6 +24,7 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
                                        L"Exception code: 0x%X\n"
                                        L"Would you like to ignore it?", 
                                        pExceptionPointers->ExceptionRecord->ExceptionCode);
+        //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, cStrOrigin, 
                                                 MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);
@@ -145,9 +146,6 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
                                               _KORL_CRASH_MAX_DUMP_COUNT), 
                  EXCEPTION_EXECUTE_HANDLER)
         {
-            _korl_log_variadic(1, KORL_LOG_LEVEL_ASSERT, 
-                               cStringFileName, cStringFunctionName, lineNumber, 
-                               L"ASSERT FAILED: \"%ws\"", conditionString);
         }
     }
     if(IsDebuggerPresent())
@@ -157,7 +155,10 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
         OutputDebugString(_T("\"\n"));
         DebugBreak();
     }
-    else if(isFirstAssert)
+    _korl_log_variadic(1, KORL_LOG_LEVEL_ASSERT, 
+                       cStringFileName, cStringFunctionName, lineNumber, 
+                       L"ASSERT FAILED: \"%ws\"", conditionString);
+    if(isFirstAssert)
     {
         wchar_t messageBuffer[512];
         i$ charactersCopied = 
@@ -178,6 +179,7 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
                                                L"Would you like to ignore it?", 
                                                conditionBuffer);
         }
+        //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, L"Assertion Failed!", 
                                                 MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);

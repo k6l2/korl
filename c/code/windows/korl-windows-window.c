@@ -22,6 +22,10 @@ korl_global_variable Korl_KeyboardCode g_korl_windows_window_virtualKeyMap[0xFF]
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+    /* ignore all window events that don't belong to the windows we are 
+        responsible for in this code module */
+    if(hWnd != _korl_windows_window_context.handleWindow)
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
     korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
     switch(uMsg)
     {

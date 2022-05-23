@@ -112,12 +112,14 @@ korl_internal void _korl_log_vaList(
     int lineNumber, const wchar_t* format, va_list vaList)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
+    const bool errorAssertionTriggered = context->errorAssertionTriggered;
     /* get the current time, used in the log's timestamp metadata */
     KORL_ZERO_STACK(SYSTEMTIME, systemTimeLocal);
     GetLocalTime(&systemTimeLocal);
     /**/
     if(logLevel <= KORL_LOG_LEVEL_ERROR)
     {
+        context->errorAssertionTriggered = true;// trigger as soon as possible, so that if another error is logged in error-handling code, we don't trigger the assertion failure again
         /* if we ever log an error while a debugger is attached, just break 
             right now so we can figure out what's going on! */
         if(IsDebuggerPresent())
@@ -257,12 +259,11 @@ korl_internal void _korl_log_vaList(
                                       NULL/*out_charsWritten; I don't care*/, 
                                       NULL/*reserved; _must_ be NULL*/));
     }
-    if(logLevel == KORL_LOG_LEVEL_ERROR && !context->errorAssertionTriggered)
+    if(logLevel == KORL_LOG_LEVEL_ERROR && !errorAssertionTriggered)
     {
         /* when we're not attached to a debugger (for example, in 
             production), we should still assert that a critical issue has 
             been logged at least for the first error */
-        context->errorAssertionTriggered = true;
         logLineBuffer[logLineSize - 1] = L'\0';// temporarily remove the '\n'
         /* we don't call the korl_assert macro here because we want to propagate 
             the meta data of the CALLER of this error log entry to the user; the 

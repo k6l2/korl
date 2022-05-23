@@ -5,9 +5,12 @@ set KORL_DISABLED_WARNINGS=%KORL_DISABLED_WARNINGS% %korlDisabledReleaseWarnings
 set "_CL_=%_CL_% /D KORL_DEBUG#1"
 rem     disable optimization
 set "_CL_=%_CL_% /Od"
-rem     we always want to create a PDB file for all build types; FASTLINK allows 
-rem     faster linking, but generates a limited PDB file that doesn't include 
-rem     private symbol files, requiring object files to debug which should be 
-rem     _okay_ in a development environment since we have these readily available
-set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /DEBUG:FASTLINK"
+rem     statically link to LIBCMTD.lib; defines _MT & _DEBUG (removes 
+rem     requirement to dynamically link to CRT at runtime)
+set "_CL_=%_CL_% /MTd"
+rem     we always want to create a PDB file for all build types; FULL takes 
+rem     longer to complete, but generates a PDB file that includes private 
+rem     symbols, meaning that we only require the .exe/.pdb/.dmp files to debug 
+rem     crashes
+set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /DEBUG:FULL"
 echo KORL build configured in DEBUG mode.

@@ -57,7 +57,7 @@ korl_internal void _korl_time_timeStampExtractDifference(PlatformTimeStamp ptsA,
 korl_internal void korl_time_initialize(void)
 {
     korl_memory_zero(&_korl_time_context, sizeof(_korl_time_context));
-    _korl_time_context.allocatorHandle    = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(128), false);
+    _korl_time_context.allocatorHandle    = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), false);
     _korl_time_context.timeProbesCapacity = 1024;/*comes out to ~48kB*/
     _korl_time_context.timeProbes         = korl_allocate(_korl_time_context.allocatorHandle, _korl_time_context.timeProbesCapacity * sizeof(*_korl_time_context.timeProbes));
     /* According to MSDN, this function is _guaranteed_ to succeed on all 

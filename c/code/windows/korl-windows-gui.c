@@ -8,6 +8,14 @@
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
+    /* we can't just assert that the frameSequenceCounter == 0 here because this 
+        function will be getting called when the message box of an assert is 
+        running & pumping the message loop, which could happen at any time! */
+    if(context->frameSequenceCounter != 0)
+    {
+        korl_log(WARNING, "korl_gui_windows_processMessage called outside of korl_gui_frameBegin/End; message will be ignored");
+        return;
+    }
     korl_assert(context->frameSequenceCounter == 0);
     /* identify & process mouse events 
         https://docs.microsoft.com/en-us/windows/win32/learnwin32/mouse-clicks */
