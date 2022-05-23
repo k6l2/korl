@@ -283,7 +283,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
         VkSemaphore semaphoreImageAvailable;
         VkSemaphore semaphoreRenderDone;
         VkFence     fence;
-    } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];
+    } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_WIP_FRAMES];//KORL-ISSUE-000-000-064: Vulkan: get rid of WIP frames?
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
     /** expected to be nullified at the end of each call to \c frameBegin() */

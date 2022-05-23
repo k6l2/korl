@@ -19,12 +19,13 @@ korl_global_const u$ _KORL_LOG_BUFFER_BYTES_MAX = 1024*1024*sizeof(wchar_t);// a
 typedef struct _Korl_Log_AsyncWriteDescriptor
 {
     Korl_File_AsyncWriteHandle handle;
-    void* buffer;
 } _Korl_Log_AsyncWriteDescriptor;
 typedef struct _Korl_Log_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandlePersistent;
     Korl_Memory_AllocatorHandle allocatorHandleTransient;//KORL-ISSUE-000-000-052: log: potentially unnecessary allocator
+    wchar_t* transientBuffer;
+    u$ transientBufferCharacters;
     CRITICAL_SECTION criticalSection;
     u$ bufferBytes;
     /** we will split the log buffer into two parts:
@@ -162,36 +163,33 @@ korl_internal void _korl_log_vaList(
     //KORL-ISSUE-000-000-052: this code might not need to even need to exist with better allocation strategy!
     for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors);)
         if(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
-        {
-            korl_free(context->allocatorHandleTransient, context->asyncWriteDescriptors[i].buffer);
             KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
-        }
         else
             i++;
-    wchar_t*const logLineBuffer = KORL_C_CAST(wchar_t*, 
-        korl_allocate(context->allocatorHandleTransient, 
-                      (logLineSize + 1/*null terminator*/)*sizeof(*logLineBuffer)));
-    LeaveCriticalSection(&(context->criticalSection));
+    if(context->transientBufferCharacters < logLineSize + 1/*null terminator*/)
+    {
+        context->transientBufferCharacters = 2*(logLineSize + 1/*null terminator*/);
+        context->transientBuffer = korl_reallocate(context->allocatorHandleTransient, context->transientBuffer, context->transientBufferCharacters*sizeof(*(context->transientBuffer)));
+    }
     int charactersWrittenTotal = 0;
     int charactersWritten;
     if(prependMetaTag)
     {
-        charactersWritten = swprintf_s(logLineBuffer, bufferSizeMetaTag + 1/*for '\0'*/, _KORL_LOG_META_DATA_STRING, 
+        charactersWritten = swprintf_s(context->transientBuffer, bufferSizeMetaTag + 1/*for '\0'*/, _KORL_LOG_META_DATA_STRING, 
                                        cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
                                        systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
                                        cStringFileName, cStringFunctionName);
         korl_assert(charactersWritten == bufferSizeMetaTag);
         charactersWrittenTotal += charactersWritten;
     }
-    charactersWritten = vswprintf_s(logLineBuffer + charactersWrittenTotal, bufferSizeFormat, format, vaList);
+    charactersWritten = vswprintf_s(context->transientBuffer + charactersWrittenTotal, bufferSizeFormat, format, vaList);
     korl_assert(charactersWritten == bufferSizeFormat - 1/*we haven't written the `\n` yet*/);
     charactersWrittenTotal += charactersWritten;
-    charactersWritten = swprintf_s(logLineBuffer + charactersWrittenTotal, 1 + 1/*for '\0'*/, L"\n");
+    charactersWritten = swprintf_s(context->transientBuffer + charactersWrittenTotal, 1 + 1/*for '\0'*/, L"\n");
     korl_assert(charactersWritten == 1);
     charactersWrittenTotal += charactersWritten;
     korl_assert(korl_checkCast_i$_to_u$(charactersWrittenTotal) == logLineSize);
     /* allocate string buffer for log meta data tag + formatted message */
-    EnterCriticalSection(&(context->criticalSection));
     u$ bufferSize = context->bufferBytes / sizeof(*context->buffer);
     wchar_t* buffer = &(context->buffer[context->bufferOffset]);
     // bufferAvailable: the # of characters we have the ability to write to the 
@@ -234,27 +232,26 @@ korl_internal void _korl_log_vaList(
     /* ----- write logLineBuffer to buffer/bufferOverflow ----- */
     if(bufferAvailable >= logLineSize)
         // we can fit the entire log line into the buffer //
-        korl_memory_copy(buffer, logLineBuffer, logLineSize*sizeof(*logLineBuffer));
+        korl_memory_copy(buffer, context->transientBuffer, logLineSize*sizeof(*context->transientBuffer));
     else
     {
         // we must wrap the log line around the circular buffer //
-        korl_memory_copy(buffer, logLineBuffer, bufferAvailable*sizeof(*logLineBuffer));
-        korl_memory_copy(bufferOverflow, logLineBuffer + bufferAvailable, 
-                         (logLineSize - bufferAvailable)*sizeof(*logLineBuffer));
+        korl_memory_copy(buffer, context->transientBuffer, bufferAvailable*sizeof(*context->transientBuffer));
+        korl_memory_copy(bufferOverflow, context->transientBuffer + bufferAvailable, 
+                         (logLineSize - bufferAvailable)*sizeof(*context->transientBuffer));
     }
-    LeaveCriticalSection(&(context->criticalSection));
     /* write the log meta data string + formatted log message */
     if(_korl_log_context.useLogOutputDebugger)
         // if no debugger is present, system debugger will display the string
         // if system debugger is also not present, OutputDebugString does nothing
-        OutputDebugString(logLineBuffer);
+        OutputDebugString(context->transientBuffer);
     if(_korl_log_context.useLogOutputConsole)
     {
         const HANDLE handleConsole = GetStdHandle(logLevel > KORL_LOG_LEVEL_ERROR 
                                                   ? STD_OUTPUT_HANDLE 
                                                   : STD_ERROR_HANDLE);
         korl_assert(handleConsole != INVALID_HANDLE_VALUE);
-        korl_assert(0 != WriteConsole(handleConsole, logLineBuffer, 
+        korl_assert(0 != WriteConsole(handleConsole, context->transientBuffer, 
                                       korl_checkCast_u$_to_u32(logLineSize), 
                                       NULL/*out_charsWritten; I don't care*/, 
                                       NULL/*reserved; _must_ be NULL*/));
@@ -264,16 +261,20 @@ korl_internal void _korl_log_vaList(
         /* when we're not attached to a debugger (for example, in 
             production), we should still assert that a critical issue has 
             been logged at least for the first error */
-        logLineBuffer[logLineSize - 1] = L'\0';// temporarily remove the '\n'
+        context->transientBuffer[logLineSize - 1] = L'\0';// temporarily remove the '\n'
         /* we don't call the korl_assert macro here because we want to propagate 
             the meta data of the CALLER of this error log entry to the user; the 
             fact that the assert condition fails in the log module is irrelevant */
-        _korl_crash_assertConditionFailed(logLineBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, 
+        _korl_crash_assertConditionFailed(context->transientBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, 
                                           cStringFileName, cStringFunctionName, lineNumber);
-        logLineBuffer[logLineSize - 1] = L'\n';
+        context->transientBuffer[logLineSize - 1] = L'\n';
     }
-    /* we're done with the transient buffer, so we can free it now */
-    EnterCriticalSection(&(context->criticalSection));
+    /* we're done with the transient buffer, so we can reuse it in future log 
+        calls; the data has all been written to the circular log buffer, with 
+        _very_ little chance of it being over-written by the time we attempt to 
+        do any async writes to disk, so it should be fine to just read from the 
+        locations where the log line was written to the circular buffer for now */
+    //KORL-ISSUE-000-000-065: log: although this is generally safe for current workloads, this operation is unsafe for async log file writes
     /* ----- write logLineBuffer to log file ----- */
     if((context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE) 
         && (   context->logFileBytesWritten < _KORL_LOG_BUFFER_BYTES_MAX / 2
@@ -291,30 +292,25 @@ korl_internal void _korl_log_vaList(
                     simultaneously freeing up space in the pool for new async 
                     write operations */
                 if(korl_file_writeAsyncWait(&context->asyncWriteDescriptors[i].handle, 0/*return immediately*/))
-                {
-                    korl_free(context->allocatorHandleTransient, context->asyncWriteDescriptors[i].buffer);
                     KORL_MEMORY_POOL_REMOVE(context->asyncWriteDescriptors, i);
-                }
                 else
                     i++;
         }
         _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
-        asyncWriteDescriptor->buffer = logLineBuffer;
+        korl_memory_zero(asyncWriteDescriptor, sizeof(*asyncWriteDescriptor));
         //KORL-ISSUE-000-000-046: log: test to validate order of async log writes
         const u$ reliableBufferBytesRemaining = context->useLogFileBig 
-            ? logLineSize * sizeof(*logLineBuffer)
+            ? logLineSize * sizeof(*buffer)
             : (_KORL_LOG_BUFFER_BYTES_MAX / 2) - context->logFileBytesWritten;
         /* if the logFileBytesWritten is going to exceed _KORL_LOG_BUFFER_BYTES_MAX / 2,
             we need to clamp this write operation to that value, so that 
             when the circular buffer is written on log shutdown, we either 
             just write the rest of the buffer, or we cut the file log & 
             do two separate circular buffer writes if necessary */
-        u$ logFileLineBytes = KORL_MATH_MIN(logLineSize * sizeof(*logLineBuffer), reliableBufferBytesRemaining);
-        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, logLineBuffer, logFileLineBytes);
+        u$ logFileLineBytes = KORL_MATH_MIN(logLineSize * sizeof(*buffer), reliableBufferBytesRemaining);
+        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, buffer, logFileLineBytes);
         context->logFileBytesWritten += logFileLineBytes;
     }
-    else/* otherwise we can just free the temporary log line buffer now */
-        korl_free(context->allocatorHandleTransient, logLineBuffer);
     LeaveCriticalSection(&(context->criticalSection));
 logOutputDone:
     return;
@@ -426,12 +422,10 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     const u$ charactersToWrite = KORL_MATH_MIN(context->bufferedCharacters, maxInitCharacters);
     if(charactersToWrite)
     {
-        wchar_t* tempBuffer = korl_allocate(context->allocatorHandleTransient, charactersToWrite*sizeof(*(context->buffer)));
-        korl_memory_copy(tempBuffer, context->buffer, charactersToWrite*sizeof(*(context->buffer)));
         korl_assert(!KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
         _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
-        asyncWriteDescriptor->buffer = tempBuffer;
-        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, tempBuffer, charactersToWrite*sizeof(*(context->buffer)));
+        korl_memory_zero(asyncWriteDescriptor, sizeof(*asyncWriteDescriptor));
+        asyncWriteDescriptor->handle = korl_file_writeAsync(context->fileDescriptor, context->buffer, charactersToWrite*sizeof(*(context->buffer)));
         context->logFileBytesWritten += charactersToWrite*sizeof(*(context->buffer));
     }
     LeaveCriticalSection(&(context->criticalSection));
