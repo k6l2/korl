@@ -314,6 +314,8 @@ korl_internal void korl_windows_window_loop(void)
             : KORL_MEMORY_POOL_ADD(loopStats);
         if(stats)
             korl_memory_zero(stats, sizeof(*stats));
+        if(renderFrameCount == 1 || renderFrameCount == 2)
+            korl_time_probeLogReport();
         korl_time_probeReset();
         korl_time_probeStart(Main_Loop);
         KORL_ZERO_STACK(MSG, windowMessage);
