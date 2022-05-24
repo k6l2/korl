@@ -233,7 +233,7 @@ korl_internal void korl_file_initialize(void)
     //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), false);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE);
     /* determine where the current working directory is in Windows */
     context->sizeCurrentWorking = 
         GetCurrentDirectory(korl_arraySize(context->directoryCurrentWorking), 

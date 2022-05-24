@@ -328,8 +328,8 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 korl_internal void korl_log_initialize(void)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
-    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4), true);
-    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), true);
+    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(4), L"korl-log-persistent", KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS);
+    _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), L"korl-log-transient" , KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS);
     _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
     _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
     _korl_log_context.logFileEnabled            = true;// assume we will use a log file eventually, until the user specifies we wont

@@ -44,4 +44,9 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE  (korl_memory_allocator_al
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE      (korl_memory_allocator_free);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY     (korl_memory_allocator_empty);
-korl_internal void korl_memory_logReport(void);
+korl_internal void korl_memory_allocator_emptyStackAllocators(void);
+/** \param allocatorHandle the allocator to use to allocate memory to store the report 
+ * \return the address of the allocated memory report */
+korl_internal void* korl_memory_reportGenerate(void);
+/** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */
+korl_internal void korl_memory_reportLog(void* reportAddress);

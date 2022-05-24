@@ -9,12 +9,14 @@ typedef struct _Korl_Memory_Allocator
     void* userData;
     Korl_Memory_AllocatorHandle handle;
     Korl_Memory_AllocatorType type;
-    bool disableThreadSafetyChecks;
+    Korl_Memory_AllocatorFlags flags;
+    wchar_t name[32];
 } _Korl_Memory_Allocator;
 typedef struct _Korl_Memory_Context
 {
     SYSTEM_INFO systemInfo;
     DWORD mainThreadId;
+    Korl_Memory_AllocatorHandle allocatorHandleReporting;// temporary memory used only for reporting memory module metrics
     KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, 64);
 } _Korl_Memory_Context;
 typedef struct _Korl_Memory_AllocatorLinear
@@ -42,6 +44,30 @@ typedef struct _Korl_Memory_AllocationMeta
      */
     u$ bytes;
 } _Korl_Memory_AllocationMeta;
+typedef struct _Korl_Memory_ReportAllocationMetaData
+{
+    const void* allocationAddress;
+    _Korl_Memory_AllocationMeta meta;
+} _Korl_Memory_ReportAllocationMetaData;
+typedef struct _Korl_Memory_ReportEnumerateContext
+{
+    //KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds
+    u$ allocationMetaCapacity;
+    u$ allocationMetaSize;
+    _Korl_Memory_ReportAllocationMetaData* allocationMeta;
+    u$ totalUsedBytes;
+    const void* virtualAddressStart;
+    const void* virtualAddressEnd;
+    wchar_t name[32];
+} _Korl_Memory_ReportEnumerateContext;
+typedef struct _Korl_Memory_Report
+{
+    u$ allocatorCount;
+    _Korl_Memory_ReportEnumerateContext allocatorData[1];
+} _Korl_Memory_Report;
+#define _KORL_MEMORY_ALLOCATOR_ENUMERATE_CALLBACK(name) void name(void* userData, const void* allocation, const _Korl_Memory_AllocationMeta* meta)
+typedef _KORL_MEMORY_ALLOCATOR_ENUMERATE_CALLBACK(_fnSig_korl_memory_allocator_enumerateCallback);
+#define _KORL_MEMORY_ALLOCATOR_ENUMERATE(name) void name(void* allocatorUserData, _fnSig_korl_memory_allocator_enumerateCallback* callback, void* userData, const void** out_allocatorVirtualAddressEnd)
 korl_global_variable _Korl_Memory_Context _korl_memory_context;
 korl_internal void korl_memory_initialize(void)
 {
@@ -49,6 +75,7 @@ korl_internal void korl_memory_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     GetSystemInfo(&context->systemInfo);
     context->mainThreadId = GetCurrentThreadId();
+    context->allocatorHandleReporting = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), L"korl-memory-reporting", KORL_MEMORY_ALLOCATOR_FLAGS_NONE);
 }
 korl_internal u$ korl_memory_pageBytes(void)
 {
@@ -552,6 +579,46 @@ korl_internal void _korl_memory_allocator_linear_empty(void* allocatorUserData)
         korl_assert(oldProtect == PAGE_READWRITE);
     }
 }
+korl_internal _KORL_MEMORY_ALLOCATOR_ENUMERATE(_korl_memory_allocator_linear_enumerate)
+{
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
+    const u$ pageBytes = korl_memory_pageBytes();
+    /* release the protection on the allocator pages */
+    {
+        DWORD oldProtect;
+        korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect));
+        korl_assert(oldProtect == PAGE_NOACCESS);
+    }
+    /**/
+    if(out_allocatorVirtualAddressEnd)
+        *out_allocatorVirtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); a++)
+    {
+        const void*const allocation = KORL_C_CAST(u8*, allocator) + allocator->allocationOffsets[a];
+        /* get the allocation's meta data address */
+        _Korl_Memory_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
+        /* release the protection of the meta data page */
+        {
+            DWORD oldProtect;
+            korl_assert(VirtualProtect(allocationMeta, sizeof(*allocationMeta), PAGE_READWRITE, &oldProtect));
+            korl_assert(oldProtect == PAGE_NOACCESS);
+        }
+        /**/
+        callback(userData, allocation, allocationMeta);
+        /* protect the allocation's metadata page */
+        {
+            DWORD oldProtect;
+            korl_assert(VirtualProtect(allocationMeta, sizeof(*allocationMeta), PAGE_NOACCESS, &oldProtect));
+            korl_assert(oldProtect == PAGE_READWRITE);
+        }
+    }
+    /* protect the allocator pages once again */
+    {
+        DWORD oldProtect;
+        korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_NOACCESS, &oldProtect));
+        korl_assert(oldProtect == PAGE_READWRITE);
+    }
+}
 korl_internal void* _korl_memory_allocator_createLinear(u$ maxBytes)
 {
     void* result = NULL;
@@ -605,6 +672,23 @@ korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Me
     korl_log(WARNING, "no allocator found for handle %u", handle);
     return NULL;
 }
+korl_internal _KORL_MEMORY_ALLOCATOR_ENUMERATE_CALLBACK(_korl_memory_logReport_enumerateCallback)
+{
+    _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
+    if(context->allocationMetaSize == context->allocationMetaCapacity)
+    {
+        context->allocationMetaCapacity *= 2;
+        context->allocationMeta = KORL_C_CAST(_Korl_Memory_ReportAllocationMetaData*, 
+            korl_reallocate(_korl_memory_context.allocatorHandleReporting, 
+                            context->allocationMeta, 
+                            context->allocationMetaCapacity * sizeof(*context->allocationMeta)));
+        korl_assert(context->allocationMeta);
+    }
+    _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = &context->allocationMeta[context->allocationMetaSize++];
+    newAllocMeta->allocationAddress = allocation;
+    newAllocMeta->meta              = *meta;
+    context->totalUsedBytes += meta->bytes;
+}
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -626,9 +710,9 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
     korl_assert(newHandle);
     _Korl_Memory_Allocator* newAllocator = KORL_MEMORY_POOL_ADD(context->allocators);
     korl_memory_zero(newAllocator, sizeof(*newAllocator));
-    newAllocator->type                      = type;
-    newAllocator->handle                    = newHandle;
-    newAllocator->disableThreadSafetyChecks = disableThreadSafetyChecks;
+    newAllocator->type   = type;
+    newAllocator->handle = newHandle;
+    newAllocator->flags  = flags;
     switch(type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
@@ -638,6 +722,7 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
         korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", type);
         break;}
     }
+    korl_memory_stringCopy(allocatorName, newAllocator->name, korl_arraySize(newAllocator->name));
     return newAllocator->handle;
 }
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
@@ -645,7 +730,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allo
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
-    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
     {
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return NULL;
@@ -663,7 +748,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_re
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
-    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
     {
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return NULL;
@@ -683,7 +768,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
-    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
     {
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return;
@@ -701,7 +786,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);
-    if(!allocator->disableThreadSafetyChecks && GetCurrentThreadId() != context->mainThreadId)
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
     {
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return;
@@ -709,25 +794,94 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-     _korl_memory_allocator_linear_empty(allocator->userData);
+        _korl_memory_allocator_linear_empty(allocator->userData);
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
-korl_internal void korl_memory_logReport(void)
+korl_internal void korl_memory_allocator_emptyStackAllocators(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
+        if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME))
+            continue;
         switch(allocator->type)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+            _korl_memory_allocator_linear_empty(allocator->userData);
+            continue;}
+        }
+        korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+    }
+}
+korl_internal void* korl_memory_reportGenerate(void)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    korl_memory_allocator_empty(context->allocatorHandleReporting);// it should be fine to just only ever have 1 report in existence at a time
+    _Korl_Memory_Report*const report = korl_allocate(context->allocatorHandleReporting, 
+                                                     sizeof(*report) - sizeof(report->allocatorData) + KORL_MEMORY_POOL_SIZE(context->allocators)*sizeof(report->allocatorData));
+    korl_memory_zero(report, sizeof(*report));
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+    {
+        _Korl_Memory_Allocator*const allocator = &context->allocators[a];
+        if(allocator->handle == context->allocatorHandleReporting)
+            /* let's just skip the internal reporting allocator, since it is 
+                transient and shouldn't be used anywhere else in the application */
+            continue;
+        /* we want the following information out of the allocator:
+            - the full range of occupied virtual memory addresses
+            - the total amount of committed memory // not currently keeping track of this!
+            - the total amount of _used_ comitted memory 
+                (in this case, _used_ is defined as the sum of all the address ranges for each allocation; 
+                this does _not_ include the regions of memory used for allocator metrics & allocation metadata)
+            - for each allocation:
+                - metadata: function, file, line
+                - address_start
+                - address_end */
+        _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[report->allocatorCount++];
+        korl_memory_zero(enumContext, sizeof(*enumContext));
+        korl_memory_stringCopy(allocator->name, enumContext->name, korl_arraySize(enumContext->name));
+        enumContext->virtualAddressStart    = allocator->userData;
+        enumContext->allocationMetaCapacity = 8;
+        enumContext->allocationMeta         = korl_allocate(context->allocatorHandleReporting, enumContext->allocationMetaCapacity*sizeof(*(enumContext->allocationMeta)));
+        korl_assert(enumContext->allocationMeta);
+        switch(allocator->type)
+        {
+        case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+            _korl_memory_allocator_linear_enumerate(allocator->userData, _korl_memory_logReport_enumerateCallback, enumContext, &enumContext->virtualAddressEnd);
             break;}
         default:{
             korl_log(ERROR, "unknown allocator type '%i' not implemented", allocator->type);
             break;}
         }
+        // ISSUE: the allocation meta data list is not actually sorted by 
+        //        address yet!
     }
+    return report;
+}
+korl_internal void korl_memory_reportLog(void* reportAddress)
+{
+    _Korl_Memory_Report*const report = KORL_C_CAST(_Korl_Memory_Report*, reportAddress);
+    korl_log_noMeta(INFO, "╔════ 🧠 Memory Report ════════════════════════════════╗");
+    for(u$ ec = 0; ec < report->allocatorCount; ec++)
+    {
+        _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[ec];
+        korl_log_noMeta(INFO, "║ allocator {\"%ws\", [0x%p ~ 0x%p], total used bytes: %llu}", 
+                        enumContext->name, enumContext->virtualAddressStart, enumContext->virtualAddressEnd, enumContext->totalUsedBytes);
+        for(u$ a = 0; a < enumContext->allocationMetaSize; a++)
+        {
+            _Korl_Memory_ReportAllocationMetaData*const allocMeta = &enumContext->allocationMeta[a];
+            const void*const allocAddressEnd = KORL_C_CAST(u8*, allocMeta->allocationAddress) + allocMeta->meta.bytes;
+            korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i", 
+                            a == enumContext->allocationMetaSize - 1 ? L"└" : L"├", 
+                            allocMeta->allocationAddress, allocAddressEnd, 
+                            allocMeta->meta.bytes, 
+                            allocMeta->meta.file, allocMeta->meta.line);
+        }
+    }
+    korl_log_noMeta(INFO, "╚═════ END of Memory Report ════════════════════════════╝");
 }

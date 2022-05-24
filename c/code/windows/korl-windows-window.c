@@ -315,8 +315,13 @@ korl_internal void korl_windows_window_loop(void)
         if(stats)
             korl_memory_zero(stats, sizeof(*stats));
         if(renderFrameCount == 1 || renderFrameCount == 2)
+        {
+            korl_log(INFO, "generating reports for frame %llu:", renderFrameCount - 1);
             korl_time_probeLogReport();
+            korl_memory_reportLog(korl_memory_reportGenerate());
+        }
         korl_time_probeReset();
+        korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
