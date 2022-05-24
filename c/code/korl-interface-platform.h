@@ -118,6 +118,7 @@ typedef enum Korl_MouseButton
     , KORL_MOUSE_BUTTON_RIGHT
     , KORL_MOUSE_BUTTON_X1
     , KORL_MOUSE_BUTTON_X2
+    , KORL_MOUSE_BUTTON_COUNT
 } Korl_MouseButton;
 
 typedef enum Korl_MouseEventType
