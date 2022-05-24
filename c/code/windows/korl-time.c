@@ -328,8 +328,9 @@ korl_internal void korl_time_probeLogReport(void)
     const PlatformTimeStamp timeStampEnd = korl_timeStamp();
     _korl_time_timeStampExtractDifference(timeStampStart, timeStampEnd, 
                                           &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
-    korl_log_noMeta(INFO, "╚═════ END of time probe report!  Report time taken: %02llu:%02hhu'%03hu\"%03hu ═════════╝",
-                    timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds);
+    korl_log_noMeta(INFO, "╚═════ END of time probe report!  Report time taken: %02llu:%02hhu'%03hu\"%03hu | Total Probes: %u ═════════╝",
+                    timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds, 
+                    _korl_time_context.timeProbesCount);
 }
 korl_internal void korl_time_probeReset(void)
 {

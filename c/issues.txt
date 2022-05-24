@@ -102,8 +102,9 @@
 [ ] KORL-FEATURE-000-000-010: game: support automatic hot-reloading of entire code module
 [x] KORL-FEATURE-000-000-011: math: add C++ API layer for operator overloading support
 [ ] KORL-FEATURE-000-000-012: time: add C++ API layer for RAII time probe support
-[ ] KORL-FEATURE-000-000-013: time: report total time probe count in the report
+[x] KORL-FEATURE-000-000-013: time: report total time probe count in the report
 [ ] KORL-FEATURE-000-000-014: time: allow the user to filter the report display somehow to reduce clutter; perhaps allow the user to configure a maximum reported probe depth?  Or perhaps make probe categories or something?
 [ ] KORL-FEATURE-000-000-015: crash: detect infinite loops (unresponsive program)
 [x] KORL-FEATURE-000-000-016: window: limit & regulate frame rate
 [ ] KORL-FEATURE-000-000-017: time: add ability to stash reports for later consumption; avoids the issue of not being able to probe the report itself, among other things
+[ ] KORL-FEATURE-000-000-018: GUI: add API to check if the GUI has input focus
