@@ -17,12 +17,12 @@ typedef struct _Korl_AssetCache_Context
 } _Korl_AssetCache_Context;
 #undef _KORL_ASSETCACHE_ASSET_NAME_SIZE_MAX
 #undef _KORL_ASSETCACHE_ASSET_COUNT_MAX
-_Korl_AssetCache_Context _korl_assetCache_context;
+korl_global_variable _Korl_AssetCache_Context _korl_assetCache_context;
 korl_internal void korl_assetCache_initialize(void)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAGS_NONE);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE);
 }
 korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)

@@ -694,6 +694,7 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(GetCurrentThreadId() == context->mainThreadId);
     korl_assert(!KORL_MEMORY_POOL_ISFULL(context->allocators));
+    /* obtain a new unique handle for this allocator */
     Korl_Memory_AllocatorHandle newHandle = 0;
     for(Korl_Memory_AllocatorHandle h = 1; h <= KORL_MEMORY_POOL_CAPACITY(context->allocators); h++)
     {
@@ -708,6 +709,14 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
             break;
     }
     korl_assert(newHandle);
+    /* ensure that allocatorName has not been used in any other allocator */
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+        if(0 == korl_memory_stringCompare(context->allocators[a].name, allocatorName))
+        {
+            korl_log(ERROR, "allocator name %s already in use", allocatorName);
+            return 0;// return an invalid handle
+        }
+    /* create the allocator */
     _Korl_Memory_Allocator* newAllocator = KORL_MEMORY_POOL_ADD(context->allocators);
     korl_memory_zero(newAllocator, sizeof(*newAllocator));
     newAllocator->type   = type;
@@ -723,6 +732,7 @@ korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create
         break;}
     }
     korl_memory_stringCopy(allocatorName, newAllocator->name, korl_arraySize(newAllocator->name));
+    /**/
     return newAllocator->handle;
 }
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)

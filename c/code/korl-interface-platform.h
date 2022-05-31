@@ -175,6 +175,7 @@ typedef enum Korl_Memory_AllocatorFlags
     { KORL_MEMORY_ALLOCATOR_FLAGS_NONE                        = 0
     , KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS = 1 << 0
     , KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME            = 1 << 1
+    , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE         = 1 << 2
 } Korl_Memory_AllocatorFlags;
 /** As of right now, the smallest possible value for \c maxBytes for a linear 
  * allocator is 16 kilobytes (4 pages), since two pages are required for the 
