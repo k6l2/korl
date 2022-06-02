@@ -490,7 +490,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     wchar_t dumpDirectory[MAX_PATH];
     if(0 > korl_memory_stringFormatBuffer(dumpDirectory, sizeof(dumpDirectory), 
                                           L"%ws\\%ws", 
-                                          _korl_file_getPath(KORL_FILE_PATHTYPE_TEMPORARY_DATA), 
+                                          _korl_file_getPath(type), 
                                           L"memory-dumps"))
     {
         korl_log(ERROR, "dumpDirectory failed");
@@ -676,4 +676,59 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         return EXCEPTION_EXECUTE_HANDLER;
     }
 #endif// ^ either recycle this code at some point, or just delete it
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_saveStateCreate_allocationEnumCallback)
+{
+    const HANDLE hFile = userData;
+    //@TODO
+}
+/** In this function, we just write out each allocator to the file */
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback)
+{
+    const HANDLE hFile = userData;
+    if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
+        return;
+    /* write the allocator's meta data to the file */
+    /* then we can enumarate over all allocations & write those to a file as well */
+    korl_memory_allocator_enumerateAllocations(allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, hFile, NULL/*don't care about allocatorVirtualAddressEnd*/);
+}
+korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    /* create a directory to store save states in */
+    wchar_t directory[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(directory, sizeof(directory), L"%ws\\%ws", _korl_file_getPath(pathType), L"save-states"))
+    {
+        korl_log(ERROR, "directory format failed");
+        return;
+    }
+    if(!CreateDirectory(directory, NULL/*default security*/))
+        switch(GetLastError())
+        {
+        case ERROR_ALREADY_EXISTS:
+            break;
+        case ERROR_PATH_NOT_FOUND:
+            korl_log(ERROR, "CreateDirectory(%ws) failed: path not found", directory);
+            return;
+        }
+    /* we can just use fileName directly; maybe in the future we can do rolling 
+        save state files or something */
+    wchar_t pathFile[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(pathFile, sizeof(pathFile), L"%ws\\%ws", directory, fileName))
+    {
+        korl_log(ERROR, "pathFile format failed");
+        return;
+    }
+    /* open the save state file for writing */
+    const HANDLE hFile = CreateFile(pathFile, GENERIC_WRITE, 
+                                    FILE_SHARE_WRITE|FILE_SHARE_READ, 
+                                    0, CREATE_ALWAYS, 0, 0);
+    if(hFile == INVALID_HANDLE_VALUE)
+    {
+        korl_logLastError("CreateFile(%ws) failed!", pathFile);
+        return;
+    }
+    /* begin iteration over memory allocators, writing contents to file */
+    korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback, hFile);
+    /* clean up */
+    korl_assert(CloseHandle(hFile));
 }

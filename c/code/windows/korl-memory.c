@@ -30,24 +30,10 @@ typedef struct _Korl_Memory_AllocatorLinear
      *   meta data page! */
     KORL_MEMORY_POOL_DECLARE(u32, allocationOffsets, 1024);
 } _Korl_Memory_AllocatorLinear;
-typedef struct _Korl_Memory_AllocationMeta
-{
-    const wchar_t* file;
-    int line;
-    /** 
-     * The amount of actual memory used by the caller.  The grand total amount 
-     * of memory used by an allocation will likely be the sum of the following:  
-     * - the allocation meta data
-     * - the actual memory used by the caller
-     * - any additional padding required by the allocator (likely to round 
-     *   everything up to the nearest page size)
-     */
-    u$ bytes;
-} _Korl_Memory_AllocationMeta;
 typedef struct _Korl_Memory_ReportAllocationMetaData
 {
     const void* allocationAddress;
-    _Korl_Memory_AllocationMeta meta;
+    Korl_Memory_AllocationMeta meta;
 } _Korl_Memory_ReportAllocationMetaData;
 typedef struct _Korl_Memory_ReportEnumerateContext
 {
@@ -65,9 +51,6 @@ typedef struct _Korl_Memory_Report
     u$ allocatorCount;
     _Korl_Memory_ReportEnumerateContext allocatorData[1];
 } _Korl_Memory_Report;
-#define _KORL_MEMORY_ALLOCATOR_ENUMERATE_CALLBACK(name) void name(void* userData, const void* allocation, const _Korl_Memory_AllocationMeta* meta)
-typedef _KORL_MEMORY_ALLOCATOR_ENUMERATE_CALLBACK(_fnSig_korl_memory_allocator_enumerateCallback);
-#define _KORL_MEMORY_ALLOCATOR_ENUMERATE(name) void name(void* allocatorUserData, _fnSig_korl_memory_allocator_enumerateCallback* callback, void* userData, const void** out_allocatorVirtualAddressEnd)
 korl_global_variable _Korl_Memory_Context _korl_memory_context;
 korl_internal void korl_memory_initialize(void)
 {
@@ -218,9 +201,9 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
     }
     /* commit the pages of this allocation */
     const u$ allocatorPages = (sizeof(*allocator) + (pageBytes - 1)) / pageBytes;
-    _Korl_Memory_AllocationMeta*const metaPageAddress = 
-        KORL_C_CAST(_Korl_Memory_AllocationMeta*, allocator->nextAllocationAddress);
-    korl_assert(sizeof(_Korl_Memory_AllocationMeta) < pageBytes);
+    Korl_Memory_AllocationMeta*const metaPageAddress = 
+        KORL_C_CAST(Korl_Memory_AllocationMeta*, allocator->nextAllocationAddress);
+    korl_assert(sizeof(Korl_Memory_AllocationMeta) < pageBytes);
     allocationAddress = KORL_C_CAST(u8*, metaPageAddress) + pageBytes;
     {
         LPVOID resultVirtualAlloc = 
@@ -290,8 +273,8 @@ korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, v
     korl_assert(allocationOffsetIndex < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets));
     /* determine the range of pages occupied by the allocation */
     // get the address of the allocation's metadata page //
-    _Korl_Memory_AllocationMeta*const allocationMeta = 
-        KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
+    Korl_Memory_AllocationMeta*const allocationMeta = 
+        KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
     // remove protection on the allocation's metadata page so that we can obtain 
     //   the allocation's `size` information //
     {
@@ -325,8 +308,8 @@ korl_internal void _korl_memory_allocator_linear_free(void* allocatorUserData, v
         for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); ++i)
             highestOffset = KORL_MATH_MAX(highestOffset, allocator->allocationOffsets[i]);
         void*const highestAllocation = KORL_C_CAST(u8*, allocator) + highestOffset;
-        _Korl_Memory_AllocationMeta*const highestAllocationMeta = 
-            KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, highestAllocation) - pageBytes);
+        Korl_Memory_AllocationMeta*const highestAllocationMeta = 
+            KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, highestAllocation) - pageBytes);
         {
             DWORD oldProtect;
             const BOOL resultVirtualProtect = VirtualProtect(highestAllocationMeta, sizeof(*highestAllocationMeta), PAGE_READWRITE, &oldProtect);
@@ -398,8 +381,8 @@ korl_internal void* _korl_memory_allocator_linear_reallocate(void* allocatorUser
         return NULL;
     }
     // get the address of the allocation's metadata page //
-    _Korl_Memory_AllocationMeta*const allocationMeta = 
-        KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
+    Korl_Memory_AllocationMeta*const allocationMeta = 
+        KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
     // remove protection on the allocation's metadata page so that we can obtain 
     //   the allocation's `size` information //
     {
@@ -548,8 +531,8 @@ korl_internal void _korl_memory_allocator_linear_empty(void* allocatorUserData)
         /* VirtualProtect the region of memory occupied by each allocation to 
             prevent anything from being able to access it normally ever again! */
         /* get the allocation's meta data address */
-        _Korl_Memory_AllocationMeta*const allocationMeta = 
-            KORL_C_CAST(_Korl_Memory_AllocationMeta*, 
+        Korl_Memory_AllocationMeta*const allocationMeta = 
+            KORL_C_CAST(Korl_Memory_AllocationMeta*, 
                         KORL_C_CAST(u8*, allocator) + allocator->allocationOffsets[a] - pageBytes);
         /* release the protection of the meta data page */
         {
@@ -579,7 +562,7 @@ korl_internal void _korl_memory_allocator_linear_empty(void* allocatorUserData)
         korl_assert(oldProtect == PAGE_READWRITE);
     }
 }
-korl_internal _KORL_MEMORY_ALLOCATOR_ENUMERATE(_korl_memory_allocator_linear_enumerate)
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator_linear_enumerateAllocations)
 {
     _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
     const u$ pageBytes = korl_memory_pageBytes();
@@ -596,7 +579,7 @@ korl_internal _KORL_MEMORY_ALLOCATOR_ENUMERATE(_korl_memory_allocator_linear_enu
     {
         const void*const allocation = KORL_C_CAST(u8*, allocator) + allocator->allocationOffsets[a];
         /* get the allocation's meta data address */
-        _Korl_Memory_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
+        Korl_Memory_AllocationMeta*const allocationMeta = KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, allocation) - pageBytes);
         /* release the protection of the meta data page */
         {
             DWORD oldProtect;
@@ -604,7 +587,7 @@ korl_internal _KORL_MEMORY_ALLOCATOR_ENUMERATE(_korl_memory_allocator_linear_enu
             korl_assert(oldProtect == PAGE_NOACCESS);
         }
         /**/
-        callback(userData, allocation, allocationMeta);
+        callback(callbackUserData, allocation, allocationMeta);
         /* protect the allocation's metadata page */
         {
             DWORD oldProtect;
@@ -672,7 +655,7 @@ korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Me
     korl_log(WARNING, "no allocator found for handle %u", handle);
     return NULL;
 }
-korl_internal _KORL_MEMORY_ALLOCATOR_ENUMERATE_CALLBACK(_korl_memory_logReport_enumerateCallback)
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_logReport_enumerateCallback)
 {
     _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
     if(context->allocationMetaSize == context->allocationMetaCapacity)
@@ -862,14 +845,13 @@ korl_internal void* korl_memory_reportGenerate(void)
         switch(allocator->type)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-            _korl_memory_allocator_linear_enumerate(allocator->userData, _korl_memory_logReport_enumerateCallback, enumContext, &enumContext->virtualAddressEnd);
+            _korl_memory_allocator_linear_enumerateAllocations(allocator->userData, _korl_memory_logReport_enumerateCallback, enumContext, &enumContext->virtualAddressEnd);
             break;}
         default:{
             korl_log(ERROR, "unknown allocator type '%i' not implemented", allocator->type);
             break;}
         }
-        // ISSUE: the allocation meta data list is not actually sorted by 
-        //        address yet!
+        //KORL-ISSUE-000-000-066: memory: sort report allocations by ascending address
     }
     return report;
 }
@@ -894,4 +876,27 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
         }
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ════════════════════════════╝");
+}
+korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+    {
+        _Korl_Memory_Allocator*const allocator = &context->allocators[a];
+        callback(callbackUserData, allocator->userData, allocator->name, allocator->flags);
+    }
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    _Korl_Memory_Allocator*const allocator = allocatorUserData;
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        _korl_memory_allocator_linear_enumerateAllocations(allocator->userData, callback, callbackUserData, out_allocatorVirtualAddressEnd);
+        return;}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }

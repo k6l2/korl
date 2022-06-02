@@ -1,6 +1,25 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
+typedef struct Korl_Memory_AllocationMeta
+{
+    const wchar_t* file;
+    int line;
+    /** 
+     * The amount of actual memory used by the caller.  The grand total amount 
+     * of memory used by an allocation will likely be the sum of the following:  
+     * - the allocation meta data
+     * - the actual memory used by the caller
+     * - any additional padding required by the allocator (likely to round 
+     *   everything up to the nearest page size)
+     */
+    u$ bytes;
+} Korl_Memory_AllocationMeta;
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) void name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
+typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) void name(void* userData, void* allocatorUserData,  const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags)
+typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
 /**  Should function in the same way as memcmp from the C standard library.
@@ -50,3 +69,5 @@ korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 korl_internal void* korl_memory_reportGenerate(void);
 /** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */
 korl_internal void korl_memory_reportLog(void* reportAddress);
+korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData);
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations);
