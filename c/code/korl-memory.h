@@ -71,3 +71,40 @@ korl_internal void* korl_memory_reportGenerate(void);
 korl_internal void korl_memory_reportLog(void* reportAddress);
 korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData);
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations);
+/** These memory (un)pack API can be used to quickly store & retrieve data 
+ * to/from a memory buffer in a platform-agnostic way.  For example, if machine 
+ * A packs a 64-bit integer into a memory buffer, and sends this data to machine 
+ * B over the network or via a file saved to disk, machine B should be able to 
+ * successfully unpack and read the data correctly using the same API. */
+/** \param dataSize _not_ including the null-terminator */
+korl_internal u$ korl_memory_packStringI8(const i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd);
+/** \param dataSize _not_ including the null-terminator */
+korl_internal u$ korl_memory_packStringU16(const u16* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packU$ (u$  data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packU64(u64 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packU32(u32 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packU16(u16 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packU8 (u8  data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packI64(i64 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packI32(i32 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packI16(i16 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packI8 (i8  data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packF64(f64 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_packF32(f32 data, u8** bufferCursor, const u8*const bufferEnd);
+/** The caller is responsible for null-terminating the string. 
+ * \param dataSize _not_ including the null-terminator required for the string */
+korl_internal u$ korl_memory_unpackStringI8(i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd);
+/** The caller is responsible for null-terminating the string. 
+ * \param dataSize _not_ including the null-terminator required for the string */
+korl_internal u$ korl_memory_unpackStringU16(u16* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackU$ (u$  data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackU64(u64 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackU32(u32 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackU16(u16 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackU8 (u8  data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackI64(i64 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackI32(i32 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackI16(i16 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackI8 (i8  data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackF64(f64 data, u8** bufferCursor, const u8*const bufferEnd);
+korl_internal u$ korl_memory_unpackF32(f32 data, u8** bufferCursor, const u8*const bufferEnd);

@@ -52,6 +52,33 @@ typedef struct _Korl_Memory_Report
     _Korl_Memory_ReportEnumerateContext allocatorData[1];
 } _Korl_Memory_Report;
 korl_global_variable _Korl_Memory_Context _korl_memory_context;
+korl_internal bool _korl_memory_isBigEndian(void)
+{
+    korl_shared_const i32 I = 1;
+    return KORL_C_CAST(const u8*const, &I)[0] == 0;
+}
+korl_internal u$ _korl_memory_packCommon(const u8* data, u$ dataBytes, u8** bufferCursor, const u8*const bufferEnd)
+{
+    if(*bufferCursor + dataBytes > bufferEnd)
+        return 0;
+    if(_korl_memory_isBigEndian())
+        korl_assert(!"big-endian not supported");
+    else
+        korl_memory_copy(*bufferCursor, data, dataBytes);
+    *bufferCursor += dataBytes;
+    return dataBytes;
+}
+korl_internal u$ _korl_memory_unpackCommon(void* unpackedData, u$ unpackedDataBytes, const u8** bufferCursor, const u8*const bufferEnd)
+{
+    if(*bufferCursor + unpackedDataBytes > bufferEnd)
+        return 0;
+    if(_korl_memory_isBigEndian())
+        korl_assert(!"big-endian not supported");
+    else
+        korl_memory_copy(unpackedData, *bufferCursor, unpackedDataBytes);
+    *bufferCursor += unpackedDataBytes;
+    return unpackedDataBytes;
+}
 korl_internal void korl_memory_initialize(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -899,4 +926,108 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+}
+korl_internal u$ korl_memory_packStringI8(const i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, data), dataSize*sizeof(*data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packStringU16(const u16* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, data), dataSize*sizeof(*data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packU$ (u$  data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packU64(u64 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packU32(u32 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packU16(u16 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packU8(u8 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packI64(i64 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packI32(i32 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packI16(i16 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packI8(i8 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packF64(f64 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_packF32(f32 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackStringI8(i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(data, dataSize*sizeof(*data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackStringU16(u16* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(data, dataSize*sizeof(*data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackU$(u$ data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackU64(u64 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackU32(u32 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackU16(u16 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackU8 (u8  data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackI64(i64 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackI32(i32 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackI16(i16 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackI8 (i8  data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackF64(f64 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal u$ korl_memory_unpackF32(f32 data, u8** bufferCursor, const u8*const bufferEnd)
+{
+    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
 }
