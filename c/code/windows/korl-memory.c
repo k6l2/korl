@@ -591,7 +591,7 @@ korl_internal void _korl_memory_allocator_linear_empty(void* allocatorUserData)
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator_linear_enumerateAllocations)
 {
-    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
+    _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, opaqueAllocator);
     const u$ pageBytes = korl_memory_pageBytes();
     /* release the protection on the allocator pages */
     {
@@ -911,14 +911,14 @@ korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_a
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
-        callback(callbackUserData, allocator->userData, allocator->name, allocator->flags);
+        callback(callbackUserData, allocator, allocator->name, allocator->flags);
     }
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
-    _Korl_Memory_Allocator*const allocator = allocatorUserData;
+    _Korl_Memory_Allocator*const allocator = opaqueAllocator;
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{

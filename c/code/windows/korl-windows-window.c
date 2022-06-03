@@ -11,11 +11,13 @@
 #include "korl-interface-platform.h"
 #include "korl-interface-game.h"
 #include "korl-gui.h"
+#include "korl-file.h"
 korl_global_const TCHAR _KORL_WINDOWS_WINDOW_CLASS_NAME[] = _T("KorlWindowClass");
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     HWND handleWindow;// for now, we will only ever have _one_ window
+    bool deferSaveStateCreate;// defer until the beginning of the next frame; the best place to synchronize save state operations
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
@@ -42,6 +44,10 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             break;
         }
         korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
+#if 1// @TODO: delete this; this is just debug testing code
+        if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F1 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
+            _korl_windows_window_context.deferSaveStateCreate = true;
+#endif
         break;}
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
@@ -308,6 +314,7 @@ korl_internal void korl_windows_window_loop(void)
     } _Korl_Window_LoopStats;
     KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 64);
     loopStats_korlMemoryPoolSize = 0;
+    bool deferProbeReport = false;
     while(!quit)
     {
         _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
@@ -315,15 +322,24 @@ korl_internal void korl_windows_window_loop(void)
             : KORL_MEMORY_POOL_ADD(loopStats);
         if(stats)
             korl_memory_zero(stats, sizeof(*stats));
-        if(renderFrameCount == 1 || renderFrameCount == 2)
+        if(renderFrameCount == 1 || renderFrameCount == 2 || deferProbeReport)
         {
             korl_log(INFO, "generating reports for frame %llu:", renderFrameCount - 1);
             korl_time_probeLogReport();
             korl_memory_reportLog(korl_memory_reportGenerate());
+            deferProbeReport = false;
         }
         korl_time_probeReset();
         korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);
+        if(_korl_windows_window_context.deferSaveStateCreate)
+        {
+            _korl_windows_window_context.deferSaveStateCreate = false;
+            deferProbeReport = true;
+            korl_time_probeStart(save_state_create);
+            korl_file_saveStateCreate(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
+            korl_time_probeStop(save_state_create);
+        }
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
