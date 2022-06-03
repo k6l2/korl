@@ -143,7 +143,6 @@ typedef struct _Korl_Vulkan_Context
     /* database for assets that exist on the device 
         (textures, shaders, buffers, etc) */
     KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceAsset, deviceAssets, 1024);
-    Korl_Vulkan_TextureHandle deviceAssetsNextTextureHandle;
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 

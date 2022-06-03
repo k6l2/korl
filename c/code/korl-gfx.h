@@ -4,6 +4,7 @@
 #include "korl-vulkan.h"
 #include "korl-interface-platform.h"
 korl_internal void korl_gfx_initialize(void);
+korl_internal void korl_gfx_clearFontCache(void);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(korl_gfx_createCameraOrthoFixedHeight);

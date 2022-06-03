@@ -3,6 +3,7 @@
 #include "korl-memory.h"
 #include "korl-time.h"
 #include <minidumpapiset.h>
+korl_global_const wchar_t _KORL_FILE_DIRECTORY_SAVE_STATES[] = L"save-states";
 typedef struct _Korl_File_SaveStateEnumerateContext
 {
     void* saveStateBuffer;
@@ -797,6 +798,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
  */
 korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const wchar_t* fileName)
 {
+    //@TODO: maybe save state creation & loading should be contained within korl-memory?
     _Korl_File_Context*const context = &_korl_file_context;
     HANDLE hFile = INVALID_HANDLE_VALUE;
     korl_time_probeStart(create_buffer);
@@ -843,7 +845,7 @@ korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const 
     /* create a directory to store save states in */
     korl_time_probeStart(write_buffer);
     wchar_t directory[MAX_PATH];
-    if(0 > korl_memory_stringFormatBuffer(directory, sizeof(directory), L"%ws\\%ws", _korl_file_getPath(pathType), L"save-states"))
+    if(0 > korl_memory_stringFormatBuffer(directory, sizeof(directory), L"%ws\\%ws", _korl_file_getPath(pathType), _KORL_FILE_DIRECTORY_SAVE_STATES))
     {
         korl_log(ERROR, "directory format failed");
         goto cleanUp;
@@ -878,11 +880,42 @@ korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const 
     DWORD bytesWritten;
     if(!WriteFile(hFile, enumContext.saveStateBuffer, korl_checkCast_u$_to_u32(enumContext.saveStateBufferBytesUsed), &bytesWritten, NULL/*no overlapped*/))
         korl_logLastError("WriteFile failed!");
+    korl_log(INFO, "Wrote save state file: %ws", pathFile);
     korl_time_probeStop(write_buffer);
-    /* clean up */
+cleanUp:
+    korl_time_probeStart(clean_up);
+    if(hFile != INVALID_HANDLE_VALUE)
+    {
+        korl_time_probeStart(close_file_handle);
+        korl_assert(CloseHandle(hFile));
+        korl_time_probeStop(close_file_handle);
+    }
+    korl_time_probeStart(free_buffer);            korl_free(context->allocatorHandle, enumContext.saveStateBuffer);  korl_time_probeStop(free_buffer);
+    korl_time_probeStart(free_allocation_counts); korl_free(context->allocatorHandle, enumContext.allocationCounts); korl_time_probeStop(free_allocation_counts);
+    korl_time_probeStop(clean_up);
+}
+korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    HANDLE hFile = INVALID_HANDLE_VALUE;
+    wchar_t pathFile[MAX_PATH];
+    if(0 > korl_memory_stringFormatBuffer(pathFile, sizeof(pathFile), L"%ws\\%ws\\%ws", _korl_file_getPath(pathType), _KORL_FILE_DIRECTORY_SAVE_STATES, fileName))
+    {
+        korl_log(ERROR, "pathFile format failed");
+        goto cleanUp;
+    }
+    hFile = CreateFile(pathFile, GENERIC_READ, 
+                       FILE_SHARE_READ, 
+                       0/*default security*/, CREATE_ALWAYS, 
+                       0/*flags|attributes*/, 0/*no template*/);
+    if(hFile == INVALID_HANDLE_VALUE)
+    {
+        korl_logLastError("CreateFile(%ws) failed!", pathFile);
+        goto cleanUp;
+    }
+    /* read & parse & process the save state file */
+    // @TODO
 cleanUp:
     if(hFile != INVALID_HANDLE_VALUE)
         korl_assert(CloseHandle(hFile));
-    korl_free(context->allocatorHandle, enumContext.saveStateBuffer);
-    korl_free(context->allocatorHandle, enumContext.allocationCounts);
 }

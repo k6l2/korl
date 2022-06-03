@@ -114,9 +114,6 @@ korl_internal void _korl_vulkan_deviceMemoryLinear_destroy(_Korl_Vulkan_DeviceMe
     vkFreeMemory(context->device, deviceMemoryLinear->deviceMemory, context->allocator);
     korl_memory_zero(deviceMemoryLinear, sizeof(*deviceMemoryLinear));
 }
-/**
- * Iterate over each allocation and destroy it, effectively emptying the allocator.
- */
 korl_internal void _korl_vulkan_deviceMemoryLinear_clear(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
 {
     for(unsigned a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)

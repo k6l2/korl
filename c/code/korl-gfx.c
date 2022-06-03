@@ -196,6 +196,13 @@ korl_internal void korl_gfx_initialize(void)
                                                             korl_math_megabytes(4), L"korl-gfx", 
                                                             KORL_MEMORY_ALLOCATOR_FLAGS_NONE);
 }
+korl_internal void korl_gfx_clearFontCache(void)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    for(Korl_MemoryPool_Size fc = 0; fc < KORL_MEMORY_POOL_SIZE(context->fontCaches); fc++)
+        korl_free(context->allocatorHandle, context->fontCaches[fc]);
+    KORL_MEMORY_POOL_EMPTY(context->fontCaches);
+}
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);

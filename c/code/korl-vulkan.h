@@ -19,6 +19,7 @@ korl_internal void korl_vulkan_destroy(void);
 korl_internal void korl_vulkan_createSurface(
     void* createSurfaceUserData, u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_destroySurface(void);
+korl_internal void korl_vulkan_clearAllDeviceAssets(void);
 #if 0//KORL-ISSUE-000-000-027: Vulkan; feature: add shader/pipeline resource API
 /** 
  * This must be called AFTER \c korl_vulkan_createSurface since shader modules 

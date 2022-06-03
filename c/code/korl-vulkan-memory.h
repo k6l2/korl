@@ -79,6 +79,9 @@ korl_internal void _korl_vulkan_deviceMemoryLinear_create(
     VkImageUsageFlags imageUsageFlags, 
     VkDeviceSize bytes);
 korl_internal void _korl_vulkan_deviceMemoryLinear_destroy(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear);
+/**
+ * Iterate over each allocation and destroy it, effectively emptying the allocator.
+ */
 korl_internal void _korl_vulkan_deviceMemoryLinear_clear(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear);
 korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLinear_allocateBuffer(
     _Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, VkDeviceSize bytes, 

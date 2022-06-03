@@ -1787,6 +1787,14 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyCommandPool(context->device, context->commandPoolGraphics, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 }
+korl_internal void korl_vulkan_clearAllDeviceAssets(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
+    _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearAssetsStaging);
+    _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearAssets);
+    KORL_MEMORY_POOL_EMPTY(context->deviceAssets);
+}
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
 {
     _Korl_Vulkan_Context*const context                        = &g_korl_vulkan_context;
