@@ -91,6 +91,14 @@ korl_internal void korl_time_initialize(void)
         korl_log(WARNING, "System supports custom scheduler granularity, but "
                           "setting this value has failed!  Sleep will not be "
                           "called!");
+    // Set the process to a higher priority to minimize the chance of another 
+    //	process keeping us asleep hopefully. //
+    if(_korl_time_context.sleepIsGranular)
+    {
+        const HANDLE hProcess = GetCurrentProcess();
+        if(!SetPriorityClass(hProcess, HIGH_PRIORITY_CLASS))
+            korl_logLastError("SetPriorityClass(HIGH_PRIORITY_CLASS) failed");
+    }
 }
 korl_internal void korl_time_shutDown(void)
 {
@@ -135,22 +143,29 @@ korl_internal Korl_Time_Counts korl_time_timeStampCountDifference(PlatformTimeSt
     }
     return tsuB.largeInt.QuadPart - tsuA.largeInt.QuadPart;
 }
-korl_internal void korl_time_sleep(Korl_Time_Counts counts)
+korl_internal PlatformTimeStamp korl_time_sleep(PlatformTimeStamp timeStampStart, Korl_Time_Counts timeCountsTargetDuration, Korl_Time_Counts* out_debug_timeCountsDiff)
 {
-    const PlatformTimeStamp sleepStart = korl_timeStamp();
-    u$ timeDiffMinutes;
-    u8 timeDiffSeconds;
-    u16 timeDiffMilliseconds, timeDiffMicroseconds;
-    _korl_time_timeStampExtractDifferenceCounts(counts, &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
+    const Korl_Time_Counts perfCountPerMilliSecond = _korl_time_perfCounterHz.QuadPart / 1000;
+    const PlatformTimeStamp timeStampEnd = timeStampStart + timeCountsTargetDuration;
     /* we use this value to spin the CPU for a small amount of time each sleep 
         attempt because Sleep is extremely inaccurate, and experimentally this 
         improves Sleep accuracy _tramendously_, with likely very small CPU cost */
-    korl_shared_const DWORD SLEEP_SLACK_MILLISECONDS = 1;
-    if(timeDiffMilliseconds > SLEEP_SLACK_MILLISECONDS && _korl_time_context.sleepIsGranular)
-        Sleep(timeDiffMilliseconds - SLEEP_SLACK_MILLISECONDS);
-    while(korl_time_timeStampCountDifference(sleepStart, korl_timeStamp()) < counts)
-        if(_korl_time_context.sleepIsGranular)
-            Sleep(0);
+    korl_shared_const DWORD SLEEP_SLACK_MILLISECONDS = 2;
+    Korl_Time_Counts timeCountsDiff = 0;
+    PlatformTimeStamp timeStampCurrent = 0;
+    while(( timeStampCurrent = korl_timeStamp()
+          , timeCountsDiff   = timeStampCurrent - timeStampStart) 
+          < timeCountsTargetDuration)
+    {
+        const DWORD remainingMilliseconds = korl_checkCast_i$_to_u32(korl_time_timeStampCountDifference(timeStampEnd, timeStampCurrent) / perfCountPerMilliSecond);
+        if(remainingMilliseconds > SLEEP_SLACK_MILLISECONDS && _korl_time_context.sleepIsGranular)
+            Sleep(remainingMilliseconds - SLEEP_SLACK_MILLISECONDS);
+        //if(_korl_time_context.sleepIsGranular)
+        //    Sleep(0);
+    }
+    if(out_debug_timeCountsDiff)
+        *out_debug_timeCountsDiff = timeCountsDiff;
+    return timeStampCurrent;
 }
 korl_internal i$ korl_time_countsFormatBuffer(Korl_Time_Counts counts, wchar_t* buffer, u$ bufferBytes)
 {

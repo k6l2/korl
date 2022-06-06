@@ -23,7 +23,7 @@ korl_internal KORL_PLATFORM_GET_TIMESTAMP(korl_timeStamp);
 korl_internal KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP(korl_time_secondsSinceTimeStamp);
 korl_internal Korl_Time_Counts korl_time_countsFromHz(u16 hz);
 korl_internal Korl_Time_Counts korl_time_timeStampCountDifference(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB);
-korl_internal void korl_time_sleep(Korl_Time_Counts counts);
+korl_internal PlatformTimeStamp korl_time_sleep(PlatformTimeStamp timeStampStart, Korl_Time_Counts timeCountsTargetDuration, Korl_Time_Counts* out_debug_timeCountsDiff/*@TODO: get rid of this param*/);
 /** \return the # of characters written to \c buffer .  If \c bufferBytes is not 
  * large enough, \c buffer is not modified and the value returned is the number 
  * of characters that _would_ have been written, including the null terminator, 

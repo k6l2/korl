@@ -303,6 +303,9 @@ korl_internal void korl_windows_window_loop(void)
     typedef struct _Korl_Window_LoopStats
     {
         Korl_Time_Counts timeRenderLoop;
+        Korl_Time_Counts timeCountsSleepDiff;//@TODO: get rid of this
+        PlatformTimeStamp ptsLastFrameEnd;//@TODO: get rid of this
+        PlatformTimeStamp ptsFrameEnd;//@TODO: get rid of this
         KORL_MEMORY_POOL_DECLARE(_Korl_Window_StatsLogicLoop, logicLoops, 8);
     } _Korl_Window_LoopStats;
     KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 64);
@@ -346,13 +349,14 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
         /* regulate frame rate to our game module's target frame rate */
         //KORL-ISSUE-000-000-059: window: find a frame timing solution that works if vulkan API blocks for some reason
-        const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();
-        const Korl_Time_Counts timeCountsRenderLoop = korl_time_timeStampCountDifference(timeStampRenderLoopBottom, timeStampLast);
         korl_time_probeStart(sleep);
-        if(timeCountsRenderLoop < timeCountsTargetGamePerFrame)
-            korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoop);
+        if(stats)
+        {
+            stats->ptsLastFrameEnd = timeStampLast;
+            stats->ptsFrameEnd     = timeStampLast + timeCountsTargetGamePerFrame;
+        }
+        timeStampLast = korl_time_sleep(timeStampLast, timeCountsTargetGamePerFrame, stats ? &stats->timeCountsSleepDiff : NULL);
         korl_time_probeStop(sleep);
-        timeStampLast = korl_timeStamp();
         if(renderFrameCount < ~(u$)0)
             renderFrameCount++;
         const Korl_Time_Counts timeCountsMainLoop = korl_time_probeStop(Main_Loop);
@@ -367,7 +371,7 @@ korl_internal void korl_windows_window_loop(void)
     for(Korl_MemoryPool_Size s = 0; s < KORL_MEMORY_POOL_SIZE(loopStats); s++)
     {
         korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].timeRenderLoop, durationBuffer, sizeof(durationBuffer)));
-        korl_log_noMeta(INFO, "[% 2u]: %ws", s, durationBuffer);
+        korl_log_noMeta(INFO, "[% 2u]: %ws, %lli, %llu + %lli = %llu", s, durationBuffer, loopStats[s].timeCountsSleepDiff, loopStats[s].ptsLastFrameEnd, timeCountsTargetGamePerFrame, loopStats[s].ptsFrameEnd);
         if(s == 2)
             timeCountAverageRender = loopStats[s].timeRenderLoop;
         else if (s > 1)// avoid the first couple frames for now since there is a lot of spin-up work that throws off metrics
@@ -384,8 +388,8 @@ korl_internal void korl_windows_window_loop(void)
     }
     korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageRender, durationBuffer, sizeof(durationBuffer)));
     korl_log_noMeta(INFO, "Average Render Loop Time: %ws", durationBuffer);
-    korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageLogic, durationBuffer, sizeof(durationBuffer)));
-    korl_log_noMeta(INFO, "Average Logic Loop Time:  %ws", durationBuffer);
+    //korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageLogic, durationBuffer, sizeof(durationBuffer)));
+    //korl_log_noMeta(INFO, "Average Logic Loop Time:  %ws", durationBuffer);
     /**/
     korl_vulkan_destroySurface();
 }
