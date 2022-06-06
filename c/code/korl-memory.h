@@ -73,6 +73,10 @@ korl_internal void* korl_memory_reportGenerate(void);
 korl_internal void korl_memory_reportLog(void* reportAddress);
 korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData);
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations);
+/** \param out_allocatorIndex if the return value is \c true , then the memory 
+ * at this address is populated with the internal index of the found allocator.
+ * \return \c true if the allocator with the given \c name exists */
+korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Memory_AllocatorHandle* out_allocatorHandle);
 /** These memory (un)pack API can be used to quickly store & retrieve data 
  * to/from a memory buffer in a platform-agnostic way.  For example, if machine 
  * A packs a 64-bit integer into a memory buffer, and sends this data to machine 

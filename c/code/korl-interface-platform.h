@@ -183,7 +183,12 @@ typedef enum Korl_Memory_AllocatorFlags
  * (one for the meta data page, and one for the actual allocation itself).  
  * This behavior is subject to change in the future. */
 #define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags)
-#define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line)
+/** \param address [OPTIONAL] the allocation will be placed at this exact 
+ * address in the allocator.  Safety checks are performed to ensure that the 
+ * specified address is valid (within allocator address range, not overlapping 
+ * other allocations).  If this value is \c NULL , the allocator will choose the 
+ * address of the allocation automatically (as you would typically expect). */
+#define KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line, void* address)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)

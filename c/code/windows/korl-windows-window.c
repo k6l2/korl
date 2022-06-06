@@ -18,6 +18,7 @@ typedef struct _Korl_Windows_Window_Context
     Korl_Memory_AllocatorHandle allocatorHandle;
     HWND handleWindow;// for now, we will only ever have _one_ window
     bool deferSaveStateCreate;// defer until the beginning of the next frame; the best place to synchronize save state operations
+    bool deferSaveStateLoad;  // defer until the beginning of the next frame; the best place to synchronize save state operations
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
@@ -47,6 +48,8 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 #if 1// @TODO: delete this; this is just debug testing code
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F1 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
             _korl_windows_window_context.deferSaveStateCreate = true;
+        if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F2 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
+            _korl_windows_window_context.deferSaveStateLoad = true;
 #endif
         break;}
     case WM_SIZE:{
@@ -339,6 +342,14 @@ korl_internal void korl_windows_window_loop(void)
             korl_time_probeStart(save_state_create);
             korl_file_saveStateCreate(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
             korl_time_probeStop(save_state_create);
+        }
+        if(_korl_windows_window_context.deferSaveStateLoad)
+        {
+            _korl_windows_window_context.deferSaveStateLoad = false;
+            deferProbeReport = true;
+            korl_time_probeStart(save_state_load);
+            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
+            korl_time_probeStop(save_state_load);
         }
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);

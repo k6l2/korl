@@ -105,7 +105,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #endif
 /* convenience macros specifically for korl-memory module, which automatically 
     inject file/line information */
-#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate(handle, bytes, __FILEW__, __LINE__)
+#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate(handle, bytes, __FILEW__, __LINE__, NULL)
 #define korl_reallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__)
 #define korl_free(handle, allocation)              korl_memory_allocator_free(handle, allocation, __FILEW__, __LINE__)
 /* macro for automatically initializing stack variables to 0 */

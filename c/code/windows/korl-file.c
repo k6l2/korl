@@ -4,6 +4,8 @@
 #include "korl-time.h"
 #include <minidumpapiset.h>
 korl_global_const wchar_t _KORL_FILE_DIRECTORY_SAVE_STATES[] = L"save-states";
+korl_global_const i8 _KORL_SAVESTATE_UNIQUE_FILE_ID[] = "KORL-SAVESTATE";
+korl_global_const u32 _KORL_SAVESTATE_VERSION = 0;
 typedef struct _Korl_File_SaveStateEnumerateContext
 {
     void* saveStateBuffer;
@@ -776,16 +778,17 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
  * - file              : wchar_t[fileCharacterCount]
  * - line              : i32
  * - address           : u$
- * - size              : u$
- * - data              : u8[size]
+ * - bytes             : u$
+ * - data              : u8[bytes]
  * [Allocator Descriptor] * [Header].allocatorCount
  * - nameCharacterCount: u16
  * - name              : wchar_t[nameCharacterCount]
  * - allocationCount   : u32
  * [Manifest]
- * - uniqueFileId  : "KORL-SAVESTATE"
- * - version       : u32
- * - allocatorCount: u8
+ * - uniqueFileId             : "KORL-SAVESTATE"
+ * - version                  : u32
+ * - allocatorCount           : u8
+ * - allocatorDescriptorOffset: u64 // relative to the beginning of the file
  * ----- End of Save State File Format -----
  * 
  * By placing the allocation descriptors at the top of the file, we can more 
@@ -817,14 +820,14 @@ korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const 
     /* now that we have copied all the allocation descriptors, we can copy the 
         allocator descriptors */
     enumContext.currentAllocator = 0;
+    const u$ allocatorDescriptorByteStart = enumContext.saveStateBufferBytesUsed;
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass, &enumContext);
     /* finally, we can write the save state manifest to the end of the save 
         state buffer */
-    korl_shared_const i8 UNIQUE_FILE_ID[] = "KORL-SAVESTATE";
-    korl_shared_const u32 VERSION = 0;
-    const u$ manifestBytesRequired = (sizeof(UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
-                                   + sizeof(VERSION) 
-                                   + sizeof(enumContext.allocatorCount);
+    const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
+                                   + sizeof(_KORL_SAVESTATE_VERSION) 
+                                   + sizeof(enumContext.allocatorCount)
+                                   + sizeof(allocatorDescriptorByteStart);
     u8* bufferCursor    = KORL_C_CAST(u8*, enumContext.saveStateBuffer) + enumContext.saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, enumContext.saveStateBuffer) + enumContext.saveStateBufferBytes;
     if(bufferCursor + manifestBytesRequired > bufferEnd)
@@ -837,9 +840,10 @@ korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const 
         bufferCursor = KORL_C_CAST(u8*, enumContext.saveStateBuffer) + enumContext.saveStateBufferBytesUsed;
         bufferEnd    = bufferCursor + enumContext.saveStateBufferBytes;
     }
-    korl_assert((sizeof(UNIQUE_FILE_ID) - 1)       == korl_memory_packStringI8(UNIQUE_FILE_ID, sizeof(UNIQUE_FILE_ID) - 1, &bufferCursor, bufferEnd));
-    korl_assert(sizeof(VERSION)                    == korl_memory_packU32(VERSION, &bufferCursor, bufferEnd));
-    korl_assert(sizeof(enumContext.allocatorCount) == korl_memory_packU8(enumContext.allocatorCount, &bufferCursor, bufferEnd));
+    korl_assert((sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1) == korl_memory_packStringI8(_KORL_SAVESTATE_UNIQUE_FILE_ID, sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1, &bufferCursor, bufferEnd));
+    korl_assert(sizeof(_KORL_SAVESTATE_VERSION)              == korl_memory_packU32(_KORL_SAVESTATE_VERSION, &bufferCursor, bufferEnd));
+    korl_assert(sizeof(enumContext.allocatorCount)           == korl_memory_packU8(enumContext.allocatorCount, &bufferCursor, bufferEnd));
+    korl_assert(sizeof(allocatorDescriptorByteStart)         == korl_memory_packU64(allocatorDescriptorByteStart, &bufferCursor, bufferEnd));
     enumContext.saveStateBufferBytesUsed += manifestBytesRequired;
     korl_time_probeStop(create_buffer);
     /* create a directory to store save states in */
@@ -898,6 +902,12 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
 {
     _Korl_File_Context*const context = &_korl_file_context;
     HANDLE hFile = INVALID_HANDLE_VALUE;
+    typedef struct _AllocatorDescriptor
+    {
+        u32 allocationCount;
+        Korl_Memory_AllocatorHandle handle;
+    } _AllocatorDescriptor;
+    _AllocatorDescriptor* allocatorDescriptors = NULL;
     wchar_t pathFile[MAX_PATH];
     if(0 > korl_memory_stringFormatBuffer(pathFile, sizeof(pathFile), L"%ws\\%ws\\%ws", _korl_file_getPath(pathType), _KORL_FILE_DIRECTORY_SAVE_STATES, fileName))
     {
@@ -906,7 +916,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     }
     hFile = CreateFile(pathFile, GENERIC_READ, 
                        FILE_SHARE_READ, 
-                       0/*default security*/, CREATE_ALWAYS, 
+                       0/*default security*/, OPEN_EXISTING, 
                        0/*flags|attributes*/, 0/*no template*/);
     if(hFile == INVALID_HANDLE_VALUE)
     {
@@ -914,8 +924,144 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     /* read & parse & process the save state file */
-    // @TODO
+    /* first, we need to extract the savestate manifest which is placed at the 
+        very end of the file */
+    const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
+                                   + sizeof(_KORL_SAVESTATE_VERSION) 
+                                   + sizeof(u8)// allocatorCount
+                                   + sizeof(u$)/*allocatorDescriptorByteStart*/;
+    LARGE_INTEGER filePointerDistanceToMove;
+    filePointerDistanceToMove.QuadPart = -korl_checkCast_u$_to_i$(manifestBytesRequired);
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_END))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    i8 bufferUniqueFileId[sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID)];
+    if(!ReadFile(hFile, bufferUniqueFileId, sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1, NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    korl_assert(0 == korl_memory_compare(bufferUniqueFileId, _KORL_SAVESTATE_UNIQUE_FILE_ID, sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1));
+    u32 version;
+    if(!ReadFile(hFile, &version, sizeof(version), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    korl_assert(version == _KORL_SAVESTATE_VERSION);
+    u8 allocatorCount;
+    if(!ReadFile(hFile, &allocatorCount, sizeof(allocatorCount), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    u$ allocatorDescriptorByteStart;
+    if(!ReadFile(hFile, &allocatorDescriptorByteStart, sizeof(allocatorDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    /* now we can jump to the allocator descriptors and read those in */
+    filePointerDistanceToMove.QuadPart = allocatorDescriptorByteStart;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    allocatorDescriptors = korl_allocate(context->allocatorHandle, allocatorCount*sizeof(_AllocatorDescriptor));
+    korl_assert(allocatorDescriptors);
+    wchar_t bufferAllocatorName[32];
+    for(u8 a = 0; a < allocatorCount; a++)
+    {
+        u16 allocatorNameCharacterCount = 0;//_excluding_ the null-terminator!
+        if(!ReadFile(hFile, &allocatorNameCharacterCount, sizeof(allocatorNameCharacterCount), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
+        korl_assert(allocatorNameCharacterCount < korl_arraySize(bufferAllocatorName) - 1/*leave 1 char in the buffer for the null terminator*/);
+        bufferAllocatorName[allocatorNameCharacterCount] = L'\0';
+        if(!ReadFile(hFile, bufferAllocatorName, allocatorNameCharacterCount*sizeof(*bufferAllocatorName), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
+        if(!ReadFile(hFile, &(allocatorDescriptors[a].allocationCount), sizeof(allocatorDescriptors[a].allocationCount), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
+        if(!korl_memory_allocator_findByName(bufferAllocatorName, &allocatorDescriptors[a].handle))
+        {
+            korl_log(ERROR, "allocator \"%ws\" not found", bufferAllocatorName);
+            goto cleanUp;
+        }
+        /* this allocation has been identified as being serialized in a 
+            savestate, so we must completely empty it before populating it with 
+            the saved data */
+        korl_memory_allocator_empty(allocatorDescriptors[a].handle);
+    }
+    /* cool! so now we have all the information about which allocators need to 
+        be repopulated, and how many allocations each one has in the save state; 
+        we should now be able to jump back to the beginning of the savestate 
+        file and iterate over all the allocations, populating them with the 
+        saved allocation data in the savestate file */
+    filePointerDistanceToMove.QuadPart = 0;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    u16 allocationFileCharacterCount;
+    wchar_t allocationFileBuffer[MAX_PATH];
+    i32 allocationLine;
+    u$ allocationAddress;
+    u$ allocationBytes;
+    for(u8 a = 0; a < allocatorCount; a++)
+    {
+        for(u32 aa = 0; aa < allocatorDescriptors[a].allocationCount; aa++)
+        {
+            if(!ReadFile(hFile, &allocationFileCharacterCount, sizeof(allocationFileCharacterCount), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+            korl_assert(allocationFileCharacterCount < korl_arraySize(allocationFileBuffer) - 1/*leave 1 char in the buffer for the null terminator*/);
+            allocationFileBuffer[allocationFileCharacterCount] = L'\0';
+            if(!ReadFile(hFile, allocationFileBuffer, allocationFileCharacterCount*sizeof(*allocationFileBuffer), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+            if(!ReadFile(hFile, &allocationLine, sizeof(allocationLine), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+            if(!ReadFile(hFile, &allocationAddress, sizeof(allocationAddress), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+            if(!ReadFile(hFile, &allocationBytes, sizeof(allocationBytes), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+            //KORL-ISSUE-000-000-067: load-save-state: allocation file name not supported
+            void*const allocation = korl_memory_allocator_allocate(allocatorDescriptors[a].handle, allocationBytes, NULL/*file*/, allocationLine, KORL_C_CAST(void*, allocationAddress));
+            if(!ReadFile(hFile, allocation, korl_checkCast_u$_to_u32(allocationBytes), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+        }
+    }
 cleanUp:
+    if(allocatorDescriptors)
+        korl_free(context->allocatorHandle, allocatorDescriptors);
     if(hFile != INVALID_HANDLE_VALUE)
         korl_assert(CloseHandle(hFile));
 }
