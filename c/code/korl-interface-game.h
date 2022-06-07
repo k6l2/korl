@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-interface-game-memory.h"// contains the game-specific definition of GameMemory struct
-#define GAME_INITIALIZE(name) void name(GameMemory* memory, KorlPlatformApi korlApi)
+#define GAME_ON_RELOAD(name) void name(GameMemory* memory, KorlPlatformApi korlApi)
+#define GAME_INITIALIZE(name) void name(void)
 #define GAME_ON_KEYBOARD_EVENT(name) void name(Korl_KeyboardCode keyCode, bool isDown, bool isRepeat)
 #define GAME_ON_MOUSE_EVENT(name) void name(Korl_MouseEvent mouseEvent)
 /** 
@@ -15,6 +16,7 @@ typedef GAME_ON_MOUSE_EVENT(fnSig_gameOnMouseEvent);
 #ifdef __cplusplus
 extern "C" {
 #endif
+GAME_ON_RELOAD(korl_onReload);
 GAME_INITIALIZE(korl_game_initialize);
 GAME_UPDATE(korl_game_update);
 GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent);

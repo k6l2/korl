@@ -194,7 +194,8 @@ korl_internal void korl_gfx_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, 
                                                             korl_math_megabytes(4), L"korl-gfx", 
-                                                            KORL_MEMORY_ALLOCATOR_FLAGS_NONE);
+                                                            KORL_MEMORY_ALLOCATOR_FLAGS_NONE, 
+                                                            NULL/*let platform choose address*/);
 }
 korl_internal void korl_gfx_clearFontCache(void)
 {

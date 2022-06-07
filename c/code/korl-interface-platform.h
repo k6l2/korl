@@ -181,8 +181,11 @@ typedef enum Korl_Memory_AllocatorFlags
  * allocator is 16 kilobytes (4 pages), since two pages are required for the 
  * allocator struct, and a minimum of two pages are required for each allocation 
  * (one for the meta data page, and one for the actual allocation itself).  
- * This behavior is subject to change in the future. */
-#define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags)
+ * This behavior is subject to change in the future. 
+ * \param address [OPTIONAL] the allocator itself will attempt to be placed at 
+ * the specified virtual address.  If this value is \c NULL , the operating 
+ * system will choose this address for us. */
+#define KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags, void* address)
 /** \param address [OPTIONAL] the allocation will be placed at this exact 
  * address in the allocator.  Safety checks are performed to ensure that the 
  * specified address is valid (within allocator address range, not overlapping 

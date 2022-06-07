@@ -254,6 +254,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_sa
                                      + sizeof(allocation) 
                                      + sizeof(meta->bytes) 
                                      + meta->bytes;
+    korl_assert(sizeof(allocation) == sizeof(u64));
     u8* bufferCursor    = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytes;
     if(bufferCursor + allocationBytesRequired > bufferEnd)
@@ -286,7 +287,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     korl_assert(enumContext->allocatorCount <= enumContext->allocationCountsCapacity);
     enumContext->allocationCounts[enumContext->allocatorCount - 1] = 0;
     /* enumarate over all allocations & write those to the save state buffer */
-    korl_memory_allocator_enumerateAllocations(allocator, _korl_file_saveStateCreate_allocationEnumCallback, enumContext, NULL/*don't care about allocatorVirtualAddressEnd*/);
+    korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext, NULL/*don't care about allocatorVirtualAddressEnd*/);
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass)
 {
@@ -296,9 +297,17 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
         return;
     /* now we can write the allocator descriptors to the save state buffer */
     const u16 nameCharacterCount = korl_checkCast_u$_to_u16(korl_memory_stringSize(allocatorName));
+    const u8 allocatorTypeU8 = allocatorType;
+    const u32 allocatorFlagsU32 = allocatorFlags;
+    const u64 allocatorMaxBytesU64 = allocatorMaxBytes;
     const u$ allocatorBytesRequired = sizeof(nameCharacterCount) 
                                     + nameCharacterCount*sizeof(*allocatorName) 
-                                    + sizeof(*enumContext->allocationCounts);
+                                    + sizeof(*enumContext->allocationCounts) 
+                                    + sizeof(allocatorUserData) 
+                                    + sizeof(allocatorTypeU8) 
+                                    + sizeof(allocatorFlagsU32) 
+                                    + sizeof(allocatorMaxBytesU64);
+    korl_assert(sizeof(allocatorUserData) == sizeof(u64));
     u8* bufferCursor    = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytes;
     if(bufferCursor + allocatorBytesRequired > bufferEnd)
@@ -314,6 +323,10 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     korl_assert(sizeof(nameCharacterCount)                == korl_memory_packU16(nameCharacterCount, &bufferCursor, bufferEnd));
     korl_assert(nameCharacterCount*sizeof(*allocatorName) == korl_memory_packStringU16(allocatorName, nameCharacterCount, &bufferCursor, bufferEnd));
     korl_assert(sizeof(*enumContext->allocationCounts)    == korl_memory_packU32(enumContext->allocationCounts[enumContext->currentAllocator], &bufferCursor, bufferEnd));
+    korl_assert(sizeof(allocatorUserData)                 == korl_memory_packU$(KORL_C_CAST(u$, allocatorUserData), &bufferCursor, bufferEnd));
+    korl_assert(sizeof(allocatorTypeU8)                   == korl_memory_packU8(KORL_C_CAST(u$, allocatorTypeU8), &bufferCursor, bufferEnd));
+    korl_assert(sizeof(allocatorFlagsU32)                 == korl_memory_packU32(KORL_C_CAST(u$, allocatorFlagsU32), &bufferCursor, bufferEnd));
+    korl_assert(sizeof(allocatorMaxBytesU64)              == korl_memory_packU64(KORL_C_CAST(u$, allocatorMaxBytesU64), &bufferCursor, bufferEnd));
     enumContext->saveStateBufferBytesUsed += allocatorBytesRequired;
     enumContext->currentAllocator++;
 }
@@ -322,7 +335,7 @@ korl_internal void korl_file_initialize(void)
     //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     /* determine where the current working directory is in Windows */
     context->sizeCurrentWorking = 
         GetCurrentDirectory(korl_arraySize(context->directoryCurrentWorking), 
@@ -781,9 +794,13 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
  * - bytes             : u$
  * - data              : u8[bytes]
  * [Allocator Descriptor] * [Header].allocatorCount
- * - nameCharacterCount: u16
- * - name              : wchar_t[nameCharacterCount]
- * - allocationCount   : u32
+ * - nameCharacterCount      : u16
+ * - name                    : wchar_t[nameCharacterCount]
+ * - allocationCount         : u32
+ * - allocatorUserDataAddress: u$
+ * - type                    : u8
+ * - flags                   : u32
+ * - maxBytes                : u64
  * [Manifest]
  * - uniqueFileId             : "KORL-SAVESTATE"
  * - version                  : u32
@@ -993,15 +1010,41 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
             korl_logLastError("ReadFile failed");
             goto cleanUp;
         }
+        u64 allocatorAddress;
+        if(!ReadFile(hFile, &allocatorAddress, sizeof(allocatorAddress), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
+        u8 allocatorType;//@TODO: we don't need this data! remove this from the save state file
+        if(!ReadFile(hFile, &allocatorType, sizeof(allocatorType), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
+        u32 allocatorFlags;//@TODO: we don't need this data! remove this from the save state file
+        if(!ReadFile(hFile, &allocatorFlags, sizeof(allocatorFlags), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
+        u64 allocatorMaxBytes;//@TODO: we don't need this data! remove this from the save state file
+        if(!ReadFile(hFile, &allocatorMaxBytes, sizeof(allocatorMaxBytes), NULL/*bytes read*/, NULL/*no overlapped*/))
+        {
+            korl_logLastError("ReadFile failed");
+            goto cleanUp;
+        }
         if(!korl_memory_allocator_findByName(bufferAllocatorName, &allocatorDescriptors[a].handle))
         {
             korl_log(ERROR, "allocator \"%ws\" not found", bufferAllocatorName);
             goto cleanUp;
         }
-        /* this allocation has been identified as being serialized in a 
+        /* This allocation has been identified as being serialized in a 
             savestate, so we must completely empty it before populating it with 
-            the saved data */
-        korl_memory_allocator_empty(allocatorDescriptors[a].handle);
+            the saved data.  In addition, we need to recreate it such that the 
+            starting virtual address of the allocator matches exactly with what 
+            is contained in the save state! */
+        korl_memory_allocator_recreate(allocatorDescriptors[a].handle, KORL_C_CAST(void*, allocatorAddress));
     }
     /* cool! so now we have all the information about which allocators need to 
         be repopulated, and how many allocations each one has in the save state; 

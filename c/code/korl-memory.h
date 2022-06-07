@@ -17,10 +17,8 @@ typedef struct Korl_Memory_AllocationMeta
 } Korl_Memory_AllocationMeta;
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) void name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
-/** Confusingly, `opaqueAllocator` isused in different ways internally.  Maybe 
- * this should be rectified at some point? @TODO */
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) void name(void* userData, void* allocator, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) void name(void* userData, void* opaqueAllocator, void* allocatorUserData, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags, Korl_Memory_AllocatorType allocatorType, u$ allocatorMaxBytes)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
@@ -61,10 +59,14 @@ korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandl
 korl_internal i$ korl_memory_stringFormatBuffer(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...);
 korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList);
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);
+korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle handle);
+korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, void* newAddress);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE  (korl_memory_allocator_allocate);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE      (korl_memory_allocator_free);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY     (korl_memory_allocator_empty);
+korl_internal u$ korl_memory_allocator_addressToOffset(Korl_Memory_AllocatorHandle handle, const void* address);
+korl_internal void* korl_memory_allocator_offsetToAddress(Korl_Memory_AllocatorHandle handle, u$ offset);
 korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 /** \param allocatorHandle the allocator to use to allocate memory to store the report 
  * \return the address of the allocated memory report */
