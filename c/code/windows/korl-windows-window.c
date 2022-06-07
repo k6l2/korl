@@ -17,8 +17,8 @@ typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     HWND handleWindow;// for now, we will only ever have _one_ window
-    bool deferSaveStateCreate;// defer until the beginning of the next frame; the best place to synchronize save state operations
-    bool deferSaveStateLoad;  // defer until the beginning of the next frame; the best place to synchronize save state operations
+    bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
+    bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
@@ -47,7 +47,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
 #if 1// @TODO: delete this; this is just debug testing code
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F1 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
-            _korl_windows_window_context.deferSaveStateCreate = true;
+            _korl_windows_window_context.deferSaveStateSave = true;
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F2 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
             _korl_windows_window_context.deferSaveStateLoad = true;
 #endif
@@ -334,25 +334,6 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeReset();
         korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);
-        if(_korl_windows_window_context.deferSaveStateCreate)
-        {
-            _korl_windows_window_context.deferSaveStateCreate = false;
-            deferProbeReport = true;
-            korl_time_probeStart(save_state_create);
-            korl_file_saveStateCreate(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
-            korl_time_probeStop(save_state_create);
-        }
-        if(_korl_windows_window_context.deferSaveStateLoad)
-        {
-            _korl_windows_window_context.deferSaveStateLoad = false;
-            deferProbeReport = true;
-            korl_time_probeStart(save_state_load);
-            const u$ gameMemoryOffset = korl_memory_allocator_addressToOffset(_korl_windows_window_context.allocatorHandle, gameMemory);
-            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
-            gameMemory = korl_memory_allocator_offsetToAddress(_korl_windows_window_context.allocatorHandle, gameMemoryOffset);
-            korl_onReload(gameMemory, korlApi);
-            korl_time_probeStop(save_state_load);
-        }
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
@@ -365,6 +346,28 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStop(process_window_messages);
         if(quit)
             break;
+        korl_time_probeStart(save_state_create);
+        korl_file_saveStateCreate();
+        korl_time_probeStop(save_state_create);
+        if(_korl_windows_window_context.deferSaveStateSave)
+        {
+            _korl_windows_window_context.deferSaveStateSave = false;
+            deferProbeReport = true;
+            korl_time_probeStart(save_state_save);
+            korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
+            korl_time_probeStop(save_state_save);
+        }
+        if(_korl_windows_window_context.deferSaveStateLoad)
+        {
+            _korl_windows_window_context.deferSaveStateLoad = false;
+            deferProbeReport = true;
+            korl_time_probeStart(save_state_load);
+            const u$ gameMemoryOffset = korl_memory_allocator_addressToOffset(_korl_windows_window_context.allocatorHandle, gameMemory);
+            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
+            gameMemory = korl_memory_allocator_offsetToAddress(_korl_windows_window_context.allocatorHandle, gameMemoryOffset);
+            korl_onReload(gameMemory, korlApi);
+            korl_time_probeStop(save_state_load);
+        }
         korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});                   korl_time_probeStop(vulkan_frame_begin);
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                                korl_time_probeStop(gui_frame_begin);
         korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);

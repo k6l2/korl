@@ -12,8 +12,7 @@ typedef struct _Korl_File_SaveStateEnumerateContext
     u$ saveStateBufferBytes;
     u$ saveStateBufferBytesUsed;
     u8 allocatorCount;
-    u$ allocationCountsCapacity;
-    u32* allocationCounts;//KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds
+    u32 allocationCounts[64];//KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds
     u8 currentAllocator;
 } _Korl_File_SaveStateEnumerateContext;
 typedef struct _Korl_File_AsyncOpertion
@@ -43,6 +42,7 @@ typedef struct _Korl_File_Context
      * Individual elements of this pool are considered to be "unused" if the 
      * \c writeBuffer member == \c NULL .  */
     _Korl_File_AsyncOpertion asyncPool[64];
+    _Korl_File_SaveStateEnumerateContext saveStateEnumContext;
 } _Korl_File_Context;
 korl_global_variable _Korl_File_Context _korl_file_context;
 korl_internal const wchar_t* _korl_file_getPath(Korl_File_PathType type)
@@ -284,7 +284,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
         return;
     enumContext->allocatorCount++;
-    korl_assert(enumContext->allocatorCount <= enumContext->allocationCountsCapacity);
+    korl_assert(enumContext->allocatorCount <= korl_arraySize(enumContext->allocationCounts));
     enumContext->allocationCounts[enumContext->allocatorCount - 1] = 0;
     /* enumarate over all allocations & write those to the save state buffer */
     korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext, NULL/*don't care about allocatorVirtualAddressEnd*/);
@@ -402,6 +402,10 @@ korl_internal void korl_file_initialize(void)
             lastBackslash = c;
     *(lastBackslash + 1) = 0;
     korl_log(INFO, "directoryExecutable=%ws", context->directoryExecutable);
+    /* persistent storage of a save-state memory buffer */
+    context->saveStateEnumContext.saveStateBufferBytes = korl_math_kilobytes(16);
+    context->saveStateEnumContext.saveStateBuffer      = korl_allocate(context->allocatorHandle, context->saveStateEnumContext.saveStateBufferBytes);
+    korl_assert(context->saveStateEnumContext.saveStateBuffer);
 }
 korl_internal bool korl_file_openAsync(Korl_File_PathType pathType, 
                                        const wchar_t* fileName, 
@@ -807,53 +811,51 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
  * save state to load, we can simply start at the end of the file minus the 
  * known size of the file's [Manifest] segment.
  */
-korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const wchar_t* fileName)
+korl_internal void korl_file_saveStateCreate(void)
 {
-    //@TODO: maybe save state creation & loading should be contained within korl-memory?
     _Korl_File_Context*const context = &_korl_file_context;
-    HANDLE hFile = INVALID_HANDLE_VALUE;
-    korl_time_probeStart(create_buffer);
-    /* create a save state memory buffer */
-    KORL_ZERO_STACK(_Korl_File_SaveStateEnumerateContext, enumContext);
-    enumContext.allocationCountsCapacity = 64;
-    enumContext.allocationCounts         = korl_allocate(context->allocatorHandle, sizeof(enumContext.allocationCounts) * enumContext.allocationCountsCapacity);
-    enumContext.saveStateBufferBytes     = korl_math_kilobytes(16);
-    enumContext.saveStateBuffer          = korl_allocate(context->allocatorHandle, enumContext.saveStateBufferBytes);
-    korl_assert(enumContext.allocationCounts);
-    korl_assert(enumContext.saveStateBuffer);
+    /* recycle the context's persistent save-state enum context */
+    context->saveStateEnumContext.saveStateBufferBytesUsed = 0;
+    context->saveStateEnumContext.allocatorCount           = 0;
+    context->saveStateEnumContext.currentAllocator         = 0;
+    _Korl_File_SaveStateEnumerateContext*const enumContext = &context->saveStateEnumContext;
     /* begin iteration over memory allocators, copying allocations to the save 
         state buffer, as well as count how many allocations there are per 
         allocator */
-    korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocationPass, &enumContext);
+    korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocationPass, enumContext);
     /* now that we have copied all the allocation descriptors, we can copy the 
         allocator descriptors */
-    enumContext.currentAllocator = 0;
-    const u$ allocatorDescriptorByteStart = enumContext.saveStateBufferBytesUsed;
-    korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass, &enumContext);
+    enumContext->currentAllocator = 0;
+    const u$ allocatorDescriptorByteStart = enumContext->saveStateBufferBytesUsed;
+    korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass, enumContext);
     /* finally, we can write the save state manifest to the end of the save 
         state buffer */
     const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
                                    + sizeof(_KORL_SAVESTATE_VERSION) 
-                                   + sizeof(enumContext.allocatorCount)
+                                   + sizeof(enumContext->allocatorCount)
                                    + sizeof(allocatorDescriptorByteStart);
-    u8* bufferCursor    = KORL_C_CAST(u8*, enumContext.saveStateBuffer) + enumContext.saveStateBufferBytesUsed;
-    const u8* bufferEnd = KORL_C_CAST(u8*, enumContext.saveStateBuffer) + enumContext.saveStateBufferBytes;
+    u8* bufferCursor    = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytesUsed;
+    const u8* bufferEnd = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytes;
     if(bufferCursor + manifestBytesRequired > bufferEnd)
     {
-        enumContext.saveStateBufferBytes = KORL_MATH_MAX(2*enumContext.saveStateBufferBytes, 
+        enumContext->saveStateBufferBytes = KORL_MATH_MAX(2*enumContext->saveStateBufferBytes, 
                                                           // at _least_ make sure that we are about to realloc enough room for the required bytes for the manifest:
-                                                          enumContext.saveStateBufferBytes + manifestBytesRequired);
-        enumContext.saveStateBuffer = korl_reallocate(context->allocatorHandle, enumContext.saveStateBuffer, enumContext.saveStateBufferBytes);
-        korl_assert(enumContext.saveStateBuffer);
-        bufferCursor = KORL_C_CAST(u8*, enumContext.saveStateBuffer) + enumContext.saveStateBufferBytesUsed;
-        bufferEnd    = bufferCursor + enumContext.saveStateBufferBytes;
+                                                          enumContext->saveStateBufferBytes + manifestBytesRequired);
+        enumContext->saveStateBuffer = korl_reallocate(context->allocatorHandle, enumContext->saveStateBuffer, enumContext->saveStateBufferBytes);
+        korl_assert(enumContext->saveStateBuffer);
+        bufferCursor = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytesUsed;
+        bufferEnd    = bufferCursor + enumContext->saveStateBufferBytes;
     }
     korl_assert((sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1) == korl_memory_packStringI8(_KORL_SAVESTATE_UNIQUE_FILE_ID, sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1, &bufferCursor, bufferEnd));
     korl_assert(sizeof(_KORL_SAVESTATE_VERSION)              == korl_memory_packU32(_KORL_SAVESTATE_VERSION, &bufferCursor, bufferEnd));
-    korl_assert(sizeof(enumContext.allocatorCount)           == korl_memory_packU8(enumContext.allocatorCount, &bufferCursor, bufferEnd));
+    korl_assert(sizeof(enumContext->allocatorCount)          == korl_memory_packU8(enumContext->allocatorCount, &bufferCursor, bufferEnd));
     korl_assert(sizeof(allocatorDescriptorByteStart)         == korl_memory_packU64(allocatorDescriptorByteStart, &bufferCursor, bufferEnd));
-    enumContext.saveStateBufferBytesUsed += manifestBytesRequired;
-    korl_time_probeStop(create_buffer);
+    enumContext->saveStateBufferBytesUsed += manifestBytesRequired;
+}
+korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    HANDLE hFile = INVALID_HANDLE_VALUE;
     /* create a directory to store save states in */
     korl_time_probeStart(write_buffer);
     wchar_t directory[MAX_PATH];
@@ -890,7 +892,7 @@ korl_internal void korl_file_saveStateCreate(Korl_File_PathType pathType, const 
     }
     /* write the save state to a file */
     DWORD bytesWritten;
-    if(!WriteFile(hFile, enumContext.saveStateBuffer, korl_checkCast_u$_to_u32(enumContext.saveStateBufferBytesUsed), &bytesWritten, NULL/*no overlapped*/))
+    if(!WriteFile(hFile, context->saveStateEnumContext.saveStateBuffer, korl_checkCast_u$_to_u32(context->saveStateEnumContext.saveStateBufferBytesUsed), &bytesWritten, NULL/*no overlapped*/))
         korl_logLastError("WriteFile failed!");
     korl_log(INFO, "Wrote save state file: %ws", pathFile);
     korl_time_probeStop(write_buffer);
@@ -902,8 +904,6 @@ cleanUp:
         korl_assert(CloseHandle(hFile));
         korl_time_probeStop(close_file_handle);
     }
-    korl_time_probeStart(free_buffer);            korl_free(context->allocatorHandle, enumContext.saveStateBuffer);  korl_time_probeStop(free_buffer);
-    korl_time_probeStart(free_allocation_counts); korl_free(context->allocatorHandle, enumContext.allocationCounts); korl_time_probeStop(free_allocation_counts);
     korl_time_probeStop(clean_up);
 }
 korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wchar_t* fileName)
@@ -922,8 +922,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         korl_log(ERROR, "pathFile format failed");
         goto cleanUp;
     }
-    hFile = CreateFile(pathFile, GENERIC_READ, 
-                       FILE_SHARE_READ, 
+    hFile = CreateFile(pathFile, GENERIC_READ, FILE_SHARE_READ, 
                        0/*default security*/, OPEN_EXISTING, 
                        0/*flags|attributes*/, 0/*no template*/);
     if(hFile == INVALID_HANDLE_VALUE)

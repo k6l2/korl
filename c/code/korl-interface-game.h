@@ -7,12 +7,7 @@
 /** 
  * @return false if the platform should close the game application
  */
-#define GAME_UPDATE(name) \
-    bool name(f32 deltaSeconds, u32 windowSizeX, u32 windowSizeY, bool windowIsFocused)
-typedef GAME_INITIALIZE(fnSig_gameInitialize);
-typedef GAME_UPDATE(fnSig_gameUpdate);
-typedef GAME_ON_KEYBOARD_EVENT(fnSig_gameOnKeyboardEvent);
-typedef GAME_ON_MOUSE_EVENT(fnSig_gameOnMouseEvent);
+#define GAME_UPDATE(name) bool name(f32 deltaSeconds, u32 windowSizeX, u32 windowSizeY, bool windowIsFocused)
 #ifdef __cplusplus
 extern "C" {
 #endif
