@@ -714,15 +714,6 @@ korl_internal void* _korl_memory_allocator_createLinear(u$ maxBytes, void* addre
 }
 korl_internal void _korl_memory_allocator_linear_destroy(void* allocatorUserData)
 {
-    // _Korl_Memory_AllocatorLinear*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocatorUserData);
-    // _korl_memory_allocator_linear_empty(allocator);
-    // /* release the protection on the allocator pages for the last time... */
-    // {
-    //     DWORD oldProtect;
-    //     korl_assert(VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect));
-    //     korl_assert(oldProtect == PAGE_NOACCESS);
-    // }
-    /* free the allocator's memory */
     if(!VirtualFree(allocatorUserData, 0/*release everything*/, MEM_RELEASE))
         korl_logLastError("VirtualFree failed!");
 }
@@ -1032,7 +1023,7 @@ korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_a
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
-        callback(callbackUserData, allocator, allocator->userData, allocator->name, allocator->flags, allocator->type, allocator->maxBytes);
+        callback(callbackUserData, allocator, allocator->userData, allocator->name, allocator->flags);
     }
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations)

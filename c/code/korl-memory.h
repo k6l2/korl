@@ -18,7 +18,7 @@ typedef struct Korl_Memory_AllocationMeta
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) void name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) void name(void* userData, void* opaqueAllocator, void* allocatorUserData, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags, Korl_Memory_AllocatorType allocatorType, u$ allocatorMaxBytes)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) void name(void* userData, void* opaqueAllocator, void* allocatorUserData, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
