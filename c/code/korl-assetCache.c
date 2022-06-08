@@ -60,3 +60,39 @@ korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     newAsset->assetData = resultAsset;
     return resultAsset;
 }
+korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
+{
+    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    const u$ bytesRequired = sizeof(context->assets_korlMemoryPoolSize) 
+                           + context->assets_korlMemoryPoolSize*sizeof(*context->assets);
+    u8* bufferCursor    = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
+    const u8* bufferEnd = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytes;
+    if(bufferCursor + bytesRequired > bufferEnd)
+    {
+        *saveStateBufferBytes = KORL_MATH_MAX(2*(*saveStateBufferBytes), 
+                                              // at _least_ make sure that we are about to realloc enough room for the required bytes for the manifest:
+                                              (*saveStateBufferBytes) + bytesRequired);
+        *saveStateBuffer = korl_reallocate(allocatorHandle, *saveStateBuffer, *saveStateBufferBytes);
+        korl_assert(*saveStateBuffer);
+        bufferCursor = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
+        bufferEnd    = bufferCursor + *saveStateBufferBytes;
+    }
+    korl_assert(sizeof(context->assets_korlMemoryPoolSize)                  == korl_memory_packU32(context->assets_korlMemoryPoolSize, &bufferCursor, bufferEnd));
+    korl_assert(context->assets_korlMemoryPoolSize*sizeof(*context->assets) == korl_memory_packStringI8(KORL_C_CAST(i8*, context->assets), context->assets_korlMemoryPoolSize*sizeof(*context->assets), &bufferCursor, bufferEnd));
+    *saveStateBufferBytesUsed += bytesRequired;
+}
+korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
+{
+    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    if(!ReadFile(hFile, &context->assets_korlMemoryPoolSize, sizeof(context->assets_korlMemoryPoolSize), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    if(!ReadFile(hFile, context->assets, context->assets_korlMemoryPoolSize*sizeof(*context->assets), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    return true;
+}

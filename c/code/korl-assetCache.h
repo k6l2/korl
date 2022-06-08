@@ -16,6 +16,8 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-interface-platform.h"
+#include "korl-windows-globalDefines.h"
 typedef struct Korl_AssetCache_AssetData
 {
     void* data;
@@ -52,3 +54,8 @@ korl_internal void korl_assetCache_initialize(void);
  */
 korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
     const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags);
+korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed);
+/** I don't like how this API requires us to do file I/O in modules outside of 
+ * korl-file; maybe improve this in the future to use korl-file API instea of 
+ * Win32 API? @TODO */
+korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile);

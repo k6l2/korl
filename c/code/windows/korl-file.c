@@ -3,6 +3,7 @@
 #include "korl-memory.h"
 #include "korl-time.h"
 #include "korl-windows-window.h"
+#include "korl-assetCache.h"
 #include <minidumpapiset.h>
 korl_global_const wchar_t _KORL_FILE_DIRECTORY_SAVE_STATES[] = L"save-states";
 korl_global_const i8 _KORL_SAVESTATE_UNIQUE_FILE_ID[] = "KORL-SAVESTATE";
@@ -823,6 +824,8 @@ korl_internal void korl_file_saveStateCreate(void)
     /* code module specific data */
     const u64 windowDescriptorByteStart = enumContext->saveStateBufferBytesUsed;
     korl_windows_window_saveStateWrite(context->allocatorHandle, &enumContext->saveStateBuffer, &enumContext->saveStateBufferBytes, &enumContext->saveStateBufferBytesUsed);
+    const u64 assetCacheDescriptorByteStart = enumContext->saveStateBufferBytesUsed;
+    korl_assetCache_saveStateWrite(context->allocatorHandle, &enumContext->saveStateBuffer, &enumContext->saveStateBufferBytes, &enumContext->saveStateBufferBytesUsed);
     /* begin iteration over memory allocators, copying allocations to the save 
         state buffer, as well as count how many allocations there are per 
         allocator */
@@ -840,7 +843,8 @@ korl_internal void korl_file_saveStateCreate(void)
                                    + sizeof(enumContext->allocatorCount) 
                                    + sizeof(allocatorDescriptorByteStart) 
                                    + sizeof(allocationDescriptorByteStart) 
-                                   + sizeof(windowDescriptorByteStart);
+                                   + sizeof(windowDescriptorByteStart)
+                                   + sizeof(assetCacheDescriptorByteStart);
     u8* bufferCursor    = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytes;
     if(bufferCursor + manifestBytesRequired > bufferEnd)
@@ -859,6 +863,7 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_assert(sizeof(allocatorDescriptorByteStart)         == korl_memory_packU64(allocatorDescriptorByteStart, &bufferCursor, bufferEnd));
     korl_assert(sizeof(allocationDescriptorByteStart)        == korl_memory_packU64(allocationDescriptorByteStart, &bufferCursor, bufferEnd));
     korl_assert(sizeof(windowDescriptorByteStart)            == korl_memory_packU64(windowDescriptorByteStart, &bufferCursor, bufferEnd));
+    korl_assert(sizeof(assetCacheDescriptorByteStart)        == korl_memory_packU64(assetCacheDescriptorByteStart, &bufferCursor, bufferEnd));
     enumContext->saveStateBufferBytesUsed += manifestBytesRequired;
 }
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
@@ -946,12 +951,14 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     u$ allocatorDescriptorByteStart;
     u64 allocationDescriptorByteStart;
     u64 windowDescriptorByteStart;
+    u64 assetCacheDescriptorByteStart;
     const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
                                    + sizeof(_KORL_SAVESTATE_VERSION) 
                                    + sizeof(allocatorCount) 
                                    + sizeof(allocatorDescriptorByteStart) 
                                    + sizeof(allocationDescriptorByteStart) 
-                                   + sizeof(windowDescriptorByteStart);
+                                   + sizeof(windowDescriptorByteStart) 
+                                   + sizeof(assetCacheDescriptorByteStart);
     LARGE_INTEGER filePointerDistanceToMove;
     filePointerDistanceToMove.QuadPart = -korl_checkCast_u$_to_i$(manifestBytesRequired);
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_END))
@@ -989,6 +996,11 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     if(!ReadFile(hFile, &windowDescriptorByteStart, sizeof(windowDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    if(!ReadFile(hFile, &assetCacheDescriptorByteStart, sizeof(assetCacheDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
@@ -1107,6 +1119,18 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     if(!korl_windows_window_saveStateRead(hFile))
     {
         korl_logLastError("korl_windows_window_saveStateRead failed");
+        goto cleanUp;
+    }
+    /* load the assetCache module state */
+    filePointerDistanceToMove.QuadPart = assetCacheDescriptorByteStart;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    if(!korl_assetCache_saveStateRead(hFile))
+    {
+        korl_logLastError("korl_assetCache_saveStateRead failed");
         goto cleanUp;
     }
 cleanUp:
