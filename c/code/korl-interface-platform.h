@@ -2,6 +2,23 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-gui-common.h"
+typedef struct Korl_AssetCache_AssetData
+{
+    void* data;
+    u32 dataBytes;
+} Korl_AssetCache_AssetData;
+typedef enum Korl_AssetCache_Get_Flags
+{
+    KORL_ASSETCACHE_GET_FLAGS_NONE = 0, 
+    /**
+     * Tell the asset manager that it is not necessary to load the asset 
+     * immediately.  This will allow us to load the asset asynchronously.  If 
+     * this flag is set, the caller is responsible for calling "get" on 
+     * subsequent frames to see if the asset has finished loading.
+     */
+    KORL_ASSETCACHE_GET_FLAGS_LAZY = 1<<0
+} Korl_AssetCache_Get_Flags;
+#define KORL_PLATFOR_ASSETCACHE_GET(name) Korl_AssetCache_AssetData name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)
 /** Do not use this value directly, since the meaning of this data is 
  * platform-dependent.  Instead, use the platform APIs which uses this type.  
  * This value should represent the highest possible time resolution 
@@ -352,6 +369,7 @@ typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_all
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE         (fnSig_korl_memory_allocator_reallocate);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_FREE               (fnSig_korl_memory_allocator_free);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY              (fnSig_korl_memory_allocator_empty);
+typedef KORL_PLATFOR_ASSETCACHE_GET                       (fnSig_korl_assetCache_get);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_FOV               (fnSig_korl_gfx_createCameraFov);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO             (fnSig_korl_gfx_createCameraOrtho);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(fnSig_korl_gfx_createCameraOrthoFixedHeight);
@@ -398,6 +416,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_memory_allocator_reallocate*      korl_memory_allocator_reallocate;\
     fnSig_korl_memory_allocator_free*            korl_memory_allocator_free;\
     fnSig_korl_memory_allocator_empty*           korl_memory_allocator_empty;\
+    fnSig_korl_assetCache_get*                   korl_assetCache_get;\
     fnSig_korl_gfx_createCameraFov*              korl_gfx_createCameraFov;\
     fnSig_korl_gfx_createCameraOrtho*            korl_gfx_createCameraOrtho;\
     fnSig_korl_gfx_createCameraOrthoFixedHeight* korl_gfx_createCameraOrthoFixedHeight;\
@@ -444,6 +463,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_memory_allocator_reallocate      = korl_memory_allocator_reallocate;\
     (apiVariableName).korl_memory_allocator_free            = korl_memory_allocator_free;\
     (apiVariableName).korl_memory_allocator_empty           = korl_memory_allocator_empty;\
+    (apiVariableName).korl_assetCache_get                   = korl_assetCache_get;\
     (apiVariableName).korl_gfx_createCameraFov              = korl_gfx_createCameraFov;\
     (apiVariableName).korl_gfx_createCameraOrtho            = korl_gfx_createCameraOrtho;\
     (apiVariableName).korl_gfx_createCameraOrthoFixedHeight = korl_gfx_createCameraOrthoFixedHeight;\
@@ -490,6 +510,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_memory_allocator_reallocate      = (apiVariableName).korl_memory_allocator_reallocate;\
     korl_memory_allocator_free            = (apiVariableName).korl_memory_allocator_free;\
     korl_memory_allocator_empty           = (apiVariableName).korl_memory_allocator_empty;\
+    korl_assetCache_get                   = (apiVariableName).korl_assetCache_get;\
     korl_gfx_createCameraFov              = (apiVariableName).korl_gfx_createCameraFov;\
     korl_gfx_createCameraOrtho            = (apiVariableName).korl_gfx_createCameraOrtho;\
     korl_gfx_createCameraOrthoFixedHeight = (apiVariableName).korl_gfx_createCameraOrthoFixedHeight;\

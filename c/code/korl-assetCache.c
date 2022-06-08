@@ -24,8 +24,7 @@ korl_internal void korl_assetCache_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
 }
-korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
-    const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)
+korl_internal KORL_PLATFOR_ASSETCACHE_GET(korl_assetCache_get)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, resultAsset);

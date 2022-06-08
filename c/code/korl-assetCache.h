@@ -18,22 +18,6 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
 #include "korl-windows-globalDefines.h"
-typedef struct Korl_AssetCache_AssetData
-{
-    void* data;
-    u32 dataBytes;
-} Korl_AssetCache_AssetData;
-typedef enum Korl_AssetCache_Get_Flags
-{
-    KORL_ASSETCACHE_GET_FLAGS_NONE = 0, 
-    /**
-     * Tell the asset manager that it is not necessary to load the asset 
-     * immediately.  This will allow us to load the asset asynchronously.  If 
-     * this flag is set, the caller is responsible for calling "get" on 
-     * subsequent frames to see if the asset has finished loading.
-     */
-    KORL_ASSETCACHE_GET_FLAGS_LAZY = 1<<0
-} Korl_AssetCache_Get_Flags;
 /**
  * Because we know that the asset manager can follow the singleton pattern, we 
  * also know that "destruction" of the asset manager is only going to happen 
@@ -52,8 +36,7 @@ korl_internal void korl_assetCache_initialize(void);
  * \c KORL_ASSETCACHE_GET_FLAGS_LAZY flag is not set, the asset is guaranteed 
  * to be loaded when the function call is complete.
  */
-korl_internal Korl_AssetCache_AssetData korl_assetCache_get(
-    const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags);
+korl_internal KORL_PLATFOR_ASSETCACHE_GET(korl_assetCache_get);
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 
