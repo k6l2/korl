@@ -51,7 +51,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             break;
         }
         korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
-#if 1// @TODO: delete this; this is just debug testing code
+#if 1//KORL-ISSUE-000-000-068: window: maybe expose more general API
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F1 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
             _korl_windows_window_context.deferSaveStateSave = true;
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F2 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
