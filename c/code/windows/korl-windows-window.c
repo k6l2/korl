@@ -425,7 +425,9 @@ korl_internal void korl_windows_window_loop(void)
 }
 korl_internal void korl_windows_window_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
 {
-    const u$ bytesRequired = sizeof(_korl_windows_window_context.gameMemory);
+    const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
+    const u$ bytesRequired = sizeof(_korl_windows_window_context.gameMemory) 
+                           + sizeof(swapchainSize);
     u8* bufferCursor    = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytes;
     if(bufferCursor + bytesRequired > bufferEnd)
@@ -439,6 +441,8 @@ korl_internal void korl_windows_window_saveStateWrite(Korl_Memory_AllocatorHandl
         bufferEnd    = bufferCursor + *saveStateBufferBytes;
     }
     korl_assert(sizeof(_korl_windows_window_context.gameMemory) == korl_memory_packU64(KORL_C_CAST(u64, _korl_windows_window_context.gameMemory), &bufferCursor, bufferEnd));
+    korl_assert(sizeof(swapchainSize.x)                         == korl_memory_packU32(swapchainSize.x, &bufferCursor, bufferEnd));
+    korl_assert(sizeof(swapchainSize.y)                         == korl_memory_packU32(swapchainSize.y, &bufferCursor, bufferEnd));
     *saveStateBufferBytesUsed += bytesRequired;
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
@@ -450,5 +454,17 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
         return false;
     }
     _korl_windows_window_context.gameMemory = KORL_C_CAST(void*, gameMemory);
+    Korl_Math_V2u32 swapchainSize;
+    if(!ReadFile(hFile, &swapchainSize.x, sizeof(swapchainSize.x), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    if(!ReadFile(hFile, &swapchainSize.y, sizeof(swapchainSize.y), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    korl_vulkan_deferredResize(swapchainSize.x, swapchainSize.y);
     return true;
 }
