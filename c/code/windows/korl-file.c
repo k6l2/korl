@@ -1,5 +1,7 @@
 #include "korl-file.h"
+#include "korl-globalDefines.h"
 #include "korl-windows-globalDefines.h"
+#include "korl-windows-utilities.h"
 #include "korl-memory.h"
 #include "korl-time.h"
 #include "korl-windows-window.h"
@@ -479,7 +481,12 @@ korl_internal bool korl_file_writeAsyncWait(Korl_File_AsyncWriteHandle* handle, 
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(handle->components.index < korl_arraySize(context->asyncPool));
     _Korl_File_AsyncOpertion*const pAsyncOp = &context->asyncPool[handle->components.index];
-    korl_assert(pAsyncOp->salt == handle->components.salt);
+    if(pAsyncOp->salt != handle->components.salt)
+    {
+        // invalidate the caller's async operation handle //
+        handle->components.index = KORL_U16_MAX;
+        return true;
+    }
     DWORD numberOfBytesTransferred = 0;
     DWORD dwTimeoutMilliseconds = timeoutMilliseconds;
     if(timeoutMilliseconds == KORL_U32_MAX)
@@ -941,8 +948,21 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                        0/*flags|attributes*/, 0/*no template*/);
     if(hFile == INVALID_HANDLE_VALUE)
     {
-        korl_logLastError("CreateFile(%ws) failed!", pathFile);
+        if(GetLastError() == ERROR_FILE_NOT_FOUND)
+            korl_log(WARNING, "Save state file not found: %ws", pathFile);
+        else
+            korl_logLastError("CreateFile(%ws) failed!", pathFile);
         goto cleanUp;
+    }
+    /* wait for async file operations to be complete before changing application state! */
+    for(u16 a = 0; a < korl_arraySize(context->asyncPool); a++)
+    {
+        if(!context->asyncPool[a].writeBuffer)
+            continue;
+        Korl_File_AsyncWriteHandle asyncHandle;
+        asyncHandle.components.index = a;
+        asyncHandle.components.salt  = context->asyncPool[a].salt;
+        korl_assert(korl_file_writeAsyncWait(&asyncHandle, KORL_U32_MAX));
     }
     /* read & parse & process the save state file */
     /* first, we need to extract the savestate manifest which is placed at the 
@@ -1133,6 +1153,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         korl_logLastError("korl_assetCache_saveStateRead failed");
         goto cleanUp;
     }
+    korl_log(INFO, "save state \"%ws\" loaded successfully!", pathFile);
 cleanUp:
     if(allocatorDescriptors)
         korl_free(context->allocatorHandle, allocatorDescriptors);

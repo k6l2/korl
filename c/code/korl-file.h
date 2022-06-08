@@ -43,7 +43,8 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
  * operation is complete. */
 korl_internal Korl_File_AsyncWriteHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes);
 /** \param timeoutMilliseconds 0 means the function returns immediately, 
- * KORL_U32_MAX means the function blocks until the write operation is complete.
+ * \c KORL_U32_MAX means the function blocks until the write operation is 
+ * complete.
  * \return \c true if the write operation finished, \c false otherwise. */
 korl_internal bool korl_file_writeAsyncWait(Korl_File_AsyncWriteHandle* handle, u32 timeoutMilliseconds);
 korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const void* data, u$ dataBytes);
