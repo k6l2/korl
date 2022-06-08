@@ -18,7 +18,7 @@ typedef enum Korl_AssetCache_Get_Flags
      */
     KORL_ASSETCACHE_GET_FLAGS_LAZY = 1<<0
 } Korl_AssetCache_Get_Flags;
-#define KORL_PLATFOR_ASSETCACHE_GET(name) Korl_AssetCache_AssetData name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)
+#define KORL_PLATFORM_ASSETCACHE_GET(name) Korl_AssetCache_AssetData name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)
 /** Do not use this value directly, since the meaning of this data is 
  * platform-dependent.  Instead, use the platform APIs which uses this type.  
  * This value should represent the highest possible time resolution 
@@ -369,7 +369,7 @@ typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_all
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE         (fnSig_korl_memory_allocator_reallocate);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_FREE               (fnSig_korl_memory_allocator_free);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY              (fnSig_korl_memory_allocator_empty);
-typedef KORL_PLATFOR_ASSETCACHE_GET                       (fnSig_korl_assetCache_get);
+typedef KORL_PLATFORM_ASSETCACHE_GET                       (fnSig_korl_assetCache_get);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_FOV               (fnSig_korl_gfx_createCameraFov);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO             (fnSig_korl_gfx_createCameraOrtho);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(fnSig_korl_gfx_createCameraOrthoFixedHeight);
