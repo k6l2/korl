@@ -16,6 +16,7 @@ korl_global_const TCHAR _KORL_WINDOWS_WINDOW_CLASS_NAME[] = _T("KorlWindowClass"
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
+    GameMemory* gameMemory;
     HWND handleWindow;// for now, we will only ever have _one_ window
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
@@ -287,10 +288,10 @@ korl_internal void korl_windows_window_loop(void)
     }
     /* initialize game memory & game module */
     korl_time_probeStart(game_initialization);
-    GameMemory* gameMemory = korl_allocate(_korl_windows_window_context.allocatorHandle, sizeof(GameMemory));
+    _korl_windows_window_context.gameMemory = korl_allocate(_korl_windows_window_context.allocatorHandle, sizeof(GameMemory));
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
-    korl_onReload(gameMemory, korlApi);
+    korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
     korl_game_initialize();
     korl_time_probeStop(game_initialization);
     korl_log(INFO, "KORL initialization time probe report:");
@@ -362,10 +363,10 @@ korl_internal void korl_windows_window_loop(void)
             _korl_windows_window_context.deferSaveStateLoad = false;
             deferProbeReport = true;
             korl_time_probeStart(save_state_load);
-            const u$ gameMemoryOffset = korl_memory_allocator_addressToOffset(_korl_windows_window_context.allocatorHandle, gameMemory);
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
-            gameMemory = korl_memory_allocator_offsetToAddress(_korl_windows_window_context.allocatorHandle, gameMemoryOffset);
-            korl_onReload(gameMemory, korlApi);
+            //@TODO: uncomment & fix crash//korl_gfx_clearFontCache();
+            //@TODO: uncomment & fix crash//korl_vulkan_clearAllDeviceAssets();
+            korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
             korl_time_probeStop(save_state_load);
         }
         korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});                   korl_time_probeStop(vulkan_frame_begin);
@@ -421,4 +422,33 @@ korl_internal void korl_windows_window_loop(void)
     korl_log_noMeta(INFO, "Average Logic Loop Time:  %ws", durationBuffer);
     /**/
     korl_vulkan_destroySurface();
+}
+korl_internal void korl_windows_window_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
+{
+    const u$ bytesRequired = sizeof(_korl_windows_window_context.gameMemory);
+    u8* bufferCursor    = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
+    const u8* bufferEnd = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytes;
+    if(bufferCursor + bytesRequired > bufferEnd)
+    {
+        *saveStateBufferBytes = KORL_MATH_MAX(2*(*saveStateBufferBytes), 
+                                              // at _least_ make sure that we are about to realloc enough room for the required bytes for the manifest:
+                                              (*saveStateBufferBytes) + bytesRequired);
+        *saveStateBuffer = korl_reallocate(allocatorHandle, *saveStateBuffer, *saveStateBufferBytes);
+        korl_assert(*saveStateBuffer);
+        bufferCursor = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
+        bufferEnd    = bufferCursor + *saveStateBufferBytes;
+    }
+    korl_assert(sizeof(_korl_windows_window_context.gameMemory) == korl_memory_packU64(KORL_C_CAST(u64, _korl_windows_window_context.gameMemory), &bufferCursor, bufferEnd));
+    *saveStateBufferBytesUsed += bytesRequired;
+}
+korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
+{
+    u64 gameMemory;
+    if(!ReadFile(hFile, &gameMemory, sizeof(gameMemory), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    _korl_windows_window_context.gameMemory = KORL_C_CAST(void*, gameMemory);
+    return true;
 }

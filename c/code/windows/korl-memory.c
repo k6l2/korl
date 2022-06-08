@@ -916,21 +916,6 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
-korl_internal u$ korl_memory_allocator_addressToOffset(Korl_Memory_AllocatorHandle handle, const void* address)
-{
-    _Korl_Memory_Context*const context = &_korl_memory_context;
-    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
-    korl_assert(allocator);
-    korl_assert(address > allocator->userData);
-    return KORL_C_CAST(u$, address) - KORL_C_CAST(u$, allocator->userData);
-}
-korl_internal void* korl_memory_allocator_offsetToAddress(Korl_Memory_AllocatorHandle handle, u$ offset)
-{
-    _Korl_Memory_Context*const context = &_korl_memory_context;
-    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
-    korl_assert(allocator);
-    return KORL_C_CAST(u8*, allocator->userData) + offset;
-}
 korl_internal void korl_memory_allocator_emptyStackAllocators(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;

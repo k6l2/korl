@@ -65,8 +65,6 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE  (korl_memory_allocator_al
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE      (korl_memory_allocator_free);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY     (korl_memory_allocator_empty);
-korl_internal u$ korl_memory_allocator_addressToOffset(Korl_Memory_AllocatorHandle handle, const void* address);
-korl_internal void* korl_memory_allocator_offsetToAddress(Korl_Memory_AllocatorHandle handle, u$ offset);
 korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 /** \param allocatorHandle the allocator to use to allocate memory to store the report 
  * \return the address of the allocated memory report */

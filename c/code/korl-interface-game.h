@@ -11,7 +11,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-GAME_ON_RELOAD(korl_onReload);
+GAME_ON_RELOAD(korl_game_onReload);
 GAME_INITIALIZE(korl_game_initialize);
 GAME_UPDATE(korl_game_update);
 GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent);

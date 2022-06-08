@@ -2406,6 +2406,9 @@ korl_internal void korl_vulkan_setView(
 korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    if(surfaceContext->deferredResize)
+        return (Korl_Math_V2u32){ surfaceContext->deferredResizeX
+                                , surfaceContext->deferredResizeY };
     return (Korl_Math_V2u32){ surfaceContext->swapChainImageExtent.width
                             , surfaceContext->swapChainImageExtent.height };
 }
