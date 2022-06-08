@@ -17,7 +17,12 @@ typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     GameMemory* gameMemory;
-    HWND handleWindow;// for now, we will only ever have _one_ window
+    struct
+    {
+        HWND handle;
+        DWORD style;
+        BOOL hasMenu;
+    } window;// for now, we will only ever have _one_ window
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
 } _Korl_Windows_Window_Context;
@@ -28,7 +33,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 {
     /* ignore all window events that don't belong to the windows we are 
         responsible for in this code module */
-    if(hWnd != _korl_windows_window_context.handleWindow)
+    if(hWnd != _korl_windows_window_context.window.handle)
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
     switch(uMsg)
@@ -252,19 +257,23 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     rectCenteredClient.right  = rectCenteredClient.left + sizeX;
     rectCenteredClient.bottom = rectCenteredClient.top  + sizeY;
     const DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+    const HMENU hMenu = NULL;
+    const BOOL windowHasMenu = hMenu != NULL;
     const BOOL successAdjustClientRect = 
-        AdjustWindowRect(&rectCenteredClient, windowStyle, FALSE/*menu?*/);
+        AdjustWindowRect(&rectCenteredClient, windowStyle, windowHasMenu);
     if(!successAdjustClientRect) korl_logLastError("AdjustWindowRect failed!");
     const HWND hWnd = CreateWindowEx(0/*extended style flags*/, _KORL_WINDOWS_WINDOW_CLASS_NAME, 
                                      KORL_APPLICATION_NAME, windowStyle, 
                                      rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
                                      rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
                                      rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
-                                     NULL/*hWndParent*/, NULL/*hMenu*/, hInstance, 
+                                     NULL/*hWndParent*/, hMenu, hInstance, 
                                      NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
-    korl_assert(_korl_windows_window_context.handleWindow == NULL);
-    _korl_windows_window_context.handleWindow = hWnd;
+    korl_assert(_korl_windows_window_context.window.handle == NULL);
+    _korl_windows_window_context.window.handle  = hWnd;
+    _korl_windows_window_context.window.style   = windowStyle;
+    _korl_windows_window_context.window.hasMenu = windowHasMenu;
 }
 korl_internal void korl_windows_window_loop(void)
 {
@@ -276,12 +285,12 @@ korl_internal void korl_windows_window_loop(void)
     {
         /* obtain the client rect of the window */
         RECT clientRect;
-        if(!GetClientRect(_korl_windows_window_context.handleWindow, &clientRect))
+        if(!GetClientRect(_korl_windows_window_context.window.handle, &clientRect))
             korl_logLastError("GetClientRect failed!");
         /* create vulkan surface for this window */
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
         surfaceUserData.hInstance = hInstance;
-        surfaceUserData.hWnd      = _korl_windows_window_context.handleWindow;
+        surfaceUserData.hWnd      = _korl_windows_window_context.window.handle;
         korl_vulkan_createSurface(&surfaceUserData, 
                                   clientRect.right  - clientRect.left, 
                                   clientRect.bottom - clientRect.top);
@@ -465,6 +474,11 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
         korl_logLastError("ReadFile failed");
         return false;
     }
+    POINT clientOrigin = {0, 0};
+    korl_assert(ClientToScreen(_korl_windows_window_context.window.handle, &clientOrigin));
+    RECT windowRect = (RECT){.left = clientOrigin.x, .top = clientOrigin.y, .right = clientOrigin.x + swapchainSize.x, .bottom = clientOrigin.y + swapchainSize.y};
+    korl_assert(AdjustWindowRect(&windowRect, _korl_windows_window_context.window.style, _korl_windows_window_context.window.hasMenu));
+    korl_assert(MoveWindow(_korl_windows_window_context.window.handle, windowRect.left, windowRect.top, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, TRUE));
     korl_vulkan_deferredResize(swapchainSize.x, swapchainSize.y);
     return true;
 }
