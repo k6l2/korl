@@ -6,17 +6,35 @@
 #include "korl-vulkan.h"
 #include "korl-time.h"
 #include "stb/stb_truetype.h"
+//@TODO: do I need anything like this?
+// typedef struct _Korl_Gfx_FontGlyphBakedCharacter
+// {
+//     stbtt_bakedchar stbBakedChar;
+// } _Korl_Gfx_FontGlyphBakedCharacter;
+typedef struct _Korl_Gfx_FontGlyphBitmapPackRow
+{
+    u16 offsetY;
+    u16 offsetX;
+    u16 sizeY;
+} _Korl_Gfx_FontGlyphBitmapPackRow;
+typedef struct _Korl_Gfx_FontGlyphBitmapList
+{
+    _Korl_Gfx_FontGlyphBitmapList* next;
+    u16 packRowsSize;
+    u16 packRowsCapacity;
+    _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
+    Korl_Vulkan_TextureHandle textureHandleGlyphAtlas;
+    u16 dataSquareSize;
+    u8 data[1];//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize
+} _Korl_Gfx_FontGlyphBitmapList;
 typedef struct _Korl_Gfx_FontCache
 {
-    u16 alphaGlyphImageBufferSizeX;
-    u16 alphaGlyphImageBufferSizeY;
     int glyphDataFirstCharacterCode;
     int glyphDataSize;
     f32 pixelHeight;
-    Korl_Vulkan_TextureHandle textureHandleGlyphAtlas;
-    //KORL-PERFORMANCE-000-000-000
+    _Korl_Gfx_FontGlyphBitmapList* glyphBitmapList;
+    //KORL-PERFORMANCE-000-000-000: (minor) convert pointers to contiguous memory into offsets to save some space
     wchar_t* fontAssetName;
-    u8* alphaGlyphImageBuffer;//1-channel, Alpha8 format
     stbtt_bakedchar* glyphData;
 } _Korl_Gfx_FontCache;
 typedef struct _Korl_Gfx_Context
@@ -26,16 +44,12 @@ typedef struct _Korl_Gfx_Context
     KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontCache*, fontCaches, 16);
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
-korl_internal bool _korl_gfx_isVisibleCharacter(wchar_t c)
-{
-    //KORL-ISSUE-000-000-002
-    return c >= ' ';
-}
 /** Vertex order for each glyph quad:
  * [ bottom-left
  * , bottom-right
  * , top-right
- * , top-left ] */
+ * , top-left ] 
+ * @TODO: adjust this documentation if this changes */
 korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
@@ -44,37 +58,17 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags);
     if(!assetDataFont.data)
         return;
-#if 0 /* some thoughts on ways to store/manage glyph cache data */
-    I guess it's okay to store this data in the korl-stb-truetype allocator?
-    How do we tie the lifetime of this data to the font asset?...
-    [x] create an allocator in korl-gfx for persistent data instead
-        - have a global korl-gfx context
-        - create a database of font atlas data, with a unique entry per font 
-          asset string
-    [-] just don't; leak memory forever since it likely wont be much ;D
-    [-] pass callbacks to korl_assetCache_get?...
-        - this requires us to expose the allocator in the korl-stb-truetype 
-          module, but that's okay since this API most likely wont be exposed to 
-          the code which consumes KORL anyways
-        - this could set limits on which code module is allowed to call this API 
-          due to function pointer validity!!!
-    [-] store this data inside Korl_AssetCache_AssetData itself?...
-        - specialize the AssetData struct (PTU) like I used to do in C++ KORL
-        - automatically detect what kind of asset it is when it is loaded 
-          (based on file extension)
-        - this might require the assetCache module to have a dependency on the 
-          backend renderer, for example if we need to query Vulkan for max 
-          image2D dimensions, which might get a little... hairy...
-#endif
+    /* checck and see if a matching font cache already exists */
+    u$ existingFontCacheIndex = 0;
+    for(; existingFontCacheIndex < KORL_MEMORY_POOL_SIZE(context->fontCaches); existingFontCacheIndex++)
+        if(    0 == korl_memory_stringCompare(batch->_assetNameFont, context->fontCaches[existingFontCacheIndex]->fontAssetName)
+            && context->fontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight)
+            break;
+#if 0//@TODO: recycle
     /* create a temporary 1-channel,1-byte image buffer to store the glyph atlas 
         if it doesn't already exist, as well as a glyph atlas database */
     // find the font cache with a matching font asset name AND render parameters 
     //  such as font pixel height, etc... //
-    u$ existingFontCacheIndex = 0;
-    for(; existingFontCacheIndex < KORL_MEMORY_POOL_SIZE(context->fontCaches); existingFontCacheIndex++)
-        if(0 == korl_memory_stringCompare(batch->_assetNameFont, context->fontCaches[existingFontCacheIndex]->fontAssetName)
-            && context->fontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight)
-            break;
     // if it doesn't exist, allocate/create one //
     if(existingFontCacheIndex >= KORL_MEMORY_POOL_SIZE(context->fontCaches))
     {
@@ -85,7 +79,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         korl_shared_const int GLYPH_FIRST_CODE = 32;
         korl_shared_const int GLYPH_DATA_SIZE = 96;// ASCII [32, 126]|[' ', '~'] is 96 glyphs
         korl_shared_const u16 GLYPH_ALPHA_BUFFER_SIZE_XY = 512;
-        const u$ assetNameFontBufferSize = korl_memory_stringSize(batch->_assetNameFont) + 1;
+        const u$ assetNameFontBufferSize = korl_memory_stringSize(batch->_assetNameFont) + 1/*null terminator*/;
         const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*batch->_assetNameFont);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
             + assetNameFontBufferBytes
@@ -187,6 +181,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         currentGlyph++;
     }
     batch->_fontTextureHandle = fontCache->textureHandleGlyphAtlas;
+#endif
 }
 korl_internal void korl_gfx_initialize(void)
 {
@@ -201,7 +196,10 @@ korl_internal void korl_gfx_clearFontCache(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     for(Korl_MemoryPool_Size fc = 0; fc < KORL_MEMORY_POOL_SIZE(context->fontCaches); fc++)
+    {
+        ///@TODO: now that glyph atlas can potentially span multiple textures, this code must become slightly more complext
         korl_free(context->allocatorHandle, context->fontCaches[fc]);
+    }
     KORL_MEMORY_POOL_EMPTY(context->fontCaches);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)

@@ -1,6 +1,6 @@
 [ ] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAGS_LAZY is specified
 [ ] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
-[ ] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`
+[x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose
 [ ] KORL-ISSUE-000-000-003: robustness: this is the "quick & dirty" stbtt API, ergo it's probably a good idea to switch to the lower-level API to be able to do things like lazy glyph caching, better packing, outlines, etc...
 [ ] KORL-ISSUE-000-000-004: maybe change the scissor parameters to be an integral data type, since at some point a rounding strategy must occur anyways, and this information is obscured by this API, just for the sake of making it easier to call with f32 data... Which, I don't know if that's a great tradeoff honestly.
 [ ] KORL-ISSUE-000-000-005: simplify: is it possible to just have a "createRectangle" function, and then add texture or color components to it in later calls?  And if so, is this API good (benefits/detriments to usability/readability/performance?)? My initial thoughts on this are: (1) this would introduce unnecessary performance penalties since we cannot know ahead of time what memory to allocate for the batch (whether or not we need UVs, colors, etc.) (2) the resulting API might become more complex anyways, and increase friction for the user
