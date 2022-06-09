@@ -137,16 +137,29 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
             probably only care about the first one anyway, since all execution 
             after this is suspect */
         _korl_crash_firstAssertLogged = true;
-        __try
-        {
-            RaiseException(STATUS_ASSERTION_FAILURE, 0, 0, NULL);
-        }
-        __except(korl_file_generateMemoryDump(GetExceptionInformation(), 
-                                              KORL_FILE_PATHTYPE_TEMPORARY_DATA, 
-                                              _KORL_CRASH_MAX_DUMP_COUNT), 
-                 EXCEPTION_EXECUTE_HANDLER)
-        {
-        }
+        /* So for some fucking reason, __try/__except doesn't seem to work when 
+            in a debugger.  More specifically, the __except filter expression 
+            never seems to execute.  Thus, if we're in a debugger we have no 
+            choice at the moment but to forego having exception information in 
+            the minidump...  At least until I figure out if such a thing is even 
+            possible to do, which I'm sure there has to be a way since that 
+            would be just silly if it was not possible to obtain full stack 
+            exception information just because we're in a debugger lol... */
+        if(IsDebuggerPresent())
+            korl_file_generateMemoryDump(NULL/*we don't have any exception data*/, 
+                                         KORL_FILE_PATHTYPE_TEMPORARY_DATA, 
+                                         _KORL_CRASH_MAX_DUMP_COUNT);
+        else
+            __try
+            {
+                RaiseException(STATUS_ASSERTION_FAILURE, 0, 0, NULL);
+            }
+            __except(korl_file_generateMemoryDump(GetExceptionInformation(), 
+                                                  KORL_FILE_PATHTYPE_TEMPORARY_DATA, 
+                                                  _KORL_CRASH_MAX_DUMP_COUNT), 
+                     EXCEPTION_EXECUTE_HANDLER)
+            {
+            }
     }
     if(IsDebuggerPresent())
     {

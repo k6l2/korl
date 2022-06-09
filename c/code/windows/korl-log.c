@@ -119,13 +119,7 @@ korl_internal void _korl_log_vaList(
     GetLocalTime(&systemTimeLocal);
     /**/
     if(logLevel <= KORL_LOG_LEVEL_ERROR)
-    {
         context->errorAssertionTriggered = true;// trigger as soon as possible, so that if another error is logged in error-handling code, we don't trigger the assertion failure again
-        /* if we ever log an error while a debugger is attached, just break 
-            right now so we can figure out what's going on! */
-        if(IsDebuggerPresent())
-            DebugBreak();
-    }
     /* we can skip most of this if there are no log outputs enabled */
     if(!context->logFileEnabled && !context->useLogOutputDebugger && !context->useLogOutputConsole)
         goto logOutputDone;
@@ -133,7 +127,7 @@ korl_internal void _korl_log_vaList(
     const wchar_t* cStringLogLevel = L"???";
     switch(logLevel)
     {
-    case KORL_LOG_LEVEL_ASSERT: {cStringLogLevel = L"ASSERT";   break;}
+    case KORL_LOG_LEVEL_ASSERT: {cStringLogLevel = L"ASSERT";  break;}
     case KORL_LOG_LEVEL_ERROR:  {cStringLogLevel = L"ERROR";   break;}
     case KORL_LOG_LEVEL_WARNING:{cStringLogLevel = L"WARNING"; break;}
     case KORL_LOG_LEVEL_INFO:   {cStringLogLevel = L"INFO";    break;}
@@ -261,13 +255,19 @@ korl_internal void _korl_log_vaList(
         /* when we're not attached to a debugger (for example, in 
             production), we should still assert that a critical issue has 
             been logged at least for the first error */
-        context->transientBuffer[logLineSize - 1] = L'\0';// temporarily remove the '\n'
+        /* we need to copy the transient buffer because if we don't, the buffer 
+            contents will get clobbered if a call to log happens during 
+            korl-crash assert handling routines */
+        const u$ lineSize = korl_memory_stringSize(context->transientBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/);
+        wchar_t* tempBuffer = korl_allocate(context->allocatorHandleTransient, (lineSize + 1/*null-terminator*/)*sizeof(*tempBuffer));
+        // no need to check if tempBuffer got allocated, since we'd just write to 0x0 anyway
+        korl_assert(0 < korl_memory_stringCopy(context->transientBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, tempBuffer, lineSize + 1/*null-terminator*/));
+        tempBuffer[lineSize - 1] = L'\0';// remove the '\n'
         /* we don't call the korl_assert macro here because we want to propagate 
             the meta data of the CALLER of this error log entry to the user; the 
             fact that the assert condition fails in the log module is irrelevant */
-        _korl_crash_assertConditionFailed(context->transientBuffer + bufferSizeMetaTag/*exclude the meta tag in the assert message*/, 
-                                          cStringFileName, cStringFunctionName, lineNumber);
-        context->transientBuffer[logLineSize - 1] = L'\n';
+        _korl_crash_assertConditionFailed(tempBuffer, cStringFileName, cStringFunctionName, lineNumber);
+        korl_free(context->allocatorHandleTransient, tempBuffer);
     }
     /* we're done with the transient buffer, so we can reuse it in future log 
         calls; the data has all been written to the circular log buffer, with 

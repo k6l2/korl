@@ -686,9 +686,12 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
                                  | MiniDumpWithFullMemory 
                                  | MiniDumpIgnoreInaccessibleMemory;
     if(!MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
-                          hDumpFile, dumpType, &expParam, NULL, NULL))
+                          hDumpFile, dumpType, 
+                          pExceptionPointers ? &expParam : NULL, 
+                          NULL/*UserStreamParam*/, NULL/*callback*/))
     {
-        korl_logLastError("MiniDumpWriteDump failed!");
+        korl_log(ERROR, "MiniDumpWriteDump failed!  GetLastError(HRESULT)=0x%x, GetLastError(Win32 code)=0x%x", 
+                 GetLastError(), /*derived by reverse engineering HRESULT_FROM_WIN32:*/GetLastError()&0xFFFF);
         return;
     }
     korl_log(INFO, "MiniDump written to: %ws", pathFileWrite);

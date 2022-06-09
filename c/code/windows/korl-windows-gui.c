@@ -353,7 +353,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         const i32 mouseWheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
         const bool keyDownShift = LOWORD(wParam) & MK_SHIFT;
         /* check if the mouse if hovering over a window */
-        for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
+        for(i$ w = KORL_C_CAST(i$, KORL_MEMORY_POOL_SIZE(context->windows)) - 1; w >= 0; w--)
         {
             _Korl_Gui_Window*const window = &context->windows[w];
             if(!window->isOpen)
