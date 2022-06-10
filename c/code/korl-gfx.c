@@ -5,7 +5,7 @@
 #include "korl-memoryPool.h"
 #include "korl-vulkan.h"
 #include "korl-time.h"
-#include "stb/stb_truetype.h"
+#include "korl-stb-truetype.h"
 //@TODO: do I need anything like this?
 // typedef struct _Korl_Gfx_FontGlyphBakedCharacter
 // {
@@ -17,22 +17,22 @@ typedef struct _Korl_Gfx_FontGlyphBitmapPackRow
     u16 offsetX;
     u16 sizeY;
 } _Korl_Gfx_FontGlyphBitmapPackRow;
-typedef struct _Korl_Gfx_FontGlyphBitmapList
+typedef struct _Korl_Gfx_FontGlyphPageList
 {
-    _Korl_Gfx_FontGlyphBitmapList* next;
+    //_Korl_Gfx_FontGlyphPageList* next;
     u16 packRowsSize;
     u16 packRowsCapacity;
     _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
     Korl_Vulkan_TextureHandle textureHandleGlyphAtlas;
     u16 dataSquareSize;
     u8 data[1];//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize
-} _Korl_Gfx_FontGlyphBitmapList;
+} _Korl_Gfx_FontGlyphPageList;
 typedef struct _Korl_Gfx_FontCache
 {
-    int glyphDataFirstCharacterCode;
-    int glyphDataSize;
+    int glyphDataCodepointStart;
+    int glyphDataCodepointCount;
     f32 pixelHeight;
-    _Korl_Gfx_FontGlyphBitmapList* glyphBitmapList;
+    _Korl_Gfx_FontGlyphPageList* glyphPageList;
     //KORL-PERFORMANCE-000-000-000: (minor) convert pointers to contiguous memory into offsets to save some space
     wchar_t* fontAssetName;
     stbtt_bakedchar* glyphData;
@@ -41,7 +41,8 @@ typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontCache*, fontCaches, 16);
+    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontCache*        , fontCaches    , 16);//KORL-FEATURE-000-000-007: dynamic resizing arrays
+    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontGlyphPageList*, fontGlyphPages, 16);//KORL-FEATURE-000-000-007: dynamic resizing arrays
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
 /** Vertex order for each glyph quad:
@@ -58,13 +59,46 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags);
     if(!assetDataFont.data)
         return;
-    /* checck and see if a matching font cache already exists */
+#if 1// stb_truetype testing SDF API:
+    korl_shared_variable bool sdfTestDone = false;
+    if(!sdfTestDone)
+    {
+        sdfTestDone = true;
+        korl_log(INFO, "===== stb_truetype SDF test =====");
+        stbtt_fontinfo fontInfo;
+        korl_assert(stbtt_InitFont(&fontInfo, assetDataFont.data, 0/*font offset*/));
+        int w, h, x, y;
+        u8* bitmapSdf = stbtt_GetCodepointSDF(&fontInfo, 
+                                              stbtt_ScaleForPixelHeight(&fontInfo, batch->_textPixelHeight), 
+                                              'A', 5, 180, 180/5.f, &w, &h, &x, &y);
+        korl_assert(bitmapSdf);
+        wchar_t bitmapScanlineBuffer[256];
+        korl_shared_const wchar_t SDF_RENDER[] = L" ░▒▓█";
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = SDF_RENDER[KORL_MATH_CLAMP(bitmapSdf[cy*w + cx] / (255 / (korl_arraySize(SDF_RENDER) - 1)), 0, korl_arraySize(SDF_RENDER) - 1)];
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        korl_log_noMeta(INFO, "");
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 ? L'█' : L' ';
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        stbtt_FreeSDF(bitmapSdf, NULL);
+    }
+#endif
+#if 0//@TODO: recycle
+    /* check and see if a matching font cache already exists */
     u$ existingFontCacheIndex = 0;
     for(; existingFontCacheIndex < KORL_MEMORY_POOL_SIZE(context->fontCaches); existingFontCacheIndex++)
         if(    0 == korl_memory_stringCompare(batch->_assetNameFont, context->fontCaches[existingFontCacheIndex]->fontAssetName)
             && context->fontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight)
             break;
-#if 0//@TODO: recycle
     /* create a temporary 1-channel,1-byte image buffer to store the glyph atlas 
         if it doesn't already exist, as well as a glyph atlas database */
     // find the font cache with a matching font asset name AND render parameters 
@@ -347,7 +381,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     }
     if(batch->_assetNameFont && !batch->_fontTextureHandle)
     {
-        korl_log(WARNING, "text batch mesh not yet obtained from font asset");
+        ///@TODO: uncomment this// korl_log(WARNING, "text batch mesh not yet obtained from font asset");
         return;
     }
     if(batch->_assetNameTexture)
@@ -411,13 +445,13 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
         { 0, 1, 3
         , 1, 2, 3 };
-    memcpy(result->_vertexIndices, vertexIndices, sizeof(vertexIndices));
+    korl_memory_copy(result->_vertexIndices, vertexIndices, sizeof(vertexIndices));
     korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
         { {-0.5f, -0.5f, 0.f}
         , { 0.5f, -0.5f, 0.f}
         , { 0.5f,  0.5f, 0.f}
         , {-0.5f,  0.5f, 0.f} };
-    memcpy(result->_vertexPositions, vertexPositions, sizeof(vertexPositions));
+    korl_memory_copy(result->_vertexPositions, vertexPositions, sizeof(vertexPositions));
     // scale the rectangle mesh vertices by the provided size //
     for(u$ i = 0; i < korl_arraySize(vertexPositions); ++i)
         korl_math_v2f32_assignMultiply(&result->_vertexPositions[i].xy, size);
@@ -426,7 +460,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
         , {1, 1}
         , {1, 0}
         , {0, 0} };
-    memcpy(result->_vertexUvs, vertexTextureUvs, sizeof(vertexTextureUvs));
+    korl_memory_copy(result->_vertexUvs, vertexTextureUvs, sizeof(vertexTextureUvs));
     /* return the batch */
     return result;
 }
@@ -460,13 +494,13 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
         { 0, 1, 3
         , 1, 2, 3 };
-    memcpy(result->_vertexIndices, vertexIndices, sizeof(vertexIndices));
+    korl_memory_copy(result->_vertexIndices, vertexIndices, sizeof(vertexIndices));
     korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
         { {0.f, 0.f, 0.f}
         , {1.f, 0.f, 0.f}
         , {1.f, 1.f, 0.f}
         , {0.f, 1.f, 0.f} };
-    memcpy(result->_vertexPositions, vertexPositions, sizeof(vertexPositions));
+    korl_memory_copy(result->_vertexPositions, vertexPositions, sizeof(vertexPositions));
     // scale & offset the rectangle mesh vertices by the provided params //
     for(u$ i = 0; i < korl_arraySize(vertexPositions); ++i)
     {
@@ -595,7 +629,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     {
         const wchar_t* textIterator = text;
         for(; *textIterator; textIterator++)
-            if(_korl_gfx_isVisibleCharacter(*textIterator))
+            // if(_korl_gfx_isVisibleCharacter(*textIterator))//@TODO: do something smarter than this, like use stbtt_IsGlyphEmpty
                 textVisibleCharacterCount++;
     }
     const u$ textBufferSize = korl_memory_stringSize(text) + 1;
