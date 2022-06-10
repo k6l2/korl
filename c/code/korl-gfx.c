@@ -72,6 +72,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                               stbtt_ScaleForPixelHeight(&fontInfo, batch->_textPixelHeight), 
                                               'A', 5, 180, 180/5.f, &w, &h, &x, &y);
         korl_assert(bitmapSdf);
+        korl_log(INFO, "w: %d, h: %d, x: %d, y: %d", w, h, x, y);
         wchar_t bitmapScanlineBuffer[256];
         korl_shared_const wchar_t SDF_RENDER[] = L" ░▒▓█";
         for(int cy = 0; cy < h; cy++)
@@ -86,6 +87,46 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         {
             for(int cx = 0; cx < w; cx++)
                 bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 ? L'█' : L' ';
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        korl_log_noMeta(INFO, "");
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (1*(180/5.f)) ? L'█' : L' ';
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        korl_log_noMeta(INFO, "");
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (2*(180/5.f)) ? L'█' : L' ';
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        korl_log_noMeta(INFO, "");
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (3*(180/5.f)) ? L'█' : L' ';
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        korl_log_noMeta(INFO, "");
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (4*(180/5.f)) ? L'█' : L' ';
+            bitmapScanlineBuffer[w] = L'\0';
+            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
+        }
+        korl_log_noMeta(INFO, "");
+        for(int cy = 0; cy < h; cy++)
+        {
+            for(int cx = 0; cx < w; cx++)
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (5*(180/5.f)) ? L'█' : L' ';
             bitmapScanlineBuffer[w] = L'\0';
             korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
         }
