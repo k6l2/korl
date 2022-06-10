@@ -107,7 +107,7 @@ korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes
     }
     return 0;
 }
-korl_internal int korl_memory_stringCompare(const wchar_t* a, const wchar_t* b)
+korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare)
 {
     for(; *a && *b; ++a, ++b)
     {
@@ -122,7 +122,7 @@ korl_internal int korl_memory_stringCompare(const wchar_t* a, const wchar_t* b)
         return -1;
     return 0;
 }
-korl_internal u$ korl_memory_stringSize(const wchar_t* s)
+korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize)
 {
     if(!s)
         return 0;
@@ -133,7 +133,7 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s)
     for(; *s; ++s) {}
     return s - sBegin;
 }
-korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize)
+korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy)
 {
     const wchar_t*const destinationEnd = destination + destinationSize;
     i$ charsCopied = 0;
@@ -185,7 +185,7 @@ korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandl
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
 }
-korl_internal i$ korl_memory_stringFormatBuffer(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...)
+korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER(korl_memory_stringFormatBuffer)
 {
     va_list args;
     va_start(args, format);
@@ -193,7 +193,7 @@ korl_internal i$ korl_memory_stringFormatBuffer(wchar_t* buffer, u$ bufferBytes,
     va_end(args);
     return result;
 }
-korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
+korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST(korl_memory_stringFormatBufferVaList)
 {
     const int bufferSize = _vscwprintf(format, vaList);// excludes null terminator
     korl_assert(bufferSize >= 0);

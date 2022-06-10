@@ -31,11 +31,11 @@ korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes
 /**
  * \return \c 0 if the two strings are equal
  */
-korl_internal int korl_memory_stringCompare(const wchar_t* a, const wchar_t* b);
+korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare);
 /**
  * \return the size of string \c s EXCLUDING the null terminator
  */
-korl_internal u$ korl_memory_stringSize(const wchar_t* s);
+korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize);
 /**
  * \return the number of characters copied from \c source into \c destination , 
  * INCLUDING the null terminator.  If the \c source cannot be copied into the 
@@ -43,7 +43,7 @@ korl_internal u$ korl_memory_stringSize(const wchar_t* s);
  * multiplied by -1 is returned, and \c destination is filled with the maximum 
  * number of characters that can be copied, including a null-terminator.
  */
-korl_internal i$ korl_memory_stringCopy(const wchar_t* source, wchar_t* destination, u$ destinationSize);
+korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy);
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
 korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move);
@@ -56,8 +56,8 @@ korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandl
  * \c buffer then the size of \c format , INCLUDING the null terminator, 
  * multiplied by -1, is returned.
  */
-korl_internal i$ korl_memory_stringFormatBuffer(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...);
-korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList);
+korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER(korl_memory_stringFormatBuffer);
+korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST(korl_memory_stringFormatBufferVaList);
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);
 korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, void* newAddress);

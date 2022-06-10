@@ -184,6 +184,11 @@ enum KorlEnumLogLevel
 #define KORL_PLATFORM_MEMORY_ZERO(name) void name(void* memory, u$ bytes)
 #define KORL_PLATFORM_MEMORY_COPY(name) void name(void* destination, const void* source, u$ bytes)
 #define KORL_PLATFORM_MEMORY_MOVE(name) void name(void* destination, const void* source, u$ bytes)
+#define KORL_PLATFORM_STRING_COMPARE(name)              int name(const wchar_t* a, const wchar_t* b)
+#define KORL_PLATFORM_STRING_SIZE(name)                 u$ name(const wchar_t* s)
+#define KORL_PLATFORM_STRING_COPY(name)                 i$ name(const wchar_t* source, wchar_t* destination, u$ destinationSize)
+#define KORL_PLATFORM_STRING_FORMAT_BUFFER(name)        i$ name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...)
+#define KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST(name) i$ name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
 typedef u16 Korl_Memory_AllocatorHandle;
 typedef enum Korl_Memory_AllocatorType
     { KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
@@ -364,6 +369,11 @@ typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secon
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
 typedef KORL_PLATFORM_MEMORY_COPY                         (fnSig_korl_memory_copy);
 typedef KORL_PLATFORM_MEMORY_MOVE                         (fnSig_korl_memory_move);
+typedef KORL_PLATFORM_STRING_COMPARE                      (fnSig_korl_memory_stringCompare);
+typedef KORL_PLATFORM_STRING_SIZE                         (fnSig_korl_memory_stringSize);
+typedef KORL_PLATFORM_STRING_COPY                         (fnSig_korl_memory_stringCopy);
+typedef KORL_PLATFORM_STRING_FORMAT_BUFFER                (fnSig_korl_memory_stringFormatBuffer);
+typedef KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST         (fnSig_korl_memory_stringFormatBufferVaList);
 typedef KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR             (fnSig_korl_memory_allocator_create);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_allocator_allocate);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE         (fnSig_korl_memory_allocator_reallocate);
@@ -411,6 +421,11 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_memory_zero*                      korl_memory_zero;\
     fnSig_korl_memory_copy*                      korl_memory_copy;\
     fnSig_korl_memory_move*                      korl_memory_move;\
+    fnSig_korl_memory_stringCompare*             korl_memory_stringCompare;\
+    fnSig_korl_memory_stringSize*                korl_memory_stringSize;\
+    fnSig_korl_memory_stringCopy*                korl_memory_stringCopy;\
+    fnSig_korl_memory_stringFormatBuffer*        korl_memory_stringFormatBuffer;\
+    fnSig_korl_memory_stringFormatBufferVaList*  korl_memory_stringFormatBufferVaList;\
     fnSig_korl_memory_allocator_create*          korl_memory_allocator_create;\
     fnSig_korl_memory_allocator_allocate*        korl_memory_allocator_allocate;\
     fnSig_korl_memory_allocator_reallocate*      korl_memory_allocator_reallocate;\
@@ -458,6 +473,11 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
     (apiVariableName).korl_memory_copy                      = korl_memory_copy;\
     (apiVariableName).korl_memory_move                      = korl_memory_move;\
+    (apiVariableName).korl_memory_stringCompare             = korl_memory_stringCompare;\
+    (apiVariableName).korl_memory_stringSize                = korl_memory_stringSize;\
+    (apiVariableName).korl_memory_stringCopy                = korl_memory_stringCopy;\
+    (apiVariableName).korl_memory_stringFormatBuffer        = korl_memory_stringFormatBuffer;\
+    (apiVariableName).korl_memory_stringFormatBufferVaList  = korl_memory_stringFormatBufferVaList;\
     (apiVariableName).korl_memory_allocator_create          = korl_memory_allocator_create;\
     (apiVariableName).korl_memory_allocator_allocate        = korl_memory_allocator_allocate;\
     (apiVariableName).korl_memory_allocator_reallocate      = korl_memory_allocator_reallocate;\
@@ -505,6 +525,11 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
     korl_memory_copy                      = (apiVariableName).korl_memory_copy;\
     korl_memory_move                      = (apiVariableName).korl_memory_move;\
+    korl_memory_stringCompare             = (apiVariableName).korl_memory_stringCompare;\
+    korl_memory_stringSize                = (apiVariableName).korl_memory_stringSize;\
+    korl_memory_stringCopy                = (apiVariableName).korl_memory_stringCopy;\
+    korl_memory_stringFormatBuffer        = (apiVariableName).korl_memory_stringFormatBuffer;\
+    korl_memory_stringFormatBufferVaList  = (apiVariableName).korl_memory_stringFormatBufferVaList;\
     korl_memory_allocator_create          = (apiVariableName).korl_memory_allocator_create;\
     korl_memory_allocator_allocate        = (apiVariableName).korl_memory_allocator_allocate;\
     korl_memory_allocator_reallocate      = (apiVariableName).korl_memory_allocator_reallocate;\
