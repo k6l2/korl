@@ -317,6 +317,7 @@ typedef struct Korl_Gfx_Batch
     u32 _vertexIndexCount;
     u32 _vertexCount;
     f32 _textPixelHeight;
+    f32 _textPixelOutline;
     wchar_t* _assetNameTexture;
     //KORL-PERFORMANCE-000-000-002
     wchar_t* _assetNameFont;
@@ -348,6 +349,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(name)              Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(name)           Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, u32 triangleCount)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_LINES(name)               Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
+///@TODO: add outline & color parameters to CREATE_BATCH_TEXT
 #define KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(name)                Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight)
 #define KORL_PLATFORM_GFX_BATCH_SET_BLEND_STATE(name)            void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget)
 #define KORL_PLATFORM_GFX_BATCH_SET_POSITION(name)               void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position)

@@ -6,43 +6,51 @@
 #include "korl-vulkan.h"
 #include "korl-time.h"
 #include "korl-stb-truetype.h"
-//@TODO: do I need anything like this?
-// typedef struct _Korl_Gfx_FontGlyphBakedCharacter
-// {
-//     stbtt_bakedchar stbBakedChar;
-// } _Korl_Gfx_FontGlyphBakedCharacter;
+/** Basically just an extension of stbtt_bakedchar */
+typedef struct _Korl_Gfx_FontGlyphBakedCharacter
+{
+    u16 x0,y0,x1,y1; // coordinates of bbox in bitmap
+    Korl_Math_V2f32 offset;// how much we need to offset the glyph mesh to center it on the baseline cursor origin
+    f32 advanceX;   // pre-scaled by glyph scale at a particular pixelHeight value
+    f32 bearingLeft;// pre-scaled by glyph scale at a particular pixelHeight value
+    int glyphIndex;///@TODO: remove this if we don't actually need it for kerning or anything like that when building the text meshes
+    bool isEmpty;// true if stbtt_IsGlyphEmpty for this glyph returned true
+} _Korl_Gfx_FontGlyphBakedCharacter;
 typedef struct _Korl_Gfx_FontGlyphBitmapPackRow
 {
     u16 offsetY;
     u16 offsetX;
-    u16 sizeY;
+    u16 sizeY;// _including_ padding
 } _Korl_Gfx_FontGlyphBitmapPackRow;
-typedef struct _Korl_Gfx_FontGlyphPageList
+typedef struct _Korl_Gfx_FontGlyphPage
 {
-    //_Korl_Gfx_FontGlyphPageList* next;
-    u16 packRowsSize;
-    u16 packRowsCapacity;
+    u16                               packRowsSize;
+    u16                               packRowsCapacity;
     _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
     Korl_Vulkan_TextureHandle textureHandleGlyphAtlas;
     u16 dataSquareSize;
-    u8 data[1];//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize
-} _Korl_Gfx_FontGlyphPageList;
+    u8* data;//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize
+} _Korl_Gfx_FontGlyphPage;
 typedef struct _Korl_Gfx_FontCache
 {
+    stbtt_fontinfo fontInfo;
+    int fontAscent; // adjusted by pixelHeight already
+    int fontDescent;// adjusted by pixelHeight already
+    int fontLineGap;// adjusted by pixelHeight already
     int glyphDataCodepointStart;
-    int glyphDataCodepointCount;
+    int glyphDataCodepointCount;//KORL-ISSUE-000-000-070: gfx/fontCache: Either cache glyphs dynamically instead of a fixed region all at once, or devise some way to configure the pre-cached range.
     f32 pixelHeight;
-    _Korl_Gfx_FontGlyphPageList* glyphPageList;
+    f32 pixelOutlineThickness;// if this is 0.f, then an outline has not yet been cached in this fontCache glyphPageList
     //KORL-PERFORMANCE-000-000-000: (minor) convert pointers to contiguous memory into offsets to save some space
     wchar_t* fontAssetName;
-    stbtt_bakedchar* glyphData;
+    _Korl_Gfx_FontGlyphBakedCharacter* glyphData;
+    _Korl_Gfx_FontGlyphPage* glyphPage;
 } _Korl_Gfx_FontCache;
 typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontCache*        , fontCaches    , 16);//KORL-FEATURE-000-000-007: dynamic resizing arrays
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontGlyphPageList*, fontGlyphPages, 16);//KORL-FEATURE-000-000-007: dynamic resizing arrays
+    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontCache*, fontCaches, 16);//KORL-FEATURE-000-000-007: dynamic resizing arrays
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
 /** Vertex order for each glyph quad:
@@ -59,7 +67,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags);
     if(!assetDataFont.data)
         return;
-#if 1// stb_truetype testing SDF API:
+#if 1// @TODO: delete; stb_truetype testing SDF API:
     korl_shared_variable bool sdfTestDone = false;
     if(!sdfTestDone)
     {
@@ -68,9 +76,12 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         stbtt_fontinfo fontInfo;
         korl_assert(stbtt_InitFont(&fontInfo, assetDataFont.data, 0/*font offset*/));
         int w, h, x, y;
+        const u8 on_edge_value     = 255;
+        const int padding          = 1;
+        const f32 pixel_dist_scale = KORL_C_CAST(f32, on_edge_value)/KORL_C_CAST(f32, padding);
         u8* bitmapSdf = stbtt_GetCodepointSDF(&fontInfo, 
-                                              stbtt_ScaleForPixelHeight(&fontInfo, batch->_textPixelHeight), 
-                                              'A', 5, 180, 180/5.f, &w, &h, &x, &y);
+                                              stbtt_ScaleForPixelHeight(&fontInfo, /*batch->_textPixelHeight*/16), 
+                                              '*', padding, on_edge_value, pixel_dist_scale, &w, &h, &x, &y);
         korl_assert(bitmapSdf);
         korl_log(INFO, "w: %d, h: %d, x: %d, y: %d", w, h, x, y);
         wchar_t bitmapScanlineBuffer[256];
@@ -78,7 +89,22 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         for(int cy = 0; cy < h; cy++)
         {
             for(int cx = 0; cx < w; cx++)
+            {
+#if 1
+                if(bitmapSdf[cy*w + cx] == 0)
+                    bitmapScanlineBuffer[cx] = SDF_RENDER[0];
+                else if(bitmapSdf[cy*w + cx] == 255)
+                    bitmapScanlineBuffer[cx] = SDF_RENDER[4];
+                else if(bitmapSdf[cy*w + cx] < 85)
+                    bitmapScanlineBuffer[cx] = SDF_RENDER[1];
+                else if(bitmapSdf[cy*w + cx] < 170)
+                    bitmapScanlineBuffer[cx] = SDF_RENDER[2];
+                else
+                    bitmapScanlineBuffer[cx] = SDF_RENDER[3];
+#else
                 bitmapScanlineBuffer[cx] = SDF_RENDER[KORL_MATH_CLAMP(bitmapSdf[cy*w + cx] / (255 / (korl_arraySize(SDF_RENDER) - 1)), 0, korl_arraySize(SDF_RENDER) - 1)];
+#endif
+            }
             bitmapScanlineBuffer[w] = L'\0';
             korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
         }
@@ -86,7 +112,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         for(int cy = 0; cy < h; cy++)
         {
             for(int cx = 0; cx < w; cx++)
-                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 ? L'█' : L' ';
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= on_edge_value ? L'█' : L' ';
             bitmapScanlineBuffer[w] = L'\0';
             korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
         }
@@ -94,7 +120,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         for(int cy = 0; cy < h; cy++)
         {
             for(int cx = 0; cx < w; cx++)
-                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (1*(180/5.f)) ? L'█' : L' ';
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= on_edge_value - ((padding - 0.5f)*pixel_dist_scale) ? L'█' : L' ';
             bitmapScanlineBuffer[w] = L'\0';
             korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
         }
@@ -102,7 +128,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         for(int cy = 0; cy < h; cy++)
         {
             for(int cx = 0; cx < w; cx++)
-                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (2*(180/5.f)) ? L'█' : L' ';
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= on_edge_value - ((padding - 1)*pixel_dist_scale) ? L'█' : L' ';
             bitmapScanlineBuffer[w] = L'\0';
             korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
         }
@@ -110,72 +136,221 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         for(int cy = 0; cy < h; cy++)
         {
             for(int cx = 0; cx < w; cx++)
-                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (3*(180/5.f)) ? L'█' : L' ';
-            bitmapScanlineBuffer[w] = L'\0';
-            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
-        }
-        korl_log_noMeta(INFO, "");
-        for(int cy = 0; cy < h; cy++)
-        {
-            for(int cx = 0; cx < w; cx++)
-                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (4*(180/5.f)) ? L'█' : L' ';
-            bitmapScanlineBuffer[w] = L'\0';
-            korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
-        }
-        korl_log_noMeta(INFO, "");
-        for(int cy = 0; cy < h; cy++)
-        {
-            for(int cx = 0; cx < w; cx++)
-                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= 180 - (5*(180/5.f)) ? L'█' : L' ';
+                bitmapScanlineBuffer[cx] = bitmapSdf[cy*w + cx] >= on_edge_value - (padding*pixel_dist_scale) ? L'█' : L' ';
             bitmapScanlineBuffer[w] = L'\0';
             korl_log_noMeta(INFO, "%ws", bitmapScanlineBuffer);
         }
         stbtt_FreeSDF(bitmapSdf, NULL);
     }
 #endif
-#if 0//@TODO: recycle
     /* check and see if a matching font cache already exists */
     u$ existingFontCacheIndex = 0;
     for(; existingFontCacheIndex < KORL_MEMORY_POOL_SIZE(context->fontCaches); existingFontCacheIndex++)
-        if(    0 == korl_memory_stringCompare(batch->_assetNameFont, context->fontCaches[existingFontCacheIndex]->fontAssetName)
-            && context->fontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight)
+        // find the font cache with a matching font asset name AND render 
+        //  parameters such as font pixel height, etc... //
+        if(    0 == korl_memory_stringCompare(batch->_assetNameFont, context->fontCaches[existingFontCacheIndex]->fontAssetName) 
+            && context->fontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight 
+            && (   context->fontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
+                || context->fontCaches[existingFontCacheIndex]->pixelOutlineThickness == batch->_textPixelOutline))
             break;
-    /* create a temporary 1-channel,1-byte image buffer to store the glyph atlas 
-        if it doesn't already exist, as well as a glyph atlas database */
-    // find the font cache with a matching font asset name AND render parameters 
-    //  such as font pixel height, etc... //
-    // if it doesn't exist, allocate/create one //
+    // if we could not find a matching fontCache, we need to create one //
     if(existingFontCacheIndex >= KORL_MEMORY_POOL_SIZE(context->fontCaches))
     {
         /* add a new font cache address to the context's font cache address pool */
         korl_assert(!KORL_MEMORY_POOL_ISFULL(context->fontCaches));
         _Korl_Gfx_FontCache**const newFontCache = KORL_MEMORY_POOL_ADD(context->fontCaches);
         /* calculate how much memory we need */
-        korl_shared_const int GLYPH_FIRST_CODE = 32;
-        korl_shared_const int GLYPH_DATA_SIZE = 96;// ASCII [32, 126]|[' ', '~'] is 96 glyphs
-        korl_shared_const u16 GLYPH_ALPHA_BUFFER_SIZE_XY = 512;
+        korl_shared_const int GLYPH_CODE_FIRST       = ' ';
+        korl_shared_const int GLYPH_CODE_LAST        = '~';// ASCII [32, 126]|[' ', '~'] is 95 glyphs
+        korl_shared_const u16 GLYPH_PAGE_SQUARE_SIZE = 512;
+        korl_shared_const u16 PACK_ROWS_CAPACITY     = 64;
+        const int glyphDataSize = GLYPH_CODE_LAST - GLYPH_CODE_FIRST + 1;
         const u$ assetNameFontBufferSize = korl_memory_stringSize(batch->_assetNameFont) + 1/*null terminator*/;
         const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*batch->_assetNameFont);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
+            + sizeof(_Korl_Gfx_FontGlyphPage)
+            + PACK_ROWS_CAPACITY*sizeof(_Korl_Gfx_FontGlyphBitmapPackRow)
+            + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE// glyph page bitmap (data)
             + assetNameFontBufferBytes
-            + GLYPH_ALPHA_BUFFER_SIZE_XY*GLYPH_ALPHA_BUFFER_SIZE_XY
-            + GLYPH_DATA_SIZE*sizeof(stbtt_bakedchar);
+            + glyphDataSize*sizeof(_Korl_Gfx_FontGlyphBakedCharacter);
         /* allocate the required memory from the korl-gfx context allocator */
         *newFontCache = korl_allocate(context->allocatorHandle, fontCacheRequiredBytes);
-        /* initialize the memory 
-            - note that it should already all be nullified by the allocator
-            - the data structures referenced by the _Korl_Gfx_FontCache struct 
-              all point to contiguous regions of memory immediately following 
-              the struct itself */
-        (*newFontCache)->alphaGlyphImageBufferSizeX  = GLYPH_ALPHA_BUFFER_SIZE_XY;
-        (*newFontCache)->alphaGlyphImageBufferSizeY  = GLYPH_ALPHA_BUFFER_SIZE_XY;
-        (*newFontCache)->glyphDataFirstCharacterCode = GLYPH_FIRST_CODE;
-        (*newFontCache)->glyphDataSize               = GLYPH_DATA_SIZE;
-        (*newFontCache)->pixelHeight                 = batch->_textPixelHeight;
-        (*newFontCache)->fontAssetName               = KORL_C_CAST(wchar_t*, (*newFontCache) + 1);
-        (*newFontCache)->alphaGlyphImageBuffer       = KORL_C_CAST(u8*, (*newFontCache)->fontAssetName) + assetNameFontBufferBytes;
-        (*newFontCache)->glyphData                   = KORL_C_CAST(stbtt_bakedchar*, KORL_C_CAST(u8*, (*newFontCache)->alphaGlyphImageBuffer) + GLYPH_ALPHA_BUFFER_SIZE_XY*GLYPH_ALPHA_BUFFER_SIZE_XY);
+        /* initialize the memory */
+#if KORL_DEBUG
+        korl_assert(korl_memory_isNull(*newFontCache, fontCacheRequiredBytes));
+#endif//KORL_DEBUG
+        (*newFontCache)->glyphDataCodepointStart = GLYPH_CODE_FIRST;
+        (*newFontCache)->glyphDataCodepointCount = glyphDataSize;
+        (*newFontCache)->pixelHeight             = batch->_textPixelHeight;
+        (*newFontCache)->pixelOutlineThickness   = batch->_textPixelOutline;
+        (*newFontCache)->fontAssetName           = KORL_C_CAST(wchar_t*, (*newFontCache) + 1);
+        (*newFontCache)->glyphData               = KORL_C_CAST(_Korl_Gfx_FontGlyphBakedCharacter*, KORL_C_CAST(u8*, (*newFontCache)->fontAssetName) + assetNameFontBufferBytes);
+        (*newFontCache)->glyphPage               = KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, (*newFontCache)->glyphData)     + glyphDataSize*sizeof(*(*newFontCache)->glyphData));
+        _Korl_Gfx_FontGlyphPage*const glyphPage = (*newFontCache)->glyphPage;
+        glyphPage->packRowsCapacity = PACK_ROWS_CAPACITY;
+        glyphPage->dataSquareSize   = GLYPH_PAGE_SQUARE_SIZE;
+        glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1);
+        glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(batch->_assetNameFont, (*newFontCache)->fontAssetName, assetNameFontBufferSize));
+        /* initialize the font info using the raw font asset data */
+        korl_assert(stbtt_InitFont(&((*newFontCache)->fontInfo), assetDataFont.data, 0/*font offset*/));
+        const f32 glyphScale = stbtt_ScaleForPixelHeight(&((*newFontCache)->fontInfo), (*newFontCache)->pixelHeight);
+        stbtt_GetFontVMetrics(&((*newFontCache)->fontInfo), &((*newFontCache)->fontAscent), &((*newFontCache)->fontDescent), &((*newFontCache)->fontLineGap));
+        /* iterate over all of our pre-determined glyph codepoints and bake them 
+            into the font cache's glyph page data */
+        for(int c = 0; c < (*newFontCache)->glyphDataCodepointCount; c++)
+        {
+            const int glyphIndex = stbtt_FindGlyphIndex(&((*newFontCache)->fontInfo), 
+                                                        c + (*newFontCache)->glyphDataCodepointStart);
+            int advanceX;
+            int bearingLeft;
+            stbtt_GetGlyphHMetrics(&((*newFontCache)->fontInfo), glyphIndex, &advanceX, &bearingLeft);
+            _Korl_Gfx_FontGlyphBakedCharacter*const bakedChar = &((*newFontCache)->glyphData[c]);
+            korl_memory_zero(bakedChar, sizeof(*bakedChar));
+            bakedChar->glyphIndex  = glyphIndex;
+            bakedChar->isEmpty     = stbtt_IsGlyphEmpty(&((*newFontCache)->fontInfo), glyphIndex);
+            bakedChar->advanceX    = glyphScale*KORL_C_CAST(f32, advanceX   );
+            bakedChar->bearingLeft = glyphScale*KORL_C_CAST(f32, bearingLeft);
+            if(bakedChar->isEmpty)
+                continue;
+#if 1
+            int ix0, iy0, ix1, iy1;
+            stbtt_GetGlyphBitmapBox(&((*newFontCache)->fontInfo), glyphIndex, glyphScale, glyphScale, &ix0, &iy0, &ix1, &iy1);
+            const int w = ix1 - ix0;
+            const int h = iy1 - iy0;
+            const f32 offsetX = -bakedChar->bearingLeft;
+            const f32 offsetY = KORL_C_CAST(f32, iy0);
+#else//@TODO: use the SDF API for generating glyph outline bitmaps
+            const u8 on_edge_value     = 180;
+            const int padding          = 3;//@TODO: change this based on (*newFontCache)->pixelOutlineThickness when we are adding outline glyphs
+            const f32 pixel_dist_scale = KORL_C_CAST(f32, on_edge_value)/KORL_C_CAST(f32, padding);
+            int w, h, offsetX, offsetY;
+            u8* bitmapSdf = stbtt_GetGlyphSDF(&((*newFontCache)->fontInfo), 
+                                              glyphScale, glyphIndex, 
+                                              padding, on_edge_value, pixel_dist_scale, 
+                                              &w, &h, &offsetX, &offsetY);
+            korl_assert(bitmapSdf);
+#endif
+            /* find the pack row which fulfills the following conditions:
+                - sizeY is the smallest among all pack rows that satisfy the following conditions
+                - remaining size on the X axis can contain `w` pixels */
+            korl_shared_const u16 PACK_ROW_PADDING = 1;
+            u16 packRowIndex = glyphPage->packRowsCapacity;
+            u16 packRowSizeY = KORL_U16_MAX;
+            for(u16 p = 0; p < glyphPage->packRowsSize; p++)
+            {
+                if(glyphPage->packRows[p].offsetX > glyphPage->dataSquareSize)
+                    continue;
+                const u16 remainingSpaceX = glyphPage->dataSquareSize 
+                                          - glyphPage->packRows[p].offsetX;
+                if(    glyphPage->packRows[p].sizeY < h + 2*PACK_ROW_PADDING 
+                    || remainingSpaceX              < w + 2*PACK_ROW_PADDING)
+                    continue;
+                if(packRowSizeY > glyphPage->packRows[p].sizeY)
+                {
+                    packRowIndex = p;
+                    packRowSizeY = glyphPage->packRows[p].sizeY;
+                }
+            }
+            /* if we couldn't find a pack row, we need to allocate a new one */
+            if(packRowIndex == glyphPage->packRowsCapacity)
+            {
+                korl_assert(w + 2*PACK_ROW_PADDING <= glyphPage->dataSquareSize);
+                if(glyphPage->packRowsSize == 0)
+                    korl_assert(h + 2*PACK_ROW_PADDING <= glyphPage->dataSquareSize);
+                else
+                    korl_assert(h + 2*PACK_ROW_PADDING + glyphPage->packRows[glyphPage->packRowsSize - 1].sizeY <= glyphPage->dataSquareSize);
+                korl_assert(glyphPage->packRowsSize < glyphPage->packRowsCapacity);
+                packRowIndex = glyphPage->packRowsSize++;
+                glyphPage->packRows[packRowIndex].sizeY   = korl_checkCast_i$_to_u16(h + 2*PACK_ROW_PADDING);
+                glyphPage->packRows[packRowIndex].offsetX = PACK_ROW_PADDING;
+                if(packRowIndex > 0)
+                    glyphPage->packRows[packRowIndex].offsetY = glyphPage->packRows[packRowIndex - 1].offsetY 
+                                                              + glyphPage->packRows[packRowIndex - 1].sizeY;
+                else
+                    glyphPage->packRows[packRowIndex].offsetY = PACK_ROW_PADDING;
+            }
+            korl_assert(packRowIndex < glyphPage->packRowsSize);
+            /* At this point, we should be guaranteed to have a pack row which 
+                can fit our SDF glyph!  This means we can generate all of the 
+                metrics related to the baked form of this glyph: */
+            bakedChar->x0         = glyphPage->packRows[packRowIndex].offsetX;
+            bakedChar->y0         = glyphPage->packRows[packRowIndex].offsetY;
+            bakedChar->x1         = korl_checkCast_i$_to_u16(bakedChar->x0 + w);
+            bakedChar->y1         = korl_checkCast_i$_to_u16(bakedChar->y0 + h);
+#if 1
+            bakedChar->offset.x   = offsetX;
+            bakedChar->offset.y   = offsetY;
+#else//@TODO: use the SDF API for generating glyph outline bitmaps
+            bakedChar->offset.x   = korl_checkCast_i$_to_f32(offsetX);
+            bakedChar->offset.y   = korl_checkCast_i$_to_f32(offsetY);
+#endif
+#if 1
+            /* make the glyph bitmap in the glyph page data */
+            stbtt_MakeGlyphBitmap(&((*newFontCache)->fontInfo), glyphPage->data + (bakedChar->y0*glyphPage->dataSquareSize + bakedChar->x0), 
+                                  w, h, glyphPage->dataSquareSize, 
+                                  glyphScale, glyphScale, glyphIndex);
+#else//@TODO: use the SDF API for generating glyph outline bitmaps
+            /* place the processed SDF glyph into the glyph page */
+            for(int cy = 0; cy < h; cy++)
+            {
+                const int py = bakedChar->y0 + cy;
+                for(int cx = 0; cx < w; cx++)
+                {
+                    const int px = bakedChar->x0 + cx;
+                    glyphPage->data[py*glyphPage->dataSquareSize + px] = bitmapSdf[cy*w + cx] >= on_edge_value ? 255 : 0;
+                    ///@TODO: update this formula to account for outline thickness
+                    ///@TODO: apply anti-aliasing of some kind?
+                }
+            }
+#endif
+            /* update the pack row metrics */
+            glyphPage->packRows[packRowIndex].offsetX += korl_checkCast_i$_to_u16(w + PACK_ROW_PADDING);
+            /**/
+#if 1
+#else//@TODO: use the SDF API for generating glyph outline bitmaps
+            stbtt_FreeSDF(bitmapSdf, NULL);
+#endif
+        }
+        /* debug print the glyph page data :) */
+#if KORL_DEBUG
+        korl_shared_const wchar_t PIXEL_CHARS[] = L" ░▒▓█";
+        wchar_t debugPixelCharBuffer[512 + 1];
+        debugPixelCharBuffer[512] = L'\0';
+        for(u16 y = 0; y < glyphPage->dataSquareSize; y++)
+        {
+            for(u16 x = 0; x < glyphPage->dataSquareSize; x++)
+            {
+                const u8 pixel = glyphPage->data[y*glyphPage->dataSquareSize + x];
+#if 0
+#if 1
+                if(pixel)
+                    debugPixelCharBuffer[x] = L'█';
+                else
+                    debugPixelCharBuffer[x] = L' ';
+#else
+                debugPixelCharBuffer[x] = PIXEL_CHARS[KORL_MATH_CLAMP(pixel/(255/5), 0, korl_arraySize(PIXEL_CHARS) - 1)];
+#endif
+#else
+                if(pixel == 0)
+                    debugPixelCharBuffer[x] = PIXEL_CHARS[0];
+                else if(pixel == 255)
+                    debugPixelCharBuffer[x] = PIXEL_CHARS[4];
+                else if(pixel < 85)
+                    debugPixelCharBuffer[x] = PIXEL_CHARS[1];
+                else if(pixel < 170)
+                    debugPixelCharBuffer[x] = PIXEL_CHARS[2];
+                else
+                    debugPixelCharBuffer[x] = PIXEL_CHARS[3];
+#endif
+            }
+            korl_log_noMeta(VERBOSE, "%ws", debugPixelCharBuffer);
+        }
+#endif
+        /* upload the glyph data to the GPU & obtain texture handle */
+        ///@TODO:
+    }
+#if 0//@TODO: recycle
         /* at this point, we can just pre-bake the entire range of glyphs we 
             need in order to use this font */
         //KORL-ISSUE-000-000-003
@@ -692,6 +867,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     result->_vertexIndexCount = korl_checkCast_u$_to_u32(textVisibleCharacterCount*6);
     result->_vertexCount      = korl_checkCast_u$_to_u32(textVisibleCharacterCount*4);
     result->_textPixelHeight  = textPixelHeight;
+    result->_textPixelOutline = 0.f;
     result->_assetNameFont    = KORL_C_CAST(wchar_t*, result + 1);
     result->_text             = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, result->_assetNameFont) + assetNameFontBytes);
     result->opColor           = KORL_BLEND_OP_ADD;
