@@ -47,6 +47,7 @@ _STATIC_ASSERT(sizeof(u64) == 8);
 _STATIC_ASSERT(sizeof(f32) == 4);
 _STATIC_ASSERT(sizeof(f64) == 8);
 /* definitions for useful values of these primitive types */
+#define KORL_U8_MAX  0xFF
 #define KORL_U16_MAX 0xFFFF
 #define KORL_U32_MAX 0xFFFFFFFF
 #define KORL_F32_MIN      (-3.402823466e+38F)
