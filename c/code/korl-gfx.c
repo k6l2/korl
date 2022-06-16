@@ -124,8 +124,7 @@ korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyp
  * [ bottom-left
  * , bottom-right
  * , top-right
- * , top-left ] 
- * @TODO: adjust this documentation if this changes */
+ * , top-left ] */
 korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
@@ -756,7 +755,6 @@ korl_internal void korl_gfx_clearFontCache(void)
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     for(Korl_MemoryPool_Size fc = 0; fc < KORL_MEMORY_POOL_SIZE(context->fontCaches); fc++)
     {
-        ///@TODO: now that glyph atlas can potentially span multiple textures, this code must become slightly more complex
         korl_free(context->allocatorHandle, context->fontCaches[fc]);
     }
     KORL_MEMORY_POOL_EMPTY(context->fontCaches);
@@ -1156,9 +1154,6 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
 {
-    const Korl_Vulkan_Color4u8 color        = {255,255,255,255};///@TODO: make this a parameter
-    const Korl_Vulkan_Color4u8 colorOutline = {  0,  0,  0,255};///@TODO: make this a parameter
-    const f32 outlinePixelSize = 3.f;                           ///@TODO: make this a parameter
     korl_assert(text);
     korl_assert(textPixelHeight  >= 1.f);
     korl_assert(outlinePixelSize >= 0.f);
@@ -1308,6 +1303,11 @@ korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB(korl_gfx_batchTextGetAabb)
     if(!batchContext->_fontTextureHandle)
         return (Korl_Math_Aabb2f32){{0, 0}, {0, 0}};
     return batchContext->_textAabb;
+}
+korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR(korl_gfx_batchTextSetPositionAnchor)
+{
+    korl_assert(batchContext->_text && batchContext->_assetNameFont);
+    batchContext->_textPositionAnchor = textPositionAnchor;
 }
 korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(korl_gfx_batchRectangleSetSize)
 {

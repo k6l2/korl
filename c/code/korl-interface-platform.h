@@ -360,8 +360,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(name)              Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(name)           Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, u32 triangleCount)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_LINES(name)               Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
-///@TODO: add outline & color parameters to CREATE_BATCH_TEXT
-#define KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(name)                Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight)
+#define KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(name)                Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight, Korl_Vulkan_Color4u8 color, f32 outlinePixelSize, Korl_Vulkan_Color4u8 colorOutline)
 #define KORL_PLATFORM_GFX_BATCH_SET_BLEND_STATE(name)            void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget)
 #define KORL_PLATFORM_GFX_BATCH_SET_POSITION(name)               void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Position position)
 #define KORL_PLATFORM_GFX_BATCH_SET_POSITION_2D(name)            void               name(Korl_Gfx_Batch*const context, f32 x, f32 y)
@@ -373,7 +372,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH_ADD_LINE(name)                   void               name(Korl_Gfx_Batch**const pContext, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color4u8 color0, Korl_Vulkan_Color4u8 color1)
 #define KORL_PLATFORM_GFX_BATCH_SET_LINE(name)                   void               name(Korl_Gfx_Batch*const context, u32 lineIndex, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB(name)              Korl_Math_Aabb2f32 name(Korl_Gfx_Batch*const batchContext)
-///@TODO: add text set position anchor API
+#define KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR(name)   void               name(Korl_Gfx_Batch*const batchContext, Korl_Math_V2f32 textPositionAnchor)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(name)         void               name(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(name)        void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
@@ -393,7 +392,7 @@ typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_all
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE         (fnSig_korl_memory_allocator_reallocate);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_FREE               (fnSig_korl_memory_allocator_free);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY              (fnSig_korl_memory_allocator_empty);
-typedef KORL_PLATFORM_ASSETCACHE_GET                       (fnSig_korl_assetCache_get);
+typedef KORL_PLATFORM_ASSETCACHE_GET                      (fnSig_korl_assetCache_get);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_FOV               (fnSig_korl_gfx_createCameraFov);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO             (fnSig_korl_gfx_createCameraOrtho);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(fnSig_korl_gfx_createCameraOrthoFixedHeight);
@@ -420,6 +419,7 @@ typedef KORL_PLATFORM_GFX_BATCH_SET_VERTEX_COLOR          (fnSig_korl_gfx_batchS
 typedef KORL_PLATFORM_GFX_BATCH_ADD_LINE                  (fnSig_korl_gfx_batchAddLine);
 typedef KORL_PLATFORM_GFX_BATCH_SET_LINE                  (fnSig_korl_gfx_batchSetLine);
 typedef KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB             (fnSig_korl_gfx_batchTextGetAabb);
+typedef KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR  (fnSig_korl_gfx_batchTextSetPositionAnchor);
 typedef KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE        (fnSig_korl_gfx_batchRectangleSetSize);
 typedef KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR       (fnSig_korl_gfx_batchRectangleSetColor);
 typedef KORL_PLATFORM_GUI_SET_FONT_ASSET                  (fnSig_korl_gui_setFontAsset);
@@ -472,6 +472,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gfx_batchAddLine*                 korl_gfx_batchAddLine;\
     fnSig_korl_gfx_batchSetLine*                 korl_gfx_batchSetLine;\
     fnSig_korl_gfx_batchTextGetAabb*             korl_gfx_batchTextGetAabb;\
+    fnSig_korl_gfx_batchTextSetPositionAnchor*   korl_gfx_batchTextSetPositionAnchor;\
     fnSig_korl_gfx_batchRectangleSetSize*        korl_gfx_batchRectangleSetSize;\
     fnSig_korl_gfx_batchRectangleSetColor*       korl_gfx_batchRectangleSetColor;\
     fnSig_korl_gui_setFontAsset*                 korl_gui_setFontAsset;\
@@ -524,6 +525,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gfx_batchAddLine                 = korl_gfx_batchAddLine;\
     (apiVariableName).korl_gfx_batchSetLine                 = korl_gfx_batchSetLine;\
     (apiVariableName).korl_gfx_batchTextGetAabb             = korl_gfx_batchTextGetAabb;\
+    (apiVariableName).korl_gfx_batchTextSetPositionAnchor   = korl_gfx_batchTextSetPositionAnchor;\
     (apiVariableName).korl_gfx_batchRectangleSetSize        = korl_gfx_batchRectangleSetSize;\
     (apiVariableName).korl_gfx_batchRectangleSetColor       = korl_gfx_batchRectangleSetColor;\
     (apiVariableName).korl_gui_setFontAsset                 = korl_gui_setFontAsset;\
@@ -576,6 +578,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_gfx_batchAddLine                 = (apiVariableName).korl_gfx_batchAddLine;\
     korl_gfx_batchSetLine                 = (apiVariableName).korl_gfx_batchSetLine;\
     korl_gfx_batchTextGetAabb             = (apiVariableName).korl_gfx_batchTextGetAabb;\
+    korl_gfx_batchTextSetPositionAnchor   = (apiVariableName).korl_gfx_batchTextSetPositionAnchor;\
     korl_gfx_batchRectangleSetSize        = (apiVariableName).korl_gfx_batchRectangleSetSize;\
     korl_gfx_batchRectangleSetColor       = (apiVariableName).korl_gfx_batchRectangleSetColor;\
     korl_gui_setFontAsset                 = (apiVariableName).korl_gui_setFontAsset;\

@@ -84,6 +84,9 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color4u8 colorScrollBar;
         Korl_Vulkan_Color4u8 colorScrollBarActive;
         Korl_Vulkan_Color4u8 colorScrollBarPressed;
+        Korl_Vulkan_Color4u8 colorText;
+        Korl_Vulkan_Color4u8 colorTextOutline;
+        f32 textOutlinePixelSize;
         const wchar_t* fontWindowText;
         f32 windowTextPixelSizeY;
         f32 windowTitleBarPixelSizeY;
