@@ -8,7 +8,7 @@
 /* C doesn't have bool by default until we include this I guess */
 #include <stdbool.h>
 /* for wchar_t */
-#include <stddef.h>
+#include <stddef.h>// note that this pulls in <corecrt.h>!!!
 /* support for stdalign.h, since MSVC just doesn't have this I guess */
 #if defined(_MSC_VER) && !defined(__cplusplus)
     #define alignof _Alignof
@@ -50,6 +50,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #define KORL_U8_MAX  0xFF
 #define KORL_U16_MAX 0xFFFF
 #define KORL_U32_MAX 0xFFFFFFFF
+#define KORL_U64_MAX 0xFFFFFFFFFFFFFFFF
 #define KORL_F32_MIN      (-3.402823466e+38F)
 #define KORL_F32_SMALLEST ( 1.175494351e-38F)
 #define KORL_F32_MAX      ( 3.402823466e+38F)

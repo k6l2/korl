@@ -71,8 +71,8 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             widget->cachedIsInteractive = false;
             if(batchGraphics)
             {
-                //KORL-ISSUE-000-000-008
-                korl_gfx_batchSetPosition2d(batchText, widgetCursor.x, widgetCursor.y - batchTextAabbSize.y);
+                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
+                korl_gfx_batchSetPosition2d(batchText, widgetCursor.x, widgetCursor.y);
                 korl_time_probeStart(gfx_batch);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 korl_time_probeStop(gfx_batch);
@@ -108,10 +108,10 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
                     }
                 }
                 korl_gfx_batch(batchButton, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                //KORL-ISSUE-000-000-008
+                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
                 korl_gfx_batchSetPosition2d(batchText, 
                                             widgetCursor.x + context->style.widgetButtonLabelMargin, 
-                                            widgetCursor.y - context->style.widgetButtonLabelMargin - batchTextAabbSize.y);
+                                            widgetCursor.y - context->style.widgetButtonLabelMargin);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             }
             break;}
@@ -143,7 +143,7 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.fontWindowText                 = NULL;// just use the default font inside korl-gfx
     _korl_gui_context.style.windowTextPixelSizeY           = 24.f;
     _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;
-    _korl_gui_context.style.widgetSpacingY                 = 3.f;
+    _korl_gui_context.style.widgetSpacingY                 = 0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        = 4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
 }

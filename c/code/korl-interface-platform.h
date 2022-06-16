@@ -316,15 +316,23 @@ typedef struct Korl_Gfx_Batch
     //KORL-PERFORMANCE-000-000-017: GFX; separate batch capacity with batch vertex/index counts
     u32 _vertexIndexCount;
     u32 _vertexCount;
-    f32 _textPixelHeight;
-    f32 _textPixelOutline;
-    u$ _textVisibleCharacterCount;
+    f32                  _textPixelHeight;
+    f32                  _textPixelOutline;
+    u$                   _textVisibleCharacterCount;
     Korl_Vulkan_Color4u8 _textColor;
     Korl_Vulkan_Color4u8 _textColorOutline;
+    Korl_Math_Aabb2f32   _textAabb;
+    /** A value of \c {0,0} means the text will be drawn such that the 
+     * bottom-left corner of the text AABB will be equivalent to \c _position .  
+     * A value of \c {1,1} means the text will be drawn such that the top-right 
+     * corner of the text AABB will be equivalent to \c _position .  
+     * Default value is \c {0,1} (upper-left corner of text AABB will be located 
+     * at \c _position ). */
+    Korl_Math_V2f32      _textPositionAnchor;
     wchar_t* _assetNameTexture;
-    //KORL-PERFORMANCE-000-000-002
+    //KORL-PERFORMANCE-000-000-002: memory: you will never have a texture & font asset at the same time, so we could potentially overload this to the same string pointer
     wchar_t* _assetNameFont;
-    //KORL-PERFORMANCE-000-000-003
+    //KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
     wchar_t* _text;
     Korl_Vulkan_BlendOperation opColor;       // only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
     Korl_Vulkan_BlendFactor factorColorSource;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
@@ -365,6 +373,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH_ADD_LINE(name)                   void               name(Korl_Gfx_Batch**const pContext, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color4u8 color0, Korl_Vulkan_Color4u8 color1)
 #define KORL_PLATFORM_GFX_BATCH_SET_LINE(name)                   void               name(Korl_Gfx_Batch*const context, u32 lineIndex, Korl_Vulkan_Position p0, Korl_Vulkan_Position p1, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB(name)              Korl_Math_Aabb2f32 name(Korl_Gfx_Batch*const batchContext)
+///@TODO: add text set position anchor API
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(name)         void               name(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(name)        void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);

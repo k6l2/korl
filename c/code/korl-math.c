@@ -184,6 +184,11 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_divide(Korl_Math_V2f32 vA, Korl_Ma
     vA.elements[1] /= vB.elements[1];
     return vA;
 }
+korl_internal void korl_math_v2f32_assignAdd(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB)
+{
+    vA->elements[0] += vB.elements[0];
+    vA->elements[1] += vB.elements[1];
+}
 korl_internal void korl_math_v2f32_assignAddScalar(Korl_Math_V2f32*const v, f32 scalar)
 {
     v->elements[0] += scalar;
