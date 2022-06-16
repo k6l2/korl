@@ -318,6 +318,9 @@ typedef struct Korl_Gfx_Batch
     u32 _vertexCount;
     f32 _textPixelHeight;
     f32 _textPixelOutline;
+    u$ _textVisibleCharacterCount;
+    Korl_Vulkan_Color4u8 _textColor;
+    Korl_Vulkan_Color4u8 _textColorOutline;
     wchar_t* _assetNameTexture;
     //KORL-PERFORMANCE-000-000-002
     wchar_t* _assetNameFont;

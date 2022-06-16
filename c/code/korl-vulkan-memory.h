@@ -62,7 +62,7 @@ typedef struct _Korl_Vulkan_DeviceMemoryLinear
     VkMemoryPropertyFlags memoryPropertyFlags;
     VkDeviceSize byteSize;
     VkDeviceSize bytesAllocated;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceMemory_Alloctation, allocations, 64);
+    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceMemory_Alloctation, allocations, 1024);
 } _Korl_Vulkan_DeviceMemoryLinear;
 /**
  * \param bufferUsageFlags If this allocator is going to be used to allocate any 
@@ -94,3 +94,5 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags, 
     VkImageAspectFlags imageAspectFlags, VkFormat imageFormat, 
     VkImageTiling imageTiling);
+korl_internal void _korl_vulkan_deviceMemoryLinear_free(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
+                                                        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation);

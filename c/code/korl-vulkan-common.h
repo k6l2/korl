@@ -118,8 +118,10 @@ typedef struct _Korl_Vulkan_Context
     VkCommandPool commandPoolTransfer;
     //KORL-ISSUE-000-000-015: add shader module collection
     VkShaderModule shaderBatchVertColor;
+    VkShaderModule shaderBatchVertColorTexture;
     VkShaderModule shaderBatchVertTexture;
     VkShaderModule shaderBatchFragColor;
+    VkShaderModule shaderBatchFragColorTexture;
     VkShaderModule shaderBatchFragTexture;
     //KORL-ISSUE-000-000-016: robustness: use KORL_MEMORY_POOL_* API, or something similar
     u32 pipelinesCount;

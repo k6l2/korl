@@ -127,6 +127,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     korl_assert(!KORL_MEMORY_POOL_ISFULL(deviceMemoryLinear->allocations));
+    //KORL-ISSUE-000-000-071: vulkan-memory: linear allocation addresses are vulnerable to fragmentation
     _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
     result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER;
     /* create the buffer with the given parameters */
@@ -166,6 +167,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     korl_assert(!KORL_MEMORY_POOL_ISFULL(deviceMemoryLinear->allocations));
+    //KORL-ISSUE-000-000-071: vulkan-memory: linear allocation addresses are vulnerable to fragmentation
     _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
     result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE;
     /* create the image with the given parameters */
@@ -245,6 +247,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     korl_assert(!KORL_MEMORY_POOL_ISFULL(deviceMemoryLinear->allocations));
+    //KORL-ISSUE-000-000-071: vulkan-memory: linear allocation addresses are vulnerable to fragmentation
     _Korl_Vulkan_DeviceMemory_Alloctation* result = KORL_MEMORY_POOL_ADD(deviceMemoryLinear->allocations);
     result->type = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE_BUFFER;
     /* create the image with the given parameters */
@@ -293,4 +296,37 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     createInfoImageView.subresourceRange.layerCount     = 1;
     _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &result->deviceObject.texture.imageView));
     return result;
+}
+korl_internal void _korl_vulkan_deviceMemoryLinear_free(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
+                                                        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /* find the allocation in the allocator */
+    Korl_MemoryPool_Size a = 0;
+    for(; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
+        if(&deviceMemoryLinear->allocations[a] == allocation && allocation->type != _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+            break;
+    korl_assert(a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations));
+    /* destroy vulkan objects associated with this device memory object */
+    _korl_vulkan_deviceMemory_allocation_destroy(&deviceMemoryLinear->allocations[a]);
+    /* free up as many unallocated allocations as possible */
+    while(!KORL_MEMORY_POOL_ISEMPTY(deviceMemoryLinear->allocations))
+    {
+        if(deviceMemoryLinear->allocations[KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations) - 1].type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+            //KORL-ISSUE-000-000-071: vulkan-memory: linear allocation addresses are vulnerable to fragmentation
+            KORL_MEMORY_POOL_REMOVE(deviceMemoryLinear->allocations, KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations) - 1);
+        else
+            break;
+    }
+    /* recalculate the allocator's metrics */
+    VkDeviceSize highestAllocationEndOffset = 0;
+    for(a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
+    {
+        if(deviceMemoryLinear->allocations[a].type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+            continue;
+        const VkDeviceSize allocationEndOffset = deviceMemoryLinear->allocations[a].byteOffset + deviceMemoryLinear->allocations[a].byteSize;
+        if(allocationEndOffset > highestAllocationEndOffset)
+            highestAllocationEndOffset = allocationEndOffset;
+    }
+    deviceMemoryLinear->bytesAllocated = highestAllocationEndOffset;
 }
