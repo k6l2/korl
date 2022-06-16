@@ -134,7 +134,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags);
     if(!assetDataFont.data)
         return;
-#if 1// @TODO: delete, or maybe keep this around for debugging later?; testing stb_truetype bitmap rendering API:
+#if KORL_DEBUG && 0// testing stb_truetype bitmap rendering API
     korl_shared_variable bool bitmapTestDone = false;
     if(!bitmapTestDone)
     {
@@ -178,8 +178,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         }
         stbtt_FreeBitmap(bitmap, NULL);
     }
-#endif
-#if 0// @TODO: delete, or maybe keep this around for debugging later?; stb_truetype testing SDF API:
+#endif// testing stb_truetype bitmap rendering API
+#if KORL_DEBUG && 0// stb_truetype testing SDF API
     korl_shared_variable bool sdfTestDone = false;
     if(!sdfTestDone)
     {
@@ -292,7 +292,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
 #endif
         stbtt_FreeSDF(bitmapSdf, NULL);
     }
-#endif
+#endif// stb_truetype testing SDF API
     /* check and see if a matching font cache already exists */
     u$ existingFontCacheIndex = 0;
     bool bakeGlyphs        = false;
@@ -397,7 +397,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                            &bakedChar->bbox.y1);
                 bakedChar->bbox.offsetX = bakedChar->bearingLeft;
                 bakedChar->bbox.offsetY = -KORL_C_CAST(f32, iy1);
-                /* actually write  the glyph bitmap in the glyph page data */
+                /* actually write the glyph bitmap in the glyph page data */
                 stbtt_MakeGlyphBitmap(&(fontCache->fontInfo), 
                                       glyphPage->data + (bakedChar->bbox.y0*glyphPage->dataSquareSize + bakedChar->bbox.x0), 
                                       w, h, glyphPage->dataSquareSize, 
@@ -420,8 +420,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                            &bakedChar->bboxOutline.y0, 
                                            &bakedChar->bboxOutline.x1, 
                                            &bakedChar->bboxOutline.y1);
-                bakedChar->bboxOutline.offsetY =  KORL_C_CAST(f32, offsetX);
-                bakedChar->bboxOutline.offsetY = -KORL_C_CAST(f32, offsetY);
+                bakedChar->bboxOutline.offsetX =  KORL_C_CAST(f32,     offsetX);
+                bakedChar->bboxOutline.offsetY = -KORL_C_CAST(f32, h + offsetY);
                 /* place the processed SDF glyph into the glyph page */
                 for(int cy = 0; cy < h; cy++)
                     for(int cx = 0; cx < w; cx++)
@@ -584,7 +584,6 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     if(outlinePass)
     {
         textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
-        currentGlyph = 0;///TODO: no! don't reset currentGlyph!  This will eliminate the outline glyphs
         for(const wchar_t* character = batch->_text; *character; character++)
         {
             korl_assert(*character >= fontCache->glyphDataCodepointStart && *character < fontCache->glyphDataCodepointStart + fontCache->glyphDataCodepointCount);//KORL-ISSUE-000-000-070: gfx/fontCache: Either cache glyphs dynamically instead of a fixed region all at once, or devise some way to configure the pre-cached range.
@@ -595,6 +594,15 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         const f32 x1 = x0 + (bbox->x1 - bbox->x0);
         const f32 y1 = y0 + (bbox->y1 - bbox->y0);
         textBaselineCursor.x += fontCache->glyphData[characterOffset].advanceX;
+        if(*(character + 1))
+        {
+            korl_assert(*(character + 1) >= fontCache->glyphDataCodepointStart && *(character + 1) < fontCache->glyphDataCodepointStart + fontCache->glyphDataCodepointCount);//KORL-ISSUE-000-000-070: gfx/fontCache: Either cache glyphs dynamically instead of a fixed region all at once, or devise some way to configure the pre-cached range.
+            const u$ characterOffsetNext = *(character + 1) - fontCache->glyphDataCodepointStart;
+            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo, 
+                                                              fontCache->glyphData[characterOffset    ].glyphIndex, 
+                                                              fontCache->glyphData[characterOffsetNext].glyphIndex);
+            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
+        }
         const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
         const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
         const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
@@ -645,7 +653,7 @@ korl_internal void korl_gfx_clearFontCache(void)
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     for(Korl_MemoryPool_Size fc = 0; fc < KORL_MEMORY_POOL_SIZE(context->fontCaches); fc++)
     {
-        ///@TODO: now that glyph atlas can potentially span multiple textures, this code must become slightly more complext
+        ///@TODO: now that glyph atlas can potentially span multiple textures, this code must become slightly more complex
         korl_free(context->allocatorHandle, context->fontCaches[fc]);
     }
     KORL_MEMORY_POOL_EMPTY(context->fontCaches);
@@ -795,7 +803,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     }
     if(batch->_assetNameFont && !batch->_fontTextureHandle)
     {
-        ///@TODO: uncomment this// korl_log(WARNING, "text batch mesh not yet obtained from font asset");
+        korl_log(WARNING, "text batch mesh not yet obtained from font asset");
         return;
     }
     u32 vertexIndexCount = batch->_vertexIndexCount;
