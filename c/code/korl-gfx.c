@@ -138,8 +138,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     korl_shared_variable bool bitmapTestDone = false;
     if(!bitmapTestDone)
     {
-        korl_shared_const int CODEPOINT = '_';
-        korl_shared_const f32 PIXEL_HEIGHT = 16.f;
+        korl_shared_const int CODEPOINT = 'C';
+        korl_shared_const f32 PIXEL_HEIGHT = 24.f;
         bitmapTestDone = true;
         korl_log(INFO, "===== stb_truetype bitmap test =====");
         stbtt_fontinfo fontInfo;
@@ -396,7 +396,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                            &bakedChar->bbox.x1, 
                                            &bakedChar->bbox.y1);
                 bakedChar->bbox.offsetX = bakedChar->bearingLeft;
-                bakedChar->bbox.offsetY = -KORL_C_CAST(f32, iy0);
+                bakedChar->bbox.offsetY = -KORL_C_CAST(f32, iy1);
                 /* actually write  the glyph bitmap in the glyph page data */
                 stbtt_MakeGlyphBitmap(&(fontCache->fontInfo), 
                                       glyphPage->data + (bakedChar->bbox.y0*glyphPage->dataSquareSize + bakedChar->bbox.x0), 
@@ -1044,7 +1044,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     korl_assert(textPixelHeight  >= 1.f);
     korl_assert(outlinePixelSize >= 0.f);
     if(!assetNameFont)
-        assetNameFont = L"test-assets/lulusma/Lulusma-x3oGK.otf";
+        assetNameFont = L"test-assets/source-sans/SourceSans3-Semibold.otf";
     /* calculate required amount of memory for the batch */
     const u$ assetNameFontBufferSize = korl_memory_stringSize(assetNameFont) + 1;
     const u$ assetNameFontBytes = assetNameFontBufferSize * sizeof(*assetNameFont);
