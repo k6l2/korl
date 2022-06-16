@@ -183,18 +183,19 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     korl_shared_variable bool sdfTestDone = false;
     if(!sdfTestDone)
     {
+        korl_shared_const int CODEPOINT = 'C';
         sdfTestDone = true;
         const f32 pixelOutlineThickness = 5.f;
         korl_log(INFO, "===== stb_truetype SDF test =====");
         stbtt_fontinfo fontInfo;
         korl_assert(stbtt_InitFont(&fontInfo, assetDataFont.data, 0/*font offset*/));
         int w, h, offsetX, offsetY;
-        const u8 on_edge_value     = 128;// This is rather arbitrary; it seems like we can just select any reasonable # here and it will be enough for most fonts/sizes.  This value seems rather finicky however...  So if we have to modify how any of this glyph outline stuff is drawn, this will likely have to change somehow.
+        const u8 on_edge_value     = 100;// This is rather arbitrary; it seems like we can just select any reasonable # here and it will be enough for most fonts/sizes.  This value seems rather finicky however...  So if we have to modify how any of this glyph outline stuff is drawn, this will likely have to change somehow.
         const int padding          = 1/*this is necessary to keep the SDF glyph outline from bleeding all the way to the bitmap edge*/ + KORL_C_CAST(int, korl_math_ceil(pixelOutlineThickness));
         const f32 pixel_dist_scale = KORL_C_CAST(f32, on_edge_value)/KORL_C_CAST(f32, padding);
         u8* bitmapSdf = stbtt_GetCodepointSDF(&fontInfo, 
-                                              stbtt_ScaleForPixelHeight(&fontInfo, /*batch->_textPixelHeight*/16), 
-                                              '*', padding, on_edge_value, pixel_dist_scale, 
+                                              stbtt_ScaleForPixelHeight(&fontInfo, batch->_textPixelHeight), 
+                                              CODEPOINT, padding, on_edge_value, pixel_dist_scale, 
                                               &w, &h, &offsetX, &offsetY);
         korl_assert(bitmapSdf);
         korl_log(INFO, "w: %d, h: %d, offsetX: %d, offsetY: %d", w, h, offsetX, offsetY);
@@ -323,7 +324,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         korl_shared_const int GLYPH_CODE_LAST        = '~';// ASCII [32, 126]|[' ', '~'] is 95 glyphs
         korl_shared_const u16 GLYPH_PAGE_SQUARE_SIZE = 512;
         korl_shared_const u16 PACK_ROWS_CAPACITY     = 64;
-        const int glyphDataSize = GLYPH_CODE_LAST - GLYPH_CODE_FIRST + 1;
+        const int glyphDataSize = GLYPH_CODE_LAST - GLYPH_CODE_FIRST + 1/*include GLYPH_CODE_LAST itself*/;
         const u$ assetNameFontBufferSize = korl_memory_stringSize(batch->_assetNameFont) + 1/*null terminator*/;
         const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*batch->_assetNameFont);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
@@ -350,7 +351,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
         glyphPage->packRowsCapacity = PACK_ROWS_CAPACITY;
         glyphPage->dataSquareSize   = GLYPH_PAGE_SQUARE_SIZE;
-        glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1);
+        glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1/*pointer arithmetic trick to skip to the address following the glyphPage*/);
         glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(batch->_assetNameFont, fontCache->fontAssetName, assetNameFontBufferSize));
         /* initialize the font info using the raw font asset data */
@@ -364,6 +365,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         fontCache->fontDescent = fontCache->fontScale*KORL_C_CAST(f32, descent);
         fontCache->fontLineGap = fontCache->fontScale*KORL_C_CAST(f32, lineGap);
     }
+    // at this point, `fontCache` should be _guaranteed_ to be valid //
     if(bakeGlyphs || bakeGlyphOutlines)
     {
         _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
@@ -405,7 +407,89 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
             }
             if(bakeGlyphOutlines)
             {
-                const u8 on_edge_value     = 128;// This is rather arbitrary; it seems like we can just select any reasonable # here and it will be enough for most fonts/sizes.  This value seems rather finicky however...  So if we have to modify how any of this glyph outline stuff is drawn, this will likely have to change somehow.
+#if 1
+                /* Originally I was using stb_truetype's SDF API to generate 
+                    glyph outlines, but as it turns out, that API just seems to 
+                    not work very well.  So instead, I'm going to try doing my 
+                    own janky shit and just use the original glyph bitmap in a 
+                    buffer, and then "expand" the bitmap according to the 
+                    desired outline thickness inside of a separate buffer.  */
+                /* determine how big the outline glyph needs to be based on the 
+                    original glyph size, since it _should_ be safe to assume 
+                    that all original glyphs are baked at this point */
+                const int w = bakedChar->bbox.x1 - bakedChar->bbox.x0;
+                const int h = bakedChar->bbox.y1 - bakedChar->bbox.y0;
+                const int outlineOffset = KORL_C_CAST(int, korl_math_ceil(fontCache->pixelOutlineThickness));
+                const int outlineW = w + 2*outlineOffset;
+                const int outlineH = h + 2*outlineOffset;
+                /* Allocate a temp buffer to store the outline glyph.  
+                    Technically, we don't _need_ to have a temp buffer as we 
+                    could just simply use the glyph page data and operate on 
+                    that memory, but we are going to be iterating over all 
+                    pixels of the glyph multiple times, so that would likely be 
+                    significantly more costly in memory operations (worse cache 
+                    locality). */
+                u8*const outlineBuffer = korl_allocate(context->allocatorHandle, (outlineW * outlineH) * sizeof(*outlineBuffer));
+#if KORL_DEBUG
+                korl_assert(korl_memory_isNull(outlineBuffer, (outlineW * outlineH) * sizeof(*outlineBuffer)));
+#endif
+                /* copy the baked glyph to the temp buffer, while making each 
+                    non-zero pixel fully opaque */
+                for(int y = 0; y < h; y++)
+                {
+                    const int pageY = bakedChar->bbox.y0 + y;
+                    for(int x = 0; x < w; x++)
+                    {
+                        const int pageX = bakedChar->bbox.x0 + x;
+                        if(fontCache->glyphPage->data[pageY*fontCache->glyphPage->dataSquareSize + pageX])
+                            outlineBuffer[(outlineOffset+y)*outlineW + (outlineOffset+x)] = 1;
+                    }
+                }
+                /* while we still haven't satisfied the font's pixel outline 
+                    thickness, iterate over each pixel and set empty pixels that 
+                    neighbor non-zero pixels to be the value of iteration 
+                    (brushfire expansion of the glyph) */
+                for(int t = 0; t < outlineOffset; t++)
+                    for(int y = 0; y < outlineH; y++)
+                        for(int x = 0; x < outlineW; x++)
+                        {
+                            if(outlineBuffer[y*outlineW + x])
+                                // only expand to unmodified pixels
+                                continue;
+                            // if any neighbor pixels are from the previous brushfire step, 
+                            //  we set this pixel to be in the current brushfire step:
+                            if(   (x > 0            && outlineBuffer[y*outlineW + (x - 1)] == t+1)
+                               || (x < outlineW - 1 && outlineBuffer[y*outlineW + (x + 1)] == t+1)
+                               || (y > 0            && outlineBuffer[(y - 1)*outlineW + x] == t+1)
+                               || (y < outlineH - 1 && outlineBuffer[(y + 1)*outlineW + x] == t+1))
+                                outlineBuffer[y*outlineW + x] = korl_checkCast_i$_to_u8(t+2);
+                        }
+                /* iterate over each pixel one final time, assigning final 
+                    values to the "brushfire" result pixels */
+                //KORL-ISSUE-000-000-072: gfx/fontCache: glyph outlines don't utilize f32 accuracy of the outline thickness parameter
+                for(int y = 0; y < outlineH; y++)
+                    for(int x = 0; x < outlineW; x++)
+                        if(outlineBuffer[y*outlineW + x])
+                            outlineBuffer[y*outlineW + x] = KORL_U8_MAX;
+                /* update our baked character outline meta data */
+                _korl_gfx_glyphPage_insert(glyphPage, outlineW, outlineH, 
+                                           &bakedChar->bboxOutline.x0, 
+                                           &bakedChar->bboxOutline.y0, 
+                                           &bakedChar->bboxOutline.x1, 
+                                           &bakedChar->bboxOutline.y1);
+                bakedChar->bboxOutline.offsetX = bakedChar->bbox.offsetX - outlineOffset;
+                bakedChar->bboxOutline.offsetY = bakedChar->bbox.offsetY - outlineOffset;
+                /* emplace the "outline" glyph into the glyph page */
+                for(int y = 0; y < outlineH; y++)
+                    for(int x = 0; x < outlineW; x++)
+                    {
+                        u8*const dataPixel = glyphPage->data + ((bakedChar->bboxOutline.y0 + y)*glyphPage->dataSquareSize + bakedChar->bboxOutline.x0 + x);
+                        *dataPixel = outlineBuffer[y*outlineW + x];
+                    }
+                /* free temporary resources */
+                korl_free(context->allocatorHandle, outlineBuffer);
+#else// This technique looks like poop, and I can't seem to change that, so maybe just delete this section?
+                const u8 on_edge_value     = 180;// This is rather arbitrary; it seems like we can just select any reasonable # here and it will be enough for most fonts/sizes.  This value seems rather finicky however...  So if we have to modify how any of this glyph outline stuff is drawn, this will likely have to change somehow.
                 const int padding          = 1/*this is necessary to keep the SDF glyph outline from bleeding all the way to the bitmap edge*/ + KORL_C_CAST(int, korl_math_ceil(fontCache->pixelOutlineThickness));
                 const f32 pixel_dist_scale = KORL_C_CAST(f32, on_edge_value)/KORL_C_CAST(f32, padding);
                 int w, h, offsetX, offsetY;
@@ -430,6 +514,9 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                         // only use SDF pixels that are >= the outline thickness edge value
                         if(bitmapSdf[cy*w + cx] >= KORL_C_CAST(f32, on_edge_value) - (fontCache->pixelOutlineThickness*pixel_dist_scale))
                         {
+#if 1
+                            *dataPixel = 255;
+#else// smoothing aside, these SDF bitmaps just don't look very good... after playing around with this stuff, it is looking like this technique is just unusable ☹
                             /* In an effort to keep the outline "smooth" or "anti-aliased", 
                                 we simply increase the magnitude of each SDF pixel by 
                                 the maximum magnitude difference between the shape edge 
@@ -440,12 +527,14 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                 harsh edges around the outside of the outline bitmap. */
                             const u16 pixelValue = KORL_MATH_CLAMP(KORL_C_CAST(u8, KORL_C_CAST(f32, bitmapSdf[cy*w + cx]) + (fontCache->pixelOutlineThickness*pixel_dist_scale)), 0, KORL_U8_MAX);
                             *dataPixel = (u8/*safe, since we _just_ clamped the value to u8 range*/)pixelValue;
+#endif
                         }
                         else
                             *dataPixel = 0;
                     }
                 /**/
                 stbtt_FreeSDF(bitmapSdf, NULL);
+#endif
             }
         }// if(bakeGlyphs || bakeGlyphOutlines)
         /* debug print the glyph page data :) */
