@@ -88,3 +88,4 @@ shutdownSuccess:
 #include "korl-windows-gui.c"
 #include "korl-time.c"
 #include "korl-crash.c"
+#include "korl-stringPool.h"
