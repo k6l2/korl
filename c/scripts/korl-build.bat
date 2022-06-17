@@ -13,8 +13,19 @@ cd "build"
 rem automatically call the script to build shaders for the first time if the 
 rem     directory doesn't exist, since there will always be a non-zero amount of 
 rem     compiled shaders, as KORL ships with built-in batching pipelines
+set "lockFileBuildShaders=lock-build-shaders"
+set "statusFileBuildShaders=status-build-shaders.txt"
+set "buildCommand=call korl-build-glsl.bat"
 if not exist "shaders" (
-    call korl-build-glsl.bat
+    rem // create a lock file //
+    type NUL >> "%lockFileBuildShaders%"
+    rem // clear status file //
+    del %statusFileBuildShaders% > NUL 2> NUL
+    if "%buildOptionNoThreads%"=="TRUE" (
+        call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
+    ) else (
+        start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
+    )
 )
 rem --------------------- async build the game object file ---------------------
 set "lockFileGame=lock-build-game"
@@ -127,6 +138,10 @@ IF %ERRORLEVEL% NEQ 0 (
     echo %KORL_EXE_NAME%.exe failed to link!
     GOTO :ON_FAILURE_EXE
 )
+rem ------------------------ synchronize shaders build  ------------------------
+:WAIT_FOR_BUILD_SHADERS
+if exist %lockFileBuildShaders% goto :WAIT_FOR_BUILD_SHADERS
+if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
 rem ----- report how long the script took -----
 :TIME_REPORT
 set "_TIME_ELAPSED="
