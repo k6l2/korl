@@ -91,7 +91,7 @@
 [ ] KORL-PERFORMANCE-000-000-016: Vulkan; speed: this is stupid & obviously slow; consider storing texture assets in a fixed-size table, allowing constant time lookups for each handle
 [ ] KORL-PERFORMANCE-000-000-017: GFX; separate batch capacity with batch vertex/index counts themselves, allowing us to perform less reallocations (assuming this ever becomes a perf issue)
 [ ] KORL-PERFORMANCE-000-000-018: GFX; (minor) use triangle fan primitive for less vertex indices
-[ ] KORL-PERFORMANCE-000-000-019: build: investigate potential benefits of running the platform/game translation units on separate threads
+[x] KORL-PERFORMANCE-000-000-019: build: investigate potential benefits of running the platform/game translation units on separate threads
 [x] KORL-PERFORMANCE-000-000-020: Vulkan: (MAJOR!) reduce batch descriptor set flush frequency; we should intelligently look at the last known state (for things like texture handle, etc) and ONLY flush batch descriptor sets if this changes, instead of ALWAYS flushing
 [ ] KORL-PERFORMANCE-000-000-021: Vulkan: this is better than what we were doing before, but optimally we would have no wait during batchFlushStaging at all
 [ ] KORL-PERFORMANCE-000-000-022: Vulkan: (minor) this function currently assumes that the caller is expecting to be able to safely write to the new staging buffer RIGHT AWAY, but in this special case we do NOT need to wait for the alternate staging buffer to be available!!!  We should add a parameter to this function to optionally ignore the `wait_for_new_buffer_fence` code that runs at the end of this function.

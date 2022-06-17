@@ -1,10 +1,10 @@
 @echo off
 setlocal
-rem ----- save a timestamp so we can report how long it takes to build -----
+rem ------- save a timestamp so we can report how long it takes to build -------
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
     set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
-rem ----- create & enter the build output directory -----
+rem ---------------- create & enter the build output directory  ----------------
 cd %KORL_PROJECT_ROOT%
 if not exist "build" (
     mkdir "build"
@@ -15,6 +15,34 @@ rem     directory doesn't exist, since there will always be a non-zero amount of
 rem     compiled shaders, as KORL ships with built-in batching pipelines
 if not exist "shaders" (
     call korl-build-glsl.bat
+)
+rem --------------------- async build the game object file ---------------------
+set "lockFileGame=lock-build-game"
+set "statusFileGame=status-build-game.txt"
+rem // create the async build command //
+set "KORL_GAME_SOURCE_BASE_NAME=game"
+set "buildCommand="
+set "buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\%KORL_GAME_SOURCE_BASE_NAME%.cpp""
+rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
+set "buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
+set "buildCommand=%buildCommand% /std:c++20"
+set "buildCommand=%buildCommand% /EHa"
+set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
+set "buildCommand=cl.exe %CL% %buildCommand% %_CL_%"
+rem // create a lock file //
+rem crappy attempt to prevent the build script from running while another build 
+rem     is still running (batch script isn't too great, not sure how much more 
+rem     robust we can get here...)
+:WHILE_EXISTS_LOCK_BUILD_GAME
+if exist "%lockFileGame%" goto :WHILE_EXISTS_LOCK_BUILD_GAME
+type NUL >> "%lockFileGame%"
+rem // clear status file //
+del %statusFileGame% > NUL 2> NUL
+rem // launch the async build on another thread //
+if "%buildOptionNoThreads%"=="TRUE" (
+    call korl-run-threaded-command.bat "%buildCommand%" %lockFileGame% %statusFileGame%
+) else (
+    start "Build DLL Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileGame% %statusFileGame%"
 )
 rem ------------------------ build the KORL object file ------------------------
 rem     NOTE: if you are looking for the rest of the configured options for 
@@ -45,33 +73,18 @@ echo cl.exe %CL% %buildCommand% %_CL_%
 echo:
 rem     NOTE: the CL & _CL_ variables are automatically used by cl.exe
 rem           See: https://docs.microsoft.com/en-us/cpp/build/reference/cl-environment-variables?view=msvc-170
-rem KORL-PERFORMANCE-000-000-019: build: investigate potential benefits of multi-threading cl.exe
 cl.exe %buildCommand%
 echo:
 IF %ERRORLEVEL% NEQ 0 (
     echo %KORL_SOURCE_BASE_NAME%.obj failed to compile!
     GOTO :ON_FAILURE_EXE
 )
-rem ------------------------ build the game object file ------------------------
-set "KORL_GAME_SOURCE_BASE_NAME=game"
-set "buildCommand="
-set "buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\%KORL_GAME_SOURCE_BASE_NAME%.cpp""
-rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
-set "buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
-set "buildCommand=%buildCommand% /std:c++20"
-set "buildCommand=%buildCommand% /EHa"
-set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
-echo cl.exe %CL% %buildCommand% %_CL_%
+echo %KORL_SOURCE_BASE_NAME% build complete!  Waiting for game module build...
 echo:
-rem     NOTE: the CL & _CL_ variables are automatically used by cl.exe
-rem           See: https://docs.microsoft.com/en-us/cpp/build/reference/cl-environment-variables?view=msvc-170
-rem KORL-PERFORMANCE-000-000-019: build: investigate potential benefits of multi-threading cl.exe
-cl.exe %buildCommand%
-echo:
-IF %ERRORLEVEL% NEQ 0 (
-    echo %KORL_GAME_SOURCE_BASE_NAME%.obj failed to compile!
-    GOTO :ON_FAILURE_EXE
-)
+rem ---------------------- synchronize game object build  ----------------------
+:WAIT_FOR_BUILD_GAME
+if exist %lockFileGame% goto :WAIT_FOR_BUILD_GAME
+if exist %statusFileGame% goto :ON_FAILURE_EXE
 rem ------------------------ link the final executable ------------------------
 set "buildCommand=link.exe"
 set "buildCommand=%buildCommand% %KORL_SOURCE_BASE_NAME%.obj"
