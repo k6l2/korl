@@ -23,6 +23,8 @@ typedef struct Korl_StringPool
     u$ entriesSize;                        //KORL-FEATURE-000-000-007: dynamic resizing arrays
     struct _Korl_StringPool_Entry* entries;//KORL-FEATURE-000-000-007: dynamic resizing arrays
     u$ characterPoolBytes;
+    /** Internally we can just treat the character pool as a linked list of 
+     * allocations.  This is similar to a general purpose allocator. */
     u8* characterPool;
 } Korl_StringPool;
 typedef enum Korl_StringPool_CompareResult
@@ -32,6 +34,7 @@ typedef enum Korl_StringPool_CompareResult
 } Korl_StringPool_CompareResult;
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
-korl_internal Korl_StringPool_StringHandle  korl_stringPool_addFromUtf16(Korl_StringPool* context, const wchar_t* cString, const wchar_t* file, int line);
+korl_internal Korl_StringPool_StringHandle  korl_stringPool_addFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_remove(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle);
-korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* cString);
+korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16);
+korl_internal bool                          korl_stringPool_equalsUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16);
