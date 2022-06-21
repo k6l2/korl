@@ -1136,6 +1136,8 @@ korl_internal void korl_vulkan_construct(void)
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     /* sanity check - ensure that the memory is nullified */
     korl_assert(korl_memory_isNull(context, sizeof(*context)));
+    /**/
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(64), L"korl-vulkan", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*auto-choose start address*/);
     /* get a list of VkLayerProperties so we can check of validation layer 
         support if needed */
     KORL_ZERO_STACK(u32, layerCount);
@@ -1246,6 +1248,7 @@ korl_internal void korl_vulkan_construct(void)
             context->instance, &createInfoDebugUtilsMessenger, 
             context->allocator, &context->debugMessenger));
 #endif// KORL_DEBUG
+    context->stringPool = korl_stringPool_create(context->allocatorHandle);
 }
 korl_internal void korl_vulkan_destroy(void)
 {
@@ -1254,6 +1257,7 @@ korl_internal void korl_vulkan_destroy(void)
     context->vkDestroyDebugUtilsMessengerEXT(
         context->instance, context->debugMessenger, context->allocator);
     vkDestroyInstance(context->instance, context->allocator);
+    korl_memory_allocator_destroy(context->allocatorHandle);
     /* nullify the context after cleaning up properly for safety */
     korl_memory_zero(context, sizeof(*context));
 #else
@@ -1815,6 +1819,17 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void)
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
     _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearAssetsStaging);
     _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearAssets);
+    for(Korl_MemoryPool_Size da = 0; da < KORL_MEMORY_POOL_SIZE(context->deviceAssets); da++)
+    {
+        switch(context->deviceAssets[da].type)
+        {
+        case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
+            korl_stringPool_remove(&context->stringPool, context->deviceAssets[da].subType.assetTexture.name);
+            break;}
+        case _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE:{
+            break;}
+        }
+    }
     KORL_MEMORY_POOL_EMPTY(context->deviceAssets);
 }
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
@@ -2519,7 +2534,9 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     {
         if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE)
             continue;
-        if(korl_memory_stringCompare(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.name, assetName) == 0)
+        if(korl_stringPool_equalsUtf16(&context->stringPool, 
+                                       context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.name, 
+                                       assetName))
             break;
     }
     /* if it is, select this texture for later use and return */
@@ -2551,8 +2568,8 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
     asset->type                                  = _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE;
     asset->subType.assetTexture.deviceAllocation = deviceImage;
-    if(korl_memory_stringCopy(assetName, asset->subType.assetTexture.name, korl_arraySize(asset->subType.assetTexture.name)) <= 0)
-        korl_log(ERROR, "copy assetName failed! \"%ls\"", assetName);
+    asset->subType.assetTexture.name             = korl_stringPool_addFromUtf16(&context->stringPool, assetName, __FILEW__, __LINE__);//@TODO: make a macro to auto inject file/line
+    korl_assert(asset->subType.assetTexture.name);
     deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
 done_conditionallySelectLoadedAsset:
     /* if we do not have a valid index for a loaded device asset, just do nothing */

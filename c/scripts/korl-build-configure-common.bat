@@ -43,6 +43,7 @@ set "INCLUDE=%INCLUDE%;%VULKAN_SDK%\Include"
 set "INCLUDE=%INCLUDE%;%KORL_PROJECT_ROOT%\code"
 set "INCLUDE=%INCLUDE%;%KORL_HOME%\code"
 set "INCLUDE=%INCLUDE%;%KORL_HOME%\code\stb"
+set "INCLUDE=%INCLUDE%;%KORL_HOME%\code\sort"
 rem ----- set common compiler library search directories -----
 set "LIB=%KORL_VS_ORIGINAL_LIB%"
 set "LIB=%LIB%;%VULKAN_SDK%\Lib"

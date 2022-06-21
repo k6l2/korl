@@ -133,5 +133,5 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 /* Allow the pre-processor to store compiler definitions as string literals
     Example: TCHAR APPLICATION_NAME[] = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
     Source: https://stackoverflow.com/a/39108392 */
-#define _KORL_DEFINE_TO_CSTR(define) #define
-#define KORL_DEFINE_TO_CSTR(d) _KORL_DEFINE_TO_CSTR(d)
+#define KORL_STRINGIFY(define) #define
+#define KORL_DEFINE_TO_CSTR(d) KORL_STRINGIFY(d)

@@ -1,3 +1,6 @@
 [submodule "c/code/stb"]
 	path = c/code/stb
 	url = https://github.com/k6l2/stb.git
+[submodule "c/code/sort"]
+	path = c/code/sort
+	url = https://github.com/k6l2/sort.git

@@ -7,7 +7,7 @@
 #include "korl-vulkan-memory.h"
 #include "korl-math.h"
 #include "korl-vulkan.h"
-#define _KORL_VULKAN_MAX_ASSET_NAME_LENGTH 64
+#include "korl-stringPool.h"
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
@@ -70,8 +70,7 @@ typedef struct _Korl_Vulkan_DeviceAsset
         struct
         {
             //KORL-PERFORMANCE-000-000-007: hash strings
-            //KORL-PERFORMANCE-000-000-008: add string pool implementation
-            wchar_t name[_KORL_VULKAN_MAX_ASSET_NAME_LENGTH];
+            Korl_StringPool_StringHandle name;
             _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
         } assetTexture;
         struct
@@ -83,6 +82,7 @@ typedef struct _Korl_Vulkan_DeviceAsset
 } _Korl_Vulkan_DeviceAsset;
 typedef struct _Korl_Vulkan_Context
 {
+    Korl_Memory_AllocatorHandle allocatorHandle;
     /**
      * This member is a placeholder and should be replaced by an object instead 
      * of a pointer, and the code which uses this member should be refactored 
@@ -145,6 +145,9 @@ typedef struct _Korl_Vulkan_Context
     /* database for assets that exist on the device 
         (textures, shaders, buffers, etc) */
     KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceAsset, deviceAssets, 1024);
+    /** Primarily used to store device asset names; not sure if this will be 
+     * used for anything else in the future... */
+    Korl_StringPool stringPool;
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
