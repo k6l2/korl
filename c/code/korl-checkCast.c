@@ -1,4 +1,7 @@
 #include "korl-checkCast.h"
+/// @TODO: We want to include korl-crash, but we can't because this will collide 
+///        with the crash definitions already in the game layer
+// #include "korl-crash.h"
 #pragma warning(push)
 #pragma warning(disable:4755)/* in optimized builds, it is possible for the compiler to find conditions in which one of the paths of these checks will never be executed, and that is fine by me (for now) */
 korl_internal u16 korl_checkCast_u32_to_u16(u32 x)
@@ -69,6 +72,12 @@ korl_internal f32 korl_checkCast_i$_to_f32(i$ x)
 {
     const f32 result = KORL_C_CAST(f32, x);
     korl_assert(KORL_C_CAST(i$, result) == x);
+    return result;
+}
+korl_internal const wchar_t* korl_checkCast_cpu16_to_cpwchar(const u16* x)
+{
+    const wchar_t*const result = KORL_C_CAST(const wchar_t*, x);
+    korl_assert(sizeof(*x) == sizeof(*result));
     return result;
 }
 #pragma warning(pop)

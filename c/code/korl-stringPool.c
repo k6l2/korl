@@ -1,5 +1,4 @@
 #include "korl-stringPool.h"
-#include "korl-memory.h"
 #include "korl-checkCast.h"
 typedef struct _Korl_StringPool_Allocation
 {
@@ -11,6 +10,12 @@ typedef struct _Korl_StringPool_Allocation
 #define SORT_NAME korl_stringPool_allocation
 #define SORT_TYPE _Korl_StringPool_Allocation
 #define SORT_CMP(x, y) ((x).poolByteOffset < (y).poolByteOffset ? -1 : ((x).poolByteOffset > (y).poolByteOffset ? 1 : 0))
+#ifndef SORT_CHECK_CAST_INT_TO_SIZET
+#define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
+#endif
+#ifndef SORT_CHECK_CAST_SIZET_TO_INT
+#define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
+#endif
 #include "sort.h"
 typedef enum _Korl_StringPool_StringFlags
     { _KORL_STRINGPOOL_STRING_FLAGS_NONE = 0
@@ -46,7 +51,7 @@ korl_internal u32 _korl_stringPool_allocate(Korl_StringPool* context, u$ bytes, 
         goto create_allocation_and_return_currentPoolOffset;
     /* the pool isn't big enough to contain `bytes` & must be expanded */
     context->characterPoolBytes = KORL_MATH_MAX(context->characterPoolBytes + bytes, 2*context->characterPoolBytes);
-    context->characterPool = korl_reallocate(context->allocatorHandle, context->characterPool, context->characterPoolBytes);
+    context->characterPool = KORL_C_CAST(u8*, korl_reallocate(context->allocatorHandle, context->characterPool, context->characterPoolBytes));
     korl_assert(context->characterPool);
 create_allocation_and_return_currentPoolOffset:
     KORL_ZERO_STACK(_Korl_StringPool_Allocation, newAllocation);
@@ -57,7 +62,7 @@ create_allocation_and_return_currentPoolOffset:
     if(context->allocationsSize >= context->allocationsCapacity)
     {
         context->allocationsCapacity *= 2;
-        context->allocations = korl_reallocate(context->allocatorHandle, context->allocations, sizeof(*context->allocations) * context->allocationsCapacity);
+        context->allocations = KORL_C_CAST(_Korl_StringPool_Allocation*, korl_reallocate(context->allocatorHandle, context->allocations, sizeof(*context->allocations) * context->allocationsCapacity));
         korl_assert(context->allocations);
     }
     context->allocations[context->allocationsSize++] = newAllocation;
@@ -86,11 +91,11 @@ korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle
     result.allocatorHandle     = allocatorHandle;
     result.nextStringHandle    = 1;
     result.characterPoolBytes  = korl_math_kilobytes(1);
-    result.characterPool       = korl_allocate(result.allocatorHandle, result.characterPoolBytes);
+    result.characterPool       = KORL_C_CAST(u8*, korl_allocate(result.allocatorHandle, result.characterPoolBytes));
     result.stringsCapacity     = 16;
-    result.strings             = korl_allocate(result.allocatorHandle, sizeof(*result.strings)     * result.stringsCapacity);
+    result.strings             = KORL_C_CAST(_Korl_StringPool_String*, korl_allocate(result.allocatorHandle, sizeof(*result.strings)     * result.stringsCapacity));
     result.allocationsCapacity = 16;
-    result.allocations         = korl_allocate(result.allocatorHandle, sizeof(*result.allocations) * result.allocationsCapacity);
+    result.allocations         = KORL_C_CAST(_Korl_StringPool_Allocation*, korl_allocate(result.allocatorHandle, sizeof(*result.allocations) * result.allocationsCapacity));
     korl_assert(result.characterPool);
     korl_assert(result.strings);
     korl_assert(result.allocations);
@@ -121,13 +126,13 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_addFromUtf16(Korl_Str
     {
         korl_assert(context->stringsCapacity > 0);
         context->stringsCapacity *= 2;
-        context->strings = korl_reallocate(context->allocatorHandle, context->strings, sizeof(*context->strings) * context->stringsCapacity);
+        context->strings = KORL_C_CAST(_Korl_StringPool_String*, korl_reallocate(context->allocatorHandle, context->strings, sizeof(*context->strings) * context->stringsCapacity));
         korl_assert(context->strings);
     }
     _Korl_StringPool_String*const newString = &context->strings[context->stringsSize++];
     korl_memory_zero(newString, sizeof(*newString));
     newString->handle              = newHandle;
-    newString->characterCount      = korl_checkCast_u$_to_u32(korl_memory_stringSize(cStringUtf16));
+    newString->characterCount      = korl_checkCast_u$_to_u32(korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16)));
     newString->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (newString->characterCount + 1)*sizeof(*cStringUtf16), file, line);
     newString->flags               = _KORL_STRINGPOOL_STRING_FLAG_UTF16;
     korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf16, cStringUtf16, newString->characterCount*sizeof(*cStringUtf16));
@@ -162,8 +167,8 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Kor
         ///@TODO: 
     }
     /* do the raw string comparison */
-    const int resultCompare = korl_memory_stringCompare(KORL_C_CAST(u16*, context->characterPool + context->strings[s].poolByteOffsetUtf16), 
-                                                        cStringUtf16);
+    const int resultCompare = korl_memory_stringCompare(korl_checkCast_cpu16_to_cpwchar(KORL_C_CAST(u16*, context->characterPool + context->strings[s].poolByteOffsetUtf16)), 
+                                                        korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
     else if(resultCompare < 0)
