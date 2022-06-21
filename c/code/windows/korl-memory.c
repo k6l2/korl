@@ -122,6 +122,21 @@ korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare)
         return -1;
     return 0;
 }
+korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8)
+{
+    for(; *a && *b; ++a, ++b)
+    {
+        if(*a < *b)
+            return -1;
+        else if(*a > *b)
+            return 1;
+    }
+    if(*a)
+        return 1;
+    else if(*b)
+        return -1;
+    return 0;
+}
 korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize)
 {
     if(!s)
@@ -130,6 +145,17 @@ korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize)
         [ 0][ 1][ 2][ 3][ 4]
         [sB]            [s ] */
     const wchar_t* sBegin = s;
+    for(; *s; ++s) {}
+    return s - sBegin;
+}
+korl_internal KORL_PLATFORM_STRING_SIZE_UTF8(korl_memory_stringSizeUtf8)
+{
+    if(!s)
+        return 0;
+    /*  [ t][ e][ s][ t][\0]
+        [ 0][ 1][ 2][ 3][ 4]
+        [sB]            [s ] */
+    const char* sBegin = s;
     for(; *s; ++s) {}
     return s - sBegin;
 }

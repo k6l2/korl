@@ -33,9 +33,19 @@ korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes
  */
 korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare);
 /**
- * \return the size of string \c s EXCLUDING the null terminator
+ * \return \c 0 if the two strings are equal
+ */
+korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8);
+/**
+ * \return the size of string \c s _excluding_ the null terminator
  */
 korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize);
+/**
+ * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
+ * defined as the total number of characters; _not_ the total number of 
+ * codepoints!
+ */
+korl_internal KORL_PLATFORM_STRING_SIZE_UTF8(korl_memory_stringSizeUtf8);
 /**
  * \return the number of characters copied from \c source into \c destination , 
  * INCLUDING the null terminator.  If the \c source cannot be copied into the 

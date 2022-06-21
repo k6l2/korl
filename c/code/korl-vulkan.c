@@ -2133,7 +2133,7 @@ korl_internal void korl_vulkan_batch(
             KORL_C_CAST(Korl_Vulkan_VertexIndex*, mappedDeviceMemory);
         for(u32 i = 0; i < vertexIndexCount; i++)
             copyVertexIndices[i] += 
-                korl_checkCast_u32_to_u16(surfaceContext->batchState.pipelineVertexCount);
+                korl_checkCast_u$_to_u16(surfaceContext->batchState.pipelineVertexCount);
         vkUnmapMemory(context->device, swapChainImageContext->deviceMemoryLinearHostVisible.deviceMemory);
         /* update book keeping */
         surfaceContext->batchState.vertexIndexCountStaging  += vertexIndexCount;
@@ -2568,7 +2568,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
     asset->type                                  = _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE;
     asset->subType.assetTexture.deviceAllocation = deviceImage;
-    asset->subType.assetTexture.name             = korl_stringPool_addFromUtf16(&context->stringPool, assetName, __FILEW__, __LINE__);//@TODO: make a macro to auto inject file/line
+    asset->subType.assetTexture.name             = korl_newStringUtf16(context->stringPool, assetName);
     korl_assert(asset->subType.assetTexture.name);
     deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
 done_conditionallySelectLoadedAsset:

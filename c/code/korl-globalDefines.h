@@ -54,6 +54,24 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #define KORL_F32_MIN      (-3.402823466e+38F)
 #define KORL_F32_SMALLEST ( 1.175494351e-38F)
 #define KORL_F32_MAX      ( 3.402823466e+38F)
+/** String primitive datatypes.  CRT strings (null-terminated arrays of 
+ * characters) are very outdated, and their performance benefits are dubious, 
+ * while the number of instabilities they introduce in the code seems 
+ * disproportionately higher.  I would much rather prefer to pass raw strings 
+ * that contain explicit sizes, instead of simple raw string pointers that 
+ * possess an implicit size (defined by the null-terminator character) just for 
+ * the safety benefits alone.  Perhaps if I ever decide to remove the CRT 
+ * completely, we can just use these everywhere instead of char & wchar. */
+typedef struct Korl_ArrayU8
+{
+    u$  size;
+    u8* data;
+} Korl_ArrayU8;
+typedef struct Korl_ArrayU16
+{
+    u$   size;
+    u16* data;
+} Korl_ArrayU16;
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
 #define korl_arraySize(array) (sizeof(array) / sizeof((array)[0]))
@@ -107,9 +125,13 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #endif
 /* convenience macros specifically for korl-memory module, which automatically 
     inject file/line information */
-#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate(handle, bytes, __FILEW__, __LINE__, NULL)
+#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate  (handle, bytes,             __FILEW__, __LINE__, NULL)
 #define korl_reallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__)
-#define korl_free(handle, allocation)              korl_memory_allocator_free(handle, allocation, __FILEW__, __LINE__)
+#define korl_free(handle, allocation)              korl_memory_allocator_free      (handle, allocation,        __FILEW__, __LINE__)
+/* convenience macros specifically for korl-stringPool module, which 
+    automatically inject file/line information */
+#define korl_newStringUtf8(stringPoolObject, cString)  korl_stringPool_addFromUtf8 (&stringPoolObject, cString, __FILEW__, __LINE__)
+#define korl_newStringUtf16(stringPoolObject, cString) korl_stringPool_addFromUtf16(&stringPoolObject, cString, __FILEW__, __LINE__)
 /* macro for automatically initializing stack variables to 0 */
 #define KORL_ZERO_STACK(variableType, variableIdentifier) \
     variableType variableIdentifier;\
