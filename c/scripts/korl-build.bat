@@ -27,6 +27,11 @@ if not exist "shaders" (
         start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
     )
 )
+rem Print out INCLUDE & LIB variables just for diagnostic purposes:
+echo INCLUDE=%INCLUDE%
+echo:
+echo LIB=%LIB%
+echo:
 rem --------------------- async build the game object file ---------------------
 set "lockFileGame=lock-build-game"
 set "statusFileGame=status-build-game.txt"

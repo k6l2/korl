@@ -90,10 +90,12 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
             break;
     korl_assert(allocIndex < context->allocationsSize);
     _Korl_StringPool_Allocation*const allocationPrevious = &(context->allocations[allocIndex]);
+    if(bytes == allocationPrevious->bytes)
+        return allocationOffset;
     /* if bytes is smaller, we can just shrink the allocation & we're done */
     if(bytes < allocationPrevious->bytes)
     {
-        allocationPrevious->bytes = bytes;
+        allocationPrevious->bytes = korl_checkCast_u$_to_u32(bytes);
         return allocationOffset;
     }
     /* check to see if we can expand the allocation */
@@ -104,13 +106,13 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
     else
         expandOffsetMin = context->allocations[allocIndex - 1].poolByteOffset + context->allocations[allocIndex - 1].bytes;
     if(allocIndex == context->allocationsSize - 1)
-        expandOffsetMax = context->characterPoolBytes;
+        expandOffsetMax = korl_checkCast_u$_to_u32(context->characterPoolBytes);
     else
         expandOffsetMax = context->allocations[allocIndex + 1].poolByteOffset;
     /* if we can expand to the higher offsets, we can just grow the allocation & we're done */
     if(expandOffsetMax - allocationPrevious->poolByteOffset >= bytes)
     {
-        allocationPrevious->bytes = bytes;
+        allocationPrevious->bytes = korl_checkCast_u$_to_u32(bytes);
         return allocationOffset;
     }
     /* if we can't expand to higher offsets, but we are the last allocation, we 
@@ -120,7 +122,7 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
         context->characterPoolBytes = KORL_MATH_MAX(context->characterPoolBytes + bytes/*NOTE: this is an overestimate, but should still work*/, 2*context->characterPoolBytes);
         context->characterPool = KORL_C_CAST(u8*, korl_reallocate(context->allocatorHandle, context->characterPool, context->characterPoolBytes));
         korl_assert(context->characterPool);
-        allocationPrevious->bytes = bytes;
+        allocationPrevious->bytes = korl_checkCast_u$_to_u32(bytes);
         return allocationOffset;
     }
     /* if we can expand to a lower offset, we need to move the memory then update metrics */
@@ -130,7 +132,7 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
                          context->characterPool + allocationPrevious->poolByteOffset, 
                          allocationPrevious->bytes);
         allocationPrevious->poolByteOffset = expandOffsetMin;
-        allocationPrevious->bytes          = bytes;
+        allocationPrevious->bytes          = korl_checkCast_u$_to_u32(bytes);
         return allocationPrevious->poolByteOffset;
     }
     /* we can't expand; we need to allocate->copy->free */
@@ -210,17 +212,84 @@ korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* conte
     korl_assert(!(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16));
     /* prepare some initial memory for the utf16 string */
     string->flags |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
-    string->rawSizeUtf16        = 2*string->rawSizeUtf8;// initial estimate; likely to change later
-    string->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, string->rawSizeUtf16 + sizeof(u16)/*null-terminator*/, file, line);
-    /* perform the conversion; sources:
+    string->rawSizeUtf16        = string->rawSizeUtf8;// initial estimate; likely to change later
+    string->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
+    /* perform the conversion; resources: 
         https://en.wikipedia.org/wiki/UTF-8
-        https://en.wikipedia.org/wiki/UTF-16
-        https://gist.github.com/tommai78101/3631ed1f136b78238e85582f08bdc618 */
-    const u8* sourceUtf8 = context->characterPool + string->poolByteOffsetUtf8;
-    for(u32 cU8 = 0; cU8 < string->rawSizeUtf8; cU8++)
+        https://en.wikipedia.org/wiki/UTF-16 */
+    u32 currentUtf16 = 0;
+    for(u32 cU8 = 0; cU8 < string->rawSizeUtf8; cU8++/*we always consume at least one UTF-8 byte (the leading byte)*/)
     {
+        /* if the utf16 cursor is pointing to the last character in the string 
+            pool (reserved for the null terminator), we know that the utf16 
+            string needs to be expanded */
+        if(currentUtf16 >= string->rawSizeUtf16 - 1/*in case we need to occupy 2 utf16 characters*/)
+        {
+            string->rawSizeUtf16       *= 2;
+            string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf16, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
+        }
+        u8*const  utf8  = context->characterPool + string->poolByteOffsetUtf8;
+        u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
+        if(utf8[cU8] < 0x80)// [0,127]; ASCII range; one byte per codepoint
+            utf16[currentUtf16++] = utf8[cU8];// entire codepoint is contained in the leading UTF-8 byte
+        else if(utf8[cU8] < 0xC0)// [0x80, 0xBF]
+        {
+            // ignored; reserved for UTF-8 encoding
+        }
+        else if(utf8[cU8] < 0xE0)// [128, 2047]; 2 bytes per codepoint
+        {
+            if(cU8 + 1 >= string->rawSizeUtf8)
+                break;// invalid last codepoint (missing utf8 characters); just ignore it
+            utf16[currentUtf16++] = (KORL_C_CAST(u16, utf8[cU8    ] & 0x1Fu) << 6) 
+                                  |                  (utf8[cU8 + 1] & 0x3Fu);
+            cU8++;// consume trailing utf8 character
+        }
+        else if(utf8[cU8] < 0xF0)// [2048, 65535]; 3 bytes per codepoint
+        {
+            if(cU8 + 2 >= string->rawSizeUtf8)
+                break;// invalid last codepoint (missing utf8 characters); just ignore it
+            utf16[currentUtf16] = (KORL_C_CAST(u16, utf8[cU8    ] & 0xFu ) << 12)
+                                | (KORL_C_CAST(u16, utf8[cU8 + 1] & 0x3Fu) << 6)
+                                |                  (utf8[cU8 + 2] & 0x3Fu);
+            if(utf16[currentUtf16] >= 0xD800 && utf16[currentUtf16] <= 0xDFFF)
+            {
+                /* this codepoint range is reserved in UTF-16; we need to ignore 
+                    this value; maybe warn on this condition?... */
+            }
+            else
+                currentUtf16++;// the codepoint is valid
+            cU8 += 2;// consume trailing utf8 characters
+        }
+        else if(utf8[cU8] < 0xF8)// [65536, 0x10FFFF]; 4 bytes per codepoint
+        {
+            if(cU8 + 3 >= string->rawSizeUtf8)
+                break;// invalid last codepoint (missing utf8 characters); just ignore it
+            const u32 codepoint = (KORL_C_CAST(u32, utf8[cU8    ] & 0x7 ) << 18)
+                                | (KORL_C_CAST(u32, utf8[cU8 + 1] & 0x3F) << 12)
+                                | (KORL_C_CAST(u32, utf8[cU8 + 2] & 0x3F) << 6)
+                                |                  (utf8[cU8 + 3] & 0x3F);
+            utf16[currentUtf16    ] = KORL_C_CAST(u16, (codepoint - 0x10000) >> 10);
+            utf16[currentUtf16 + 1] = KORL_C_CAST(u16, (codepoint - 0x10000) & 0x4FF);
+            currentUtf16 += 2;
+            cU8 += 3;// consume trailing utf8 characters
+        }
+        else// invalid codepoint
+        {
+            // ignored; maybe warn on this condition?  Not sure...
+        }
     }
-    korl_assert(!"@TODO: implement");
+    /* we now know exactly how many u16 characters are necessary to store the 
+        entire UTF-16 string, but it's highly probable that we overestimated the 
+        buffer required to store it, so we should now correct this to eliminate 
+        any slack at the end of the string */
+    if(currentUtf16 < string->rawSizeUtf16)
+    {
+        string->rawSizeUtf16        = currentUtf16;
+        string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf16, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
+    }
+    /* and of course we should null-terminate the UTF-16 string */
+    u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
+    utf16[currentUtf16] = L'\0';
 }
 korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle)
 {

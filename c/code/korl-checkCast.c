@@ -1,7 +1,5 @@
 #include "korl-checkCast.h"
-/// @TODO: We want to include korl-crash, but we can't because this will collide 
-///        with the crash definitions already in the game layer
-// #include "korl-crash.h"
+#include "korl-crash.h"
 #pragma warning(push)
 #pragma warning(disable:4755)/* in optimized builds, it is possible for the compiler to find conditions in which one of the paths of these checks will never be executed, and that is fine by me (for now) */
 korl_internal u8 korl_checkCast_u$_to_u8(u$ x)
