@@ -28,31 +28,10 @@ korl_internal u$   korl_memory_pageBytes(void);
  *    than in \c b, and \c 0 if the two memory blocks are equal
  */
 korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes);
-/**
- * \return \c 0 if the two strings are equal
- */
 korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare);
-/**
- * \return \c 0 if the two strings are equal
- */
 korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8);
-/**
- * \return the size of string \c s _excluding_ the null terminator
- */
 korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize);
-/**
- * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
- * defined as the total number of characters; _not_ the total number of 
- * codepoints!
- */
 korl_internal KORL_PLATFORM_STRING_SIZE_UTF8(korl_memory_stringSizeUtf8);
-/**
- * \return the number of characters copied from \c source into \c destination , 
- * INCLUDING the null terminator.  If the \c source cannot be copied into the 
- * \c destination then the size of \c source INCLUDING the null terminator and 
- * multiplied by -1 is returned, and \c destination is filled with the maximum 
- * number of characters that can be copied, including a null-terminator.
- */
 korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy);
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
@@ -60,12 +39,6 @@ korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
 korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList);
-/**
- * \return the number of characters copied from \c format into \c buffer , 
- * INCLUDING the null terminator.  If the \c format cannot be copied into the 
- * \c buffer then the size of \c format , INCLUDING the null terminator, 
- * multiplied by -1, is returned.
- */
 korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER(korl_memory_stringFormatBuffer);
 korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST(korl_memory_stringFormatBufferVaList);
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);

@@ -184,11 +184,38 @@ enum KorlEnumLogLevel
 #define KORL_PLATFORM_MEMORY_ZERO(name) void name(void* memory, u$ bytes)
 #define KORL_PLATFORM_MEMORY_COPY(name) void name(void* destination, const void* source, u$ bytes)
 #define KORL_PLATFORM_MEMORY_MOVE(name) void name(void* destination, const void* source, u$ bytes)
+/**
+ * \return \c 0 if the two strings are equal
+ */
 #define KORL_PLATFORM_STRING_COMPARE(name)              int name(const wchar_t* a, const wchar_t* b)
+/**
+ * \return \c 0 if the two strings are equal
+ */
 #define KORL_PLATFORM_STRING_COMPARE_UTF8(name)         int name(const char* a, const char* b)
+/**
+ * \return the size of string \c s _excluding_ the null terminator
+ */
 #define KORL_PLATFORM_STRING_SIZE(name)                 u$ name(const wchar_t* s)
+/**
+ * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
+ * defined as the total number of characters; _not_ the total number of 
+ * codepoints!
+ */
 #define KORL_PLATFORM_STRING_SIZE_UTF8(name)            u$ name(const char* s)
+/**
+ * \return the number of characters copied from \c source into \c destination , 
+ * INCLUDING the null terminator.  If the \c source cannot be copied into the 
+ * \c destination then the size of \c source INCLUDING the null terminator and 
+ * multiplied by -1 is returned, and \c destination is filled with the maximum 
+ * number of characters that can be copied, including a null-terminator.
+ */
 #define KORL_PLATFORM_STRING_COPY(name)                 i$ name(const wchar_t* source, wchar_t* destination, u$ destinationSize)
+/**
+ * \return the number of characters copied from \c format into \c buffer , 
+ * INCLUDING the null terminator.  If the \c format cannot be copied into the 
+ * \c buffer then the size of \c format , INCLUDING the null terminator, 
+ * multiplied by -1, is returned.
+ */
 #define KORL_PLATFORM_STRING_FORMAT_BUFFER(name)        i$ name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...)
 #define KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST(name) i$ name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
 typedef u16 Korl_Memory_AllocatorHandle;
