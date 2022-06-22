@@ -1824,7 +1824,7 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void)
         switch(context->deviceAssets[da].type)
         {
         case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
-            korl_stringPool_remove(&context->stringPool, context->deviceAssets[da].subType.assetTexture.name);
+            korl_stringPool_free(&context->stringPool, context->deviceAssets[da].subType.assetTexture.name);
             break;}
         case _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE:{
             break;}

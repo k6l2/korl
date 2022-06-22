@@ -163,15 +163,29 @@ korl_internal Korl_StringPool_StringHandle _korl_stringPool_addStringCommon(Korl
 {
     /* find a unique handle for the new string */
     korl_assert(context->nextStringHandle != 0);
-    const Korl_StringPool_StringHandle newHandle = context->nextStringHandle;
-    if(context->nextStringHandle == KORL_U32_MAX)
-        context->nextStringHandle = 1;
-    else
-        context->nextStringHandle++;
-    // ensure that the handle is unique //
-    ///@TODO: stringpool: robustness; string handle uniqueness is not guaranteed
-    for(u$ s = 0; s < context->stringsSize; s++)
-        korl_assert(context->strings[s].handle != newHandle);
+    const u32 maxHandles = KORL_U32_MAX - 1/*since 0 is an invalid handle*/;
+    korl_assert(context->stringsSize < maxHandles);// ensure there is at least one possible unused valid handle value for a new string
+    Korl_StringPool_StringHandle newHandle = 0;
+    /* iterate over all possible handle values until we find the unused handle value */
+    for(Korl_StringPool_StringHandle h = 0; h < maxHandles; h++)
+    {
+        newHandle = context->nextStringHandle;
+        /* If another string has this handle, we nullify the newHandle so that 
+            we can move on to the next handle candidate */
+        for(u$ s = 0; s < context->stringsSize; s++)
+            if(context->strings[s].handle == newHandle)
+            {
+                newHandle = 0;
+                break;
+            }
+        if(context->nextStringHandle == KORL_U32_MAX)
+            context->nextStringHandle = 1;
+        else
+            context->nextStringHandle++;
+        if(newHandle)
+            break;
+    }
+    korl_assert(newHandle);// sanity check
     /* add a new string entry */
     if(context->stringsSize >= context->stringsCapacity)
     {
@@ -314,15 +328,15 @@ korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
     korl_free(context->allocatorHandle, context->characterPool);
     korl_memory_zero(context, sizeof(*context));
 }
-korl_internal Korl_StringPool_StringHandle korl_stringPool_addFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
+korl_internal Korl_StringPool_StringHandle korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
 {
     return _korl_stringPool_addStringCommon(context, cStringUtf8, korl_checkCast_u$_to_u32(korl_memory_stringSizeUtf8(cStringUtf8)), _KORL_STRINGPOOL_STRING_FLAG_UTF8, file, line);
 }
-korl_internal Korl_StringPool_StringHandle korl_stringPool_addFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line)
+korl_internal Korl_StringPool_StringHandle korl_stringPool_newFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line)
 {
     return _korl_stringPool_addStringCommon(context, cStringUtf16, korl_checkCast_u$_to_u32(korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16))), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
 }
-korl_internal void korl_stringPool_remove(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
+korl_internal void korl_stringPool_free(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     /* find the matching handle in the string array */
     u$ s = 0;

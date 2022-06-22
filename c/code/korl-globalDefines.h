@@ -125,13 +125,13 @@ typedef struct Korl_ArrayU16
 #endif
 /* convenience macros specifically for korl-memory module, which automatically 
     inject file/line information */
-#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate  (handle, bytes,             __FILEW__, __LINE__, NULL)
+#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, NULL)
 #define korl_reallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__)
 #define korl_free(handle, allocation)              korl_memory_allocator_free      (handle, allocation,        __FILEW__, __LINE__)
 /* convenience macros specifically for korl-stringPool module, which 
     automatically inject file/line information */
-#define korl_newStringUtf8(stringPoolObject, cString)  korl_stringPool_addFromUtf8 (&stringPoolObject, cString, __FILEW__, __LINE__)
-#define korl_newStringUtf16(stringPoolObject, cString) korl_stringPool_addFromUtf16(&stringPoolObject, cString, __FILEW__, __LINE__)
+#define korl_newStringUtf8(stringPoolObject, cString)  korl_stringPool_newFromUtf8 (&stringPoolObject, cString, __FILEW__, __LINE__)
+#define korl_newStringUtf16(stringPoolObject, cString) korl_stringPool_newFromUtf16(&stringPoolObject, cString, __FILEW__, __LINE__)
 /* macro for automatically initializing stack variables to 0 */
 #define KORL_ZERO_STACK(variableType, variableIdentifier) \
     variableType variableIdentifier;\
