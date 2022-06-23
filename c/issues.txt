@@ -53,7 +53,7 @@
 [ ] KORL-ISSUE-000-000-052: log: potentially unnecessary allocator; unfortunately, due to how primitive linear allocators are, we can't throw all the allocations we're doing into the same allocator because when the big log circular buffer reallocs, the transient buffers (used for async file I/O, etc) will continuously push the big buffer higher up, further fragmenting memory until we run out of space!  To use a single allocator, we need to either add allocator defragmentation capabilities or implement a better realloc strategy that can look backwards as well as forwards (perhaps as a different allocator type?)
 [x] KORL-ISSUE-000-000-053: memory: allow this API to work on other threads (IMPORTANT: this might be needed for log module!)
 [ ] KORL-ISSUE-000-000-054: file: I think we need to put a lock around context->asyncPool operations, since it is possible for multiple threads to attempt to read/write to this data simultaneously
-[ ] KORL-ISSUE-000-000-055: file: deprecate this API because it sucks; _korl_file_getPath seems so much better
+[x] KORL-ISSUE-000-000-055: file: deprecate this API because it sucks; _korl_file_getPath seems so much better
 [x] KORL-ISSUE-000-000-056: assert: this code is extremely similar to code inside of korl-crash; maybe merge korl-assert into korl-crash?
 [ ] KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
 [x] KORL-ISSUE-000-000-058: math: F32_MIN doesn't seem right

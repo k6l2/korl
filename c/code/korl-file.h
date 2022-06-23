@@ -6,6 +6,7 @@ typedef enum Korl_File_PathType
     , KORL_FILE_PATHTYPE_LOCAL_DATA
     , KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY
     , KORL_FILE_PATHTYPE_TEMPORARY_DATA
+    , KORL_FILE_PATHTYPE_ENUM_COUNT// keep last!
 } Korl_File_PathType;
 typedef enum Korl_File_Descriptor_Flags
 {

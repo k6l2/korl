@@ -242,8 +242,8 @@ korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* conte
             string->rawSizeUtf16       *= 2;
             string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf16, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
         }
-        u8*const  utf8  = context->characterPool + string->poolByteOffsetUtf8;
-        u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
+        const u8*const utf8  =                   context->characterPool + string->poolByteOffsetUtf8;
+        u16*const      utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
         if(utf8[cU8] < 0x80)// [0,127]; ASCII range; one byte per codepoint
             utf16[currentUtf16++] = utf8[cU8];// entire codepoint is contained in the leading UTF-8 byte
         else if(utf8[cU8] < 0xC0)// [0x80, 0xBF]
@@ -338,6 +338,9 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_newFromUtf16(Korl_Str
 }
 korl_internal void korl_stringPool_free(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
+    /* if the string handle is invalid, we don't have to do anything */
+    if(!stringHandle)
+        return;
     /* find the matching handle in the string array */
     u$ s = 0;
     for(; s < context->stringsSize; s++)

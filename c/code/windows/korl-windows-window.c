@@ -364,7 +364,7 @@ korl_internal void korl_windows_window_loop(void)
             _korl_windows_window_context.deferSaveStateSave = false;
             deferProbeReport = true;
             korl_time_probeStart(save_state_save);
-            korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
+            korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_time_probeStop(save_state_save);
         }
         if(_korl_windows_window_context.deferSaveStateLoad)
