@@ -2568,7 +2568,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
     asset->type                                  = _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE;
     asset->subType.assetTexture.deviceAllocation = deviceImage;
-    asset->subType.assetTexture.name             = korl_newStringUtf16(context->stringPool, assetName);
+    asset->subType.assetTexture.name             = korl_stringNewUtf16(context->stringPool, assetName);
     korl_assert(asset->subType.assetTexture.name);
     deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
 done_conditionallySelectLoadedAsset:

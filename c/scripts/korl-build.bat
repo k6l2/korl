@@ -4,6 +4,21 @@ rem ------- save a timestamp so we can report how long it takes to build -------
 for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
     set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
+rem --- Iterate over build script arguments ------------------------------------
+set buildOptionNoThreads=FALSE
+if "%~1"=="" goto ARGUMENT_LOOP_END
+rem set argNumber=0
+:ARGUMENT_LOOP_START
+rem echo arg%argNumber%=%1
+if "%~1"=="nothreads" (
+    set buildOptionNoThreads=TRUE
+    echo Running build on single thread...
+    echo:
+)
+shift
+rem set /A argNumber+=1
+if not "%~1"=="" goto ARGUMENT_LOOP_START
+:ARGUMENT_LOOP_END
 rem ---------------- create & enter the build output directory  ----------------
 cd %KORL_PROJECT_ROOT%
 if not exist "build" (

@@ -289,7 +289,7 @@ korl_internal void korl_file_initialize(void)
     const DWORD currentDirectoryCharacters = GetCurrentDirectory(0, NULL);
     if(currentDirectoryCharacters == 0)
         korl_logLastError("GetCurrentDirectory failed!");
-    context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY] = string_newReservedUtf16(currentDirectoryCharacters);
+    context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY] = string_newEmptyUtf16(currentDirectoryCharacters);
     const DWORD currentDirectoryCharacters2 = 
         GetCurrentDirectory(currentDirectoryCharacters, 
                             string_getRawWriteableUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY]));
@@ -354,7 +354,7 @@ korl_internal void korl_file_initialize(void)
         }
     }
     /* executable file directory */
-    context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY] = string_newReservedUtf16(MAX_PATH);// just an initial guess; you'll see why shortly...
+    context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY] = string_newEmptyUtf16(MAX_PATH);// just an initial guess; you'll see why shortly...
     DWORD resultGetModuleFileName = string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]);
     // That's right, in order to properly use this shitty API, Microsoft forces 
     //  us to pull this reallocate loop bullshit... 🤡 //
@@ -1073,7 +1073,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     i32 allocationLine;
     u$ allocationAddress;
     u$ allocationBytes;
-    allocationFileBuffer = string_newReservedUtf16(MAX_PATH/*just a suggestion; likely will change later*/);
+    allocationFileBuffer = string_newEmptyUtf16(MAX_PATH/*just a suggestion; likely will change later*/);
     for(u8 a = 0; a < allocatorCount; a++)
     {
         for(u32 aa = 0; aa < allocatorDescriptors[a].allocationCount; aa++)

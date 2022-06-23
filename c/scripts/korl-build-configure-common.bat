@@ -74,6 +74,9 @@ set "_CL_=%_CL_% /FC"
 rem     for multi-line errors/warnings, the additional info lines are all placed 
 rem     on the same line, instead of being broken up into multiple lines
 set "_CL_=%_CL_% /WL"
+rem     potentially very useful for optimizing builds by eliminating bloated 
+rem     standard libraries!
+@REM set "_CL_=%_CL_% /showIncludes"
 rem ----- set common linker options -----
 set "KORL_LINKER_OPTIONS="
 rem     disable useless "startup banner" message in linker output
