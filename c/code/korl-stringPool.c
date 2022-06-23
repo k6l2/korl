@@ -336,6 +336,10 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_newFromUtf16(Korl_Str
 {
     return _korl_stringPool_addStringCommon(context, cStringUtf16, korl_checkCast_u$_to_u32(korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16))), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
 }
+korl_internal Korl_StringPool_StringHandle korl_stringPool_newReservedUtf16(Korl_StringPool* context, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
+{
+    korl_assert("@TODO"); return 0;
+}
 korl_internal void korl_stringPool_free(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     /* if the string handle is invalid, we don't have to do anything */
@@ -353,6 +357,10 @@ korl_internal void korl_stringPool_free(Korl_StringPool* context, Korl_StringPoo
     /* remove the string from the string array */
     context->strings[s] = context->strings[context->stringsSize - 1];
     context->stringsSize--;
+}
+korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u32 reservedSizeExcludingNullTerminator)
+{
+    korl_assert("@TODO");
 }
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16)
 {
@@ -425,4 +433,28 @@ korl_internal const wchar_t* korl_stringPool_getRawUtf16(Korl_StringPool* contex
     }
     /**/
     return KORL_C_CAST(wchar_t*, context->characterPool + context->strings[s].poolByteOffsetUtf16);
+}
+korl_internal u32 korl_stringPool_getRawSizeUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
+{
+    korl_assert(!"@TODO"); return 0;
+}
+korl_internal wchar_t* korl_stringPool_getRawWriteableUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
+{
+    korl_assert(!"@TODO"); return NULL;
+}
+korl_internal Korl_StringPool_StringHandle korl_stringPool_copy(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
+{
+    korl_assert(!"@TODO"); return 0;
+}
+korl_internal void korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, Korl_StringPool_StringHandle stringHandleToAppend)
+{
+    korl_assert(!"@TODO");
+}
+korl_internal void korl_stringPool_appendUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16)
+{
+    korl_assert(!"@TODO");
+}
+korl_internal void korl_stringPool_appendFormatUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* format, ...)
+{
+    korl_assert(!"@TODO");
 }
