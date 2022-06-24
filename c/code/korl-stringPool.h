@@ -101,11 +101,18 @@ korl_internal void                          korl_stringPool_appendFormatUtf16(Ko
 #if 0// currently feeling too lazy to implement this API...
 korl_internal void                          korl_stringPool_appendUnsignedInteger(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);
 korl_internal void                          korl_stringPool_appendUnsignedIntegerHex(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);
+/** \param io_rawCharacterIterator The user specifies a positive character 
+ * offset in the raw UTF-16 string.  The user should initialize the value at 
+ * this address to \c 0 to properly iterate over all codepoints.  If there are 
+ * no more unicode codepoints, a negative number is returned to this address.
+ * \return The next unicode codepoint starting at \c *io_rawCharacterIterator . */
+korl_internal u32                           korl_stringPool_getNextCodepointUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, i64* io_rawCharacterIterator);
 #endif
 #if 0/// potential new API:
 getRawUtf8
 getRawSizeUtf8
 getCodepointCount
+setCodepoint
 prepend
 find     (not sure whether to use raw offsets, or codepoint offsets; maybe make some user code first to see what we need?)
 subString(not sure whether to use raw offsets, or codepoint offsets; maybe make some user code first to see what we need?)
