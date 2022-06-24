@@ -343,7 +343,7 @@ korl_internal void korl_stringPool_free(Korl_StringPool* context, Korl_StringPoo
     for(; s < context->stringsSize; s++)
         if(context->strings[s].handle == stringHandle)
             break;
-    korl_assert(s);
+    korl_assert(s < context->stringsSize);
     /* deallocate any raw string allocations */
     if(context->strings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
         _korl_stringPool_free(context, context->strings[s].poolByteOffsetUtf16);
