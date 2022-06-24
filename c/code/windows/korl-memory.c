@@ -201,7 +201,7 @@ korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allo
     va_end(args);
     return result;
 }
-korl_internal wchar_t* korl_memory_stringFormatVaList(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
+korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST(korl_memory_stringFormatVaList)
 {
     const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
@@ -219,7 +219,7 @@ korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER(korl_memory_stringFormatBuffer)
     va_end(args);
     return result;
 }
-korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER_VALIST(korl_memory_stringFormatBufferVaList)
+korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
 {
     const int bufferSize = _vscwprintf(format, vaList);// excludes null terminator
     korl_assert(bufferSize >= 0);

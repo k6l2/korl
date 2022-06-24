@@ -381,6 +381,7 @@ korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutp
         if(_korl_log_context.useLogOutputConsole)
             korl_log(INFO, "configured to output logs to console");
     }
+    //KORL-ISSUE-000-000-075: log: dump log buffer to debugger if configured to output logs to debugger
 }
 korl_internal void korl_log_initiateFile(bool logFileEnabled)
 {

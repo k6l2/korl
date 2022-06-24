@@ -132,8 +132,8 @@ korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_StringHandle findFile
     findFileCount = 1;
     FILETIME creationTimeOldest = findFileData.ftCreationTime;
     *o_filePathOldest = string_copy(findFileDirectory);
-    string_appendUtf16(findFileDirectory, L"\\");
-    string_appendUtf16(findFileDirectory, findFileData.cFileName);
+    string_appendUtf16(*o_filePathOldest, L"\\");
+    string_appendUtf16(*o_filePathOldest, findFileData.cFileName);
     for(;;)
     {
         const BOOL resultFindNextFile = FindNextFile(findHandle, &findFileData);
@@ -148,8 +148,8 @@ korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_StringHandle findFile
             creationTimeOldest = findFileData.ftCreationTime;
             string_free(*o_filePathOldest);
             *o_filePathOldest = string_copy(findFileDirectory);
-            string_appendUtf16(findFileDirectory, L"\\");
-            string_appendUtf16(findFileDirectory, findFileData.cFileName);
+            string_appendUtf16(*o_filePathOldest, L"\\");
+            string_appendUtf16(*o_filePathOldest, findFileData.cFileName);
         }
     }
     if(!FindClose(findHandle))
@@ -286,10 +286,10 @@ korl_internal void korl_file_initialize(void)
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     context->stringPool      = korl_stringPool_create(context->allocatorHandle);
     /* determine where the current working directory is in Windows */
-    const DWORD currentDirectoryCharacters = GetCurrentDirectory(0, NULL);
+    const DWORD currentDirectoryCharacters = GetCurrentDirectory(0, NULL);// _including_ the null-terminator
     if(currentDirectoryCharacters == 0)
         korl_logLastError("GetCurrentDirectory failed!");
-    context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY] = string_newEmptyUtf16(currentDirectoryCharacters);
+    context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY] = string_newEmptyUtf16(currentDirectoryCharacters - 1/*ignore the null-terminator; string pool will add one internally*/);
     const DWORD currentDirectoryCharacters2 = 
         GetCurrentDirectory(currentDirectoryCharacters, 
                             string_getRawWriteableUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY]));
@@ -409,6 +409,7 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
     _Korl_File_Context*const context = &_korl_file_context;
     Korl_StringPool_StringHandle filePathNew = 0;
     Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathTypeFileName]);
+    string_appendUtf16(filePath, L"\\");
     string_appendUtf16(filePath, fileName);
     if(GetFileAttributes(string_getRawUtf16(filePath)) == INVALID_FILE_ATTRIBUTES)
     {
@@ -416,6 +417,7 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
         goto cleanUp;
     }
     filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
+    string_appendUtf16(filePathNew, L"\\");
     string_appendUtf16(filePathNew, fileNameNew);
     if(GetFileAttributes(string_getRawUtf16(filePathNew)) != INVALID_FILE_ATTRIBUTES)
         if(DeleteFile(string_getRawUtf16(filePathNew)))
@@ -829,7 +831,7 @@ korl_internal void korl_file_saveStateCreate(void)
                                    + sizeof(enumContext->allocatorCount) 
                                    + sizeof(allocatorDescriptorByteStart) 
                                    + sizeof(allocationDescriptorByteStart) 
-                                   + sizeof(windowDescriptorByteStart)
+                                   + sizeof(windowDescriptorByteStart) 
                                    + sizeof(assetCacheDescriptorByteStart);
     u8* bufferCursor    = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, enumContext->saveStateBuffer) + enumContext->saveStateBufferBytes;
