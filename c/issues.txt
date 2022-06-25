@@ -122,4 +122,5 @@
 [ ] KORL-FEATURE-000-000-017: time: add ability to stash reports for later consumption; avoids the issue of not being able to probe the report itself, among other things
 [ ] KORL-FEATURE-000-000-018: GUI: add API to check if the GUI has input focus
 [ ] KORL-FEATURE-000-000-019: window: automatically save window position/size to a config file, and load them on startup
-[ ] KORL-FEATURE-000-000-020: crash: dump savestate on crash
+[x] KORL-FEATURE-000-000-020: crash: dump savestate on crash
+[ ] KORL-FEATURE-000-000-021: assetCache: automatic hot-reloading of assets
