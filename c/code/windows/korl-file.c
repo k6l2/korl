@@ -604,18 +604,21 @@ korl_internal bool korl_file_load(
 }
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount)
 {
+    korl_shared_const wchar_t DUMP_SUBDIRECTORY[] = L"\\memory-dumps";
     _Korl_File_Context*const context = &_korl_file_context;
-    Korl_StringPool_StringHandle pathFileRead        = 0;
-    Korl_StringPool_StringHandle pathFileWrite       = 0;
-    Korl_StringPool_StringHandle dumpDirectory       = 0;
-    Korl_StringPool_StringHandle directoryMemoryDump = 0;
+    Korl_StringPool_StringHandle pathFileRead           = 0;
+    Korl_StringPool_StringHandle pathFileWrite          = 0;
+    Korl_StringPool_StringHandle dumpDirectory          = 0;
+    Korl_StringPool_StringHandle pathMemoryDump         = 0;
+    Korl_StringPool_StringHandle subDirectoryMemoryDump = 0;
+    Korl_StringPool_StringHandle subPathSaveState       = 0;
     // derived from MSDN sample code:
     //	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
     SYSTEMTIME localTime;
     GetLocalTime( &localTime );
     /* create a memory dump directory in the temporary data directory */
     dumpDirectory = string_copy(context->directoryStrings[type]);
-    string_appendUtf16(dumpDirectory, L"\\memory-dumps");
+    string_appendUtf16(dumpDirectory, DUMP_SUBDIRECTORY);
     if(!CreateDirectory(string_getRawUtf16(dumpDirectory), NULL/*default security*/))
         switch(GetLastError())
         {
@@ -650,23 +653,26 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         string_free(filePathOldest);
     }
     // Create a companion folder to store PDB files specifically for this dump! //
-    directoryMemoryDump = string_copy(dumpDirectory);
-    string_appendFormatUtf16(directoryMemoryDump, L"\\%ws-%04d%02d%02d-%02d%02d%02d-%ld-%ld", 
+    subDirectoryMemoryDump = string_newUtf16(L"");
+    string_appendFormatUtf16(subDirectoryMemoryDump, L"\\%ws-%04d%02d%02d-%02d%02d%02d-%ld-%ld", 
                              KORL_APPLICATION_VERSION,
                              localTime.wYear, localTime.wMonth, localTime.wDay,
                              localTime.wHour, localTime.wMinute, localTime.wSecond,
                              GetCurrentProcessId(), GetCurrentThreadId());
-    if(!CreateDirectory(string_getRawUtf16(directoryMemoryDump), NULL))
+    pathMemoryDump = string_copy(dumpDirectory);
+    string_appendUtf16(pathMemoryDump, L"\\");
+    string_append     (pathMemoryDump, subDirectoryMemoryDump);
+    if(!CreateDirectory(string_getRawUtf16(pathMemoryDump), NULL))
     {
         korl_logLastError("CreateDirectory(%ws) failed!", 
-                          string_getRawUtf16(directoryMemoryDump));
+                          string_getRawUtf16(pathMemoryDump));
         goto cleanUp;
     }
     else
         korl_log(INFO, "created MiniDump directory: %ws", 
-                 string_getRawUtf16(directoryMemoryDump));
+                 string_getRawUtf16(pathMemoryDump));
     // Create the mini dump! //
-    pathFileWrite = string_copy(directoryMemoryDump);
+    pathFileWrite = string_copy(pathMemoryDump);
     string_appendFormatUtf16(pathFileWrite, L"\\%ws-%04d%02d%02d-%02d%02d%02d-0x%X-0x%X.dmp", 
                              KORL_APPLICATION_VERSION,
                              localTime.wYear, localTime.wMonth, localTime.wDay,
@@ -700,6 +706,11 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         goto cleanUp;
     }
     korl_log(INFO, "MiniDump written to: %ws", string_getRawUtf16(pathFileWrite));
+    /* let's also save the state of the top of this frame in the dump folder */
+    subPathSaveState = string_newUtf16(DUMP_SUBDIRECTORY);
+    string_append(subPathSaveState, subDirectoryMemoryDump);
+    string_appendUtf16(subPathSaveState, L"\\savestate");
+    korl_file_saveStateSave(type, string_getRawUtf16(subPathSaveState));
     /* Attempt to copy the win32 application's symbol files to the dump 
         location.  This will allow us to at LEAST view the call stack properly 
         during development for all of our minidumps even after making source 
@@ -710,7 +721,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     string_appendUtf16(pathFileRead, KORL_APPLICATION_NAME);
     string_appendUtf16(pathFileRead, L".exe");
     string_free(pathFileWrite);
-    pathFileWrite = string_copy(directoryMemoryDump);
+    pathFileWrite = string_copy(pathMemoryDump);
     string_appendUtf16(pathFileWrite, L"\\");
     string_appendUtf16(pathFileWrite, KORL_APPLICATION_NAME);
     string_appendUtf16(pathFileWrite, L".exe");
@@ -720,7 +731,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     else
         korl_log(INFO, "copied file \"%ws\" to \"%ws\"", string_getRawUtf16(pathFileRead), string_getRawUtf16(pathFileWrite));
     // Copy all PDB files //
-    _korl_file_copyFiles(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], L"*.pdb", directoryMemoryDump);
+    _korl_file_copyFiles(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], L"*.pdb", pathMemoryDump);
 #if 0/* In the future, we will have to do something a little more sophisticated 
         like when we add the ability to hot-reload game code, since we'll have 
         to implement rolling PDB files due to Windows filesystem constraints.  I 
@@ -789,7 +800,9 @@ cleanUp:
     string_free(pathFileRead);
     string_free(pathFileWrite);
     string_free(dumpDirectory);
-    string_free(directoryMemoryDump);
+    string_free(pathMemoryDump);
+    string_free(subDirectoryMemoryDump);
+    string_free(subPathSaveState);
 }
 /** In this function, we just write out each allocator to the file.  Instead of 
  * enumerating over each memory allocator and writing the contents to the file 

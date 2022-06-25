@@ -364,7 +364,7 @@ korl_internal void korl_windows_window_loop(void)
             _korl_windows_window_context.deferSaveStateSave = false;
             deferProbeReport = true;
             korl_time_probeStart(save_state_save);
-            korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
+            korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
             korl_time_probeStop(save_state_save);
         }
         if(_korl_windows_window_context.deferSaveStateLoad)
