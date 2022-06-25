@@ -374,7 +374,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_time_probeStart(save_state_load);
             korl_vulkan_clearAllDeviceAssets();
             korl_gfx_clearFontCache();
-            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"savestate");
+            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
             korl_time_probeStop(save_state_load);
         }
