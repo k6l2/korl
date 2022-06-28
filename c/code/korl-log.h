@@ -11,6 +11,7 @@ korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutp
  * point when the log module is initialized so that we can store logs that 
  * happen in between those two API calls until the log file is actually opened. */
 korl_internal void korl_log_initiateFile(bool logFileEnabled);
+korl_internal void korl_log_clearAsyncIo(void);
 /** Logs will not get saved to disk until this API is called!  We should not 
  * care about reading logs in real-time from a file (using the tail command for 
  * example).  Even though such a feature would be neat to have, it is completely 

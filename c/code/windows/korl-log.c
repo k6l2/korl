@@ -440,13 +440,19 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     }
     LeaveCriticalSection(&(context->criticalSection));
 }
+korl_internal void korl_log_clearAsyncIo(void)
+{
+    _Korl_Log_Context*const context = &_korl_log_context;
+    for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors); i++)
+        korl_assert(KORL_FILE_GET_ASYNC_IO_RESULT_DONE == korl_file_getAsyncIoResult(&context->asyncWriteDescriptors[i].asyncIoHandle, true/*block until complete*/));
+    KORL_MEMORY_POOL_EMPTY(context->asyncWriteDescriptors);
+}
 korl_internal void korl_log_shutDown(void)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
     if(!(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE))
         goto skipFileCleanup;
-    for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors); i++)
-        korl_assert(KORL_FILE_GET_ASYNC_IO_RESULT_DONE == korl_file_getAsyncIoResult(&context->asyncWriteDescriptors[i].asyncIoHandle, true/*block until complete*/));
+    korl_log_clearAsyncIo();
     korl_memory_allocator_empty(context->allocatorHandleTransient);
     if(context->useLogFileBig)
     {
