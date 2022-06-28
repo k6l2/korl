@@ -27,15 +27,6 @@
  * program ends!
  */
 korl_internal void korl_assetCache_initialize(void);
-/**
- * Use this function to obtain an asset.  If the asset has not yet been loaded, 
- * the asset manager will use an appropriate strategy to load the asset 
- * automatically.
- * \return If the asset was not loaded, the result's \c data pointer will be 
- * \c NULL .  The caller can be assured that if the 
- * \c KORL_ASSETCACHE_GET_FLAGS_LAZY flag is not set, the asset is guaranteed 
- * to be loaded when the function call is complete.
- */
 korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get);
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed);
 /** I don't like how this API requires us to do file I/O in modules outside of 

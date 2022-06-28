@@ -130,8 +130,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     if(!batch->_assetNameFont || batch->_fontTextureHandle)
         return;
-    Korl_AssetCache_AssetData assetDataFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags);
-    if(!assetDataFont.data)
+    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetDataFont);
+    if(KORL_ASSETCACHE_GET_RESULT_LOADED != korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags, &assetDataFont))
         return;
 #if KORL_DEBUG && 0// testing stb_truetype bitmap rendering API
     korl_shared_variable bool bitmapTestDone = false;

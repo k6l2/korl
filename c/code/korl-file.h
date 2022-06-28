@@ -17,17 +17,17 @@ typedef enum Korl_File_Descriptor_Flags
 typedef struct Korl_File_Descriptor
 {
     void* handle;
+    u64 asyncKey;// A unique identifier to link async operations to file handles, in the off chance file handle values are re-used; 0 => invalid key
     Korl_File_Descriptor_Flags flags;
 } Korl_File_Descriptor;
-typedef union Korl_File_AsyncWriteHandle
-{
-    struct
-    {
-        u16 salt;
-        u16 index;
-    } components;
-    u32 value;
-} Korl_File_AsyncWriteHandle;
+/** A handle to a pending asynchronous I/O operation.  A handle value of \c 0 is 
+ * considered to be _invalid_ (no associated pending operation). */
+typedef u32 Korl_File_AsyncIoHandle;
+typedef enum Korl_File_GetAsyncIoResult
+    { KORL_FILE_GET_ASYNC_IO_RESULT_DONE
+    , KORL_FILE_GET_ASYNC_IO_RESULT_PENDING
+    , KORL_FILE_GET_ASYNC_IO_RESULT_INVALID_HANDLE
+} Korl_File_GetAsyncIoResult;
 korl_internal void korl_file_initialize(void);
 /** \return \c true if the file was opened successfully, \c false otherwise.  
  * Upon successful execution, the file descriptor is stored in \c o_fileDescriptor. */
@@ -42,12 +42,14 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
                                            Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew);
 /** The caller is responsible for keeping \c buffer alive until the write 
  * operation is complete. */
-korl_internal Korl_File_AsyncWriteHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes);
-/** \param timeoutMilliseconds 0 means the function returns immediately, 
- * \c KORL_U32_MAX means the function blocks until the write operation is 
- * complete.
- * \return \c true if the write operation finished, \c false otherwise. */
-korl_internal bool korl_file_writeAsyncWait(Korl_File_AsyncWriteHandle* handle, u32 timeoutMilliseconds);
+korl_internal Korl_File_AsyncIoHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes);
+/** The caller is expected to gracefully handle the \c *_RESULT_INVALID_HANDLE 
+ * result at any time, since it is possible for the file module to invalidate 
+ * any async io handle at any time.  This is required, for example, to be able 
+ * to perform application memory savestate features, as the loaded memory state 
+ * is likely to contain async io handles which are no longer valid since they 
+ * are from another session. */
+korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_AsyncIoHandle* handle, bool blockUntilComplete);
 korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const void* data, u$ dataBytes);
 /** \return \c true if the file was loaded successfully, \c false otherwise. */
 korl_internal bool korl_file_load(

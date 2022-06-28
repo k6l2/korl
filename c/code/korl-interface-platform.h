@@ -9,17 +9,25 @@ typedef struct Korl_AssetCache_AssetData
     u32 dataBytes;
 } Korl_AssetCache_AssetData;
 typedef enum Korl_AssetCache_Get_Flags
-{
-    KORL_ASSETCACHE_GET_FLAGS_NONE = 0, 
+    { KORL_ASSETCACHE_GET_FLAGS_NONE = 0
     /**
      * Tell the asset manager that it is not necessary to load the asset 
      * immediately.  This will allow us to load the asset asynchronously.  If 
      * this flag is set, the caller is responsible for calling "get" on 
      * subsequent frames to see if the asset has finished loading.
      */
-    KORL_ASSETCACHE_GET_FLAGS_LAZY = 1<<0
+    , KORL_ASSETCACHE_GET_FLAGS_LAZY = 1<<0
 } Korl_AssetCache_Get_Flags;
-#define KORL_PLATFORM_ASSETCACHE_GET(name) Korl_AssetCache_AssetData name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags)
+typedef enum Korl_AssetCache_Get_Result
+    { KORL_ASSETCACHE_GET_RESULT_LOADED
+    , KORL_ASSETCACHE_GET_RESULT_STILL_LOADING
+} Korl_AssetCache_Get_Result;
+/**
+ * Use this function to obtain an asset.  If the asset has not yet been loaded, 
+ * the asset cache will use an appropriate strategy to load the asset from disk 
+ * automatically.
+ */
+#define KORL_PLATFORM_ASSETCACHE_GET(name) Korl_AssetCache_Get_Result name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags, Korl_AssetCache_AssetData* o_assetData)
 /** Do not use this value directly, since the meaning of this data is 
  * platform-dependent.  Instead, use the platform APIs which uses this type.  
  * This value should represent the highest possible time resolution 

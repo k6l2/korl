@@ -1710,12 +1710,18 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
             context->device, &createInfoPipelineLayout, context->allocator, 
             &context->pipelineLayout));
     /* load required built-in shader assets */
-    Korl_AssetCache_AssetData assetShaderBatchVertexColor          = korl_assetCache_get(L"build/shaders/korl-batch-color.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchVertexTexture        = korl_assetCache_get(L"build/shaders/korl-batch-texture.vert.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchVertexColorTexture   = korl_assetCache_get(L"build/shaders/korl-batch-color-texture.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchFragmentColor        = korl_assetCache_get(L"build/shaders/korl-batch-color.frag.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchFragmentTexture      = korl_assetCache_get(L"build/shaders/korl-batch-texture.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE);
-    Korl_AssetCache_AssetData assetShaderBatchFragmentColorTexture = korl_assetCache_get(L"build/shaders/korl-batch-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE);
+    Korl_AssetCache_AssetData assetShaderBatchVertexColor;
+    Korl_AssetCache_AssetData assetShaderBatchVertexTexture;
+    Korl_AssetCache_AssetData assetShaderBatchVertexColorTexture;
+    Korl_AssetCache_AssetData assetShaderBatchFragmentColor;
+    Korl_AssetCache_AssetData assetShaderBatchFragmentTexture;
+    Korl_AssetCache_AssetData assetShaderBatchFragmentColorTexture;
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexColor));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-texture.vert.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexTexture));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color-texture.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexColorTexture));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color.frag.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentColor));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-texture.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentTexture));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentColorTexture));
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
     createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -2542,10 +2548,10 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     /* if it is, select this texture for later use and return */
     if(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets))
         goto done_conditionallySelectLoadedAsset;
-    /* request the image asset from the asset manager */
-    Korl_AssetCache_AssetData assetData = korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAGS_LAZY);
-    /* if the asset isn't loaded we can stop here */
-    if(assetData.data == NULL)
+    /* request the image asset from the asset manager; if the asset isn't loaded 
+        we can stop here */
+    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
+    if(KORL_ASSETCACHE_GET_RESULT_LOADED != korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAGS_LAZY, &assetData))
         goto done_conditionallySelectLoadedAsset;
     /* decode the raw image data from the asset */
     int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
