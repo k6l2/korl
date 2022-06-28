@@ -1123,6 +1123,37 @@ korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Vulkan_Blend
     korl_log(ERROR, "Unsupported blend factor: %d", blendFactor);
     return 0;
 }
+korl_internal void _korl_vulkan_selectTexture(VkImageView imageView, VkSampler sampler)
+{
+    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    /* if the descriptor set state we are attempting to set is identical to the 
+        last known state, then we don't need to do anything */
+    if(    surfaceContext->batchState.textureImageView == imageView
+        && surfaceContext->batchState.textureSampler   == sampler)
+        return;
+    surfaceContext->batchState.textureImageView = imageView;
+    surfaceContext->batchState.textureSampler   = sampler;
+    /* we're about to modify the batch descriptor set state, so let's make sure 
+        the batch pipeline doesn't have any pending geometry for the current 
+        descriptor set index */
+    korl_time_probeStart(batch_descriptor_set_flush);
+    _korl_vulkan_batchDescriptorSetFlush();
+    korl_time_probeStop(batch_descriptor_set_flush);
+    /* select the loaded texture device asset for any future textured draw operations */
+    KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
+    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descriptorImageInfo.imageView   = imageView;
+    descriptorImageInfo.sampler     = sampler;
+    KORL_ZERO_STACK(VkWriteDescriptorSet, writeDescriptorSetUbo);
+    writeDescriptorSetUbo.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSetUbo.dstSet          = surfaceContext->batchDescriptorSets[surfaceContext->frameSwapChainImageIndex][surfaceContext->batchState.descriptorSetIndexCurrent];
+    writeDescriptorSetUbo.dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE;
+    writeDescriptorSetUbo.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSetUbo.descriptorCount = 1;
+    writeDescriptorSetUbo.pImageInfo      = &descriptorImageInfo;
+    vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUbo, 0, NULL);
+}
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
 korl_internal void _korl_vulkan_createSurface(void* userData);
@@ -1774,6 +1805,11 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
         korl_math_megabytes(64));
+    /* create a default texture asset to be used whenever we fail to get texture 
+        assets for example 
+        @create-default-texture-copypasta */
+    Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
+    context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {
@@ -1837,6 +1873,11 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void)
         }
     }
     KORL_MEMORY_POOL_EMPTY(context->deviceAssets);
+    /* create a default texture asset to be used whenever we fail to get texture 
+        assets for example 
+        @create-default-texture-copypasta */
+    Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
+    context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
 }
 korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
 {
@@ -2552,13 +2593,37 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
         we can stop here */
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
     if(KORL_ASSETCACHE_GET_RESULT_LOADED != korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAGS_LAZY, &assetData))
+    {
+        /* locate the internal "default texture" asset so we can actually render something; 
+            not doing so would result in invalid rendering operation (validation layer error) */
+        deviceAssetIndexLoaded = 0;
+        for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
+        {
+            if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
+                continue;
+            if(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.handle == context->textureHandleDefaultTexture)
+                break;
+        }
+        korl_assert(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets));
         goto done_conditionallySelectLoadedAsset;
+    }
     /* decode the raw image data from the asset */
     int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
     stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
     if(!imagePixels)
     {
         korl_log(ERROR, "stbi_load_from_memory failed! (%ls)", assetName);
+        /* locate the internal "default texture" asset so we can actually render something; 
+            not doing so would result in invalid rendering operation (validation layer error) */
+        deviceAssetIndexLoaded = 0;
+        for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
+        {
+            if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
+                continue;
+            if(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.handle == context->textureHandleDefaultTexture)
+                break;
+        }
+        korl_assert(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets));
         goto done_conditionallySelectLoadedAsset;
     }
     /* allocate a device-local image object for the texture */
@@ -2581,32 +2646,20 @@ done_conditionallySelectLoadedAsset:
     /* if we do not have a valid index for a loaded device asset, just do nothing */
     if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
         return;
-    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-    /* if the descriptor set state we are attempting to set is identical to the 
-        last known state, then we don't need to do anything */
-    if(    surfaceContext->batchState.textureImageView == context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView
-        && surfaceContext->batchState.textureSampler   == context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler)
+    /* handle the TEXTURE device asset type, in case we couldn't get an 
+        ASSET_TEXTURE for some reason (not loaded yet, etc...) */
+    if(context->deviceAssets[deviceAssetIndexLoaded].type == _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
+    {
+        korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
+        _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView, 
+                                   context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler);
         return;
-    surfaceContext->batchState.textureImageView = context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView;
-    surfaceContext->batchState.textureSampler   = context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler;
-    /* we're about to modify the batch descriptor set state, so let's make sure 
-        the batch pipeline doesn't have any pending geometry for the current 
-        descriptor set index 
-        @vulkan-set-batch-texture-copy-pasta */
-    _korl_vulkan_batchDescriptorSetFlush();
-    /* select the loaded texture device asset for any future textured draw operations */
-    KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    descriptorImageInfo.imageView   = context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView;
-    descriptorImageInfo.sampler     = context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler;
-    KORL_ZERO_STACK(VkWriteDescriptorSet, writeDescriptorSetUbo);
-    writeDescriptorSetUbo.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSetUbo.dstSet          = surfaceContext->batchDescriptorSets[surfaceContext->frameSwapChainImageIndex][surfaceContext->batchState.descriptorSetIndexCurrent];
-    writeDescriptorSetUbo.dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE;
-    writeDescriptorSetUbo.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSetUbo.descriptorCount = 1;
-    writeDescriptorSetUbo.pImageInfo      = &descriptorImageInfo;
-    vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUbo, 0, NULL);
+    }
+    /* we have a valid ASSET_TEXTURE device asset, so we can just select it */
+    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].type == _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE);
+    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
+    _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView, 
+                               context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler);
 }
 korl_internal Korl_Vulkan_TextureHandle korl_vulkan_textureCreate(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer)
 {
@@ -2697,31 +2750,6 @@ korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandl
         return;
     /* if the device asset exists & is valid, use it for batched texturing */
     korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-    /* if the descriptor set state we are attempting to set is identical to the 
-        last known state, then we don't need to do anything */
-    if(    surfaceContext->batchState.textureImageView == context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView
-        && surfaceContext->batchState.textureSampler   == context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler)
-        return;
-    surfaceContext->batchState.textureImageView = context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView;
-    surfaceContext->batchState.textureSampler   = context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler;
-    /* we're about to modify the batch descriptor set state, so let's make sure 
-        the batch pipeline doesn't have any pending geometry for the current 
-        descriptor set index 
-        @vulkan-set-batch-texture-copy-pasta */
-    korl_time_probeStart(batch_descriptor_set_flush);
-    _korl_vulkan_batchDescriptorSetFlush();
-    korl_time_probeStop(batch_descriptor_set_flush);
-    /* select the loaded texture device asset for any future textured draw operations */
-    KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    descriptorImageInfo.imageView   = context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView;
-    descriptorImageInfo.sampler     = context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler;
-    KORL_ZERO_STACK(VkWriteDescriptorSet, writeDescriptorSetUbo);
-    writeDescriptorSetUbo.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSetUbo.dstSet          = surfaceContext->batchDescriptorSets[surfaceContext->frameSwapChainImageIndex][surfaceContext->batchState.descriptorSetIndexCurrent];
-    writeDescriptorSetUbo.dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE;
-    writeDescriptorSetUbo.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSetUbo.descriptorCount = 1;
-    writeDescriptorSetUbo.pImageInfo      = &descriptorImageInfo;
-    vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUbo, 0, NULL);
+    _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView, 
+                               context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler);
 }

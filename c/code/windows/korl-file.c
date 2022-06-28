@@ -94,7 +94,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
     {
         /* create a unique async key for this file */
         u64 newKey = 0;// 0 => invalid key
-        for(u64 k = 1; k <= KORL_MEMORY_POOL_SIZE(context->usedFileAsyncKeys); k++)
+        for(u64 k = 1; k <= KORL_MEMORY_POOL_CAPACITY(context->usedFileAsyncKeys); k++)
         {
             newKey = k;
             for(u64 ku = 0; ku < KORL_MEMORY_POOL_SIZE(context->usedFileAsyncKeys); ku++)
@@ -111,7 +111,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
         korl_assert(newKey);
         /* associate this file handle with the I/O completion port */
         const HANDLE resultCreateIoCompletionPort = CreateIoCompletionPort(hFile, context->handleIoCompletionPort, newKey, 0/*ignored*/);
-        if(resultCreateIoCompletionPort)
+        if(resultCreateIoCompletionPort == NULL)
             korl_logLastError("CreateIoCompletionPort failed!");
         /**/
         o_fileDescriptor->asyncKey = newKey;
@@ -545,6 +545,11 @@ korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_As
         *handle = 0;// invalidate the caller's handle
         return KORL_FILE_GET_ASYNC_IO_RESULT_INVALID_HANDLE;
     }
+    /* check to see if the async operation returned its completion status during 
+        another call, since the async calls can be dequeued in any order (the 
+        completion queue is _NOT_ FIFO or FILO or anything like that) */
+    if(asyncOp->bytesTransferred >= asyncOp->bytesPending)
+        goto skipPopCompletionPackets;
     /* pop I/O completion packets from the completion port until it is empty */
     for(;;)
     {
@@ -553,7 +558,8 @@ korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_As
         LPOVERLAPPED pOverlapped     = NULL;
         const DWORD waitMilliseconds = blockUntilComplete ? INFINITE : 0;
         if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, waitMilliseconds))
-            korl_logLastError("GetQueuedCompletionStatus failed");
+            if(GetLastError() != WAIT_TIMEOUT)
+                korl_logLastError("GetQueuedCompletionStatus failed");
         if(pOverlapped == NULL)
             break;
         bool foundAsyncOp = false;
@@ -567,11 +573,14 @@ korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_As
                 korl_assert(bytesTransferred == context->asyncPool[ap].bytesPending);
                 context->asyncPool[ap].bytesTransferred = bytesTransferred;
                 foundAsyncOp = true;
+                if(context->asyncPool[ap].handle == *handle)
+                    goto skipPopCompletionPackets;
                 break;
             }
         }
         korl_assert(foundAsyncOp);
     }
+    skipPopCompletionPackets:
     if(asyncOp->bytesTransferred >= asyncOp->bytesPending)
     {
         asyncOp->handle = 0;// remove the async op from the pool
@@ -607,7 +616,8 @@ korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const vo
             ULONG_PTR completionKey  = 0;
             LPOVERLAPPED pOverlapped = NULL;
             if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, INFINITE))
-                korl_logLastError("GetQueuedCompletionStatus failed");
+                if(GetLastError() != WAIT_TIMEOUT)
+                    korl_logLastError("GetQueuedCompletionStatus failed");
             if(pOverlapped == &overlapped)
                 break;
             else
@@ -670,7 +680,8 @@ korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, void* buf
             ULONG_PTR completionKey  = 0;
             LPOVERLAPPED pOverlapped = NULL;
             if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, INFINITE))
-                korl_logLastError("GetQueuedCompletionStatus failed");
+                if(GetLastError() != WAIT_TIMEOUT)
+                    korl_logLastError("GetQueuedCompletionStatus failed");
             if(pOverlapped == &overlapped)
                 break;
             else

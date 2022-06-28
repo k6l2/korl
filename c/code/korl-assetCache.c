@@ -81,7 +81,10 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
             {
                 const bool resultFileRead = korl_file_read(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
                 if(resultFileRead)
+                {
                     asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
+                    goto returnLoadedData;
+                }
                 else
                     /* I guess we should just close the file & attempt to reload 
                         the asset next time? */

@@ -148,6 +148,7 @@ typedef struct _Korl_Vulkan_Context
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool stringPool;
+    Korl_Vulkan_TextureHandle textureHandleDefaultTexture;
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
