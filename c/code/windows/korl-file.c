@@ -113,6 +113,8 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
         const HANDLE resultCreateIoCompletionPort = CreateIoCompletionPort(hFile, context->handleIoCompletionPort, newKey, 0/*ignored*/);
         if(resultCreateIoCompletionPort)
             korl_logLastError("CreateIoCompletionPort failed!");
+        /**/
+        o_fileDescriptor->asyncKey = newKey;
     }
 cleanUp:
     string_free(stringFilePath);
@@ -425,15 +427,16 @@ korl_internal void korl_file_initialize(void)
     context->saveStateEnumContext.saveStateBuffer      = korl_allocate(context->allocatorHandle, context->saveStateEnumContext.saveStateBufferBytes);
     korl_assert(context->saveStateEnumContext.saveStateBuffer);
 }
-korl_internal bool korl_file_openAsync(Korl_File_PathType pathType, 
-                                       const wchar_t* fileName, 
-                                       Korl_File_Descriptor* o_fileDescriptor)
+korl_internal bool korl_file_open(Korl_File_PathType pathType, 
+                                  const wchar_t* fileName, 
+                                  Korl_File_Descriptor* o_fileDescriptor, 
+                                  bool async)
 {
-    return _korl_file_open(pathType, fileName, 
-                             KORL_FILE_DESCRIPTOR_FLAG_ASYNC 
-                           | KORL_FILE_DESCRIPTOR_FLAG_READ 
-                           | KORL_FILE_DESCRIPTOR_FLAG_WRITE, 
-                           o_fileDescriptor);
+    Korl_File_Descriptor_Flags flags = KORL_FILE_DESCRIPTOR_FLAG_READ 
+                                     | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
+    if(async)
+        flags |= KORL_FILE_DESCRIPTOR_FLAG_ASYNC;
+    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor);
 }
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor)
 {
@@ -634,36 +637,119 @@ korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const vo
 done_checkBytesWritten:
     korl_assert(bytesTransferred == korl_checkCast_u$_to_u32(dataBytes));
 }
-korl_internal bool korl_file_load(
-    const wchar_t*const fileName, Korl_File_PathType pathType, 
-    Korl_Memory_AllocatorHandle allocatorHandle, 
-    void** out_data, u32* out_dataBytes)
+korl_internal u32 korl_file_getTotalBytes(Korl_File_Descriptor fileDescriptor)
 {
     _Korl_File_Context*const context = &_korl_file_context;
-    Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathType]);
-    string_appendUtf16(filePath, L"\\");
-    string_appendUtf16(filePath, fileName);
-    const HANDLE hFile = 
-        CreateFileW(string_getRawUtf16(filePath), 
-                    GENERIC_READ, FILE_SHARE_READ, NULL/*default security*/, 
-                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL/*no template file*/);
-    if(hFile == INVALID_HANDLE_VALUE)
-        korl_logLastError("CreateFileW failed! filePath=%ws", 
-                          string_getRawUtf16(filePath));
-    const DWORD fileSize = GetFileSize(hFile, NULL/*high file size DWORD*/);
+    const DWORD fileSize = GetFileSize(fileDescriptor.handle, NULL/*high file size DWORD*/);
     if(fileSize == INVALID_FILE_SIZE)
         korl_logLastError("GetFileSize failed!");
-    void*const allocation = korl_allocate(allocatorHandle, fileSize);
-    korl_assert(allocation);
-    DWORD bytesRead = 0;
-    if(!ReadFile(hFile, allocation, fileSize, &bytesRead, NULL/*lpOverlapped*/))
-        korl_logLastError("ReadFile failed!");
-    korl_assert(bytesRead == fileSize);
-    korl_assert(CloseHandle(hFile));
-    *out_dataBytes = fileSize;
-    *out_data      = allocation;
-    string_free(filePath);
+    return fileSize;
+}
+korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, void* buffer, u32 bufferBytes)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    DWORD bytesTransferred = 0;
+    if(fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_ASYNC)
+    {
+        KORL_ZERO_STACK(OVERLAPPED, overlapped);
+        // we leave the overlapped offsets zeroed so we read from the beginning of the file
+        const BOOL resultReadFile = ReadFile(fileDescriptor.handle, 
+                                             buffer, bufferBytes, 
+                                             NULL/*# bytes read; ignored for async ops*/, 
+                                             &overlapped);
+        if(!resultReadFile)
+            if(GetLastError() != ERROR_IO_PENDING)
+            {
+                korl_log(WARNING, "ReadFile failed; GetLastError=0x%X", GetLastError());
+                return false;
+            }
+        /* repeatedly get completed OVERLAPPED operations until we get the one 
+            we just queued */
+        for(;;)
+        {
+            ULONG_PTR completionKey  = 0;
+            LPOVERLAPPED pOverlapped = NULL;
+            if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, INFINITE))
+                korl_logLastError("GetQueuedCompletionStatus failed");
+            if(pOverlapped == &overlapped)
+                break;
+            else
+            {
+                /* some other async io from the pool must have completed */
+                bool foundAsyncOp = false;
+                for(u$ ap = 0; ap < korl_arraySize(context->asyncPool); ap++)
+                {
+                    if(context->asyncPool[ap].handle == 0)
+                        continue;
+                    if(pOverlapped == &(context->asyncPool[ap].overlapped))
+                    {
+                        korl_assert(context->asyncPool[ap].bytesTransferred == 0);
+                        korl_assert(bytesTransferred == context->asyncPool[ap].bytesPending);
+                        context->asyncPool[ap].bytesTransferred = bytesTransferred;
+                        foundAsyncOp = true;
+                        break;
+                    }
+                }
+                korl_assert(foundAsyncOp);
+            }
+        }
+        goto done_checkBytesRead;
+    }
+    if(!ReadFile(fileDescriptor.handle, buffer, bufferBytes, &bytesTransferred, NULL/*no overlapped*/))
+    {
+        korl_log(WARNING, "ReadFile failed; GetLastError=0x%X", GetLastError());
+        return false;
+    }
+done_checkBytesRead:
+    korl_assert(bytesTransferred == bufferBytes);
     return true;
+}
+korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor fileDescriptor, void* buffer, u32 bufferBytes)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    /* find an unused async io handle 
+        NOTE: this is basically copy-pasta from stringPool handle implementation */
+    const Korl_File_AsyncIoHandle maxHandles = KORL_U32_MAX - 1/*since 0 is an invalid handle*/;
+    Korl_File_AsyncIoHandle newHandle = 0;
+    for(Korl_File_AsyncIoHandle h = 0; h < maxHandles; h++)
+    {
+        newHandle = context->nextAsyncIoHandle;
+        /* If another async op has this handle, we nullify the newHandle so that 
+            we can move on to the next handle candidate */
+        for(u$ i = 0; i < korl_arraySize(context->asyncPool); i++)
+            if(context->asyncPool[i].handle == newHandle)
+            {
+                newHandle = 0;
+                break;
+            }
+        if(context->nextAsyncIoHandle == KORL_U32_MAX)
+            context->nextAsyncIoHandle = 1;
+        else
+            context->nextAsyncIoHandle++;
+        if(newHandle)
+            break;
+    }
+    korl_assert(newHandle);// sanity check
+    /* find an unused OVERLAPPED pool slot */
+    u$ i = 0;
+    for(; i < korl_arraySize(context->asyncPool); i++)
+        if(0 == context->asyncPool[i].handle)
+            break;
+    korl_assert(i < korl_arraySize(context->asyncPool));
+    _Korl_File_AsyncOpertion*const pAsyncOp = &(context->asyncPool[i]);
+    korl_memory_zero(pAsyncOp, sizeof(*pAsyncOp));
+    pAsyncOp->handle       = newHandle;
+    pAsyncOp->bytesPending = korl_checkCast_u$_to_u32(bufferBytes);
+    // we leave the overlapped offsets zeroed so we read from the beginning of the file
+    /* dispatch the async read command */
+    const BOOL resultReadFile = ReadFile(fileDescriptor.handle, 
+                                         buffer, pAsyncOp->bytesPending, 
+                                         NULL/*# bytes read; ignored for async ops*/, 
+                                         &(pAsyncOp->overlapped));
+    if(!resultReadFile)
+        if(GetLastError() != ERROR_IO_PENDING)
+            korl_logLastError("ReadFile failed!");
+    return newHandle;
 }
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount)
 {

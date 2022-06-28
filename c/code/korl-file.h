@@ -31,9 +31,10 @@ typedef enum Korl_File_GetAsyncIoResult
 korl_internal void korl_file_initialize(void);
 /** \return \c true if the file was opened successfully, \c false otherwise.  
  * Upon successful execution, the file descriptor is stored in \c o_fileDescriptor. */
-korl_internal bool korl_file_openAsync(Korl_File_PathType pathType, 
-                                       const wchar_t* fileName, 
-                                       Korl_File_Descriptor* o_fileDescriptor);
+korl_internal bool korl_file_open(Korl_File_PathType pathType, 
+                                  const wchar_t* fileName, 
+                                  Korl_File_Descriptor* o_fileDescriptor, 
+                                  bool async);
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor);
 /** If \c fileNameNew exists, it is replaced with the contents of \c fileName .  
  * If \c fileName doesn't exist, the function will fail silently, and a warning 
@@ -51,11 +52,13 @@ korl_internal Korl_File_AsyncIoHandle korl_file_writeAsync(Korl_File_Descriptor 
  * are from another session. */
 korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_AsyncIoHandle* handle, bool blockUntilComplete);
 korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const void* data, u$ dataBytes);
-/** \return \c true if the file was loaded successfully, \c false otherwise. */
-korl_internal bool korl_file_load(
-    const wchar_t*const fileName, Korl_File_PathType pathType, 
-    Korl_Memory_AllocatorHandle allocatorHandle, 
-    void** out_data, u32* out_dataBytes);
+korl_internal u32 korl_file_getTotalBytes(Korl_File_Descriptor fileDescriptor);
+/** Read the entire contents of the file.
+ * \return \c true if the file was read successfully, \c false otherwise. */
+korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, 
+                                  void* buffer, u32 bufferBytes);
+korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor fileDescriptor, 
+                                                          void* buffer, u32 bufferBytes);
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount);
 korl_internal void korl_file_saveStateCreate(void);
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName);

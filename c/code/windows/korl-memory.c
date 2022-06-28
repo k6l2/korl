@@ -870,6 +870,8 @@ korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle ha
 }
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
 {
+    if(bytes == 0)
+        return NULL;
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
     korl_assert(allocator);

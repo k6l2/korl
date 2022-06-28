@@ -412,9 +412,10 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
         korl_file_renameReplace(KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameCurrent, KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameNext);
     }
     /**/
-    korl_assert(korl_file_openAsync(KORL_FILE_PATHTYPE_LOCAL_DATA, 
-                                    logFileName, 
-                                    &context->fileDescriptor));
+    korl_assert(korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, 
+                               logFileName, 
+                               &context->fileDescriptor, 
+                               true/*async*/));
     /* info about BOMs: https://unicode.org/faq/utf_bom.html */
     korl_shared_const u8 BOM_UTF16_LITTLE_ENDIAN[] = { 0xFF,0xFE };// Byte Order Marker to indicate UTF-16LE; must be written to the beginnning of the file!
     korl_file_write(context->fileDescriptor, BOM_UTF16_LITTLE_ENDIAN, sizeof(BOM_UTF16_LITTLE_ENDIAN));

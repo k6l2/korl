@@ -20,7 +20,7 @@ typedef enum Korl_AssetCache_Get_Flags
 } Korl_AssetCache_Get_Flags;
 typedef enum Korl_AssetCache_Get_Result
     { KORL_ASSETCACHE_GET_RESULT_LOADED
-    , KORL_ASSETCACHE_GET_RESULT_STILL_LOADING
+    , KORL_ASSETCACHE_GET_RESULT_PENDING
 } Korl_AssetCache_Get_Result;
 /**
  * Use this function to obtain an asset.  If the asset has not yet been loaded, 
