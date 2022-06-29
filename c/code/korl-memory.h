@@ -22,12 +22,6 @@ typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_a
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
-/**  Should function in the same way as memcmp from the C standard library.
- * \return \c -1 if the first byte that differs has a lower value in \c a than 
- *    in \c b, \c 1 if the first byte that differs has a higher value in \c a 
- *    than in \c b, and \c 0 if the two memory blocks are equal
- */
-korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes);
 korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare);
 korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8);
 korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize);
@@ -36,6 +30,7 @@ korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy);
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
 korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move);
+korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
 korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST       (korl_memory_stringFormatVaList);

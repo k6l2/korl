@@ -203,9 +203,14 @@ enum KorlEnumLogLevel
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, \
     const wchar_t* cStringFunctionName, int lineNumber)
-#define KORL_PLATFORM_MEMORY_ZERO(name) void name(void* memory, u$ bytes)
-#define KORL_PLATFORM_MEMORY_COPY(name) void name(void* destination, const void* source, u$ bytes)
-#define KORL_PLATFORM_MEMORY_MOVE(name) void name(void* destination, const void* source, u$ bytes)
+#define KORL_PLATFORM_MEMORY_ZERO(name)    void name(void* memory, u$ bytes)
+#define KORL_PLATFORM_MEMORY_COPY(name)    void name(void* destination, const void* source, u$ bytes)
+#define KORL_PLATFORM_MEMORY_MOVE(name)    void name(void* destination, const void* source, u$ bytes)
+/**  Should function in the same way as memcmp from the C standard library.
+ * \return \c -1 if the first byte that differs has a lower value in \c a than 
+ *    in \c b, \c 1 if the first byte that differs has a higher value in \c a 
+ *    than in \c b, and \c 0 if the two memory blocks are equal */
+#define KORL_PLATFORM_MEMORY_COMPARE(name) int  name(const void* a, const void* b, size_t bytes)
 /**
  * \return \c 0 if the two strings are equal
  */
@@ -433,6 +438,7 @@ typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secon
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
 typedef KORL_PLATFORM_MEMORY_COPY                         (fnSig_korl_memory_copy);
 typedef KORL_PLATFORM_MEMORY_MOVE                         (fnSig_korl_memory_move);
+typedef KORL_PLATFORM_MEMORY_COMPARE                      (fnSig_korl_memory_compare);
 typedef KORL_PLATFORM_STRING_COMPARE                      (fnSig_korl_memory_stringCompare);
 typedef KORL_PLATFORM_STRING_COMPARE_UTF8                 (fnSig_korl_memory_stringCompareUtf8);
 typedef KORL_PLATFORM_STRING_SIZE                         (fnSig_korl_memory_stringSize);
@@ -488,6 +494,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_memory_zero*                      korl_memory_zero;\
     fnSig_korl_memory_copy*                      korl_memory_copy;\
     fnSig_korl_memory_move*                      korl_memory_move;\
+    fnSig_korl_memory_compare*                   korl_memory_compare;\
     fnSig_korl_memory_stringCompare*             korl_memory_stringCompare;\
     fnSig_korl_memory_stringCompareUtf8*         korl_memory_stringCompareUtf8;\
     fnSig_korl_memory_stringSize*                korl_memory_stringSize;\
@@ -543,6 +550,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
     (apiVariableName).korl_memory_copy                      = korl_memory_copy;\
     (apiVariableName).korl_memory_move                      = korl_memory_move;\
+    (apiVariableName).korl_memory_compare                   = korl_memory_compare;\
     (apiVariableName).korl_memory_stringCompare             = korl_memory_stringCompare;\
     (apiVariableName).korl_memory_stringCompareUtf8         = korl_memory_stringCompareUtf8;\
     (apiVariableName).korl_memory_stringSize                = korl_memory_stringSize;\
@@ -598,6 +606,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
     korl_memory_copy                      = (apiVariableName).korl_memory_copy;\
     korl_memory_move                      = (apiVariableName).korl_memory_move;\
+    korl_memory_compare                   = (apiVariableName).korl_memory_compare;\
     korl_memory_stringCompare             = (apiVariableName).korl_memory_stringCompare;\
     korl_memory_stringCompareUtf8         = (apiVariableName).korl_memory_stringCompareUtf8;\
     korl_memory_stringSize                = (apiVariableName).korl_memory_stringSize;\

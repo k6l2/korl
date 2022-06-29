@@ -126,7 +126,7 @@
 [ ] KORL-FEATURE-000-000-018: GUI: add API to check if the GUI has input focus
 [ ] KORL-FEATURE-000-000-019: window: automatically save window position/size to a config file, and load them on startup
 [x] KORL-FEATURE-000-000-020: crash: dump savestate on crash
-[ ] KORL-FEATURE-000-000-021: assetCache: automatic hot-reloading of assets
+[x] KORL-FEATURE-000-000-021: assetCache: automatic hot-reloading of assets
 [ ] KORL-FEATURE-000-000-022: add job queue + worker threads
 [ ] KORL-FEATURE-000-000-023: support GLTF assets (meshes, materials, animations, etc...)
 [ ] KORL-FEATURE-000-000-024: gui/gfx: add DPI-awareness & support

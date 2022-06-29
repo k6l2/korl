@@ -172,7 +172,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_window_onAssetHotReloaded)
 {
     korl_vulkan_onAssetHotReload(rawUtf16AssetName, assetData);
-    ///@TODO: notify game module of asset reloads
+    korl_game_onAssetReloaded(rawUtf16AssetName, assetData);
 }
 korl_internal void korl_windows_window_initialize(void)
 {

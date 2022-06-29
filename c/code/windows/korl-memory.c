@@ -94,7 +94,7 @@ korl_internal u$ korl_memory_pageBytes(void)
     return context->systemInfo.dwPageSize;
 }
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
-korl_internal int korl_memory_compare(const void* a, const void* b, size_t bytes)
+korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare)
 {
     const u8* aBytes = KORL_C_CAST(const u8*, a);
     const u8* bBytes = KORL_C_CAST(const u8*, b);

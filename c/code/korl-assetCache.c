@@ -72,15 +72,15 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
                                                    string_getRawUtf16(asset->name), 
                                                    &(asset->fileDescriptor), 
                                                    asyncLoad);
-        asset->dateStampLastWrite = korl_file_getDateStampLastWrite(asset->fileDescriptor);
         if(resultFileOpen)
         {
-            asset->data.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
-            asset->data.data = korl_allocate(context->allocatorHandle, asset->data.dataBytes);
+            asset->dateStampLastWrite = korl_file_getDateStampLastWrite(asset->fileDescriptor);
+            asset->data.dataBytes     = korl_file_getTotalBytes(asset->fileDescriptor);
+            asset->data.data          = korl_allocate(context->allocatorHandle, asset->data.dataBytes);
             if(asyncLoad)
             {
                 asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
-                asset->state = _KORL_ASSET_CACHE_ASSET_STATE_PENDING;
+                asset->state         = _KORL_ASSET_CACHE_ASSET_STATE_PENDING;
             }
             else
             {
@@ -88,12 +88,15 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
                 if(resultFileRead)
                 {
                     asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
+                    korl_file_close(&(asset->fileDescriptor));
                     goto returnLoadedData;
                 }
                 else
+                {
                     /* I guess we should just close the file & attempt to reload 
                         the asset next time? */
                     korl_file_close(&(asset->fileDescriptor));
+                }
             }
         }
         else
@@ -177,14 +180,14 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                                                        string_getRawUtf16(asset->name), 
                                                        &(asset->fileDescriptor), 
                                                        true/*async*/);
-            asset->dateStampLastWrite = dateStampLatestFileWrite;
             if(resultFileOpen)
             {
                 korl_assert(!asset->asyncIoHandle);
-                asset->state          = _KORL_ASSET_CACHE_ASSET_STATE_RELOADING;
-                asset->data.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
-                asset->data.data      = korl_reallocate(context->allocatorHandle, asset->data.data, asset->data.dataBytes);
-                asset->asyncIoHandle  = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+                asset->dateStampLastWrite = dateStampLatestFileWrite;
+                asset->state              = _KORL_ASSET_CACHE_ASSET_STATE_RELOADING;
+                asset->data.dataBytes     = korl_file_getTotalBytes(asset->fileDescriptor);
+                asset->data.data          = korl_reallocate(context->allocatorHandle, asset->data.data, asset->data.dataBytes);
+                asset->asyncIoHandle      = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
             }
             else
             {
