@@ -2592,7 +2592,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     /* request the image asset from the asset manager; if the asset isn't loaded 
         we can stop here */
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
-    if(KORL_ASSETCACHE_GET_RESULT_LOADED != korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAGS_LAZY, &assetData))
+    if(KORL_ASSETCACHE_GET_RESULT_LOADED != korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAG_LAZY, &assetData))
     {
         /* locate the internal "default texture" asset so we can actually render something; 
             not doing so would result in invalid rendering operation (validation layer error) */

@@ -254,6 +254,7 @@ korl_internal void* _korl_memory_allocator_linear_allocate(void* allocatorUserDa
     const u$ allocationPages = ((bytes + (pageBytes - 1)) / pageBytes) + 1;// +1 for an additional preceding NOACCESS page
     if(requestedAddress)
     {
+        metaPageAddress = KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, requestedAddress) - pageBytes/*the meta page goes _before_ the requested address*/);
         void* nextAllocationAddressCandidate = KORL_C_CAST(u8*, metaPageAddress) + allocationPages*pageBytes;
         /* ensure that we are not about to clobber an existing allocation, and 
             simultaneously calculate the new nextAllocationAddress by 

@@ -1269,6 +1269,8 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
             }
             if(string_getRawSizeUtf16(allocationFileBuffer) <= allocationFileCharacterCount)
                 string_reserveUtf16(allocationFileBuffer, allocationFileCharacterCount);
+            else
+                string_getRawWriteableUtf16(allocationFileBuffer)[allocationFileCharacterCount] = L'\0';
             if(!ReadFile(hFile, string_getRawWriteableUtf16(allocationFileBuffer), allocationFileCharacterCount*sizeof(u16), NULL/*bytes read*/, NULL/*no overlapped*/))
             {
                 korl_logLastError("ReadFile failed");

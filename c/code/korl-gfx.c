@@ -895,7 +895,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
     korl_time_probeStart(text_generate_mesh);
-    _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAG_LAZY);
     korl_time_probeStop(text_generate_mesh);
     if(batch->_vertexCount <= 0)
     {
@@ -1221,7 +1221,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     // make an initial attempt to generate the text mesh using the font asset, 
     //  and if the asset isn't available at the moment, there is nothing we can 
     //  do about it for now except defer until a later time //
-    _korl_gfx_textGenerateMesh(result, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    _korl_gfx_textGenerateMesh(result, KORL_ASSETCACHE_GET_FLAG_LAZY);
     /* return the batch */
     return result;
 }
@@ -1299,7 +1299,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH_SET_LINE(korl_gfx_batchSetLine)
 korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB(korl_gfx_batchTextGetAabb)
 {
     korl_assert(batchContext->_text && batchContext->_assetNameFont);
-    _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAGS_LAZY);
+    _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(!batchContext->_fontTextureHandle)
         return (Korl_Math_Aabb2f32){{0, 0}, {0, 0}};
     return batchContext->_textAabb;

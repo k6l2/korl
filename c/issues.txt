@@ -1,5 +1,5 @@
-[ ] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAGS_LAZY is specified
-[ ] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
+[x] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAG_LAZY is specified
+[x] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
 [x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose
 [x] KORL-ISSUE-000-000-003: robustness: this is the "quick & dirty" stbtt API, ergo it's probably a good idea to switch to the lower-level API to be able to do things like lazy glyph caching, better packing, outlines, etc...
 [ ] KORL-ISSUE-000-000-004: maybe change the scissor parameters to be an integral data type, since at some point a rounding strategy must occur anyways, and this information is obscured by this API, just for the sake of making it easier to call with f32 data... Which, I don't know if that's a great tradeoff honestly.
@@ -104,6 +104,7 @@
 [ ] KORL-PERFORMANCE-000-000-023: Vulkan: (20us per iteration) likely suboptimal use of Vulkan synchronization primitives
 [x] KORL-PERFORMANCE-000-000-024: Log: (likely MAJOR): Can we get away with just not doing any transient buffer allcations (just use the primary buffer + circular buffer)?  Currently, our Linear allocation strategy is heavy-handed, sacrificing speed for safety.  This is to the point that I've noticed individual allocations can take upwards of 20-40us.  This is fine for one-off allocations here and there, but logs are generated all over the place right now.  I highly suspect that this is the vast majority of time loss in places that are pumping out tons of logs, such as for time probe reports!
 [ ] KORL-PERFORMANCE-000-000-025: stringPool: we should tell the allocation function that it doesn't have to sort
+[ ] KORL-PERFORMANCE-000-000-026: savestate/assetCache: there is no need to save/load every asset; we only need assets that have been flagged as "operation critical" (where "operation critical" means that the asset data is required for correct application behavior given memory state & user inputs)
 [x] KORL-FEATURE-000-000-000: add vectored exception handler so we can generate crash dumps & flush logs
 [ ] KORL-FEATURE-000-000-001: GFX: add support for outlined geometry (requires refactoring this API to use >= 1 sub-batches per Batch)
 [x] KORL-FEATURE-000-000-002: GFX: add support for outlined text (not sure how to do this with stbtt, maybe check how other implementations do this?)
