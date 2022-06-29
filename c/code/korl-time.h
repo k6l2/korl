@@ -1,5 +1,10 @@
 #pragma once
 #include "korl-interface-platform.h"
+typedef enum Korl_Time_DateStamp_Compare_Result
+    { KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER
+    , KORL_TIME_DATESTAMP_COMPARE_RESULT_EQUAL
+    , KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_LATER
+} Korl_Time_DateStamp_Compare_Result;
 /** Opaque datatype for for highest possible integral measurement of time.  
  * Likely _not_ a standard measurement of time, but an internal representation 
  * of some platform-specific concept of "cycles", so don't try to use this value 
@@ -33,6 +38,7 @@ korl_internal i$ korl_time_countsFormatBuffer(Korl_Time_Counts counts, wchar_t* 
 /** order of arguments does not matter, the result is always >= 0.f */
 korl_internal f32 korl_time_secondsBetweenTimeStamps(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB);
 #endif
+korl_internal Korl_Time_DateStamp_Compare_Result korl_time_dateStampCompare(KorlPlatformDateStamp dsA, KorlPlatformDateStamp dsB);
 /** You probably want to use \c korl_time_probeStart instead of this function! */
 korl_internal Korl_Time_ProbeHandle korl_time_probeBegin(const wchar_t* file, const wchar_t* function, int line, const wchar_t* label);
 /** You probably want to use \c korl_time_probeStop instead of this function! 

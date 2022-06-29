@@ -2018,6 +2018,11 @@ done:
     surfaceContext->frameStackCounter++;
     /* clear the vertex batch metrics for the upcoming frame */
     korl_memory_zero(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
+    /* Select a known valid internal texture by default.  
+        NOTE: This is done because it is possible for the initial descriptor set 
+              to be configured to use image/samplers for a texture asset which 
+              is no longer loaded, which will eventually cause a validation error.  */
+    korl_vulkan_useTexture(context->textureHandleDefaultTexture);
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->batchState.currentPipeline = context->pipelinesCount;
@@ -2660,6 +2665,57 @@ done_conditionallySelectLoadedAsset:
     korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
     _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView, 
                                context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler);
+}
+korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /* check to see if the asset is loaded in our database */
+    _Korl_Vulkan_DeviceAsset* deviceAsset = NULL;
+    for(u$ dai = 0; dai < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++dai)
+    {
+        Korl_StringPool_StringHandle stringDeviceAssetName = 0;
+        switch(context->deviceAssets[dai].type)
+        {
+        case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
+            stringDeviceAssetName = context->deviceAssets[dai].subType.assetTexture.name;
+            break;}
+        case _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE:{
+            break;}
+        }
+        if(0 == stringDeviceAssetName)
+            continue;// device asset type not supported
+        if(korl_stringPool_equalsUtf16(&context->stringPool, stringDeviceAssetName, rawUtf16AssetName))
+        {
+            deviceAsset = &(context->deviceAssets[dai]);
+            break;
+        }
+    }
+    if(!deviceAsset)
+        /* if the asset name isn't found in the device asset database, then we 
+            don't have to do anything */
+        return;
+    /* perform asset hot-reloading logic */
+    switch(deviceAsset->type)
+    {
+    case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
+        _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
+        _korl_vulkan_deviceMemoryLinear_free(&context->deviceMemoryLinearAssets, deviceAsset->subType.assetTexture.deviceAllocation);
+        int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
+        stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
+        if(!imagePixels)
+            korl_log(ERROR, "stbi_load_from_memory failed! assetName=\"%ws\"", rawUtf16AssetName);
+        _Korl_Vulkan_DeviceMemory_Alloctation*const deviceImage = 
+            _korl_vulkan_deviceMemoryLinear_allocateTexture(
+                &context->deviceMemoryLinearAssets, imageSizeX, imageSizeY, 
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        _korl_vulkan_transferImageBufferToTexture(imagePixels, imageSizeX, imageSizeY, deviceImage);
+        stbi_image_free(imagePixels);
+        deviceAsset->subType.assetTexture.deviceAllocation = deviceImage;
+        break;}
+    default:{
+        korl_log(ERROR, "device asset type %i not implemented", deviceAsset->type);
+        break;}
+    }
 }
 korl_internal Korl_Vulkan_TextureHandle korl_vulkan_textureCreate(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer)
 {

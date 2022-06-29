@@ -45,6 +45,12 @@ typedef enum Korl_AssetCache_Get_Result
 typedef u64 PlatformTimeStamp;
 #define KORL_PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name(void)
 #define KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
+/** Do not use this value directly, since the meaning of this data is 
+ * platform-dependent.  Instead, use the platform APIs which uses this type.  
+ * This value should be considered lower resolution (milliseconds) than 
+ * PlatformTimeStamp, but is synchronized to a machine-independent time 
+ * reference (UTC), so it should remain valid between application runs. */
+typedef u64 KorlPlatformDateStamp;
 typedef enum Korl_KeyboardCode
     { KORL_KEY_UNKNOWN
     , KORL_KEY_A

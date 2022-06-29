@@ -18,16 +18,25 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
 #include "korl-windows-globalDefines.h"
-/**
- * Because we know that the asset manager can follow the singleton pattern, we 
+/** Because we know that the asset manager can follow the singleton pattern, we 
  * also know that "destruction" of the asset manager is only going to happen 
  * once when the program ends.  Ergo, we can simplify this API significantly by 
  * just omitting the traditional OOP "destruction" function.  The memory 
  * resources used by the asset manager will be freed automatically when the 
- * program ends!
- */
+ * program ends! */
 korl_internal void korl_assetCache_initialize(void);
 korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get);
+/** Iterate over all assets in the cache which are in the LOADED state, and 
+ * check their corresponding file modification timestamp on disk.  If the last 
+ * time modified is newer than when it was when we loaded the file, we must: 
+ * - kick off another load of the file
+ * - call-back to the caller so that other code modules can be notified of this 
+ *   event, since code modules which consume assets must then process the assets 
+ *   in various ways (generate database diffs, uploading textures to the GPU, 
+ *   etc...) */
+#define KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(name) void name(const wchar_t* rawUtf16AssetName, Korl_AssetCache_AssetData assetData)
+typedef KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(fnSig_korl_assetCache_onAssetHotReloadedCallback);
+korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded);
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 

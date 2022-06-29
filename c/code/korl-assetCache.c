@@ -3,6 +3,7 @@
 #include "korl-memoryPool.h"
 #include "korl-stringPool.h"
 #include "korl-file.h"
+#include "korl-time.h"
 #ifdef _LOCAL_STRING_POOL_POINTER
 #undef _LOCAL_STRING_POOL_POINTER
 #endif
@@ -12,6 +13,7 @@ typedef enum _Korl_AssetCache_AssetState
     { _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED// the file hasn't been opened yet
     , _KORL_ASSET_CACHE_ASSET_STATE_PENDING    // the file is open, and we are async loading the asset
     , _KORL_ASSET_CACHE_ASSET_STATE_LOADED     // the file is closed, and the asset data is loaded
+    , _KORL_ASSET_CACHE_ASSET_STATE_RELOADING  // assetCache has detected that the file has a newer version on disk and must be reloaded; the asset will remain in this state until (1) the asset is loaded, & (2) the assetCache has been queried for all newly reloaded assets
 } _Korl_AssetCache_AssetState;
 typedef struct _Korl_AssetCache_Asset
 {
@@ -20,6 +22,7 @@ typedef struct _Korl_AssetCache_Asset
     Korl_StringPool_StringHandle name;
     Korl_File_Descriptor fileDescriptor;
     Korl_File_AsyncIoHandle asyncIoHandle;
+    KorlPlatformDateStamp dateStampLastWrite;
 } _Korl_AssetCache_Asset;
 typedef struct _Korl_AssetCache_Context
 {
@@ -69,6 +72,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
                                                    string_getRawUtf16(asset->name), 
                                                    &(asset->fileDescriptor), 
                                                    asyncLoad);
+        asset->dateStampLastWrite = korl_file_getDateStampLastWrite(asset->fileDescriptor);
         if(resultFileOpen)
         {
             asset->data.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
@@ -122,11 +126,73 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
         returnLoadedData:
         *o_assetData = asset->data;
         return KORL_ASSETCACHE_GET_RESULT_LOADED;}
+    case _KORL_ASSET_CACHE_ASSET_STATE_RELOADING:{
+        return KORL_ASSETCACHE_GET_RESULT_PENDING;}
     default:{
         korl_log(ERROR, "invalid asset state: %i", asset->state);
         break;}
     }
     return KORL_ASSETCACHE_GET_RESULT_PENDING;
+}
+korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded)
+{
+    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
+    {
+        _Korl_AssetCache_Asset*const asset = &(context->assets[a]);
+        if(asset->state == _KORL_ASSET_CACHE_ASSET_STATE_RELOADING)
+        {
+            const Korl_File_GetAsyncIoResult asyncIoResult = 
+                korl_file_getAsyncIoResult(&asset->asyncIoHandle, false/*don't block*/);
+            switch(asyncIoResult)
+            {
+            case KORL_FILE_GET_ASYNC_IO_RESULT_DONE:{
+                korl_file_close(&asset->fileDescriptor);
+                asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
+                const wchar_t*const rawUtf16AssetName = string_getRawUtf16(asset->name);
+                korl_log(INFO, "Asset \"%ws\" has been hot-reloaded!  Running callbacks...", rawUtf16AssetName);
+                callbackOnAssetHotReloaded(rawUtf16AssetName, asset->data);
+                break;}
+            case KORL_FILE_GET_ASYNC_IO_RESULT_PENDING:{
+                break;}
+            case KORL_FILE_GET_ASYNC_IO_RESULT_INVALID_HANDLE:{
+                /* For whatever reason, the async handle was invalidated; just make 
+                    another attempt to async load.  NOTE: we are assuming that the 
+                    file descriptor is still valid.  If this breaks, we should do 
+                    something about that. */
+                asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+                break;}
+            }
+            continue;
+        }
+        else if(asset->state != _KORL_ASSET_CACHE_ASSET_STATE_LOADED)
+            continue;
+        const wchar_t*const rawUtf16AssetName = string_getRawUtf16(asset->name);
+        const KorlPlatformDateStamp dateStampLatestFileWrite = 
+            korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
+                                                    rawUtf16AssetName);
+        if(KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))
+        {
+            const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
+                                                       string_getRawUtf16(asset->name), 
+                                                       &(asset->fileDescriptor), 
+                                                       true/*async*/);
+            asset->dateStampLastWrite = dateStampLatestFileWrite;
+            if(resultFileOpen)
+            {
+                korl_assert(!asset->asyncIoHandle);
+                asset->state          = _KORL_ASSET_CACHE_ASSET_STATE_RELOADING;
+                asset->data.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
+                asset->data.data      = korl_reallocate(context->allocatorHandle, asset->data.data, asset->data.dataBytes);
+                asset->asyncIoHandle  = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+            }
+            else
+            {
+                //we failed to open the file; log a warning?  although, that might result in spam, so I'm not quite sure...
+                //in any case, it should be okay for us to continue trying to open the file
+            }
+        }
+    }
 }
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
 {

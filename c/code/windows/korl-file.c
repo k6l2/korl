@@ -655,6 +655,40 @@ korl_internal u32 korl_file_getTotalBytes(Korl_File_Descriptor fileDescriptor)
         korl_logLastError("GetFileSize failed!");
     return fileSize;
 }
+korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWrite(Korl_File_Descriptor fileDescriptor)
+{
+    union
+    {
+        FILETIME fileTime;
+        KorlPlatformDateStamp dateStamp;
+    } dateStampUnionFile;
+    if(!GetFileTime(fileDescriptor.handle, NULL, NULL, &dateStampUnionFile.fileTime))
+        korl_logLastError("GetFileTime failed!");
+    return dateStampUnionFile.dateStamp;
+}
+korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    union
+    {
+        FILETIME fileTime;
+        KorlPlatformDateStamp dateStamp;
+    } dateStampUnionFile;
+    korl_memory_zero(&dateStampUnionFile, sizeof(dateStampUnionFile));
+    Korl_StringPool_StringHandle stringFilePath = string_copy(context->directoryStrings[pathType]);
+    string_appendFormatUtf16(stringFilePath, L"\\%ws", fileName);
+    WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
+    if(!GetFileAttributesEx(string_getRawUtf16(stringFilePath), GetFileExInfoStandard, &fileAttributeData))
+    {
+        if(GetLastError() != ERROR_FILE_NOT_FOUND)
+            korl_logLastError("GetFileAttributesEx failed!");
+        goto cleanUp;
+    }
+    dateStampUnionFile.fileTime = fileAttributeData.ftLastWriteTime;
+    cleanUp:
+    string_free(stringFilePath);
+    return dateStampUnionFile.dateStamp;
+}
 korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, void* buffer, u32 bufferBytes)
 {
     _Korl_File_Context*const context = &_korl_file_context;

@@ -162,6 +162,29 @@ korl_internal i$ korl_time_countsFormatBuffer(Korl_Time_Counts counts, wchar_t* 
                                           L"% 2llu:% 2hhu'% 3hu\"% 3hu", 
                                           timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds);
 }
+korl_internal Korl_Time_DateStamp_Compare_Result korl_time_dateStampCompare(KorlPlatformDateStamp dsA, KorlPlatformDateStamp dsB)
+{
+    union
+    {
+        FILETIME fileTime;
+        KorlPlatformDateStamp dateStamp;
+    } dsuA, dsuB;
+    dsuA.dateStamp = dsA;
+    dsuB.dateStamp = dsB;
+    const LONG resultCompareFileTime = CompareFileTime(&dsuA.fileTime, &dsuB.fileTime);
+    switch(resultCompareFileTime)
+    {
+    case -1:{
+        return KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER;}
+    case 0:{
+        return KORL_TIME_DATESTAMP_COMPARE_RESULT_EQUAL;}
+    case 1:{
+        return KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_LATER;}
+    default:{
+        korl_log(ERROR, "invalid CompareFileTime result: %li", resultCompareFileTime);
+        return KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER;}
+    }
+}
 korl_internal Korl_Time_ProbeHandle korl_time_probeBegin(const wchar_t* file, const wchar_t* function, int line, const wchar_t* label)
 {
     const PlatformTimeStamp timeStampProbeStart = korl_timeStamp();// obtain the time stamp as fast as possible!

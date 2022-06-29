@@ -169,6 +169,11 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     }
     return 0;// the most common user-handled result
 }
+korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_window_onAssetHotReloaded)
+{
+    korl_vulkan_onAssetHotReload(rawUtf16AssetName, assetData);
+    ///@TODO: notify game module of asset reloads
+}
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
@@ -354,6 +359,7 @@ korl_internal void korl_windows_window_loop(void)
             const LRESULT messageResult  = DispatchMessage (&windowMessage);
         }
         korl_time_probeStop(process_window_messages);
+        korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded);
         if(quit)
             break;
         korl_time_probeStart(save_state_create);
