@@ -153,3 +153,19 @@ typedef struct Korl_ArrayU16
     Source: https://stackoverflow.com/a/39108392 */
 #define KORL_STRINGIFY(define) #define
 #define KORL_DEFINE_TO_CSTR(d) KORL_STRINGIFY(d)
+/* This is a really stupid hack to force the export of struct symbols when there 
+    is no declared instances of the struct in the project.  If I can figure out 
+    a way to force the linker to export struct symbols for structs that have no 
+    variables defined (outside of internal code or implicitly via reinterpret 
+    casting of memory), then this should be deleted probably.  Another option to 
+    achieve this would be to use `__declspec( dllexport )` on MSVC for example, 
+    but I'm hoping this method is fully portable.
+    Example usage:
+        struct TestStruct
+        {
+            // ... some data declared in here
+        } FORCE_SYMBOL_EXPORT; */
+#define CONCAT_(x,y)    x##y
+#define CONCAT(x,y)     CONCAT_(x,y)
+#define FORCE_SYMBOL_EXPORT \
+    CONCAT(_hack_force_symbol_export_DO_NOT_USE_, __COUNTER__)
