@@ -107,6 +107,34 @@ korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare)
     }
     return 0;
 }
+korl_internal KORL_PLATFORM_ARRAY_U8_COMPARE(korl_memory_arrayU8Compare)
+{
+    if(sizeA < sizeB)
+        return -1;
+    else if(sizeA > sizeB)
+        return 1;
+    else
+        for(u$ i = 0; i < sizeA; i++)
+            if(dataA[i] < dataB[i])
+                return -1;
+            else if(dataA[i] > dataB[i])
+                return 1;
+    return 0;
+}
+korl_internal KORL_PLATFORM_ARRAY_U16_COMPARE(korl_memory_arrayU16Compare)
+{
+    if(sizeA < sizeB)
+        return -1;
+    else if(sizeA > sizeB)
+        return 1;
+    else
+        for(u$ i = 0; i < sizeA; i++)
+            if(dataA[i] < dataB[i])
+                return -1;
+            else if(dataA[i] > dataB[i])
+                return 1;
+    return 0;
+}
 korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare)
 {
     for(; *a && *b; ++a, ++b)

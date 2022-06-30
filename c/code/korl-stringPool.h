@@ -65,6 +65,8 @@ typedef enum Korl_StringPool_CompareResult
 #define string_append(stringHandle, stringHandleToAppend)                      korl_stringPool_append(_LOCAL_STRING_POOL_POINTER, stringHandle, stringHandleToAppend, __FILEW__, __LINE__)
 #define string_appendUtf16(stringHandle, cStringUtf16)                         korl_stringPool_appendUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf16, __FILEW__, __LINE__)
 #define string_appendFormatUtf16(stringHandle, formatUtf16, ...)               korl_stringPool_appendFormatUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, __FILEW__, __LINE__, formatUtf16, ##__VA_ARGS__)
+#define string_prependUtf16(stringHandle, cStringUtf16)                        korl_stringPool_prependUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf16, __FILEW__, __LINE__)
+#define string_findUtf16(stringHandle, cStringUtf16, u32CharacterOffsetStart)  korl_stringPool_findUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf16, u32CharacterOffsetStart, __FILEW__, __LINE__)
 #if 0// currently feeling too lazy to implement this API...
 #define string_appendUnsignedInteger(stringHandle, uInt, maxFigures, utf8PaddingCharacterString)    korl_stringPool_appendUnsignedInteger(_LOCAL_STRING_POOL_POINTER, stringHandle, uInt, maxFigures, utf8PaddingCharacterString)
 #define string_appendUnsignedIntegerHex(stringHandle, uInt, maxFigures, utf8PaddingCharacterString) korl_stringPool_appendUnsignedIntegerHex(_LOCAL_STRING_POOL_POINTER, stringHandle, uInt, maxFigures, utf8PaddingCharacterString)
@@ -79,6 +81,8 @@ typedef enum Korl_StringPool_CompareResult
 #define korl_stringAppend(stringPoolPointer, stringHandle, stringHandleToAppend)                      korl_stringPool_append(stringPoolPointer, stringHandle, stringHandleToAppend, __FILEW__, __LINE__)
 #define korl_stringAppendUtf16(stringPoolPointer, stringHandle, cStringUtf16)                         korl_stringPool_appendUtf16(stringPoolPointer, stringHandle, cStringUtf16, __FILEW__, __LINE__)
 #define korl_stringAppendFormatUtf16(stringPoolPointer, stringHandle, formatUtf16, ...)               korl_stringPool_appendFormatUtf16(stringPoolPointer, stringHandle, __FILEW__, __LINE__, formatUtf16, ##__VA_ARGS__)
+#define korl_stringPrependUtf16(stringPoolPointer, stringHandle, cStringUtf16)                        korl_stringPool_prependUtf16(stringPoolPointer, stringHandle, cStringUtf16, __FILEW__, __LINE__)
+#define korl_stringFindUtf16(stringPoolPointer, stringHandle, cStringUtf16)                           korl_stringPool_findUtf16(stringPoolPointer, stringHandle, cStringUtf16, u32CharacterOffsetStart, __FILEW__, __LINE__)
 /* string pool API */
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
@@ -98,6 +102,12 @@ korl_internal Korl_StringPool_StringHandle  korl_stringPool_copy(Korl_StringPool
 korl_internal void                          korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, Korl_StringPool_StringHandle stringHandleToAppend, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendFormatUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const wchar_t* format, ...);
+korl_internal void                          korl_stringPool_prependUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line);
+/** \return The raw character offset of the first location of \c cStringUtf16 , 
+ * starting from \c characterOffsetStart and advancing the search forward 
+ * towards the end of the raw string.  If \c cStringUtf16 is not found, the 
+ * value of \c korl_stringPool_getRawSizeUtf16 is returned. */
+korl_internal u32                           korl_stringPool_findUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, u32 characterOffsetStart, const wchar_t* file, int line);
 #if 0// currently feeling too lazy to implement this API...
 korl_internal void                          korl_stringPool_appendUnsignedInteger(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);
 korl_internal void                          korl_stringPool_appendUnsignedIntegerHex(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);
@@ -113,7 +123,5 @@ getRawUtf8
 getRawSizeUtf8
 getCodepointCount
 setCodepoint
-prepend
-find     (not sure whether to use raw offsets, or codepoint offsets; maybe make some user code first to see what we need?)
 subString(not sure whether to use raw offsets, or codepoint offsets; maybe make some user code first to see what we need?)
 #endif

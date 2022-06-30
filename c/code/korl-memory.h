@@ -31,6 +31,8 @@ korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
 korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move);
 korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare);
+korl_internal KORL_PLATFORM_ARRAY_U8_COMPARE(korl_memory_arrayU8Compare);
+korl_internal KORL_PLATFORM_ARRAY_U16_COMPARE(korl_memory_arrayU16Compare);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
 korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST       (korl_memory_stringFormatVaList);

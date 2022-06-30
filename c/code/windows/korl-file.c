@@ -1,4 +1,3 @@
-///@TODO: prepend L"\\?\" to all calls to CreateFile & CreateDirectory to extend file path limit to 32,767 characters
 #include "korl-file.h"
 #include "korl-globalDefines.h"
 #include "korl-windows-globalDefines.h"
@@ -52,6 +51,23 @@ typedef struct _Korl_File_Context
     _Korl_File_SaveStateEnumerateContext saveStateEnumContext;
 } _Korl_File_Context;
 korl_global_variable _Korl_File_Context _korl_file_context;
+korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_StringHandle stringFilePath)
+{
+    /* So apparently, when you are doing the weird "\\?\" prefix on file paths, 
+        this will no longer allow you to mix & match '\' & '/' characters for 
+        directory separation.  We must sanitize stringFilePath manually...  
+        We just replace each '/' character with '\\': */
+    if(0 == string_findUtf16(stringFilePath, L"\\\\\?\\", 0))
+    {
+        for(u32 i = 0;;)
+        {
+            i = string_findUtf16(stringFilePath, L"/", i);
+            if(i >= string_getRawSizeUtf16(stringFilePath))
+                break;
+            string_getRawWriteableUtf16(stringFilePath)[i] = L'\\';
+        }
+    }
+}
 korl_internal bool _korl_file_open(Korl_File_PathType pathType, 
                                    const wchar_t* fileName, 
                                    Korl_File_Descriptor_Flags flags, 
@@ -61,8 +77,8 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
     bool result = true;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     Korl_StringPool_StringHandle stringFilePath = string_copy(context->directoryStrings[pathType]);
-    string_appendUtf16(stringFilePath, L"/");
-    string_appendUtf16(stringFilePath, fileName);
+    string_appendFormatUtf16(stringFilePath, L"\\%ws", fileName);
+    _korl_file_sanitizeFilePath(stringFilePath);
     DWORD createDesiredAccess = 0;
     DWORD createFileFlags = 0;
     if(flags & KORL_FILE_DESCRIPTOR_FLAG_READ)
@@ -292,9 +308,12 @@ korl_internal void _korl_file_createParentDirectoriesRecursive(Korl_StringPool_S
 {
     _Korl_File_Context*const context = &_korl_file_context;
     Korl_StringPool_StringHandle filePathLocalCopy = string_copy(filePath);
-    const u32 filePathSize = string_getRawSizeUtf16(filePathLocalCopy);
+    const u32 filePathSize     = string_getRawSizeUtf16(filePathLocalCopy);
     u16*const filePathRawUtf16 = string_getRawWriteableUtf16(filePathLocalCopy);//KORL-ISSUE-000-000-076: file: replace working with raw writable UTF-16 pointers, we need codepoint iteration/get/set API
-    for(u32 c = 0; c < filePathSize; c++)
+    u32 c = 0;
+    if(0 == string_findUtf16(filePathLocalCopy, L"\\\\\?\\", 0))
+        c += 4;
+    for(; c < filePathSize; c++)
     {
         if(filePathRawUtf16[c] == L'\\' || filePathRawUtf16[c] == L'/')
         {
@@ -422,6 +441,12 @@ korl_internal void korl_file_initialize(void)
     //  //
     korl_log(INFO, "directoryExecutable=%ws", 
              string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
+    /* prepend special string of characters to directory strings, which will 
+        allow the Windows API that consumes these paths (CreateDirectory, 
+        CreateFile, etc...) to extend the file path string size limit from 
+        MAX_PATH(260) to 32,767 */
+    for(i32 pt = 0; pt < KORL_FILE_PATHTYPE_ENUM_COUNT; pt++)
+        string_prependUtf16(context->directoryStrings[pt], L"\\\\\?\\");
     /* persistent storage of a save-state memory buffer */
     context->saveStateEnumContext.saveStateBufferBytes = korl_math_kilobytes(16);
     context->saveStateEnumContext.saveStateBuffer      = korl_allocate(context->allocatorHandle, context->saveStateEnumContext.saveStateBufferBytes);
@@ -680,6 +705,7 @@ korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWriteFileName(Korl
     korl_memory_zero(&dateStampUnionFile, sizeof(dateStampUnionFile));
     Korl_StringPool_StringHandle stringFilePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(stringFilePath, L"\\%ws", fileName);
+    _korl_file_sanitizeFilePath(stringFilePath);
     WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
     if(!GetFileAttributesEx(string_getRawUtf16(stringFilePath), GetFileExInfoStandard, &fileAttributeData))
     {
@@ -817,7 +843,7 @@ korl_internal void korl_file_finishAllAsyncOperations(void)
 }
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount)
 {
-    korl_shared_const wchar_t DUMP_SUBDIRECTORY[] = L"\\memory-dumps";
+    korl_shared_const wchar_t DUMP_SUBDIRECTORY[] = L"memory-dumps";
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(type < KORL_FILE_PATHTYPE_ENUM_COUNT);
     Korl_StringPool_StringHandle pathFileRead           = 0;
@@ -832,7 +858,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     GetLocalTime( &localTime );
     /* create a memory dump directory in the temporary data directory */
     dumpDirectory = string_copy(context->directoryStrings[type]);
-    string_appendUtf16(dumpDirectory, DUMP_SUBDIRECTORY);
+    string_appendFormatUtf16(dumpDirectory, L"\\%ws", DUMP_SUBDIRECTORY);
     if(!CreateDirectory(string_getRawUtf16(dumpDirectory), NULL/*default security*/))
         switch(GetLastError())
         {
@@ -853,15 +879,21 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
             string_reserveUtf16(filePathOldest, filePathOldestSize + 1);
             string_getRawWriteableUtf16(filePathOldest)[filePathOldestSize] = L'\0';
             /**/
-            korl_log(INFO, "deleting oldest dump folder: %ws", string_getRawUtf16(filePathOldest));
+            const WCHAR* rawUtf16FilePathOldest = string_getRawUtf16(filePathOldest);
+            /* the special L"\\\\\?\\" file path prefix shit doesn't work on 
+                this API, as it turns out... */
+            if(0 == string_findUtf16(filePathOldest, L"\\\\\?\\", 0))
+                rawUtf16FilePathOldest += 4;
+            /**/
+            korl_log(INFO, "deleting oldest dump folder: %ws", rawUtf16FilePathOldest);
             KORL_ZERO_STACK(SHFILEOPSTRUCT, fileOpStruct);
             fileOpStruct.wFunc  = FO_DELETE;
-            fileOpStruct.pFrom  = string_getRawUtf16(filePathOldest);
+            fileOpStruct.pFrom  = rawUtf16FilePathOldest;
             fileOpStruct.fFlags = FOF_NO_UI | FOF_NOCONFIRMATION;
             const int resultFileOpDeleteRecursive = SHFileOperation(&fileOpStruct);
             if(resultFileOpDeleteRecursive != 0)
                 korl_log(WARNING, "recursive delete of \"%ws\" failed; result=%i", 
-                         string_getRawUtf16(filePathOldest), resultFileOpDeleteRecursive);
+                         rawUtf16FilePathOldest, resultFileOpDeleteRecursive);
             string_free(filePathOldest);
         }
         string_free(filePathOldest);
@@ -874,8 +906,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
                              localTime.wHour, localTime.wMinute, localTime.wSecond,
                              GetCurrentProcessId(), GetCurrentThreadId());
     pathMemoryDump = string_copy(dumpDirectory);
-    string_appendUtf16(pathMemoryDump, L"\\");
-    string_append     (pathMemoryDump, subDirectoryMemoryDump);
+    string_append(pathMemoryDump, subDirectoryMemoryDump);
     if(!CreateDirectory(string_getRawUtf16(pathMemoryDump), NULL))
     {
         korl_logLastError("CreateDirectory(%ws) failed!", 
@@ -1165,6 +1196,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     _AllocatorDescriptor* allocatorDescriptors = NULL;
     Korl_StringPool_StringHandle pathFile = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(pathFile, L"\\%ws", fileName);
+    _korl_file_sanitizeFilePath(pathFile);
     hFile = CreateFile(string_getRawUtf16(pathFile), GENERIC_READ, FILE_SHARE_READ, 
                        0/*default security*/, OPEN_EXISTING, 
                        0/*flags|attributes*/, 0/*no template*/);

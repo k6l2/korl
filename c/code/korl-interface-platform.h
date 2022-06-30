@@ -212,6 +212,14 @@ enum KorlEnumLogLevel
  *    than in \c b, and \c 0 if the two memory blocks are equal */
 #define KORL_PLATFORM_MEMORY_COMPARE(name) int  name(const void* a, const void* b, size_t bytes)
 /**
+ * \return \c 0 if the length & contents of the arrays are equal
+ */
+#define KORL_PLATFORM_ARRAY_U8_COMPARE(name) int name(const u8* dataA, u$ sizeA, const u8* dataB, u$ sizeB)
+/**
+ * \return \c 0 if the length & contents of the arrays are equal
+ */
+#define KORL_PLATFORM_ARRAY_U16_COMPARE(name) int name(const u16* dataA, u$ sizeA, const u16* dataB, u$ sizeB)
+/**
  * \return \c 0 if the two strings are equal
  */
 #define KORL_PLATFORM_STRING_COMPARE(name)              int name(const wchar_t* a, const wchar_t* b)
@@ -439,6 +447,8 @@ typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zer
 typedef KORL_PLATFORM_MEMORY_COPY                         (fnSig_korl_memory_copy);
 typedef KORL_PLATFORM_MEMORY_MOVE                         (fnSig_korl_memory_move);
 typedef KORL_PLATFORM_MEMORY_COMPARE                      (fnSig_korl_memory_compare);
+typedef KORL_PLATFORM_ARRAY_U8_COMPARE                    (fnSig_korl_memory_arrayU8Compare);
+typedef KORL_PLATFORM_ARRAY_U16_COMPARE                   (fnSig_korl_memory_arrayU16Compare);
 typedef KORL_PLATFORM_STRING_COMPARE                      (fnSig_korl_memory_stringCompare);
 typedef KORL_PLATFORM_STRING_COMPARE_UTF8                 (fnSig_korl_memory_stringCompareUtf8);
 typedef KORL_PLATFORM_STRING_SIZE                         (fnSig_korl_memory_stringSize);
@@ -495,6 +505,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_memory_copy*                      korl_memory_copy;\
     fnSig_korl_memory_move*                      korl_memory_move;\
     fnSig_korl_memory_compare*                   korl_memory_compare;\
+    fnSig_korl_memory_arrayU8Compare*            korl_memory_arrayU8Compare;\
+    fnSig_korl_memory_arrayU16Compare*           korl_memory_arrayU16Compare;\
     fnSig_korl_memory_stringCompare*             korl_memory_stringCompare;\
     fnSig_korl_memory_stringCompareUtf8*         korl_memory_stringCompareUtf8;\
     fnSig_korl_memory_stringSize*                korl_memory_stringSize;\
@@ -551,6 +563,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_memory_copy                      = korl_memory_copy;\
     (apiVariableName).korl_memory_move                      = korl_memory_move;\
     (apiVariableName).korl_memory_compare                   = korl_memory_compare;\
+    (apiVariableName).korl_memory_arrayU8Compare            = korl_memory_arrayU8Compare;\
+    (apiVariableName).korl_memory_arrayU16Compare           = korl_memory_arrayU16Compare;\
     (apiVariableName).korl_memory_stringCompare             = korl_memory_stringCompare;\
     (apiVariableName).korl_memory_stringCompareUtf8         = korl_memory_stringCompareUtf8;\
     (apiVariableName).korl_memory_stringSize                = korl_memory_stringSize;\
@@ -607,6 +621,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_memory_copy                      = (apiVariableName).korl_memory_copy;\
     korl_memory_move                      = (apiVariableName).korl_memory_move;\
     korl_memory_compare                   = (apiVariableName).korl_memory_compare;\
+    korl_memory_arrayU8Compare            = (apiVariableName).korl_memory_arrayU8Compare;\
+    korl_memory_arrayU16Compare           = (apiVariableName).korl_memory_arrayU16Compare;\
     korl_memory_stringCompare             = (apiVariableName).korl_memory_stringCompare;\
     korl_memory_stringCompareUtf8         = (apiVariableName).korl_memory_stringCompareUtf8;\
     korl_memory_stringSize                = (apiVariableName).korl_memory_stringSize;\

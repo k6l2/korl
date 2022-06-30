@@ -646,13 +646,13 @@ korl_internal void korl_stringPool_appendUtf16(Korl_StringPool* context, Korl_St
         on the UTF-16 raw string */
     _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     /* actually perform the append */
-    const u$ appendedStringSize = korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+    const u$ additionalStringSize = korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
     _Korl_StringPool_String*const str = &(context->strings[s]);
-    str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + appendedStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
+    str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf16 + str->rawSizeUtf16*sizeof(u16), 
                      cStringUtf16, 
-                     (appendedStringSize + 1/*include the null terminator*/)*sizeof(u16));
-    str->rawSizeUtf16 += korl_checkCast_u$_to_u32(appendedStringSize);
+                     (additionalStringSize + 1/*include the null terminator*/)*sizeof(u16));
+    str->rawSizeUtf16 += korl_checkCast_u$_to_u32(additionalStringSize);
 }
 korl_internal void korl_stringPool_appendFormatUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const wchar_t* format, ...)
 {
@@ -669,13 +669,57 @@ korl_internal void korl_stringPool_appendFormatUtf16(Korl_StringPool* context, K
     wchar_t*const cStringFormat = korl_memory_stringFormatVaList(context->allocatorHandle, format, args);
     va_end(args);
     /* perform the append */
-    const u$ appendedStringSize = korl_memory_stringSize(cStringFormat);
+    const u$ additionalStringSize = korl_memory_stringSize(cStringFormat);
     _Korl_StringPool_String*const str = &(context->strings[s]);
-    str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + appendedStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
+    str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf16 + str->rawSizeUtf16*sizeof(u16), 
                      cStringFormat, 
-                     (appendedStringSize + 1/*include the null terminator*/)*sizeof(u16));
-    str->rawSizeUtf16 += korl_checkCast_u$_to_u32(appendedStringSize);
+                     (additionalStringSize + 1/*include the null terminator*/)*sizeof(u16));
+    str->rawSizeUtf16 += korl_checkCast_u$_to_u32(additionalStringSize);
     /* clean up the allocated format string */
     korl_free(context->allocatorHandle, cStringFormat);
+}
+korl_internal void korl_stringPool_prependUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line)
+{
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
+    korl_assert(s < context->stringsSize);
+    /* get UTF-16 encoding if we don't already have it */
+    _korl_stringPool_deduceEncoding(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
+    /* invalidate other encodings, since we're just going to perform that work 
+        on the UTF-16 raw string */
+    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
+    /* grow the string, move it, and copy the c-string to the beginning */
+    const u$ additionalStringSize = korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+    _Korl_StringPool_String*const str = &(context->strings[s]);
+    str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
+    korl_memory_move(context->characterPool + str->poolByteOffsetUtf16 + additionalStringSize*sizeof(u16), 
+                     context->characterPool + str->poolByteOffsetUtf16, 
+                     (str->rawSizeUtf16 + 1/*include the null terminator*/)*sizeof(u16));
+    str->rawSizeUtf16 += korl_checkCast_u$_to_u32(additionalStringSize);
+    korl_memory_copy(context->characterPool + str->poolByteOffsetUtf16, 
+                     cStringUtf16, 
+                     additionalStringSize*sizeof(u16));
+}
+korl_internal u32 korl_stringPool_findUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, u32 characterOffsetStart, const wchar_t* file, int line)
+{
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
+    korl_assert(s < context->stringsSize);
+    _korl_stringPool_deduceEncoding(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
+    /* Example; searching the string "testString" for the substring "ring":
+        Final iteration:
+        [ t][ e][ s][ t][ S][ t][ r][ i][ n][ g][\0]
+          0   1   2   3   4   5   6   7   8   9  10
+                                [ r][ i][ n][ g][\0]
+                                  0   1   2   3   4 */
+    const _Korl_StringPool_String*const str = &(context->strings[s]);
+    const u$ searchStringSize = korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+    if(searchStringSize > str->rawSizeUtf16)
+        return str->rawSizeUtf16;// the search string can't even fit inside this string
+    for(u32 i = 0; i <= str->rawSizeUtf16 - searchStringSize; i++)
+        if(0 == korl_memory_arrayU16Compare(KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16 + i*sizeof(u16)), 
+                                            searchStringSize, 
+                                            cStringUtf16, 
+                                            searchStringSize))
+            return i;
+    return str->rawSizeUtf16;
 }
