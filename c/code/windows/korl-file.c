@@ -1,5 +1,4 @@
 ///@TODO: prepend L"\\?\" to all calls to CreateFile & CreateDirectory to extend file path limit to 32,767 characters
-///@TODO: assert that all the Korl_File_PathType variables in this file are valid values (sanity check)
 #include "korl-file.h"
 #include "korl-globalDefines.h"
 #include "korl-windows-globalDefines.h"
@@ -60,6 +59,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
 {
     _Korl_File_Context*const context = &_korl_file_context;
     bool result = true;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     Korl_StringPool_StringHandle stringFilePath = string_copy(context->directoryStrings[pathType]);
     string_appendUtf16(stringFilePath, L"/");
     string_appendUtf16(stringFilePath, fileName);
@@ -448,6 +448,8 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
                                            Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew)
 {
     _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathTypeFileName    < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    korl_assert(pathTypeFileNameNew < KORL_FILE_PATHTYPE_ENUM_COUNT);
     Korl_StringPool_StringHandle filePathNew = 0;
     Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathTypeFileName]);
     string_appendUtf16(filePath, L"\\");
@@ -669,6 +671,7 @@ korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWrite(Korl_File_De
 korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName)
 {
     _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     union
     {
         FILETIME fileTime;
@@ -816,6 +819,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
 {
     korl_shared_const wchar_t DUMP_SUBDIRECTORY[] = L"\\memory-dumps";
     _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(type < KORL_FILE_PATHTYPE_ENUM_COUNT);
     Korl_StringPool_StringHandle pathFileRead           = 0;
     Korl_StringPool_StringHandle pathFileWrite          = 0;
     Korl_StringPool_StringHandle dumpDirectory          = 0;
@@ -1107,6 +1111,7 @@ korl_internal void korl_file_saveStateCreate(void)
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
 {
     _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     HANDLE hFile = INVALID_HANDLE_VALUE;
     Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(filePath, L"\\%ws", fileName);
@@ -1149,6 +1154,7 @@ cleanUp:
 korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wchar_t* fileName)
 {
     _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     HANDLE hFile = INVALID_HANDLE_VALUE;
     Korl_StringPool_StringHandle allocationFileBuffer = 0;
     typedef struct _AllocatorDescriptor
