@@ -381,6 +381,8 @@ korl_internal void korl_windows_window_loop(void)
             korl_vulkan_clearAllDeviceAssets();
             korl_gfx_clearFontCache();
             korl_log_clearAsyncIo();
+            korl_file_finishAllAsyncOperations();
+            korl_assetCache_clearAllFileHandles();
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);

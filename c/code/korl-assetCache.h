@@ -37,6 +37,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get);
 #define KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(name) void name(const wchar_t* rawUtf16AssetName, Korl_AssetCache_AssetData assetData)
 typedef KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(fnSig_korl_assetCache_onAssetHotReloadedCallback);
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded);
+korl_internal void korl_assetCache_clearAllFileHandles(void);
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 

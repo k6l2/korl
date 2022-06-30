@@ -68,6 +68,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
     switch(asset->state)
     {
     case _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED:{
+        korl_assert(asset->fileDescriptor.flags == 0);
         const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
                                                    string_getRawUtf16(asset->name), 
                                                    &(asset->fileDescriptor), 
@@ -176,6 +177,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                                                     rawUtf16AssetName);
         if(KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))
         {
+            korl_assert(asset->fileDescriptor.flags == 0);
             const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
                                                        string_getRawUtf16(asset->name), 
                                                        &(asset->fileDescriptor), 
@@ -195,6 +197,16 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                 //in any case, it should be okay for us to continue trying to open the file
             }
         }
+    }
+}
+korl_internal void korl_assetCache_clearAllFileHandles(void)
+{
+    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
+    {
+        _Korl_AssetCache_Asset*const asset = &(context->assets[a]);
+        if(asset->fileDescriptor.flags)
+            korl_file_close(&(asset->fileDescriptor));
     }
 }
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
@@ -225,6 +237,12 @@ korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle al
 korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    /* sanity check to make sure that all assets are done with file I/O */
+    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
+    {
+        _Korl_AssetCache_Asset*const asset = &(context->assets[a]);
+        korl_assert(asset->fileDescriptor.flags == 0);
+    }
     if(!ReadFile(hFile, &context->assets_korlMemoryPoolSize, sizeof(context->assets_korlMemoryPoolSize), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");

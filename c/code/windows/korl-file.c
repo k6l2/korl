@@ -796,6 +796,22 @@ korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor f
             korl_logLastError("ReadFile failed!");
     return newHandle;
 }
+korl_internal void korl_file_finishAllAsyncOperations(void)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    for(u16 a = 0; a < korl_arraySize(context->asyncPool); a++)
+    {
+        if(0 == context->asyncPool[a].handle)
+            continue;
+        Korl_File_AsyncIoHandle handle = context->asyncPool[a].handle;
+        /* NOTE: here we are invalidating the original async io handle, but that 
+            should be okay since we expect that when the save state is loaded, 
+            it will likely contain any number of invalid async io handles, which 
+            are expected to be handled gracefully by whatever code modules which 
+            contain them */
+        korl_assert(KORL_FILE_GET_ASYNC_IO_RESULT_DONE == korl_file_getAsyncIoResult(&handle, true/*block until complete*/));
+    }
+}
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount)
 {
     korl_shared_const wchar_t DUMP_SUBDIRECTORY[] = L"\\memory-dumps";
@@ -1154,19 +1170,6 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
             korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(pathFile));
         goto cleanUp;
     }
-    /* wait for async file operations to be complete before changing application state! */
-    for(u16 a = 0; a < korl_arraySize(context->asyncPool); a++)
-    {
-        if(0 == context->asyncPool[a].handle)
-            continue;
-        Korl_File_AsyncIoHandle handle = context->asyncPool[a].handle;
-        /* NOTE: here we are invalidating the original async io handle, but that 
-            should be okay since we expect that when the save state is loaded, 
-            it will likely contain any number of invalid async io handles, which 
-            are expected to be handled gracefully by whatever code modules which 
-            contain them */
-        korl_assert(KORL_FILE_GET_ASYNC_IO_RESULT_DONE == korl_file_getAsyncIoResult(&handle, true/*block until complete*/));
-    }
     /* read & parse & process the save state file */
     /* first, we need to extract the savestate manifest which is placed at the 
         very end of the file */
@@ -1361,6 +1364,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));
 cleanUp:
     string_free(pathFile);
+    string_free(allocationFileBuffer);
     if(allocatorDescriptors)
         korl_free(context->allocatorHandle, allocatorDescriptors);
     if(hFile != INVALID_HANDLE_VALUE)

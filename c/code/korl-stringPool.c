@@ -105,7 +105,7 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
         if(context->allocations[allocIndex].poolByteOffset == allocationOffset)
             break;
     korl_assert(allocIndex < context->allocationsSize);
-    _Korl_StringPool_Allocation*const allocationPrevious = &(context->allocations[allocIndex]);
+    _Korl_StringPool_Allocation* allocationPrevious = &(context->allocations[allocIndex]);
     if(bytes == allocationPrevious->bytes)
         return allocationOffset;
     /* if bytes is smaller, we can just shrink the allocation & we're done */
@@ -153,9 +153,14 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
     }
     /* we can't expand; we need to allocate->copy->free */
     const u32 newAllocOffset = _korl_stringPool_allocate(context, bytes, file, line);//KORL-PERFORMANCE-000-000-025: stringPool: we should tell the allocation function that it doesn't have to sort
+    allocationPrevious = &(context->allocations[allocIndex]);// allocating can invalidate all pointers, so we _must_ recalculate this!
     korl_memory_copy(context->characterPool + newAllocOffset, 
                      context->characterPool + allocationPrevious->poolByteOffset, 
                      allocationPrevious->bytes);
+    // this will release the previous allocation (no need to call free) //
+    context->allocations[allocIndex] = context->allocations[context->allocationsSize - 1];
+    context->allocationsSize--;
+    // //
     return newAllocOffset;
 }
 korl_internal void _korl_stringPool_free(Korl_StringPool* context, u32 poolByteOffset)
@@ -415,6 +420,7 @@ korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle
 }
 korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
 {
+    //KORL-ISSUE-000-000-012: add a cleanup function to verify that there are not memory leaks (ensure that strings & allocations are empty)
     korl_free(context->allocatorHandle, context->strings);
     korl_free(context->allocatorHandle, context->allocations);
     korl_free(context->allocatorHandle, context->characterPool);
