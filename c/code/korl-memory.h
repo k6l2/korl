@@ -36,6 +36,7 @@ korl_internal KORL_PLATFORM_ARRAY_U16_COMPARE(korl_memory_arrayU16Compare);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
 korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST       (korl_memory_stringFormatVaList);
+korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST_UTF8  (korl_memory_stringFormatVaListUtf8);
 korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER       (korl_memory_stringFormatBuffer);
 korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList);
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR    (korl_memory_allocator_create);

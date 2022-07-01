@@ -246,6 +246,7 @@ enum KorlEnumLogLevel
  */
 #define KORL_PLATFORM_STRING_COPY(name)                 i$ name(const wchar_t* source, wchar_t* destination, u$ destinationSize)
 #define KORL_PLATFORM_STRING_FORMAT_VALIST(name)        wchar_t* name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
+#define KORL_PLATFORM_STRING_FORMAT_VALIST_UTF8(name)   char* name(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, va_list vaList)
 /**
  * \return the number of characters copied from \c format into \c buffer , 
  * INCLUDING the null terminator.  If the \c format cannot be copied into the 
@@ -455,6 +456,7 @@ typedef KORL_PLATFORM_STRING_SIZE                         (fnSig_korl_memory_str
 typedef KORL_PLATFORM_STRING_SIZE_UTF8                    (fnSig_korl_memory_stringSizeUtf8);
 typedef KORL_PLATFORM_STRING_COPY                         (fnSig_korl_memory_stringCopy);
 typedef KORL_PLATFORM_STRING_FORMAT_VALIST                (fnSig_korl_memory_stringFormatVaList);
+typedef KORL_PLATFORM_STRING_FORMAT_VALIST_UTF8           (fnSig_korl_memory_stringFormatVaListUtf8);
 typedef KORL_PLATFORM_STRING_FORMAT_BUFFER                (fnSig_korl_memory_stringFormatBuffer);
 typedef KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR             (fnSig_korl_memory_allocator_create);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_allocator_allocate);
@@ -513,6 +515,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_memory_stringSizeUtf8*            korl_memory_stringSizeUtf8;\
     fnSig_korl_memory_stringCopy*                korl_memory_stringCopy;\
     fnSig_korl_memory_stringFormatVaList*        korl_memory_stringFormatVaList;\
+    fnSig_korl_memory_stringFormatVaListUtf8*    korl_memory_stringFormatVaListUtf8;\
     fnSig_korl_memory_stringFormatBuffer*        korl_memory_stringFormatBuffer;\
     fnSig_korl_memory_allocator_create*          korl_memory_allocator_create;\
     fnSig_korl_memory_allocator_allocate*        korl_memory_allocator_allocate;\
@@ -571,6 +574,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_memory_stringSizeUtf8            = korl_memory_stringSizeUtf8;\
     (apiVariableName).korl_memory_stringCopy                = korl_memory_stringCopy;\
     (apiVariableName).korl_memory_stringFormatVaList        = korl_memory_stringFormatVaList;\
+    (apiVariableName).korl_memory_stringFormatVaListUtf8    = korl_memory_stringFormatVaListUtf8;\
     (apiVariableName).korl_memory_stringFormatBuffer        = korl_memory_stringFormatBuffer;\
     (apiVariableName).korl_memory_allocator_create          = korl_memory_allocator_create;\
     (apiVariableName).korl_memory_allocator_allocate        = korl_memory_allocator_allocate;\
@@ -629,6 +633,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_memory_stringSizeUtf8            = (apiVariableName).korl_memory_stringSizeUtf8;\
     korl_memory_stringCopy                = (apiVariableName).korl_memory_stringCopy;\
     korl_memory_stringFormatVaList        = (apiVariableName).korl_memory_stringFormatVaList;\
+    korl_memory_stringFormatVaListUtf8    = (apiVariableName).korl_memory_stringFormatVaListUtf8;\
     korl_memory_stringFormatBuffer        = (apiVariableName).korl_memory_stringFormatBuffer;\
     korl_memory_allocator_create          = (apiVariableName).korl_memory_allocator_create;\
     korl_memory_allocator_allocate        = (apiVariableName).korl_memory_allocator_allocate;\

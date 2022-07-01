@@ -239,6 +239,16 @@ korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST(korl_memory_stringFormatVaList)
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
 }
+korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST_UTF8(korl_memory_stringFormatVaListUtf8)
+{
+    const int bufferSize = _vscprintf(format, vaList) + 1/*for the null terminator*/;
+    korl_assert(bufferSize > 0);
+    char*const result = (char*)korl_allocate(allocatorHandle, bufferSize * sizeof(*result));
+    korl_assert(result);
+    const int charactersWritten = vsprintf_s(result, bufferSize, format, vaList);
+    korl_assert(charactersWritten == bufferSize - 1);
+    return result;
+}
 korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER(korl_memory_stringFormatBuffer)
 {
     va_list args;
