@@ -44,7 +44,12 @@ typedef enum Korl_StringPool_CompareResult
     , KORL_STRINGPOOL_COMPARE_RESULT_LESS    = -1// lexicographically if string length equal, otherwise by string length
     , KORL_STRINGPOOL_COMPARE_RESULT_GREATER =  1// lexicographically if string length equal, otherwise by string length
 } Korl_StringPool_CompareResult;
+/* if we're using C++, we can have convenience macros for function overloads, 
+    which are defined later in this header file */
 #if defined(__cplusplus)
+#define string_new(...)                                                        korl_stringPool_new(_LOCAL_STRING_POOL_POINTER, ##__VA_ARGS__, __FILEW__, __LINE__)
+//      string_append(stringHandle, ...)                                       Should already work with `const char*`, `const wchar_t*`, and StringHandle as second parameter!
+#define string_appendFormat(stringHandle, format, ...)                         korl_stringPool_appendFormat(_LOCAL_STRING_POOL_POINTER, stringHandle, __FILEW__, __LINE__, format, ##__VA_ARGS__)
 ///@TODO: operator+(string, string)         => append(string, string)
 ///@TODO: operator+(string, const char*)    => appendUtf8
 ///@TODO: operator+(string, const wchar_t*) => appendUtf16
@@ -143,6 +148,17 @@ korl_internal void                          korl_stringPool_prependUtf16(Korl_St
  * towards the end of the raw string.  If \c cStringUtf16 is not found, the 
  * value of \c korl_stringPool_getRawSizeUtf16 is returned. */
 korl_internal u32                           korl_stringPool_findUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, u32 characterOffsetStart, const wchar_t* file, int line);
+/* if we're using C++, we can support function overloads, which should reduce 
+    typing & hopefully cognitive load */
+#if defined(__cplusplus)
+korl_internal Korl_StringPool_StringHandle  korl_stringPool_new(Korl_StringPool* context, const wchar_t* file, int line);
+korl_internal Korl_StringPool_StringHandle  korl_stringPool_new(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
+korl_internal Korl_StringPool_StringHandle  korl_stringPool_new(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const i8* cStringUtf8, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_appendFormat(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const char* format, ...);
+korl_internal void                          korl_stringPool_appendFormat(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const wchar_t* format, ...);
+#endif// defined(__cplusplus)
 #if 0/// potential new API:
 korl_internal void                          korl_stringPool_appendUnsignedInteger(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);
 korl_internal void                          korl_stringPool_appendUnsignedIntegerHex(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);
