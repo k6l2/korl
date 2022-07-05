@@ -21,22 +21,18 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
         _korl_crash_hasReceivedException = true;
         wchar_t messageBuffer[256];
         korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                       L"Exception code: 0x%X\n"
-                                       L"Would you like to ignore it?", 
+                                       L"Exception code: 0x%X\n", 
                                        pExceptionPointers->ExceptionRecord->ExceptionCode);
         //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, cStrOrigin, 
-                                                MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);
+                                                MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
         if(resultMessageBox == 0)
             korl_logLastError("MessageBox failed!");
         else
             switch(resultMessageBox)
             {
-            case IDYES:{
-                return EXCEPTION_CONTINUE_EXECUTION;
-                break;}
-            case IDNO:{
+            case IDOK:{
                 /* just do nothing, write a dump & abort */
                 break;}
             }
@@ -176,35 +172,30 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
         wchar_t messageBuffer[512];
         i$ charactersCopied = 
             korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                           L"Condition: %ws\n"
-                                           L"Would you like to ignore it?", 
+                                           L"Condition: %ws\n", 
                                            conditionString);
         /* if the entire assert conditionString doesn't fit in our local assert 
             message stack buffer, then let's just truncate the message and 
             display as much as possible */
         if(charactersCopied <= 0)
         {
-            wchar_t conditionBuffer[512 - 45/*size of the rest of the assert message box text*/];
+            wchar_t conditionBuffer[512 - 16/*size of the rest of the assert message box text*/];
             korl_memory_stringCopy(conditionString, conditionBuffer, korl_arraySize(conditionBuffer));
             charactersCopied = 
                 korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                               L"Condition: %ws\n"
-                                               L"Would you like to ignore it?", 
+                                               L"Condition: %ws\n", 
                                                conditionBuffer);
         }
         //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, L"Assertion Failed!", 
-                                                MB_YESNO | MB_ICONERROR | MB_SYSTEMMODAL);
+                                                MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
         if(resultMessageBox == 0)
             korl_logLastError("MessageBox failed!");
         else
             switch(resultMessageBox)
             {
-            case IDYES:{
-                return;
-                break;}
-            case IDNO:{
+            case IDOK:{
                 /* just do nothing, write a dump & abort */
                 break;}
             }
