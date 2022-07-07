@@ -1073,7 +1073,8 @@ korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_a
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
-        callback(callbackUserData, allocator, allocator->userData, allocator->name, allocator->flags);
+        if(!callback(callbackUserData, allocator, allocator->userData, allocator->handle, allocator->name, allocator->flags))
+            break;
     }
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations)
@@ -1103,6 +1104,14 @@ korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Me
             return true;
         }
     return false;
+}
+korl_internal bool korl_memory_allocator_containsAllocation(void* opaqueAllocator, const void* allocation)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    _Korl_Memory_Allocator*const allocator = opaqueAllocator;
+    return allocation >= allocator->userData 
+        && KORL_C_CAST(const u8*, allocation) < KORL_C_CAST(const u8*, allocator->userData) + allocator->maxBytes;
 }
 korl_internal u$ korl_memory_packStringI8(const i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
 {

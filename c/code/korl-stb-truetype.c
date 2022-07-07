@@ -6,11 +6,11 @@ typedef struct _Korl_Stb_TrueType_Context
     Korl_Memory_AllocatorHandle allocatorHandle;
 } _Korl_Stb_TrueType_Context;
 korl_global_variable _Korl_Stb_TrueType_Context _korl_stb_truetype_context;
-void* _korl_stb_truetype_allocate(u$ bytes)
+korl_internal void* _korl_stb_truetype_allocate(u$ bytes)
 {
     return korl_allocate(_korl_stb_truetype_context.allocatorHandle, bytes);
 }
-void _korl_stb_truetype_free(void* allocation)
+korl_internal void _korl_stb_truetype_free(void* allocation)
 {
     korl_free(_korl_stb_truetype_context.allocatorHandle, allocation);
 }

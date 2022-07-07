@@ -265,19 +265,20 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     _Korl_File_Context*const context                       = &_korl_file_context;
     _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
     if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
-        return;
+        return true;//true => continue iterating over allocators
     enumContext->allocatorCount++;
     korl_assert(enumContext->allocatorCount <= korl_arraySize(enumContext->allocationCounts));
     enumContext->allocationCounts[enumContext->allocatorCount - 1] = 0;
     /* enumarate over all allocations & write those to the save state buffer */
     korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext, NULL/*don't care about allocatorVirtualAddressEnd*/);
+    return true;//true => continue iterating over allocators
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass)
 {
     _Korl_File_Context*const context                       = &_korl_file_context;
     _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
     if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
-        return;
+        return true;//true => continue iterating over allocators
     /* now we can write the allocator descriptors to the save state buffer */
     const u16 nameCharacterCount = korl_checkCast_u$_to_u16(korl_memory_stringSize(allocatorName));
     const u$ allocatorBytesRequired = sizeof(nameCharacterCount) 
@@ -303,6 +304,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     korl_assert(sizeof(allocatorUserData)                 == korl_memory_packU$(KORL_C_CAST(u$, allocatorUserData), &bufferCursor, bufferEnd));
     enumContext->saveStateBufferBytesUsed += allocatorBytesRequired;
     enumContext->currentAllocator++;
+    return true;//true => continue iterating over allocators
 }
 korl_internal void _korl_file_createParentDirectoriesRecursive(Korl_StringPool_StringHandle filePath)
 {

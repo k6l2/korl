@@ -1,3 +1,4 @@
+#include "korl-stb-image.h"
 #include "korl-memory.h"
 #include "korl-math.h"
 typedef struct _Korl_Stb_Image_Context
@@ -11,17 +12,17 @@ korl_internal void korl_stb_image_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), L"korl-stb-image", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
 }
-void* _korl_stb_image_allocate(u$ bytes)
+korl_internal void* _korl_stb_image_allocate(u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     return korl_allocate(context->allocatorHandle, bytes);
 }
-void* _korl_stb_image_reallocate(void* allocation, u$ bytes)
+korl_internal void* _korl_stb_image_reallocate(void* allocation, u$ bytes)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     return korl_reallocate(context->allocatorHandle, allocation, bytes);
 }
-void _korl_stb_image_free(void* allocation)
+korl_internal void _korl_stb_image_free(void* allocation)
 {
     _Korl_Stb_Image_Context*const context = &_korl_stb_image_context;
     korl_free(context->allocatorHandle, allocation);
