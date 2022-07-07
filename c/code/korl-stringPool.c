@@ -698,7 +698,7 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_copy(Korl_StringPool*
     if(newString->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
         flagsAdded |= _KORL_STRINGPOOL_STRING_FLAG_UTF8;
-        newString->poolByteOffsetUtf8 = _korl_stringPool_allocate(context, newString->rawSizeUtf8*sizeof(u8), file, line);
+        newString->poolByteOffsetUtf8 = _korl_stringPool_allocate(context, (newString->rawSizeUtf8+1)*sizeof(u8), file, line);
         korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf8, 
                          context->characterPool + context->strings[s].poolByteOffsetUtf8, 
                          newString->rawSizeUtf8*sizeof(u8));
@@ -709,7 +709,7 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_copy(Korl_StringPool*
     if(newString->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
         flagsAdded |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
-        newString->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, newString->rawSizeUtf16*sizeof(u16), file, line);
+        newString->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (newString->rawSizeUtf16+1)*sizeof(u16), file, line);
         korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf16, 
                          context->characterPool + context->strings[s].poolByteOffsetUtf16, 
                          newString->rawSizeUtf16*sizeof(u16));
