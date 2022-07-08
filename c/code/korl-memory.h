@@ -27,6 +27,7 @@ korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8);
 korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize);
 korl_internal KORL_PLATFORM_STRING_SIZE_UTF8(korl_memory_stringSizeUtf8);
 korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy);
+// korl_internal KORL_PLATFORM_MEMORY_FILL(korl_memory_fill);
 korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero);
 korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy);
 korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move);

@@ -203,6 +203,7 @@ enum KorlEnumLogLevel
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, \
     const wchar_t* cStringFunctionName, int lineNumber)
+// #define KORL_PLATFORM_MEMORY_FILL(name)    void name(void* memory, u$ bytes, u8 pattern)
 #define KORL_PLATFORM_MEMORY_ZERO(name)    void name(void* memory, u$ bytes)
 #define KORL_PLATFORM_MEMORY_COPY(name)    void name(void* destination, const void* source, u$ bytes)
 #define KORL_PLATFORM_MEMORY_MOVE(name)    void name(void* destination, const void* source, u$ bytes)
@@ -257,6 +258,7 @@ enum KorlEnumLogLevel
 typedef u16 Korl_Memory_AllocatorHandle;
 typedef enum Korl_Memory_AllocatorType
     { KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
+    , KORL_MEMORY_ALLOCATOR_TYPE_GENERAL
 } Korl_Memory_AllocatorType;
 typedef enum Korl_Memory_AllocatorFlags
     { KORL_MEMORY_ALLOCATOR_FLAGS_NONE                        = 0
