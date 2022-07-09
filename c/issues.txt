@@ -140,3 +140,4 @@
 [ ] KORL-FEATURE-000-000-031: UDP networking
 [ ] KORL-FEATURE-000-000-032: create sample/example projects
 [ ] KORL-FEATURE-000-000-033: add testbed scripts using samples/examples
+[ ] KORL-FEATURE-000-000-034: memory: automatically save allocator addresses to a config file & load them on startup (in development builds only probably?...); this will potentially help development debugging times a LOT in the long run!
