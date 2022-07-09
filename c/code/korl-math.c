@@ -29,10 +29,10 @@ korl_internal inline u32 korl_math_round_f32_to_u32(f32 x)
     KORL_MATH_ASSERT(x <= (f32)0xFFFFFFFF);
     return KORL_C_CAST(u32, x);
 }
-korl_internal inline u$ korl_math_roundUp(u$ value, u$ round)
+korl_internal inline u$ korl_math_nextHighestDivision(u$ value, u$ division)
 {
-    KORL_MATH_ASSERT(round);// it doesn't make sense to round to 0
-    return (value + (round - 1)) / round;
+    KORL_MATH_ASSERT(division);// it doesn't make sense to divide by 0
+    return (value + (division - 1)) / division;
 }
 korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple)
 {
