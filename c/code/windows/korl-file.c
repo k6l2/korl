@@ -1146,6 +1146,7 @@ korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wc
     HANDLE hFile = INVALID_HANDLE_VALUE;
     Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(filePath, L"\\%ws", fileName);
+    _korl_file_sanitizeFilePath(filePath);
     /* recursively create all directories implied by the file name withing the given path type */
     _korl_file_createParentDirectoriesRecursive(filePath);
     korl_time_probeStart(write_buffer);
