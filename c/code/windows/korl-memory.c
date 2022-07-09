@@ -58,22 +58,7 @@ typedef struct _Korl_Memory_AllocatorLinear
      * calculated as: korl_math_nextHighestDivision(maxBytes, pageBytes) * 
     */
     u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
-#if 1
     void* lastAllocation;
-    ///@TODO: delete?// u$ frontBytesAvailable;// used to allow us to reclaim memory at the "front" of the allocator if the first allocation in the linked list is freed
-    ///@TODO: delete?// void* nextAllocationAddress;// even though this is redundant, since we have lastAllocation, this will prevent us from having to unguard/guard the last allocation all the time
-#else
-    ///@TODO: this is dumb!  instead of keeping a giant table of allocations, 
-    /// let's just make it a singly linked list, where the head of the linked list is always the _last_ allocation.  
-    /// In this way, each individual allocation knows where the next allocation is 
-    /// (since they can just advance to the next address using their byte size), 
-    /// and they also know where the previous allocation is since that is where the linked list points!
-    /** support for realloc/free for arbitrary allocations 
-     * - offsets are relative to the start address of this struct 
-     * - offsets point to the allocation content itself, NOT the allocation 
-     *   meta data page! */
-    KORL_MEMORY_POOL_DECLARE(u32, allocationOffsets, 1024);
-#endif
 } _Korl_Memory_AllocatorLinear;
 typedef struct Korl_Memory_AllocatorLinear_AllocationMeta
 {
@@ -397,6 +382,7 @@ korl_internal void* _korl_memory_allocator_linear_allocate(_Korl_Memory_Allocato
 {
     void* allocationAddress = NULL;
     _korl_memory_allocator_linear_allocatorPageUnguard(allocator);
+    const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
     /* sanity check that the allocator's address range is page-aligned */
     const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
     korl_assert(0 == KORL_C_CAST(u$, allocator) % _korl_memory_context.systemInfo.dwAllocationGranularity);
@@ -425,54 +411,21 @@ korl_internal void* _korl_memory_allocator_linear_allocate(_Korl_Memory_Allocato
     const u$ totalAllocationBytes = totalAllocationPages * pageBytes;
     if(requestedAddress)
     {
-        ///@TODO: maybe utilize the allocation enumeration API here?
-        korl_assert(!"@TODO: not implemented");
-#if 0
-        metaPageAddress = KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, requestedAddress) - pageBytes/*the meta page goes _before_ the requested address*/);
-        void* nextAllocationAddressCandidate = KORL_C_CAST(u8*, metaPageAddress) + allocationPages*pageBytes;
-        /* ensure that we are not about to clobber an existing allocation, and 
-            simultaneously calculate the new nextAllocationAddress by 
-            considering all existing allocations */
-        for(Korl_MemoryPool_Size o = 0; o < KORL_MEMORY_POOL_SIZE(allocator->allocationOffsets); o++)
-        {
-            void*const otherAllocation = KORL_C_CAST(u8*, allocator) + allocator->allocationOffsets[o];
-            Korl_Memory_AllocationMeta*const otherMetaPage = KORL_C_CAST(Korl_Memory_AllocationMeta*, KORL_C_CAST(u8*, otherAllocation) - pageBytes);
-            /* temporarily release protection of the other allocation's meta so we can examine metrics */
-            {
-                DWORD oldProtect;
-                korl_assert(VirtualProtect(otherMetaPage, sizeof(*otherMetaPage), PAGE_READWRITE, &oldProtect));
-                korl_assert(oldProtect == PAGE_NOACCESS);
-            }
-            const u$ otherAllocationPages = ((otherMetaPage->bytes + (pageBytes - 1)) / pageBytes) + 1/*for the meta page*/;
-            void*const otherAllocationEnd = KORL_C_CAST(u8*, otherMetaPage) + otherAllocationPages*pageBytes;
-            if(otherAllocationEnd > nextAllocationAddressCandidate)
-                /* in an attempt to support arbitrary allocation emplacement, let's 
-                    calculate nextAllocationAddress based on the new allocation list by 
-                    taking the allocation with the largest offset */
-                nextAllocationAddressCandidate = otherAllocationEnd;
-            /* restore protection of the other allocation's meta page */
-            {
-                DWORD oldProtect;
-                korl_assert(VirtualProtect(otherMetaPage, sizeof(*otherMetaPage), PAGE_NOACCESS, &oldProtect));
-                korl_assert(oldProtect == PAGE_READWRITE);
-            }
-            /* now that we have all the info about the other allocation, we can 
-                perform the safety check: */
-            if(    KORL_C_CAST(void*, KORL_C_CAST(u8*, metaPageAddress) + allocationPages*pageBytes) > otherAllocation 
-                && KORL_C_CAST(void*, metaPageAddress)                                               < otherAllocationEnd)
-            {
-                korl_log(ERROR, "requested allocation at [0x%p~0x%p) overlaps with existing allocation at [0x%p~0x%p)", 
-                         metaPageAddress, KORL_C_CAST(u8*, metaPageAddress) + allocationPages*pageBytes, 
-                         otherAllocation, otherAllocationEnd);
-                goto protectAllocator_return_allocationAddress;
-            }
-        }
-        allocator->nextAllocationAddress = nextAllocationAddressCandidate;
-#endif
+        /* _huge_ simplification here: let's try just requiring the caller to 
+            inject allocations at specific addresses in a strictly increasing 
+            order; guaranteeing that each allocation is contiguous along the way */
+        metaAddress = KORL_C_CAST(Korl_Memory_AllocatorLinear_AllocationMeta*, KORL_C_CAST(u8*, requestedAddress) - metaBytesRequired);
+        Korl_Memory_AllocatorLinear_AllocationMeta*const lastAllocationMeta = allocator->lastAllocation 
+            ? KORL_C_CAST(Korl_Memory_AllocatorLinear_AllocationMeta*, KORL_C_CAST(u8*, allocator->lastAllocation) - metaBytesRequired)
+            : NULL;
+        /* this address must be _above_ the allocator pages */
+        korl_assert(KORL_C_CAST(u8*, allocator) + allocatorBytes + pageBytes/*skip guard page*/ <= KORL_C_CAST(u8*, metaAddress));
+        /* this address must be _after_ the last allocation */
+        if(lastAllocationMeta)
+            korl_assert(KORL_C_CAST(u8*, lastAllocationMeta) + lastAllocationMeta->availableBytes + pageBytes/*guard page*/ <= KORL_C_CAST(u8*, metaAddress));
     }
     /* check to see that this allocation can fit in the range 
         [nextAllocationAddress, lastReservedAddress] */
-    const u8*const allocatorEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
     if(KORL_C_CAST(u8*, metaAddress) + totalAllocationBytes > allocatorEnd)
     {
         korl_log(WARNING, "linear allocator out of memory");//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
@@ -490,11 +443,10 @@ korl_internal void* _korl_memory_allocator_linear_allocate(_Korl_Memory_Allocato
             korl_logLastError("VirtualAlloc failed!");
         korl_assert(resultVirtualAlloc == metaAddress);
     }
-#if 0// Do we actually need to do this?...
     /* ensure that the space within the allocation's pages that lie outside the 
         range of `bytes` is filled with some known invalid byte pattern */
-    FillMemory(metaAddress, totalAllocationBytes, _KORL_MEMORY_INVALID_BYTE_PATTERN);
-#endif
+    if(totalAllocationBytes - (metaBytesRequired + bytes))
+        FillMemory(KORL_C_CAST(u8*, metaAddress) + (metaBytesRequired + bytes), totalAllocationBytes - (metaBytesRequired + bytes), _KORL_MEMORY_INVALID_BYTE_PATTERN);
     /* ensure that the allocation address is filled with zeros */
     allocationAddress = KORL_C_CAST(u8*, metaAddress) + metaBytesRequired;
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
@@ -511,8 +463,8 @@ korl_internal void* _korl_memory_allocator_linear_allocate(_Korl_Memory_Allocato
     metaAddress->availableBytes       = totalAllocationBytes;
     korl_memory_copy(metaAddress + 1, _KORL_ALLOCATOR_LINEAR_ALLOCATION_META_SEPARATOR, sizeof(_KORL_ALLOCATOR_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*don't include the null terminator*/);
     /* update allocator's metrics */
-    if(!requestedAddress)
-        allocator->lastAllocation = allocationAddress;///@TODO: is this correct?
+    allocator->lastAllocation = allocationAddress;
+    /**/
     guardAllocator_return_allocationAddress:
     _korl_memory_allocator_linear_allocatorPageGuard(allocator);
     return allocationAddress;
@@ -696,8 +648,13 @@ korl_internal void* _korl_memory_allocator_linear_reallocate(_Korl_Memory_Alloca
     {
         _korl_memory_allocator_linear_allocatorPageGuard(allocator);
         void*const newAllocation = _korl_memory_allocator_linear_allocate(allocator, bytes, file, line, NULL/*auto-select address*/);
-        korl_memory_copy(newAllocation, allocation, allocationMeta->allocationMeta.bytes);
-        _korl_memory_allocator_linear_free(allocator, allocation, file, line);
+        if(newAllocation)
+        {
+            korl_memory_copy(newAllocation, allocation, allocationMeta->allocationMeta.bytes);
+            _korl_memory_allocator_linear_free(allocator, allocation, file, line);
+        }
+        else
+            korl_log(WARNING, "failed to create a new reallocation");
         return newAllocation;
     }
     guard_allocator_return_allocation:
