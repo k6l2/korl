@@ -23,6 +23,7 @@ korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ 
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
         allocatorHandle = _korl_stb_ds_allocatorHandle;
+        // return realloc(allocation, bytes);
 #if 0
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
@@ -37,7 +38,11 @@ korl_internal void _korl_stb_ds_free(void* context, void* allocation)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
+    {
         allocatorHandle = _korl_stb_ds_allocatorHandle;
+        // free(allocation);
+        // return;
+    }
 #if 0
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
@@ -50,9 +55,12 @@ korl_internal void _korl_stb_ds_free(void* context, void* allocation)
 }
 korl_internal void korl_stb_ds_initialize(void)
 {
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+    /* although this allocator is only utilized in KORL_DEBUG mode, we should 
+        create it in all builds to maintain allocator handle order */
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(512), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
 #if KORL_DEBUG
     stbds_unit_tests();
+    ///@TODO: assert that the test allocator is empty (no memory leaks have occurred)
 #endif
 }
 #define STB_DS_IMPLEMENTATION
