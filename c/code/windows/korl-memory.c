@@ -4,6 +4,7 @@
 #include "korl-checkCast.h"
 #include "korl-log.h"
 #define _KORL_MEMORY_INVALID_BYTE_PATTERN 0xFE
+korl_global_const i8 _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR[]     = "[KORL-general-allocation]";
 korl_global_const i8 _KORL_ALLOCATOR_LINEAR_ALLOCATION_META_SEPARATOR[]      = "[KORL-linear-allocation]";
 korl_global_const i8 _KORL_ALLOCATOR_LINEAR_ALLOCATION_META_SEPARATOR_FREE[] = "[KORL-linear-free-alloc]";
 typedef struct _Korl_Memory_Allocator
@@ -22,9 +23,48 @@ typedef struct _Korl_Memory_Context
     Korl_Memory_AllocatorHandle allocatorHandleReporting;// temporary memory used only for reporting memory module metrics
     KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, 64);
 } _Korl_Memory_Context;
+/** Allocator properties: 
+ * - all allocations are page-aligned
+ * - all allocations are separated by an un-committed "guard page"
+ * - when new allocations are created, we will start a search from the end of 
+ *   the last allocation for available pages, which wraps around to the 
+ *   beginning of the allocator's available pages if necessary (prioritize fast 
+ *   allocations; assume that by the time we wrap around to the beginning of the 
+ *   allocator's available pages, those pages will already be freed/available 
+ *   again)
+ * - if we end up suffering from memory fragmentation, we can always implement 
+ *   a defragmentation routine and run it occasionally
+ * Because of this, a good data structure to use to determine where to place new 
+ * allocations would be a giant array of flags.  The status of each flag 
+ * determines the availability of each page in the allocator.  Because bitfields 
+ * are so compact, performing a search for the next available space will 
+ * generally have very few cache misses.  Some back of the envelope 
+ * calculations:
+ * - page size on Windows is 4096 bytes
+ * - this stores a maximum of 4096*8 = 32768 bits/flags
+ * - if each flag indicates the status of a single page, this means with just a 
+ *   single page of flags, we can store the status of 
+ *   32768*4096 = 134217728 bytes of virtual memory
+ * - assuming we must separate each allocation with a guard page, we still 
+ *   maintain a maximum of 4096/2 = 2048 allocations
+ * - since the entire allocator index is in a single page, and cache line size 
+ *   is usually around 64 bytes, we only have to visit a maximum of 
+ *   4096/64 = 64 cache lines to perform the search for an available set of 
+ *   virtual memory addresses for the new allocation (and similarly, we retain 
+ *   the ability to enumerate over all allocations relatively quickly, which is 
+ *   a requirement of KORL allocators, mainly for the savestate feature; 
+ *   enumeration of all allocations can be done easily because we know an 
+ *   allocation is there if it is preceded by an unused guard page, or bit 
+ *   pattern: 01*)
+ * So with just a single page dedicated to allocator book-keeping, we can 
+ * basically handle the vast majority of allocator cases.
+ */
 typedef struct _Korl_Memory_AllocatorGeneral
 {
-    u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
+    // u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
+    u$ allocationPages;// this is the # which determines how many flags are actually relevant in the availablePageFlags member
+    u$ availablePageFlagsSize;// just used to determine the total size of the general allocator data structure
+    u8 availablePageFlags[];// see comments about this data structure for details of how this is used; the size of this array is determined by `bytes`, which should be calculated as `nextHighestDivision(nextHighestDivision(bytes, pageBytes), bitCount(u$))`
 } _Korl_Memory_AllocatorGeneral;
 /* The main purpose of the Linear Allocator is to have an extremely light & fast 
     allocation strategy.  We want to sacrifice tons of memory for the sake of 
@@ -717,42 +757,218 @@ korl_internal _Korl_Memory_AllocatorLinear* _korl_memory_allocator_linear_create
     }
     korl_memory_zero(allocator, sizeof(*allocator));
     allocator->bytes = totalBytesRequired;
-    /* guard the allocator page, but hopefully allow us to keep viewing it in the debugger */
+    /* guard the allocator page */
     _korl_memory_allocator_linear_allocatorPageGuard(allocator);
     return result;
 }
-korl_internal void _korl_memory_allocator_linear_destroy(void* allocatorUserData)
+korl_internal void _korl_memory_allocator_linear_destroy(_Korl_Memory_AllocatorLinear*const allocator)
 {
-    if(!VirtualFree(allocatorUserData, 0/*release everything*/, MEM_RELEASE))
+    if(!VirtualFree(allocator, 0/*release everything*/, MEM_RELEASE))
         korl_logLastError("VirtualFree failed!");
+}
+korl_internal void _korl_memory_allocator_general_allocatorPagesGuard(_Korl_Memory_AllocatorGeneral* allocator)
+{
+    const u$ allocatorBytes = sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags));
+    DWORD oldProtect;
+    if(!VirtualProtect(allocator, allocatorBytes, PAGE_READWRITE | PAGE_GUARD, &oldProtect))
+        korl_logLastError("VirtualProtect failed!");
+    korl_assert(oldProtect == PAGE_READWRITE);
+}
+korl_internal void _korl_memory_allocator_general_allocatorPagesUnguard(_Korl_Memory_AllocatorGeneral* allocator)
+{
+    DWORD oldProtect;
+    /* unguard the first page to find the total # of allocator pages */
+    if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
+        korl_logLastError("VirtualProtect failed!");
+    korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+    /* now we can unguard the rest, if necessary */
+    const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
+    korl_assert(sizeof(*allocator) < pageBytes);// probably not necessary at all due to OS constraints of w/e, but just sanity check to make sure the allocator struct fits in the first page!
+    const u$ allocatorBytes = sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags));
+    if(allocatorBytes > pageBytes)
+    {
+        if(!VirtualProtect(KORL_C_CAST(u8*, allocator) + pageBytes, allocatorBytes - pageBytes, PAGE_READWRITE, &oldProtect))
+            korl_logLastError("VirtualProtect failed!");
+        korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+    }
+}
+korl_internal u$ _korl_memory_allocator_general_highestOccupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount)
+{
+    ///@TODO: delete?
+    /* find the page flag register index & the flag index within the register */
+    // u$ pageFlagRegister = pageRangeStartIndex / (8*sizeof(*(allocator->availablePageFlags)));
+    // u$ flagIndex        = pageRangeStartIndex % (8*sizeof(*(allocator->availablePageFlags)));
+    /* iterate over the page count and test each flag, appropriately iterating 
+        the flag register & index along the way */
+    // const u$ highBit = 1 << ((8*sizeof(*(allocator->availablePageFlags))) - 1);
+    u$ highestOccupiedPageOffset = pageCount;
+    for(u$ p = pageRangeStartIndex; p < pageRangeStartIndex + pageCount; p++)
+    {
+        const u$ pageFlagRegister = p / (8*sizeof(*(allocator->availablePageFlags)));// the array index into allocator->availablePageFlags
+        const u$ flagIndex        = p % (8*sizeof(*(allocator->availablePageFlags)));// the bit index into this specific element of allocator->availablePageFlags
+        if(allocator->availablePageFlags[pageFlagRegister] & (1<<((8*sizeof(*(allocator->availablePageFlags))) - 1 - flagIndex)))
+            highestOccupiedPageOffset = p - pageRangeStartIndex;
+        ///@TODO: delete?
+        // flagIndex = (flagIndex + 1) % (8*sizeof(*(allocator->availablePageFlags)));
+        // if(0 == flagIndex)
+        //     pageFlagRegister++;
+    }
+    return highestOccupiedPageOffset;
+}
+korl_internal void _korl_memory_allocator_general_setPageFlags(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount, bool pageFlagState)
+{
+    ///@TODO: delete?
+    /* find the page flag register index & the flag index within the register */
+    // u$ pageFlagRegister = pageRangeStartIndex / (8*sizeof(*(allocator->availablePageFlags)));
+    // u$ flagIndex        = pageRangeStartIndex % (8*sizeof(*(allocator->availablePageFlags)));
+    for(u$ p = pageRangeStartIndex; p < pageRangeStartIndex + pageCount; p++)
+    {
+        const u$ pageFlagRegister = p / (8*sizeof(*(allocator->availablePageFlags)));// the array index into allocator->availablePageFlags
+        const u$ flagIndex        = p % (8*sizeof(*(allocator->availablePageFlags)));// the bit index into this specific element of allocator->availablePageFlags
+        if(pageFlagState)
+            allocator->availablePageFlags[pageFlagRegister] |=   1<<((8*sizeof(*(allocator->availablePageFlags))) - 1 - flagIndex);
+        else
+            allocator->availablePageFlags[pageFlagRegister] &= ~(1<<((8*sizeof(*(allocator->availablePageFlags))) - 1 - flagIndex));
+    }
+}
+korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memory_AllocatorGeneral* allocator, u$ pageCount)
+{
+    korl_assert(pageCount + 1/*preceding guard page*/ <= allocator->allocationPages);
+    /* Example of a search for an available set of allocation pages:
+     *  [ 0][ 1][ 2][ 3][ 4][ 5][ 6][ 7][ 8]// flag indices (allocationPages=9)
+     *  [ 0][ 1][ 0][ 1][ 0][ 1][ 0][ 0][ 0]// flags
+     *                          [ G][ 1][ 1]// allocation: bytes=5000, pages=2 (+1 preceding guard page)
+     */
+    u$ availablePageIndex = allocator->allocationPages;
+    for(u$ p = 0; p <= allocator->allocationPages - (pageCount + 1/*preceding guard page*/); )
+    {
+        ///@TODO: this will be much faster if we offset & mod `p` by an expected next available page index, but let's just get this working first...
+        const u$ highestOccupiedPageOffset = _korl_memory_allocator_general_highestOccupiedPageOffset(allocator, p, pageCount + 1/*preceding guard page*/);
+        /* if there were no occupied page flags in the given range, we can just occupy this region */
+        if(highestOccupiedPageOffset >= pageCount + 1/*preceding guard page*/)
+        {
+            _korl_memory_allocator_general_setPageFlags(allocator, p + 1/*skip guard page*/, pageCount, true/*occupied*/);
+            availablePageIndex = p + 1/*skip guard page*/;
+            break;
+        }
+        else
+            p += highestOccupiedPageOffset + 1;
+    }
+    return availablePageIndex;
 }
 korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_AllocatorGeneral* allocator, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
-    korl_assert(!"not implemented"); return NULL;///@TODO
+    void* result = NULL;
+    korl_assert(bytes > 0);
+    /* allocate a range of pages within the allocator's available page flags */
+    const u$ pageBytes         = _korl_memory_context.systemInfo.dwPageSize;
+    const u$ metaBytesRequired = sizeof(Korl_Memory_AllocationMeta) + sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
+    const u$ allocationPages   = korl_math_nextHighestDivision(metaBytesRequired + bytes, pageBytes);
+    _korl_memory_allocator_general_allocatorPagesUnguard(allocator);
+    const u$ availablePageIndex = _korl_memory_allocator_general_occupyAvailablePages(allocator, allocationPages);
+    if(availablePageIndex >= allocator->allocationPages)
+    {
+        korl_log(WARNING, "occupyAvailablePages failed!  (allocator may require defragmentation, or may have run out of space)");
+        goto guardAllocator_returnResult;
+    }
+    /* now that we have a set of pages which we can safely assume are unused, we 
+        need to obtain the address & commit the memory */
+    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
+    Korl_Memory_AllocationMeta*const metaAddress = KORL_C_CAST(Korl_Memory_AllocationMeta*, 
+        KORL_C_CAST(u8*, allocator) + (allocatorPages + availablePageIndex)*pageBytes);
+    result = KORL_C_CAST(u8*, metaAddress) + metaBytesRequired;
+    //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
+    const LPVOID resultVirtualAllocCommit = VirtualAlloc(metaAddress, allocationPages*pageBytes, MEM_COMMIT, PAGE_READWRITE);
+    if(resultVirtualAllocCommit == NULL)
+        korl_logLastError("VirtualAlloc failed!");
+    /* now we can initialize the memory */
+    metaAddress->bytes = bytes;
+    metaAddress->file  = file;
+    metaAddress->line  = line;
+    korl_memory_copy(metaAddress + 1, _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR, sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/);
+    guardAllocator_returnResult:
+    _korl_memory_allocator_general_allocatorPagesGuard(allocator);
+    return result;
 }
 korl_internal void _korl_memory_allocator_general_free(_Korl_Memory_AllocatorGeneral* allocator, void* allocation, const wchar_t* file, int line)
 {
-    korl_assert(!"not implemented"); ///@TODO
+    korl_assert(!"@TODO: not implemented");
 }
 korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_AllocatorGeneral* allocator, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
-    korl_assert(!"not implemented"); return NULL;///@TODO
+    korl_assert(!"@TODO: not implemented"); return NULL;
 }
 korl_internal void _korl_memory_allocator_general_empty(_Korl_Memory_AllocatorGeneral* allocator)
 {
-    korl_assert(!"not implemented"); ///@TODO
+    korl_assert(!"@TODO: not implemented");
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator_general_enumerateAllocations)
 {
-    korl_assert(!"not implemented"); ///@TODO
+    korl_assert(!"@TODO: not implemented");
 }
 korl_internal _Korl_Memory_AllocatorGeneral* _korl_memory_allocator_general_create(u$ maxBytes, void* address)
 {
-    korl_assert(!"not implemented"); return NULL;///@TODO
+    korl_assert(maxBytes > 0);
+    _Korl_Memory_AllocatorGeneral* result = NULL;
+    const u$ pageBytes                     = _korl_memory_context.systemInfo.dwPageSize;
+    const u$ pagesRequired                 = korl_math_nextHighestDivision(maxBytes, pageBytes);
+    const u$ allocatorBytesRequiredMinimum = sizeof(*result);
+    /* we need to figure out the minimum # of allocator pages we need in order 
+        to be able to store an array of flags used to keep track of all the 
+        allocation pages */
+    u$ allocatorPages = korl_math_nextHighestDivision(allocatorBytesRequiredMinimum, pageBytes);
+    for(;; allocatorPages++)
+    {
+        korl_assert(pagesRequired >= allocatorPages + 2);// we need at least 2 extra pages to be able to make a single allocation
+        const u$ allocationPages            = pagesRequired - allocatorPages;
+        const u$ bytesAvailableForPageFlags = allocatorPages*pageBytes - allocatorBytesRequiredMinimum;
+        const u$ availablePageFlagsSizeMax  = bytesAvailableForPageFlags / sizeof(*(result->availablePageFlags));// round down by the size of each flag register just to make things easier (negligible wasted memory anyway)
+        const u$ availablePageFlagBitsMax   = (8*sizeof(*(result->availablePageFlags)))/*bitsPerPageFlagRegister*/*availablePageFlagsSizeMax;
+        if(availablePageFlagBitsMax >= allocationPages)
+            break;
+    }
+    /* now that we know how many pages are required for the allocator data 
+        structure, we can calculate the final size of the available page flags 
+        array (same calculations as above); we will later be able to determine 
+        how many allocator pages there are based on the size of the available 
+        page flags array member */
+    const u$ allocationPages            = pagesRequired - allocatorPages;
+    const u$ bytesAvailableForPageFlags = allocatorPages*pageBytes - allocatorBytesRequiredMinimum;
+    const u$ availablePageFlagsSizeMax  = bytesAvailableForPageFlags / sizeof(*(result->availablePageFlags));// round down by the size of each flag register just to make things easier (negligible wasted memory anyway)
+    /* reserve the full range of virtual memory */
+    LPVOID resultVirtualAlloc = VirtualAlloc(address, pagesRequired*pageBytes, MEM_RESERVE, PAGE_NOACCESS);
+    if(resultVirtualAlloc == NULL)
+        korl_logLastError("VirtualAlloc failed!");
+    /* commit the first pages for the allocator itself */
+    // const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*result), korl_memory_pageBytes());
+    const u$ allocatorBytes = allocatorPages * pageBytes;
+    resultVirtualAlloc = VirtualAlloc(resultVirtualAlloc, allocatorBytes, MEM_COMMIT, PAGE_READWRITE);
+    if(resultVirtualAlloc == NULL)
+        korl_logLastError("VirtualAlloc failed!");
+    /* initialize the memory of the allocator userData */
+    korl_shared_const i8 ALLOCATOR_PAGE_MEMORY_PATTERN[] = "KORL-GeneralAllocator-Page|";
+    _Korl_Memory_AllocatorGeneral*const allocator = KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, resultVirtualAlloc);
+    result = allocator;
+    // fill the allocator page with a readable pattern for easier debugging //
+    for(u$ currFillByte = 0; currFillByte < allocatorBytes; )
+    {
+        const u$ remainingBytes = allocatorBytes - currFillByte;
+        const u$ availableFillBytes = KORL_MATH_MIN(remainingBytes, sizeof(ALLOCATOR_PAGE_MEMORY_PATTERN) - 1/*do not copy NULL-terminator*/);
+        korl_memory_copy(KORL_C_CAST(u8*, allocator) + currFillByte, ALLOCATOR_PAGE_MEMORY_PATTERN, availableFillBytes);
+        currFillByte += availableFillBytes;
+    }
+    const u$ usedPageFlagRegisters = allocationPages/(8*sizeof(*result->availablePageFlags))/*bitsPerPageFlagRegister*/;
+    korl_memory_zero(allocator, sizeof(*result) + usedPageFlagRegisters*sizeof(*(result->availablePageFlags)));
+    allocator->allocationPages        = allocationPages;
+    allocator->availablePageFlagsSize = availablePageFlagsSizeMax;
+    /* guard the allocator pages */
+    _korl_memory_allocator_general_allocatorPagesGuard(allocator);
+    return result;
 }
 korl_internal void _korl_memory_allocator_general_destroy(_Korl_Memory_AllocatorGeneral* allocator)
 {
-    korl_assert(!"not implemented"); ///@TODO
+    if(!VirtualFree(allocator, 0/*release everything*/, MEM_RELEASE))
+        korl_logLastError("VirtualFree failed!");
 }
 korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Memory_AllocatorHandle handle)
 {
@@ -1051,6 +1267,7 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
     for(u$ ec = 0; ec < report->allocatorCount; ec++)
     {
         _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[ec];
+        ///@TODO: report the type of allocator (linear, general, etc...)
         korl_log_noMeta(INFO, "║ allocator {\"%ws\", [0x%p ~ 0x%p], total used bytes: %llu}", 
                         enumContext->name, enumContext->virtualAddressStart, enumContext->virtualAddressEnd, enumContext->totalUsedBytes);
         for(u$ a = 0; a < enumContext->allocationMetaSize; a++)
