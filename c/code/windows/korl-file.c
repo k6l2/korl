@@ -270,7 +270,9 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     korl_assert(enumContext->allocatorCount <= korl_arraySize(enumContext->allocationCounts));
     enumContext->allocationCounts[enumContext->allocatorCount - 1] = 0;
     /* enumarate over all allocations & write those to the save state buffer */
+    korl_time_probeStart(enumerateAllocations);
     korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext, NULL/*don't care about allocatorVirtualAddressEnd*/);
+    korl_time_probeStop(enumerateAllocations);
     return true;//true => continue iterating over allocators
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass)
@@ -1105,12 +1107,16 @@ korl_internal void korl_file_saveStateCreate(void)
         state buffer, as well as count how many allocations there are per 
         allocator */
     const u64 allocationDescriptorByteStart = enumContext->saveStateBufferBytesUsed;
+    korl_time_probeStart(enum_allocations);
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocationPass, enumContext);
+    korl_time_probeStop(enum_allocations);
     /* now that we have copied all the allocation descriptors, we can copy the 
         allocator descriptors */
     enumContext->currentAllocator = 0;
     const u$ allocatorDescriptorByteStart = enumContext->saveStateBufferBytesUsed;
+    korl_time_probeStart(enum_allocators);
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass, enumContext);
+    korl_time_probeStop(enum_allocators);
     /* finally, we can write the save state manifest to the end of the save 
         state buffer */
     const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
