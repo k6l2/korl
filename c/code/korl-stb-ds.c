@@ -1,6 +1,9 @@
 #include "korl-stb-ds.h"
 #include "korl-memory.h"
 #include "korl-checkCast.h"
+#if KORL_DEBUG || 1
+#   define STBDS_UNIT_TESTS
+#endif
 korl_global_variable Korl_Memory_AllocatorHandle _korl_stb_ds_allocatorHandle;
 typedef struct _Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator
 {
@@ -57,15 +60,12 @@ korl_internal void korl_stb_ds_initialize(void)
 {
     /* although this allocator is only utilized in KORL_DEBUG mode, we should 
         create it in all builds to maintain allocator handle order */
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(512), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
-#if KORL_DEBUG
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(512), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+#if defined(STBDS_UNIT_TESTS)
     stbds_unit_tests();
     ///@TODO: assert that the test allocator is empty (no memory leaks have occurred)
 #endif
 }
 #define STB_DS_IMPLEMENTATION
 #define STBDS_ASSERT(x) korl_assert(x)
-#if KORL_DEBUG
-#   define STBDS_UNIT_TESTS
-#endif
 #include "stb/stb_ds.h"
