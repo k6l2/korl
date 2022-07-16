@@ -21,7 +21,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_stb_ds_e
     }
     return true;
 }
-korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ bytes)
+korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
@@ -35,7 +35,7 @@ korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ 
         allocatorHandle = enumAllocatorsUserData.out_allocatorHandle;
     }
 #endif
-    return korl_reallocate(allocatorHandle, allocation, bytes);
+    return korl_memory_allocator_reallocate(allocatorHandle, allocation, bytes, file, line);
 }
 korl_internal void _korl_stb_ds_free(void* context, void* allocation)
 {

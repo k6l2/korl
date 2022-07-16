@@ -1021,6 +1021,8 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     if(resultVirtualAllocCommit == NULL)
         korl_logLastError("VirtualAlloc failed!");
     /* move data from old allocation to new allocation */
+    const u$ allocationPageEnd    = allocationPage    + allocationMeta->pagesCommitted;// gather this data before allocationMeta gets clobbered
+    const u$ newAllocationPageEnd = newAllocationPage + newAllocationPages;            // gather this data before allocationMeta gets clobbered
     korl_memory_move(newAllocation, allocation, allocationMeta->allocationMeta.bytes);
     allocation = newAllocation;// we're done w/ allocation at this point
     /* create new meta data with updated metrics */
@@ -1040,9 +1042,7 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
         encounter the following scenarios:
         - [oldBegin      [newBegin             newEnd]       oldEnd]
         - newBegin == oldBegin && newEnd == oldEnd (allocations occupy the same region) */
-    const u$ allocationPageEnd    = allocationPage    + allocationMeta->pagesCommitted;
-    const u$ newAllocationPageEnd = newAllocationPage + newAllocationPages;
-    if(allocationPage >= newAllocationPage && newAllocationPageEnd <= allocationPageEnd)//old allocation is contained within new allocation
+    if(allocationPage >= newAllocationPage && allocationPageEnd <= newAllocationPageEnd)//old allocation is contained within new allocation
         goto guardAllocator_returnAllocation;
     u$ decommitPage    = allocationPage;
     u$ decommitPageEnd = allocationPageEnd;
