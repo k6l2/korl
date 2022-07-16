@@ -385,11 +385,11 @@ korl_internal void _korl_memory_allocator_linear_allocatorPageUnguard(_Korl_Memo
 
 /** iterate over allocations recursively on the stack so that we can iterate in 
  * monotonically-increasing memory addresses */
-korl_internal void _korl_memory_allocator_linear_enumerateAllocationsRecurse(_Korl_Memory_AllocatorLinear*const allocator, void* allocation, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData)
+korl_internal bool _korl_memory_allocator_linear_enumerateAllocationsRecurse(_Korl_Memory_AllocatorLinear*const allocator, void* allocation, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData)
 {
     /* halt recursion when we reach a NULL allocation */
     if(!allocation)
-        return;
+        return false;
     /* sanity checks */
     const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
     /* ensure that this address is actually within the allocator's range */
@@ -409,9 +409,10 @@ korl_internal void _korl_memory_allocator_linear_enumerateAllocationsRecurse(_Ko
     /* recurse into the previous allocation */
     Korl_Memory_AllocatorLinear_AllocationMeta*const allocationMeta = 
         KORL_C_CAST(Korl_Memory_AllocatorLinear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - metaBytesRequired);
-    _korl_memory_allocator_linear_enumerateAllocationsRecurse(allocator, allocationMeta->previousAllocation, callback, callbackUserData);
+    if(!_korl_memory_allocator_linear_enumerateAllocationsRecurse(allocator, allocationMeta->previousAllocation, callback, callbackUserData))
+        return false;
     /* perform the enumeration callback after the stack is drained */
-    callback(callbackUserData, allocation, &(allocationMeta->allocationMeta));
+    return callback(callbackUserData, allocation, &(allocationMeta->allocationMeta));
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator_linear_enumerateAllocations)
 {
@@ -1126,7 +1127,8 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator
             const Korl_Memory_AllocatorGeneral_AllocationMeta*const metaAddress = KORL_C_CAST(Korl_Memory_AllocatorGeneral_AllocationMeta*, 
                 KORL_C_CAST(u8*, allocator) + (allocatorPages + allocationPageIndex)*pageBytes);
             const u$ metaBytesRequired = sizeof(*metaAddress) + sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
-            callback(callbackUserData, KORL_C_CAST(u8*, metaAddress) + metaBytesRequired, &(metaAddress->allocationMeta));
+            if(!callback(callbackUserData, KORL_C_CAST(u8*, metaAddress) + metaBytesRequired, &(metaAddress->allocationMeta)))
+                goto guardAllocator_return;
             const u$ maxFlagsInRegister        = mostSignificantSetBitIndex + 1;
             const u$ allocationFlagsInRegister = KORL_MATH_MIN(maxFlagsInRegister, metaAddress->pagesCommitted);
             /* remove the flags that this allocation occupies */
@@ -1137,6 +1139,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator
         }
         ///@TODO: skip `pageFlagsRemainder/bitsPerFlagRegister` registers, since the last allocation is expected to span all of them
     }
+    guardAllocator_return:
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
 }
 korl_internal _Korl_Memory_AllocatorGeneral* _korl_memory_allocator_general_create(u$ maxBytes, void* address)
@@ -1238,6 +1241,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_
     newAllocMeta->allocationAddress = allocation;
     newAllocMeta->meta              = *meta;
     context->totalUsedBytes += meta->bytes;
+    return true;// true => continue enumerating
 }
 korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create)
 {
@@ -1428,6 +1432,35 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_allocator_isEmpty_enumAllocationsCallback)
+{
+    bool*const resultIsEmpty = KORL_C_CAST(bool*, userData);
+    *resultIsEmpty = false;
+    return false;// false => stop enumerating; we only need to encounter one allocation
+}
+korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle handle)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return true;
+    }
+    bool resultIsEmpty = true;
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        _korl_memory_allocator_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty, NULL/*we don't care about the virtual address range end*/);
+        return resultIsEmpty;}
+    case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
+        _korl_memory_allocator_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty, NULL/*we don't care about the virtual address range end*/);
+        return resultIsEmpty;}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+    return false;
 }
 korl_internal void korl_memory_allocator_emptyStackAllocators(void)
 {

@@ -15,7 +15,7 @@ typedef struct Korl_Memory_AllocationMeta
      */
     u$ bytes;
 } Korl_Memory_AllocationMeta;
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) void name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
 /** \return \c true to continue enumeration, \c false to stop enumerating allocators */
@@ -48,6 +48,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE  (korl_memory_allocator_al
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE      (korl_memory_allocator_free);
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY     (korl_memory_allocator_empty);
+korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 /** \param allocatorHandle the allocator to use to allocate memory to store the report 
  * \return the address of the allocated memory report */

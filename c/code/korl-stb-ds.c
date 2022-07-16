@@ -25,9 +25,9 @@ korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ 
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
+#if 1
         allocatorHandle = _korl_stb_ds_allocatorHandle;
-        // return realloc(allocation, bytes);
-#if 0
+#else///@TODO: do this instead
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
         enumAllocatorsUserData.in_allocation = allocation;
@@ -41,12 +41,9 @@ korl_internal void _korl_stb_ds_free(void* context, void* allocation)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
-    {
+#if 1
         allocatorHandle = _korl_stb_ds_allocatorHandle;
-        // free(allocation);
-        // return;
-    }
-#if 0
+#else///@TODO: do this instead
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
         enumAllocatorsUserData.in_allocation = allocation;
@@ -63,7 +60,7 @@ korl_internal void korl_stb_ds_initialize(void)
     _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(512), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
 #if defined(STBDS_UNIT_TESTS)
     stbds_unit_tests();
-    ///@TODO: assert that the test allocator is empty (no memory leaks have occurred)
+    korl_assert(korl_memory_allocator_isEmpty(_korl_stb_ds_allocatorHandle));
 #endif
 }
 #define STB_DS_IMPLEMENTATION
