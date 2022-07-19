@@ -863,6 +863,7 @@ korl_internal void _korl_memory_allocator_general_setPageFlags(_Korl_Memory_Allo
 korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memory_AllocatorGeneral* allocator, u$ pageCount)
 {
 #if 1
+    u$ allocationPageIndex = allocator->allocationPages;
     korl_shared_const u8 SURROUNDING_GUARD_PAGE_COUNT = 1;
     const u8 bitsPerRegister        = /*bitsPerRegister*/(8*sizeof(*(allocator->availablePageFlags)));
     const u$ fullRegistersRequired  = (pageCount + 2*SURROUNDING_GUARD_PAGE_COUNT/*leave room for one guard pages on either side of the allocation*/) / bitsPerRegister;
@@ -936,18 +937,13 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                 precede the "full register range" */
             const u$ occupyIndex = bitsPerRegister*fullRegistersToBeTakenStart - precedingBits;
             u$ remainingFlagsToOccupy = pageCount;
-#if 1
             if(precedingBits)
             {
                 korl_assert(fullRegistersToBeTakenStart > 0);
+                korl_assert(0 == (allocator->availablePageFlags[fullRegistersToBeTakenStart - 1] & ~((~0ULL) << precedingBits)));
                 allocator->availablePageFlags[fullRegistersToBeTakenStart - 1] |= ~((~0ULL) << precedingBits);
                 remainingFlagsToOccupy -= precedingBits;
             }
-#else///@TODO: figure out wtf I am actually doing
-            /* occupy as many preceding registers */
-            korl_assert(precedingBits >= pageCount);
-            allocator->availablePageFlags[fullRegistersToBeTaken - 1] |= ~((~0ULL) << precedingBits);
-#endif
             /* occupy all the full registers required, then any leftover flags */
             u$ rr = fullRegistersToBeTakenStart;
             while(remainingFlagsToOccupy)
@@ -956,10 +952,12 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                 const u$ mask  = (~(~0ULL << flags)) << (bitsPerRegister - flags);
                 remainingFlagsToOccupy -= flags;
                 korl_assert(rr < allocator->allocationPages);
+                korl_assert(0 == (allocator->availablePageFlags[rr] & mask));
                 allocator->availablePageFlags[rr++] |= mask;
             }
             /* and finally, return the page index of the first occupied page */
-            return occupyIndex;
+            allocationPageIndex = occupyIndex;
+            goto returnAllocationPageIndex;
         }
         else///@TODO: only do this if we know the register isn't full (timings required for this)// if(allocator->availablePageFlags[r] < ~((~OLL) << bitsPerRegister))
         {
@@ -974,8 +972,10 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                         /* occupy the pages; excluding the first bits since they are reserved as guard pages */
                         const u$ occupyPageCount = remainderFlagsRequired - 2*SURROUNDING_GUARD_PAGE_COUNT;
                         const u$ occupyFlagsMask = (~(~0ULL << occupyPageCount)) << (bitsPerRegister - occupyPageCount);// flags without guard page flags aligned to the most significant bit
+                        korl_assert(0 == (allocator->availablePageFlags[r] & occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT)));
                         allocator->availablePageFlags[r] |= occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT);
-                        return r*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
+                        allocationPageIndex = r*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
+                        goto returnAllocationPageIndex;
                     }
                     continue;
                 }
@@ -989,19 +989,24 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                    && !(allocator->availablePageFlags[r + 1] & spillMask))
                 {
                     /* generate masks without the leading/trailing guard pages taken into account */
+                    // const u$ occupyFlagsMask  = (~(~0ULL << occupyPageCount)) << (bitsPerRegister - occupyPageCount);// flags without guard page flags aligned to the most significant bit
                     const u$ occupyPageCount  = remainderFlagsRequired - 2*SURROUNDING_GUARD_PAGE_COUNT;
-                    const u$ occupyFlagsMask  = (~(~0ULL << occupyPageCount)) << (bitsPerRegister - occupyPageCount);// flags without guard page flags aligned to the most significant bit
-                    const u$ occupySpillFlags = (i + occupyPageCount) % bitsPerRegister;// # of flags that spill over to the next flag register
+                    const u$ occupySpillFlags = (i + SURROUNDING_GUARD_PAGE_COUNT + occupyPageCount) % bitsPerRegister;// # of flags that spill over to the next flag register
                     const u$ occupySpillMask  = (~(~0ULL << occupySpillFlags)) << (bitsPerRegister - occupySpillFlags);// the spillover flag mask aligned to the most-significant bit (exactly what we need!)
+                    const u$ leadingMask      = ~(~0ULL << (occupyPageCount - occupySpillFlags));
                     /* occupy the pages at the adjusted offset */
-                    allocator->availablePageFlags[r    ] |= occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT);
+                    korl_assert(0 == (allocator->availablePageFlags[r    ] & leadingMask));
+                    korl_assert(0 == (allocator->availablePageFlags[r + 1] & occupySpillMask));
+                    allocator->availablePageFlags[r    ] |= leadingMask;
                     allocator->availablePageFlags[r + 1] |= occupySpillMask;
-                    return r*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
+                    allocationPageIndex = r*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
+                    goto returnAllocationPageIndex;
                 }
             }
         }
     }
-    return allocator->allocationPages;
+    returnAllocationPageIndex:
+    return allocationPageIndex;
 #else
     korl_assert(pageCount + 1/*preceding guard page*/ <= allocator->allocationPages);
     /* Example of a search for an available set of allocation pages:
