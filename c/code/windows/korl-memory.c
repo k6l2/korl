@@ -61,6 +61,7 @@ typedef struct _Korl_Memory_Context
  */
 typedef struct _Korl_Memory_AllocatorGeneral
 {
+    u$ lastPageFlagRegisterIndex;
     // u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
     u$ allocationPages;// this is the # which determines how many flags are actually relevant in the availablePageFlags member
     u$ availablePageFlagsSize;// just used to determine the total size of the general allocator data structure
@@ -913,7 +914,6 @@ korl_internal void _korl_memory_allocator_general_setPageFlags(_Korl_Memory_Allo
 }
 korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memory_AllocatorGeneral* allocator, u$ pageCount)
 {
-#if 1
     u$ allocationPageIndex = allocator->allocationPages;
     korl_shared_const u8 SURROUNDING_GUARD_PAGE_COUNT = 1;
     const u8 bitsPerRegister        = /*bitsPerRegister*/(8*sizeof(*(allocator->availablePageFlags)));
@@ -921,10 +921,13 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
     const u$ remainderFlagsRequired = (pageCount + 2*SURROUNDING_GUARD_PAGE_COUNT/*leave room for one guard pages on either side of the allocation*/) % bitsPerRegister;
     const u$ remainderFlagsMask     = (~(~0ULL << remainderFlagsRequired)) << (bitsPerRegister - remainderFlagsRequired);// the remainder mask aligned to the most significant bit
     u$ consecutiveEmptyRegisters = 0;
-    for(u$ r = 0; r < allocator->allocationPages; r++)
+    for(u$ cr = 0; cr < allocator->allocationPages; cr++)
     {
+        const u$ rWrapped = (allocator->lastPageFlagRegisterIndex + cr) % allocator->allocationPages;
+        if(rWrapped == 0)
+            consecutiveEmptyRegisters = 0;
         ///@TODO: this will be (on average) faster if we offset & mod `r` by an expected next available page index, but let's just get this working first...
-        if(0 != allocator->availablePageFlags[r])
+        if(0 != allocator->availablePageFlags[rWrapped])
             consecutiveEmptyRegisters = 0;
         else
             consecutiveEmptyRegisters++;
@@ -933,7 +936,7 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
             if(consecutiveEmptyRegisters < fullRegistersRequired)
                 continue;
             u$ fullRegistersToBeTaken      = fullRegistersRequired;
-            u$ fullRegistersToBeTakenStart = r + 1 - fullRegistersRequired;
+            u$ fullRegistersToBeTakenStart = rWrapped + 1 - fullRegistersRequired;
             /* we need to low-to-high-bitscan the preceding register (if it exists), 
                 and high-to-low-bitscan the next register (if it exits) 
                 in order to see if we can occupy this region */
@@ -942,15 +945,15 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
             if(fullRegistersToBeTakenStart > 0)// there _is_ a preceding register to the consecutive empty registers
             {
                 DWORD bitScanIndex = bitsPerRegister;
-                if(BitScanForward64(&bitScanIndex, allocator->availablePageFlags[r - fullRegistersToBeTaken]))
+                if(BitScanForward64(&bitScanIndex, allocator->availablePageFlags[rWrapped - fullRegistersToBeTaken]))
                     precedingBits = bitScanIndex/*bit indices start at 0, and we want the quantity of zeroes (the bitScanIndex is the index of the first 1!)*/;
                 else
                     precedingBits = bitsPerRegister;// we can occupy the entire preceding register
             }
-            if(r < allocator->allocationPages - 1)// there _is_ a next register after the consecutive empty registers
+            if(rWrapped < allocator->allocationPages - 1)// there _is_ a next register after the consecutive empty registers
             {
                 DWORD bitScanIndex = bitsPerRegister;
-                if(BitScanReverse64(&bitScanIndex, allocator->availablePageFlags[r + 1]))
+                if(BitScanReverse64(&bitScanIndex, allocator->availablePageFlags[rWrapped + 1]))
                     proceedingBits = bitsPerRegister - 1 - bitScanIndex;// total # of leading 0s, as bitScanIndex is the offset from the least-significant bit of the most-significant 1
                 else
                     proceedingBits = bitsPerRegister;// we can occupy the entire proceeding register
@@ -1012,10 +1015,11 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                 allocator->availablePageFlags[rr++] |= mask;
             }
             /* and finally, return the page index of the first occupied page */
+            allocator->lastPageFlagRegisterIndex = rr;
             allocationPageIndex = occupyIndex;
             goto returnAllocationPageIndex;
         }
-        else///@TODO: only do this if we know the register isn't full (timings required for this)// if(allocator->availablePageFlags[r] < ~((~OLL) << bitsPerRegister))
+        else/* we can fit all the flags within a single flag register, or 2 if we're at an offset and have spillover flags to the next register */
         {
             /* iterate over each offset in the flag register */
             for(u8 i = 0; i < bitsPerRegister; i++)
@@ -1023,39 +1027,40 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                 /* if the entire mask fits in the register, we just need to do a bitwise & */
                 if(i + remainderFlagsRequired <= bitsPerRegister)
                 {
-                    if(!(allocator->availablePageFlags[r] & (remainderFlagsMask >> i)))
+                    if(!(allocator->availablePageFlags[rWrapped] & (remainderFlagsMask >> i)))
                     {
                         /* occupy the pages; excluding the first bits since they are reserved as guard pages */
                         const u$ occupyPageCount = remainderFlagsRequired - 2*SURROUNDING_GUARD_PAGE_COUNT;
                         const u$ occupyFlagsMask = (~(~0ULL << occupyPageCount)) << (bitsPerRegister - occupyPageCount);// flags without guard page flags aligned to the most significant bit
-                        korl_assert(0 == (allocator->availablePageFlags[r] & occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT)));
-                        allocator->availablePageFlags[r] |= occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT);
-                        allocationPageIndex = r*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
+                        korl_assert(0 == (allocator->availablePageFlags[rWrapped] & occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT)));
+                        allocator->availablePageFlags[rWrapped] |= occupyFlagsMask >> (i + SURROUNDING_GUARD_PAGE_COUNT);
+                        allocator->lastPageFlagRegisterIndex = rWrapped;
+                        allocationPageIndex = rWrapped*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
                         goto returnAllocationPageIndex;
                     }
                     continue;
                 }
                 /* if the mask doesn't fit in the register & there are no more registers, we're done */
-                if(r >= allocator->allocationPages - 1)
+                if(rWrapped >= allocator->allocationPages - 1)
                     break;
                 /* otherwise, there is a next register, and the mask spills over to the next one, so we need to do two flag register operator& operations */
                 const u$ spillFlags = (i + remainderFlagsRequired) % bitsPerRegister;
                 const u$ spillMask  = (~(~0ULL << spillFlags)) << (bitsPerRegister - spillFlags);
-                if(   !(allocator->availablePageFlags[r    ] & (remainderFlagsMask >> i))
-                   && !(allocator->availablePageFlags[r + 1] & spillMask))
+                if(   !(allocator->availablePageFlags[rWrapped    ] & (remainderFlagsMask >> i))
+                   && !(allocator->availablePageFlags[rWrapped + 1] & spillMask))
                 {
                     /* generate masks without the leading/trailing guard pages taken into account */
-                    // const u$ occupyFlagsMask  = (~(~0ULL << occupyPageCount)) << (bitsPerRegister - occupyPageCount);// flags without guard page flags aligned to the most significant bit
                     const u$ occupyPageCount  = remainderFlagsRequired - 2*SURROUNDING_GUARD_PAGE_COUNT;
                     const u$ occupySpillFlags = (i + SURROUNDING_GUARD_PAGE_COUNT + occupyPageCount) % bitsPerRegister;// # of flags that spill over to the next flag register
                     const u$ occupySpillMask  = (~(~0ULL << occupySpillFlags)) << (bitsPerRegister - occupySpillFlags);// the spillover flag mask aligned to the most-significant bit (exactly what we need!)
                     const u$ leadingMask      = ~(~0ULL << (occupyPageCount - occupySpillFlags));
                     /* occupy the pages at the adjusted offset */
-                    korl_assert(0 == (allocator->availablePageFlags[r    ] & leadingMask));
-                    korl_assert(0 == (allocator->availablePageFlags[r + 1] & occupySpillMask));
-                    allocator->availablePageFlags[r    ] |= leadingMask;
-                    allocator->availablePageFlags[r + 1] |= occupySpillMask;
-                    allocationPageIndex = r*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
+                    korl_assert(0 == (allocator->availablePageFlags[rWrapped    ] & leadingMask));
+                    korl_assert(0 == (allocator->availablePageFlags[rWrapped + 1] & occupySpillMask));
+                    allocator->availablePageFlags[rWrapped    ] |= leadingMask;
+                    allocator->availablePageFlags[rWrapped + 1] |= occupySpillMask;
+                    allocator->lastPageFlagRegisterIndex = rWrapped + 1;
+                    allocationPageIndex = rWrapped*bitsPerRegister + i + SURROUNDING_GUARD_PAGE_COUNT;
                     goto returnAllocationPageIndex;
                 }
             }
@@ -1063,30 +1068,6 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
     }
     returnAllocationPageIndex:
     return allocationPageIndex;
-#else
-    korl_assert(pageCount + 1/*preceding guard page*/ <= allocator->allocationPages);
-    /* Example of a search for an available set of allocation pages:
-     *  [ 0][ 1][ 2][ 3][ 4][ 5][ 6][ 7][ 8]// flag indices (allocationPages=9)
-     *  [ 0][ 1][ 0][ 1][ 0][ 1][ 0][ 0][ 0]// flags
-     *                          [ G][ 1][ 1]// allocation: bytes=5000, pages=2 (+1 preceding guard page)
-     */
-    u$ availablePageIndex = allocator->allocationPages;
-    for(u$ p = 0; p <= allocator->allocationPages - (pageCount + 1/*preceding guard page*/); )
-    {
-        ///@TODO: this will be much faster if we offset & mod `p` by an expected next available page index, but let's just get this working first...
-        const u$ highestOccupiedPageOffset = _korl_memory_allocator_general_highestOccupiedPageOffset(allocator, p, pageCount + 1/*preceding guard page*/);
-        /* if there were no occupied page flags in the given range, we can just occupy this region */
-        if(highestOccupiedPageOffset >= pageCount + 1/*preceding guard page*/)
-        {
-            _korl_memory_allocator_general_setPageFlags(allocator, p + 1/*skip guard page*/, pageCount, true/*occupied*/);
-            availablePageIndex = p + 1/*skip guard page*/;
-            break;
-        }
-        else
-            p += highestOccupiedPageOffset + 1;
-    }
-    return availablePageIndex;
-#endif
 }
 korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_AllocatorGeneral* allocator, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
