@@ -25,7 +25,9 @@ korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ 
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
-#if 1
+#if 0
+        return realloc(allocation, bytes);
+#elif 1
         allocatorHandle = _korl_stb_ds_allocatorHandle;
 #else///@TODO: do this instead
     {
@@ -41,7 +43,12 @@ korl_internal void _korl_stb_ds_free(void* context, void* allocation)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
-#if 1
+#if 0
+    {
+        free(allocation);
+        return;
+    }
+#elif 1
         allocatorHandle = _korl_stb_ds_allocatorHandle;
 #else///@TODO: do this instead
     {
