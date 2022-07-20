@@ -375,21 +375,17 @@ korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ buffer
 }
 korl_internal void _korl_memory_allocator_linear_allocatorPageGuard(_Korl_Memory_AllocatorLinear* allocator)
 {
-#if KORL_DEBUG
     DWORD oldProtect;
     if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE | PAGE_GUARD, &oldProtect))
         korl_logLastError("VirtualProtect failed!");
     korl_assert(oldProtect == PAGE_READWRITE);
-#endif
 }
 korl_internal void _korl_memory_allocator_linear_allocatorPageUnguard(_Korl_Memory_AllocatorLinear* allocator)
 {
-#if KORL_DEBUG
     DWORD oldProtect;
     if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
         korl_logLastError("VirtualProtect failed!");
     korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
-#endif
 }
 
 /** iterate over allocations recursively on the stack so that we can iterate in 
@@ -782,9 +778,10 @@ korl_internal void _korl_memory_allocator_linear_destroy(_Korl_Memory_AllocatorL
     if(!VirtualFree(allocator, 0/*release everything*/, MEM_RELEASE))
         korl_logLastError("VirtualFree failed!");
 }
+#define _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG 0
 korl_internal void _korl_memory_allocator_general_allocatorPagesGuard(_Korl_Memory_AllocatorGeneral* allocator)
 {
-#if KORL_DEBUG
+#if !_KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
     const u$ allocatorBytes = sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags));
     DWORD oldProtect;
     if(!VirtualProtect(allocator, allocatorBytes, PAGE_READWRITE | PAGE_GUARD, &oldProtect))
@@ -794,7 +791,7 @@ korl_internal void _korl_memory_allocator_general_allocatorPagesGuard(_Korl_Memo
 }
 korl_internal void _korl_memory_allocator_general_allocatorPagesUnguard(_Korl_Memory_AllocatorGeneral* allocator)
 {
-#if KORL_DEBUG
+#if !_KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
     DWORD oldProtect;
     /* unguard the first page to find the total # of allocator pages */
     if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
@@ -812,6 +809,60 @@ korl_internal void _korl_memory_allocator_general_allocatorPagesUnguard(_Korl_Me
     }
 #endif
 }
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+korl_internal void _korl_memory_allocator_general_checkIntegrity(_Korl_Memory_AllocatorGeneral* allocator, u$* out_allocationCount, u$* out_occupiedPageCount)
+{
+    const u$ bitsPerFlagRegister   = 8*sizeof(*(allocator->availablePageFlags));
+    const u$ usedPageFlagRegisters = korl_math_nextHighestDivision(allocator->allocationPages, bitsPerFlagRegister);
+    const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
+    korl_assert(0 == KORL_C_CAST(u$, allocator)  % _korl_memory_context.systemInfo.dwAllocationGranularity);
+    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
+    const void*const allocationRegionBegin = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
+    const void*const allocationRegionEnd   = KORL_C_CAST(u8*, allocationRegionBegin) + allocator->allocationPages*pageBytes;
+    const u$ metaBytesRequired = sizeof(Korl_Memory_AllocatorGeneral_AllocationMeta) + sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
+    u$ allocationCount                 = 0;
+    u$ occupiedPageCount               = 0;
+    u$ currentAllocationPageCount      = 0;
+    const Korl_Memory_AllocatorGeneral_AllocationMeta* allocationMeta = NULL;
+    korl_assert(sizeof(*(allocator->availablePageFlags)) == sizeof(LONG64));
+    for(u$ pfr = 0; pfr < usedPageFlagRegisters; pfr++)
+    {
+        const u$ pageFlagRegister = allocator->availablePageFlags[pfr];
+        /* accumulate metrics */
+        for(u8 i = 0; i < bitsPerFlagRegister; i++)
+        {
+            unsigned char bit = _bittest64(KORL_C_CAST(LONG64*, &pageFlagRegister), bitsPerFlagRegister - 1 - i);
+            if(bit)
+            {
+                occupiedPageCount++;
+                if(!currentAllocationPageCount)
+                {
+                    allocationCount++;
+                    /* extract the meta data for this allocation & verify integrity */
+                    const u$ pageIndex = pfr*bitsPerFlagRegister + i;
+                    allocationMeta = KORL_C_CAST(Korl_Memory_AllocatorGeneral_AllocationMeta*, 
+                        KORL_C_CAST(u8*, allocationRegionBegin) + pageIndex*pageBytes);
+                    korl_assert(KORL_C_CAST(const void*, allocationMeta) >= allocationRegionBegin);// we must be inside the allocation region
+                    korl_assert(KORL_C_CAST(const void*, allocationMeta) <  allocationRegionEnd);  // we must be inside the allocation region
+                    korl_assert(0 == KORL_C_CAST(u$, allocationMeta) % pageBytes);// we must be page-aligned
+                    korl_assert(0 == korl_memory_compare(allocationMeta + 1, _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR, sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/));
+                }
+                currentAllocationPageCount++;
+            }
+            else
+            {
+                if(currentAllocationPageCount)
+                    /* finish verifying the current allocation integrity, now that we know where it should end */
+                    korl_assert(allocationMeta->pagesCommitted == currentAllocationPageCount);
+                currentAllocationPageCount = 0;
+                allocationMeta             = NULL;
+            }
+        }
+    }
+    *out_allocationCount   = allocationCount;
+    *out_occupiedPageCount = occupiedPageCount;
+}
+#endif
 /** \return \c pageCount if there was no occupied pages in the range 
  * \c [pageRangeStartIndex,pageRangeStartIndex+pageCount) */
 korl_internal u$ _korl_memory_allocator_general_occupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount, bool highest)
@@ -939,9 +990,12 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
             u$ remainingFlagsToOccupy = pageCount;
             if(precedingBits)
             {
+                const u$ mask = precedingBits < bitsPerRegister // overflow left shift is undefined behavior in C, as I just learned!
+                    ? ~((~0ULL) << precedingBits)
+                    : (korl_assert(precedingBits == bitsPerRegister), ~0ULL);
                 korl_assert(fullRegistersToBeTakenStart > 0);
-                korl_assert(0 == (allocator->availablePageFlags[fullRegistersToBeTakenStart - 1] & ~((~0ULL) << precedingBits)));
-                allocator->availablePageFlags[fullRegistersToBeTakenStart - 1] |= ~((~0ULL) << precedingBits);
+                korl_assert(0 == (allocator->availablePageFlags[fullRegistersToBeTakenStart - 1] & mask));
+                allocator->availablePageFlags[fullRegistersToBeTakenStart - 1] |= mask;
                 remainingFlagsToOccupy -= precedingBits;
             }
             /* occupy all the full registers required, then any leftover flags */
@@ -949,7 +1003,9 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
             while(remainingFlagsToOccupy)
             {
                 const u$ flags = KORL_MATH_MIN(remainingFlagsToOccupy, bitsPerRegister);
-                const u$ mask  = (~(~0ULL << flags)) << (bitsPerRegister - flags);
+                const u$ mask  = flags < bitsPerRegister // overflow left shift is undefined behavior in C, as I just learned!
+                    ? (~(~0ULL << flags)) << (bitsPerRegister - flags)
+                    : (korl_assert(flags == bitsPerRegister), ~0ULL);
                 remainingFlagsToOccupy -= flags;
                 korl_assert(rr < allocator->allocationPages);
                 korl_assert(0 == (allocator->availablePageFlags[rr] & mask));
@@ -1034,6 +1090,10 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
 }
 korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_AllocatorGeneral* allocator, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    u$ allocationCountBegin, occupiedPageCountBegin;
+    _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountBegin, &occupiedPageCountBegin);
+#endif
     void* result = NULL;
     korl_assert(bytes > 0);
     /* allocate a range of pages within the allocator's available page flags */
@@ -1088,10 +1148,20 @@ korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_Allocat
     korl_memory_copy(metaAddress + 1, _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR, sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/);
     guardAllocator_returnResult:
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    u$ allocationCountEnd, occupiedPageCountEnd;
+    _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountEnd, &occupiedPageCountEnd);
+    korl_assert(allocationCountEnd   == allocationCountBegin + 1);
+    korl_assert(occupiedPageCountEnd == occupiedPageCountBegin + allocationPages);
+#endif
     return result;
 }
 korl_internal void _korl_memory_allocator_general_free(_Korl_Memory_AllocatorGeneral* allocator, void* allocation, const wchar_t* file, int line)
 {
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    u$ allocationCountBegin, occupiedPageCountBegin;
+    _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountBegin, &occupiedPageCountBegin);
+#endif
     /* sanity checks */
     _korl_memory_allocator_general_allocatorPagesUnguard(allocator);
     const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
@@ -1114,12 +1184,25 @@ korl_internal void _korl_memory_allocator_general_free(_Korl_Memory_AllocatorGen
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*clear*/);
     /* decommit the pages */
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    const u$ allocationPages = allocationMeta->pagesCommitted;
+#endif
     if(!VirtualFree(allocationMeta, allocationMeta->pagesCommitted*pageBytes, MEM_DECOMMIT))
         korl_logLastError("VirtualFree failed!");
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    u$ allocationCountEnd, occupiedPageCountEnd;
+    _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountEnd, &occupiedPageCountEnd);
+    korl_assert(allocationCountEnd   == allocationCountBegin - 1);
+    korl_assert(occupiedPageCountEnd == occupiedPageCountBegin - allocationPages);
+#endif
 }
 korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_AllocatorGeneral* allocator, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    u$ allocationCountBegin, occupiedPageCountBegin;
+    _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountBegin, &occupiedPageCountBegin);
+#endif
     /* sanity checks */
     _korl_memory_allocator_general_allocatorPagesUnguard(allocator);
     const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
@@ -1133,6 +1216,9 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     const u$ metaBytesRequired = sizeof(Korl_Memory_AllocatorGeneral_AllocationMeta) + sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
     Korl_Memory_AllocatorGeneral_AllocationMeta*const allocationMeta = KORL_C_CAST(Korl_Memory_AllocatorGeneral_AllocationMeta*, 
         KORL_C_CAST(u8*, allocation) - metaBytesRequired);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    const u$ allocationPages = allocationMeta->pagesCommitted;
+#endif
     /* allocation sanity checks */
     korl_assert(0 == KORL_C_CAST(u$, allocationMeta) % pageBytes);// we must be page-aligned
     korl_assert(0 == korl_memory_compare(allocationMeta + 1, _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR, sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/));
@@ -1157,7 +1243,7 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     /* all the code past here involves cases where we need to expand the allocation */
     korl_assert(newAllocationPages > allocationMeta->pagesCommitted);
     /// @TODO: optimization (minor?); in-place expand to higher contiguous pages; it's likely that only in-place expansion into higher pages is going to be worth the effort
-#if 1
+#if 0
     /* we were unable to quickly expand the allocation; we need to allocate=>copy=>free */
     /* clear our page flags */
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*unoccupied*/);
@@ -1217,6 +1303,7 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
         korl_logLastError("VirtualFree failed!");
 #else
     /* we now know expansion is impossible; we need to allocate=>copy=>free */
+    _korl_memory_allocator_general_allocatorPagesGuard(allocator);
     void*const newAllocation = _korl_memory_allocator_general_allocate(allocator, bytes, file, line, NULL/*auto-select address*/);
     if(newAllocation)
     {
@@ -1226,9 +1313,17 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     else
         korl_log(WARNING, "new allocation for reallocate failed; original allocation will be unmodified");
     allocation = newAllocation;
+    goto returnAllocation;
 #endif
     guardAllocator_returnAllocation:
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
+    returnAllocation:
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+    u$ allocationCountEnd, occupiedPageCountEnd;
+    _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountEnd, &occupiedPageCountEnd);
+    korl_assert(allocationCountEnd   == allocationCountBegin);
+    korl_assert(occupiedPageCountEnd == occupiedPageCountBegin - allocationPages + newAllocationPages);
+#endif
     return allocation;
 }
 korl_internal void _korl_memory_allocator_general_empty(_Korl_Memory_AllocatorGeneral* allocator)
