@@ -874,7 +874,7 @@ korl_internal void _korl_memory_allocator_general_checkIntegrity(_Korl_Memory_Al
 korl_internal u$ _korl_memory_allocator_general_occupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount, bool highest)
 {
     korl_assert(pageCount > 0);
-    ///@TODO: handle the case where the user is attempting to iterate past the allocator's total allocation pages
+    korl_assert(pageRangeStartIndex + pageCount <= allocator->allocationPages);
     /* iterate over the page count and test each flag, appropriately iterating 
         the flag register & index along the way */
     const u$ bitsPerFlagRegister = 8*sizeof(*(allocator->availablePageFlags));
