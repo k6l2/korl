@@ -1348,8 +1348,14 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     DWORD oldProtect;
     if(!VirtualProtect(newMeta, newAllocationPages*pageBytes, PAGE_READWRITE, &oldProtect))
         korl_logLastError("VirtualProtect unguard failed!");
-    ///@TODO: we can only assert this old protection on the first page _if_ newMeta lies in the first allocation region
-    // korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+    if(newMeta < allocationMeta || KORL_C_CAST(u8*, newMeta) >= KORL_C_CAST(u8*, allocationMeta) + allocationMeta->pagesCommitted*pageBytes)
+        // we can only assert this old protection on the first page _if_ newMeta 
+        //  lies outside the first allocation region
+        korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+    else
+        // inside the first allocation region, we expect the first page to 
+        //  already be unguarded
+        korl_assert(oldProtect == PAGE_READWRITE);
 #endif
 #else
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
@@ -1505,7 +1511,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator
             /* carry over any remaining flags that will occupy future register(s) */
             pageFlagsRemainder += metaAddress->pagesCommitted - allocationFlagsInRegister;
         }
-        ///@TODO: skip `pageFlagsRemainder/bitsPerFlagRegister` registers, since the last allocation is expected to span all of them
+        //KORL-PERFORMANCE-000-000-028: memory: (likely extremely minor): _*general_enumerateAllocations: we should be able to skip more page flag registers immediately if we know we occupy 1 or more full registers
     }
     guardAllocator_return:
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
