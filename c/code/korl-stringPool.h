@@ -188,16 +188,16 @@ typedef struct Korl_StringPool_String
     Korl_StringPool_String& operator+=(const char* cStringUtf8);
     Korl_StringPool_String& operator+=(const wchar_t* cStringUtf16);
 } Korl_StringPool_String;
-///@TODO: operator+(string, string)         => append(string, string)
-///@TODO: operator+(string, const char*)    => appendUtf8
-///@TODO: operator+(string, const wchar_t*) => appendUtf16
-///@TODO: operator+(const char*, string)    => prependUtf8
-///@TODO: operator+(const wchar_t*, string) => prependUtf16
-///@TODO: operator+=(string, string)         => append(string, string)
-///@TODO: operator+=(string, const char*)    => appendUtf8
-///@TODO: operator+=(string, const wchar_t*) => appendUtf16
-///@TODO: operator+=(const char*, string)    => prependUtf8
-///@TODO: operator+=(const wchar_t*, string) => prependUtf16
+/// operator+(string, string)         => append(string, string)
+/// operator+(string, const char*)    => appendUtf8
+/// operator+(string, const wchar_t*) => appendUtf16
+/// operator+(const char*, string)    => prependUtf8
+/// operator+(const wchar_t*, string) => prependUtf16
+/// operator+=(string, string)         => append(string, string)
+/// operator+=(string, const char*)    => appendUtf8
+/// operator+=(string, const wchar_t*) => appendUtf16
+/// operator+=(const char*, string)    => prependUtf8
+/// operator+=(const wchar_t*, string) => prependUtf16
 #endif// defined(__cplusplus)
 #if 0/// potential new API:
 korl_internal void                          korl_stringPool_appendUnsignedInteger(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u$ x, u32 maxFigures, const i8* utf8PaddingCharacter);

@@ -3,7 +3,7 @@
 #include "korl-checkCast.h"
 /* STBDS_UNIT_TESTS causes a bunch of really slow code, 
     so it should _never_ run in "release" builds */
-#if 1//KORL_DEBUG @TODO
+#if KORL_DEBUG && 0
 #   define STBDS_UNIT_TESTS
 #endif
 #define _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT 0

@@ -343,7 +343,7 @@ korl_internal void korl_file_initialize(void)
     //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(16), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(16), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     context->stringPool             = korl_stringPool_create(context->allocatorHandle);
     context->nextAsyncIoHandle      = 1;
     context->handleIoCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0/*use default; # of processors in the system*/);

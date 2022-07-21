@@ -18,7 +18,7 @@ korl_internal void korl_stb_truetype_initialize(void)
 {
     _Korl_Stb_TrueType_Context*const context = &_korl_stb_truetype_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_kilobytes(512), L"korl-stb-truetype", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_kilobytes(512), L"korl-stb-truetype", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
 }
 #define STBTT_malloc(x,u) ((void)(u),_korl_stb_truetype_allocate(x))
 #define STBTT_free(x,u)   ((void)(u),_korl_stb_truetype_free(x))

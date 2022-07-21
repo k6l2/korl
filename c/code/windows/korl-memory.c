@@ -420,10 +420,10 @@ korl_internal bool _korl_memory_allocator_linear_enumerateAllocationsRecurse(_Ko
     /* recurse into the previous allocation */
     Korl_Memory_AllocatorLinear_AllocationMeta*const allocationMeta = 
         KORL_C_CAST(Korl_Memory_AllocatorLinear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - metaBytesRequired);
-    if(!_korl_memory_allocator_linear_enumerateAllocationsRecurse(allocator, allocationMeta->previousAllocation, callback, callbackUserData))
-        return false;
+    const bool resultRecurse = _korl_memory_allocator_linear_enumerateAllocationsRecurse(allocator, allocationMeta->previousAllocation, callback, callbackUserData);
     /* perform the enumeration callback after the stack is drained */
-    return callback(callbackUserData, allocation, &(allocationMeta->allocationMeta));
+    //KORL-ISSUE-000-000-080: memory: _korl_memory_allocator_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
+    return callback(callbackUserData, allocation, &(allocationMeta->allocationMeta)) | resultRecurse;
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator_linear_enumerateAllocations)
 {
@@ -892,12 +892,10 @@ korl_internal u$ _korl_memory_allocator_general_occupiedPageOffset(_Korl_Memory_
     }
     return occupiedPageOffset;
 }
-///@TODO: make sure all the code calling this function is passing properly clamped page ranges for the allocator?  or perhaps we pass signed start indices & do a range check here (less desireable, since I'm worried about incorrectly interpreted return values)?
 korl_internal u$ _korl_memory_allocator_general_highestOccupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount)
 {
     return _korl_memory_allocator_general_occupiedPageOffset(allocator, pageRangeStartIndex, pageCount, true/*we want the _highest_ occupied page offset*/);
 }
-// ///@TODO: make sure all the code calling this function is passing properly clamped page ranges for the allocator?  or perhaps we pass signed start indices & do a range check here (less desireable, since I'm worried about incorrectly interpreted return values)?
 korl_internal u$ _korl_memory_allocator_general_lowestOccupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount)
 {
     return _korl_memory_allocator_general_occupiedPageOffset(allocator, pageRangeStartIndex, pageCount, false/*we want the _lowest_ occupied page offset*/);
@@ -924,10 +922,11 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
     const u$ fullRegistersRequired  = (pageCount + 2*SURROUNDING_GUARD_PAGE_COUNT/*leave room for one guard pages on either side of the allocation*/) / bitsPerRegister;
     const u$ remainderFlagsRequired = (pageCount + 2*SURROUNDING_GUARD_PAGE_COUNT/*leave room for one guard pages on either side of the allocation*/) % bitsPerRegister;
     const u$ remainderFlagsMask     = (~(~0ULL << remainderFlagsRequired)) << (bitsPerRegister - remainderFlagsRequired);// the remainder mask aligned to the most significant bit
+    const u$ usedPageFlagRegisters  = korl_math_nextHighestDivision(allocator->allocationPages, (8*sizeof(*allocator->availablePageFlags))/*bitsPerPageFlagRegister*/);
     u$ consecutiveEmptyRegisters = 0;
-    for(u$ cr = 0; cr < allocator->allocationPages; cr++)
+    for(u$ cr = 0; cr < usedPageFlagRegisters; cr++)
     {
-        const u$ rWrapped = (allocator->lastPageFlagRegisterIndex + cr) % allocator->allocationPages;
+        const u$ rWrapped = (allocator->lastPageFlagRegisterIndex + cr) % usedPageFlagRegisters;
         if(rWrapped == 0)
             consecutiveEmptyRegisters = 0;
         if(0 != allocator->availablePageFlags[rWrapped])
@@ -961,10 +960,6 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
                 else
                     proceedingBits = bitsPerRegister;// we can occupy the entire proceeding register
             }
-            /* how many preceding registers can we occupy? (if any) */
-            // korl_assert(!"@TODO");//uhh... seems like we already have this info; delete this?
-            /* how many proceeding registers can we occupy? (if any) */
-            // korl_assert(!"@TODO");//uhh... seems like we already have this info; delete this?
             /* check if we have enough preceding/proceeding flags; if not, we need to keep searching */
             const u$ extendedEmptyPageFlags = precedingBits + proceedingBits;
             if(extendedEmptyPageFlags < remainderFlagsRequired)
@@ -1293,15 +1288,41 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     }
     /* all the code past here involves cases where we need to expand the allocation */
     korl_assert(newAllocationPages > allocationMeta->pagesCommitted);
+#if 1
     /* if the allocator has enough allocation pages, and those trailing 
         allocation pages are not occupied, then expand into these pages in-place */
-
-
-
-    /// @TODO: optimization (minor?); in-place expand to higher contiguous pages; it's likely that only in-place expansion into higher pages is going to be worth the effort
-
-
-
+    if(   allocationPage + newAllocationPages <= allocator->allocationPages 
+       && _korl_memory_allocator_general_lowestOccupiedPageOffset(allocator, allocationPage + allocationMeta->pagesCommitted, newAllocationPages - allocationMeta->pagesCommitted + 1/*guard page*/) 
+          >= newAllocationPages - allocationMeta->pagesCommitted + 1/*guard page*/)
+    {
+        /* occupy the pages */
+        _korl_memory_allocator_general_setPageFlags(allocator, allocationPage + allocationMeta->pagesCommitted, newAllocationPages - allocationMeta->pagesCommitted, true/*occupy*/);
+        /* expand the committed pages, if necessary */
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+        /* if we haven't committed enough pages to the allocator yet, let's do that; 
+            newly committed pages are guarded until they become occupied */
+        _korl_memory_allocator_general_growCommitPages(allocator, allocationPage + newAllocationPages);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+        /* release the protections on our now-occupied allocation pages */
+        DWORD oldProtect;
+        if(!VirtualProtect(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->pagesCommitted*pageBytes, (newAllocationPages - allocationMeta->pagesCommitted)*pageBytes, PAGE_READWRITE, &oldProtect))
+            korl_logLastError("VirtualProtect unguard failed!");
+        korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+#endif
+#else
+        //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
+        const LPVOID resultVirtualAllocCommit = VirtualAlloc(allocationMeta, newAllocationPages*pageBytes, MEM_COMMIT, PAGE_READWRITE);
+        if(resultVirtualAllocCommit == NULL)
+            korl_logLastError("VirtualAlloc failed!");
+#endif
+        /* update the meta data */
+        allocationMeta->pagesCommitted       = newAllocationPages;
+        allocationMeta->allocationMeta.bytes = bytes;
+        allocationMeta->allocationMeta.file  = file;
+        allocationMeta->allocationMeta.line  = line;
+        goto guardAllocator_returnAllocation;
+    }
+#endif
     /* we were unable to quickly expand the allocation; we need to allocate=>copy=>free */
     /* clear our page flags */
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*unoccupied*/);
@@ -1403,6 +1424,28 @@ korl_internal void _korl_memory_allocator_general_empty(_Korl_Memory_AllocatorGe
     const u$ pageBytes = _korl_memory_context.systemInfo.dwPageSize;
     korl_assert(0 == KORL_C_CAST(u$, allocator) % _korl_memory_context.systemInfo.dwAllocationGranularity);
     /* eliminate all allocations */
+    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
+    void*const allocationRegionBegin = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
+    // const void*const allocationRegionEnd   = KORL_C_CAST(u8*, allocationRegionBegin) + allocator->allocationPages*pageBytes;
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+    if(allocator->allocationPagesCommitted)
+    {
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+        /* unguard all committed pages; ignore the previous guard status */
+        DWORD oldProtect;
+        if(!VirtualProtect(allocationRegionBegin, allocator->allocationPagesCommitted*pageBytes, PAGE_READWRITE, &oldProtect))
+            korl_logLastError("VirtualProtect unguard failed!");
+#endif
+        /* zero out the entire region of committed allocation pages */
+        korl_memory_zero(allocationRegionBegin, allocator->allocationPagesCommitted*pageBytes);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+        /* guard entire region of committed allocation pages */
+        if(!VirtualProtect(allocationRegionBegin, allocator->allocationPagesCommitted*pageBytes, PAGE_READWRITE | PAGE_GUARD, &oldProtect))
+            korl_logLastError("VirtualProtect guard failed!");
+        korl_assert(oldProtect == PAGE_READWRITE);
+#endif
+    }
+#else
     /* MSDN page for VirtualFree says: 
         "The function does not fail if you attempt to decommit an uncommitted 
         page. This means that you can decommit a range of pages without first 
@@ -1410,10 +1453,9 @@ korl_internal void _korl_memory_allocator_general_empty(_Korl_Memory_AllocatorGe
         just do this and re-commit pages each time we allocate, this is 
         apparently expensive, so we might not want to do this. */
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
-    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
-    void*const allocationRegionStart = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes;
-    if(!VirtualFree(allocationRegionStart, allocator->allocationPages*pageBytes, MEM_DECOMMIT))
+    if(!VirtualFree(allocationRegionBegin, allocator->allocationPages*pageBytes, MEM_DECOMMIT))
         korl_logLastError("VirtualFree failed!");
+#endif
     /* update the allocator metrics; clear all the allocation page flags */
     const u$ usedPageFlagRegisters = korl_math_nextHighestDivision(allocator->allocationPages, (8*sizeof(*allocator->availablePageFlags))/*bitsPerPageFlagRegister*/);
     korl_memory_zero(KORL_C_CAST(u8*, allocator) + sizeof(*allocator), usedPageFlagRegisters*sizeof(*(allocator->availablePageFlags)));
@@ -1439,8 +1481,11 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(_korl_memory_allocator
         u$ pageFlagRegister = allocator->availablePageFlags[pfr];
         /* remove page flag bits that are remaining from previous register(s) */
         const u$ pageFlagsRemainderInRegister     = KORL_MATH_MIN(bitsPerFlagRegister, pageFlagsRemainder);
-        const u$ pageFlagsRemainderInRegisterMask = ~((~0LLU) << pageFlagsRemainderInRegister);
+        const u$ pageFlagsRemainderInRegisterMask = pageFlagsRemainderInRegister < bitsPerFlagRegister // overflow left shift is undefined behavior
+            ? ~((~0LLU) << pageFlagsRemainderInRegister) 
+            : ~0LLU;
         pageFlagRegister &= ~(pageFlagsRemainderInRegisterMask << (bitsPerFlagRegister - pageFlagsRemainderInRegister));
+        pageFlagsRemainder -= pageFlagsRemainderInRegister;
         /**/
         unsigned long mostSignificantSetBitIndex = korl_checkCast_u$_to_u32(bitsPerFlagRegister)/*smallest invalid value*/;
         while(_BitScanReverse64(&mostSignificantSetBitIndex, pageFlagRegister))
@@ -1775,6 +1820,7 @@ korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle han
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        //KORL-ISSUE-000-000-080: memory: _korl_memory_allocator_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
         _korl_memory_allocator_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty, NULL/*we don't care about the virtual address range end*/);
         return resultIsEmpty;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
