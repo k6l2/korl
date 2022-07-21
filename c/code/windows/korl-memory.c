@@ -1224,7 +1224,6 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     /* all the code past here involves cases where we need to expand the allocation */
     korl_assert(newAllocationPages > allocationMeta->pagesCommitted);
     /// @TODO: optimization (minor?); in-place expand to higher contiguous pages; it's likely that only in-place expansion into higher pages is going to be worth the effort
-#if 1
     /* we were unable to quickly expand the allocation; we need to allocate=>copy=>free */
     /* clear our page flags */
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*unoccupied*/);
@@ -1282,23 +1281,8 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     korl_assert(decommitPages > 0);// this _must_ be the case, since we have eliminated all other possible intersection scenarios... right?
     if(!VirtualFree(KORL_C_CAST(u8*, allocator) + (allocatorPages + decommitPage)*pageBytes, decommitPages*pageBytes, MEM_DECOMMIT))
         korl_logLastError("VirtualFree failed!");
-#else
-    /* we now know expansion is impossible; we need to allocate=>copy=>free */
-    _korl_memory_allocator_general_allocatorPagesGuard(allocator);
-    void*const newAllocation = _korl_memory_allocator_general_allocate(allocator, bytes, file, line, NULL/*auto-select address*/);
-    if(newAllocation)
-    {
-        korl_memory_copy(newAllocation, allocation, allocationMeta->allocationMeta.bytes);
-        _korl_memory_allocator_general_free(allocator, allocation, file, line);
-    }
-    else
-        korl_log(WARNING, "new allocation for reallocate failed; original allocation will be unmodified");
-    allocation = newAllocation;
-    goto returnAllocation;
-#endif
     guardAllocator_returnAllocation:
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
-    returnAllocation:
 #if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
     u$ allocationCountEnd, occupiedPageCountEnd;
     _korl_memory_allocator_general_checkIntegrity(allocator, &allocationCountEnd, &occupiedPageCountEnd);
