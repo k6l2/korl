@@ -29,10 +29,13 @@ set KORL_DISABLED_WARNINGS=/wd4061 /wd4200 /wd4201 /wd4505 /wd4514 /wd4706 /wd47
 rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)
+rem 4102: 'returnAllocation': unreferenced label; this is more of a "code cleanup"
+rem       type of warning; maybe we should have a different class of warning for 
+rem       cleanup type things?..
 rem 4189: local variable is initialized but not referenced; this is useful for 
 rem       debugging transient values, but introduces possible bugs so it 
 rem       shouldn't be part of release builds
-set korlDisabledReleaseWarnings=/wd4100 /wd4101 /wd4189
+set korlDisabledReleaseWarnings=/wd4100 /wd4101 /wd4102 /wd4189
 rem 4820: 'x' bytes padding added after data member 'y'; data structures should 
 rem       be fully optimized in released builds, but during development this is 
 rem       just annoying

@@ -1224,7 +1224,7 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     /* all the code past here involves cases where we need to expand the allocation */
     korl_assert(newAllocationPages > allocationMeta->pagesCommitted);
     /// @TODO: optimization (minor?); in-place expand to higher contiguous pages; it's likely that only in-place expansion into higher pages is going to be worth the effort
-#if 0
+#if 1
     /* we were unable to quickly expand the allocation; we need to allocate=>copy=>free */
     /* clear our page flags */
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*unoccupied*/);
