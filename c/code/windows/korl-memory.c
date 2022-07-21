@@ -4,6 +4,10 @@
 #include "korl-checkCast.h"
 #include "korl-log.h"
 #define _KORL_MEMORY_INVALID_BYTE_PATTERN 0xFE
+#define _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES 1
+#define _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_ALLOCATOR 1
+#define _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES 1
+#define _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG 0
 korl_global_const i8 _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR[]     = "[KORL-general-allocation]";
 korl_global_const i8 _KORL_ALLOCATOR_LINEAR_ALLOCATION_META_SEPARATOR[]      = "[KORL-linear-allocation]";
 korl_global_const i8 _KORL_ALLOCATOR_LINEAR_ALLOCATION_META_SEPARATOR_FREE[] = "[KORL-linear-free-alloc]";
@@ -64,6 +68,7 @@ typedef struct _Korl_Memory_AllocatorGeneral
     u$ lastPageFlagRegisterIndex;
     // u$ bytes;//KORL-ISSUE-000-000-030: redundant: use QueryVirtualMemoryInformation instead
     u$ allocationPages;// this is the # which determines how many flags are actually relevant in the availablePageFlags member
+    u$ allocationPagesCommitted;// in an attempt to reduce sys calls necessary for allocations; instead of decommitting & re-committing pages each time we allocate & free, using this variable we will just keep a full range of pages committed which we will "free" by zeroing the memory & guarding the page for later reallocation use
     u$ availablePageFlagsSize;// just used to determine the total size of the general allocator data structure
     u$ availablePageFlags[];// see comments about this data structure for details of how this is used; the size of this array is determined by `bytes`, which should be calculated as `nextHighestDivision(nextHighestDivision(bytes, pageBytes), bitCount(u$))`
 } _Korl_Memory_AllocatorGeneral;
@@ -779,10 +784,9 @@ korl_internal void _korl_memory_allocator_linear_destroy(_Korl_Memory_AllocatorL
     if(!VirtualFree(allocator, 0/*release everything*/, MEM_RELEASE))
         korl_logLastError("VirtualFree failed!");
 }
-#define _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG 0
 korl_internal void _korl_memory_allocator_general_allocatorPagesGuard(_Korl_Memory_AllocatorGeneral* allocator)
 {
-#if !_KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+#if !_KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG && _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_ALLOCATOR
     const u$ allocatorBytes = sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags));
     DWORD oldProtect;
     if(!VirtualProtect(allocator, allocatorBytes, PAGE_READWRITE | PAGE_GUARD, &oldProtect))
@@ -792,7 +796,7 @@ korl_internal void _korl_memory_allocator_general_allocatorPagesGuard(_Korl_Memo
 }
 korl_internal void _korl_memory_allocator_general_allocatorPagesUnguard(_Korl_Memory_AllocatorGeneral* allocator)
 {
-#if !_KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
+#if !_KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG && _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_ALLOCATOR
     DWORD oldProtect;
     /* unguard the first page to find the total # of allocator pages */
     if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
@@ -894,10 +898,10 @@ korl_internal u$ _korl_memory_allocator_general_highestOccupiedPageOffset(_Korl_
     return _korl_memory_allocator_general_occupiedPageOffset(allocator, pageRangeStartIndex, pageCount, true/*we want the _highest_ occupied page offset*/);
 }
 // ///@TODO: make sure all the code calling this function is passing properly clamped page ranges for the allocator?  or perhaps we pass signed start indices & do a range check here (less desireable, since I'm worried about incorrectly interpreted return values)?
-// korl_internal u$ _korl_memory_allocator_general_lowestOccupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount)
-// {
-//     return _korl_memory_allocator_general_occupiedPageOffset(allocator, pageRangeStartIndex, pageCount, false/*we want the _lowest_ occupied page offset*/);
-// }
+korl_internal u$ _korl_memory_allocator_general_lowestOccupiedPageOffset(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount)
+{
+    return _korl_memory_allocator_general_occupiedPageOffset(allocator, pageRangeStartIndex, pageCount, false/*we want the _lowest_ occupied page offset*/);
+}
 korl_internal void _korl_memory_allocator_general_setPageFlags(_Korl_Memory_AllocatorGeneral* allocator, u$ pageRangeStartIndex, u$ pageCount, bool pageFlagState)
 {
     /* find the page flag register index & the flag index within the register */
@@ -926,7 +930,6 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
         const u$ rWrapped = (allocator->lastPageFlagRegisterIndex + cr) % allocator->allocationPages;
         if(rWrapped == 0)
             consecutiveEmptyRegisters = 0;
-        ///@TODO: this will be (on average) faster if we offset & mod `r` by an expected next available page index, but let's just get this working first...
         if(0 != allocator->availablePageFlags[rWrapped])
             consecutiveEmptyRegisters = 0;
         else
@@ -1069,6 +1072,31 @@ korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memor
     returnAllocationPageIndex:
     return allocationPageIndex;
 }
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+korl_internal void _korl_memory_allocator_general_growCommitPages(_Korl_Memory_AllocatorGeneral* allocator, u$ requestedCommitPages)
+{
+    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), _korl_memory_context.systemInfo.dwPageSize);
+    if(   allocator->allocationPagesCommitted < requestedCommitPages 
+       && allocator->allocationPagesCommitted < allocator->allocationPages)
+    {
+        /* commit more pages than necessary (to minimize commits), while keeping 
+            the total commit count within the allocation page range */
+        const u$ allocationPagesCommittedNew = KORL_MATH_MIN(KORL_MATH_MAX(requestedCommitPages, 
+                                                                           2*allocator->allocationPagesCommitted), 
+                                                             allocator->allocationPages);
+        const LPVOID resultVirtualAllocCommit = VirtualAlloc(KORL_C_CAST(u8*, allocator) + (allocatorPages + allocator->allocationPagesCommitted)*_korl_memory_context.systemInfo.dwPageSize, 
+                                                             (allocationPagesCommittedNew - allocator->allocationPagesCommitted)*_korl_memory_context.systemInfo.dwPageSize, 
+#if !_KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+                                                             MEM_COMMIT, PAGE_READWRITE);
+#else
+                                                             MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD);
+#endif
+        if(resultVirtualAllocCommit == NULL)
+            korl_logLastError("VirtualAlloc commit failed!");
+        allocator->allocationPagesCommitted = allocationPagesCommittedNew;
+    }
+}
+#endif
 korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_AllocatorGeneral* allocator, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
 #if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
@@ -1117,10 +1145,27 @@ korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_Allocat
     Korl_Memory_AllocatorGeneral_AllocationMeta*const metaAddress = KORL_C_CAST(Korl_Memory_AllocatorGeneral_AllocationMeta*, 
         KORL_C_CAST(u8*, allocator) + (allocatorPages + availablePageIndex)*pageBytes);
     result = KORL_C_CAST(u8*, metaAddress) + metaBytesRequired;
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+    /* if we haven't committed enough pages to the allocator yet, let's do that; 
+        newly committed pages are guarded until they become occupied */
+    _korl_memory_allocator_general_growCommitPages(allocator, availablePageIndex + allocationPages);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+    /* all we have to do now is to release the protections on our now-occupied 
+        allocation pages, since we should be able to guarantee that they are: 
+        - committed
+        - protected/guarded
+        - cleared (all zero memory) */
+    DWORD oldProtect;
+    if(!VirtualProtect(metaAddress, allocationPages*pageBytes, PAGE_READWRITE, &oldProtect))
+        korl_logLastError("VirtualProtect unguard failed!");
+    korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+#endif
+#else
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
     const LPVOID resultVirtualAllocCommit = VirtualAlloc(metaAddress, allocationPages*pageBytes, MEM_COMMIT, PAGE_READWRITE);
     if(resultVirtualAllocCommit == NULL)
         korl_logLastError("VirtualAlloc failed!");
+#endif
     /* now we can initialize the memory */
     metaAddress->allocationMeta.bytes = bytes;
     metaAddress->allocationMeta.file  = file;
@@ -1160,16 +1205,26 @@ korl_internal void _korl_memory_allocator_general_free(_Korl_Memory_AllocatorGen
     korl_assert(0 == KORL_C_CAST(u$, allocationMeta) % pageBytes);// we must be page-aligned
     korl_assert(0 == korl_memory_compare(allocationMeta + 1, _KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR, sizeof(_KORL_ALLOCATOR_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/));
     /* calculate the page index of the allocation */
-    const u$ allocationPage = (KORL_C_CAST(u$, allocationMeta) - KORL_C_CAST(u$, allocationRegionBegin)) / pageBytes;
+    const u$ allocationPages = allocationMeta->pagesCommitted;
+    const u$ allocationPage  = (KORL_C_CAST(u$, allocationMeta) - KORL_C_CAST(u$, allocationRegionBegin)) / pageBytes;
     /* clear the allocation page flags associated with this allocation */
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*clear*/);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+    /* zero out the memory for future allocations to reclaim */
+    korl_memory_zero(allocationMeta, metaBytesRequired + allocationMeta->allocationMeta.bytes);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+    /* guard the pages */
+    DWORD oldProtect;
+    if(!VirtualProtect(allocationMeta, allocationPages*pageBytes, PAGE_READWRITE | PAGE_GUARD, &oldProtect))
+        korl_logLastError("VirtualProtect guard failed!");
+    korl_assert(oldProtect == PAGE_READWRITE);
+#endif
+#else
     /* decommit the pages */
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
-#if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
-    const u$ allocationPages = allocationMeta->pagesCommitted;
-#endif
     if(!VirtualFree(allocationMeta, allocationMeta->pagesCommitted*pageBytes, MEM_DECOMMIT))
         korl_logLastError("VirtualFree failed!");
+#endif
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
 #if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
     u$ allocationCountEnd, occupiedPageCountEnd;
@@ -1209,12 +1264,27 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     /* if we're shrinking the allocation... */
     if(newAllocationPages <= allocationMeta->pagesCommitted)
     {
-        /* only if we are shrinking the # of committed pages, we must decommit pages that become unoccupied */
+        /* only if we are shrinking the # of committed pages, we must clean up pages that become unoccupied */
         if(newAllocationPages < allocationMeta->pagesCommitted)
         {
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+            /* zero out the pages we're losing, in preparation for future allocations */
+            korl_memory_zero(KORL_C_CAST(u8*, allocationMeta) + newAllocationPages*pageBytes, 
+                             (allocationMeta->pagesCommitted - newAllocationPages)*pageBytes);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+            /* guard these pages */
+            DWORD oldProtect;
+            if(!VirtualProtect(KORL_C_CAST(u8*, allocationMeta) + newAllocationPages*pageBytes, 
+                               (allocationMeta->pagesCommitted - newAllocationPages)*pageBytes, 
+                               PAGE_READWRITE | PAGE_GUARD, &oldProtect))
+                korl_logLastError("VirtualProtect guard failed!");
+            korl_assert(oldProtect == PAGE_READWRITE);
+#endif
+#else
             //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
             if(!VirtualFree(KORL_C_CAST(u8*, allocationMeta) + newAllocationPages*pageBytes, (allocationMeta->pagesCommitted - newAllocationPages)*pageBytes, MEM_DECOMMIT))
                 korl_logLastError("VirtualFree failed!");
+#endif
             _korl_memory_allocator_general_setPageFlags(allocator, allocationPage + newAllocationPages, (allocationMeta->pagesCommitted - newAllocationPages), false/*unoccupied*/);
         }
         allocationMeta->pagesCommitted       = newAllocationPages;
@@ -1223,7 +1293,15 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     }
     /* all the code past here involves cases where we need to expand the allocation */
     korl_assert(newAllocationPages > allocationMeta->pagesCommitted);
+    /* if the allocator has enough allocation pages, and those trailing 
+        allocation pages are not occupied, then expand into these pages in-place */
+
+
+
     /// @TODO: optimization (minor?); in-place expand to higher contiguous pages; it's likely that only in-place expansion into higher pages is going to be worth the effort
+
+
+
     /* we were unable to quickly expand the allocation; we need to allocate=>copy=>free */
     /* clear our page flags */
     _korl_memory_allocator_general_setPageFlags(allocator, allocationPage, allocationMeta->pagesCommitted, false/*unoccupied*/);
@@ -1240,11 +1318,26 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     Korl_Memory_AllocatorGeneral_AllocationMeta*const newMeta = KORL_C_CAST(Korl_Memory_AllocatorGeneral_AllocationMeta*, 
         KORL_C_CAST(u8*, allocator) + (allocatorPages + newAllocationPage)*pageBytes);
     void*const newAllocation = KORL_C_CAST(u8*, newMeta) + metaBytesRequired;
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+    /* grow the # of committed pages in the allocator, if necessary */
+    _korl_memory_allocator_general_growCommitPages(allocator, newAllocationPage + newAllocationPages);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+    /* unguard the pages we now occupy */
+    DWORD oldProtect;
+    if(!VirtualProtect(newMeta, newAllocationPages*pageBytes, PAGE_READWRITE, &oldProtect))
+        korl_logLastError("VirtualProtect unguard failed!");
+    ///@TODO: we can only assert this old protection on the first page _if_ newMeta lies in the first allocation region
+    // korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+#endif
+#else
     //KORL-PERFORMANCE-000-000-027: memory: uncertain performance characteristics associated with re-committed pages
     const LPVOID resultVirtualAllocCommit = VirtualAlloc(newMeta, newAllocationPages*pageBytes, MEM_COMMIT, PAGE_READWRITE);
     if(resultVirtualAllocCommit == NULL)
         korl_logLastError("VirtualAlloc failed!");
-    /* move data from old allocation to new allocation */
+#endif
+    /* move data from old allocation to new allocation; move is required, as it 
+        is entirely possible that the new allocation & old allocation address 
+        ranges overlap! */
     const u$ allocationPageEnd    = allocationPage    + allocationMeta->pagesCommitted;// gather this data before allocationMeta gets clobbered
     const u$ newAllocationPageEnd = newAllocationPage + newAllocationPages;            // gather this data before allocationMeta gets clobbered
     korl_memory_move(newAllocation, allocation, allocationMeta->allocationMeta.bytes);
@@ -1279,8 +1372,20 @@ korl_internal void* _korl_memory_allocator_general_reallocate(_Korl_Memory_Alloc
     korl_assert(decommitPageEnd > decommitPage);
     const u$ decommitPages = decommitPageEnd - decommitPage;
     korl_assert(decommitPages > 0);// this _must_ be the case, since we have eliminated all other possible intersection scenarios... right?
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_LAZY_COMMIT_PAGES
+    /* zero out these pages */
+    korl_memory_zero(KORL_C_CAST(u8*, allocator) + (allocatorPages + decommitPage)*pageBytes, decommitPages*pageBytes);
+#if _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES
+    /* guard these pages */
+    if(!VirtualProtect(KORL_C_CAST(u8*, allocator) + (allocatorPages + decommitPage)*pageBytes, decommitPages*pageBytes, 
+                       PAGE_READWRITE | PAGE_GUARD, &oldProtect))
+        korl_logLastError("VirtualProtect guard failed!");
+    korl_assert(oldProtect == PAGE_READWRITE);
+#endif
+#else
     if(!VirtualFree(KORL_C_CAST(u8*, allocator) + (allocatorPages + decommitPage)*pageBytes, decommitPages*pageBytes, MEM_DECOMMIT))
         korl_logLastError("VirtualFree failed!");
+#endif
     guardAllocator_returnAllocation:
     _korl_memory_allocator_general_allocatorPagesGuard(allocator);
 #if _KORL_MEMORY_ALLOCATOR_GENERAL_DEBUG
