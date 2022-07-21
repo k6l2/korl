@@ -131,6 +131,7 @@ typedef struct _Korl_Memory_ReportEnumerateContext
     u$ totalUsedBytes;
     const void* virtualAddressStart;
     const void* virtualAddressEnd;
+    Korl_Memory_AllocatorType allocatorType;
     wchar_t name[32];
 } _Korl_Memory_ReportEnumerateContext;
 typedef struct _Korl_Memory_Report
@@ -1879,6 +1880,7 @@ korl_internal void* korl_memory_reportGenerate(void)
         _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[report->allocatorCount++];
         korl_memory_zero(enumContext, sizeof(*enumContext));
         korl_memory_stringCopy(allocator->name, enumContext->name, korl_arraySize(enumContext->name));
+        enumContext->allocatorType          = allocator->type;
         enumContext->virtualAddressStart    = allocator->userData;
         enumContext->allocationMetaCapacity = 8;
         enumContext->allocationMeta         = korl_allocate(context->allocatorHandleReporting, enumContext->allocationMetaCapacity*sizeof(*(enumContext->allocationMeta)));
@@ -1906,9 +1908,14 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
     for(u$ ec = 0; ec < report->allocatorCount; ec++)
     {
         _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[ec];
-        ///@TODO: report the type of allocator (linear, general, etc...)
-        korl_log_noMeta(INFO, "║ allocator {\"%ws\", [0x%p ~ 0x%p], total used bytes: %llu}", 
-                        enumContext->name, enumContext->virtualAddressStart, enumContext->virtualAddressEnd, enumContext->totalUsedBytes);
+        const char* allocatorType = NULL;
+        switch(enumContext->allocatorType)
+        {
+        case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR :{ allocatorType = "KORL_MEMORY_ALLOCATOR_TYPE_LINEAR"; break; }
+        case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{ allocatorType = "KORL_MEMORY_ALLOCATOR_TYPE_GENERAL"; break; }
+        }
+        korl_log_noMeta(INFO, "║ %hs {\"%ws\", [0x%p ~ 0x%p], total used bytes: %llu}", 
+                        allocatorType, enumContext->name, enumContext->virtualAddressStart, enumContext->virtualAddressEnd, enumContext->totalUsedBytes);
         for(u$ a = 0; a < enumContext->allocationMetaSize; a++)
         {
             _Korl_Memory_ReportAllocationMetaData*const allocMeta = &enumContext->allocationMeta[a];
