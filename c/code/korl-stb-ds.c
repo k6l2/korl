@@ -2,10 +2,10 @@
 #include "korl-memory.h"
 #include "korl-checkCast.h"
 /* STBDS_UNIT_TESTS causes a bunch of really slow code, 
-    so it should _never_ run in "release" builds */
-#if KORL_DEBUG && 0
-#   define STBDS_UNIT_TESTS
-#endif
+    so it should _never_ run in "production" builds */
+// #define STBDS_UNIT_TESTS
+/* Performance analysis tool for comparing the efficiency of KORL allocators to 
+    whatever the hell is happening in the CRT */
 #define _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT 0
 korl_global_variable Korl_Memory_AllocatorHandle _korl_stb_ds_allocatorHandle;
 typedef struct _Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator
@@ -67,10 +67,12 @@ korl_internal void korl_stb_ds_initialize(void)
 {
     /* although this allocator is only utilized in KORL_DEBUG mode, we should 
         create it in all builds to maintain allocator handle order */
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(448), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
 #if defined(STBDS_UNIT_TESTS)
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(448), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
     stbds_unit_tests();
     korl_assert(korl_memory_allocator_isEmpty(_korl_stb_ds_allocatorHandle));
+#else
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
 #endif
 }
 #define STB_DS_IMPLEMENTATION

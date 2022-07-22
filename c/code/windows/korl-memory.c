@@ -879,7 +879,7 @@ korl_internal u$ _korl_memory_allocator_general_occupiedPageOffset(_Korl_Memory_
         the flag register & index along the way */
     const u$ bitsPerFlagRegister = 8*sizeof(*(allocator->availablePageFlags));
     u$ occupiedPageOffset = pageCount;
-    ///@TODO: iterate over page flag registers and use bitscan instead of individual page flag indices
+    //KORL-PERFORMANCE-000-000-029: memory: general allocator: occupiedPageOffset: Intuitively, I would assume that this code is just strictly sub-optimal, since we are just stupidly iterating over bit flags manually.
     for(u$ p = pageRangeStartIndex; p < pageRangeStartIndex + pageCount; p++)
     {
         const u$ pageFlagRegister = p / bitsPerFlagRegister;// the array index into allocator->availablePageFlags
