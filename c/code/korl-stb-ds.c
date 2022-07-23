@@ -30,16 +30,16 @@ korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ 
     if(!allocatorHandle)
 #if _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT
         return realloc(allocation, bytes);
-#else
+#elif defined(STBDS_UNIT_TESTS)
         allocatorHandle = _korl_stb_ds_allocatorHandle;
-#endif
-    else
+#else
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
         enumAllocatorsUserData.in_allocation = allocation;
         korl_memory_allocator_enumerateAllocators(_korl_stb_ds_enumAllocatorCallback_findContainingAllocator, &enumAllocatorsUserData);
         allocatorHandle = enumAllocatorsUserData.out_allocatorHandle;
     }
+#endif
     return korl_memory_allocator_reallocate(allocatorHandle, allocation, bytes, file, line);
 }
 korl_internal void _korl_stb_ds_free(void* context, void* allocation)
@@ -51,16 +51,16 @@ korl_internal void _korl_stb_ds_free(void* context, void* allocation)
         free(allocation);
         return;
     }
-#else
+#elif defined(STBDS_UNIT_TESTS)
         allocatorHandle = _korl_stb_ds_allocatorHandle;
-#endif
-    else
+#else
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
         enumAllocatorsUserData.in_allocation = allocation;
         korl_memory_allocator_enumerateAllocators(_korl_stb_ds_enumAllocatorCallback_findContainingAllocator, &enumAllocatorsUserData);
         allocatorHandle = enumAllocatorsUserData.out_allocatorHandle;
     }
+#endif
     korl_free(allocatorHandle, allocation);
 }
 korl_internal void korl_stb_ds_initialize(void)
