@@ -3,6 +3,7 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-checkCast.h"
 #include "korl-log.h"
+#include "korl-stb-ds.h"
 #define _KORL_MEMORY_INVALID_BYTE_PATTERN 0xFE
 #define _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES 1
 #define _KORL_MEMORY_ALLOCATOR_GENERAL_GUARD_ALLOCATOR 1
@@ -124,10 +125,7 @@ typedef struct _Korl_Memory_ReportAllocationMetaData
 } _Korl_Memory_ReportAllocationMetaData;
 typedef struct _Korl_Memory_ReportEnumerateContext
 {
-    //KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds
-    u$ allocationMetaCapacity;
-    u$ allocationMetaSize;
-    _Korl_Memory_ReportAllocationMetaData* allocationMeta;
+    _Korl_Memory_ReportAllocationMetaData* stbDaAllocationMeta;
     u$ totalUsedBytes;
     const void* virtualAddressStart;
     const void* virtualAddressEnd;
@@ -1602,16 +1600,8 @@ korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Me
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_logReport_enumerateCallback)
 {
     _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
-    if(context->allocationMetaSize == context->allocationMetaCapacity)
-    {
-        context->allocationMetaCapacity *= 2;
-        context->allocationMeta = KORL_C_CAST(_Korl_Memory_ReportAllocationMetaData*, 
-            korl_reallocate(_korl_memory_context.allocatorHandleReporting, 
-                            context->allocationMeta, 
-                            context->allocationMetaCapacity * sizeof(*context->allocationMeta)));
-        korl_assert(context->allocationMeta);
-    }
-    _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = &context->allocationMeta[context->allocationMetaSize++];
+    mcarrpush(KORL_C_CAST(void*, _korl_memory_context.allocatorHandleReporting), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
+    _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = context->stbDaAllocationMeta + arrlen(context->stbDaAllocationMeta) - 1;
     newAllocMeta->allocationAddress = allocation;
     newAllocMeta->meta              = *meta;
     context->totalUsedBytes += meta->bytes;
@@ -1886,11 +1876,9 @@ korl_internal void* korl_memory_reportGenerate(void)
         _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[report->allocatorCount++];
         korl_memory_zero(enumContext, sizeof(*enumContext));
         korl_memory_stringCopy(allocator->name, enumContext->name, korl_arraySize(enumContext->name));
-        enumContext->allocatorType          = allocator->type;
-        enumContext->virtualAddressStart    = allocator->userData;
-        enumContext->allocationMetaCapacity = 8;
-        enumContext->allocationMeta         = korl_allocate(context->allocatorHandleReporting, enumContext->allocationMetaCapacity*sizeof(*(enumContext->allocationMeta)));
-        korl_assert(enumContext->allocationMeta);
+        enumContext->allocatorType       = allocator->type;
+        enumContext->virtualAddressStart = allocator->userData;
+        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandleReporting), enumContext->stbDaAllocationMeta, 16);
         switch(allocator->type)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
@@ -1922,12 +1910,12 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
         }
         korl_log_noMeta(INFO, "║ %hs {\"%ws\", [0x%p ~ 0x%p], total used bytes: %llu}", 
                         allocatorType, enumContext->name, enumContext->virtualAddressStart, enumContext->virtualAddressEnd, enumContext->totalUsedBytes);
-        for(u$ a = 0; a < enumContext->allocationMetaSize; a++)
+        for(u$ a = 0; a < arrlenu(enumContext->stbDaAllocationMeta); a++)
         {
-            _Korl_Memory_ReportAllocationMetaData*const allocMeta = &enumContext->allocationMeta[a];
+            _Korl_Memory_ReportAllocationMetaData*const allocMeta = &enumContext->stbDaAllocationMeta[a];
             const void*const allocAddressEnd = KORL_C_CAST(u8*, allocMeta->allocationAddress) + allocMeta->meta.bytes;
             korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i", 
-                            a == enumContext->allocationMetaSize - 1 ? L"└" : L"├", 
+                            a == arrlenu(enumContext->stbDaAllocationMeta) - 1 ? L"└" : L"├", 
                             allocMeta->allocationAddress, allocAddressEnd, 
                             allocMeta->meta.bytes, 
                             allocMeta->meta.file, allocMeta->meta.line);
