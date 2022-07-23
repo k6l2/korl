@@ -4,11 +4,12 @@
 #include "korl-stringPool.h"
 #include "korl-file.h"
 #include "korl-time.h"
+#include "korl-stb-ds.h"
+#include "korl-checkCast.h"
 #ifdef _LOCAL_STRING_POOL_POINTER
 #undef _LOCAL_STRING_POOL_POINTER
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_assetCache_context.stringPool))
-#define _KORL_ASSETCACHE_ASSET_COUNT_MAX 1024
 typedef enum _Korl_AssetCache_AssetState
     { _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED// the file hasn't been opened yet
     , _KORL_ASSET_CACHE_ASSET_STATE_PENDING    // the file is open, and we are async loading the asset
@@ -26,13 +27,11 @@ typedef struct _Korl_AssetCache_Asset
 } _Korl_AssetCache_Asset;
 typedef struct _Korl_AssetCache_Context
 {
-    KORL_MEMORY_POOL_DECLARE(_Korl_AssetCache_Asset, assets, _KORL_ASSETCACHE_ASSET_COUNT_MAX);//KORL-FEATURE-000-000-007: dynamic resizing arrays
+    _Korl_AssetCache_Asset* stbDaAssets;
     /** this allocator will store all the data for the raw assets */
     Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_StringPool stringPool;
 } _Korl_AssetCache_Context;
-#undef _KORL_ASSETCACHE_ASSET_NAME_SIZE_MAX
-#undef _KORL_ASSETCACHE_ASSET_COUNT_MAX
 korl_global_variable _Korl_AssetCache_Context _korl_assetCache_context;
 korl_internal void korl_assetCache_initialize(void)
 {
@@ -41,6 +40,7 @@ korl_internal void korl_assetCache_initialize(void)
     //KORL-PERFORMANCE-000-000-026: savestate/assetCache: there is no need to save/load every asset; we only need assets that have been flagged as "operation critical"
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     context->stringPool      = korl_stringPool_create(context->allocatorHandle);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size
 }
 korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
 {
@@ -49,20 +49,20 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
     const bool asyncLoad = flags & KORL_ASSETCACHE_GET_FLAG_LAZY;
     _Korl_AssetCache_Asset* asset = NULL;
     /* see if the asset is already loaded, and if so select it */
-    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
+    for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
-        if(string_equalsUtf16(context->assets[a].name, assetName))
+        if(string_equalsUtf16(context->stbDaAssets[a].name, assetName))
         {
-            asset = &(context->assets[a]);
+            asset = &(context->stbDaAssets[a]);
             break;
         }
     }
     if(!asset)
     {
         /* otherwise, add a new asset */
-        korl_assert(!KORL_MEMORY_POOL_ISFULL(context->assets));
-        asset = KORL_MEMORY_POOL_ADD(context->assets);
-        korl_memory_zero(asset, sizeof(*asset));
+        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAssets, (_Korl_AssetCache_Asset){0});
+        asset = context->stbDaAssets + arrlen(context->stbDaAssets) - 1;
+        korl_memory_zero(asset, sizeof(*asset));// not _entirely_ sure this is necessary, but I've read that struct initialization using {0} might have portability issues?...
         asset->name = string_newUtf16(assetName);
     }
     switch(asset->state)
@@ -141,9 +141,9 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
+    for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
-        _Korl_AssetCache_Asset*const asset = &(context->assets[a]);
+        _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
         if(asset->state == _KORL_ASSET_CACHE_ASSET_STATE_RELOADING)
         {
             const Korl_File_GetAsyncIoResult asyncIoResult = 
@@ -202,9 +202,9 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
 korl_internal void korl_assetCache_clearAllFileHandles(void)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
+    for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
-        _Korl_AssetCache_Asset*const asset = &(context->assets[a]);
+        _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
         if(asset->fileDescriptor.flags)
             korl_file_close(&(asset->fileDescriptor));
     }
@@ -212,9 +212,7 @@ korl_internal void korl_assetCache_clearAllFileHandles(void)
 korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    const u$ bytesRequired = sizeof(context->assets_korlMemoryPoolSize) 
-                           + context->assets_korlMemoryPoolSize*sizeof(*context->assets)
-                           //KORL-ISSUE-000-000-079: stringPool/file/savestate: either create a (de)serialization API for stringPool, or just put context state into a single allocation?
+    const u$ bytesRequired = sizeof(context->stbDaAssets) 
                            + sizeof(context->stringPool);
     u8* bufferCursor    = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
     const u8* bufferEnd = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytes;
@@ -228,27 +226,16 @@ korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle al
         bufferCursor = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
         bufferEnd    = bufferCursor + *saveStateBufferBytes;
     }
-    korl_assert(sizeof(context->assets_korlMemoryPoolSize)                  == korl_memory_packU32(context->assets_korlMemoryPoolSize, &bufferCursor, bufferEnd));
-    korl_assert(context->assets_korlMemoryPoolSize*sizeof(*context->assets) == korl_memory_packStringI8(KORL_C_CAST(i8*, context->assets), context->assets_korlMemoryPoolSize*sizeof(*context->assets), &bufferCursor, bufferEnd));
+    korl_assert(sizeof(context->stbDaAssets) == korl_memory_packU64(KORL_C_CAST(u$, context->stbDaAssets), &bufferCursor, bufferEnd));
     //KORL-ISSUE-000-000-079: stringPool/file/savestate: either create a (de)serialization API for stringPool, or just put context state into a single allocation?
-    korl_assert(sizeof(context->stringPool)                                 == korl_memory_packStringI8(KORL_C_CAST(i8*, &context->stringPool), sizeof(context->stringPool), &bufferCursor, bufferEnd));
+    korl_assert(sizeof(context->stringPool)  == korl_memory_packStringI8(KORL_C_CAST(i8*, &context->stringPool), sizeof(context->stringPool), &bufferCursor, bufferEnd));
     *saveStateBufferBytesUsed += bytesRequired;
 }
 korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    /* sanity check to make sure that all assets are done with file I/O */
-    for(u$ a = 0; a < KORL_MEMORY_POOL_SIZE(context->assets); a++)
-    {
-        _Korl_AssetCache_Asset*const asset = &(context->assets[a]);
-        korl_assert(asset->fileDescriptor.flags == 0);
-    }
-    if(!ReadFile(hFile, &context->assets_korlMemoryPoolSize, sizeof(context->assets_korlMemoryPoolSize), NULL/*bytes read*/, NULL/*no overlapped*/))
-    {
-        korl_logLastError("ReadFile failed");
-        return false;
-    }
-    if(!ReadFile(hFile, context->assets, context->assets_korlMemoryPoolSize*sizeof(*context->assets), NULL/*bytes read*/, NULL/*no overlapped*/))
+    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
+    if(!ReadFile(hFile, &context->stbDaAssets, sizeof(context->stbDaAssets), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;

@@ -14,6 +14,9 @@ rem 4200: nonstandard extension used: zero-sized array in struct/union; this is
 rem       part of ISO C99 (flexible array member); no reason not to support this
 rem 4201: nonstandard extension used: nameless struct/union; this would be a 
 rem       problem if we cared about supporting C98 (these were added in C11)
+rem 4306: 'type cast': conversion from 'X' to 'Y' of greater size; I can 
+rem       understand warning about casting to a _smaller_ type, but I really 
+rem       can't see how useful it is to warn about casting to a _larger_ type...
 rem 4505: unreferenced function with internal linkage has been removed; this is 
 rem       completely useless as far as I can tell, since if we try to call a 
 rem       function that isn't defined in the module, the compiler will complain
@@ -25,7 +28,7 @@ rem       myself caring about this anytime soon
 rem 4711: function 'X' selected for automatic inline expansion; this only 
 rem       happens in optimized builds, and I don't really care about code size 
 rem       metrics or how the asm looks at all right now.  Maybe in the future...
-set KORL_DISABLED_WARNINGS=/wd4061 /wd4200 /wd4201 /wd4505 /wd4514 /wd4706 /wd4710 /wd4711
+set KORL_DISABLED_WARNINGS=/wd4061 /wd4200 /wd4201 /wd4306 /wd4505 /wd4514 /wd4706 /wd4710 /wd4711
 rem 4100: unreferenced formal parameter; same reasoning as 4189
 rem 4101: unreferenced local variable; same reasoning as 4189 
 rem       (why are these different warnings? lol)
