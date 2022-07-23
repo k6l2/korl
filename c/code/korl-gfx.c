@@ -6,6 +6,7 @@
 #include "korl-vulkan.h"
 #include "korl-time.h"
 #include "korl-stb-truetype.h"
+#include "korl-stb-ds.h"
 #define _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS 0
 typedef struct _Korl_Gfx_FontGlyphBackedCharacterBoundingBox
 {
@@ -64,7 +65,7 @@ typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gfx_FontCache*, fontCaches, 16);//KORL-FEATURE-000-000-007: dynamic resizing arrays
+    _Korl_Gfx_FontCache** stbDaFontCaches;
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
 korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyphPage, const int sizeX, const int sizeY, 
@@ -297,27 +298,27 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     u$ existingFontCacheIndex = 0;
     bool bakeGlyphs        = false;
     bool bakeGlyphOutlines = false;
-    for(; existingFontCacheIndex < KORL_MEMORY_POOL_SIZE(context->fontCaches); existingFontCacheIndex++)
+    for(; existingFontCacheIndex < arrlenu(context->stbDaFontCaches); existingFontCacheIndex++)
         // find the font cache with a matching font asset name AND render 
         //  parameters such as font pixel height, etc... //
-        if(    0 == korl_memory_stringCompare(batch->_assetNameFont, context->fontCaches[existingFontCacheIndex]->fontAssetName) 
-            && context->fontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight 
-            && (   context->fontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
-                || context->fontCaches[existingFontCacheIndex]->pixelOutlineThickness == batch->_textPixelOutline))
+        if(    0 == korl_memory_stringCompare(batch->_assetNameFont, context->stbDaFontCaches[existingFontCacheIndex]->fontAssetName) 
+            && context->stbDaFontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight 
+            && (   context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
+                || context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == batch->_textPixelOutline))
         {
-            bakeGlyphOutlines = context->fontCaches[existingFontCacheIndex]->pixelOutlineThickness != batch->_textPixelOutline;
+            bakeGlyphOutlines = context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness != batch->_textPixelOutline;
             break;
         }
     _Korl_Gfx_FontCache* fontCache = NULL;
-    if(existingFontCacheIndex < KORL_MEMORY_POOL_SIZE(context->fontCaches))
-        fontCache = context->fontCaches[existingFontCacheIndex];
+    if(existingFontCacheIndex < arrlenu(context->stbDaFontCaches))
+        fontCache = context->stbDaFontCaches[existingFontCacheIndex];
     else// if we could not find a matching fontCache, we need to create one //
     {
         bakeGlyphs        = true;
         bakeGlyphOutlines = batch->_textPixelOutline != 0.f;
         /* add a new font cache address to the context's font cache address pool */
-        korl_assert(!KORL_MEMORY_POOL_ISFULL(context->fontCaches));
-        _Korl_Gfx_FontCache**const newFontCache = KORL_MEMORY_POOL_ADD(context->fontCaches);
+        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, NULL);
+        _Korl_Gfx_FontCache**const newFontCache = context->stbDaFontCaches + arrlen(context->stbDaFontCaches) - 1;
         /* calculate how much memory we need */
         korl_shared_const int GLYPH_CODE_FIRST       = ' ';
         korl_shared_const int GLYPH_CODE_LAST        = '~';// ASCII [32, 126]|[' ', '~'] is 95 glyphs
@@ -749,15 +750,14 @@ korl_internal void korl_gfx_initialize(void)
                                                             korl_math_megabytes(4), L"korl-gfx", 
                                                             KORL_MEMORY_ALLOCATOR_FLAGS_NONE, 
                                                             NULL/*let platform choose address*/);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 16);
 }
 korl_internal void korl_gfx_clearFontCache(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    for(Korl_MemoryPool_Size fc = 0; fc < KORL_MEMORY_POOL_SIZE(context->fontCaches); fc++)
-    {
-        korl_free(context->allocatorHandle, context->fontCaches[fc]);
-    }
-    KORL_MEMORY_POOL_EMPTY(context->fontCaches);
+    for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
+        korl_free(context->allocatorHandle, context->stbDaFontCaches[fc]);
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 0);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)
 {
