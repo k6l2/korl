@@ -209,27 +209,11 @@ korl_internal void korl_assetCache_clearAllFileHandles(void)
             korl_file_close(&(asset->fileDescriptor));
     }
 }
-korl_internal void korl_assetCache_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
+korl_internal void korl_assetCache_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    const u$ bytesRequired = sizeof(context->stbDaAssets) 
-                           + sizeof(context->stringPool);
-    u8* bufferCursor    = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
-    const u8* bufferEnd = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytes;
-    if(bufferCursor + bytesRequired > bufferEnd)
-    {
-        *saveStateBufferBytes = KORL_MATH_MAX(2*(*saveStateBufferBytes), 
-                                              // at _least_ make sure that we are about to realloc enough room for the required bytes for the manifest:
-                                              (*saveStateBufferBytes) + bytesRequired);
-        *saveStateBuffer = korl_reallocate(allocatorHandle, *saveStateBuffer, *saveStateBufferBytes);
-        korl_assert(*saveStateBuffer);
-        bufferCursor = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
-        bufferEnd    = bufferCursor + *saveStateBufferBytes;
-    }
-    korl_assert(sizeof(context->stbDaAssets) == korl_memory_packU64(KORL_C_CAST(u$, context->stbDaAssets), &bufferCursor, bufferEnd));
-    //KORL-ISSUE-000-000-079: stringPool/file/savestate: either create a (de)serialization API for stringPool, or just put context state into a single allocation?
-    korl_assert(sizeof(context->stringPool)  == korl_memory_packStringI8(KORL_C_CAST(i8*, &context->stringPool), sizeof(context->stringPool), &bufferCursor, bufferEnd));
-    *saveStateBufferBytesUsed += bytesRequired;
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &context->stbDaAssets, sizeof(context->stbDaAssets));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &context->stringPool , sizeof(context->stringPool));
 }
 korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
 {

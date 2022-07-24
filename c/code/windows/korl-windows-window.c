@@ -12,6 +12,7 @@
 #include "korl-interface-game.h"
 #include "korl-gui.h"
 #include "korl-file.h"
+#include "korl-stb-ds.h"
 korl_global_const TCHAR _KORL_WINDOWS_WINDOW_CLASS_NAME[] = _T("KorlWindowClass");
 typedef struct _Korl_Windows_Window_Context
 {
@@ -442,27 +443,12 @@ korl_internal void korl_windows_window_loop(void)
     /**/
     korl_vulkan_destroySurface();
 }
-korl_internal void korl_windows_window_saveStateWrite(Korl_Memory_AllocatorHandle allocatorHandle, void** saveStateBuffer, u$* saveStateBufferBytes, u$* saveStateBufferBytesUsed)
+korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
-    const u$ bytesRequired = sizeof(_korl_windows_window_context.gameMemory) 
-                           + sizeof(swapchainSize);
-    u8* bufferCursor    = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
-    const u8* bufferEnd = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytes;
-    if(bufferCursor + bytesRequired > bufferEnd)
-    {
-        *saveStateBufferBytes = KORL_MATH_MAX(2*(*saveStateBufferBytes), 
-                                              // at _least_ make sure that we are about to realloc enough room for the required bytes for the manifest:
-                                              (*saveStateBufferBytes) + bytesRequired);
-        *saveStateBuffer = korl_reallocate(allocatorHandle, *saveStateBuffer, *saveStateBufferBytes);
-        korl_assert(*saveStateBuffer);
-        bufferCursor = KORL_C_CAST(u8*, *saveStateBuffer) + *saveStateBufferBytesUsed;
-        bufferEnd    = bufferCursor + *saveStateBufferBytes;
-    }
-    korl_assert(sizeof(_korl_windows_window_context.gameMemory) == korl_memory_packU64(KORL_C_CAST(u64, _korl_windows_window_context.gameMemory), &bufferCursor, bufferEnd));
-    korl_assert(sizeof(swapchainSize.x)                         == korl_memory_packU32(swapchainSize.x, &bufferCursor, bufferEnd));
-    korl_assert(sizeof(swapchainSize.y)                         == korl_memory_packU32(swapchainSize.y, &bufferCursor, bufferEnd));
-    *saveStateBufferBytesUsed += bytesRequired;
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameMemory, sizeof(_korl_windows_window_context.gameMemory));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &swapchainSize.x, sizeof(swapchainSize.x));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &swapchainSize.y, sizeof(swapchainSize.y));
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {

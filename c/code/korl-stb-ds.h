@@ -4,3 +4,4 @@
 #include "stb/stb_ds.h"
 #include "korl-globalDefines.h"
 korl_internal void korl_stb_ds_initialize(void);
+korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes);

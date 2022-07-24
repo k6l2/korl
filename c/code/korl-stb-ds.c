@@ -75,6 +75,12 @@ korl_internal void korl_stb_ds_initialize(void)
     _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
 #endif
 }
+korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes)
+{
+    const u$ arrayLengthInitial = arrlenu(*pStbDsArray);
+    mcarrsetlen(memoryContext, *pStbDsArray, arrayLengthInitial + bytes);
+    korl_memory_copy(*pStbDsArray + arrayLengthInitial, data, bytes);
+}
 #define STB_DS_IMPLEMENTATION
 #define STBDS_ASSERT(x) korl_assert(x)
 #include "stb/stb_ds.h"
