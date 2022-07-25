@@ -1,5 +1,6 @@
 #include "korl-stringPool.h"
 #include "korl-checkCast.h"
+#include "korl-stb-ds.h"
 typedef struct _Korl_StringPool_Allocation
 {
     u32 poolByteOffset;
@@ -59,17 +60,17 @@ typedef struct _Korl_StringPool_String
 korl_internal u32 _korl_stringPool_allocate(Korl_StringPool* context, u$ bytes, const wchar_t* file, int line)
 {
     korl_assert(bytes > 0);
-    _korl_stringPool_allocation_quick_sort(context->allocations, context->allocationsSize);
+    _korl_stringPool_allocation_quick_sort(context->stbDaAllocations, arrlenu(context->stbDaAllocations));
     u$ currentPoolOffset  = 0;
     u$ currentUnusedBytes = context->characterPoolBytes;// value only used if there are no allocations
-    for(u$ a = 0; a < context->allocationsSize; a++)
+    for(u$ a = 0; a < arrlenu(context->stbDaAllocations); a++)
     {
-        currentUnusedBytes = context->allocations[a].poolByteOffset - currentPoolOffset;// overwrite new unused byte count, since we know there is an allocation here
+        currentUnusedBytes = context->stbDaAllocations[a].poolByteOffset - currentPoolOffset;// overwrite new unused byte count, since we know there is an allocation here
         /* check if there is sufficient unused space in the regions behind each 
             allocation in the pool */
         if(bytes < currentUnusedBytes)
             goto create_allocation_and_return_currentPoolOffset;
-        currentPoolOffset = context->allocations[a].poolByteOffset + context->allocations[a].bytes;
+        currentPoolOffset = context->stbDaAllocations[a].poolByteOffset + context->stbDaAllocations[a].bytes;
         currentUnusedBytes = context->characterPoolBytes - currentPoolOffset;// value is only used in the code outside of this loop (after the last iteration)
     }
     /* check if there is sufficient unused space at the end of the pool (after 
@@ -86,26 +87,20 @@ create_allocation_and_return_currentPoolOffset:
     newAllocation.file           = file;
     newAllocation.line           = line;
     newAllocation.poolByteOffset = korl_checkCast_u$_to_u32(currentPoolOffset);
-    if(context->allocationsSize >= context->allocationsCapacity)
-    {
-        context->allocationsCapacity *= 2;
-        context->allocations = KORL_C_CAST(_Korl_StringPool_Allocation*, korl_reallocate(context->allocatorHandle, context->allocations, sizeof(*context->allocations) * context->allocationsCapacity));
-        korl_assert(context->allocations);
-    }
-    context->allocations[context->allocationsSize++] = newAllocation;
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAllocations, newAllocation);
     return newAllocation.poolByteOffset;
 }
 korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allocationOffset, u$ bytes, const wchar_t* file, int line)
 {
     korl_assert(bytes > 0);
-    _korl_stringPool_allocation_quick_sort(context->allocations, context->allocationsSize);
+    _korl_stringPool_allocation_quick_sort(context->stbDaAllocations, arrlenu(context->stbDaAllocations));
     /* find the allocation matching the provided byte offset */
     u$ allocIndex = 0;
-    for(; allocIndex < context->allocationsSize; allocIndex++)
-        if(context->allocations[allocIndex].poolByteOffset == allocationOffset)
+    for(; allocIndex < arrlenu(context->stbDaAllocations); allocIndex++)
+        if(context->stbDaAllocations[allocIndex].poolByteOffset == allocationOffset)
             break;
-    korl_assert(allocIndex < context->allocationsSize);
-    _Korl_StringPool_Allocation* allocationPrevious = &(context->allocations[allocIndex]);
+    korl_assert(allocIndex < arrlenu(context->stbDaAllocations));
+    _Korl_StringPool_Allocation* allocationPrevious = &(context->stbDaAllocations[allocIndex]);
     if(bytes == allocationPrevious->bytes)
         return allocationOffset;
     /* if bytes is smaller, we can just shrink the allocation & we're done */
@@ -120,11 +115,11 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
     if(allocIndex == 0)
         expandOffsetMin = 0;
     else
-        expandOffsetMin = context->allocations[allocIndex - 1].poolByteOffset + context->allocations[allocIndex - 1].bytes;
-    if(allocIndex == context->allocationsSize - 1)
+        expandOffsetMin = context->stbDaAllocations[allocIndex - 1].poolByteOffset + context->stbDaAllocations[allocIndex - 1].bytes;
+    if(allocIndex == arrlenu(context->stbDaAllocations) - 1)
         expandOffsetMax = korl_checkCast_u$_to_u32(context->characterPoolBytes);
     else
-        expandOffsetMax = context->allocations[allocIndex + 1].poolByteOffset;
+        expandOffsetMax = context->stbDaAllocations[allocIndex + 1].poolByteOffset;
     /* if we can expand to the higher offsets, we can just grow the allocation & we're done */
     if(expandOffsetMax - allocationPrevious->poolByteOffset >= bytes)
     {
@@ -133,7 +128,7 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
     }
     /* if we can't expand to higher offsets, but we are the last allocation, we 
         can just grow the pool & increase our allocation size */
-    else if(allocIndex == context->allocationsSize - 1)
+    else if(allocIndex == arrlenu(context->stbDaAllocations) - 1)
     {
         context->characterPoolBytes = KORL_MATH_MAX(context->characterPoolBytes + bytes/*NOTE: this is an overestimate, but should still work*/, 2*context->characterPoolBytes);
         context->characterPool = KORL_C_CAST(u8*, korl_reallocate(context->allocatorHandle, context->characterPool, context->characterPoolBytes));
@@ -153,28 +148,24 @@ korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allo
     }
     /* we can't expand; we need to allocate->copy->free */
     const u32 newAllocOffset = _korl_stringPool_allocate(context, bytes, file, line);//KORL-PERFORMANCE-000-000-025: stringPool: we should tell the allocation function that it doesn't have to sort
-    allocationPrevious = &(context->allocations[allocIndex]);// allocating can invalidate all pointers, so we _must_ recalculate this!
+    allocationPrevious = &(context->stbDaAllocations[allocIndex]);// allocating can invalidate all pointers, so we _must_ recalculate this!
     korl_memory_copy(context->characterPool + newAllocOffset, 
                      context->characterPool + allocationPrevious->poolByteOffset, 
                      allocationPrevious->bytes);
-    // this will release the previous allocation (no need to call free) //
-    context->allocations[allocIndex] = context->allocations[context->allocationsSize - 1];
-    context->allocationsSize--;
-    // //
+    arrdelswap(context->stbDaAllocations, allocIndex);
     return newAllocOffset;
 }
 korl_internal void _korl_stringPool_free(Korl_StringPool* context, u32 poolByteOffset)
 {
-    for(u$ a = 0; a < context->allocationsSize; a++)
+    for(u$ a = 0; a < arrlenu(context->stbDaAllocations); a++)
     {
-        if(context->allocations[a].poolByteOffset == poolByteOffset)
+        if(context->stbDaAllocations[a].poolByteOffset == poolByteOffset)
         {
             /* remove the allocation by replacing this allocation with the last 
                 allocation in the collection, then decreasing the collection 
                 size (should be quite fast, but requires allocate having to re-
                 sort the collection, which is fine by me for now) */
-            context->allocations[a] = context->allocations[context->allocationsSize - 1];
-            context->allocationsSize--;
+            arrdelswap(context->stbDaAllocations, a);
             return;
         }
     }
@@ -185,7 +176,7 @@ korl_internal _Korl_StringPool_String* _korl_stringPool_addNewString(Korl_String
     /* find a unique handle for the new string */
     korl_assert(context->nextStringHandle != 0);
     const u32 maxHandles = KORL_U32_MAX - 1/*since 0 is an invalid handle*/;
-    korl_assert(context->stringsSize < maxHandles);// ensure there is at least one possible unused valid handle value for a new string
+    korl_assert(arrlenu(context->stbDaStrings) < maxHandles);// ensure there is at least one possible unused valid handle value for a new string
     Korl_StringPool_StringHandle newHandle = 0;
     /* iterate over all possible handle values until we find the unused handle value */
     for(Korl_StringPool_StringHandle h = 0; h < maxHandles; h++)
@@ -193,8 +184,8 @@ korl_internal _Korl_StringPool_String* _korl_stringPool_addNewString(Korl_String
         newHandle = context->nextStringHandle;
         /* If another string has this handle, we nullify the newHandle so that 
             we can move on to the next handle candidate */
-        for(u$ s = 0; s < context->stringsSize; s++)
-            if(context->strings[s].handle == newHandle)
+        for(u$ s = 0; s < arrlenu(context->stbDaStrings); s++)
+            if(context->stbDaStrings[s].handle == newHandle)
             {
                 newHandle = 0;
                 break;
@@ -208,14 +199,8 @@ korl_internal _Korl_StringPool_String* _korl_stringPool_addNewString(Korl_String
     }
     korl_assert(newHandle);// sanity check
     /* add a new string entry */
-    if(context->stringsSize >= context->stringsCapacity)
-    {
-        korl_assert(context->stringsCapacity > 0);
-        context->stringsCapacity *= 2;
-        context->strings = KORL_C_CAST(_Korl_StringPool_String*, korl_reallocate(context->allocatorHandle, context->strings, sizeof(*context->strings) * context->stringsCapacity));
-        korl_assert(context->strings);
-    }
-    _Korl_StringPool_String*const newString = &context->strings[context->stringsSize++];
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaStrings, KORL_STRUCT_INITIALIZE(_Korl_StringPool_String){0});
+    _Korl_StringPool_String*const newString = context->stbDaStrings + arrlen(context->stbDaStrings) - 1;
     korl_memory_zero(newString, sizeof(*newString));
     newString->handle = newHandle;
     newString->flags  = stringFlags;
@@ -373,10 +358,10 @@ korl_internal void _korl_stringPool_setStringFlags(Korl_StringPool* context, _Ko
 korl_internal u$ _korl_stringPool_findIndexMatchingHandle(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     if(stringHandle == 0)
-        return context->stringsSize;
+        return arrlenu(context->stbDaStrings);
     u$ s = 0;
-    for(; s < context->stringsSize; s++)
-        if(context->strings[s].handle == stringHandle)
+    for(; s < arrlenu(context->stbDaStrings); s++)
+        if(context->stbDaStrings[s].handle == stringHandle)
             break;
     return s;
 }
@@ -405,17 +390,17 @@ korl_internal void _korl_stringPool_deduceEncoding(Korl_StringPool* context, _Ko
 korl_internal void _korl_stringPool_appendFormatVaListUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const char* formatUtf8, va_list args)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* get UTF-8 encoding if we don't already have it */
-    _korl_stringPool_deduceEncoding(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8, file, line);
+    _korl_stringPool_deduceEncoding(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8, file, line);
     /* invalidate other encodings, since we're just going to perform that work 
         on the UTF-8 raw string */
-    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
+    _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     /* create the formatted string */
     char*const cStringFormat = korl_memory_stringFormatVaListUtf8(context->allocatorHandle, formatUtf8, args);
     /* perform the append */
     const u$ additionalStringSize = korl_memory_stringSizeUtf8(cStringFormat);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     str->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf8, (str->rawSizeUtf8 + additionalStringSize + 1/*null terminator*/)*sizeof(u8), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf8 + str->rawSizeUtf8*sizeof(u8), 
                      cStringFormat, 
@@ -427,17 +412,17 @@ korl_internal void _korl_stringPool_appendFormatVaListUtf8(Korl_StringPool* cont
 korl_internal void _korl_stringPool_appendFormatVaListUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const wchar_t* formatUtf16, va_list args)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* get UTF-16 encoding if we don't already have it */
-    _korl_stringPool_deduceEncoding(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
+    _korl_stringPool_deduceEncoding(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
     /* invalidate other encodings, since we're just going to perform that work 
         on the UTF-16 raw string */
-    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
+    _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     /* create the formatted string */
     wchar_t*const cStringFormat = korl_memory_stringFormatVaList(context->allocatorHandle, formatUtf16, args);
     /* perform the append */
     const u$ additionalStringSize = korl_memory_stringSize(cStringFormat);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf16 + str->rawSizeUtf16*sizeof(u16), 
                      cStringFormat, 
@@ -453,20 +438,18 @@ korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle
     result.nextStringHandle    = 1;
     result.characterPoolBytes  = korl_math_kilobytes(1);
     result.characterPool       = KORL_C_CAST(u8*, korl_allocate(result.allocatorHandle, result.characterPoolBytes));
-    result.stringsCapacity     = 16;
-    result.strings             = KORL_C_CAST(_Korl_StringPool_String*, korl_allocate(result.allocatorHandle, sizeof(*result.strings)     * result.stringsCapacity));
-    result.allocationsCapacity = 16;
-    result.allocations         = KORL_C_CAST(_Korl_StringPool_Allocation*, korl_allocate(result.allocatorHandle, sizeof(*result.allocations) * result.allocationsCapacity));
+    mcarrsetcap(KORL_C_CAST(void*, allocatorHandle), result.stbDaAllocations, 16);
+    mcarrsetcap(KORL_C_CAST(void*, allocatorHandle), result.stbDaStrings    , 16);
     korl_assert(result.characterPool);
-    korl_assert(result.strings);
-    korl_assert(result.allocations);
+    korl_assert(result.stbDaAllocations);
+    korl_assert(result.stbDaStrings);
     return result;
 }
 korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
 {
     //KORL-ISSUE-000-000-012: add a cleanup function to verify that there are not memory leaks (ensure that strings & allocations are empty)
-    korl_free(context->allocatorHandle, context->strings);
-    korl_free(context->allocatorHandle, context->allocations);
+    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAllocations);
+    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaStrings);
     korl_free(context->allocatorHandle, context->characterPool);
     korl_memory_zero(context, sizeof(*context));
 }
@@ -531,64 +514,63 @@ korl_internal void korl_stringPool_free(Korl_StringPool* context, Korl_StringPoo
         return;
     /* find the matching handle in the string array */
     u$ s = 0;
-    for(; s < context->stringsSize; s++)
-        if(context->strings[s].handle == stringHandle)
+    for(; s < arrlenu(context->stbDaStrings); s++)
+        if(context->stbDaStrings[s].handle == stringHandle)
             break;
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* deallocate any raw string allocations */
-    if(context->strings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
-        _korl_stringPool_free(context, context->strings[s].poolByteOffsetUtf16);
+    if(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
+        _korl_stringPool_free(context, context->stbDaStrings[s].poolByteOffsetUtf16);
     /* remove the string from the string array */
-    context->strings[s] = context->strings[context->stringsSize - 1];
-    context->stringsSize--;
+    arrdelswap(context->stbDaStrings, s);
 }
 korl_internal void korl_stringPool_reserveUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
     if(!stringHandle)
         return;// if the string handle is invalid, we don't have to do anything
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* if there are other raw strings representing this string pool entry, we 
         need to invalidate them since those strings will have to be re-encoded */
-    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
+    _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     /* perform a reallocation of the raw string */
-    context->strings[s].rawSizeUtf8        = reservedSizeExcludingNullTerminator;
-    context->strings[s].poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, context->strings[s].poolByteOffsetUtf8, (context->strings[s].rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
+    context->stbDaStrings[s].rawSizeUtf8        = reservedSizeExcludingNullTerminator;
+    context->stbDaStrings[s].poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, context->stbDaStrings[s].poolByteOffsetUtf8, (context->stbDaStrings[s].rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
     /* make sure the raw string is null-terminated properly */
-    u8*const rawUtf8 = KORL_C_CAST(u8*, context->characterPool + context->strings[s].poolByteOffsetUtf8);
-    rawUtf8[context->strings[s].rawSizeUtf8] = '\0';
+    u8*const rawUtf8 = KORL_C_CAST(u8*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8);
+    rawUtf8[context->stbDaStrings[s].rawSizeUtf8] = '\0';
 }
 korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
     if(!stringHandle)
         return;// if the string handle is invalid, we don't have to do anything
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* if there are other raw strings representing this string pool entry, we 
         need to invalidate them since those strings will have to be re-encoded */
-    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
+    _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     /* perform a reallocation of the raw string */
-    context->strings[s].rawSizeUtf16        = reservedSizeExcludingNullTerminator;
-    context->strings[s].poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, context->strings[s].poolByteOffsetUtf16, (context->strings[s].rawSizeUtf16 + 1/*null terminator*/)*sizeof(u16), file, line);
+    context->stbDaStrings[s].rawSizeUtf16        = reservedSizeExcludingNullTerminator;
+    context->stbDaStrings[s].poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, context->stbDaStrings[s].poolByteOffsetUtf16, (context->stbDaStrings[s].rawSizeUtf16 + 1/*null terminator*/)*sizeof(u16), file, line);
     /* make sure the raw string is null-terminated properly */
-    u16*const rawUtf16 = KORL_C_CAST(u16*, context->characterPool + context->strings[s].poolByteOffsetUtf16);
-    rawUtf16[context->strings[s].rawSizeUtf16] = L'\0';
+    u16*const rawUtf16 = KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16);
+    rawUtf16[context->stbDaStrings[s].rawSizeUtf16] = L'\0';
 }
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandleA, Korl_StringPool_StringHandle stringHandleB)
 {
     /* find the matching handles in the string array */
     const u$ sA = _korl_stringPool_findIndexMatchingHandle(context, stringHandleA);
-    korl_assert(sA < context->stringsSize);
+    korl_assert(sA < arrlenu(context->stbDaStrings));
     const u$ sB = _korl_stringPool_findIndexMatchingHandle(context, stringHandleB);
-    korl_assert(sB < context->stringsSize);
+    korl_assert(sB < arrlenu(context->stbDaStrings));
     /* make sure both strings have UTF-8 */
-    _korl_stringPool_deduceUtf8(context, &(context->strings[sA]), __FILEW__, __LINE__);
-    _korl_stringPool_deduceUtf8(context, &(context->strings[sB]), __FILEW__, __LINE__);
+    _korl_stringPool_deduceUtf8(context, &(context->stbDaStrings[sA]), __FILEW__, __LINE__);
+    _korl_stringPool_deduceUtf8(context, &(context->stbDaStrings[sB]), __FILEW__, __LINE__);
     /* do the raw string comparison */
-    const int resultCompare = korl_memory_arrayU8Compare(context->characterPool + context->strings[sA].poolByteOffsetUtf8, 
-                                                         context->strings[sA].rawSizeUtf8, 
-                                                         context->characterPool + context->strings[sB].poolByteOffsetUtf8, 
-                                                         context->strings[sB].rawSizeUtf8);
+    const int resultCompare = korl_memory_arrayU8Compare(context->characterPool + context->stbDaStrings[sA].poolByteOffsetUtf8, 
+                                                         context->stbDaStrings[sA].rawSizeUtf8, 
+                                                         context->characterPool + context->stbDaStrings[sB].poolByteOffsetUtf8, 
+                                                         context->stbDaStrings[sB].rawSizeUtf8);
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
     else if(resultCompare < 0)
@@ -600,15 +582,15 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Kor
 {
     /* find the matching handle in the string array */
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* if the utf16 version of the string hasn't been created, create it */
-    if(!(context->strings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
+    if(!(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
     {
-        korl_assert(context->strings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);// we need to convert from _something_; might as well ensure that UTF8 already exists
-        _korl_stringPool_convert_utf8_to_utf16(context, &context->strings[s], __FILEW__, __LINE__);
+        korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);// we need to convert from _something_; might as well ensure that UTF8 already exists
+        _korl_stringPool_convert_utf8_to_utf16(context, &context->stbDaStrings[s], __FILEW__, __LINE__);
     }
     /* do the raw string comparison */
-    const int resultCompare = korl_memory_stringCompare(korl_checkCast_cpu16_to_cpwchar(KORL_C_CAST(u16*, context->characterPool + context->strings[s].poolByteOffsetUtf16)), 
+    const int resultCompare = korl_memory_stringCompare(korl_checkCast_cpu16_to_cpwchar(KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16)), 
                                                         korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
@@ -621,10 +603,10 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl
 {
     /* find the matching handle in the string array */
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    _korl_stringPool_deduceUtf8(context, &(context->strings[s]), __FILEW__, __LINE__);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    _korl_stringPool_deduceUtf8(context, &(context->stbDaStrings[s]), __FILEW__, __LINE__);
     /* do the raw string comparison */
-    const int resultCompare = korl_memory_stringCompareUtf8(korl_checkCast_cpu8_to_cpchar(context->characterPool + context->strings[s].poolByteOffsetUtf8), 
+    const int resultCompare = korl_memory_stringCompareUtf8(korl_checkCast_cpu8_to_cpchar(context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8), 
                                                             cStringUtf8);
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
@@ -648,59 +630,59 @@ korl_internal bool korl_stringPool_equalsUtf16(Korl_StringPool* context, Korl_St
 korl_internal const char* korl_stringPool_getRawUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* if the utf8 version of the string hasn't been created, create it */
-    _korl_stringPool_deduceEncoding(context, &context->strings[s], _KORL_STRINGPOOL_STRING_FLAG_UTF8, __FILEW__, __LINE__);
-    return KORL_C_CAST(char*, context->characterPool + context->strings[s].poolByteOffsetUtf8);
+    _korl_stringPool_deduceEncoding(context, &context->stbDaStrings[s], _KORL_STRINGPOOL_STRING_FLAG_UTF8, __FILEW__, __LINE__);
+    return KORL_C_CAST(char*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8);
 }
 korl_internal const wchar_t* korl_stringPool_getRawUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* if the utf16 version of the string hasn't been created, create it */
-    _korl_stringPool_deduceEncoding(context, &context->strings[s], _KORL_STRINGPOOL_STRING_FLAG_UTF16, __FILEW__, __LINE__);
-    return KORL_C_CAST(wchar_t*, context->characterPool + context->strings[s].poolByteOffsetUtf16);
+    _korl_stringPool_deduceEncoding(context, &context->stbDaStrings[s], _KORL_STRINGPOOL_STRING_FLAG_UTF16, __FILEW__, __LINE__);
+    return KORL_C_CAST(wchar_t*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16);
 }
 korl_internal u32 korl_stringPool_getRawSizeUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    return context->strings[s].rawSizeUtf8;
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    return context->stbDaStrings[s].rawSizeUtf8;
 }
 korl_internal u32 korl_stringPool_getRawSizeUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    return context->strings[s].rawSizeUtf16;
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    return context->stbDaStrings[s].rawSizeUtf16;
 }
 korl_internal char* korl_stringPool_getRawWriteableUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    korl_assert(context->strings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);
-    return KORL_C_CAST(i8*, context->characterPool + context->strings[s].poolByteOffsetUtf8);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);
+    return KORL_C_CAST(i8*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8);
 }
 korl_internal wchar_t* korl_stringPool_getRawWriteableUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    korl_assert(context->strings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
-    return korl_checkCast_pu16_to_pwchar(KORL_C_CAST(u16*, context->characterPool + context->strings[s].poolByteOffsetUtf16));
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
+    return korl_checkCast_pu16_to_pwchar(KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16));
 }
 korl_internal Korl_StringPool_StringHandle korl_stringPool_copy(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    _Korl_StringPool_String*const newString = _korl_stringPool_addNewString(context, context->strings[s].flags);
-    newString->rawSizeUtf8  = context->strings[s].rawSizeUtf8;
-    newString->rawSizeUtf16 = context->strings[s].rawSizeUtf16;
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const newString = _korl_stringPool_addNewString(context, context->stbDaStrings[s].flags);
+    newString->rawSizeUtf8  = context->stbDaStrings[s].rawSizeUtf8;
+    newString->rawSizeUtf16 = context->stbDaStrings[s].rawSizeUtf16;
     _Korl_StringPool_StringFlags flagsAdded = _KORL_STRINGPOOL_STRING_FLAGS_NONE;
     if(newString->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
         flagsAdded |= _KORL_STRINGPOOL_STRING_FLAG_UTF8;
         newString->poolByteOffsetUtf8 = _korl_stringPool_allocate(context, (newString->rawSizeUtf8+1)*sizeof(u8), file, line);
         korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf8, 
-                         context->characterPool + context->strings[s].poolByteOffsetUtf8, 
+                         context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8, 
                          newString->rawSizeUtf8*sizeof(u8));
         // apply null terminator //
         u8*const newUtf8 = context->characterPool + newString->poolByteOffsetUtf8;
@@ -711,7 +693,7 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_copy(Korl_StringPool*
         flagsAdded |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
         newString->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (newString->rawSizeUtf16+1)*sizeof(u16), file, line);
         korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf16, 
-                         context->characterPool + context->strings[s].poolByteOffsetUtf16, 
+                         context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16, 
                          newString->rawSizeUtf16*sizeof(u16));
         // apply null terminator //
         u16*const newUtf16 = KORL_C_CAST(u16*, context->characterPool + newString->poolByteOffsetUtf16);
@@ -724,11 +706,11 @@ korl_internal Korl_StringPool_StringHandle korl_stringPool_copy(Korl_StringPool*
 korl_internal void korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, Korl_StringPool_StringHandle stringHandleToAppend, const wchar_t* file, int line)
 {
     const u$ s0 = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s0 < context->stringsSize);
+    korl_assert(s0 < arrlenu(context->stbDaStrings));
     const u$ s1 = _korl_stringPool_findIndexMatchingHandle(context, stringHandleToAppend);
-    korl_assert(s1 < context->stringsSize);
-    _Korl_StringPool_String*const str0 = &(context->strings[s0]);
-    _Korl_StringPool_String*const str1 = &(context->strings[s1]);
+    korl_assert(s1 < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const str0 = &(context->stbDaStrings[s0]);
+    _Korl_StringPool_String*const str1 = &(context->stbDaStrings[s1]);
     /* for each matching type of raw string between the two string pool entries, 
         copy the raw string from s1 onto the end of s0 */
     _Korl_StringPool_StringFlags flagsS0 = str0->flags;
@@ -780,15 +762,15 @@ korl_internal void korl_stringPool_append(Korl_StringPool* context, Korl_StringP
 korl_internal void korl_stringPool_appendUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const i8* cStringUtf8, const wchar_t* file, int line)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* get UTF-8 encoding if we don't already have it */
-    _korl_stringPool_deduceEncoding(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8, file, line);
+    _korl_stringPool_deduceEncoding(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8, file, line);
     /* invalidate other encodings, since we're just going to perform that work 
         on the UTF-8 raw string */
-    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
+    _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     /* actually perform the append */
     const u$ additionalStringSize = korl_memory_stringSizeUtf8(cStringUtf8);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     str->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf8, (str->rawSizeUtf8 + additionalStringSize + 1/*null terminator*/)*sizeof(u8), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf8 + str->rawSizeUtf8*sizeof(u8), 
                      cStringUtf8, 
@@ -798,15 +780,15 @@ korl_internal void korl_stringPool_appendUtf8(Korl_StringPool* context, Korl_Str
 korl_internal void korl_stringPool_appendUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
+    korl_assert(s < arrlenu(context->stbDaStrings));
     /* get UTF-16 encoding if we don't already have it */
-    _korl_stringPool_deduceEncoding(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
+    _korl_stringPool_deduceEncoding(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
     /* invalidate other encodings, since we're just going to perform that work 
         on the UTF-16 raw string */
-    _korl_stringPool_setStringFlags(context, &(context->strings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
+    _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     /* actually perform the append */
     const u$ additionalStringSize = korl_memory_stringSize(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf16 + str->rawSizeUtf16*sizeof(u16), 
                      cStringUtf16, 
@@ -830,8 +812,8 @@ korl_internal void korl_stringPool_appendFormatUtf16(Korl_StringPool* context, K
 korl_internal void korl_stringPool_prependUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const i8* cStringUtf8, const wchar_t* file, int line)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     /* get UTF-16 encoding if we don't already have it */
     _korl_stringPool_deduceEncoding(context, str, _KORL_STRINGPOOL_STRING_FLAG_UTF8, file, line);
     /* invalidate other encodings, since we're just going to perform that work 
@@ -851,8 +833,8 @@ korl_internal void korl_stringPool_prependUtf8(Korl_StringPool* context, Korl_St
 korl_internal void korl_stringPool_prependUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     /* get UTF-16 encoding if we don't already have it */
     _korl_stringPool_deduceEncoding(context, str, _KORL_STRINGPOOL_STRING_FLAG_UTF16, file, line);
     /* invalidate other encodings, since we're just going to perform that work 
@@ -872,8 +854,8 @@ korl_internal void korl_stringPool_prependUtf16(Korl_StringPool* context, Korl_S
 korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const i8* cStringUtf8, u32 characterOffsetStart)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     _korl_stringPool_deduceEncoding(context, str, _KORL_STRINGPOOL_STRING_FLAG_UTF8, __FILEW__, __LINE__);
     /* Example; searching the string "testString" for the substring "ring":
         Final iteration:
@@ -895,8 +877,8 @@ korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool* context, Korl_String
 korl_internal u32 korl_stringPool_findUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, u32 characterOffsetStart)
 {
     const u$ s = _korl_stringPool_findIndexMatchingHandle(context, stringHandle);
-    korl_assert(s < context->stringsSize);
-    _Korl_StringPool_String*const str = &(context->strings[s]);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     _korl_stringPool_deduceEncoding(context, str, _KORL_STRINGPOOL_STRING_FLAG_UTF16, __FILEW__, __LINE__);
     /* Example; searching the string "testString" for the substring "ring":
         Final iteration:

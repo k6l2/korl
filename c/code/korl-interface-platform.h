@@ -284,6 +284,8 @@ typedef enum Korl_Memory_AllocatorFlags
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
+#define KORL_PLATFORM_STB_DS_REALLOCATE(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
+#define KORL_PLATFORM_STB_DS_FREE(name)       void  name(void* context, void* allocation)
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
@@ -465,6 +467,8 @@ typedef KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE           (fnSig_korl_memory_all
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE         (fnSig_korl_memory_allocator_reallocate);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_FREE               (fnSig_korl_memory_allocator_free);
 typedef KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY              (fnSig_korl_memory_allocator_empty);
+typedef KORL_PLATFORM_STB_DS_REALLOCATE                   (fnSig_korl_stb_ds_reallocate);
+typedef KORL_PLATFORM_STB_DS_FREE                         (fnSig_korl_stb_ds_free);
 typedef KORL_PLATFORM_ASSETCACHE_GET                      (fnSig_korl_assetCache_get);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_FOV               (fnSig_korl_gfx_createCameraFov);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO             (fnSig_korl_gfx_createCameraOrtho);
@@ -524,6 +528,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_memory_allocator_reallocate*      korl_memory_allocator_reallocate;\
     fnSig_korl_memory_allocator_free*            korl_memory_allocator_free;\
     fnSig_korl_memory_allocator_empty*           korl_memory_allocator_empty;\
+    fnSig_korl_stb_ds_reallocate*                _korl_stb_ds_reallocate;\
+    fnSig_korl_stb_ds_free*                      _korl_stb_ds_free;\
     fnSig_korl_assetCache_get*                   korl_assetCache_get;\
     fnSig_korl_gfx_createCameraFov*              korl_gfx_createCameraFov;\
     fnSig_korl_gfx_createCameraOrtho*            korl_gfx_createCameraOrtho;\
@@ -583,6 +589,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_memory_allocator_reallocate      = korl_memory_allocator_reallocate;\
     (apiVariableName).korl_memory_allocator_free            = korl_memory_allocator_free;\
     (apiVariableName).korl_memory_allocator_empty           = korl_memory_allocator_empty;\
+    (apiVariableName)._korl_stb_ds_reallocate               = _korl_stb_ds_reallocate;\
+    (apiVariableName)._korl_stb_ds_free                     = _korl_stb_ds_free;\
     (apiVariableName).korl_assetCache_get                   = korl_assetCache_get;\
     (apiVariableName).korl_gfx_createCameraFov              = korl_gfx_createCameraFov;\
     (apiVariableName).korl_gfx_createCameraOrtho            = korl_gfx_createCameraOrtho;\
@@ -642,6 +650,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_memory_allocator_reallocate      = (apiVariableName).korl_memory_allocator_reallocate;\
     korl_memory_allocator_free            = (apiVariableName).korl_memory_allocator_free;\
     korl_memory_allocator_empty           = (apiVariableName).korl_memory_allocator_empty;\
+    _korl_stb_ds_reallocate               = (apiVariableName)._korl_stb_ds_reallocate;\
+    _korl_stb_ds_free                     = (apiVariableName)._korl_stb_ds_free;\
     korl_assetCache_get                   = (apiVariableName).korl_assetCache_get;\
     korl_gfx_createCameraFov              = (apiVariableName).korl_gfx_createCameraFov;\
     korl_gfx_createCameraOrtho            = (apiVariableName).korl_gfx_createCameraOrtho;\

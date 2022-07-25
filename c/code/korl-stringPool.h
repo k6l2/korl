@@ -21,9 +21,7 @@ typedef struct Korl_StringPool
     Korl_StringPool_StringHandle nextStringHandle;
     /* String entries are an opaque type because the user should really be using 
         the provided API to operate on strings. */
-    u$ stringsCapacity;                     //KORL-FEATURE-000-000-007: dynamic resizing arrays
-    u$ stringsSize;                         //KORL-FEATURE-000-000-007: dynamic resizing arrays
-    struct _Korl_StringPool_String* strings;//KORL-FEATURE-000-000-007: dynamic resizing arrays
+    struct _Korl_StringPool_String* stbDaStrings;
     /** Having allocation meta data separate from `strings` necessarily means 
      * that we will have data duplication (specifically of the byte offsets of 
      * the actual string data within the pool), but I feel like it's probably a 
@@ -31,9 +29,7 @@ typedef struct Korl_StringPool
      * string data gets overwritten out of bounds or something crazy like that.  
      * Also, allocation data should obviously be opaque since this will be 
      * internally managed.  */
-    u$ allocationsCapacity;                         //KORL-FEATURE-000-000-007: dynamic resizing arrays
-    u$ allocationsSize;                             //KORL-FEATURE-000-000-007: dynamic resizing arrays
-    struct _Korl_StringPool_Allocation* allocations;//KORL-FEATURE-000-000-007: dynamic resizing arrays
+    struct _Korl_StringPool_Allocation* stbDaAllocations;
     u$ characterPoolBytes;
     /** Internally we can just treat the character pool as a linked list of 
      * allocations.  This is similar to a general purpose allocator. */

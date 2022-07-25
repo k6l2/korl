@@ -117,7 +117,7 @@
 [ ] KORL-FEATURE-000-000-004: GUI: automatically save window positions/sizes to a config file, and load them on startup
 [ ] KORL-FEATURE-000-000-005: GUI: allow user to call widget API & have a window automatically created for them
 [x] KORL-FEATURE-000-000-006: save/load application state (REAL memory dumps)
-[ ] KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds, but maybe configurable with a custom KORL allocator per array?
+[x] KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds, but maybe configurable with a custom KORL allocator per array?
 [ ] KORL-FEATURE-000-000-008: time: see if it's possible to use ETW in Windows to sample stack frames automatically for auto-generated profiling
 [ ] KORL-FEATURE-000-000-009: time: display useful metrics in real-time using GUI or something
 [ ] KORL-FEATURE-000-000-010: game: support automatic hot-reloading of entire code module

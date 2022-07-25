@@ -3,5 +3,10 @@
 #define STBDS_FREE(context, pointer)                       _korl_stb_ds_free(context, pointer)
 #include "stb/stb_ds.h"
 #include "korl-globalDefines.h"
+#include "korl-interface-platform.h"
 korl_internal void korl_stb_ds_initialize(void);
 korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes);
+#if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)
+korl_internal KORL_PLATFORM_STB_DS_REALLOCATE(_korl_stb_ds_reallocate);
+korl_internal KORL_PLATFORM_STB_DS_FREE(_korl_stb_ds_free);
+#endif// !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)

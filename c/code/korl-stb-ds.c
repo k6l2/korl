@@ -24,7 +24,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_stb_ds_e
     }
     return true;
 }
-korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
+korl_internal KORL_PLATFORM_STB_DS_REALLOCATE(_korl_stb_ds_reallocate)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
@@ -42,7 +42,7 @@ korl_internal void* _korl_stb_ds_reallocate(void* context, void* allocation, u$ 
 #endif
     return korl_memory_allocator_reallocate(allocatorHandle, allocation, bytes, file, line);
 }
-korl_internal void _korl_stb_ds_free(void* context, void* allocation)
+korl_internal KORL_PLATFORM_STB_DS_FREE(_korl_stb_ds_free)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
