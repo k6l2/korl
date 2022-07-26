@@ -47,19 +47,46 @@ echo INCLUDE=%INCLUDE%
 echo:
 echo LIB=%LIB%
 echo:
+rem Generate a file-name-safe timestamp for the purpose of generating reasonably 
+rem unique file names:
+set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
+set fileNameSafeTimestamp=%fileNameSafeDate%_%time:~0,2%%time:~3,2%%time:~6,2%
+rem remove any spaces from the generated timestamp:
+rem source: https://stackoverflow.com/a/10116045
+set fileNameSafeTimestamp=%fileNameSafeTimestamp: =%
 rem --------------------- async build the game object file ---------------------
 set "lockFileGame=lock-build-game"
 set "statusFileGame=status-build-game.txt"
-rem // create the async build command //
+rem We need to specifically clean up old binaries from dynamic code modules 
+rem because when they are loaded into an application module they effectively 
+rem become locked on the file system until the debugging application is closed; 
+rem so if we don't do this, we'll just accumulate files forever.
 set "KORL_GAME_SOURCE_BASE_NAME=game"
+del *%KORL_GAME_SOURCE_BASE_NAME%*.pdb > NUL 2> NUL
+rem // create the async build command //
 set "buildCommand="
 set "buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\%KORL_GAME_SOURCE_BASE_NAME%.cpp""
 rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
-set "buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
 set "buildCommand=%buildCommand% /std:c++20"
+rem     enable all exception handling code generation
 set "buildCommand=%buildCommand% /EHa"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
 set "buildCommand=cl.exe %CL% %buildCommand% %_CL_%"
+if %KORL_GAME_IS_DYNAMIC% == TRUE ( 
+    goto :BUILD_GAME_SET_OPTIONS_DYNAMIC 
+)
+:BUILD_GAME_SET_OPTIONS_STATIC
+    set "buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
+    rem     ONLY compile; do not link!
+    set "buildCommand=%buildCommand% /c"
+goto :END_BUILD_GAME_SET_OPTIONS
+:BUILD_GAME_SET_OPTIONS_DYNAMIC
+    set "buildCommand=%buildCommand% %korlDllOptions%"
+    set "buildCommand=%buildCommand% /Fd"%fileNameSafeTimestamp%_VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
+    set "buildCommand=%buildCommand% /link"
+    set "buildCommand=%buildCommand% /PDB:%fileNameSafeTimestamp%_%KORL_GAME_SOURCE_BASE_NAME%.pdb"
+goto :END_BUILD_GAME_SET_OPTIONS
+:END_BUILD_GAME_SET_OPTIONS
 rem // create a lock file //
 rem crappy attempt to prevent the build script from running while another build 
 rem     is still running (batch script isn't too great, not sure how much more 
@@ -89,6 +116,8 @@ rem     to the janky MSVC "C98" setting (default).
 rem set "buildCommand=%buildCommand% /std:c11"
 rem     disable exception handling unwind code generation
 set "buildCommand=%buildCommand% /EHa-"
+rem     ONLY compile; do not link!
+set "buildCommand=%buildCommand% /c"
 set "buildCommand=%buildCommand% /D KORL_PLATFORM_WINDOWS"
 rem     use wide character implementations for Windows API
 set "buildCommand=%buildCommand% /D UNICODE"
@@ -119,7 +148,9 @@ if exist %statusFileGame% goto :ON_FAILURE_EXE
 rem ------------------------ link the final executable ------------------------
 set "buildCommand=link.exe"
 set "buildCommand=%buildCommand% %KORL_SOURCE_BASE_NAME%.obj"
-set "buildCommand=%buildCommand% %KORL_GAME_SOURCE_BASE_NAME%.obj"
+if NOT %KORL_GAME_IS_DYNAMIC% == TRUE (
+    set "buildCommand=%buildCommand% %KORL_GAME_SOURCE_BASE_NAME%.obj"
+)
 set "buildCommand=%buildCommand% %KORL_LINKER_OPTIONS%"
 rem     set the name of the executable
 set "buildCommand=%buildCommand% /OUT:%KORL_EXE_NAME%.exe"

@@ -60,8 +60,6 @@ set "CL="
 set "_CL_="
 rem     disable annoying verbose compiler output
 set "_CL_=%_CL_% /nologo"
-rem     ONLY compile; do not link!
-set "_CL_=%_CL_% /c"
 rem     set source & execution character set to UTF-8; required in order to 
 rem     correctly store & display unicode characters apparently 😒
 set "_CL_=%_CL_% /utf-8"
@@ -85,6 +83,7 @@ set "_CL_=%_CL_% /WL"
 rem     potentially very useful for optimizing builds by eliminating bloated 
 rem     standard libraries!
 @REM set "_CL_=%_CL_% /showIncludes"
+set "korlDllOptions="
 rem ----- set common linker options -----
 set "KORL_LINKER_OPTIONS="
 rem     disable useless "startup banner" message in linker output
