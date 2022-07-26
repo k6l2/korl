@@ -76,6 +76,12 @@ if %KORL_GAME_IS_DYNAMIC% == TRUE (
     goto :BUILD_GAME_SET_OPTIONS_DYNAMIC 
 )
 :BUILD_GAME_SET_OPTIONS_STATIC
+    rem     remove all previous dynamic build binaries, so the static 
+    rem     applicaiton doesn't get confused
+    del *%KORL_GAME_SOURCE_BASE_NAME%*.dll > NUL 2> NUL
+    rem     set a normal name for the VC_* pdb file, since we don't have to 
+    rem     worry about it being locked by the exe multiple times during runtime 
+    rem     like when running dynamic application modules
     set "buildCommand=%buildCommand% /Fd"VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
     rem     ONLY compile; do not link!
     set "buildCommand=%buildCommand% /c"
@@ -129,6 +135,7 @@ rem         See: https://docs.microsoft.com/en-us/cpp/build/reference/cl-environ
 set "buildCommand=%buildCommand% /D KORL_APP_NAME#%KORL_EXE_NAME%"
 set "buildCommand=%buildCommand% /D KORL_APP_VERSION#%KORL_EXE_VERSION%"
 set "buildCommand=%buildCommand% /D KORL_APP_TARGET_FRAME_HZ#%KORL_GAME_TARGET_FRAMES_PER_SECOND%"
+set "buildCommand=%buildCommand% /D KORL_DLL_NAME#%KORL_GAME_SOURCE_BASE_NAME%"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
 echo cl.exe %CL% %buildCommand% %_CL_%
 echo:

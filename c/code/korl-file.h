@@ -28,7 +28,19 @@ typedef enum Korl_File_GetAsyncIoResult
     , KORL_FILE_GET_ASYNC_IO_RESULT_PENDING
     , KORL_FILE_GET_ASYNC_IO_RESULT_INVALID_HANDLE
 } Korl_File_GetAsyncIoResult;
+typedef enum Korl_File_ResultRenameReplace
+    { KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS
+    , KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST
+    , KORL_FILE_RESULT_RENAME_REPLACE_FAIL_DELETE_FILE_TO_REPLACE
+    , KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE
+} Korl_File_ResultRenameReplace;
 korl_internal void korl_file_initialize(void);
+korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName, 
+                                  Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew, 
+                                  bool replaceFileNameNewIfExists);
+/** If \c fileNameNew exists, it is replaced with the contents of \c fileName . */
+korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName, 
+                                                                    Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew);
 /** \return \c true if the file was opened successfully, \c false otherwise.  
  * Upon successful execution, the file descriptor is stored in \c o_fileDescriptor. */
 korl_internal bool korl_file_open(Korl_File_PathType pathType, 
@@ -36,11 +48,6 @@ korl_internal bool korl_file_open(Korl_File_PathType pathType,
                                   Korl_File_Descriptor* o_fileDescriptor, 
                                   bool async);
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor);
-/** If \c fileNameNew exists, it is replaced with the contents of \c fileName .  
- * If \c fileName doesn't exist, the function will fail silently, and a warning 
- * is logged. */
-korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName, 
-                                           Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew);
 /** The caller is responsible for keeping \c buffer alive until the write 
  * operation is complete. */
 korl_internal Korl_File_AsyncIoHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes);

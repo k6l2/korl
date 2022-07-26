@@ -433,9 +433,37 @@ korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor)
         korl_logLastError("CloseHandle failed!");
     korl_memory_zero(fileDescriptor, sizeof(*fileDescriptor));
 }
-korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName, 
-                                           Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew)
+korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName, 
+                                  Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew, 
+                                  bool replaceFileNameNewIfExists)
 {
+    bool result = true;
+    _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathTypeFileName    < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    korl_assert(pathTypeFileNameNew < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    Korl_StringPool_StringHandle filePath    = string_copy(context->directoryStrings[pathTypeFileName]);
+    Korl_StringPool_StringHandle filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
+    string_appendFormatUtf16(filePath   , L"\\%ws", fileName);
+    string_appendFormatUtf16(filePathNew, L"\\%ws", fileNameNew);
+    if(!CopyFile(string_getRawUtf16(filePath), string_getRawUtf16(filePathNew), replaceFileNameNewIfExists))
+    {
+        switch(GetLastError())
+        {
+        case ERROR_FILE_NOT_FOUND:{
+            break;}
+        }
+        result = false;
+        goto cleanUp;
+    }
+    cleanUp:
+    string_free(filePath);
+    string_free(filePathNew);
+    return result;
+}
+korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName, 
+                                                                    Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew)
+{
+    Korl_File_ResultRenameReplace result = KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS;
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathTypeFileName    < KORL_FILE_PATHTYPE_ENUM_COUNT);
     korl_assert(pathTypeFileNameNew < KORL_FILE_PATHTYPE_ENUM_COUNT);
@@ -445,7 +473,7 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
     string_appendUtf16(filePath, fileName);
     if(GetFileAttributes(string_getRawUtf16(filePath)) == INVALID_FILE_ATTRIBUTES)
     {
-        korl_log(INFO, "file '%ws' doesn't exist", string_getRawUtf16(filePath));
+        result = KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST;
         goto cleanUp;
     }
     filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
@@ -456,17 +484,19 @@ korl_internal void korl_file_renameReplace(Korl_File_PathType pathTypeFileName, 
             korl_log(INFO, "file '%ws' deleted", string_getRawUtf16(filePathNew));
         else
         {
-            korl_logLastError("DeleteFile('%ws') failed", 
-                              string_getRawUtf16(filePathNew));
+            result = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_DELETE_FILE_TO_REPLACE;
             goto cleanUp;
         }
     if(!MoveFile(string_getRawUtf16(filePath), 
                  string_getRawUtf16(filePathNew)))
-        korl_logLastError("MoveFile('%ws', '%ws') failed", 
-                          string_getRawUtf16(filePath), string_getRawUtf16(filePathNew));
+    {
+        result = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE;
+        goto cleanUp;
+    }
 cleanUp:
     string_free(filePath);
     string_free(filePathNew);
+    return result;
 }
 korl_internal Korl_File_AsyncIoHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes)
 {
