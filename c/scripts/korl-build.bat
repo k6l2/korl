@@ -84,6 +84,7 @@ goto :END_BUILD_GAME_SET_OPTIONS
     set "buildCommand=%buildCommand% %korlDllOptions%"
     set "buildCommand=%buildCommand% /Fd"%fileNameSafeTimestamp%_VC_%VCToolsVersion%_%KORL_GAME_SOURCE_BASE_NAME%.pdb""
     set "buildCommand=%buildCommand% /link"
+    set "buildCommand=%buildCommand% %KORL_LINKER_OPTIONS%"
     set "buildCommand=%buildCommand% /PDB:%fileNameSafeTimestamp%_%KORL_GAME_SOURCE_BASE_NAME%.pdb"
 goto :END_BUILD_GAME_SET_OPTIONS
 :END_BUILD_GAME_SET_OPTIONS
@@ -148,9 +149,12 @@ if exist %statusFileGame% goto :ON_FAILURE_EXE
 rem ------------------------ link the final executable ------------------------
 set "buildCommand=link.exe"
 set "buildCommand=%buildCommand% %KORL_SOURCE_BASE_NAME%.obj"
-if NOT %KORL_GAME_IS_DYNAMIC% == TRUE (
+:BUILD_LINK_GAME_MODULE_STATIC
+    if %KORL_GAME_IS_DYNAMIC% == TRUE (
+        goto :END_BUILD_LINK_GAME_MODULE_STATIC
+    )
     set "buildCommand=%buildCommand% %KORL_GAME_SOURCE_BASE_NAME%.obj"
-)
+:END_BUILD_LINK_GAME_MODULE_STATIC
 set "buildCommand=%buildCommand% %KORL_LINKER_OPTIONS%"
 rem     set the name of the executable
 set "buildCommand=%buildCommand% /OUT:%KORL_EXE_NAME%.exe"

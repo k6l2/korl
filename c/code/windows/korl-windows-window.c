@@ -24,6 +24,15 @@ typedef struct _Korl_Windows_Window_Context
         DWORD style;
         BOOL hasMenu;
     } window;// for now, we will only ever have _one_ window
+    struct
+    {
+        fnSig_korl_game_onReload*        korl_game_onReload;
+        fnSig_korl_game_initialize*      korl_game_initialize;
+        fnSig_korl_game_onKeyboardEvent* korl_game_onKeyboardEvent;
+        fnSig_korl_game_onMouseEvent*    korl_game_onMouseEvent;
+        fnSig_korl_game_update*          korl_game_update;
+        fnSig_korl_game_onAssetReloaded* korl_game_onAssetReloaded;
+    } gameApi;
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
 } _Korl_Windows_Window_Context;
@@ -32,9 +41,10 @@ korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
 LRESULT CALLBACK _korl_windows_window_windowProcedure(
     _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     /* ignore all window events that don't belong to the windows we are 
         responsible for in this code module */
-    if(hWnd != _korl_windows_window_context.window.handle)
+    if(hWnd != context->window.handle)
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
     switch(uMsg)
@@ -51,12 +61,12 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
             korl_log(WARNING, "wParam virtual key code is out of range");
             break;
         }
-        korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
+        context->gameApi.korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
 #if 1//KORL-ISSUE-000-000-068: window: maybe expose more general API
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F1 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
-            _korl_windows_window_context.deferSaveStateSave = true;
+            context->deferSaveStateSave = true;
         if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F2 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
-            _korl_windows_window_context.deferSaveStateLoad = true;
+            context->deferSaveStateLoad = true;
 #endif
         break;}
     case WM_SIZE:{
@@ -91,7 +101,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.x = GET_X_LPARAM(lParam);
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
         mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
-        korl_game_onMouseEvent(mouseEvent);
+        context->gameApi.korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_LBUTTONUP:
     case WM_MBUTTONUP:
@@ -119,7 +129,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.x = GET_X_LPARAM(lParam);
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
         mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
-        korl_game_onMouseEvent(mouseEvent);
+        context->gameApi.korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_MOUSEMOVE:{
         Korl_MouseEvent mouseEvent;
@@ -127,7 +137,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.x = GET_X_LPARAM(lParam);
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
         mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
-        korl_game_onMouseEvent(mouseEvent);
+        context->gameApi.korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_MOUSEWHEEL:{
         Korl_MouseEvent mouseEvent;
@@ -144,7 +154,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.x = mousePoint.x;
         mouseEvent.y = swapchainSize.y - mousePoint.y;
         
-        korl_game_onMouseEvent(mouseEvent);
+        context->gameApi.korl_game_onMouseEvent(mouseEvent);
         } break;
     case WM_MOUSEHWHEEL:{
         Korl_MouseEvent mouseEvent;
@@ -160,7 +170,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
         mouseEvent.x = mousePoint.x;
         mouseEvent.y = swapchainSize.y - mousePoint.y;
-        korl_game_onMouseEvent(mouseEvent);
+        context->gameApi.korl_game_onMouseEvent(mouseEvent);
         } break;
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
     case WM_MOVE:{
@@ -172,13 +182,26 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 }
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_window_onAssetHotReloaded)
 {
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     korl_vulkan_onAssetHotReload(rawUtf16AssetName, assetData);
-    korl_game_onAssetReloaded(rawUtf16AssetName, assetData);
+    context->gameApi.korl_game_onAssetReloaded(rawUtf16AssetName, assetData);
 }
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_kilobytes(16), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    /* attempt to obtain function pointers to the game interface API from within 
+        the exe file; if we fail to get them, then we can assume that we're 
+        running the game module as a DLL */
+    HMODULE hModuleExe = GetModuleHandle(NULL/*get the handle of the exe file*/);
+    if(!hModuleExe)
+        korl_logLastError("GetModuleHandle(NULL) failed");
+    _korl_windows_window_context.gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        GetProcAddress(hModuleExe, "korl_game_onReload"));
+    _korl_windows_window_context.gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      GetProcAddress(hModuleExe, "korl_game_initialize"));
+    _korl_windows_window_context.gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, GetProcAddress(hModuleExe, "korl_game_onKeyboardEvent"));
+    _korl_windows_window_context.gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    GetProcAddress(hModuleExe, "korl_game_onMouseEvent"));
+    _korl_windows_window_context.gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModuleExe, "korl_game_update"));
+    _korl_windows_window_context.gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModuleExe, "korl_game_onAssetReloaded"));
     korl_memory_zero(_korl_windows_window_virtualKeyMap, sizeof(_korl_windows_window_virtualKeyMap));
     for(u32 i = 0; i <= 9; ++i)
         _korl_windows_window_virtualKeyMap[0x30 + i] = KORL_KEY_TENKEYLESS_0 + i;
@@ -283,6 +306,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 }
 korl_internal void korl_windows_window_loop(void)
 {
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     /* get a handle to the file used to create the calling process */
     const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
     korl_assert(hInstance);
@@ -306,8 +330,8 @@ korl_internal void korl_windows_window_loop(void)
     _korl_windows_window_context.gameMemory = korl_allocate(_korl_windows_window_context.allocatorHandle, sizeof(GameMemory));
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
-    korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
-    korl_game_initialize();
+    context->gameApi.korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
+    context->gameApi.korl_game_initialize();
     korl_time_probeStop(game_initialization);
     korl_log(INFO, "KORL initialization time probe report:");
     korl_time_probeLogReport();
@@ -386,14 +410,14 @@ korl_internal void korl_windows_window_loop(void)
             korl_assetCache_clearAllFileHandles();
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
-            korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
+            context->gameApi.korl_game_onReload(_korl_windows_window_context.gameMemory, korlApi);
             korl_time_probeStop(save_state_load);
         }
         korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});                   korl_time_probeStop(vulkan_frame_begin);
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                                korl_time_probeStop(gui_frame_begin);
         korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);
         korl_time_probeStart(game_update);
-        if(!korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
+        if(!context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
         korl_time_probeStop(game_update);
         korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
