@@ -65,7 +65,7 @@
 [ ] KORL-ISSUE-000-000-064: Vulkan: get rid of WIP frames? https://www.reddit.com/r/vulkan/comments/pq2679/understanding_queuing_multiple_frames_at_a_time/
 [ ] KORL-ISSUE-000-000-065: log: although this is generally safe for current workloads, this operation is unsafe for async log file writes
 [ ] KORL-ISSUE-000-000-066: memory: sort report allocations by ascending address
-[ ] KORL-ISSUE-000-000-067: load-save-state: allocation file name not supported; when re-creating savestate allocations, we cannot specify the file name, because these are just stored in the allocators as a shallow address (we do not do a deep copy of the file name string!)
+[x] KORL-ISSUE-000-000-067: load-save-state: allocation file name not supported; when re-creating savestate allocations, we cannot specify the file name, because these are just stored in the allocators as a shallow address (we do not do a deep copy of the file name string!)
 [ ] KORL-ISSUE-000-000-068: window: maybe expose more general API for doing things like save/load states & generate profiling reports
 [ ] KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file?
 [ ] KORL-ISSUE-000-000-070: gfx/fontCache: Either cache glyphs dynamically instead of a fixed region all at once, or devise some way to configure the pre-cached range.
@@ -120,7 +120,7 @@
 [x] KORL-FEATURE-000-000-007: dynamic resizing arrays, similar to stb_ds, but maybe configurable with a custom KORL allocator per array?
 [ ] KORL-FEATURE-000-000-008: time: see if it's possible to use ETW in Windows to sample stack frames automatically for auto-generated profiling
 [ ] KORL-FEATURE-000-000-009: time: display useful metrics in real-time using GUI or something
-[ ] KORL-FEATURE-000-000-010: game: support automatic hot-reloading of entire code module
+[x] KORL-FEATURE-000-000-010: game: support automatic hot-reloading of entire code module
 [x] KORL-FEATURE-000-000-011: math: add C++ API layer for operator overloading support
 [ ] KORL-FEATURE-000-000-012: time: add C++ API layer for RAII time probe support
 [x] KORL-FEATURE-000-000-013: time: report total time probe count in the report

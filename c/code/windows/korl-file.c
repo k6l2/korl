@@ -1364,8 +1364,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                 korl_logLastError("ReadFile failed");
                 goto cleanUp;
             }
-            //KORL-ISSUE-000-000-067: load-save-state: allocation file name not supported
-            void*const allocation = korl_memory_allocator_allocate(allocatorDescriptors[a].handle, allocationBytes, NULL/*file*/, allocationLine, KORL_C_CAST(void*, allocationAddress));
+            void*const allocation = korl_memory_allocator_allocate(allocatorDescriptors[a].handle, allocationBytes, string_getRawWriteableUtf16(allocationFileBuffer), allocationLine, KORL_C_CAST(void*, allocationAddress));
             if(!ReadFile(hFile, allocation, korl_checkCast_u$_to_u32(allocationBytes), NULL/*bytes read*/, NULL/*no overlapped*/))
             {
                 korl_logLastError("ReadFile failed");

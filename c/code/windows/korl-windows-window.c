@@ -401,8 +401,7 @@ korl_internal void korl_windows_window_loop(void)
     korl_time_probeStart(game_initialization);
     /* attempt to copy the game DLL to the application temp directory */
     Korl_StringPool_StringHandle stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);
-    const wchar_t*const utf16GameDllFileName   = string_getRawUtf16(stringGameDll);
-    _korl_windows_window_dynamicGameLoad(utf16GameDllFileName);
+    _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
     _korl_windows_window_gameInitialize(&korlApi);
     korl_time_probeStop(game_initialization);
     korl_log(INFO, "KORL initialization time probe report:");
@@ -464,10 +463,10 @@ korl_internal void korl_windows_window_loop(void)
         {
             KorlPlatformDateStamp dateStampLatestFileWrite;
             if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, 
-                                                          utf16GameDllFileName, &dateStampLatestFileWrite)
+                                                          string_getRawUtf16(stringGameDll), &dateStampLatestFileWrite)
                && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(context->gameDllLastWriteDateStamp, dateStampLatestFileWrite))
             {
-                _korl_windows_window_dynamicGameLoad(utf16GameDllFileName);
+                _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
                 context->gameApi.korl_game_onReload(context->gameMemory, korlApi);
             }
         }
@@ -558,12 +557,19 @@ korl_internal void korl_windows_window_loop(void)
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameMemory, sizeof(_korl_windows_window_context.gameMemory));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &swapchainSize.x, sizeof(swapchainSize.x));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &swapchainSize.y, sizeof(swapchainSize.y));
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {
+    //KORL-ISSUE-000-000-079: stringPool/file/savestate: either create a (de)serialization API for stringPool, or just put context state into a single allocation?
+    if(!ReadFile(hFile, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
     u64 gameMemory;
     if(!ReadFile(hFile, &gameMemory, sizeof(gameMemory), NULL/*bytes read*/, NULL/*no overlapped*/))
     {

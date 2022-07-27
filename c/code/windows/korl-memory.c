@@ -21,12 +21,30 @@ typedef struct _Korl_Memory_Allocator
     Korl_Memory_AllocatorFlags flags;
     wchar_t name[32];
 } _Korl_Memory_Allocator;
+typedef struct _Korl_Memory_RawString
+{
+    size_t hash;
+    acu16 data;
+} _Korl_Memory_RawString;
 typedef struct _Korl_Memory_Context
 {
     SYSTEM_INFO systemInfo;
     DWORD mainThreadId;
-    Korl_Memory_AllocatorHandle allocatorHandleReporting;// temporary memory used only for reporting memory module metrics
+    Korl_Memory_AllocatorHandle allocatorHandle;// used for storing memory reports, and cold storage of __FILEW__ strings
+    struct _Korl_Memory_Report* report;// the last generated memory report
     KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, 64);
+    /* Although it would be more convenient to do so, it is not practical to 
+        just store __FILEW__ pointers directly in allocation meta data for the 
+        following reasons:
+        - if the code module is unloaded at run-time (like if we're 
+          hot-reloading the game module), the data segment storing the file name 
+          strings can potentially get unloaded, causing random crashes!
+        - if we load a savestate, the file name string data is transient, so we 
+          need a place to store them!  
+        Ergo, we will accumulate all file name strings */
+    u16* stbDaFileNameCharacterPool;             // Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
+    _Korl_Memory_RawString* stbDaFileNameStrings;// Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
+    u$ stringHashKorlMemory;
 } _Korl_Memory_Context;
 /** Allocator properties: 
  * - all allocations are page-aligned
@@ -165,13 +183,44 @@ korl_internal u$ _korl_memory_unpackCommon(void* unpackedData, u$ unpackedDataBy
     *bufferCursor += unpackedDataBytes;
     return unpackedDataBytes;
 }
+#define _KORL_MEMORY_U$_BITS               ((sizeof (u$)) * 8)
+#define _KORL_MEMORY_ROTATE_LEFT(val, n)   (((val) << (n)) | ((val) >> (_KORL_MEMORY_U$_BITS - (n))))
+#define _KORL_MEMORY_ROTATE_RIGHT(val, n)  (((val) >> (n)) | ((val) << (_KORL_MEMORY_U$_BITS - (n))))
+/** This is a modified version of `stbds_hash_string` from `stb_ds.h` */
+korl_internal u$ _korl_memory_hashString(const wchar_t* rawWideString)
+{
+    korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x31415926;
+    u$ hash = _KORL_MEMORY_STRING_HASH_SEED;
+    while (*rawWideString)
+        hash = _KORL_MEMORY_ROTATE_LEFT(hash, 9) + *rawWideString++;
+    // Thomas Wang 64-to-32 bit mix function, hopefully also works in 32 bits
+    hash ^= _KORL_MEMORY_STRING_HASH_SEED;
+    hash = (~hash) + (hash << 18);
+    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,31);
+    hash = hash * 21;
+    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,11);
+    hash += (hash << 6);
+    hash ^= _KORL_MEMORY_ROTATE_RIGHT(hash,22);
+    return hash + _KORL_MEMORY_STRING_HASH_SEED;
+}
 korl_internal void korl_memory_initialize(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_memory_zero(context, sizeof(*context));
-    GetSystemInfo(&context->systemInfo);
-    context->mainThreadId = GetCurrentThreadId();
-    context->allocatorHandleReporting = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), L"korl-memory-reporting", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    GetSystemInfo(&context->systemInfo);// _VERY_ important; must be run before almost everything in the KORL platform layer
+    context->mainThreadId         = GetCurrentThreadId();
+    context->allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-memory", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    context->stringHashKorlMemory = _korl_memory_hashString(__FILEW__);// _must_ be run before making any dynamic allocations in the korl-memory module
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameCharacterPool, 1024);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameStrings      , 128);
+    korl_assert(sizeof(wchar_t) == sizeof(*context->stbDaFileNameCharacterPool));// we are storing __FILEW__ characters in the Windows platform
+    /* add the file name string of this file to the beginning of the file name character pool */
+    {
+        const u$ rawWideStringSize = korl_memory_stringSize(__FILEW__) + 1/*null-terminator*/;
+        wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + arrlen(context->stbDaFileNameCharacterPool);
+        mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
+        korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(__FILEW__, persistDataStart, rawWideStringSize));
+    }
 #if KORL_DEBUG/* testing out bitwise operations */
     {
         u64 ui = (~(~0ULL << 4)) << (64 - 4);
@@ -1600,7 +1649,7 @@ korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Me
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_logReport_enumerateCallback)
 {
     _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
-    mcarrpush(KORL_C_CAST(void*, _korl_memory_context.allocatorHandleReporting), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
+    mcarrpush(KORL_C_CAST(void*, _korl_memory_context.allocatorHandle), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
     _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = context->stbDaAllocationMeta + arrlen(context->stbDaAllocationMeta) - 1;
     newAllocMeta->allocationAddress = allocation;
     newAllocMeta->meta              = *meta;
@@ -1706,6 +1755,31 @@ korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle ha
         break;}
     }
 }
+korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* rawWideString)
+{
+    if(!rawWideString)
+        return NULL;
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);///@TODO: thread-safety
+    /* if the raw string already exists in our persistent storage, let's use it */
+    const u$ rawWideStringHash = _korl_memory_hashString(rawWideString);
+    if(rawWideStringHash == context->stringHashKorlMemory)
+        return context->stbDaFileNameCharacterPool;// to prevent stack overflows when making allocations within the korl-memory module itself, we will guarantee that the first string is _always_ this module's file handle
+    for(u$ i = 0; i < arrlenu(context->stbDaFileNameStrings); i++)
+        if(rawWideStringHash == context->stbDaFileNameStrings[i].hash)
+            return context->stbDaFileNameStrings[i].data.data;
+    /* otherwise, we need to add the string to the character pool & create a new 
+        string entry to use */
+    const u$ rawWideStringSize = korl_memory_stringSize(rawWideString) + 1/*null-terminator*/;
+    wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + arrlen(context->stbDaFileNameCharacterPool);
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
+    korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(rawWideString, persistDataStart, rawWideStringSize));
+    const _Korl_Memory_RawString newRawString = { .data = { .data = persistDataStart
+                                                          , .size = rawWideStringSize - 1/*ignore the null-terminator*/}
+                                                , .hash = rawWideStringHash};
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameStrings, newRawString);
+    return newRawString.data.data;
+}
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
 {
     if(bytes == 0)
@@ -1718,12 +1792,13 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allo
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return NULL;
     }
+    const wchar_t* persistentFileString = _korl_memory_getPersistentString(file);
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        return _korl_memory_allocator_linear_allocate(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), bytes, file, line, address);}
+        return _korl_memory_allocator_linear_allocate(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), bytes, persistentFileString, line, address);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        return _korl_memory_allocator_general_allocate(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), bytes, file, line, address);}
+        return _korl_memory_allocator_general_allocate(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), bytes, persistentFileString, line, address);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
@@ -1739,16 +1814,17 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_re
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return NULL;
     }
+    const wchar_t* persistentFileString = _korl_memory_getPersistentString(file);
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         if(allocation == NULL)
-            return _korl_memory_allocator_linear_allocate(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), bytes, file, line, NULL/*automatically find address*/);
-        return _korl_memory_allocator_linear_reallocate(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), allocation, bytes, file, line);}
+            return _korl_memory_allocator_linear_allocate(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), bytes, persistentFileString, line, NULL/*automatically find address*/);
+        return _korl_memory_allocator_linear_reallocate(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), allocation, bytes, persistentFileString, line);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
         if(allocation == NULL)
-            return _korl_memory_allocator_general_allocate(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), bytes, file, line, NULL/*automatically find address*/);
-        return _korl_memory_allocator_general_reallocate(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), allocation, bytes, file, line);}
+            return _korl_memory_allocator_general_allocate(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), bytes, persistentFileString, line, NULL/*automatically find address*/);
+        return _korl_memory_allocator_general_reallocate(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), allocation, bytes, persistentFileString, line);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
@@ -1765,13 +1841,14 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
         korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
         return;
     }
+    const wchar_t* persistentFileString = _korl_memory_getPersistentString(file);
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        _korl_memory_allocator_linear_free(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), allocation, file, line);
+        _korl_memory_allocator_linear_free(KORL_C_CAST(_Korl_Memory_AllocatorLinear*, allocator->userData), allocation, persistentFileString, line);
         return;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        _korl_memory_allocator_general_free(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), allocation, file, line);
+        _korl_memory_allocator_general_free(KORL_C_CAST(_Korl_Memory_AllocatorGeneral*, allocator->userData), allocation, persistentFileString, line);
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -1852,17 +1929,20 @@ korl_internal void* korl_memory_reportGenerate(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
-    korl_memory_allocator_empty(context->allocatorHandleReporting);// it should be fine to just only ever have 1 report in existence at a time
-    _Korl_Memory_Report*const report = korl_allocate(context->allocatorHandleReporting, 
+    /* free the previous report if it exists */
+    if(context->report)
+    {
+        for(u$ i = 0; i < context->report->allocatorCount; i++)
+            mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->report->allocatorData[i].stbDaAllocationMeta);
+        korl_free(context->allocatorHandle, context->report);
+    }
+    _Korl_Memory_Report*const report = korl_allocate(context->allocatorHandle, 
                                                      sizeof(*report) - sizeof(report->allocatorData) + KORL_MEMORY_POOL_SIZE(context->allocators)*sizeof(report->allocatorData));
+    context->report = report;
     korl_memory_zero(report, sizeof(*report));
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
-        if(allocator->handle == context->allocatorHandleReporting)
-            /* let's just skip the internal reporting allocator, since it is 
-                transient and shouldn't be used anywhere else in the application */
-            continue;
         /* we want the following information out of the allocator:
             - the full range of occupied virtual memory addresses
             - the total amount of committed memory // not currently keeping track of this!
@@ -1878,7 +1958,7 @@ korl_internal void* korl_memory_reportGenerate(void)
         korl_memory_stringCopy(allocator->name, enumContext->name, korl_arraySize(enumContext->name));
         enumContext->allocatorType       = allocator->type;
         enumContext->virtualAddressStart = allocator->userData;
-        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandleReporting), enumContext->stbDaAllocationMeta, 16);
+        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), enumContext->stbDaAllocationMeta, 16);
         switch(allocator->type)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{

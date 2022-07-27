@@ -54,7 +54,6 @@ _STATIC_ASSERT(sizeof(f64) == 8);
 #define KORL_F32_MIN      (-3.402823466e+38F)
 #define KORL_F32_SMALLEST ( 1.175494351e-38F)
 #define KORL_F32_MAX      ( 3.402823466e+38F)
-#if 0// potential standardization of raw strings at the "CRT" API level?...
 /** String primitive datatypes.  CRT strings (null-terminated arrays of 
  * characters) are very outdated, and their performance benefits are dubious, 
  * while the number of instabilities they introduce in the code seems 
@@ -63,17 +62,36 @@ _STATIC_ASSERT(sizeof(f64) == 8);
  * possess an implicit size (defined by the null-terminator character) just for 
  * the safety benefits alone.  Perhaps if I ever decide to remove the CRT 
  * completely, we can just use these everywhere instead of char & wchar. */
-typedef struct Korl_ArrayU8
+typedef struct ai8
+{
+    u$  size;
+    i8* data;
+} ai8;
+typedef struct au8
 {
     u$  size;
     u8* data;
-} Korl_ArrayU8;
-typedef struct Korl_ArrayU16
+} au8;
+typedef struct au16
 {
     u$   size;
     u16* data;
-} Korl_ArrayU16;
-#endif
+} au16;
+typedef struct aci8
+{
+    u$  size;
+    const i8* data;
+} aci8;
+typedef struct acu8
+{
+    u$  size;
+    const u8* data;
+} acu8;
+typedef struct acu16
+{
+    u$   size;
+    const u16* data;
+} acu16;
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
 #define korl_arraySize(array) (sizeof(array) / sizeof((array)[0]))
