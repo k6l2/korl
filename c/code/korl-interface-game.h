@@ -16,17 +16,3 @@ typedef KORL_GAME_ON_KEYBOARD_EVENT(fnSig_korl_game_onKeyboardEvent);
 typedef KORL_GAME_ON_MOUSE_EVENT   (fnSig_korl_game_onMouseEvent);
 typedef KORL_GAME_UPDATE           (fnSig_korl_game_update);
 typedef KORL_GAME_ON_ASSET_RELOADED(fnSig_korl_game_onAssetReloaded);
-#if 0///@TODO: delete
-#ifdef __cplusplus
-extern "C" {
-#endif
-KORL_GAME_ON_RELOAD        (korl_game_onReload);
-KORL_GAME_INITIALIZE       (korl_game_initialize);
-KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent);
-KORL_GAME_ON_MOUSE_EVENT   (korl_game_onMouseEvent);
-KORL_GAME_UPDATE           (korl_game_update);
-KORL_GAME_ON_ASSET_RELOADED(korl_game_onAssetReloaded);
-#ifdef __cplusplus
-}//extern "C"
-#endif
-#endif

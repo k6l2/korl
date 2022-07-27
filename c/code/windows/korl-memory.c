@@ -1760,7 +1760,7 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
     if(!rawWideString)
         return NULL;
     _Korl_Memory_Context*const context = &_korl_memory_context;
-    korl_assert(GetCurrentThreadId() == context->mainThreadId);///@TODO: thread-safety
+    korl_assert(GetCurrentThreadId() == context->mainThreadId);//KORL-ISSUE-000-000-082: memory: _korl_memory_getPersistentString is not thread-safe
     /* if the raw string already exists in our persistent storage, let's use it */
     const u$ rawWideStringHash = _korl_memory_hashString(rawWideString);
     if(rawWideStringHash == context->stringHashKorlMemory)
