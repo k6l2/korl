@@ -63,7 +63,7 @@ korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_As
 korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const void* data, u$ dataBytes);
 korl_internal u32 korl_file_getTotalBytes(Korl_File_Descriptor fileDescriptor);
 korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWrite(Korl_File_Descriptor fileDescriptor);
-korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName);
+korl_internal bool korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName, KorlPlatformDateStamp* out_dateStampLastWrite);
 /** Read the entire contents of the file.
  * \return \c true if the file was read successfully, \c false otherwise. */
 korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, 

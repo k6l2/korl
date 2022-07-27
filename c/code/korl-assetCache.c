@@ -172,10 +172,10 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
         else if(asset->state != _KORL_ASSET_CACHE_ASSET_STATE_LOADED)
             continue;
         const wchar_t*const rawUtf16AssetName = string_getRawUtf16(asset->name);
-        const KorlPlatformDateStamp dateStampLatestFileWrite = 
-            korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
-                                                    rawUtf16AssetName);
-        if(KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))
+        KorlPlatformDateStamp dateStampLatestFileWrite;
+        if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
+                                                      rawUtf16AssetName, &dateStampLatestFileWrite)
+           && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))
         {
             korl_assert(asset->fileDescriptor.flags == 0);
             const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 

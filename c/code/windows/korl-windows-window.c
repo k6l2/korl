@@ -17,11 +17,12 @@
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
-#define _LOCAL_STRING_POOL_POINTER (&stringPool)
+#define _LOCAL_STRING_POOL_POINTER (&(_korl_windows_window_context.stringPool))
 korl_global_const TCHAR _KORL_WINDOWS_WINDOW_CLASS_NAME[] = _T("KorlWindowClass");
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
+    Korl_StringPool stringPool;
     GameMemory* gameMemory;
     struct
     {
@@ -39,6 +40,7 @@ typedef struct _Korl_Windows_Window_Context
         fnSig_korl_game_onAssetReloaded* korl_game_onAssetReloaded;
     } gameApi;
     HMODULE gameDll;
+    KorlPlatformDateStamp gameDllLastWriteDateStamp;
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
 } _Korl_Windows_Window_Context;
@@ -211,6 +213,7 @@ korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    _korl_windows_window_context.stringPool      = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
         running the game module as a DLL */
@@ -332,6 +335,44 @@ korl_internal void _korl_windows_window_gameInitialize(KorlPlatformApi* korlApi)
     context->gameApi.korl_game_onReload(context->gameMemory, *korlApi);
     context->gameApi.korl_game_initialize();
 }
+korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf16GameDllFileName)
+{
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
+    const bool successCopyGameDll = korl_file_copy(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, 
+                                                   KORL_FILE_PATHTYPE_TEMPORARY_DATA,       utf16GameDllFileName, 
+                                                   true/*replace new file if it exists, which is fine since we shouldn't be storing the base file in this directory in the first place*/);
+    /* if successful, we know we are running the game in dynamic mode */
+    if(successCopyGameDll)
+    {
+        /* if we're running in dynamic mode, continue renaming the dynamic 
+            code module until the file rename operation is successful */
+        Korl_File_ResultRenameReplace resultRenameReplace = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE;
+        for(u32 i = 0; i < 255/*just some arbitrary high enough # which determines the max # of game clients that can run on a computer*/; i++)
+        {
+            Korl_StringPool_StringHandle stringGameDllTemp = string_newFormatUtf16(L"%ws_%u.dll", KORL_DYNAMIC_APPLICATION_NAME, i);
+            resultRenameReplace = 
+                korl_file_renameReplace(KORL_FILE_PATHTYPE_TEMPORARY_DATA, utf16GameDllFileName, 
+                                        KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
+            korl_assert(resultRenameReplace != KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST);
+            if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
+            {
+                if(context->gameDll)
+                    FreeLibrary(context->gameDll);
+                context->gameDll = korl_file_loadDynamicLibrary(KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
+                korl_assert(context->gameDll);
+                korl_assert(korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, &context->gameDllLastWriteDateStamp));
+            }
+            string_free(stringGameDllTemp);
+            if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
+                break;
+        }
+        korl_assert(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS);
+    }
+    else if(!context->gameApi.korl_game_update)
+        korl_log(WARNING, "Preparation of dynamic game module, but the symbols also weren't exported in the application!");
+    if(context->gameDll)
+        _korl_windows_window_findGameApiAddresses(context->gameDll);
+}
 korl_internal void korl_windows_window_loop(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
@@ -359,42 +400,9 @@ korl_internal void korl_windows_window_loop(void)
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
     korl_time_probeStart(game_initialization);
     /* attempt to copy the game DLL to the application temp directory */
-    {
-        Korl_StringPool_StringHandle stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);
-        const wchar_t*const utf16GameDllFileName = string_getRawUtf16(stringGameDll);
-        const bool successCopyGameDll = korl_file_copy(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, 
-                                                       KORL_FILE_PATHTYPE_TEMPORARY_DATA,       utf16GameDllFileName, 
-                                                       true/*replace new file if it exists, which is fine since we shouldn't be storing the base file in this directory in the first place*/);
-        /* if successful, we know we are running the game in dynamic mode */
-        if(successCopyGameDll)
-        {
-            /* if we're running in dynamic mode, continue renaming the dynamic 
-                code module until the file rename operation is successful */
-            Korl_File_ResultRenameReplace resultRenameReplace = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE;
-            for(u32 i = 0; i < 255/*just some arbitrary high enough # which determines the max # of game clients that can run on a computer*/; i++)
-            {
-                Korl_StringPool_StringHandle stringGameDllTemp = string_newFormatUtf16(L"%ws_%u.dll", KORL_DYNAMIC_APPLICATION_NAME, i);
-                resultRenameReplace = 
-                    korl_file_renameReplace(KORL_FILE_PATHTYPE_TEMPORARY_DATA, utf16GameDllFileName, 
-                                            KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
-                korl_assert(resultRenameReplace != KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST);
-                if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
-                {
-                    context->gameDll = korl_file_loadDynamicLibrary(KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
-                    korl_assert(context->gameDll);
-                }
-                string_free(stringGameDllTemp);
-                if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
-                    break;
-            }
-            korl_assert(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS);
-        }
-        else if(!context->gameApi.korl_game_update)
-            korl_log(WARNING, "Preparation of dynamic game module, but the symbols also weren't exported in the application!");
-        string_free(stringGameDll);
-        if(context->gameDll)
-            _korl_windows_window_findGameApiAddresses(context->gameDll);
-    }
+    Korl_StringPool_StringHandle stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);
+    const wchar_t*const utf16GameDllFileName   = string_getRawUtf16(stringGameDll);
+    _korl_windows_window_dynamicGameLoad(utf16GameDllFileName);
     _korl_windows_window_gameInitialize(&korlApi);
     korl_time_probeStop(game_initialization);
     korl_log(INFO, "KORL initialization time probe report:");
@@ -448,9 +456,22 @@ korl_internal void korl_windows_window_loop(void)
             const LRESULT messageResult  = DispatchMessage (&windowMessage);
         }
         korl_time_probeStop(process_window_messages);
-        korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded);
         if(quit)
             break;
+        /* check the dynamic game module file to see if it has been updated; if 
+            it has, we should do a hot-reload of this module! */
+        if(context->gameDll)
+        {
+            KorlPlatformDateStamp dateStampLatestFileWrite;
+            if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, 
+                                                          utf16GameDllFileName, &dateStampLatestFileWrite)
+               && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(context->gameDllLastWriteDateStamp, dateStampLatestFileWrite))
+            {
+                _korl_windows_window_dynamicGameLoad(utf16GameDllFileName);
+                context->gameApi.korl_game_onReload(context->gameMemory, korlApi);
+            }
+        }
+        korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded);
         korl_time_probeStart(save_state_create);
         korl_file_saveStateCreate();
         korl_time_probeStop(save_state_create);
@@ -532,7 +553,7 @@ korl_internal void korl_windows_window_loop(void)
     korl_log_noMeta(INFO, "Average Logic Loop Time:  %ws", durationBuffer);
     /**/
     korl_vulkan_destroySurface();
-    korl_stringPool_destroy(&stringPool);
+    string_free(stringGameDll);
 }
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

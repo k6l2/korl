@@ -702,8 +702,9 @@ korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWrite(Korl_File_De
         korl_logLastError("GetFileTime failed!");
     return dateStampUnionFile.dateStamp;
 }
-korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName)
+korl_internal bool korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName, KorlPlatformDateStamp* out_dateStampLastWrite)
 {
+    bool success = true;
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     union
@@ -720,12 +721,15 @@ korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWriteFileName(Korl
     {
         if(GetLastError() != ERROR_FILE_NOT_FOUND)
             korl_logLastError("GetFileAttributesEx failed!");
-        goto cleanUp;
+        success = false;
+        goto cleanUp_returnResult;
     }
     dateStampUnionFile.fileTime = fileAttributeData.ftLastWriteTime;
-    cleanUp:
+    cleanUp_returnResult:
     string_free(stringFilePath);
-    return dateStampUnionFile.dateStamp;
+    if(success)
+        *out_dateStampLastWrite = dateStampUnionFile.dateStamp;
+    return success;
 }
 korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, void* buffer, u32 bufferBytes)
 {
