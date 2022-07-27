@@ -433,6 +433,21 @@ korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor)
         korl_logLastError("CloseHandle failed!");
     korl_memory_zero(fileDescriptor, sizeof(*fileDescriptor));
 }
+korl_internal HMODULE korl_file_loadDynamicLibrary(Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    HMODULE hModule = NULL;
+    _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathType]);
+    string_appendFormatUtf16(filePath, L"\\%ws", fileName);
+    _korl_file_sanitizeFilePath(filePath);
+    hModule = LoadLibrary(string_getRawUtf16(filePath));
+    if(!hModule)
+        korl_logLastError("LoadLibrary(\"%ws\") failed", string_getRawUtf16(filePath));
+    cleanUp_returnHModule:
+    string_free(filePath);
+    return hModule;
+}
 korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName, 
                                   Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew, 
                                   bool replaceFileNameNewIfExists)
