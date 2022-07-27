@@ -5,15 +5,19 @@ for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
     set /A "start=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)*100+1%%d %% 100"
 )
 rem --- Iterate over build script arguments ------------------------------------
-set buildOptionNoThreads=FALSE
+set "buildOptionNoThreads=FALSE"
+set "buildOptionVerbose=FALSE"
 if "%~1"=="" goto ARGUMENT_LOOP_END
 rem set argNumber=0
 :ARGUMENT_LOOP_START
 rem echo arg%argNumber%=%1
 if "%~1"=="nothreads" (
-    set buildOptionNoThreads=TRUE
+    set "buildOptionNoThreads=TRUE"
     echo Running build on single thread...
     echo:
+)
+if "%~1"=="verbose" (
+    set "buildOptionVerbose=TRUE"
 )
 shift
 rem set /A argNumber+=1
@@ -25,6 +29,26 @@ if not exist "build" (
     mkdir "build"
 )
 cd "build"
+rem If we're building a dynamic game application, and the platform application 
+rem     binary is locked, then we need to just skip the build & link phases of 
+rem     the platform code/executable.
+if exist %KORL_EXE_NAME%.exe (
+    del %KORL_EXE_NAME%.exe >NUL 2>NUL
+    IF exist %KORL_EXE_NAME%.exe (
+        echo %KORL_EXE_NAME%.exe is locked; skipping build/link phases...
+        echo:
+        goto :SET_PLATFORM_CODE_SKIP_TRUE
+    )
+)
+goto :SET_PLATFORM_CODE_SKIP_FALSE
+:SET_PLATFORM_CODE_SKIP_TRUE
+    set "_KORL_BUILD_SKIP_PLATFORM_CODE=TRUE"
+    set "buildOptionNoThreads=FALSE"
+    goto :SKIP_SET_PLATFORM_CODE_SKIP
+:SET_PLATFORM_CODE_SKIP_FALSE
+    set "_KORL_BUILD_SKIP_PLATFORM_CODE=FALSE"
+    goto :SKIP_SET_PLATFORM_CODE_SKIP
+:SKIP_SET_PLATFORM_CODE_SKIP
 rem automatically call the script to build shaders for the first time if the 
 rem     directory doesn't exist, since there will always be a non-zero amount of 
 rem     compiled shaders, as KORL ships with built-in batching pipelines
@@ -43,10 +67,14 @@ if not exist "shaders" (
     )
 )
 rem Print out INCLUDE & LIB variables just for diagnostic purposes:
+if not "%buildOptionVerbose%"=="TRUE" (
+    goto :SKIP_ECHO_INCLUDE_AND_LIB_VARIABLES
+)
 echo INCLUDE=%INCLUDE%
 echo:
 echo LIB=%LIB%
 echo:
+:SKIP_ECHO_INCLUDE_AND_LIB_VARIABLES
 rem Generate a file-name-safe timestamp for the purpose of generating reasonably 
 rem unique file names:
 set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
@@ -110,9 +138,14 @@ if "%buildOptionNoThreads%"=="TRUE" (
     start "Build DLL Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileGame% %statusFileGame%"
 )
 rem ------------------------ build the KORL object file ------------------------
+set "KORL_SOURCE_BASE_NAME=korl-windows-main"
+if "%_KORL_BUILD_SKIP_PLATFORM_CODE%"=="TRUE" (
+    echo Skipping %KORL_SOURCE_BASE_NAME%.obj build...
+    echo:
+    goto :SKIP_BUILD_PLATFORM_OBJECT
+)
 rem     NOTE: if you are looking for the rest of the configured options for 
 rem           cl.exe, then please refer to `korl-build-configure-*.bat` scripts
-set "KORL_SOURCE_BASE_NAME=korl-windows-main"
 set "buildCommand="
 set "buildCommand=%buildCommand% "%KORL_HOME%\code\windows\%KORL_SOURCE_BASE_NAME%.c""
 rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
@@ -149,11 +182,17 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 echo %KORL_SOURCE_BASE_NAME% build complete!  Waiting for game module build...
 echo:
+:SKIP_BUILD_PLATFORM_OBJECT
 rem ---------------------- synchronize game object build  ----------------------
 :WAIT_FOR_BUILD_GAME
 if exist %lockFileGame% goto :WAIT_FOR_BUILD_GAME
 if exist %statusFileGame% goto :ON_FAILURE_EXE
 rem ------------------------ link the final executable ------------------------
+if "%_KORL_BUILD_SKIP_PLATFORM_CODE%"=="TRUE" (
+    echo Skipping %KORL_EXE_NAME%.exe build...
+    echo:
+    goto :SKIP_BUILD_PLATFORM_EXECUTABLE
+)
 set "buildCommand=link.exe"
 set "buildCommand=%buildCommand% %KORL_SOURCE_BASE_NAME%.obj"
 :BUILD_LINK_GAME_MODULE_STATIC
@@ -200,6 +239,7 @@ IF %ERRORLEVEL% NEQ 0 (
     echo %KORL_EXE_NAME%.exe failed to link!
     GOTO :ON_FAILURE_EXE
 )
+:SKIP_BUILD_PLATFORM_EXECUTABLE
 rem ------------------------ synchronize shaders build  ------------------------
 :WAIT_FOR_BUILD_SHADERS
 if exist %lockFileBuildShaders% goto :WAIT_FOR_BUILD_SHADERS
