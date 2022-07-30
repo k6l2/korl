@@ -14,6 +14,7 @@
 #include "korl-gui.h"
 #include "korl-time.h"
 #include "korl-crash.h"
+#include "korl-windows-gamepad.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -48,6 +49,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         korl_commandLine_logUsage(descriptors, korl_arraySize(descriptors));
         goto shutdownSuccess;
     }
+    korl_time_probeStart(init_module_gamepad);      korl_windows_gamepad_initialize();      korl_time_probeStop(init_module_gamepad);
     korl_time_probeStart(init_module_window);       korl_windows_window_initialize();       korl_time_probeStop(init_module_window);
     korl_time_probeStart(create_window);            korl_windows_window_create(1024, 576);  korl_time_probeStop(create_window);
     korl_time_probeStart(init_module_log);          korl_log_initiateFile(!logFileDisable); korl_time_probeStop(init_module_log);
@@ -92,3 +94,4 @@ shutdownSuccess:
 #include "korl-time.c"
 #include "korl-crash.c"
 #include "korl-stringPool.c"
+#include "korl-windows-gamepad.c"

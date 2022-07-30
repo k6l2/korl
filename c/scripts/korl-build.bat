@@ -162,6 +162,13 @@ set "buildCommand=%buildCommand% /D KORL_PLATFORM_WINDOWS"
 rem     use wide character implementations for Windows API
 set "buildCommand=%buildCommand% /D UNICODE"
 set "buildCommand=%buildCommand% /D _UNICODE"
+rem     Required defines apparently, if you are compiling with SetupAPI.h, but 
+rem     not linking to setupapi.lib in the same call to cl.exe (have not tested this theory yet)
+set "buildCommand=%buildCommand% /D USE_SP_ALTPLATFORM_INFO_V1#0"
+set "buildCommand=%buildCommand% /D USE_SP_ALTPLATFORM_INFO_V3#1"
+set "buildCommand=%buildCommand% /D USE_SP_DRVINFO_DATA_V1#0"
+set "buildCommand=%buildCommand% /D USE_SP_BACKUP_QUEUE_PARAMS_V1#0"
+set "buildCommand=%buildCommand% /D USE_SP_INF_SIGNER_INFO_V1#0"
 rem     We cannot define symbols with the '=' character using the CL environment 
 rem         variable, so we have to use '#' instead.
 rem         See: https://docs.microsoft.com/en-us/cpp/build/reference/cl-environment-variables?view=msvc-170
@@ -231,6 +238,8 @@ rem     for MiniDumpWriteDump
 set "buildCommand=%buildCommand% Dbghelp.lib"
 rem     for timeDevGetCaps, timeDevGetTime, etc...
 set "buildCommand=%buildCommand% Winmm.lib"
+rem     for gamepad module stuff
+set "buildCommand=%buildCommand% setupapi.lib"
 set "buildCommand=%buildCommand% vulkan-1.lib"
 echo %buildCommand%
 echo:

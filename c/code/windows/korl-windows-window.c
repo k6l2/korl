@@ -1,6 +1,7 @@
 #include "korl-windows-window.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
+#include "korl-windows-gamepad.h"
 #include "korl-log.h"
 #include "korl-time.h"
 #include "korl-vulkan.h"
@@ -54,7 +55,10 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         responsible for in this code module */
     if(hWnd != context->window.handle)
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    LRESULT result;
     korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
+    if(korl_windows_gamepad_processMessage(hWnd, uMsg, wParam, lParam, &result))
+        return result;
     switch(uMsg)
     {
     case WM_CREATE:{
@@ -289,6 +293,7 @@ korl_internal void korl_windows_window_initialize(void)
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     /* get a handle to the file used to create the calling process */
     const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
     korl_assert(hInstance);
@@ -322,6 +327,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     _korl_windows_window_context.window.handle  = hWnd;
     _korl_windows_window_context.window.style   = windowStyle;
     _korl_windows_window_context.window.hasMenu = windowHasMenu;
+    korl_windows_gamepad_registerWindow(hWnd, context->allocatorHandle);
 }
 korl_internal void _korl_windows_window_gameInitialize(KorlPlatformApi* korlApi)
 {

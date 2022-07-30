@@ -81,6 +81,7 @@ typedef enum Korl_StringPool_CompareResult
 #define string_appendFormatUtf16(stringHandle, formatUtf16, ...)               korl_stringPool_appendFormatUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, __FILEW__, __LINE__, formatUtf16, ##__VA_ARGS__)
 #define string_prependUtf8(stringHandle, cStringUtf8)                          korl_stringPool_prependUtf8(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf8, __FILEW__, __LINE__)
 #define string_prependUtf16(stringHandle, cStringUtf16)                        korl_stringPool_prependUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf16, __FILEW__, __LINE__)
+#define string_toUpper(stringHandle)                                           korl_stringPool_toUpper(_LOCAL_STRING_POOL_POINTER, stringHandle)
 #define string_findUtf8(stringHandle, cStringUtf8, u32CharacterOffsetStart)    korl_stringPool_findUtf8(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf8, u32CharacterOffsetStart)
 #define string_findUtf16(stringHandle, cStringUtf16, u32CharacterOffsetStart)  korl_stringPool_findUtf16(_LOCAL_STRING_POOL_POINTER, stringHandle, cStringUtf16, u32CharacterOffsetStart)
 #if 0// currently feeling too lazy to implement this API...
@@ -137,6 +138,7 @@ korl_internal void                          korl_stringPool_appendFormatUtf8(Kor
 korl_internal void                          korl_stringPool_appendFormatUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const wchar_t* format, ...);
 korl_internal void                          korl_stringPool_prependUtf8(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_prependUtf16(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_toUpper(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle);
 /** \return The raw character offset of the first location of \c cStringUtf8 , 
  * starting from \c characterOffsetStart and advancing the search forward 
  * towards the end of the raw string.  If \c cStringUtf8 is not found, the 

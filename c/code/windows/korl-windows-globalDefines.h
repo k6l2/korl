@@ -18,6 +18,8 @@
 #include <ShlObj_core.h>/* for SHGetKnownFolderPath; NOTE: this shitty API uses `near` & `far` keyword defines, which come from Windows.h */
 #include <timeapi.h>/* for timeBeginPeriod, timeGetDevCaps, etc... */
 #include <mmsyscom.h>/* for MMSYSERR_NOERROR definition */
+#include <SetupAPI.h>/* for gamepad module (SetupDiGetClassDevs, etc...) */
+#include <Dbt.h>/* for gamepad module (DEV_BROADCAST_DEVICEINTERFACE_*, etc...) */
 #ifdef near// defined from somewhere inside Windows.h
     #undef near // fuck you too, Microsoft!
 #endif
