@@ -5,6 +5,7 @@
 #define KORL_GAME_INITIALIZE(name)        void name(void)
 #define KORL_GAME_ON_KEYBOARD_EVENT(name) void name(Korl_KeyboardCode keyCode, bool isDown, bool isRepeat)
 #define KORL_GAME_ON_MOUSE_EVENT(name)    void name(Korl_MouseEvent mouseEvent)
+#define KORL_GAME_ON_GAMEPAD_EVENT(name)  void name(Korl_GamepadEvent gamepadEvent)
 /** 
  * @return false if the platform should close the game application
  */
@@ -14,5 +15,6 @@ typedef KORL_GAME_ON_RELOAD        (fnSig_korl_game_onReload);
 typedef KORL_GAME_INITIALIZE       (fnSig_korl_game_initialize);
 typedef KORL_GAME_ON_KEYBOARD_EVENT(fnSig_korl_game_onKeyboardEvent);
 typedef KORL_GAME_ON_MOUSE_EVENT   (fnSig_korl_game_onMouseEvent);
+typedef KORL_GAME_ON_GAMEPAD_EVENT (fnSig_korl_game_onGamepadEvent);
 typedef KORL_GAME_UPDATE           (fnSig_korl_game_update);
 typedef KORL_GAME_ON_ASSET_RELOADED(fnSig_korl_game_onAssetReloaded);

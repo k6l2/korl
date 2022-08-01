@@ -150,7 +150,6 @@ typedef enum Korl_KeyboardCode
     , KORL_KEY_NUMPAD_ADD
     , KORL_KEY_COUNT// keep last!
 } Korl_KeyboardCode;
-
 typedef enum Korl_MouseButton
     { KORL_MOUSE_BUTTON_LEFT
     , KORL_MOUSE_BUTTON_MIDDLE
@@ -159,7 +158,6 @@ typedef enum Korl_MouseButton
     , KORL_MOUSE_BUTTON_X2
     , KORL_MOUSE_BUTTON_COUNT
 } Korl_MouseButton;
-
 typedef enum Korl_MouseEventType
     { KORL_MOUSE_EVENT_BUTTON_DOWN
     , KORL_MOUSE_EVENT_BUTTON_UP
@@ -167,7 +165,6 @@ typedef enum Korl_MouseEventType
     , KORL_MOUSE_EVENT_HWHEEL
     , KORL_MOUSE_EVENT_MOVE
 } Korl_MouseEventType;
-
 typedef struct Korl_MouseEvent
 {
     Korl_MouseEventType type;
@@ -179,7 +176,52 @@ typedef struct Korl_MouseEvent
         i32 wheel;
     } which;
 } Korl_MouseEvent;
-
+typedef enum Korl_GamepadEventType
+    { KORL_GAMEPAD_EVENT_TYPE_BUTTON
+    , KORL_GAMEPAD_EVENT_TYPE_AXIS
+} Korl_GamepadEventType;
+typedef enum Korl_GamepadButton
+    { KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_UP
+    , KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_DOWN
+    , KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_LEFT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_RIGHT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_RIGHT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_LEFT
+    , KORL_GAMEPAD_BUTTON_STICK_LEFT
+    , KORL_GAMEPAD_BUTTON_STICK_RIGHT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_TOP_LEFT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_TOP_RIGHT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_MIDDLE
+    , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_DOWN
+    , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_RIGHT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_LEFT
+    , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_UP
+} Korl_GamepadButton;
+typedef enum Korl_GamepadAxis
+    { KORL_GAMEPAD_AXIS_STICK_LEFT_X
+    , KORL_GAMEPAD_AXIS_STICK_LEFT_Y
+    , KORL_GAMEPAD_AXIS_STICK_RIGHT_X
+    , KORL_GAMEPAD_AXIS_STICK_RIGHT_Y
+    , KORL_GAMEPAD_AXIS_TRIGGER_LEFT
+    , KORL_GAMEPAD_AXIS_TRIGGER_RIGHT
+} Korl_GamepadAxis;
+typedef struct Korl_GamepadEvent
+{
+    Korl_GamepadEventType type;
+    union
+    {
+        struct
+        {
+            Korl_GamepadButton button;
+            bool pressed;
+        } button;
+        struct
+        {
+            Korl_GamepadAxis axis;
+            f32 value;
+        } axis;
+    } subType;
+} Korl_GamepadEvent;
 #define KORL_PLATFORM_GUI_SET_FONT_ASSET(name)       void name(const wchar_t* fontAssetName)
 #define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_PLATFORM_GUI_WINDOW_END(name)           void name(void)

@@ -247,6 +247,10 @@ korl_internal u$ korl_memory_pageBytes(void)
     _Korl_Memory_Context*const context = &_korl_memory_context;
     return context->systemInfo.dwPageSize;
 }
+korl_internal bool korl_memory_isLittleEndian(void)
+{
+    return !_korl_memory_isBigEndian();
+}
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare)
 {

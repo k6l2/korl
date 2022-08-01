@@ -19,6 +19,20 @@ typedef struct _Korl_Windows_Gamepad_Device
     _Korl_Windows_Gamepad_DeviceType type;
     Korl_StringPool_StringHandle path;
     HANDLE handle;
+    union
+    {
+        struct
+        {
+            DWORD inputFrame;
+            WORD buttons;
+            SHORT stickLeftX;
+            SHORT stickLeftY;
+            SHORT stickRightX;
+            SHORT stickRightY;
+            BYTE triggerLeft;
+            BYTE triggerRight;
+        } xbox;
+    } lastState;
 } _Korl_Windows_Gamepad_Device;
 typedef struct _Korl_Windows_Gamepad_Context
 {
@@ -29,14 +43,15 @@ typedef struct _Korl_Windows_Gamepad_Context
 korl_global_variable _Korl_Windows_Gamepad_Context _korl_windows_gamepad_context;
 korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
 {
+    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     Korl_StringPool_StringHandle stringDevicePath = string_newUtf16(devicePath);
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
     /* check if the device is already registered in our database */
-    for(u$ d = 0; d < arrlenu(_korl_windows_gamepad_context.stbDaDevices); d++)
+    for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
     {
-        if(_korl_windows_gamepad_context.stbDaDevices[d].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
+        if(context->stbDaDevices[d].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
             continue;
-        if(string_equals(stringDevicePath, _korl_windows_gamepad_context.stbDaDevices[d].path))
+        if(string_equals(stringDevicePath, context->stbDaDevices[d].path))
             return;
     }
     /* this device is not registered yet; open a handle to the device */
@@ -51,28 +66,33 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
         { .type   = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
         , .handle = deviceHandle
         , .path   = stringDevicePath };
-    mcarrpush(KORL_C_CAST(void*, _korl_windows_gamepad_context.allocatorHandle), 
-              _korl_windows_gamepad_context.stbDaDevices, 
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), 
+              context->stbDaDevices, 
               newDevice);
     korl_log(INFO, "xbox gamepad connected: \"%ws\"", string_getRawUtf16(stringDevicePath));
 }
-korl_internal void _korl_windows_gamepad_disconnect(LPTSTR devicePath)
+korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
 {
+    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
+    korl_assert(devicesIndex < arrlenu(context->stbDaDevices));
+    korl_log(INFO, "disconnecting gamepad \"%ws\"", string_getRawUtf16(context->stbDaDevices[devicesIndex].path));
+    string_free(context->stbDaDevices[devicesIndex].path);
+    if(!CloseHandle(context->stbDaDevices[devicesIndex].handle))
+        korl_logLastError("CloseHandle failed");
+    arrdelswap(context->stbDaDevices, devicesIndex);
+}
+korl_internal void _korl_windows_gamepad_disconnectPath(LPTSTR devicePath)
+{
+    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     Korl_StringPool_StringHandle stringDevicePath = string_newUtf16(devicePath);
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
-    for(u$ d = 0; d < arrlenu(_korl_windows_gamepad_context.stbDaDevices); d++)
-    {
+    for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
         /* if a device in our database matches the devicePath, we need to clean it up and remove it */
-        if(string_equals(stringDevicePath, _korl_windows_gamepad_context.stbDaDevices[d].path))
+        if(string_equals(stringDevicePath, context->stbDaDevices[d].path))
         {
-            korl_log(INFO, "disconnecting gamepad \"%ws\"", string_getRawUtf16(_korl_windows_gamepad_context.stbDaDevices[d].path));
-            string_free(_korl_windows_gamepad_context.stbDaDevices[d].path);
-            if(!CloseHandle(_korl_windows_gamepad_context.stbDaDevices[d].handle))
-                korl_logLastError("CloseHandle failed");
-            arrdelswap(_korl_windows_gamepad_context.stbDaDevices, d);
+            _korl_windows_gamepad_disconnectIndex(d);
             goto cleanUp;
         }
-    }
     korl_log(INFO, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(stringDevicePath));
     cleanUp:
     string_free(stringDevicePath);
@@ -109,7 +129,11 @@ korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_M
         {
             DWORD deviceInterfaceDetailBytes;
             // query for the size of the device interface detail data:
-            if(!SetupDiGetDeviceInterfaceDetail(deviceInfos, &deviceInterfaceData, NULL/*deviceInterfaceDetailData; NULL=>query for size*/, 0/*detailDataBytes; 0=>query for this*/, &deviceInterfaceDetailBytes, NULL/*deviceInfoData*/))
+            korl_assert(!SetupDiGetDeviceInterfaceDetail(deviceInfos, &deviceInterfaceData, 
+                                                         NULL/*deviceInterfaceDetailData; NULL=>query for size*/, 
+                                                         0/*detailDataBytes; 0=>query for this*/, 
+                                                         &deviceInterfaceDetailBytes, NULL/*deviceInfoData*/));// yes, this should always return false when querying for the detail bytes
+            if(GetLastError() != ERROR_INSUFFICIENT_BUFFER)// when called as above, SetupDiGetDeviceInterfaceDetail should always set the last error code to ERROR_INSUFFICIENT_BUFFER
                 korl_logLastError("SetupDiGetDeviceInterfaceDetail failed");
             PSP_DEVICE_INTERFACE_DETAIL_DATA pDeviceInterfaceDetailData = korl_allocate(allocatorHandleLocal, deviceInterfaceDetailBytes);
             korl_assert(pDeviceInterfaceDetailData);
@@ -150,7 +174,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
             if(broadcastHeader->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
             {
                 DEV_BROADCAST_DEVICEINTERFACE_W*const deviceInterface = KORL_C_CAST(void*, broadcastHeader);
-                _korl_windows_gamepad_disconnect(deviceInterface->dbcc_name);
+                _korl_windows_gamepad_disconnectPath(deviceInterface->dbcc_name);
             }
             else
                 out_result = NULL;
@@ -162,5 +186,86 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
         out_result = NULL;}
     }
     return out_result != NULL;
+}
+korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onGamepadEvent)
+{
+    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
+    for(u$ i = arrlenu(context->stbDaDevices) - 1; i < arrlenu(context->stbDaDevices); i--)
+    {
+        if(context->stbDaDevices[i].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
+            continue;// only support XBOX gamepads (for now)
+        BYTE in[3] = { 0x01, 0x01, 0x00 };
+        BYTE out[29];
+        DWORD size;
+        if(!DeviceIoControl(context->stbDaDevices[i].handle, 0x8000e00c, in, sizeof(in), out, sizeof(out), &size, NULL) || size != sizeof(out))
+        {
+            switch(GetLastError())
+            {
+            case ERROR_DEVICE_NOT_CONNECTED:{
+                korl_log(INFO, "DeviceIoControl => ERROR_DEVICE_NOT_CONNECTED; disconnecting gamepad...");
+                _korl_windows_gamepad_disconnectIndex(i);
+                continue;}
+            default: {
+                korl_logLastError("DeviceIoControl failed");
+                _korl_windows_gamepad_disconnectIndex(i);
+                continue;}
+            }
+        }
+        const _Korl_Windows_Gamepad_Device deviceStatePrevious = context->stbDaDevices[i];
+        korl_assert(korl_memory_isLittleEndian());// the raw xbox state data is stored in the buffer in little-endian byte order; so we can only C-cast into multi-byte registers if our platform is also little-endian
+        context->stbDaDevices[i].lastState.xbox.inputFrame   = *KORL_C_CAST(DWORD*, out +  5);
+        context->stbDaDevices[i].lastState.xbox.buttons      = *KORL_C_CAST(WORD* , out + 11);
+        context->stbDaDevices[i].lastState.xbox.stickLeftX   = *KORL_C_CAST(SHORT*, out + 15);
+        context->stbDaDevices[i].lastState.xbox.stickLeftY   = *KORL_C_CAST(SHORT*, out + 17);
+        context->stbDaDevices[i].lastState.xbox.stickRightX  = *KORL_C_CAST(SHORT*, out + 19);
+        context->stbDaDevices[i].lastState.xbox.stickRightY  = *KORL_C_CAST(SHORT*, out + 21);
+        context->stbDaDevices[i].lastState.xbox.triggerLeft  = out[13];
+        context->stbDaDevices[i].lastState.xbox.triggerRight = out[14];
+        /** these flags are presented in the exact order that the corresponding 
+         * KORL button value in the Korl_GamepadButton enumeration; it is 
+         * essentially a mapping from the xbox button bitfield => KORL button 
+         * index */
+        korl_shared_const WORD XBOX_BUTTON_FLAGS[] = 
+            { 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080
+            , 0x0100, 0x0200, 0x0400/*guide button; this isn't working right now & I'm not quite sure why, but that's okay*/
+            , 0x1000, 0x2000, 0x4000, 0x8000 };
+        for(u$ b = 0; b < korl_arraySize(XBOX_BUTTON_FLAGS); b++)
+            if(   (context->stbDaDevices[i].lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b])
+               != (deviceStatePrevious.lastState.xbox.buttons      & XBOX_BUTTON_FLAGS[b]))
+                if(onGamepadEvent)
+                    onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_BUTTON
+                                                      ,.subType = {.button = {.button  = KORL_C_CAST(Korl_GamepadButton, b)
+                                                                             ,.pressed = context->stbDaDevices[i].lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]}}});
+        if(context->stbDaDevices[i].lastState.xbox.stickLeftX != deviceStatePrevious.lastState.xbox.stickLeftX)
+            if(onGamepadEvent)
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.axis  = KORL_GAMEPAD_AXIS_STICK_LEFT_X
+                                                                       ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.stickLeftX) / KORL_I16_MAX}}});
+        if(context->stbDaDevices[i].lastState.xbox.stickLeftY != deviceStatePrevious.lastState.xbox.stickLeftY)
+            if(onGamepadEvent)
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.axis  = KORL_GAMEPAD_AXIS_STICK_LEFT_Y
+                                                                       ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.stickLeftY) / KORL_I16_MAX}}});
+        if(context->stbDaDevices[i].lastState.xbox.stickRightX != deviceStatePrevious.lastState.xbox.stickRightX)
+            if(onGamepadEvent)
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.axis  = KORL_GAMEPAD_AXIS_STICK_RIGHT_X
+                                                                       ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.stickRightX) / KORL_I16_MAX}}});
+        if(context->stbDaDevices[i].lastState.xbox.stickRightY != deviceStatePrevious.lastState.xbox.stickRightY)
+            if(onGamepadEvent)
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.axis  = KORL_GAMEPAD_AXIS_STICK_RIGHT_Y
+                                                                       ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.stickRightY) / KORL_I16_MAX}}});
+        if(context->stbDaDevices[i].lastState.xbox.triggerLeft != deviceStatePrevious.lastState.xbox.triggerLeft)
+            if(onGamepadEvent)
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.axis  = KORL_GAMEPAD_AXIS_TRIGGER_LEFT
+                                                                       ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.triggerLeft) / KORL_U8_MAX}}});
+        if(context->stbDaDevices[i].lastState.xbox.triggerRight != deviceStatePrevious.lastState.xbox.triggerRight)
+            if(onGamepadEvent)
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.axis  = KORL_GAMEPAD_AXIS_TRIGGER_RIGHT
+                                                                       ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.triggerRight) / KORL_U8_MAX}}});
+    }
 }
 #undef _LOCAL_STRING_POOL_POINTER

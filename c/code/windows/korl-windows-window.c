@@ -37,6 +37,7 @@ typedef struct _Korl_Windows_Window_Context
         fnSig_korl_game_initialize*      korl_game_initialize;
         fnSig_korl_game_onKeyboardEvent* korl_game_onKeyboardEvent;
         fnSig_korl_game_onMouseEvent*    korl_game_onMouseEvent;
+        fnSig_korl_game_onGamepadEvent*  korl_game_onGamepadEvent;
         fnSig_korl_game_update*          korl_game_update;
         fnSig_korl_game_onAssetReloaded* korl_game_onAssetReloaded;
     } gameApi;
@@ -210,6 +211,7 @@ korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
     _korl_windows_window_context.gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      GetProcAddress(hModule, "korl_game_initialize"));
     _korl_windows_window_context.gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, GetProcAddress(hModule, "korl_game_onKeyboardEvent"));
     _korl_windows_window_context.gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    GetProcAddress(hModule, "korl_game_onMouseEvent"));
+    _korl_windows_window_context.gameApi.korl_game_onGamepadEvent  = KORL_C_CAST(fnSig_korl_game_onGamepadEvent*,  GetProcAddress(hModule, "korl_game_onGamepadEvent"));
     _korl_windows_window_context.gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModule, "korl_game_update"));
     _korl_windows_window_context.gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModule, "korl_game_onAssetReloaded"));
 }
@@ -463,6 +465,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStop(process_window_messages);
         if(quit)
             break;
+        korl_windows_gamepad_poll(context->gameApi.korl_game_onGamepadEvent);
         /* check the dynamic game module file to see if it has been updated; if 
             it has, we should do a hot-reload of this module! */
         if(context->gameDll)
