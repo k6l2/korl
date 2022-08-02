@@ -196,6 +196,7 @@ typedef enum Korl_GamepadButton
     , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_RIGHT
     , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_LEFT
     , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_UP
+    /// NOTE: the order of this enumeration _does_ matter for some logic
 } Korl_GamepadButton;
 typedef enum Korl_GamepadAxis
     { KORL_GAMEPAD_AXIS_STICK_LEFT_X
