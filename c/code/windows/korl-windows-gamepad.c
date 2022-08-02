@@ -1,5 +1,6 @@
 /** Most of this code is derived from the following sources: 
  * - https://gist.github.com/mmozeiko/b8ccc54037a5eaf35432396feabbe435
+ * - https://copyprogramming.com/howto/i-need-some-help-to-understand-usb-game-controllers-hid-devices
  */
 #include "korl-windows-gamepad.h"
 #include "korl-log.h"
@@ -10,7 +11,23 @@
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_windows_gamepad_context.stringPool))
-korl_global_const GUID _KORL_WINDOWS_GAMEPAD_XBOX_GUID = { 0xec87f1e3, 0xc13b, 0x4100, { 0xb5, 0xf7, 0x8b, 0x84, 0xd5, 0x42, 0x60, 0xcb } };
+// https://docs.microsoft.com/windows-hardware/drivers/kernel/defining-i-o-control-codes
+// {EC87F1E3-C13B-4100-B5F7-8B84D54260CB}
+DEFINE_GUID(_KORL_WINDOWS_GAMEPAD_XBOX_GUID, 0xEC87F1E3, 0xC13B, 0x4100, 0xB5, 0xF7, 0x8B, 0x84, 0xD5, 0x42, 0x60, 0xCB);
+// xusb22.sys IOCTLs
+#define FILE_DEVICE_XUSB 0x8000U
+#define IOCTL_INDEX_XUSB 0x0800U
+#define IOCTL_XUSB_GET_INFORMATION              /*0x80006000*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 0, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_XUSB_GET_CAPABILITIES             /*0x8000E004*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 1, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_GET_LED_STATE                /*0x8000E008*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 2, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_GET_STATE                    /*0x8000E00C*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 3, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_SET_STATE                    /*0x8000A010*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 4, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_WAIT_GUIDE_BUTTON            /*0x8000E014*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 5, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_GET_BATTERY_INFORMATION      /*0x8000E018*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 6, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_POWER_DOWN                   /*0x8000A01C*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 7, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_GET_AUDIO_DEVICE_INFORMATION /*0x8000E020*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 8, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_WAIT_FOR_INPUT               /*0x8000E3AC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 235, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_XUSB_GET_INFORMATION_EX           /*0x8000E3FC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 255, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 typedef enum _Korl_Windows_Gamepad_DeviceType
     { _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
 } _Korl_Windows_Gamepad_DeviceType;
@@ -194,20 +211,22 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
     {
         if(context->stbDaDevices[i].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
             continue;// only support XBOX gamepads (for now)
-        BYTE in[3] = { 0x01, 0x01, 0x00 };
+        BYTE in[3] = { 0x01, 0x01, 0x00 };///@TODO: what is this?  Is this what we use to get the controller states of multiple controllers attached to the same wireless adapter?
         BYTE out[29];
         DWORD size;
-        if(!DeviceIoControl(context->stbDaDevices[i].handle, 0x8000e00c, in, sizeof(in), out, sizeof(out), &size, NULL) || size != sizeof(out))
+        if(!DeviceIoControl(context->stbDaDevices[i].handle, IOCTL_XUSB_GET_STATE, in, sizeof(in), out, sizeof(out), &size, NULL) 
+           || size != sizeof(out))
         {
             switch(GetLastError())
             {
             case ERROR_DEVICE_NOT_CONNECTED:{
-                korl_log(INFO, "DeviceIoControl => ERROR_DEVICE_NOT_CONNECTED; disconnecting gamepad...");
-                _korl_windows_gamepad_disconnectIndex(i);
+                /* We can't just disconnect the XBOX controller device here, since 
+                    it is entirely possible that this is a wireless controller receiver, 
+                    which can communicate with multiple controllers. */
+                // korl_log(INFO, "DeviceIoControl => ERROR_DEVICE_NOT_CONNECTED; disconnecting gamepad...");
                 continue;}
             default: {
                 korl_logLastError("DeviceIoControl failed");
-                _korl_windows_gamepad_disconnectIndex(i);
                 continue;}
             }
         }

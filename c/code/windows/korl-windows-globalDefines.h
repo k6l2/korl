@@ -20,6 +20,8 @@
 #include <mmsyscom.h>/* for MMSYSERR_NOERROR definition */
 #include <SetupAPI.h>/* for gamepad module (SetupDiGetClassDevs, etc...) */
 #include <Dbt.h>/* for gamepad module (DEV_BROADCAST_DEVICEINTERFACE_*, etc...) */
+#include <initguid.h>/* needed in order to use the DEFINE_GUID macro */
+#include <devioctl.h>/* needed in order to use the CTL_CODE macro */
 #ifdef near// defined from somewhere inside Windows.h
     #undef near // fuck you too, Microsoft!
 #endif
