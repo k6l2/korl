@@ -225,7 +225,7 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
     {
         if(context->stbDaDevices[i].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
             continue;// only support XBOX gamepads (for now)
-        BYTE in[3] = { 0x01, 0x01, 0x00 };///@TODO: what is this?  Is this what we use to get the controller states of multiple controllers attached to the same wireless adapter?
+        BYTE in[3] = { 0x01, 0x01, 0x00 };//KORL-ISSUE-000-000-083: gamepad: XBOX wireless devices only support a single gamepad instead of 4
         BYTE out[29];
         DWORD size;
         if(   !DeviceIoControl(context->stbDaDevices[i].handle, IOCTL_XUSB_GET_STATE, in, sizeof(in), out, sizeof(out), &size, NULL) 
@@ -258,10 +258,10 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
          * KORL button value in the Korl_GamepadButton enumeration; it is 
          * essentially a mapping from the xbox button bitfield => KORL button 
          * index */
+        //KORL-ISSUE-000-000-084: gamepad: (low priority) XBOX controller guide button is not being captured
         korl_shared_const WORD XBOX_BUTTON_FLAGS[] = 
             { 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080
-            , 0x0100, 0x0200, 0x0400/*guide button; this isn't working right now; I suspect it is because we aren't calling the right IoControlCode, since I know that XInput uses a separate undocumented API to get the controller state that includes the state of the XBOX button */
-            , 0x1000, 0x2000, 0x4000, 0x8000 };
+            , 0x0100, 0x0200, 0x0400/*guide button*/, 0x1000, 0x2000, 0x4000, 0x8000 };
         for(u$ b = 0; b < korl_arraySize(XBOX_BUTTON_FLAGS); b++)
         {
             if(   (context->stbDaDevices[i].lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b])
