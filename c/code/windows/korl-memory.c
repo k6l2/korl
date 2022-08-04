@@ -1775,8 +1775,9 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
     /* otherwise, we need to add the string to the character pool & create a new 
         string entry to use */
     const u$ rawWideStringSize = korl_memory_stringSize(rawWideString) + 1/*null-terminator*/;
-    wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + arrlen(context->stbDaFileNameCharacterPool);
+    const u$ fileNameCharacterPoolSizePrevious = arrlen(context->stbDaFileNameCharacterPool);
     mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
+    wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + fileNameCharacterPoolSizePrevious;
     korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(rawWideString, persistDataStart, rawWideStringSize));
     const _Korl_Memory_RawString newRawString = { .data = { .data = persistDataStart
                                                           , .size = rawWideStringSize - 1/*ignore the null-terminator*/}
