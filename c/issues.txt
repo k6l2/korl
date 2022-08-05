@@ -149,3 +149,4 @@
 [ ] KORL-FEATURE-000-000-033: add testbed scripts using samples/examples
 [ ] KORL-FEATURE-000-000-034: memory: automatically save allocator addresses to a config file & load them on startup (in development builds only probably?...); this will potentially help development debugging times a LOT in the long run!
 [ ] KORL-FEATURE-000-000-035: add support for SIMD instruction sets (maybe something common, like SSE | AVX).  Resources: https://stackoverflow.com/a/22521619/4526664 https://www.intel.com/content/dam/develop/external/us/en/documents/36945 (specifically chapter 2.2)
+[ ] KORL-FEATURE-000-000-036: gamepad: (low priority); expose gamepad deadzone values as configurable through the KORL platform interface

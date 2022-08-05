@@ -127,6 +127,7 @@ korl_internal inline f32 korl_math_abs(f32 x);
 korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator);
 korl_internal inline f32 korl_math_acos(f32 x);
 korl_internal inline f32 korl_math_ceil(f32 x);
+korl_internal inline f32 korl_math_sqrt(f32 x);
 /* RNG ************************************************************************/
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2);
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed);
@@ -265,7 +266,6 @@ korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v);
 // korl_internal Korl_Math_V2f32 operator/(f32 scalar, Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32& operator+=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB);
-
 // korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 v, f32 scalar);
 // korl_internal Korl_Math_V3f32 operator+(f32 scalar, Korl_Math_V3f32 v);

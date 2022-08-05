@@ -218,6 +218,41 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
     }
     return out_result != NULL;
 }
+korl_internal void _korl_windows_gamepad_xInputFilterStickDeadzone(SHORT* inOut_stickX, SHORT* inOut_stickY, SHORT deadzoneMagnitude)
+{
+    f32 fX = *inOut_stickX;
+    f32 fY = *inOut_stickY;
+    f32 magnitude = korl_math_sqrt(fX*fX + fY*fY);
+    if(magnitude <= deadzoneMagnitude)
+    {
+        *inOut_stickX = 0;
+        *inOut_stickY = 0;
+        return;
+    }
+#if KORL_DEBUG
+    korl_assert(deadzoneMagnitude > 0);
+#endif
+    fX /= magnitude;
+    fY /= magnitude;
+    if(magnitude > KORL_I16_MAX)
+        magnitude = KORL_I16_MAX;
+    magnitude = ((magnitude - deadzoneMagnitude) / (KORL_I16_MAX - deadzoneMagnitude)) * KORL_I16_MAX;
+    *inOut_stickX = KORL_C_CAST(SHORT, fX*magnitude);
+    *inOut_stickY = KORL_C_CAST(SHORT, fY*magnitude);
+}
+korl_internal void _korl_windows_gamepad_xInputFilterTriggerDeadzone(BYTE* inOut_trigger, BYTE deadzoneMagnitude)
+{
+    if(*inOut_trigger <= deadzoneMagnitude)
+    {
+        *inOut_trigger = 0;
+        return;
+    }
+#if KORL_DEBUG
+    korl_assert(deadzoneMagnitude > 0);
+#endif
+    const f32 fX = KORL_C_CAST(f32, (*inOut_trigger - deadzoneMagnitude)) / (KORL_U8_MAX - deadzoneMagnitude);
+    *inOut_trigger = KORL_C_CAST(BYTE, fX*KORL_U8_MAX);
+}
 korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onGamepadEvent)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
@@ -254,14 +289,30 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
         context->stbDaDevices[i].lastState.xbox.sticks.named.rightY  = *KORL_C_CAST(SHORT*, out + 21);
         context->stbDaDevices[i].lastState.xbox.triggers.named.left  = out[13];
         context->stbDaDevices[i].lastState.xbox.triggers.named.right = out[14];
+        /** deadzone filter */
+        //KORL-FEATURE-000-000-036: gamepad: (low priority); expose gamepad deadzone values as configurable through the KORL platform interface
+        /* these deadzone values are derived from: 
+            https://docs.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput#dead-zone */
+        #define _KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
+        #define _KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
+        #define _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
+        _korl_windows_gamepad_xInputFilterStickDeadzone(&context->stbDaDevices[i].lastState.xbox.sticks.named.leftX, 
+                                                        &context->stbDaDevices[i].lastState.xbox.sticks.named.leftY, 
+                                                        _KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        _korl_windows_gamepad_xInputFilterStickDeadzone(&context->stbDaDevices[i].lastState.xbox.sticks.named.rightX, 
+                                                        &context->stbDaDevices[i].lastState.xbox.sticks.named.rightY, 
+                                                        _KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&context->stbDaDevices[i].lastState.xbox.triggers.named.left, 
+                                                          _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
+        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&context->stbDaDevices[i].lastState.xbox.triggers.named.right, 
+                                                          _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
         /** these flags are presented in the exact order that the corresponding 
          * KORL button value in the Korl_GamepadButton enumeration; it is 
-         * essentially a mapping from the xbox button bitfield => KORL button 
-         * index */
-        //KORL-ISSUE-000-000-084: gamepad: (low priority) XBOX controller guide button is not being captured
+         * essentially a mapping from the xbox_button_bitfield => KORL_button_index */
         korl_shared_const WORD XBOX_BUTTON_FLAGS[] = 
             { 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080
-            , 0x0100, 0x0200, 0x0400/*guide button*/, 0x1000, 0x2000, 0x4000, 0x8000 };
+            , 0x0100, 0x0200, 0x0400,         0x1000, 0x2000, 0x4000, 0x8000 };
+        //KORL-ISSUE-000-000-084: gamepad: (low priority) XBOX controller guide button is not being captured
         for(u$ b = 0; b < korl_arraySize(XBOX_BUTTON_FLAGS); b++)
         {
             if(   (context->stbDaDevices[i].lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b])

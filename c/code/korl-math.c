@@ -75,6 +75,10 @@ korl_internal inline f32 korl_math_ceil(f32 x)
 {
     return ceilf(x);
 }
+korl_internal inline f32 korl_math_sqrt(f32 x)
+{
+    return sqrtf(x);
+}
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2)
 {
     KORL_ZERO_STACK(Korl_Math_Rng_WichmannHill, result);
