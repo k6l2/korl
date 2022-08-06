@@ -187,13 +187,19 @@ IF %ERRORLEVEL% NEQ 0 (
     echo %KORL_SOURCE_BASE_NAME%.obj failed to compile!
     GOTO :ON_FAILURE_EXE
 )
-echo %KORL_SOURCE_BASE_NAME% build complete!  Waiting for game module build...
+echo %KORL_SOURCE_BASE_NAME% build complete!
 echo:
 :SKIP_BUILD_PLATFORM_OBJECT
 rem ---------------------- synchronize game object build  ----------------------
-:WAIT_FOR_BUILD_GAME
-if exist %lockFileGame% goto :WAIT_FOR_BUILD_GAME
+if %KORL_GAME_IS_DYNAMIC% == TRUE ( 
+    goto :SKIP_WAIT_FOR_BUILD_PLATFORM_EXE
+)
+echo Waiting for game obj build...
+echo:
+:WAIT_FOR_BUILD_PLATFORM_EXE
+if exist %lockFileGame% goto :WAIT_FOR_BUILD_PLATFORM_EXE
 if exist %statusFileGame% goto :ON_FAILURE_EXE
+:SKIP_WAIT_FOR_BUILD_PLATFORM_EXE
 rem ------------------------ link the final executable ------------------------
 if "%_KORL_BUILD_SKIP_PLATFORM_CODE%"=="TRUE" (
     echo Skipping %KORL_EXE_NAME%.exe build...
@@ -249,6 +255,16 @@ IF %ERRORLEVEL% NEQ 0 (
     GOTO :ON_FAILURE_EXE
 )
 :SKIP_BUILD_PLATFORM_EXECUTABLE
+rem --------- synchronize the platform EXE build w/ the game DLL build ---------
+if NOT %KORL_GAME_IS_DYNAMIC% == TRUE ( 
+    goto :SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
+)
+echo Waiting for game DLL build...
+echo:
+:WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
+if exist %lockFileGame% goto :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
+if exist %statusFileGame% goto :ON_FAILURE_EXE
+:SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 rem ------------------------ synchronize shaders build  ------------------------
 :WAIT_FOR_BUILD_SHADERS
 if exist %lockFileBuildShaders% goto :WAIT_FOR_BUILD_SHADERS
