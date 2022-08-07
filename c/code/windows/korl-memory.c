@@ -935,6 +935,7 @@ korl_internal u$ _korl_memory_allocator_general_occupiedPageOffset(_Korl_Memory_
     {
         const u$ pageFlagRegister = p / bitsPerFlagRegister;// the array index into allocator->availablePageFlags
         const u$ flagIndex        = p % bitsPerFlagRegister;// the bit index into this specific element of allocator->availablePageFlags
+        //KORL-PERFORMANCE-000-000-030: memory: general allocator: does using bittest intrinsic result in better performance?
         if(allocator->availablePageFlags[pageFlagRegister] & (1LLU<<(bitsPerFlagRegister - 1 - flagIndex)))
         {
             occupiedPageOffset = p - pageRangeStartIndex;
