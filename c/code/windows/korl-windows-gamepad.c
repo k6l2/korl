@@ -28,6 +28,61 @@ DEFINE_GUID(_KORL_WINDOWS_GAMEPAD_XBOX_GUID, 0xEC87F1E3, 0xC13B, 0x4100, 0xB5, 0
 #define IOCTL_XUSB_GET_AUDIO_DEVICE_INFORMATION /*0x8000E020*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 8, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 #define IOCTL_XUSB_WAIT_FOR_INPUT               /*0x8000E3AC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 235, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 #define IOCTL_XUSB_GET_INFORMATION_EX           /*0x8000E3FC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 255, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+typedef struct _Korl_Windows_Gamepad_Xusb_GetCapabilitiesIn
+{
+    BYTE unknown_always1[2];
+    BYTE controllerIndex;
+} _Korl_Windows_Gamepad_Xusb_GetCapabilitiesIn;
+typedef struct _Korl_Windows_Gamepad_Xusb_GetCapabilitiesOut
+{
+    BYTE unknown[2];
+    BYTE type;// byte[2]
+    BYTE subType;// byte[3]
+    WORD buttons;// byte[4,5]
+    BYTE triggerLeft;// byte[6]
+    BYTE triggerRight;// byte[7]
+    SHORT stickLeftX;// byte[8,9]
+    SHORT stickLeftY;// byte[10,11]
+    SHORT stickRightX;// byte[12,13]
+    SHORT stickRightY;// byte[14,15]
+    BYTE unknown2[6];// byte[16,21]
+    BYTE motorFrequencyLow;// byte[22]
+    BYTE motorFrequencyHigh;// byte[23]
+} _Korl_Windows_Gamepad_Xusb_GetCapabilitiesOut;
+typedef struct _Korl_Windows_Gamepad_Xusb_GetBatteryInfoIn
+{
+    BYTE unknown_always2;
+    BYTE unknown_always1;
+    BYTE unknown[2];// controller index in one of these?
+} _Korl_Windows_Gamepad_Xusb_GetBatteryInfoIn;
+typedef struct _Korl_Windows_Gamepad_Xusb_GetBatteryInfoOut
+{
+    BYTE unknown[2];
+    BYTE type;
+    BYTE level;
+} _Korl_Windows_Gamepad_Xusb_GetBatteryInfoOut;
+typedef _Korl_Windows_Gamepad_Xusb_GetCapabilitiesIn _Korl_Windows_Gamepad_Xusb_GetStateIn;
+typedef struct _Korl_Windows_Gamepad_Xusb_GetStateOut
+{
+    BYTE unknown[5];
+    DWORD packet;// byte[5:8]
+    BYTE unknown2[2];
+    WORD buttons;// byte[11:12]
+    BYTE triggerLeft;// byte[13]
+    BYTE triggerRight;// byte[14]
+    SHORT stickLeftX;// byte[15,16]
+    SHORT stickLeftY;// byte[17,18]
+    SHORT stickRightX;// byte[19,20]
+    SHORT stickRightY;// byte[21,22]
+    BYTE unknown3[7];
+} _Korl_Windows_Gamepad_Xusb_GetStateOut;
+typedef struct _Korl_Windows_Gamepad_Xusb_SetStateIn
+{
+    BYTE unknown_always0[2];// controller index in one of these?
+    BYTE motorFrequencyLow;// byte[2]
+    BYTE motorFrequencyHigh;// byte[3]
+    BYTE unknown_always2;
+} _Korl_Windows_Gamepad_Xusb_SetStateIn;
 typedef enum _Korl_Windows_Gamepad_DeviceType
     { _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
 } _Korl_Windows_Gamepad_DeviceType;
@@ -92,6 +147,31 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
         korl_log(WARNING, "failed to open device handle; reconnection required: \"%ws\"", devicePath);
         return;
     }
+    /* query the XBOX device for details */
+    BYTE out[12];
+    DWORD size;
+    if(   !DeviceIoControl(deviceHandle, IOCTL_XUSB_GET_INFORMATION, NULL/*in buffer*/, 0/*in buffer bytes*/, out, sizeof(out), &size, NULL) 
+       || size != sizeof(out))
+    {
+        switch(GetLastError())
+        {
+        case ERROR_DEVICE_NOT_CONNECTED:{
+            korl_log(WARNING, "DeviceIoControl(IOCTL_XUSB_GET_INFORMATION) => ERROR_DEVICE_NOT_CONNECTED; device disconnected before connect registration completed");
+            goto abortConnection;}
+        default: {
+            korl_logLastError("DeviceIoControl(IOCTL_XUSB_GET_INFORMATION) failed");
+            goto abortConnection;}
+        }
+    }
+#if KORL_DEBUG
+    Korl_StringPool_StringHandle stringDebug = string_newEmptyUtf16(0);
+    string_appendFormatUtf16(stringDebug, "{ ");
+    for(u$ i = 0; i < korl_arraySize(out); i++)
+        string_appendFormatUtf16(stringDebug, "%02hhX ", out[i]);
+    string_appendFormatUtf16(stringDebug, "}");
+    korl_log(INFO, "DeviceIoControl(%ws, IOCTL_XUSB_GET_INFORMATION)=%ws", devicePath, string_getRawUtf16(stringDebug));
+    string_free(stringDebug);
+#endif
     /* add the new device to the database */
     const _Korl_Windows_Gamepad_Device newDevice = 
         { .type   = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
@@ -101,6 +181,11 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
               context->stbDaDevices, 
               newDevice);
     korl_log(INFO, "xbox gamepad connected: \"%ws\"", string_getRawUtf16(stringDevicePath));
+    return;
+    abortConnection:
+    string_free(stringDevicePath);
+    if(!CloseHandle(deviceHandle))
+        korl_logLastError("CloseHandle failed");
 }
 korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
 {
