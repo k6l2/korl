@@ -70,7 +70,8 @@ korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_StringHandle stri
 korl_internal bool _korl_file_open(Korl_File_PathType pathType, 
                                    const wchar_t* fileName, 
                                    Korl_File_Descriptor_Flags flags, 
-                                   Korl_File_Descriptor* o_fileDescriptor)
+                                   Korl_File_Descriptor* o_fileDescriptor, 
+                                   bool createNew)
 {
     _Korl_File_Context*const context = &_korl_file_context;
     bool result = true;
@@ -92,7 +93,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
                                     createDesiredAccess, 
                                     FILE_SHARE_READ, 
                                     NULL/*default security*/, 
-                                    OPEN_ALWAYS, 
+                                    createNew ? CREATE_NEW : OPEN_EXISTING, 
                                     createFileFlags, 
                                     NULL/*no template file*/);
     if(hFile == INVALID_HANDLE_VALUE)
@@ -425,7 +426,18 @@ korl_internal bool korl_file_open(Korl_File_PathType pathType,
                                      | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
     if(async)
         flags |= KORL_FILE_DESCRIPTOR_FLAG_ASYNC;
-    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor);
+    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, false/*don't create new file*/);
+}
+korl_internal bool korl_file_create(Korl_File_PathType pathType, 
+                                    const wchar_t* fileName, 
+                                    Korl_File_Descriptor* o_fileDescriptor, 
+                                    bool async)
+{
+    Korl_File_Descriptor_Flags flags = KORL_FILE_DESCRIPTOR_FLAG_READ 
+                                     | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
+    if(async)
+        flags |= KORL_FILE_DESCRIPTOR_FLAG_ASYNC;
+    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, true/*create new*/);
 }
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor)
 {

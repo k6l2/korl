@@ -49,6 +49,11 @@ korl_internal bool korl_file_open(Korl_File_PathType pathType,
                                   const wchar_t* fileName, 
                                   Korl_File_Descriptor* o_fileDescriptor, 
                                   bool async);
+/** same as \c korl_file_open , except we are creating a file that doesn't exist yet */
+korl_internal bool korl_file_create(Korl_File_PathType pathType, 
+                                    const wchar_t* fileName, 
+                                    Korl_File_Descriptor* o_fileDescriptor, 
+                                    bool async);
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor);
 /** The caller is responsible for keeping \c buffer alive until the write 
  * operation is complete. */

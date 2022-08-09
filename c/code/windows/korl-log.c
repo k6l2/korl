@@ -415,10 +415,10 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
                     || resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST);
     }
     /**/
-    korl_assert(korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, 
-                               logFileName, 
-                               &context->fileDescriptor, 
-                               true/*async*/));
+    korl_assert(korl_file_create(KORL_FILE_PATHTYPE_LOCAL_DATA, 
+                                 logFileName, 
+                                 &context->fileDescriptor, 
+                                 true/*async*/));
     /* info about BOMs: https://unicode.org/faq/utf_bom.html */
     korl_shared_const u8 BOM_UTF16_LITTLE_ENDIAN[] = { 0xFF,0xFE };// Byte Order Marker to indicate UTF-16LE; must be written to the beginnning of the file!
     korl_file_write(context->fileDescriptor, BOM_UTF16_LITTLE_ENDIAN, sizeof(BOM_UTF16_LITTLE_ENDIAN));
