@@ -16,6 +16,10 @@ typedef enum _Korl_AssetCache_AssetState
     , _KORL_ASSET_CACHE_ASSET_STATE_LOADED     // the file is closed, and the asset data is loaded
     , _KORL_ASSET_CACHE_ASSET_STATE_RELOADING  // assetCache has detected that the file has a newer version on disk and must be reloaded; the asset will remain in this state until (1) the asset is loaded, & (2) the assetCache has been queried for all newly reloaded assets
 } _Korl_AssetCache_AssetState;
+typedef enum _Korl_AssetCache_AssetFlags
+    { _KORL_ASSET_CACHE_ASSET_FLAGS_NONE                 = 0
+    , _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED = 1 << 0 // used to prevent log spam for asset hot-reload warning conditions
+} _Korl_AssetCache_AssetFlags;
 typedef struct _Korl_AssetCache_Asset
 {
     _Korl_AssetCache_AssetState state;
@@ -24,6 +28,7 @@ typedef struct _Korl_AssetCache_Asset
     Korl_File_Descriptor fileDescriptor;
     Korl_File_AsyncIoHandle asyncIoHandle;
     KorlPlatformDateStamp dateStampLastWrite;
+    _Korl_AssetCache_AssetFlags flags;
 } _Korl_AssetCache_Asset;
 typedef struct _Korl_AssetCache_Context
 {
@@ -89,6 +94,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
                 if(resultFileRead)
                 {
                     asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
+                    asset->flags = KORL_ASSETCACHE_GET_FLAGS_NONE;
                     korl_file_close(&(asset->fileDescriptor));
                     goto returnLoadedData;
                 }
@@ -114,6 +120,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
         case KORL_FILE_GET_ASYNC_IO_RESULT_DONE:{
             korl_file_close(&asset->fileDescriptor);
             asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
+            asset->flags = KORL_ASSETCACHE_GET_FLAGS_NONE;
             goto returnLoadedData;}
         case KORL_FILE_GET_ASYNC_IO_RESULT_PENDING:{
             return KORL_ASSETCACHE_GET_RESULT_PENDING;}
@@ -153,6 +160,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
             case KORL_FILE_GET_ASYNC_IO_RESULT_DONE:{
                 korl_file_close(&asset->fileDescriptor);
                 asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
+                asset->flags = KORL_ASSETCACHE_GET_FLAGS_NONE;
                 const wchar_t*const rawUtf16AssetName = string_getRawUtf16(asset->name);
                 korl_log(INFO, "Asset \"%ws\" has been hot-reloaded!  Running callbacks...", rawUtf16AssetName);
                 callbackOnAssetHotReloaded(rawUtf16AssetName, asset->data);
@@ -199,7 +207,11 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                         should just assume that we didn't open the file in a 
                         valid state, and just attempt to open the file again at 
                         a future time.  */
-                    korl_log(WARNING, "asset \"%ws\" opened with 0 bytes; closing, then re-trying later...", string_getRawUtf16(asset->name));
+                    if(!(asset->flags & _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED))
+                    {
+                        korl_log(WARNING, "asset \"%ws\" opened with 0 bytes; closing, then re-trying later...", string_getRawUtf16(asset->name));
+                        asset->flags |= _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED;
+                    }
                     korl_file_close(&(asset->fileDescriptor));
                     continue;
                 }
@@ -215,7 +227,11 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                     this condition is likely to occur often when the editor 
                     program being used to modify the asset hasn't finished 
                     writing operations on it yet. */
-                korl_log(INFO, "asset \"%ws\" failed to open; re-trying later...", string_getRawUtf16(asset->name));
+                if(!(asset->flags & _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED))
+                {
+                    korl_log(INFO, "asset \"%ws\" failed to open; re-trying later...", string_getRawUtf16(asset->name));
+                    asset->flags |= _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED;
+                }
         }
     }
 }
