@@ -185,17 +185,37 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
             if(resultFileOpen)
             {
                 korl_assert(!asset->asyncIoHandle);
+                asset->data.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
+                if(0 == asset->data.dataBytes)
+                {
+                    /* It is possible for us to open a file for exclusive write 
+                        access that has a file size set to 0 by the program 
+                        we're using to edit it.  One such example is VS Code, 
+                        which after using Microsoft Process Monitor I have 
+                        observed that VS Code will open a file and then 
+                        immediately set the end-of-file pointer to be the 
+                        current file pointer position (effectively setting the 
+                        size of the file to 0 bytes).  If this ever happens, we 
+                        should just assume that we didn't open the file in a 
+                        valid state, and just attempt to open the file again at 
+                        a future time.  */
+                    korl_log(WARNING, "asset \"%ws\" opened with 0 bytes; closing, then re-trying later...", string_getRawUtf16(asset->name));
+                    korl_file_close(&(asset->fileDescriptor));
+                    continue;
+                }
+                /* otherwise, it should be safe to assume that we opened the 
+                    file in a valid state, so we can async load the contents */
                 asset->dateStampLastWrite = dateStampLatestFileWrite;
                 asset->state              = _KORL_ASSET_CACHE_ASSET_STATE_RELOADING;
-                asset->data.dataBytes     = korl_file_getTotalBytes(asset->fileDescriptor);
                 asset->data.data          = korl_reallocate(context->allocatorHandle, asset->data.data, asset->data.dataBytes);
                 asset->asyncIoHandle      = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
             }
             else
-            {
-                //we failed to open the file; log a warning?  although, that might result in spam, so I'm not quite sure...
-                //in any case, it should be okay for us to continue trying to open the file
-            }
+                /* It should be okay for us to continue trying to open the file; 
+                    this condition is likely to occur often when the editor 
+                    program being used to modify the asset hasn't finished 
+                    writing operations on it yet. */
+                korl_log(INFO, "asset \"%ws\" failed to open; re-trying later...", string_getRawUtf16(asset->name));
         }
     }
 }
