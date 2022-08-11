@@ -54,6 +54,7 @@ typedef enum Korl_StringPool_CompareResult
     to be whatever string pool context they want. */
 #define string_newUtf8(cStringUtf8)                                            korl_stringPool_newFromUtf8(_LOCAL_STRING_POOL_POINTER, cStringUtf8, __FILEW__, __LINE__)
 #define string_newUtf16(cStringUtf16)                                          korl_stringPool_newFromUtf16(_LOCAL_STRING_POOL_POINTER, cStringUtf16, __FILEW__, __LINE__)
+#define string_newAci8(constArrayCi8)                                          korl_stringPool_newFromAci8(_LOCAL_STRING_POOL_POINTER, constArrayCi8, __FILEW__, __LINE__)
 #define string_newEmptyUtf8(reservedSizeExcludingNullTerminator)               korl_stringPool_newEmptyUtf8(_LOCAL_STRING_POOL_POINTER, reservedSizeExcludingNullTerminator, __FILEW__, __LINE__)
 #define string_newEmptyUtf16(reservedSizeExcludingNullTerminator)              korl_stringPool_newEmptyUtf16(_LOCAL_STRING_POOL_POINTER, reservedSizeExcludingNullTerminator, __FILEW__, __LINE__)
 #define string_newFormatUtf8(formatUtf8, ...)                                  korl_stringPool_newFormatUtf8(_LOCAL_STRING_POOL_POINTER, __FILEW__, __LINE__, formatUtf8, ##__VA_ARGS__)
@@ -92,6 +93,7 @@ typedef enum Korl_StringPool_CompareResult
     automatically inject file/line information */
 #define korl_stringNewUtf8(stringPoolPointer, cString)                                                korl_stringPool_newFromUtf8(stringPoolPointer, cString, __FILEW__, __LINE__)
 #define korl_stringNewUtf16(stringPoolPointer, cString)                                               korl_stringPool_newFromUtf16(stringPoolPointer, cString, __FILEW__, __LINE__)
+#define korl_stringNewAci8(stringPoolPointer, constArrayCi8)                                          korl_stringPool_newFromAci8(stringPoolPointer, constArrayCi8, __FILEW__, __LINE__)
 #define korl_stringNewEmptyUtf8(stringPoolPointer, reservedSizeExcludingNullTerminator)               korl_stringPool_newEmptyUtf8(stringPoolPointer, reservedSizeExcludingNullTerminator, __FILEW__, __LINE__)
 #define korl_stringNewEmptyUtf16(stringPoolPointer, reservedSizeExcludingNullTerminator)              korl_stringPool_newEmptyUtf16(stringPoolPointer, reservedSizeExcludingNullTerminator, __FILEW__, __LINE__)
 #define korl_stringNewFormatUtf8(stringPoolPointer, formatUtf8, ...)                                  korl_stringPool_newFormatUtf8(stringPoolPointer, __FILEW__, __LINE__, formatUtf8, ##__VA_ARGS__)
@@ -111,6 +113,7 @@ korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_A
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
 korl_internal Korl_StringPool_StringHandle  korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal Korl_StringPool_StringHandle  korl_stringPool_newFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal Korl_StringPool_StringHandle  korl_stringPool_newFromAci8(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line);
 korl_internal Korl_StringPool_StringHandle  korl_stringPool_newEmptyUtf8(Korl_StringPool* context, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
 korl_internal Korl_StringPool_StringHandle  korl_stringPool_newEmptyUtf16(Korl_StringPool* context, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
 korl_internal Korl_StringPool_StringHandle  korl_stringPool_newFormatUtf8(Korl_StringPool* context, const wchar_t* file, int line, const char* formatUtf8, ...);
@@ -155,6 +158,7 @@ korl_internal u32                           korl_stringPool_findUtf16(Korl_Strin
 korl_internal Korl_StringPool_StringHandle korl_stringPool_new(Korl_StringPool* context, const wchar_t* file, int line);
 korl_internal Korl_StringPool_StringHandle korl_stringPool_new(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal Korl_StringPool_StringHandle korl_stringPool_new(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal Korl_StringPool_StringHandle korl_stringPool_new(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line);
 korl_internal void                         korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal void                         korl_stringPool_append(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal void                         korl_stringPool_appendFormat(Korl_StringPool* context, Korl_StringPool_StringHandle stringHandle, const wchar_t* file, int line, const char* format, ...);

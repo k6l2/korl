@@ -83,17 +83,17 @@ typedef struct au16
 } au16;
 typedef struct aci8
 {
-    u$  size;
+    u$        size;
     const i8* data;
 } aci8;
 typedef struct acu8
 {
-    u$  size;
+    u$        size;
     const u8* data;
 } acu8;
 typedef struct acu16
 {
-    u$   size;
+    u$         size;
     const u16* data;
 } acu16;
 /** calculate the size of an array 
