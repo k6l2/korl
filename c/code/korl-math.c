@@ -79,6 +79,15 @@ korl_internal inline f32 korl_math_sqrt(f32 x)
 {
     return sqrtf(x);
 }
+korl_internal inline f32 korl_math_nanf32(void)
+{
+    korl_shared_const u32 MAX_U32 = KORL_U32_MAX;
+    return *KORL_C_CAST(f32*, &MAX_U32);
+}
+korl_internal inline bool korl_math_isNanf32(f32 x)
+{
+    return 0 != _isnanf(x);
+}
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2)
 {
     KORL_ZERO_STACK(Korl_Math_Rng_WichmannHill, result);
