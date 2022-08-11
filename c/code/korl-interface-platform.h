@@ -487,6 +487,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR(name)   void               name(Korl_Gfx_Batch*const batchContext, Korl_Math_V2f32 textPositionAnchor)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(name)         void               name(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(name)        void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
+#define KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(name)           void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
@@ -542,72 +543,74 @@ typedef KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB             (fnSig_korl_gfx_batchT
 typedef KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR  (fnSig_korl_gfx_batchTextSetPositionAnchor);
 typedef KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE        (fnSig_korl_gfx_batchRectangleSetSize);
 typedef KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR       (fnSig_korl_gfx_batchRectangleSetColor);
+typedef KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR          (fnSig_korl_gfx_batchCircleSetColor);
 typedef KORL_PLATFORM_GUI_SET_FONT_ASSET                  (fnSig_korl_gui_setFontAsset);
 typedef KORL_PLATFORM_GUI_WINDOW_BEGIN                    (fnSig_korl_gui_windowBegin);
 typedef KORL_PLATFORM_GUI_WINDOW_END                      (fnSig_korl_gui_windowEnd);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
-    fnSig_korlPlatformAssertFailure*             _korl_crash_assertConditionFailed;\
-    fnSig_korlPlatformLog*                       _korl_log_variadic;\
-    fnSig_korl_timeStamp*                        korl_timeStamp;\
-    fnSig_korl_time_secondsSinceTimeStamp*       korl_time_secondsSinceTimeStamp;\
-    fnSig_korl_memory_zero*                      korl_memory_zero;\
-    fnSig_korl_memory_copy*                      korl_memory_copy;\
-    fnSig_korl_memory_move*                      korl_memory_move;\
-    fnSig_korl_memory_compare*                   korl_memory_compare;\
-    fnSig_korl_memory_arrayU8Compare*            korl_memory_arrayU8Compare;\
-    fnSig_korl_memory_arrayU16Compare*           korl_memory_arrayU16Compare;\
-    fnSig_korl_memory_stringCompare*             korl_memory_stringCompare;\
-    fnSig_korl_memory_stringCompareUtf8*         korl_memory_stringCompareUtf8;\
-    fnSig_korl_memory_stringSize*                korl_memory_stringSize;\
-    fnSig_korl_memory_stringSizeUtf8*            korl_memory_stringSizeUtf8;\
-    fnSig_korl_memory_stringCopy*                korl_memory_stringCopy;\
-    fnSig_korl_memory_stringFormatVaList*        korl_memory_stringFormatVaList;\
-    fnSig_korl_memory_stringFormatVaListUtf8*    korl_memory_stringFormatVaListUtf8;\
-    fnSig_korl_memory_stringFormatBuffer*        korl_memory_stringFormatBuffer;\
-    fnSig_korl_memory_allocator_create*          korl_memory_allocator_create;\
-    fnSig_korl_memory_allocator_allocate*        korl_memory_allocator_allocate;\
-    fnSig_korl_memory_allocator_reallocate*      korl_memory_allocator_reallocate;\
-    fnSig_korl_memory_allocator_free*            korl_memory_allocator_free;\
-    fnSig_korl_memory_allocator_empty*           korl_memory_allocator_empty;\
-    fnSig_korl_stb_ds_reallocate*                _korl_stb_ds_reallocate;\
-    fnSig_korl_stb_ds_free*                      _korl_stb_ds_free;\
-    fnSig_korl_assetCache_get*                   korl_assetCache_get;\
-    fnSig_korl_gfx_createCameraFov*              korl_gfx_createCameraFov;\
-    fnSig_korl_gfx_createCameraOrtho*            korl_gfx_createCameraOrtho;\
-    fnSig_korl_gfx_createCameraOrthoFixedHeight* korl_gfx_createCameraOrthoFixedHeight;\
-    fnSig_korl_gfx_cameraFov_rotateAroundTarget* korl_gfx_cameraFov_rotateAroundTarget;\
-    fnSig_korl_gfx_useCamera*                    korl_gfx_useCamera;\
-    fnSig_korl_gfx_cameraSetScissor*             korl_gfx_cameraSetScissor;\
-    fnSig_korl_gfx_cameraSetScissorPercent*      korl_gfx_cameraSetScissorPercent;\
-    fnSig_korl_gfx_cameraOrthoSetOriginAnchor*   korl_gfx_cameraOrthoSetOriginAnchor;\
-    fnSig_korl_gfx_batch*                        korl_gfx_batch;\
-    fnSig_korl_gfx_createBatchRectangleTextured* korl_gfx_createBatchRectangleTextured;\
-    fnSig_korl_gfx_createBatchRectangleColored*  korl_gfx_createBatchRectangleColored;\
-    fnSig_korl_gfx_createBatchCircle*            korl_gfx_createBatchCircle;\
-    fnSig_korl_gfx_createBatchTriangles*         korl_gfx_createBatchTriangles;\
-    fnSig_korl_gfx_createBatchLines*             korl_gfx_createBatchLines;\
-    fnSig_korl_gfx_createBatchText*              korl_gfx_createBatchText;\
-    fnSig_korl_gfx_batchSetBlendState*           korl_gfx_batchSetBlendState;\
-    fnSig_korl_gfx_batchSetPosition*             korl_gfx_batchSetPosition;\
-    fnSig_korl_gfx_batchSetPosition2d*           korl_gfx_batchSetPosition2d;\
-    fnSig_korl_gfx_batchSetPosition2dV2f32*      korl_gfx_batchSetPosition2dV2f32;\
-    fnSig_korl_gfx_batchSetScale*                korl_gfx_batchSetScale;\
-    fnSig_korl_gfx_batchSetQuaternion*           korl_gfx_batchSetQuaternion;\
-    fnSig_korl_gfx_batchSetRotation*             korl_gfx_batchSetRotation;\
-    fnSig_korl_gfx_batchSetVertexColor*          korl_gfx_batchSetVertexColor;\
-    fnSig_korl_gfx_batchAddLine*                 korl_gfx_batchAddLine;\
-    fnSig_korl_gfx_batchSetLine*                 korl_gfx_batchSetLine;\
-    fnSig_korl_gfx_batchTextGetAabb*             korl_gfx_batchTextGetAabb;\
-    fnSig_korl_gfx_batchTextSetPositionAnchor*   korl_gfx_batchTextSetPositionAnchor;\
-    fnSig_korl_gfx_batchRectangleSetSize*        korl_gfx_batchRectangleSetSize;\
-    fnSig_korl_gfx_batchRectangleSetColor*       korl_gfx_batchRectangleSetColor;\
-    fnSig_korl_gui_setFontAsset*                 korl_gui_setFontAsset;\
-    fnSig_korl_gui_windowBegin*                  korl_gui_windowBegin;\
-    fnSig_korl_gui_windowEnd*                    korl_gui_windowEnd;\
-    fnSig_korl_gui_widgetTextFormat*             korl_gui_widgetTextFormat;\
-    fnSig_korl_gui_widgetButtonFormat*           korl_gui_widgetButtonFormat;
+    fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
+    fnSig_korlPlatformLog                       * _korl_log_variadic;\
+    fnSig_korl_timeStamp                        * korl_timeStamp;\
+    fnSig_korl_time_secondsSinceTimeStamp       * korl_time_secondsSinceTimeStamp;\
+    fnSig_korl_memory_zero                      * korl_memory_zero;\
+    fnSig_korl_memory_copy                      * korl_memory_copy;\
+    fnSig_korl_memory_move                      * korl_memory_move;\
+    fnSig_korl_memory_compare                   * korl_memory_compare;\
+    fnSig_korl_memory_arrayU8Compare            * korl_memory_arrayU8Compare;\
+    fnSig_korl_memory_arrayU16Compare           * korl_memory_arrayU16Compare;\
+    fnSig_korl_memory_stringCompare             * korl_memory_stringCompare;\
+    fnSig_korl_memory_stringCompareUtf8         * korl_memory_stringCompareUtf8;\
+    fnSig_korl_memory_stringSize                * korl_memory_stringSize;\
+    fnSig_korl_memory_stringSizeUtf8            * korl_memory_stringSizeUtf8;\
+    fnSig_korl_memory_stringCopy                * korl_memory_stringCopy;\
+    fnSig_korl_memory_stringFormatVaList        * korl_memory_stringFormatVaList;\
+    fnSig_korl_memory_stringFormatVaListUtf8    * korl_memory_stringFormatVaListUtf8;\
+    fnSig_korl_memory_stringFormatBuffer        * korl_memory_stringFormatBuffer;\
+    fnSig_korl_memory_allocator_create          * korl_memory_allocator_create;\
+    fnSig_korl_memory_allocator_allocate        * korl_memory_allocator_allocate;\
+    fnSig_korl_memory_allocator_reallocate      * korl_memory_allocator_reallocate;\
+    fnSig_korl_memory_allocator_free            * korl_memory_allocator_free;\
+    fnSig_korl_memory_allocator_empty           * korl_memory_allocator_empty;\
+    fnSig_korl_stb_ds_reallocate                * _korl_stb_ds_reallocate;\
+    fnSig_korl_stb_ds_free                      * _korl_stb_ds_free;\
+    fnSig_korl_assetCache_get                   * korl_assetCache_get;\
+    fnSig_korl_gfx_createCameraFov              * korl_gfx_createCameraFov;\
+    fnSig_korl_gfx_createCameraOrtho            * korl_gfx_createCameraOrtho;\
+    fnSig_korl_gfx_createCameraOrthoFixedHeight * korl_gfx_createCameraOrthoFixedHeight;\
+    fnSig_korl_gfx_cameraFov_rotateAroundTarget * korl_gfx_cameraFov_rotateAroundTarget;\
+    fnSig_korl_gfx_useCamera                    * korl_gfx_useCamera;\
+    fnSig_korl_gfx_cameraSetScissor             * korl_gfx_cameraSetScissor;\
+    fnSig_korl_gfx_cameraSetScissorPercent      * korl_gfx_cameraSetScissorPercent;\
+    fnSig_korl_gfx_cameraOrthoSetOriginAnchor   * korl_gfx_cameraOrthoSetOriginAnchor;\
+    fnSig_korl_gfx_batch                        * korl_gfx_batch;\
+    fnSig_korl_gfx_createBatchRectangleTextured * korl_gfx_createBatchRectangleTextured;\
+    fnSig_korl_gfx_createBatchRectangleColored  * korl_gfx_createBatchRectangleColored;\
+    fnSig_korl_gfx_createBatchCircle            * korl_gfx_createBatchCircle;\
+    fnSig_korl_gfx_createBatchTriangles         * korl_gfx_createBatchTriangles;\
+    fnSig_korl_gfx_createBatchLines             * korl_gfx_createBatchLines;\
+    fnSig_korl_gfx_createBatchText              * korl_gfx_createBatchText;\
+    fnSig_korl_gfx_batchSetBlendState           * korl_gfx_batchSetBlendState;\
+    fnSig_korl_gfx_batchSetPosition             * korl_gfx_batchSetPosition;\
+    fnSig_korl_gfx_batchSetPosition2d           * korl_gfx_batchSetPosition2d;\
+    fnSig_korl_gfx_batchSetPosition2dV2f32      * korl_gfx_batchSetPosition2dV2f32;\
+    fnSig_korl_gfx_batchSetScale                * korl_gfx_batchSetScale;\
+    fnSig_korl_gfx_batchSetQuaternion           * korl_gfx_batchSetQuaternion;\
+    fnSig_korl_gfx_batchSetRotation             * korl_gfx_batchSetRotation;\
+    fnSig_korl_gfx_batchSetVertexColor          * korl_gfx_batchSetVertexColor;\
+    fnSig_korl_gfx_batchAddLine                 * korl_gfx_batchAddLine;\
+    fnSig_korl_gfx_batchSetLine                 * korl_gfx_batchSetLine;\
+    fnSig_korl_gfx_batchTextGetAabb             * korl_gfx_batchTextGetAabb;\
+    fnSig_korl_gfx_batchTextSetPositionAnchor   * korl_gfx_batchTextSetPositionAnchor;\
+    fnSig_korl_gfx_batchRectangleSetSize        * korl_gfx_batchRectangleSetSize;\
+    fnSig_korl_gfx_batchRectangleSetColor       * korl_gfx_batchRectangleSetColor;\
+    fnSig_korl_gfx_batchCircleSetColor          * korl_gfx_batchCircleSetColor;\
+    fnSig_korl_gui_setFontAsset                 * korl_gui_setFontAsset;\
+    fnSig_korl_gui_windowBegin                  * korl_gui_windowBegin;\
+    fnSig_korl_gui_windowEnd                    * korl_gui_windowEnd;\
+    fnSig_korl_gui_widgetTextFormat             * korl_gui_widgetTextFormat;\
+    fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
@@ -664,6 +667,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gfx_batchTextSetPositionAnchor   = korl_gfx_batchTextSetPositionAnchor;\
     (apiVariableName).korl_gfx_batchRectangleSetSize        = korl_gfx_batchRectangleSetSize;\
     (apiVariableName).korl_gfx_batchRectangleSetColor       = korl_gfx_batchRectangleSetColor;\
+    (apiVariableName).korl_gfx_batchCircleSetColor          = korl_gfx_batchCircleSetColor;\
     (apiVariableName).korl_gui_setFontAsset                 = korl_gui_setFontAsset;\
     (apiVariableName).korl_gui_windowBegin                  = korl_gui_windowBegin;\
     (apiVariableName).korl_gui_windowEnd                    = korl_gui_windowEnd;\
@@ -725,6 +729,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_gfx_batchTextSetPositionAnchor   = (apiVariableName).korl_gfx_batchTextSetPositionAnchor;\
     korl_gfx_batchRectangleSetSize        = (apiVariableName).korl_gfx_batchRectangleSetSize;\
     korl_gfx_batchRectangleSetColor       = (apiVariableName).korl_gfx_batchRectangleSetColor;\
+    korl_gfx_batchCircleSetColor          = (apiVariableName).korl_gfx_batchCircleSetColor;\
     korl_gui_setFontAsset                 = (apiVariableName).korl_gui_setFontAsset;\
     korl_gui_windowBegin                  = (apiVariableName).korl_gui_windowBegin;\
     korl_gui_windowEnd                    = (apiVariableName).korl_gui_windowEnd;\

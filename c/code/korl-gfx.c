@@ -1323,3 +1323,10 @@ korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(korl_gfx_batchRectangl
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
 }
+korl_internal KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(korl_gfx_batchCircleSetColor)
+{
+    /// for refactoring this code module in the future; we should probably assert this is a circle batch?
+    korl_assert(context->_vertexColors);
+    for(u$ c = 0; c < context->_vertexCount; c++)
+        context->_vertexColors[c] = color;
+}
