@@ -423,17 +423,12 @@ korl_internal void korl_windows_window_loop(void)
         values. */
     const Korl_Time_Counts timeCountsTargetGamePerFrame = korl_time_countsFromHz(KORL_APP_TARGET_FRAME_HZ);
     PlatformTimeStamp timeStampLast                     = korl_timeStamp();
-    typedef struct _Korl_Window_StatsLogicLoop
-    {
-        Korl_Time_Counts time;
-        bool framesInProgress;
-    } _Korl_Window_StatsLogicLoop;
     typedef struct _Korl_Window_LoopStats
     {
-        Korl_Time_Counts timeRenderLoop;
-        KORL_MEMORY_POOL_DECLARE(_Korl_Window_StatsLogicLoop, logicLoops, 8);
+        Korl_Time_Counts timeTotal;
+        Korl_Time_Counts timeSleep;
     } _Korl_Window_LoopStats;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 64);
+    KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 1024);
     loopStats_korlMemoryPoolSize = 0;
     bool deferProbeReport = false;
     while(!quit)
@@ -524,41 +519,48 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(sleep);
         if(timeCountsRenderLoop < timeCountsTargetGamePerFrame)
             korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoop);
-        korl_time_probeStop(sleep);
+        const Korl_Time_Counts timeCountsSleep = korl_time_probeStop(sleep);
         timeStampLast = korl_timeStamp();
         if(renderFrameCount < ~(u$)0)
             renderFrameCount++;
         const Korl_Time_Counts timeCountsMainLoop = korl_time_probeStop(Main_Loop);
         if(stats)
-            stats->timeRenderLoop = timeCountsMainLoop;
+        {
+            stats->timeTotal = timeCountsMainLoop;
+            stats->timeSleep = timeCountsSleep;
+        }
     }
     /* report frame stats */
     korl_log(INFO, "Window Render Loop Times:");
-    Korl_Time_Counts timeCountAverageRender = 0;
-    Korl_Time_Counts timeCountAverageLogic  = 0;
+    Korl_Time_Counts timeCountAverageTotal = 0;
+    Korl_Time_Counts timeCountAverageSleep = 0;
     wchar_t durationBuffer[32];
+    wchar_t durationBuffer2[32];
     for(Korl_MemoryPool_Size s = 0; s < KORL_MEMORY_POOL_SIZE(loopStats); s++)
     {
-        korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].timeRenderLoop, durationBuffer, sizeof(durationBuffer)));
-        korl_log_noMeta(INFO, "[% 2u]: %ws", s, durationBuffer);
+        korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].timeTotal, durationBuffer, sizeof(durationBuffer)));
+        korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].timeSleep, durationBuffer2, sizeof(durationBuffer2)));
+        korl_log_noMeta(INFO, "[% 2u]: { total: %ws, sleep: %ws }", s, durationBuffer, durationBuffer2);
         if(s == 2)
-            timeCountAverageRender = loopStats[s].timeRenderLoop;
-        else if (s > 1)// avoid the first couple frames for now since there is a lot of spin-up work that throws off metrics
-            timeCountAverageRender = (timeCountAverageRender + loopStats[s].timeRenderLoop) / 2;
-        for(Korl_MemoryPool_Size l = 0; l < KORL_MEMORY_POOL_SIZE(loopStats[s].logicLoops); l++)
         {
-            if(s == 2 && timeCountAverageLogic == 0)
-                timeCountAverageLogic = loopStats[s].timeRenderLoop;
-            else if (s > 1)// avoid the first couple frames for now since there is a lot of spin-up work that throws off metrics
-                timeCountAverageLogic = (timeCountAverageLogic + loopStats[s].logicLoops[l].time) / 2;
-            korl_assert(0 < korl_time_countsFormatBuffer(loopStats[s].logicLoops[l].time, durationBuffer, sizeof(durationBuffer)));
-            korl_log_noMeta(INFO, "    logicLoop[% 2u]: %ws | %ws", l, durationBuffer, loopStats[s].logicLoops[l].framesInProgress ? L"Vulkan:WIP" : L"Vulkan:READY");
+            timeCountAverageTotal = loopStats[s].timeTotal;
+            timeCountAverageSleep = loopStats[s].timeSleep;
+        }
+        else if (s > 1)// avoid the first couple frames for now since there is a lot of spin-up work that throws off metrics
+        {
+            timeCountAverageTotal += loopStats[s].timeTotal;
+            timeCountAverageSleep += loopStats[s].timeSleep;
+            // timeCountAverageTotal = (timeCountAverageTotal + loopStats[s].timeTotal) / 2;
+            // timeCountAverageSleep = (timeCountAverageSleep + loopStats[s].timeSleep) / 2;
         }
     }
-    korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageRender, durationBuffer, sizeof(durationBuffer)));
-    korl_log_noMeta(INFO, "Average Render Loop Time: %ws", durationBuffer);
-    korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageLogic, durationBuffer, sizeof(durationBuffer)));
-    korl_log_noMeta(INFO, "Average Logic Loop Time:  %ws", durationBuffer);
+    timeCountAverageTotal /= KORL_MEMORY_POOL_SIZE(loopStats);
+    timeCountAverageSleep /= KORL_MEMORY_POOL_SIZE(loopStats);
+    korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageTotal, durationBuffer, sizeof(durationBuffer)));
+    korl_log(INFO, "Average Loop Total Time: %ws", durationBuffer);
+    korl_assert(0 < korl_time_countsFormatBuffer(timeCountAverageSleep, durationBuffer, sizeof(durationBuffer)));
+    korl_log(INFO, "Average Sleep Time     : %ws", durationBuffer);
+    korl_log(INFO, "Average Unused Frame %% : %f", timeCountAverageSleep * 100.f / timeCountsTargetGamePerFrame);
     /**/
     korl_vulkan_destroySurface();
     string_free(stringGameDll);

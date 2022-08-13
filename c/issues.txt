@@ -141,7 +141,7 @@
 [ ] KORL-FEATURE-000-000-024: gui/gfx: add DPI-awareness & support
 [ ] KORL-FEATURE-000-000-025: add gamepad support; Resources: https://github.com/MysteriousJ/Joystick-Input-Examples, http://gyrowiki.jibbsmart.com/blog:finding-gravity-with-sensor-fusion.  Desired device support: XBOX360, XBONE, DS3, DS4, SwitchPro.  Desired input support: buttons, axes, touchPad, gyro/accel(sensor-fusion API?).  Desired output support: force-feedback.
 [ ] KORL-FEATURE-000-000-026: add "create new project" script
-[ ] KORL-FEATURE-000-000-027: gui: display time probe metrics, in potentially an interactable way
+[ ] KORL-FEATURE-000-000-027: [DUPLICATE OF KORL-FEATURE-000-000-009] gui: display time probe metrics, in potentially an interactable way
 [ ] KORL-FEATURE-000-000-028: gui: display memory metrics, in potentially an interactable way
 [ ] KORL-FEATURE-000-000-029: add audio support; maybe use WASAPI & a mixer layer?  Desired support: WAVE files, OGG/Vorbis files.
 [ ] KORL-FEATURE-000-000-030: 3D collision detection
@@ -153,3 +153,6 @@
 [ ] KORL-FEATURE-000-000-036: gamepad: (low priority); expose gamepad deadzone values as configurable through the KORL platform interface
 [ ] KORL-FEATURE-000-000-037: crash: enable floating point exceptions; I've already had one instance of a bug manifesting as a result of NAN f32 values being calculated accidentally
 [ ] KORL-FEATURE-000-000-038: frame-by-frame stepping, as well as history scrubbing using savestate mechanism (just keep a circular buffer of savestates)
+[ ] KORL-FEATURE-000-000-039: console; display logs in real-time; do _not_ display the meta data content, only display a subset of the meta data of each log line if the user mouses over the log entry; color-code log entries based on their log level
+[ ] KORL-FEATURE-000-000-040: console; call commands, with tab-complete feature to make it easier
+[ ] KORL-FEATURE-000-000-041: console; make load/save state a set of commands (with the name of the state file as a parameter)
