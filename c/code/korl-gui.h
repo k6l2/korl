@@ -9,6 +9,7 @@ korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset);
  * after each call to \c korl_gui_windowBegin . */
 korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin);
 korl_internal KORL_PLATFORM_GUI_WINDOW_END(korl_gui_windowEnd);
+korl_internal KORL_PLATFORM_GUI_WINDOW_SET_POSITION(korl_gui_windowSetPosition);
 /** Prepare a new GUI batch for the current application frame.  The user _must_ 
  * call \c korl_gui_frameEnd after each call to \c korl_gui_frameBegin . */
 korl_internal void korl_gui_frameBegin(void);

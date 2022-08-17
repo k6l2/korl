@@ -164,6 +164,11 @@ typedef struct acu16
     include platform-specific KORL modules! */
 #define korl_assert(condition) \
     ((condition) ? (void)0 : _korl_crash_assertConditionFailed(L""#condition, __FILEW__, __FUNCTIONW__, __LINE__))
+/** Note that `logLevel` must be passed as the final word of the associated 
+ * identifier in the `KorlEnumLogLevel` enumeration.
+ * example usage: 
+ *  korl_shared_const wchar_t*const USER_NAME = L"Kyle";
+ *  korl_log(INFO, "hey there, %ws!", USER_NAME); */
 #define korl_log(logLevel, format, ...) \
     _korl_log_variadic(\
         KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_##logLevel, \

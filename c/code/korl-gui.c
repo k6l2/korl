@@ -250,6 +250,14 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_END(korl_gui_windowEnd)
     korl_assert(context->currentWindowIndex >= 0);
     context->currentWindowIndex = -1;
 }
+korl_internal KORL_PLATFORM_GUI_WINDOW_SET_POSITION(korl_gui_windowSetPosition)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    korl_assert(context->frameSequenceCounter == 1);
+    korl_assert(context->currentWindowIndex >= 0);
+    _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
+    window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -(positionY - anchorY*window->size.y)};
+}
 korl_internal void korl_gui_frameBegin(void)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -628,6 +636,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_useCamera(guiCamera);
         korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         korl_time_probeStop(draw_window_border);
+        /* reset transient window properties in preparation for the next frame */
         window->widgets = 0;
     }
     korl_time_probeStop(generate_draw_commands);

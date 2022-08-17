@@ -226,6 +226,17 @@ typedef struct Korl_GamepadEvent
 #define KORL_PLATFORM_GUI_SET_FONT_ASSET(name)       void name(const wchar_t* fontAssetName)
 #define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_PLATFORM_GUI_WINDOW_END(name)           void name(void)
+/**
+ * \param anchorX Ratio to be applied to the window size in the \c X dimension, 
+ * which will define the local window-space offset used by \c positionX to 
+ * define the final window position in screen-space.
+ * \param anchorY Ratio to be applied to the window size in the \c Y dimension, 
+ * which will define the local window-space offset used by \c positionY to 
+ * define the final window position in screen-space.
+ * \param positionX relative to the bottom-left corner of the application window
+ * \param positionY relative to the bottom-left corner of the application window
+ */
+#define KORL_PLATFORM_GUI_WINDOW_SET_POSITION(name)  void name(f32 anchorX, f32 anchorY, f32 positionX, f32 positionY)
 #define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
 #define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
 enum KorlEnumLogLevel
@@ -234,15 +245,12 @@ enum KorlEnumLogLevel
     , KORL_LOG_LEVEL_WARNING
     , KORL_LOG_LEVEL_INFO
     , KORL_LOG_LEVEL_VERBOSE };
-/** Note that `logLevel` must be passed as the final word of the associated 
- * identifier in the `KorlEnumLogLevel` enumeration.
- * example usage: 
- *  korl_shared_const wchar_t*const USER_NAME = L"Kyle";
- *  korl_log(INFO, "hey there, %ls!", USER_NAME); */
+/** Do not call this function directly; use the \c korl_log macro instead! */
 #define KORL_PLATFORM_LOG(name) void name(\
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, \
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
     int lineNumber, const wchar_t* format, ...)
+/** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, \
     const wchar_t* cStringFunctionName, int lineNumber)
@@ -547,6 +555,7 @@ typedef KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR          (fnSig_korl_gfx_batchC
 typedef KORL_PLATFORM_GUI_SET_FONT_ASSET                  (fnSig_korl_gui_setFontAsset);
 typedef KORL_PLATFORM_GUI_WINDOW_BEGIN                    (fnSig_korl_gui_windowBegin);
 typedef KORL_PLATFORM_GUI_WINDOW_END                      (fnSig_korl_gui_windowEnd);
+typedef KORL_PLATFORM_GUI_WINDOW_SET_POSITION             (fnSig_korl_gui_windowSetPosition);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
@@ -609,6 +618,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gui_setFontAsset                 * korl_gui_setFontAsset;\
     fnSig_korl_gui_windowBegin                  * korl_gui_windowBegin;\
     fnSig_korl_gui_windowEnd                    * korl_gui_windowEnd;\
+    fnSig_korl_gui_windowSetPosition            * korl_gui_windowSetPosition;\
     fnSig_korl_gui_widgetTextFormat             * korl_gui_widgetTextFormat;\
     fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
@@ -671,6 +681,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gui_setFontAsset                 = korl_gui_setFontAsset;\
     (apiVariableName).korl_gui_windowBegin                  = korl_gui_windowBegin;\
     (apiVariableName).korl_gui_windowEnd                    = korl_gui_windowEnd;\
+    (apiVariableName).korl_gui_windowSetPosition            = korl_gui_windowSetPosition;\
     (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
     (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
@@ -733,6 +744,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_gui_setFontAsset                 = (apiVariableName).korl_gui_setFontAsset;\
     korl_gui_windowBegin                  = (apiVariableName).korl_gui_windowBegin;\
     korl_gui_windowEnd                    = (apiVariableName).korl_gui_windowEnd;\
+    korl_gui_windowSetPosition            = (apiVariableName).korl_gui_windowSetPosition;\
     korl_gui_widgetTextFormat             = (apiVariableName).korl_gui_widgetTextFormat;\
     korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;
 typedef struct KorlPlatformApi
