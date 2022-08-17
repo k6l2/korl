@@ -4,7 +4,7 @@
 #include "korl-gui-internal-common.h"
 #include "korl-checkCast.h"
 #include "korl-vulkan.h"
-#include "korl-memoryPool.h"
+#include "korl-stb-ds.h"
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -36,9 +36,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         /* check to see if we clicked on any windows from the previous frame 
             - note that we're processing windows from front->back, since 
               windows[0] is always the farthest back window */
-        for(i$ w = KORL_C_CAST(i$, KORL_MEMORY_POOL_SIZE(context->windows)) - 1; w >= 0; w--)
+        for(i$ w = KORL_C_CAST(i$, arrlenu(context->stbDaWindows)) - 1; w >= 0; w--)
         {
-            const _Korl_Gui_Window*const window = &context->windows[w];
+            const _Korl_Gui_Window*const window = &context->stbDaWindows[w];
             if(!window->isOpen)
                 continue;
             korl_assert(window->identifier);
@@ -113,9 +113,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                     context->mouseDownOffsetSpecialWidget = korl_math_v2f32_subtract(scrollBarAabb.max, mouseV2f32);
                 }
             }
-            for(u$ wi = 0; wi < KORL_MEMORY_POOL_SIZE(context->widgets); wi++)
+            for(u$ wi = 0; wi < arrlenu(context->stbDaWidgets); wi++)
             {
-                _Korl_Gui_Widget*const widget = &context->widgets[wi];
+                _Korl_Gui_Widget*const widget = &context->stbDaWidgets[wi];
                 if(widget->parentWindowIdentifier != window->identifier || !widget->cachedIsInteractive)
                     continue;
                 if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, mouseV2f32))
@@ -131,10 +131,10 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             context->mouseDownWindowOffset = korl_math_v2f32_subtract(mouseV2f32, window->position);
             /* bring this window to the "front" & activate it, while maintaining 
                 the order of the existing windows */
-            _Korl_Gui_Window temp = context->windows[w];
-            for(u$ i = korl_checkCast_i$_to_u$(w); KORL_C_CAST(i$, i) < KORL_C_CAST(i$, KORL_MEMORY_POOL_SIZE(context->windows)) - 1; i++)
-                context->windows[i] = context->windows[i + 1];
-            context->windows[KORL_MEMORY_POOL_SIZE(context->windows) - 1] = temp;
+            _Korl_Gui_Window temp = context->stbDaWindows[w];
+            for(u$ i = korl_checkCast_i$_to_u$(w); KORL_C_CAST(i$, i) < KORL_C_CAST(i$, arrlenu(context->stbDaWindows)) - 1; i++)
+                context->stbDaWindows[i] = context->stbDaWindows[i + 1];
+            *(context->stbDaWindows + arrlen(context->stbDaWindows) - 1) = temp;
             context->isTopLevelWindowActive = true;
             /* once we've submitted mouse input to the nearest window, we can 
                 stop iterating, since windows below this position should not 
@@ -154,9 +154,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             /* find the mouse-down window so we can check to see if we're still 
                 hovering a pressed title bar button, allowing us to perform a 
                 full button actuation */
-            for(u$ w = 0; w < KORL_MEMORY_POOL_SIZE(context->windows); w++)
+            for(u$ w = 0; w < arrlenu(context->stbDaWindows); w++)
             {
-                _Korl_Gui_Window*const window = &context->windows[w];
+                _Korl_Gui_Window*const window = &context->stbDaWindows[w];
                 if(!window->isOpen)
                     continue;
                 if(window->identifier != context->identifierMouseHoveredWindow)
@@ -190,9 +190,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         {
             /* find the mouse-down widget, and check to see if we're still 
                 hovering it, allowing us to perform a full mouse click */
-            for(u$ w = 0; w < KORL_MEMORY_POOL_SIZE(context->widgets); w++)
+            for(u$ w = 0; w < arrlenu(context->stbDaWidgets); w++)
             {
-                _Korl_Gui_Widget*const widget = &context->widgets[w];
+                _Korl_Gui_Widget*const widget = &context->stbDaWidgets[w];
                 if(widget->identifier != context->identifierMouseDownWidget)
                     continue;
                 if(!korl_math_aabb2f32_containsV2f32(widget->cachedAabb, mouseV2f32))
@@ -224,11 +224,11 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         const i32 mouseY = -GET_Y_LPARAM(lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
         const Korl_Math_V2f32 mouseV2f32 = { korl_checkCast_i$_to_f32(mouseX)
                                            , korl_checkCast_i$_to_f32(mouseY) };
-        if(KORL_MEMORY_POOL_ISEMPTY(context->windows))
+        if(arrlen(context->stbDaWindows) <= 0)
             break;
         if(context->isMouseDown)
         {
-            _Korl_Gui_Window*const window = &context->windows[KORL_MEMORY_POOL_SIZE(context->windows) - 1];
+            _Korl_Gui_Window*const window = context->stbDaWindows + arrlen(context->stbDaWindows) - 1;
             if(context->isWindowDragged)
             {
                 if(context->mouseHoverWindowEdgeFlags)
@@ -287,9 +287,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             context->identifierMouseHoveredWidget  = NULL;
             context->identifierMouseHoveredWindow  = NULL;
             context->mouseHoverWindowEdgeFlags     = 0;
-            for(i$ w = KORL_MEMORY_POOL_SIZE(context->windows) - 1; w >= 0; w--)
+            for(i$ w = arrlenu(context->stbDaWindows) - 1; w >= 0; w--)
             {
-                const _Korl_Gui_Window*const window = &context->windows[w];
+                const _Korl_Gui_Window*const window = &context->stbDaWindows[w];
                 if(!window->isOpen)
                     continue;
                 korl_assert(window->identifier);
@@ -325,9 +325,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                 context->isMouseHovering = true;
                 context->mouseHoverPosition = mouseV2f32;
                 context->identifierMouseHoveredWindow = window->identifier;
-                for(u$ wi = 0; wi < KORL_MEMORY_POOL_SIZE(context->widgets); wi++)
+                for(u$ wi = 0; wi < arrlenu(context->stbDaWidgets); wi++)
                 {
-                    _Korl_Gui_Widget*const widget = &context->widgets[wi];
+                    _Korl_Gui_Widget*const widget = &context->stbDaWidgets[wi];
                     if(widget->parentWindowIdentifier != window->identifier)
                         continue;
                     if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, mouseV2f32))
@@ -353,9 +353,9 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         const i32 mouseWheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
         const bool keyDownShift = LOWORD(wParam) & MK_SHIFT;
         /* check if the mouse if hovering over a window */
-        for(i$ w = KORL_C_CAST(i$, KORL_MEMORY_POOL_SIZE(context->windows)) - 1; w >= 0; w--)
+        for(i$ w = KORL_C_CAST(i$, arrlenu(context->stbDaWindows)) - 1; w >= 0; w--)
         {
-            _Korl_Gui_Window*const window = &context->windows[w];
+            _Korl_Gui_Window*const window = &context->stbDaWindows[w];
             if(!window->isOpen)
                 continue;
             korl_assert(window->identifier);

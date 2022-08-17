@@ -3,7 +3,6 @@
 #include "korl-gui-common.h"
 #include "korl-math.h"
 #include "korl-memory.h"
-#include "korl-memoryPool.h"
 #include "korl-vulkan.h"
 /** the edges of the window must have their own individual AABBs to allow mouse 
  * interactions with them (window is hovered, resize windows), and this value 
@@ -68,6 +67,7 @@ typedef struct _Korl_Gui_Widget
 typedef struct _Korl_Gui_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandleStack;
+    Korl_Memory_AllocatorHandle allocatorHandleHeap;
     struct
     {
         Korl_Vulkan_Color4u8 colorWindow;
@@ -99,16 +99,16 @@ typedef struct _Korl_Gui_Context
     
     wchar_t fontAssetName[128];//buffer to store font asset name configured via setFontAsset API
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
-     * # of times.  When this value == korl_arraySize(windows), a new window 
-     * must be started before calling any widget API. */
-    u8 currentWindowIndex;
+     * # of times.  When this value < 0, a new window must be started before 
+     * calling any widget API. */
+    i16 currentWindowIndex;
     /** help ensure the user calls \c korl_gui_frameBegin/End the correct # of 
      * times */
     u8 frameSequenceCounter;
     /** Windows are stored from back=>front.  In other words, the window at 
      * index \c 0 will be drawn behind all other windows. */
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gui_Window, windows, 64);///TODO: change to dynamic array
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gui_Widget, widgets, 64);///TODO: change to dynamic array
+    _Korl_Gui_Window* stbDaWindows;
+    _Korl_Gui_Widget* stbDaWidgets;
     /** We don't need this to be a member of \c _Korl_Gui_Window because we 
      * already know:  
      * - there will only ever be ONE active window

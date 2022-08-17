@@ -14,36 +14,36 @@
 #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
 #endif
 #include "sort.h"
+#include "korl-stb-ds.h"
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex < KORL_MEMORY_POOL_SIZE(context->windows));
-    Korl_MemoryPool_Size widgetIndex = korl_arraySize(context->widgets);
+    korl_assert(context->currentWindowIndex >= 0);
     /* check to see if this widget's identifier set is already registered */
-    for(Korl_MemoryPool_Size w = 0; w < KORL_MEMORY_POOL_SIZE(context->widgets); ++w)
+    u$ widgetIndex = arrcap(context->stbDaWidgets);
+    for(u$ w = 0; w < arrlenu(context->stbDaWidgets); ++w)
     {
-        if(    context->widgets[w].parentWindowIdentifier == context->windows[context->currentWindowIndex].identifier
-            && context->widgets[w].identifier == identifier)
+        if(    context->stbDaWidgets[w].parentWindowIdentifier == context->stbDaWindows[context->currentWindowIndex].identifier
+            && context->stbDaWidgets[w].identifier == identifier)
         {
             widgetIndex = w;
             goto widgetIndexValid;
         }
     }
     /* otherwise, allocate a new widget */
-    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->widgets));
-    widgetIndex = KORL_MEMORY_POOL_SIZE(context->widgets);
-    KORL_MEMORY_POOL_ADD(context->widgets);
-    _Korl_Gui_Widget* widget = &context->widgets[widgetIndex];
+    widgetIndex = arrlenu(context->stbDaWidgets);
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
+    _Korl_Gui_Widget* widget = &context->stbDaWidgets[widgetIndex];
     korl_memory_zero(widget, sizeof(*widget));
     widget->identifier             = identifier;
-    widget->parentWindowIdentifier = context->windows[context->currentWindowIndex].identifier;
+    widget->parentWindowIdentifier = context->stbDaWindows[context->currentWindowIndex].identifier;
     widget->type                   = widgetType;
 widgetIndexValid:
-    widget = &context->widgets[widgetIndex];
+    widget = &context->stbDaWidgets[widgetIndex];
     korl_assert(widget->type == widgetType);
     widget->usedThisFrame = true;
-    widget->orderIndex    = context->windows[context->currentWindowIndex].widgets++;
+    widget->orderIndex    = context->stbDaWindows[context->currentWindowIndex].widgets++;
     return widget;
 }
 /**
@@ -61,9 +61,9 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
     widgetCursor.x -= contentCursorOffsetX;
     widgetCursor.y += contentCursorOffsetY;
     window->cachedContentAabb.min = window->cachedContentAabb.max = widgetCursor;
-    for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(context->widgets); ++j)
+    for(u$ j = 0; j < arrlenu(context->stbDaWidgets); ++j)
     {
-        _Korl_Gui_Widget*const widget = &context->widgets[j];
+        _Korl_Gui_Widget*const widget = &context->stbDaWidgets[j];
         if(widget->parentWindowIdentifier != window->identifier)
             continue;
         widgetCursor.y -= context->style.widgetSpacingY;
@@ -133,7 +133,8 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, korl_math_megabytes(1), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(1), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
@@ -159,6 +160,8 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.widgetSpacingY                 = 0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        = 4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
+    mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
+    mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
 }
 korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
 {
@@ -176,37 +179,37 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex == korl_arraySize(context->windows));
+    korl_assert(context->currentWindowIndex < 0);
     /* check to see if this identifier is already registered */
-    for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->windows); ++i)
+    for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
-        if(context->windows[i].identifier == identifier)
+        _Korl_Gui_Window*const window = &context->stbDaWindows[i];
+        if(window->identifier == identifier)
         {
-            context->currentWindowIndex = korl_checkCast_u$_to_u8(i);
-            if(!context->windows[i].isOpen && out_isOpen && *out_isOpen)
+            context->currentWindowIndex = korl_checkCast_u$_to_i16(i);
+            if(!window->isOpen && out_isOpen && *out_isOpen)
             {
-                context->windows[i].isFirstFrame    = true;
-                context->windows[i].isContentHidden = false;
+                window->isFirstFrame    = true;
+                window->isContentHidden = false;
             }
             goto done_currentWindowIndexValid;
         }
     }
     /* we are forced to allocate a new window in the memory pool */
     Korl_Math_V2f32 nextWindowPosition = KORL_MATH_V2F32_ZERO;
-    if(!KORL_MEMORY_POOL_ISEMPTY(context->windows))
-        nextWindowPosition = korl_math_v2f32_add(context->windows[KORL_MEMORY_POOL_SIZE(context->windows) - 1].position, 
+    if(arrlen(context->stbDaWindows) > 0)
+        nextWindowPosition = korl_math_v2f32_add((context->stbDaWindows + arrlen(context->stbDaWindows) - 1)->position, 
                                                  (Korl_Math_V2f32){ 32.f, -32.f });
-    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->windows));
-    _Korl_Gui_Window* newWindow = KORL_MEMORY_POOL_ADD(context->windows);
-    korl_memory_zero(newWindow, sizeof(*newWindow));
+    context->currentWindowIndex = korl_checkCast_u$_to_i16(arrlenu(context->stbDaWindows));
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, (_Korl_Gui_Window){0});
+    _Korl_Gui_Window* newWindow = &context->stbDaWindows[context->currentWindowIndex];
     newWindow->identifier   = identifier;
     newWindow->position     = nextWindowPosition;
     newWindow->size         = (Korl_Math_V2f32){ 128.f, 128.f };
     newWindow->isFirstFrame = true;
     newWindow->isOpen       = true;
-    context->currentWindowIndex = korl_checkCast_u$_to_u8(KORL_MEMORY_POOL_SIZE(context->windows) - 1);
 done_currentWindowIndexValid:
-    newWindow = &context->windows[context->currentWindowIndex];
+    newWindow = &context->stbDaWindows[context->currentWindowIndex];
     newWindow->usedThisFrame       = true;
     newWindow->styleFlags          = styleFlags;
     newWindow->specialWidgetFlags  = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
@@ -235,58 +238,58 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_END(korl_gui_windowEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex < KORL_MEMORY_POOL_SIZE(context->windows));
-    context->currentWindowIndex = korl_arraySize(context->windows);
+    korl_assert(context->currentWindowIndex >= 0);
+    context->currentWindowIndex = -1;
 }
 korl_internal void korl_gui_frameBegin(void)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 0);
     context->frameSequenceCounter++;
-    context->currentWindowIndex = korl_arraySize(context->windows);
+    context->currentWindowIndex = -1;
     korl_memory_allocator_empty(context->allocatorHandleStack);
 }
 korl_internal void korl_gui_frameEnd(void)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex == korl_arraySize(context->windows));
+    korl_assert(context->currentWindowIndex < 0);
     context->frameSequenceCounter--;
     /* nullify widgets which weren't used this frame */
     {
-        Korl_MemoryPool_Size widgetsRemaining = 0;
+        u$ widgetsRemaining = 0;
         korl_time_probeStart(nullify_unused_widgets);
-        for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->widgets); i++)
+        for(u$ i = 0; i < arrlenu(context->stbDaWidgets); i++)
         {
-            _Korl_Gui_Widget*const widget = &context->widgets[i];
+            _Korl_Gui_Widget*const widget = &context->stbDaWidgets[i];
             korl_assert(widget->identifier);
             korl_assert(widget->parentWindowIdentifier);
             if(widget->usedThisFrame)
             {
                 widget->usedThisFrame = false;
                 if(widgetsRemaining < i)
-                    context->widgets[widgetsRemaining] = *widget;
+                    context->stbDaWidgets[widgetsRemaining] = *widget;
                 widgetsRemaining++;
             }
             else
                 continue;
         }
-        KORL_MEMORY_POOL_RESIZE(context->widgets, widgetsRemaining);
+        mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
         korl_time_probeStop(nullify_unused_widgets);
     }
     /* sort the widgets based on their orderIndex, allowing us to always process 
         widgets in the same order in which they were defined at run-time */
-    _korl_gui_widget_quick_sort(context->widgets, KORL_MEMORY_POOL_SIZE(context->widgets));
+    _korl_gui_widget_quick_sort(context->stbDaWidgets, arrlenu(context->stbDaWidgets));
     /* for each of the windows that we ended up using for this frame, generate 
         the necessary draw commands for them */
     korl_time_probeStart(generate_draw_commands);
     Korl_Gfx_Camera guiCamera = korl_gfx_createCameraOrtho(1.f);
     korl_gfx_cameraOrthoSetOriginAnchor(&guiCamera, 0.f, 1.f);
-    Korl_MemoryPool_Size windowsRemaining = 0;
+    u$ windowsRemaining = 0;
     const Korl_Math_V2u32 swapChainSize = korl_vulkan_getSwapchainSize();
-    for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->windows); ++i)
+    for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
-        _Korl_Gui_Window*const window = &context->windows[i];
+        _Korl_Gui_Window*const window = &context->stbDaWindows[i];
         korl_assert(window->identifier);
         /* if the window wasn't used this frame, skip it and prepare to remove 
             it from the memory pool */
@@ -294,7 +297,7 @@ korl_internal void korl_gui_frameEnd(void)
         {
             window->usedThisFrame = false;
             if(windowsRemaining < i)
-                context->windows[windowsRemaining] = *window;
+                context->stbDaWindows[windowsRemaining] = *window;
             windowsRemaining++;
         }
         else
@@ -305,7 +308,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_shared_const Korl_Math_V2f32 KORL_ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
         Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
         Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
-        if(context->isTopLevelWindowActive && i == KORL_MEMORY_POOL_SIZE(context->windows) - 1)
+        if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
         {
             windowColor   = context->style.colorWindowActive;
             titleBarColor = context->style.colorTitleBarActive;
@@ -584,7 +587,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_time_probeStart(draw_window_border);
         /* batch window border AFTER contents are drawn */
         Korl_Vulkan_Color4u8 colorBorder = context->style.colorWindowBorder;
-        if(context->isTopLevelWindowActive && i == KORL_MEMORY_POOL_SIZE(context->windows) - 1)
+        if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
             if(context->isMouseHovering 
                 && context->identifierMouseHoveredWindow == window->identifier
                 && context->mouseHoverWindowEdgeFlags == KORL_GUI_MOUSE_HOVER_FLAGS_NONE)
@@ -612,7 +615,7 @@ korl_internal void korl_gui_frameEnd(void)
         window->widgets = 0;
     }
     korl_time_probeStop(generate_draw_commands);
-    KORL_MEMORY_POOL_RESIZE(context->windows, windowsRemaining);
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 }
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
 {
