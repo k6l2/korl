@@ -20,7 +20,7 @@ typedef enum _Korl_Gui_SpecialWidgetFlags
 } _Korl_Gui_SpecialWidgetFlags;
 typedef struct _Korl_Gui_Window
 {
-    const void* identifier;//KORL-ISSUE-000-000-006
+    const void* identifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
     bool usedThisFrame;
     bool isFirstFrame;
     bool isOpen;
@@ -37,11 +37,13 @@ typedef struct _Korl_Gui_Window
     f32 cachedScrollBarLengthY;
     f32 scrollBarPositionX;
     f32 scrollBarPositionY;
+    u16 widgets;// related to _Korl_Gui_Widget::orderIndex; the total # of direct widget children
 } _Korl_Gui_Window;
 typedef struct _Korl_Gui_Widget
 {
-    const void* parentWindowIdentifier;//KORL-ISSUE-000-000-006
-    const void* identifier;//KORL-ISSUE-000-000-006
+    const void* parentWindowIdentifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+    const void* identifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+    u16 orderIndex;// related to _Korl_Gui_Window::widgets; determines the order in which widgets are processed/displayed in their parent/window
     bool usedThisFrame;
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
     bool cachedIsInteractive;
@@ -94,6 +96,7 @@ typedef struct _Korl_Gui_Context
         f32 widgetButtonLabelMargin;
         f32 windowScrollBarPixelWidth;
     } style;
+    
     wchar_t fontAssetName[128];//buffer to store font asset name configured via setFontAsset API
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value == korl_arraySize(windows), a new window 
@@ -104,8 +107,8 @@ typedef struct _Korl_Gui_Context
     u8 frameSequenceCounter;
     /** Windows are stored from back=>front.  In other words, the window at 
      * index \c 0 will be drawn behind all other windows. */
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gui_Window, windows, 64);
-    KORL_MEMORY_POOL_DECLARE(_Korl_Gui_Widget, widgets, 64);
+    KORL_MEMORY_POOL_DECLARE(_Korl_Gui_Window, windows, 64);///TODO: change to dynamic array
+    KORL_MEMORY_POOL_DECLARE(_Korl_Gui_Widget, widgets, 64);///TODO: change to dynamic array
     /** We don't need this to be a member of \c _Korl_Gui_Window because we 
      * already know:  
      * - there will only ever be ONE active window
@@ -119,8 +122,8 @@ typedef struct _Korl_Gui_Context
     const void* identifierMouseDownWidget;
     bool isMouseHovering;
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
-    const void* identifierMouseHoveredWidget;//KORL-ISSUE-000-000-006
-    const void* identifierMouseHoveredWindow;//KORL-ISSUE-000-000-006
+    const void* identifierMouseHoveredWidget;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+    const void* identifierMouseHoveredWindow;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
     enum
     {
         KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,

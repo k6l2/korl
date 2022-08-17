@@ -4,6 +4,16 @@
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
 #include "korl-time.h"
+#define SORT_NAME _korl_gui_widget
+#define SORT_TYPE _Korl_Gui_Widget
+#define SORT_CMP(x, y) ((x).orderIndex < (y).orderIndex ? -1 : ((x).orderIndex > (y).orderIndex ? 1 : 0))
+#ifndef SORT_CHECK_CAST_INT_TO_SIZET
+#define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
+#endif
+#ifndef SORT_CHECK_CAST_SIZET_TO_INT
+#define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
+#endif
+#include "sort.h"
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -33,7 +43,7 @@ widgetIndexValid:
     widget = &context->widgets[widgetIndex];
     korl_assert(widget->type == widgetType);
     widget->usedThisFrame = true;
-    //KORL-ISSUE-000-000-007
+    widget->orderIndex    = context->windows[context->currentWindowIndex].widgets++;
     return widget;
 }
 /**
@@ -243,25 +253,30 @@ korl_internal void korl_gui_frameEnd(void)
     korl_assert(context->currentWindowIndex == korl_arraySize(context->windows));
     context->frameSequenceCounter--;
     /* nullify widgets which weren't used this frame */
-    Korl_MemoryPool_Size widgetsRemaining = 0;
-    korl_time_probeStart(nullify_unused_widgets);
-    for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->widgets); i++)
     {
-        _Korl_Gui_Widget*const widget = &context->widgets[i];
-        korl_assert(widget->identifier);
-        korl_assert(widget->parentWindowIdentifier);
-        if(widget->usedThisFrame)
+        Korl_MemoryPool_Size widgetsRemaining = 0;
+        korl_time_probeStart(nullify_unused_widgets);
+        for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(context->widgets); i++)
         {
-            widget->usedThisFrame = false;
-            if(widgetsRemaining < i)
-                context->widgets[widgetsRemaining] = *widget;
-            widgetsRemaining++;
+            _Korl_Gui_Widget*const widget = &context->widgets[i];
+            korl_assert(widget->identifier);
+            korl_assert(widget->parentWindowIdentifier);
+            if(widget->usedThisFrame)
+            {
+                widget->usedThisFrame = false;
+                if(widgetsRemaining < i)
+                    context->widgets[widgetsRemaining] = *widget;
+                widgetsRemaining++;
+            }
+            else
+                continue;
         }
-        else
-            continue;
+        KORL_MEMORY_POOL_RESIZE(context->widgets, widgetsRemaining);
+        korl_time_probeStop(nullify_unused_widgets);
     }
-    KORL_MEMORY_POOL_RESIZE(context->widgets, widgetsRemaining);
-    korl_time_probeStop(nullify_unused_widgets);
+    /* sort the widgets based on their orderIndex, allowing us to always process 
+        widgets in the same order in which they were defined at run-time */
+    _korl_gui_widget_quick_sort(context->widgets, KORL_MEMORY_POOL_SIZE(context->widgets));
     /* for each of the windows that we ended up using for this frame, generate 
         the necessary draw commands for them */
     korl_time_probeStart(generate_draw_commands);
@@ -594,6 +609,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_useCamera(guiCamera);
         korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         korl_time_probeStop(draw_window_border);
+        window->widgets = 0;
     }
     korl_time_probeStop(generate_draw_commands);
     KORL_MEMORY_POOL_RESIZE(context->windows, windowsRemaining);
