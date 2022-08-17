@@ -15,11 +15,16 @@
 #endif
 #include "sort.h"
 #include "korl-stb-ds.h"
+korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID[] = L"DEBUG";
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex >= 0);
+    /* if there is no current active window, then we should just default to use 
+        an internal "debug" window to allow the user to just create widgets at 
+        any time without worrying about creating a window first */
+    if(context->currentWindowIndex < 0)
+        korl_gui_windowBegin(_KORL_GUI_ORPHAN_WIDGET_WINDOW_ID, NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
     /* check to see if this widget's identifier set is already registered */
     u$ widgetIndex = arrcap(context->stbDaWidgets);
     for(u$ w = 0; w < arrlenu(context->stbDaWidgets); ++w)
@@ -179,7 +184,11 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex < 0);
+    /* The only time that the current window index is allowed to be valid is 
+        when the user was spawning orphan widgets, which are sent to a default 
+        internal "debug" window.  Otherwise, we are in an invalid state. */
+    if(context->currentWindowIndex >= 0)
+        korl_assert(context->stbDaWindows[context->currentWindowIndex].identifier == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID);
     /* check to see if this identifier is already registered */
     for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
@@ -253,7 +262,13 @@ korl_internal void korl_gui_frameEnd(void)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex < 0);
+    /* Once again, the only time the current window index is allowed to be set 
+        to a valid id at this point is if the user is making orphan widgets. */
+    if(context->currentWindowIndex >= 0)
+    {
+        korl_assert(context->stbDaWindows[context->currentWindowIndex].identifier == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID);
+        korl_gui_windowEnd();
+    }
     context->frameSequenceCounter--;
     /* nullify widgets which weren't used this frame */
     {
@@ -383,9 +398,10 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             /* draw the window title bar text */
             Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+            const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
             korl_gfx_batchSetPosition2d(batchWindowTitleText, 
                                         window->position.x, 
-                                        window->position.y - context->style.windowTitleBarPixelSizeY + 3.f);
+                                        window->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
             korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             /**/
             Korl_Math_V2f32 titlebarButtonCursor = { window->position.x + window->size.x - context->style.windowTitleBarPixelSizeY
