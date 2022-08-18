@@ -96,6 +96,8 @@ korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor)
 }
 korl_internal inline f32 korl_math_exDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime)
 {
+    // good resource on this:  
+    //  https://www.rorydriscoll.com/2016/03/07/frame-rate-independent-damping-using-lerp/
     return korl_math_lerp(to, from, expf(-lambdaFactor * deltaTime));
 }
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2)

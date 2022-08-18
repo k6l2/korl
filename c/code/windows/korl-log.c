@@ -491,3 +491,20 @@ korl_internal void korl_log_shutDown(void)
 skipFileCleanup:
     return;
 }
+korl_internal KORL_PLATFORM_LOG_GET_BUFFER(korl_log_getBuffer)
+{
+    _Korl_Log_Context*const context = &_korl_log_context;
+    const u$ bufferedBytes = context->bufferedCharacters*sizeof(*context->buffer);
+    if(bufferedBytes > context->bufferBytes)
+    {
+        *out_buffer       = context->buffer + context->bufferBytes/2;
+        *out_bufferSize   = context->bufferBytes/sizeof(*context->buffer)/2;
+        *out_bufferOffset = context->bufferOffset - (context->bufferBytes/sizeof(*context->buffer)/2);
+    }
+    else
+    {
+        *out_buffer       = context->buffer;
+        *out_bufferSize   = bufferedBytes/sizeof(*context->buffer);
+        *out_bufferOffset = 0;
+    }
+}

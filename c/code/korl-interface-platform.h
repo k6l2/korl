@@ -253,6 +253,7 @@ enum KorlEnumLogLevel
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, \
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
     int lineNumber, const wchar_t* format, ...)
+#define KORL_PLATFORM_LOG_GET_BUFFER(name) void name(const wchar_t** out_buffer, u$* out_bufferSize, u$* out_bufferOffset)
 /** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, \
@@ -501,6 +502,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(name)           void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
+typedef KORL_PLATFORM_LOG_GET_BUFFER                      (fnSig_korl_log_getBuffer);
 typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
 typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secondsSinceTimeStamp);
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
@@ -565,6 +567,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
     fnSig_korlPlatformLog                       * _korl_log_variadic;\
+    fnSig_korl_log_getBuffer                    * korl_log_getBuffer;\
     fnSig_korl_timeStamp                        * korl_timeStamp;\
     fnSig_korl_time_secondsSinceTimeStamp       * korl_time_secondsSinceTimeStamp;\
     fnSig_korl_memory_zero                      * korl_memory_zero;\
@@ -629,6 +632,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
+    (apiVariableName).korl_log_getBuffer                    = korl_log_getBuffer;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
     (apiVariableName).korl_time_secondsSinceTimeStamp       = korl_time_secondsSinceTimeStamp;\
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
@@ -693,6 +697,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
+    korl_log_getBuffer                    = (apiVariableName).korl_log_getBuffer;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_time_secondsSinceTimeStamp       = (apiVariableName).korl_time_secondsSinceTimeStamp;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\

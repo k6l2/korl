@@ -147,6 +147,11 @@ typedef struct acu16
 #else
     #define KORL_STRUCT_INITIALIZE(type) (type)
 #endif
+#ifdef __cplusplus
+    #define KORL_STRUCT_INITIALIZE_ZERO(type) type{}
+#else
+    #define KORL_STRUCT_INITIALIZE_ZERO(type) (type){0}
+#endif
 /* convenience macros specifically for korl-memory module, which automatically 
     inject file/line information */
 #define korl_allocate(handle, bytes)               korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, NULL)
