@@ -250,10 +250,11 @@ set "buildCommand=%buildCommand% vulkan-1.lib"
 echo %buildCommand%
 echo:
 %buildCommand%
-IF %ERRORLEVEL% NEQ 0 (
-    echo %KORL_EXE_NAME%.exe failed to link!
-    GOTO :ON_FAILURE_EXE
+IF %ERRORLEVEL% EQU 0 (
+    GOTO :SKIP_BUILD_PLATFORM_EXECUTABLE
 )
+echo %KORL_EXE_NAME%.exe failed to link!
+GOTO :ON_FAILURE_EXE
 :SKIP_BUILD_PLATFORM_EXECUTABLE
 rem --------- synchronize the platform EXE build w/ the game DLL build ---------
 if NOT %KORL_GAME_IS_DYNAMIC% == TRUE ( 
@@ -262,12 +263,12 @@ if NOT %KORL_GAME_IS_DYNAMIC% == TRUE (
 echo Waiting for game DLL build...
 echo:
 :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
-if exist %lockFileGame% goto :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
+if exist %lockFileGame%   goto :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 if exist %statusFileGame% goto :ON_FAILURE_EXE
 :SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 rem ------------------------ synchronize shaders build  ------------------------
 :WAIT_FOR_BUILD_SHADERS
-if exist %lockFileBuildShaders% goto :WAIT_FOR_BUILD_SHADERS
+if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
 if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
 rem ----- report how long the script took -----
 :TIME_REPORT

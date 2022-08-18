@@ -256,7 +256,16 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_POSITION(korl_gui_windowSetPosition)
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
-    window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -(positionY - anchorY*window->size.y)};
+    const Korl_Math_V2u32 swapChainSize = korl_vulkan_getSwapchainSize();
+    window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -KORL_C_CAST(f32, swapChainSize.y) + positionY + anchorY*window->size.y};
+}
+korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    korl_assert(context->frameSequenceCounter == 1);
+    korl_assert(context->currentWindowIndex >= 0);
+    _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
+    window->size = (Korl_Math_V2f32){sizeX, sizeY};
 }
 korl_internal void korl_gui_frameBegin(void)
 {
