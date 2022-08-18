@@ -48,10 +48,12 @@ korl_internal inline bool korl_math_isNearlyZero(f32 x)
 korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 epsilon)
 {
     const f32 diff = korl_math_abs(fA - fB);
-    fA = korl_math_abs(fA);
-    fB = korl_math_abs(fB);
-    const f32 largest = (fB > fA) ? fB : fA;
-    return (diff <= largest * epsilon);
+    return diff <= epsilon;
+    //KORL-ISSUE-000-000-085: math: isNearlyEqualEpsilon code doesn't work and I don't know why
+    // fA = korl_math_abs(fA);
+    // fB = korl_math_abs(fB);
+    // const f32 largest = (fB > fA) ? fB : fA;
+    // return (diff <= largest * epsilon);
 }
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB)
 {
@@ -87,6 +89,14 @@ korl_internal inline f32 korl_math_nanf32(void)
 korl_internal inline bool korl_math_isNanf32(f32 x)
 {
     return 0 != _isnanf(x);
+}
+korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor)
+{
+    return from + factor*(to - from);
+}
+korl_internal inline f32 korl_math_exDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime)
+{
+    return korl_math_lerp(to, from, expf(-lambdaFactor * deltaTime));
 }
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2)
 {

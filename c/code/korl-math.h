@@ -1,39 +1,26 @@
 #pragma once
 #include "korl-globalDefines.h"
 #define KORL_PI32 3.14159f
-#define KORL_MATH_CLAMP(x, min, max) \
-    ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
-#define KORL_MATH_ASSIGN_CLAMP(x, min, max) \
-    ((x) = KORL_MATH_CLAMP((x), (min), (max)))
-#define KORL_MATH_ASSIGN_CLAMP_MIN(x, min) \
-    ((x) = KORL_MATH_CLAMP((x), (min), (x)))
-#define KORL_MATH_ASSIGN_CLAMP_MAX(x, max) \
-    ((x) = KORL_MATH_CLAMP((x), (x), (max)))
-#define KORL_MATH_MIN(a,b) ((a) <= (b) ? (a) : (b))
-#define KORL_MATH_MAX(a,b) ((a) >= (b) ? (a) : (b))
+#define KORL_MATH_CLAMP(x, min, max)        ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
+#define KORL_MATH_ASSIGN_CLAMP(x, min, max) ((x) = KORL_MATH_CLAMP((x), (min), (max)))
+#define KORL_MATH_ASSIGN_CLAMP_MIN(x, min)  ((x) = KORL_MATH_CLAMP((x), (min), (x)))
+#define KORL_MATH_ASSIGN_CLAMP_MAX(x, max)  ((x) = KORL_MATH_CLAMP((x), (x), (max)))
+#define KORL_MATH_MIN(a,b)                  ((a) <= (b) ? (a) : (b))
+#define KORL_MATH_MAX(a,b)                  ((a) >= (b) ? (a) : (b))
 typedef union Korl_Math_V2u32
 {
-    struct
-    {
-        u32 x, y;
-    };
+    struct { u32 x, y; };
     u32 elements[2];
 } Korl_Math_V2u32;
 typedef union Korl_Math_V2f32
 {
-    struct
-    {
-        f32 x, y;
-    };
+    struct { f32 x, y; };
     f32 elements[2];
 } Korl_Math_V2f32;
 const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {0, 0};
 typedef union Korl_Math_V3f32
 {
-    struct
-    {
-        f32 x, y, z;
-    };
+    struct { f32 x, y, z; };
     Korl_Math_V2f32 xy;
     f32 elements[3];
 } Korl_Math_V3f32;
@@ -43,10 +30,7 @@ const Korl_Math_V3f32 KORL_MATH_V3F32_Y    = {0, 1, 0};
 const Korl_Math_V3f32 KORL_MATH_V3F32_Z    = {0, 0, 1};
 typedef union Korl_Math_V4f32
 {
-    struct
-    {
-        f32 x, y, z, w;
-    };
+    struct { f32 x, y, z, w; };
     Korl_Math_V3f32 xyz;
     Korl_Math_V2f32 xy;
     f32 elements[4];
@@ -72,26 +56,14 @@ const Korl_Math_M4f32 KORL_MATH_M4F32_IDENTITY = {
     , {0,0,0,1} }};
 typedef union Korl_Math_V3u8
 {
-    struct
-    {
-        u8 x, y, z;
-    };
-    struct
-    {
-        u8 r, g, b;
-    };
+    struct { u8 x, y, z; };
+    struct { u8 r, g, b; };
     u8 elements[3];
 } Korl_Math_V3u8;
 typedef union Korl_Math_V4u8
 {
-    struct
-    {
-        u8 x, y, z, w;
-    };
-    struct
-    {
-        u8 r, g, b, a;
-    };
+    struct { u8 x, y, z, w; };
+    struct { u8 r, g, b, a; };
     Korl_Math_V3u8 xyz;
     Korl_Math_V3u8 rgb;
     u8 elements[4];
@@ -130,6 +102,8 @@ korl_internal inline f32 korl_math_ceil(f32 x);
 korl_internal inline f32 korl_math_sqrt(f32 x);
 korl_internal inline f32 korl_math_nanf32(void);
 korl_internal inline bool korl_math_isNanf32(f32 x);
+korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor);
+korl_internal inline f32 korl_math_exDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime);
 /* RNG ************************************************************************/
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2);
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed);
