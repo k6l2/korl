@@ -241,6 +241,7 @@ typedef struct Korl_GamepadEvent
 #define KORL_PLATFORM_GUI_WINDOW_SET_POSITION(name)  void name(f32 anchorX, f32 anchorY, f32 positionX, f32 positionY)
 #define KORL_PLATFORM_GUI_WINDOW_SET_SIZE(name)      void name(f32 sizeX, f32 sizeY)
 #define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
+#define KORL_PLATFORM_GUI_WIDGET_TEXT(name)          void name(const acu16* texts, u$ textsSize, u$ textsStride)
 #define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
 enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT
@@ -563,6 +564,7 @@ typedef KORL_PLATFORM_GUI_WINDOW_END                      (fnSig_korl_gui_window
 typedef KORL_PLATFORM_GUI_WINDOW_SET_POSITION             (fnSig_korl_gui_windowSetPosition);
 typedef KORL_PLATFORM_GUI_WINDOW_SET_SIZE                 (fnSig_korl_gui_windowSetSize);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
+typedef KORL_PLATFORM_GUI_WIDGET_TEXT                     (fnSig_korl_gui_widgetText);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
@@ -628,6 +630,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gui_windowSetPosition            * korl_gui_windowSetPosition;\
     fnSig_korl_gui_windowSetSize                * korl_gui_windowSetSize;\
     fnSig_korl_gui_widgetTextFormat             * korl_gui_widgetTextFormat;\
+    fnSig_korl_gui_widgetText                   * korl_gui_widgetText;\
     fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
@@ -693,6 +696,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gui_windowSetPosition            = korl_gui_windowSetPosition;\
     (apiVariableName).korl_gui_windowSetSize                = korl_gui_windowSetSize;\
     (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
+    (apiVariableName).korl_gui_widgetText                   = korl_gui_widgetText;\
     (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
@@ -758,6 +762,7 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_gui_windowSetPosition            = (apiVariableName).korl_gui_windowSetPosition;\
     korl_gui_windowSetSize                = (apiVariableName).korl_gui_windowSetSize;\
     korl_gui_widgetTextFormat             = (apiVariableName).korl_gui_widgetTextFormat;\
+    korl_gui_widgetText                   = (apiVariableName).korl_gui_widgetText;\
     korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;
 typedef struct KorlPlatformApi
 {

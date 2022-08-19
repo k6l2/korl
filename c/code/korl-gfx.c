@@ -621,6 +621,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         - font vertical metrics
         - glyph horizontal metrics
         - glyph X bearings */
+    ///@TODO: do something to allow "empty" batch->text to return a valid AABB; maybe just default to Aabb2f32{{0,0},{0,0}} ?
     batch->_textAabb = (Korl_Math_Aabb2f32 ){.min = {KORL_F32_MAX, KORL_F32_MAX}, .max = {KORL_F32_MIN, KORL_F32_MIN}};
     for(const wchar_t* character = batch->_text; *character; character++)
     {

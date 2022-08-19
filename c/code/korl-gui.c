@@ -660,6 +660,19 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
     widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
 }
+korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(texts, KORL_GUI_WIDGET_TYPE_TEXT);
+    wchar_t* displayText = NULL;
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandleStack), displayText, 1024);
+    for(u$ t = 0; t < textsSize; t++)
+    {
+        const au16*const text = KORL_C_CAST(const au16*, KORL_C_CAST(u8*, texts) + t*textsStride);
+        ///@TODO: create a big ol ball of text in the stack allocator that we can use to render when the time comes
+    }
+    widget->subType.text.displayText = displayText;
+}
 korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;

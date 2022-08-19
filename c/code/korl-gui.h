@@ -16,6 +16,7 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize);
 korl_internal void korl_gui_frameBegin(void);
 korl_internal void korl_gui_frameEnd(void);
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat);
+korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText);
 /** 
  * \return The number of times this button was actuated (pressed & released) 
  * since the previous frame.  If the button was actuated more times than the max 
