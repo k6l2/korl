@@ -66,7 +66,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
     {
         /* otherwise, add a new asset */
         mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAssets, (_Korl_AssetCache_Asset){0});
-        asset = context->stbDaAssets + arrlen(context->stbDaAssets) - 1;
+        asset = &arrlast(context->stbDaAssets);
         korl_memory_zero(asset, sizeof(*asset));// not _entirely_ sure this is necessary, but I've read that struct initialization using {0} might have portability issues?...
         asset->name = string_newUtf16(assetName);
     }

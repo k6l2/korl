@@ -7,6 +7,15 @@ korl_global_variable bool _korl_crash_hasReceivedException;
 korl_global_variable bool _korl_crash_hasWrittenCrashDump;
 korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPointers, const wchar_t* cStrOrigin)
 {
+    /* when we're debugging, it's annoying having to wait a few seconds for the 
+        minidump to write to disk, so let's just break right away */
+    if(IsDebuggerPresent())
+    {
+        OutputDebugString(_T("KORL FATAL EXCEPTION: \""));
+        OutputDebugString(cStrOrigin);
+        OutputDebugString(_T("\"\n"));
+        DebugBreak();
+    }
     if(!_korl_crash_hasWrittenCrashDump)
     {
         korl_file_generateMemoryDump(pExceptionPointers, KORL_FILE_PATHTYPE_TEMPORARY_DATA, _KORL_CRASH_MAX_DUMP_COUNT);
@@ -14,8 +23,6 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
     }
     korl_log(ASSERT, "Fatal Exception; \"%ws\"! ExceptionCode=0x%x", 
              cStrOrigin, pExceptionPointers->ExceptionRecord->ExceptionCode);
-    if(IsDebuggerPresent())
-        DebugBreak();
     if(!_korl_crash_hasReceivedException)
     {
         _korl_crash_hasReceivedException = true;
@@ -124,6 +131,15 @@ korl_internal void korl_crash_initialize(void)
 korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
 {
     const bool isFirstAssert = !_korl_crash_firstAssertLogged;
+    /* when we're debugging, it's annoying having to wait a few seconds for the 
+        minidump to write to disk, so let's just break right away */
+    if(IsDebuggerPresent())
+    {
+        OutputDebugString(_T("KORL ASSERTION FAILED: \""));
+        OutputDebugString(conditionString);
+        OutputDebugString(_T("\"\n"));
+        DebugBreak();
+    }
     /* write failed condition to standard error stream */
     if(!_korl_crash_firstAssertLogged)
     {
@@ -156,13 +172,6 @@ korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
                      EXCEPTION_EXECUTE_HANDLER)
             {
             }
-    }
-    if(IsDebuggerPresent())
-    {
-        OutputDebugString(_T("KORL ASSERTION FAILED: \""));
-        OutputDebugString(conditionString);
-        OutputDebugString(_T("\"\n"));
-        DebugBreak();
     }
     _korl_log_variadic(1, KORL_LOG_LEVEL_ASSERT, 
                        cStringFileName, cStringFunctionName, lineNumber, 

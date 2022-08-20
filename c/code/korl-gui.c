@@ -138,8 +138,8 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(1), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(128), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);///@TODO: having a large gui stack necessarily means that we will likely be sending a shit-ton of data from CPU=>GPU every frame, which is a huge performance smell; investigate a way to reduce this number and send less data to the GPU each frame
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(  1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
@@ -206,8 +206,8 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
     }
     /* we are forced to allocate a new window in the memory pool */
     Korl_Math_V2f32 nextWindowPosition = KORL_MATH_V2F32_ZERO;
-    if(arrlen(context->stbDaWindows) > 0)
-        nextWindowPosition = korl_math_v2f32_add((context->stbDaWindows + arrlen(context->stbDaWindows) - 1)->position, 
+    if(arrlenu(context->stbDaWindows) > 0)
+        nextWindowPosition = korl_math_v2f32_add(arrlast(context->stbDaWindows).position, 
                                                  (Korl_Math_V2f32){ 32.f, -32.f });
     context->currentWindowIndex = korl_checkCast_u$_to_i16(arrlenu(context->stbDaWindows));
     mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, (_Korl_Gui_Window){0});
@@ -669,7 +669,9 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText)
     for(u$ t = 0; t < textsSize; t++)
     {
         const au16*const text = KORL_C_CAST(const au16*, KORL_C_CAST(u8*, texts) + t*textsStride);
-        ///@TODO: create a big ol ball of text in the stack allocator that we can use to render when the time comes
+        const u$ displayTextSizePrevious = arrlenu(displayText);
+        mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleStack), displayText, arrlenu(displayText) + text->size);
+        korl_memory_copy(displayText + displayTextSizePrevious, text->data, text->size*sizeof(*text->data));
     }
     widget->subType.text.displayText = displayText;
 }

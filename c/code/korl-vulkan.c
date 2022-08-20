@@ -2759,6 +2759,22 @@ korl_internal Korl_Vulkan_TextureHandle korl_vulkan_textureCreate(u32 sizeX, u32
     /* return the new texture handle */
     return textureHandle;
 }
+korl_internal void korl_vulkan_textureUpdate(Korl_Vulkan_TextureHandle textureHandle, u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /* get the device asset via texture handle */
+    _Korl_Vulkan_DeviceAsset* asset = NULL;
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->deviceAssets); a++)
+        if(   context->deviceAssets[a].type == _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE
+           && context->deviceAssets[a].subType.texture.handle == textureHandle)
+        {
+            asset = &(context->deviceAssets[a]);
+            break;
+        }
+    korl_assert(asset);
+    /* transfer the image buffer to the device asset's device memory allocation */
+    _korl_vulkan_transferImageBufferToTexture(imageBuffer, sizeX, sizeY, asset->subType.texture.deviceAllocation);
+}
 korl_internal void korl_vulkan_textureDestroy(Korl_Vulkan_TextureHandle textureHandle)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;

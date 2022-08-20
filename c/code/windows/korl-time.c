@@ -197,7 +197,7 @@ korl_internal Korl_Time_ProbeHandle korl_time_probeBegin(const wchar_t* file, co
     timeProbe->line           = line;
     timeProbe->label          = label;
     if(arrlenu(_korl_time_context.stbDaTimeProbeStack))
-        timeProbe->parent = *(_korl_time_context.stbDaTimeProbeStack + arrlen(_korl_time_context.stbDaTimeProbeStack) - 1);
+        timeProbe->parent = arrlast(_korl_time_context.stbDaTimeProbeStack);
     return mcarrpush(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeStack, timeProbeIndex + 1/*a handle value of 0 should be considered invalid*/);
 }
 korl_internal Korl_Time_Counts korl_time_probeEnd(Korl_Time_ProbeHandle timeProbeHandle)
@@ -259,7 +259,7 @@ korl_internal void korl_time_probeLogReport(void)
         if(timeProbe->label)
             longestProbeLabel = KORL_MATH_MAX(longestProbeLabel, korl_memory_stringSize(timeProbe->label));
         longestProbeFunction = KORL_MATH_MAX(longestProbeFunction, korl_memory_stringSize(timeProbe->function));
-        while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && *(stbDaTimeProbeStack + arrlen(stbDaTimeProbeStack) - 1) != timeProbe->parent)))
+        while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
             arrpop(stbDaTimeProbeStack);
         deepestProbeDepth = KORL_MATH_MAX(deepestProbeDepth, arrlenu(stbDaTimeProbeStack));
         mcarrpush(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), stbDaTimeProbeStack, tpi + 1);
@@ -291,7 +291,7 @@ korl_internal void korl_time_probeLogReport(void)
         for(const wchar_t* fileNameCursor = timeProbe->file; *fileNameCursor; fileNameCursor++)
             if(*fileNameCursor == '\\' || *fileNameCursor == '/')
                 file = fileNameCursor + 1;
-        while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && *(stbDaTimeProbeStack + arrlen(stbDaTimeProbeStack) - 1) != timeProbe->parent)))
+        while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
             arrpop(stbDaTimeProbeStack);
         const i$ durationBufferSize = 
             korl_memory_stringFormatBuffer(bufferDuration, bufferDurationSize*sizeof(*bufferDuration), 

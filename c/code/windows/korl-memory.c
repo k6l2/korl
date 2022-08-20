@@ -217,8 +217,9 @@ korl_internal void korl_memory_initialize(void)
     /* add the file name string of this file to the beginning of the file name character pool */
     {
         const u$ rawWideStringSize = korl_memory_stringSize(__FILEW__) + 1/*null-terminator*/;
-        wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + arrlen(context->stbDaFileNameCharacterPool);
+        const u$ persistDataStartOffset = arrlenu(context->stbDaFileNameCharacterPool);
         mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
+        wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + persistDataStartOffset;
         korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(__FILEW__, persistDataStart, rawWideStringSize));
     }
 #if KORL_DEBUG/* testing out bitwise operations */
@@ -1655,7 +1656,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_
 {
     _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
     mcarrpush(KORL_C_CAST(void*, _korl_memory_context.allocatorHandle), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
-    _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = context->stbDaAllocationMeta + arrlen(context->stbDaAllocationMeta) - 1;
+    _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = &arrlast(context->stbDaAllocationMeta);
     newAllocMeta->allocationAddress = allocation;
     newAllocMeta->meta              = *meta;
     context->totalUsedBytes += meta->bytes;
@@ -1776,7 +1777,7 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
     /* otherwise, we need to add the string to the character pool & create a new 
         string entry to use */
     const u$ rawWideStringSize = korl_memory_stringSize(rawWideString) + 1/*null-terminator*/;
-    const u$ fileNameCharacterPoolSizePrevious = arrlen(context->stbDaFileNameCharacterPool);
+    const u$ fileNameCharacterPoolSizePrevious = arrlenu(context->stbDaFileNameCharacterPool);
     mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
     wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + fileNameCharacterPoolSizePrevious;
     korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(rawWideString, persistDataStart, rawWideStringSize));

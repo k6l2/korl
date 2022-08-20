@@ -134,7 +134,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             _Korl_Gui_Window temp = context->stbDaWindows[w];
             for(u$ i = korl_checkCast_i$_to_u$(w); KORL_C_CAST(i$, i) < KORL_C_CAST(i$, arrlenu(context->stbDaWindows)) - 1; i++)
                 context->stbDaWindows[i] = context->stbDaWindows[i + 1];
-            *(context->stbDaWindows + arrlen(context->stbDaWindows) - 1) = temp;
+            arrlast(context->stbDaWindows) = temp;
             context->isTopLevelWindowActive = true;
             /* once we've submitted mouse input to the nearest window, we can 
                 stop iterating, since windows below this position should not 
@@ -224,11 +224,11 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         const i32 mouseY = -GET_Y_LPARAM(lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
         const Korl_Math_V2f32 mouseV2f32 = { korl_checkCast_i$_to_f32(mouseX)
                                            , korl_checkCast_i$_to_f32(mouseY) };
-        if(arrlen(context->stbDaWindows) <= 0)
+        if(arrlenu(context->stbDaWindows) <= 0)
             break;
         if(context->isMouseDown)
         {
-            _Korl_Gui_Window*const window = context->stbDaWindows + arrlen(context->stbDaWindows) - 1;
+            _Korl_Gui_Window*const window = &arrlast(context->stbDaWindows);
             if(context->isWindowDragged)
             {
                 if(context->mouseHoverWindowEdgeFlags)

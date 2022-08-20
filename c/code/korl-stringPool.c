@@ -201,7 +201,7 @@ korl_internal _Korl_StringPool_String* _korl_stringPool_addNewString(Korl_String
     korl_assert(newHandle);// sanity check
     /* add a new string entry */
     mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaStrings, KORL_STRUCT_INITIALIZE(_Korl_StringPool_String){0});
-    _Korl_StringPool_String*const newString = context->stbDaStrings + arrlen(context->stbDaStrings) - 1;
+    _Korl_StringPool_String*const newString = &arrlast(context->stbDaStrings);
     korl_memory_zero(newString, sizeof(*newString));
     newString->handle = newHandle;
     newString->flags  = stringFlags;
