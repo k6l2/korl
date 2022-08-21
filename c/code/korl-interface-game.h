@@ -1,4 +1,6 @@
 #pragma once
+#include "korl-globalDefines.h"
+#include "korl-interface-platform.h"
 #include "korl-interface-game-memory.h"// contains the game-specific definition of GameMemory struct
 #define KORL_GAME_API extern "C" __declspec(dllexport)
 #define KORL_GAME_ON_RELOAD(name)         void name(GameMemory* memory, KorlPlatformApi korlApi)
