@@ -1169,7 +1169,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     korl_assert(textPixelHeight  >= 1.f);
     korl_assert(outlinePixelSize >= 0.f);
     if(!assetNameFont)
-        assetNameFont = L"test-assets/source-sans/SourceSans3-Semibold.otf";
+        assetNameFont = L"test-assets/source-sans/SourceSans3-Semibold.otf";//KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     /* calculate required amount of memory for the batch */
     const u$ assetNameFontBufferSize = korl_memory_stringSize(assetNameFont) + 1;
     const u$ assetNameFontBytes = assetNameFontBufferSize * sizeof(*assetNameFont);
