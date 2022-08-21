@@ -164,6 +164,7 @@ typedef enum Korl_MouseEventType
     , KORL_MOUSE_EVENT_WHEEL
     , KORL_MOUSE_EVENT_HWHEEL
     , KORL_MOUSE_EVENT_MOVE
+    , KORL_MOUSE_EVENT_MOVE_RAW // raw mouse mickeys; use this data for doing things like first-person camera control
 } Korl_MouseEventType;
 typedef struct Korl_MouseEvent
 {

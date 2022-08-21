@@ -95,3 +95,4 @@ shutdownSuccess:
 #include "korl-crash.c"
 #include "korl-stringPool.c"
 #include "korl-windows-gamepad.c"
+#include "korl-windows-mouse.c"

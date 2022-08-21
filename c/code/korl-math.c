@@ -651,13 +651,22 @@ korl_internal Korl_Math_V2f32 operator*(Korl_Math_Quaternion q, Korl_Math_V2f32 
 {
     return korl_math_quaternion_transformV2f32(q, v, false);
 }
+korl_internal Korl_Math_V3f32 operator*(Korl_Math_Quaternion q, Korl_Math_V3f32 v)
+{
+    return korl_math_quaternion_transformV3f32(q, v, false);
+}
+korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& v, Korl_Math_Quaternion q)
+{
+    v = korl_math_quaternion_transformV3f32(q, v, false);
+    return v;
+}
 korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     return korl_math_v2f32_add(vA, vB);
 }
 korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 v)
 {
-	return korl_math_v2f32_multiplyScalar(v, -1.f);
+    return korl_math_v2f32_multiplyScalar(v, -1.f);
 }
 korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
@@ -673,14 +682,14 @@ korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v)
 }
 korl_internal Korl_Math_V2f32& operator+=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
 {
-	vA.x += vB.x;
-	vA.y += vB.y;
-	return vA;
+    vA.x += vB.x;
+    vA.y += vB.y;
+    return vA;
 }
 korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
 {
-	vA.x -= vB.x;
-	vA.y -= vB.y;
-	return vA;
+    vA.x -= vB.x;
+    vA.y -= vB.y;
+    return vA;
 }
 #endif//__cplusplus

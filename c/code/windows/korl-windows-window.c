@@ -2,6 +2,7 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
 #include "korl-windows-gamepad.h"
+#include "korl-windows-mouse.h"
 #include "korl-log.h"
 #include "korl-time.h"
 #include "korl-vulkan.h"
@@ -60,6 +61,8 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
     if(korl_windows_gamepad_processMessage(hWnd, uMsg, wParam, lParam, &result))
         return result;
+    if(korl_windows_mouse_processMessage(hWnd, uMsg, wParam, lParam, &result, context->gameApi.korl_game_onMouseEvent))
+        return result;
     switch(uMsg)
     {
     case WM_CREATE:{
@@ -117,7 +120,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
-        } break;
+        break;}
     case WM_LBUTTONUP:
     case WM_MBUTTONUP:
     case WM_RBUTTONUP:
@@ -146,16 +149,16 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
-        } break;
+        break;}
     case WM_MOUSEMOVE:{
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_MOVE;
-        mouseEvent.x = GET_X_LPARAM(lParam);
-        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
-        mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
+        mouseEvent.x    = GET_X_LPARAM(lParam);
+        mouseEvent.y    = swapchainSize.y - GET_Y_LPARAM(lParam); 
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
-        } break;
+        break;}
     case WM_MOUSEWHEEL:{
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_WHEEL;
@@ -172,7 +175,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.y = swapchainSize.y - mousePoint.y;
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
-        } break;
+        break;}
     case WM_MOUSEHWHEEL:{
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_HWHEEL;
@@ -189,7 +192,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         mouseEvent.y = swapchainSize.y - mousePoint.y;
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
-        } break;
+        break;}
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
     case WM_MOVE:{
         break;}
@@ -330,6 +333,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     _korl_windows_window_context.window.style   = windowStyle;
     _korl_windows_window_context.window.hasMenu = windowHasMenu;
     korl_windows_gamepad_registerWindow(hWnd, context->allocatorHandle);
+    korl_windows_mouse_registerWindow(hWnd);
 }
 korl_internal void _korl_windows_window_gameInitialize(KorlPlatformApi* korlApi)
 {
