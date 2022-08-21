@@ -427,9 +427,9 @@ typedef struct Korl_Gfx_Camera
 } Korl_Gfx_Camera;
 typedef enum Korl_Gfx_Batch_Flags
 {
-    KORL_GFX_BATCH_FLAG_NONE = 0, 
+    KORL_GFX_BATCH_FLAGS_NONE              = 0, 
     KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0,
-    KORL_GFX_BATCH_FLAG_DISABLE_BLENDING = 1 << 1
+    KORL_GFX_BATCH_FLAG_DISABLE_BLENDING   = 1 << 1
 } Korl_Gfx_Batch_Flags;
 typedef struct Korl_Gfx_Batch
 {
