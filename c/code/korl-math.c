@@ -71,6 +71,11 @@ korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator)
 }
 korl_internal inline f32 korl_math_acos(f32 x)
 {
+    if(korl_math_isNearlyEqual(x, 1.f))
+        x = 1.f;
+    if(korl_math_isNearlyEqual(x, -1.f))
+        x = -1.f;
+    korl_assert(-1.f <= x && x <= 1.f);
     return acosf(x);
 }
 korl_internal inline f32 korl_math_ceil(f32 x)
