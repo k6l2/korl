@@ -247,6 +247,8 @@ set "buildCommand=%buildCommand% Winmm.lib"
 rem     for gamepad module stuff
 set "buildCommand=%buildCommand% setupapi.lib"
 set "buildCommand=%buildCommand% vulkan-1.lib"
+rem     for bluetooth module
+set "buildCommand=%buildCommand% ws2_32.lib"
 echo %buildCommand%
 echo:
 %buildCommand%

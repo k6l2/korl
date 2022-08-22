@@ -16,6 +16,7 @@
 #include "korl-file.h"
 #include "korl-stb-ds.h"
 #include "korl-stringPool.h"
+#include "korl-bluetooth.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif

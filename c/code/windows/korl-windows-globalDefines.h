@@ -22,6 +22,8 @@
 #include <Dbt.h>/* for gamepad module (DEV_BROADCAST_DEVICEINTERFACE_*, etc...) */
 #include <initguid.h>/* needed in order to use the DEFINE_GUID macro */
 #include <devioctl.h>/* needed in order to use the CTL_CODE macro */
+#include <WinSock2.h>/* for bluetooth module */
+#include <ws2bth.h>/* for bluetooth module; specifically the SOCKADDR_BTH struct */
 #ifdef near// defined from somewhere inside Windows.h
     #undef near // fuck you too, Microsoft!
 #endif

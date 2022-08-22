@@ -502,6 +502,14 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(name)         void               name(Korl_Gfx_Batch*const context, Korl_Math_V2f32 size)
 #define KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(name)        void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(name)           void               name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
+typedef struct Korl_Bluetooth_QueryEntry
+{
+    wchar_t name[128];
+    u8      nameSize;
+    u8      address[30];// opaque platform-defined format
+} Korl_Bluetooth_QueryEntry;
+/** \return stb_ds array of \c Korl_Bluetooth_QueryEntry allocated in \c allocator */
+#define KORL_PLATFORM_BLUETOOTH_QUERY(name) Korl_Bluetooth_QueryEntry* name(Korl_Memory_AllocatorHandle allocator)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_LOG_GET_BUFFER                      (fnSig_korl_log_getBuffer);
@@ -567,6 +575,7 @@ typedef KORL_PLATFORM_GUI_WINDOW_SET_SIZE                 (fnSig_korl_gui_window
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT                     (fnSig_korl_gui_widgetText);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
+typedef KORL_PLATFORM_BLUETOOTH_QUERY                     (fnSig_korl_bluetooth_query);
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
     fnSig_korlPlatformLog                       * _korl_log_variadic;\
@@ -632,7 +641,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     fnSig_korl_gui_windowSetSize                * korl_gui_windowSetSize;\
     fnSig_korl_gui_widgetTextFormat             * korl_gui_widgetTextFormat;\
     fnSig_korl_gui_widgetText                   * korl_gui_widgetText;\
-    fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;
+    fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;\
+    fnSig_korl_bluetooth_query                  * korl_bluetooth_query;
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
@@ -698,7 +708,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     (apiVariableName).korl_gui_windowSetSize                = korl_gui_windowSetSize;\
     (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
     (apiVariableName).korl_gui_widgetText                   = korl_gui_widgetText;\
-    (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;
+    (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;\
+    (apiVariableName).korl_bluetooth_query                  = korl_bluetooth_query;
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
@@ -764,7 +775,8 @@ typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widget
     korl_gui_windowSetSize                = (apiVariableName).korl_gui_windowSetSize;\
     korl_gui_widgetTextFormat             = (apiVariableName).korl_gui_widgetTextFormat;\
     korl_gui_widgetText                   = (apiVariableName).korl_gui_widgetText;\
-    korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;
+    korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;\
+    korl_bluetooth_query                  = (apiVariableName).korl_bluetooth_query;
 typedef struct KorlPlatformApi
 {
     KORL_INTERFACE_PLATFORM_API_DECLARE
