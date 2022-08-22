@@ -142,8 +142,8 @@ korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f32 v, f32 magnitude);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
-korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
-// korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
+korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
+korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_addScalar(Korl_Math_V3f32 v, f32 scalar);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
@@ -251,8 +251,8 @@ korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 v
 // korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 v, f32 scalar);
 // korl_internal Korl_Math_V3f32 operator-(f32 scalar, Korl_Math_V3f32 v);
 // korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);// component-wise multiplication
-// korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 v, f32 scalar);
-// korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v);
+korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 v, f32 scalar);
+korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v);
 // korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 v, f32 scalar);
 // korl_internal Korl_Math_V3f32 operator/(f32 scalar, Korl_Math_V3f32 v);

@@ -284,11 +284,15 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const 
     result.z = vA->x*vB->y - vA->y*vB->x;
     return result;
 }
-korl_internal f32 korl_math_v3f32_dot(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB)
+korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
-    return vA->elements[0] * vB->elements[0]
-        +  vA->elements[1] * vB->elements[1]
-        +  vA->elements[2] * vB->elements[2];
+    return vA.elements[0] * vB.elements[0]
+        +  vA.elements[1] * vB.elements[1]
+        +  vA.elements[2] * vB.elements[2];
+}
+korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
+{
+    return korl_math_acos(korl_math_v3f32_dot(korl_math_v3f32_normal(vA), korl_math_v3f32_normal(vB)));
 }
 korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
@@ -541,9 +545,9 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
     /* additionally, we can combine the inverse camera translation into the same 
         matrix as the inverse rotation by manually doing the row-column dot 
         products ourselves, and putting them in the 4th column */
-    result.r0c0 = cameraX.x; result.r0c1 = cameraX.y; result.r0c2 = cameraX.z; result.r0c3 = -korl_math_v3f32_dot(&cameraX, positionEye);
-    result.r1c0 = cameraY.x; result.r1c1 = cameraY.y; result.r1c2 = cameraY.z; result.r1c3 = -korl_math_v3f32_dot(&cameraY, positionEye);
-    result.r2c0 = cameraZ.x; result.r2c1 = cameraZ.y; result.r2c2 = cameraZ.z; result.r2c3 = -korl_math_v3f32_dot(&cameraZ, positionEye);
+    result.r0c0 = cameraX.x; result.r0c1 = cameraX.y; result.r0c2 = cameraX.z; result.r0c3 = -korl_math_v3f32_dot(cameraX, *positionEye);
+    result.r1c0 = cameraY.x; result.r1c1 = cameraY.y; result.r1c2 = cameraY.z; result.r1c3 = -korl_math_v3f32_dot(cameraY, *positionEye);
+    result.r2c0 = cameraZ.x; result.r2c1 = cameraZ.y; result.r2c2 = cameraZ.z; result.r2c3 = -korl_math_v3f32_dot(cameraZ, *positionEye);
     return result;
 }
 korl_internal bool korl_math_m4f32_isNearEqual(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
@@ -691,5 +695,13 @@ korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 v
     vA.x -= vB.x;
     vA.y -= vB.y;
     return vA;
+}
+korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 v, f32 scalar)
+{
+    return korl_math_v3f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v)
+{
+    return korl_math_v3f32_multiplyScalar(v, scalar);
 }
 #endif//__cplusplus
