@@ -11,8 +11,21 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"
 #include "korl-checkCast.h"
+// DEFINE_GUID(_KORL_BLUETOOTH_SERVICE_CLASS_GUID, 0xb62c4e8d, 0x62cc, 0x404b, 0xbb, 0xbf, 0xbf, 0x3e, 0x3b, 0xbb, 0x13, 0x74);// {B62C4E8D-62CC-404b-BBBF-BF3E3BBB1374}
+typedef struct _Korl_Bluetooth_Socket
+{
+    Korl_Bluetooth_SocketHandle handle;// a value of 0 means that this socket is unused; otherwise, this value should be == (1 + socketArrayIndex) of this socket
+    Korl_Bluetooth_QueryEntry queryEntry;
+    SOCKET socket;
+} _Korl_Bluetooth_Socket;
+typedef struct _Korl_Bluetooth_Context
+{
+    _Korl_Bluetooth_Socket sockets[8];
+} _Korl_Bluetooth_Context;
+korl_global_variable _Korl_Bluetooth_Context _korl_bluetooth_context;
 korl_internal void korl_bluetooth_initialize(void)
 {
+    korl_memory_zero(&_korl_bluetooth_context, sizeof(_korl_bluetooth_context));
     KORL_ZERO_STACK(WSADATA, wsaData);
     const WORD wsaVersionRequested = MAKEWORD(2,2);
     const int resultWsaStartup = WSAStartup(wsaVersionRequested, &wsaData);
@@ -52,12 +65,19 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
 #if KORL_DEBUG
             korl_log(VERBOSE, "\t\"%ws\" ", wsaQuerySet->lpszServiceInstanceName);
 #endif
+            SOCKADDR_BTH*const socketAddressBluetooth = KORL_C_CAST(SOCKADDR_BTH*, wsaQuerySet->lpcsaBuffer->RemoteAddr.lpSockaddr);
             Korl_Bluetooth_QueryEntry newEntry;
             newEntry.nameSize = korl_checkCast_u$_to_u8(korl_memory_stringSize(wsaQuerySet->lpszServiceInstanceName));
             korl_assert(korl_arraySize(newEntry.name)    >= newEntry.nameSize + 1/*null-terminator*/);
-            korl_assert(        sizeof(newEntry.address) >= sizeof(*KORL_C_CAST(SOCKADDR_BTH*, wsaQuerySet->lpcsaBuffer->RemoteAddr.lpSockaddr)));
+            korl_assert(        sizeof(newEntry.address) >= sizeof(*socketAddressBluetooth));
+            korl_assert(socketAddressBluetooth->addressFamily == AF_BTH);
+            korl_assert(socketAddressBluetooth->port          == 0);
+            // korl_assert(IsEqualGUID(&socketAddressBluetooth->serviceClassId, &_KORL_BLUETOOTH_SERVICE_CLASS_GUID));
+            // socketAddressBluetooth->serviceClassId = _KORL_BLUETOOTH_SERVICE_CLASS_GUID;
+            socketAddressBluetooth->serviceClassId = RFCOMM_PROTOCOL_UUID;
+            socketAddressBluetooth->port           = BT_PORT_ANY;
             korl_memory_copy(newEntry.name   , wsaQuerySet->lpszServiceInstanceName, newEntry.nameSize*sizeof(*wsaQuerySet->lpszServiceInstanceName));
-            korl_memory_copy(newEntry.address, wsaQuerySet->lpcsaBuffer->RemoteAddr.lpSockaddr, sizeof(*KORL_C_CAST(SOCKADDR_BTH*, wsaQuerySet->lpcsaBuffer->RemoteAddr.lpSockaddr)));
+            korl_memory_copy(newEntry.address, socketAddressBluetooth              , sizeof(*socketAddressBluetooth));
             newEntry.name[newEntry.nameSize] = L'\0';// null-terminate the raw device name string
             mcarrpush(KORL_C_CAST(void*, allocator), result, newEntry);
         }
@@ -88,4 +108,44 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
     WSALookupServiceEnd(wsaLookupServiceHandle);
     korl_free(allocator, wsaQuerySet);
     return result;
+}
+korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
+{
+    /* find a socket that is unused */
+    _Korl_Bluetooth_Socket* korlSocket = NULL;
+    for(u$ i = 0; i < korl_arraySize(_korl_bluetooth_context.sockets); i++)
+    {
+        if(_korl_bluetooth_context.sockets[i].handle)
+        {
+            /* ensure that an existing connection doesn't exist for this queryEntry */
+            ///@TODO: maybe compare addresses instead of device names?
+            korl_assert(0 != korl_memory_stringCompare(_korl_bluetooth_context.sockets[i].queryEntry.name, queryEntry->name));
+            continue;
+        }
+        korlSocket = &_korl_bluetooth_context.sockets[i];
+        korlSocket->handle = korl_checkCast_u$_to_u32(i + 1);
+        korl_memory_copy(&korlSocket->queryEntry, queryEntry, sizeof(*queryEntry));
+        break;
+    }
+    if(!korlSocket)
+        return 0;
+    /* connect the bluetooth korlSocket to the query entry address */
+    korlSocket->socket = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
+    if(korlSocket->socket == INVALID_SOCKET)
+    {
+        korl_log(ERROR, "socket failed; error=%i", WSAGetLastError());
+        return 0;
+    }
+    // SOCKADDR_BTH socketAddressBluetooth = *KORL_C_CAST(SOCKADDR_BTH*, &korlSocket->queryEntry.address);
+    // socketAddressBluetooth.serviceClassId = RFCOMM_PROTOCOL_UUID;
+    // socketAddressBluetooth.port           = BT_PORT_ANY;
+    // socketAddressBluetooth.serviceClassId = _KORL_BLUETOOTH_SERVICE_CLASS_GUID;
+    if(SOCKET_ERROR == connect(korlSocket->socket, 
+                               KORL_C_CAST(struct sockaddr*, &korlSocket->queryEntry.address), 
+                               sizeof(SOCKADDR_BTH)))
+    {
+        korl_log(ERROR, "connect failed; error=%i", WSAGetLastError());
+        return 0;
+    }
+    return korlSocket->handle;
 }
