@@ -3,6 +3,9 @@
  * https://github.com/microsoftarchive/msdn-code-gallery-microsoft/tree/master/Official%20Windows%20Platform%20Sample/Bluetooth%20connection%20sample
  * Which was obtained from this page on MSDN:
  * https://docs.microsoft.com/en-us/windows/win32/bluetooth/bluetooth-programming-with-windows-sockets
+ * The above example is actually failing to connect to my Sparkfun Bluesmirf 
+ * Silver, so the following example code was used to modify that MSDN example: 
+ * https://stackoverflow.com/a/69474526/4526664
  */
 #include "korl-bluetooth.h"
 #include "korl-crash.h"
@@ -62,6 +65,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
     {
         if(0 == WSALookupServiceNext(wsaLookupServiceHandle, wsaLookupServiceControlFlags, &wsaQuerySetBytes, wsaQuerySet))
         {
+            /* add the new bluetooth device to the query result */
 #if KORL_DEBUG
             korl_log(VERBOSE, "\t\"%ws\" ", wsaQuerySet->lpszServiceInstanceName);
 #endif
@@ -72,8 +76,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
             korl_assert(        sizeof(newEntry.address) >= sizeof(*socketAddressBluetooth));
             korl_assert(socketAddressBluetooth->addressFamily == AF_BTH);
             korl_assert(socketAddressBluetooth->port          == 0);
-            // korl_assert(IsEqualGUID(&socketAddressBluetooth->serviceClassId, &_KORL_BLUETOOTH_SERVICE_CLASS_GUID));
-            // socketAddressBluetooth->serviceClassId = _KORL_BLUETOOTH_SERVICE_CLASS_GUID;
+            // Prepare this bluetooth socket address for the next step (connection) ahead of time:
             socketAddressBluetooth->serviceClassId = RFCOMM_PROTOCOL_UUID;
             socketAddressBluetooth->port           = BT_PORT_ANY;
             korl_memory_copy(newEntry.name   , wsaQuerySet->lpszServiceInstanceName, newEntry.nameSize*sizeof(*wsaQuerySet->lpszServiceInstanceName));
@@ -136,10 +139,6 @@ korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
         korl_log(ERROR, "socket failed; error=%i", WSAGetLastError());
         return 0;
     }
-    // SOCKADDR_BTH socketAddressBluetooth = *KORL_C_CAST(SOCKADDR_BTH*, &korlSocket->queryEntry.address);
-    // socketAddressBluetooth.serviceClassId = RFCOMM_PROTOCOL_UUID;
-    // socketAddressBluetooth.port           = BT_PORT_ANY;
-    // socketAddressBluetooth.serviceClassId = _KORL_BLUETOOTH_SERVICE_CLASS_GUID;
     if(SOCKET_ERROR == connect(korlSocket->socket, 
                                KORL_C_CAST(struct sockaddr*, &korlSocket->queryEntry.address), 
                                sizeof(SOCKADDR_BTH)))
