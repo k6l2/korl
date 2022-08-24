@@ -114,8 +114,8 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
 }
 korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
 {
-    /* find a socket that is unused */
     _Korl_Bluetooth_Socket* korlSocket = NULL;
+    /* find a socket that is unused */
     for(u$ i = 0; i < korl_arraySize(_korl_bluetooth_context.sockets); i++)
     {
         if(_korl_bluetooth_context.sockets[i].handle)
@@ -131,20 +131,177 @@ korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
         break;
     }
     if(!korlSocket)
-        return 0;
-    /* connect the bluetooth korlSocket to the query entry address */
+        goto errorCleanUp_returnNullHandle;
+    /* create & connect the bluetooth korlSocket to the query entry address */
     korlSocket->socket = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
     if(korlSocket->socket == INVALID_SOCKET)
     {
         korl_log(ERROR, "socket failed; error=%i", WSAGetLastError());
-        return 0;
+        goto errorCleanUp_returnNullHandle;
     }
     if(SOCKET_ERROR == connect(korlSocket->socket, 
                                KORL_C_CAST(struct sockaddr*, &korlSocket->queryEntry.address), 
                                sizeof(SOCKADDR_BTH)))
     {
         korl_log(ERROR, "connect failed; error=%i", WSAGetLastError());
-        return 0;
+        goto errorCleanUp_returnNullHandle;
+    }
+    /* configure the socket to be non-blocking 
+        https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-ioctlsocket?redirectedfrom=MSDN
+        https://docs.microsoft.com/en-us/windows/win32/winsock/winsock-ioctls */
+    u_long ioctlArgP = 1;// for FIONBIO: non-zero=>enable, zero=>disable
+    if(0 != ioctlsocket(korlSocket->socket, FIONBIO/*(en/dis)able non-blocking mode*/, &ioctlArgP))
+    {
+        korl_log(ERROR, "ioctlsocket(FIONBIO, %lu) failed; error=%i", ioctlArgP, WSAGetLastError());
+        goto errorCleanUp_returnNullHandle;
     }
     return korlSocket->handle;
+    errorCleanUp_returnNullHandle:
+    if(korlSocket)
+    {
+        if(0 != closesocket(korlSocket->socket))
+            korl_log(ERROR, "closesocket failed; error=%i", WSAGetLastError());
+        korl_memory_zero(korlSocket, sizeof(*korlSocket));
+    }
+    return 0;
+}
+korl_internal KORL_PLATFORM_BLUETOOTH_DISCONNECT(korl_bluetooth_disconnect)
+{
+    /* find the socket using the passed in handle */
+    _Korl_Bluetooth_Socket* korlSocket = NULL;
+    if(socketHandle > 0)
+    {
+        const u$ socketIndex = socketHandle - 1;
+        if(_korl_bluetooth_context.sockets[socketIndex].handle == socketHandle)
+            korlSocket = &(_korl_bluetooth_context.sockets[socketIndex]);
+    }
+    korl_assert(korlSocket);
+    /* close, then nullify the associated KORL socket */
+    if(0 != closesocket(korlSocket->socket))
+        korl_log(ERROR, "closesocket failed; error=%i", WSAGetLastError());
+    korl_memory_zero(korlSocket, sizeof(*korlSocket));
+}
+korl_internal KORL_PLATFORM_BLUETOOTH_READ(korl_bluetooth_read)
+{
+    /* find the socket using the passed in handle */
+    _Korl_Bluetooth_Socket* korlSocket = NULL;
+    if(socketHandle > 0)
+    {
+        const u$ socketIndex = socketHandle - 1;
+        if(_korl_bluetooth_context.sockets[socketIndex].handle == socketHandle)
+            korlSocket = &(_korl_bluetooth_context.sockets[socketIndex]);
+    }
+    if(!korlSocket)
+        return KORL_BLUETOOTH_READ_INVALID_SOCKET_HANDLE;
+    /* perform a read on the socket */
+    // first we need to find out how much data is in the socket
+    u_long bufferSize = 0;
+    int resultRecv;
+    resultRecv = recv(korlSocket->socket, NULL/*buffer*/, 0/*bufferBytes*/, 0/*flags*/);
+    if(0 == resultRecv)
+    {
+#if 0/* MSDN says that when the result is 0, the connection is closed, but that 
+        doesn't seem to be the case when running a non-blocking socket while 
+        passing an empty buffer */
+        /* the socket was closed */
+        korl_log(VERBOSE, "recv=>0; socket disconnected");
+        korl_memory_zero(korlSocket, sizeof(*korlSocket));
+        return KORL_BLUETOOTH_READ_DISCONNECT;
+#else
+        /* check how much memory we need for the buffer */
+        if(0 != ioctlsocket(korlSocket->socket, FIONREAD, &bufferSize))
+        {
+            korl_log(ERROR, "ioctlsocket(FIONREAD) failed; error=%i", WSAGetLastError());
+            return KORL_BLUETOOTH_READ_ERROR;
+        }
+        if(!bufferSize)
+        {
+            korl_log(VERBOSE, "ioctlsocket(FIONREAD)=>0; socket disconnected");
+            korl_memory_zero(korlSocket, sizeof(*korlSocket));
+            return KORL_BLUETOOTH_READ_DISCONNECT;
+        }
+#endif
+    }
+    else if(SOCKET_ERROR == resultRecv)
+    {
+        const int errorRecv = WSAGetLastError();
+        switch(errorRecv)
+        {
+        case WSAEWOULDBLOCK:{
+            /* there was no data in the socket at this time */
+            korl_memory_zero(out_data, sizeof(*out_data));
+            return KORL_BLUETOOTH_READ_SUCCESS;
+            break;}
+#if 0/* experimentally (contrary to MSDN) message size must be checked in the above case (when 0 == resultRecv) */
+        case WSAEMSGSIZE:{
+            /* check how much memory we need for the buffer */
+            if(0 != ioctlsocket(korlSocket->socket, FIONREAD, &bufferSize))
+            {
+                korl_log(ERROR, "ioctlsocket(FIONREAD) failed; error=%i", WSAGetLastError());
+                return KORL_BLUETOOTH_READ_ERROR;
+            }
+            break;}
+#endif
+        default:{
+            korl_log(ERROR, "recv failed; error=%i", errorRecv);
+            return KORL_BLUETOOTH_READ_ERROR;}
+        }
+    }
+    else
+        /* is it even possible to end up in this case, since we are passing a NULL buffer? */
+        korl_assert(false);
+#if KORL_DEBUG && 0
+    korl_log(VERBOSE, "bufferSize=%lu", bufferSize);
+    korl_memory_zero(out_data, sizeof(*out_data));
+#endif
+    // now that we know that the socket is still connected & there is data, we 
+    //  can actually fill up a buffer with data
+    out_data->size = bufferSize;
+    out_data->data = korl_allocate(allocator, out_data->size);
+    resultRecv = recv(korlSocket->socket, KORL_C_CAST(char*, out_data->data), korl_checkCast_u$_to_i32(out_data->size), 0/*flags*/);
+    if(0 == resultRecv)
+    {
+#if 1/* MSDN says that when the result is 0, the connection is closed, but that 
+        doesn't seem to be the case when running a non-blocking socket while 
+        passing an empty buffer */
+        /* the socket was closed */
+        korl_log(VERBOSE, "recv=>0; socket disconnected");
+        korl_memory_zero(korlSocket, sizeof(*korlSocket));
+        return KORL_BLUETOOTH_READ_DISCONNECT;
+#else
+        /* check how much memory we need for the buffer */
+        if(0 != ioctlsocket(korlSocket->socket, FIONREAD, &bufferSize))
+        {
+            korl_log(ERROR, "ioctlsocket(FIONREAD) failed; error=%i", WSAGetLastError());
+            return KORL_BLUETOOTH_READ_ERROR;
+        }
+        korl_assert(bufferSize);
+#endif
+    }
+    else if(SOCKET_ERROR == resultRecv)
+    {
+#if 1
+        korl_log(ERROR, "recv failed; error=%i", WSAGetLastError());
+        return KORL_BLUETOOTH_READ_ERROR;
+#else/* this code might be necessary if we get into the situation where our buffer wasn't big enough to store all the data */
+        const int errorRecv = WSAGetLastError();
+        switch(errorRecv)
+        {
+#if 0/* experimentally (contrary to MSDN) message size must be checked in the above case */
+        case WSAEMSGSIZE:{
+            /* check how much memory we need for the buffer */
+            if(0 != ioctlsocket(korlSocket->socket, FIONREAD, &bufferSize))
+            {
+                korl_log(ERROR, "ioctlsocket(FIONREAD) failed; error=%i", WSAGetLastError());
+                return KORL_BLUETOOTH_READ_ERROR;
+            }
+            break;}
+#endif
+        default:{
+            korl_log(ERROR, "recv failed; error=%i", errorRecv);
+            return KORL_BLUETOOTH_READ_ERROR;}
+        }
+#endif
+    }
+    return KORL_BLUETOOTH_READ_SUCCESS;
 }
