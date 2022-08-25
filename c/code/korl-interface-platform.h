@@ -343,7 +343,7 @@ typedef enum Korl_Memory_AllocatorFlags
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_PLATFORM_STB_DS_REALLOCATE(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 #define KORL_PLATFORM_STB_DS_FREE(name)       void  name(void* context, void* allocation)
-typedef u16             Korl_Vulkan_VertexIndex;
+typedef u32             Korl_Vulkan_VertexIndex;///@TODO: change this back to u16 after I am done adding console rendering support?
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
 typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;

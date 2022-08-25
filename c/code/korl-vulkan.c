@@ -846,6 +846,15 @@ korl_internal u32 _korl_vulkan_addPipeline(_Korl_Vulkan_Pipeline pipeline)
     }
     return pipelineIndex;
 }
+korl_internal VkIndexType _korl_vulkan_vertexIndexType(void)
+{
+    switch(sizeof(Korl_Vulkan_VertexIndex))
+    {
+    case 2: return VK_INDEX_TYPE_UINT16;
+    case 4: return VK_INDEX_TYPE_UINT32;
+    }
+    return VK_INDEX_TYPE_MAX_ENUM;
+}
 /**
  * Here we will actually compose the draw commands for the internal batch 
  * pipelines.
@@ -894,7 +903,7 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
         vkCmdBindIndexBuffer(
             surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
             swapChainImageContext->bufferDeviceBatchIndices->deviceObject.buffer, batchIndexOffset, 
-            VK_INDEX_TYPE_UINT16);
+            _korl_vulkan_vertexIndexType());
         vkCmdDrawIndexed(
             surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
             surfaceContext->batchState.pipelineVertexIndexCount, 
@@ -1159,7 +1168,7 @@ korl_internal void _korl_vulkan_selectTexture(VkImageView imageView, VkSampler s
 korl_internal void _korl_vulkan_createSurface(void* userData);
 korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x)
 {
-    korl_assert(x <= 0xFFFF);
+    korl_assert(x <= KORL_C_CAST(Korl_Vulkan_VertexIndex, ~0));
     return KORL_C_CAST(Korl_Vulkan_VertexIndex, x);
 }
 korl_internal void korl_vulkan_construct(void)
@@ -2112,11 +2121,10 @@ korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
     surfaceContext->deferredResizeX = sizeX;
     surfaceContext->deferredResizeY = sizeY;
 }
-korl_internal void korl_vulkan_batch(
-    Korl_Vulkan_PrimitiveType primitiveType, 
-    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
-    u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color4u8* colors, const Korl_Vulkan_Uv* uvs)
+korl_internal void korl_vulkan_batch(Korl_Vulkan_PrimitiveType primitiveType, 
+                                     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
+                                     u32 vertexCount, const Korl_Vulkan_Position* positions, 
+                                     const Korl_Vulkan_Color4u8* colors, const Korl_Vulkan_Uv* uvs)
 {
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
