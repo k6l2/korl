@@ -24,7 +24,7 @@ typedef struct _Korl_AssetCache_Asset
 {
     _Korl_AssetCache_AssetState state;
     Korl_AssetCache_AssetData data;
-    Korl_StringPool_StringHandle name;
+    Korl_StringPool_String name;
     Korl_File_Descriptor fileDescriptor;
     Korl_File_AsyncIoHandle asyncIoHandle;
     KorlPlatformDateStamp dateStampLastWrite;

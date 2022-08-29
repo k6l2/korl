@@ -1881,7 +1881,7 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void)
         switch(context->deviceAssets[da].type)
         {
         case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
-            korl_stringPool_free(&context->stringPool, context->deviceAssets[da].subType.assetTexture.name);
+            korl_stringPool_free(context->deviceAssets[da].subType.assetTexture.name);
             break;}
         case _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE:{
             break;}
@@ -2613,8 +2613,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     {
         if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE)
             continue;
-        if(korl_stringPool_equalsUtf16(&context->stringPool, 
-                                       context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.name, 
+        if(korl_stringPool_equalsUtf16(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.name, 
                                        assetName))
             break;
     }
@@ -2672,7 +2671,7 @@ korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
     asset->type                                  = _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE;
     asset->subType.assetTexture.deviceAllocation = deviceImage;
     asset->subType.assetTexture.name             = korl_stringNewUtf16(&context->stringPool, assetName);
-    korl_assert(asset->subType.assetTexture.name);
+    korl_assert(asset->subType.assetTexture.name.handle);
     deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
 done_conditionallySelectLoadedAsset:
     /* if we do not have a valid index for a loaded device asset, just do nothing */
@@ -2700,7 +2699,9 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAsset
     _Korl_Vulkan_DeviceAsset* deviceAsset = NULL;
     for(u$ dai = 0; dai < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++dai)
     {
-        Korl_StringPool_StringHandle stringDeviceAssetName = 0;
+        Korl_StringPool_String stringDeviceAssetName;
+        stringDeviceAssetName.handle = 0;
+
         switch(context->deviceAssets[dai].type)
         {
         case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
@@ -2709,9 +2710,9 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAsset
         case _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE:{
             break;}
         }
-        if(0 == stringDeviceAssetName)
+        if(0 == stringDeviceAssetName.handle)
             continue;// device asset type not supported
-        if(korl_stringPool_equalsUtf16(&context->stringPool, stringDeviceAssetName, rawUtf16AssetName))
+        if(korl_stringPool_equalsUtf16(stringDeviceAssetName, rawUtf16AssetName))
         {
             deviceAsset = &(context->deviceAssets[dai]);
             break;

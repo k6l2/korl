@@ -362,7 +362,7 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
         Korl_File_ResultRenameReplace resultRenameReplace = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE;
         for(u32 i = 0; i < 255/*just some arbitrary high enough # which determines the max # of game clients that can run on a computer*/; i++)
         {
-            Korl_StringPool_StringHandle stringGameDllTemp = string_newFormatUtf16(L"%ws_%u.dll", KORL_DYNAMIC_APPLICATION_NAME, i);
+            Korl_StringPool_String stringGameDllTemp = string_newFormatUtf16(L"%ws_%u.dll", KORL_DYNAMIC_APPLICATION_NAME, i);
             resultRenameReplace = 
                 korl_file_renameReplace(KORL_FILE_PATHTYPE_TEMPORARY_DATA, utf16GameDllFileName, 
                                         KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
@@ -413,7 +413,7 @@ korl_internal void korl_windows_window_loop(void)
     KORL_INTERFACE_PLATFORM_API_SET(korlApi);
     korl_time_probeStart(game_initialization);
     /* attempt to copy the game DLL to the application temp directory */
-    Korl_StringPool_StringHandle stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);
+    Korl_StringPool_String stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);
     _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
     _korl_windows_window_gameInitialize(&korlApi);
     korl_time_probeStop(game_initialization);

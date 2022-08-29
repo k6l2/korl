@@ -70,7 +70,7 @@ typedef struct _Korl_Vulkan_DeviceAsset
         struct
         {
             //KORL-PERFORMANCE-000-000-007: hash strings
-            Korl_StringPool_StringHandle name;
+            Korl_StringPool_String name;
             _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
         } assetTexture;
         struct

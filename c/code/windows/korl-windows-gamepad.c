@@ -34,7 +34,7 @@ typedef enum _Korl_Windows_Gamepad_DeviceType
 typedef struct _Korl_Windows_Gamepad_Device
 {
     _Korl_Windows_Gamepad_DeviceType type;
-    Korl_StringPool_StringHandle path;
+    Korl_StringPool_String path;
     HANDLE handle;
     union
     {
@@ -75,7 +75,7 @@ korl_global_variable _Korl_Windows_Gamepad_Context _korl_windows_gamepad_context
 korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
-    Korl_StringPool_StringHandle stringDevicePath = string_newUtf16(devicePath);
+    Korl_StringPool_String stringDevicePath = string_newUtf16(devicePath);
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
     /* check if the device is already registered in our database */
     for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
@@ -115,7 +115,7 @@ korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
 korl_internal void _korl_windows_gamepad_disconnectPath(LPTSTR devicePath)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
-    Korl_StringPool_StringHandle stringDevicePath = string_newUtf16(devicePath);
+    Korl_StringPool_String stringDevicePath = string_newUtf16(devicePath);
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
     for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
         /* if a device in our database matches the devicePath, we need to clean it up and remove it */

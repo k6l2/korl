@@ -35,7 +35,7 @@ typedef struct _Korl_File_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_StringPool stringPool;
-    Korl_StringPool_StringHandle directoryStrings[KORL_FILE_PATHTYPE_ENUM_COUNT];
+    Korl_StringPool_String directoryStrings[KORL_FILE_PATHTYPE_ENUM_COUNT];
     /** We cannot use a KORL_MEMORY_POOL here, because we need the memory 
      * locations of used OVERLAPPED structs to remain completely STATIC once in 
      * use by Windows.  
@@ -50,7 +50,7 @@ typedef struct _Korl_File_Context
     _Korl_File_SaveStateEnumerateContext saveStateEnumContext;
 } _Korl_File_Context;
 korl_global_variable _Korl_File_Context _korl_file_context;
-korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_StringHandle stringFilePath)
+korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_String stringFilePath)
 {
     /* So apparently, when you are doing the weird "\\?\" prefix on file paths, 
         this will no longer allow you to mix & match '\' & '/' characters for 
@@ -76,7 +76,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
     _Korl_File_Context*const context = &_korl_file_context;
     bool result = true;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
-    Korl_StringPool_StringHandle stringFilePath = string_copy(context->directoryStrings[pathType]);
+    Korl_StringPool_String stringFilePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(stringFilePath, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(stringFilePath);
     DWORD createDesiredAccess = 0;
@@ -139,12 +139,14 @@ cleanUp:
 /** The caller is responsible for freeing the string returned via 
  * the \c o_filePathOldest parameter.
  * \return the # of matched files */
-korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_StringHandle findFileDirectory, const wchar_t* findFileNamePattern, 
-                                           Korl_StringPool_StringHandle* o_filePathOldest)
+korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_String findFileDirectory, const wchar_t* findFileNamePattern, 
+                                           Korl_StringPool_String* o_filePathOldest)
 {
     u$ findFileCount = 0;
-    *o_filePathOldest = 0;
-    Korl_StringPool_StringHandle findFilePattern = string_copy(findFileDirectory);
+    o_filePathOldest->handle = 0;
+    o_filePathOldest->pool = 0;
+
+    Korl_StringPool_String findFilePattern = string_copy(findFileDirectory);
     string_appendUtf16(findFilePattern, L"\\");
     string_appendUtf16(findFilePattern, findFileNamePattern);
     WIN32_FIND_DATA findFileData;
@@ -184,9 +186,9 @@ cleanUp:
     string_free(findFilePattern);
     return findFileCount;
 }
-korl_internal void _korl_file_copyFiles(Korl_StringPool_StringHandle sourceDirectory, const wchar_t* sourcePattern, Korl_StringPool_StringHandle destinationDirectory)
+korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, const wchar_t* sourcePattern, Korl_StringPool_String destinationDirectory)
 {
-    Korl_StringPool_StringHandle findFilePattern = string_copy(sourceDirectory);
+    Korl_StringPool_String findFilePattern = string_copy(sourceDirectory);
     string_appendUtf16(findFilePattern, L"\\");
     string_appendUtf16(findFilePattern, sourcePattern);
     WIN32_FIND_DATA findFileData;
@@ -199,10 +201,10 @@ korl_internal void _korl_file_copyFiles(Korl_StringPool_StringHandle sourceDirec
     }
     for(;;)
     {
-        Korl_StringPool_StringHandle pathSource = string_copy(sourceDirectory);
+        Korl_StringPool_String pathSource = string_copy(sourceDirectory);
         string_appendUtf16(pathSource, L"\\");
         string_appendUtf16(pathSource, findFileData.cFileName);
-        Korl_StringPool_StringHandle pathDestination = string_copy(destinationDirectory);
+        Korl_StringPool_String pathDestination = string_copy(destinationDirectory);
         string_appendUtf16(pathDestination, L"\\");
         string_appendUtf16(pathDestination, findFileData.cFileName);
         if(!CopyFile(string_getRawUtf16(pathSource), string_getRawUtf16(pathDestination), FALSE))
@@ -269,10 +271,10 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     enumContext->currentAllocator++;
     return true;//true => continue iterating over allocators
 }
-korl_internal void _korl_file_createParentDirectoriesRecursive(Korl_StringPool_StringHandle filePath)
+korl_internal void _korl_file_createParentDirectoriesRecursive(Korl_StringPool_String filePath)
 {
     _Korl_File_Context*const context = &_korl_file_context;
-    Korl_StringPool_StringHandle filePathLocalCopy = string_copy(filePath);
+    Korl_StringPool_String filePathLocalCopy = string_copy(filePath);
     const u32 filePathSize     = string_getRawSizeUtf16(filePathLocalCopy);
     u16*const filePathRawUtf16 = string_getRawWriteableUtf16(filePathLocalCopy);//KORL-ISSUE-000-000-076: file: replace working with raw writable UTF-16 pointers, we need codepoint iteration/get/set API
     u32 c = 0;
@@ -450,7 +452,7 @@ korl_internal HMODULE korl_file_loadDynamicLibrary(Korl_File_PathType pathType, 
     HMODULE hModule = NULL;
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
-    Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathType]);
+    Korl_StringPool_String filePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(filePath, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(filePath);
     hModule = LoadLibrary(string_getRawUtf16(filePath));
@@ -468,8 +470,8 @@ korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const 
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathTypeFileName    < KORL_FILE_PATHTYPE_ENUM_COUNT);
     korl_assert(pathTypeFileNameNew < KORL_FILE_PATHTYPE_ENUM_COUNT);
-    Korl_StringPool_StringHandle filePath    = string_copy(context->directoryStrings[pathTypeFileName]);
-    Korl_StringPool_StringHandle filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
+    Korl_StringPool_String filePath    = string_copy(context->directoryStrings[pathTypeFileName]);
+    Korl_StringPool_String filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
     string_appendFormatUtf16(filePath   , L"\\%ws", fileName);
     string_appendFormatUtf16(filePathNew, L"\\%ws", fileNameNew);
     if(!CopyFile(string_getRawUtf16(filePath), string_getRawUtf16(filePathNew), replaceFileNameNewIfExists))
@@ -494,8 +496,8 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathTypeFileName    < KORL_FILE_PATHTYPE_ENUM_COUNT);
     korl_assert(pathTypeFileNameNew < KORL_FILE_PATHTYPE_ENUM_COUNT);
-    Korl_StringPool_StringHandle filePathNew = 0;
-    Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathTypeFileName]);
+    Korl_StringPool_String filePathNew = {0};
+    Korl_StringPool_String filePath = string_copy(context->directoryStrings[pathTypeFileName]);
     string_appendUtf16(filePath, L"\\");
     string_appendUtf16(filePath, fileName);
     if(GetFileAttributes(string_getRawUtf16(filePath)) == INVALID_FILE_ATTRIBUTES)
@@ -725,7 +727,7 @@ korl_internal bool korl_file_getDateStampLastWriteFileName(Korl_File_PathType pa
         KorlPlatformDateStamp dateStamp;
     } dateStampUnionFile;
     korl_memory_zero(&dateStampUnionFile, sizeof(dateStampUnionFile));
-    Korl_StringPool_StringHandle stringFilePath = string_copy(context->directoryStrings[pathType]);
+    Korl_StringPool_String stringFilePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(stringFilePath, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(stringFilePath);
     WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
@@ -871,12 +873,12 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     korl_shared_const wchar_t DUMP_SUBDIRECTORY[] = L"memory-dumps";
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(type < KORL_FILE_PATHTYPE_ENUM_COUNT);
-    Korl_StringPool_StringHandle pathFileRead           = 0;
-    Korl_StringPool_StringHandle pathFileWrite          = 0;
-    Korl_StringPool_StringHandle dumpDirectory          = 0;
-    Korl_StringPool_StringHandle pathMemoryDump         = 0;
-    Korl_StringPool_StringHandle subDirectoryMemoryDump = 0;
-    Korl_StringPool_StringHandle subPathSaveState       = 0;
+    Korl_StringPool_String pathFileRead           = {0};
+    Korl_StringPool_String pathFileWrite          = {0};
+    Korl_StringPool_String dumpDirectory          = {0};
+    Korl_StringPool_String pathMemoryDump         = {0};
+    Korl_StringPool_String subDirectoryMemoryDump = {0};
+    Korl_StringPool_String subPathSaveState       = {0};
     // derived from MSDN sample code:
     //	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
     SYSTEMTIME localTime;
@@ -895,7 +897,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         }
     /* delete the oldest dump folder after we reach some maximum dump count */
     {
-        Korl_StringPool_StringHandle filePathOldest = 0;
+        Korl_StringPool_String filePathOldest = {0};
         korl_assert(maxDumpCount > 0);
         while(maxDumpCount <= _korl_file_findOldestFile(dumpDirectory, L"*-*-*-*-*", &filePathOldest))
         {
@@ -1153,7 +1155,7 @@ korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wc
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     HANDLE hFile = INVALID_HANDLE_VALUE;
-    Korl_StringPool_StringHandle filePath = string_copy(context->directoryStrings[pathType]);
+    Korl_StringPool_String filePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(filePath, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(filePath);
     /* recursively create all directories implied by the file name withing the given path type */
@@ -1197,14 +1199,14 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     HANDLE hFile = INVALID_HANDLE_VALUE;
-    Korl_StringPool_StringHandle allocationFileBuffer = 0;
+    Korl_StringPool_String allocationFileBuffer = {0};
     typedef struct _AllocatorDescriptor
     {
         u32 allocationCount;
         Korl_Memory_AllocatorHandle handle;
     } _AllocatorDescriptor;
     _AllocatorDescriptor* allocatorDescriptors = NULL;
-    Korl_StringPool_StringHandle pathFile = string_copy(context->directoryStrings[pathType]);
+    Korl_StringPool_String pathFile = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(pathFile, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(pathFile);
     hFile = CreateFile(string_getRawUtf16(pathFile), GENERIC_READ, FILE_SHARE_READ, 
