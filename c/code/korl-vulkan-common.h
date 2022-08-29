@@ -200,8 +200,6 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
      * and this state change happens asynchronously.  
      * @async-staging-buffer-to-device-memory-transfers */
     VkCommandBuffer commandBufferStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearHostVisible;
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearDeviceLocal;
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchIndices  [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
     _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors   [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
@@ -295,6 +293,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_SurfaceContextBatchState batchState;
     bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
     _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer;
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryHostVisible;// used for batch buffers & descriptor sets
+    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryDeviceLocal;// used for batch buffers & descriptor sets
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

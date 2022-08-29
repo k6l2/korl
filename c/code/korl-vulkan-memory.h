@@ -24,6 +24,7 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
 {
     //KORL-ISSUE-000-000-021: polymorphic-tagged-union
     _Korl_Vulkan_DeviceMemory_Allocation_Type type;
+    ///@TODO: add allocation meta data, like file/line/etc, like with the korl-memory module
     union 
     {
         VkBuffer buffer;
@@ -96,3 +97,4 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemoryLi
     VkImageTiling imageTiling);
 korl_internal void _korl_vulkan_deviceMemoryLinear_free(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear, 
                                                         _Korl_Vulkan_DeviceMemory_Alloctation*const allocation);
+korl_internal void _korl_vulkan_deviceMemoryLinear_logReport(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear);

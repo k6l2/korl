@@ -330,3 +330,23 @@ korl_internal void _korl_vulkan_deviceMemoryLinear_free(_Korl_Vulkan_DeviceMemor
     }
     deviceMemoryLinear->bytesAllocated = highestAllocationEndOffset;
 }
+korl_internal void _korl_vulkan_deviceMemoryLinear_logReport(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
+{
+    korl_log_noMeta(INFO, "╔════ 🖥 GPU Memory Report ════════════════════════════════╗");
+    korl_log_noMeta(INFO, "║ bytes used=%llu / %llu", deviceMemoryLinear->bytesAllocated, deviceMemoryLinear->byteSize);
+    korl_log_noMeta(INFO, "║ --- Allocations ---");
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
+    {
+        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(deviceMemoryLinear->allocations[a]);
+        const wchar_t* typeRawString;
+        switch(allocation->type)
+        {
+        case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER: typeRawString = L"VERTEX_BUFFER"; break;
+        case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE:       typeRawString = L"TEXTURE";       break;
+        case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE_BUFFER:  typeRawString = L"IMAGE_BUFFER";  break;
+        default:                                                      typeRawString = NULL;             break;
+        }
+        korl_log_noMeta(INFO, "║ [%u] type=%ws | bytes=%llu | offset=%llu", a, typeRawString, allocation->byteSize, allocation->byteOffset);
+    }
+    korl_log_noMeta(INFO, "╚═════ END of Memory Report ═════════════════════════════╝");
+}
