@@ -649,6 +649,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         {
             textBaselineCursor.x = 0.f;
             textBaselineCursor.y -= (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+            continue;
         }
         if(bakedGlyph->isEmpty)
             continue;
@@ -705,6 +706,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
             {
                 textBaselineCursor.x = 0.f;
                 textBaselineCursor.y -= (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+                continue;
             }
             if(bakedGlyph->isEmpty)
                 continue;

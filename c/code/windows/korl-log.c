@@ -5,6 +5,7 @@
 #include "korl-math.h"
 #include "korl-checkCast.h"
 #include "korl-file.h"
+#include "korl-stb-ds.h"///@TODO: WARNING: the stb-ds module is initialized _after_ the log module; this is okay for now as far as I can tell since the stb-ds code can still function without the module being loaded, as all it does right now is just run unit tests, but this obviously not clean
 #include <stdio.h>// for freopen_s
 /* NOTE:  Windows implementation of %S & %s is NON-STANDARD, so as with here, we 
     need to make sure to _never_ use just %s or %S, and instead opt to use 
@@ -20,9 +21,14 @@ typedef struct _Korl_Log_AsyncWriteDescriptor
 {
     Korl_File_AsyncIoHandle asyncIoHandle;
 } _Korl_Log_AsyncWriteDescriptor;
+typedef struct _Korl_Log_Line
+{
+    Korl_Log_Line line;
+    acu16 textOverflow;// necessary, since it is possible for log lines to wrap around the circular log buffer
+} _Korl_Log_Line;
 typedef struct _Korl_Log_Context
 {
-    Korl_Memory_AllocatorHandle allocatorHandlePersistent;
+    Korl_Memory_AllocatorHandle allocatorHandlePersistent;// This allocator is now officially reserved solely for the raw log circular buffer.  We need to do this to ensure that the pointers to offsets within the buffer remain unchanged between reallocations of the buffer (if the buffer needs to grow).
     Korl_Memory_AllocatorHandle allocatorHandleTransient;//KORL-ISSUE-000-000-052: log: potentially unnecessary allocator
     wchar_t* transientBuffer;
     u$ transientBufferCharacters;
@@ -45,6 +51,7 @@ typedef struct _Korl_Log_Context
     Korl_File_Descriptor fileDescriptor;
     KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
     u$ logFileBytesWritten;
+    _Korl_Log_Line* stbDaLines;
 } _Korl_Log_Context;
 korl_global_variable _Korl_Log_Context _korl_log_context;
 korl_internal unsigned _korl_log_countFormatSubstitutions(const wchar_t* format)
@@ -191,7 +198,7 @@ korl_internal void _korl_log_vaList(
     charactersWrittenTotal += charactersWritten;
     korl_assert(korl_checkCast_i$_to_u$(charactersWrittenTotal) == logLineSize);
     /* allocate string buffer for log meta data tag + formatted message */
-    u$ bufferSize = context->bufferBytes / sizeof(*context->buffer);
+    u$ bufferSize   = context->bufferBytes / sizeof(*context->buffer);
     wchar_t* buffer = &(context->buffer[context->bufferOffset]);
     // bufferAvailable: the # of characters we have the ability to write to the 
     //                  buffer (NOTE: _only_ the final character must be a '\0')
@@ -227,19 +234,65 @@ korl_internal void _korl_log_vaList(
         : NULL;
     if(bufferOverflow)
         context->bufferOffset = (bufferSize / 2)/*start of the circular portion of the buffer*/ 
-            + (logLineSize - bufferAvailable)/*offset by the remaining log text that must be written to bufferOverflow*/;
+                              + (logLineSize - bufferAvailable)/*offset by the remaining log text that must be written to bufferOverflow*/;
     korl_assert(context->bufferOffset < bufferSize - 1);
     context->bufferedCharacters += logLineSize;
     /* ----- write logLineBuffer to buffer/bufferOverflow ----- */
     if(bufferAvailable >= logLineSize)
+    {
         // we can fit the entire log line into the buffer //
         korl_memory_copy(buffer, context->transientBuffer, logLineSize*sizeof(*context->transientBuffer));
+        // add a new line entry to the running list of log lines //
+        mcarrpush(KORL_C_CAST(void*, context->transientBuffer), context->stbDaLines, (_Korl_Log_Line){0});
+        if(prependMetaTag)
+        {
+            arrlast(context->stbDaLines).line.text.size = bufferSizeFormat;
+            arrlast(context->stbDaLines).line.text.data = buffer + bufferSizeMetaTag;
+        }
+        else
+        {
+            arrlast(context->stbDaLines).line.text.size = logLineSize;
+            arrlast(context->stbDaLines).line.text.data = buffer;
+        }
+        ///@TODO: remove elements from the front of the lines array as we recycle the parts of the circular buffer that were previously occupied
+    }
     else
     {
         // we must wrap the log line around the circular buffer //
         korl_memory_copy(buffer, context->transientBuffer, bufferAvailable*sizeof(*context->transientBuffer));
         korl_memory_copy(bufferOverflow, context->transientBuffer + bufferAvailable, 
                          (logLineSize - bufferAvailable)*sizeof(*context->transientBuffer));
+        // add the split new line entry to the running list of log lines //
+        mcarrpush(KORL_C_CAST(void*, context->transientBuffer), context->stbDaLines, (_Korl_Log_Line){0});
+        const wchar_t*const contextBufferEnd = context->buffer + context->bufferBytes/sizeof(*context->buffer);
+        if(prependMetaTag)
+        {
+            /* calculate where the log line following the meta tag starts in the buffer; 
+                if it goes beyond the bounds of the circular buffer, then we have to 
+                split the log line into two regions */
+            const wchar_t* postMetaTagLineStart = buffer + bufferSizeMetaTag;
+            if(postMetaTagLineStart >= contextBufferEnd - 1/* last byte _must_ be '\0' (see above code)*/)
+            {
+                const i$ overflowChars = postMetaTagLineStart - (contextBufferEnd - 1);
+                postMetaTagLineStart = &(context->buffer[bufferSize / 2]) + overflowChars;
+            }
+            const u$ lineTextAvailableSize0 = contextBufferEnd - postMetaTagLineStart;
+            arrlast(context->stbDaLines).line.text.data = postMetaTagLineStart;
+            arrlast(context->stbDaLines).line.text.size = KORL_MATH_MIN(lineTextAvailableSize0, korl_checkCast_i$_to_u$(bufferSizeFormat));
+            if(arrlast(context->stbDaLines).line.text.size < korl_checkCast_i$_to_u$(bufferSizeFormat))
+            {
+                arrlast(context->stbDaLines).textOverflow.data = &(context->buffer[bufferSize / 2]);
+                arrlast(context->stbDaLines).textOverflow.size = bufferSizeFormat - arrlast(context->stbDaLines).line.text.size;
+            }
+        }
+        else
+        {
+            arrlast(context->stbDaLines).line.text.size = bufferAvailable;
+            arrlast(context->stbDaLines).line.text.data = buffer;
+            arrlast(context->stbDaLines).textOverflow.size = logLineSize - bufferAvailable;
+            arrlast(context->stbDaLines).textOverflow.data = bufferOverflow;
+        }
+        ///@TODO: remove elements from the front of the lines array as we recycle the parts of the circular buffer that were previously occupied
     }
     /* write the log meta data string + formatted log message */
     if(_korl_log_context.useLogOutputDebugger)
@@ -336,12 +389,13 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 korl_internal void korl_log_initialize(void)
 {
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
-    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(4), L"korl-log-persistent", KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS, NULL/*let platform choose address*/);
+    _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-log-persistent", KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS, NULL/*let platform choose address*/);
     _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-log-transient" , KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS, NULL/*let platform choose address*/);
     _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
     _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
     _korl_log_context.logFileEnabled            = true;// assume we will use a log file eventually, until the user specifies we wont
     InitializeCriticalSection(&_korl_log_context.criticalSection);
+    mcarrsetcap(KORL_C_CAST(void*, _korl_log_context.allocatorHandleTransient), _korl_log_context.stbDaLines, 8*1024);
     /* there's no reason to have to assert that the buffer was created here, 
         since an assertion will fire the moment we try to log something if it 
         did, and the resulting error will likely be easy to catch, so I'm just 
@@ -491,20 +545,29 @@ korl_internal void korl_log_shutDown(void)
 skipFileCleanup:
     return;
 }
-korl_internal KORL_PLATFORM_LOG_GET_BUFFER(korl_log_getBuffer)
+korl_internal KORL_PLATFORM_LOG_GET_LINES(korl_log_getLines)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
-    const u$ bufferedBytes = context->bufferedCharacters*sizeof(*context->buffer);
-    if(bufferedBytes > context->bufferBytes)
+    wchar_t* stbDaTempLogBuffer = NULL;
+    Korl_Log_Line* stbDaResult = NULL;
+    mcarrsetcap(KORL_C_CAST(void*, allocator), stbDaResult, arrlenu(context->stbDaLines));
+    mcarrsetcap(KORL_C_CAST(void*, allocator), stbDaTempLogBuffer, _KORL_LOG_BUFFER_BYTES_MAX/sizeof(*context->buffer));
+    for(u$ i = 0; i < arrlenu(context->stbDaLines); i++)
     {
-        *out_buffer       = context->buffer + context->bufferBytes/2;
-        *out_bufferSize   = context->bufferBytes/sizeof(*context->buffer)/2;
-        *out_bufferOffset = context->bufferOffset - (context->bufferBytes/sizeof(*context->buffer)/2);
+        const wchar_t*const stbDaTempLogBufferPrevious = stbDaTempLogBuffer;
+        const u$ prevTempLogBufferSize                 = arrlenu(stbDaTempLogBuffer);
+        mcarrpush(KORL_C_CAST(void*, allocator), stbDaResult, context->stbDaLines[i].line);
+        arrlast(stbDaResult).text.data = stbDaTempLogBuffer + arrlenu(stbDaTempLogBuffer);
+        arrlast(stbDaResult).text.size = context->stbDaLines[i].line.text.size + context->stbDaLines[i].textOverflow.size;
+        mcarrsetlen(KORL_C_CAST(void*, allocator), stbDaTempLogBuffer, arrlenu(stbDaTempLogBuffer) + arrlast(stbDaResult).text.size);// allocate more characters for a copy of this log line
+        korl_assert(stbDaTempLogBuffer == stbDaTempLogBufferPrevious);// ensure that the temp log buffer doesn't change while we're building it; this is _CRITICAL_!
+        korl_memory_copy(stbDaTempLogBuffer + prevTempLogBufferSize, context->stbDaLines[i].line.text.data, context->stbDaLines[i].line.text.size);
+        if(context->stbDaLines[i].textOverflow.size)
+            korl_memory_copy(stbDaTempLogBuffer + prevTempLogBufferSize + context->stbDaLines[i].line.text.size, 
+                             context->stbDaLines[i].textOverflow.data, 
+                             context->stbDaLines[i].textOverflow.size);
     }
-    else
-    {
-        *out_buffer       = context->buffer;
-        *out_bufferSize   = bufferedBytes/sizeof(*context->buffer);
-        *out_bufferOffset = 0;
-    }
+    if(out_stbDaLogBufferCopy)
+        *out_stbDaLogBufferCopy = stbDaTempLogBuffer;
+    return stbDaResult;
 }

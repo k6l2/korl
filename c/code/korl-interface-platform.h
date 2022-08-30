@@ -256,7 +256,16 @@ enum KorlEnumLogLevel
     unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, \
     const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
     int lineNumber, const wchar_t* format, ...)
-#define KORL_PLATFORM_LOG_GET_BUFFER(name) void name(const wchar_t** out_buffer, u$* out_bufferSize, u$* out_bufferOffset)
+typedef struct Korl_Log_Line
+{
+    acu16 text;
+    ///@TODO: do we need something like this? it is possible to just store the meta data directly without having to parse the log lines anymore: //bool hasMetaTag;
+    ///@TODO: store logLevel, date/timestamp, file, & line meta dataS
+} Korl_Log_Line;
+/** \return a stb_ds dynamic array of \c Korl_Log_Line allocated from 
+ * \c allocator ; a stb_ds array character buffer copy of the raw log string 
+ * data is optionally returned via the \c out_stbDaLogBufferCopy parameter */
+#define KORL_PLATFORM_LOG_GET_LINES(name) const Korl_Log_Line* name(Korl_Memory_AllocatorHandle allocator, wchar_t** out_stbDaLogBufferCopy)
 /** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, \
@@ -524,7 +533,7 @@ typedef enum Korl_Bluetooth_ReadResult
 #define KORL_PLATFORM_BLUETOOTH_READ(name)       Korl_Bluetooth_ReadResult   name(Korl_Bluetooth_SocketHandle socketHandle, Korl_Memory_AllocatorHandle allocator, au8* out_data)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
-typedef KORL_PLATFORM_LOG_GET_BUFFER                      (fnSig_korl_log_getBuffer);
+typedef KORL_PLATFORM_LOG_GET_LINES                       (fnSig_korl_log_getLines);
 typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
 typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secondsSinceTimeStamp);
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
@@ -598,7 +607,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
     fnSig_korlPlatformLog                       * _korl_log_variadic;\
-    fnSig_korl_log_getBuffer                    * korl_log_getBuffer;\
+    fnSig_korl_log_getLines                     * korl_log_getLines;\
     fnSig_korl_timeStamp                        * korl_timeStamp;\
     fnSig_korl_time_secondsSinceTimeStamp       * korl_time_secondsSinceTimeStamp;\
     fnSig_korl_memory_zero                      * korl_memory_zero;\
@@ -672,7 +681,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
-    (apiVariableName).korl_log_getBuffer                    = korl_log_getBuffer;\
+    (apiVariableName).korl_log_getLines                     = korl_log_getLines;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
     (apiVariableName).korl_time_secondsSinceTimeStamp       = korl_time_secondsSinceTimeStamp;\
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
@@ -746,7 +755,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
-    korl_log_getBuffer                    = (apiVariableName).korl_log_getBuffer;\
+    korl_log_getLines                     = (apiVariableName).korl_log_getLines;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_time_secondsSinceTimeStamp       = (apiVariableName).korl_time_secondsSinceTimeStamp;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
