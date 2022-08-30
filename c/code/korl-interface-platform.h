@@ -259,13 +259,16 @@ enum KorlEnumLogLevel
 typedef struct Korl_Log_Line
 {
     acu16 text;
+    acu16 textOverflow;// needed in case the log line overflows the circular log buffer
     ///@TODO: do we need something like this? it is possible to just store the meta data directly without having to parse the log lines anymore: //bool hasMetaTag;
     ///@TODO: store logLevel, date/timestamp, file, & line meta dataS
 } Korl_Log_Line;
-/** \return a stb_ds dynamic array of \c Korl_Log_Line allocated from 
- * \c allocator ; a stb_ds array character buffer copy of the raw log string 
- * data is optionally returned via the \c out_stbDaLogBufferCopy parameter */
-#define KORL_PLATFORM_LOG_GET_LINES(name) const Korl_Log_Line* name(Korl_Memory_AllocatorHandle allocator, wchar_t** out_stbDaLogBufferCopy)
+/** \return a stb_ds dynamic array of \c Korl_Log_Line ; the caller should _not_ 
+ * modify the result in any way.  The caller is also advised to perform whatever 
+ * work is necessary on the result data as fast as possible and then nullify the 
+ * address and any other addresses contained within the array, since the 
+ * contents of the log buffer data structures are subject to constant change! */
+#define KORL_PLATFORM_LOG_GET_LINES(name) const Korl_Log_Line* name(void)
 /** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
     const wchar_t* conditionString, const wchar_t* cStringFileName, \
