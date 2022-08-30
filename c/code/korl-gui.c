@@ -263,7 +263,8 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize)
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
-    window->size = (Korl_Math_V2f32){sizeX, sizeY};
+    window->isFirstFrame = false;
+    window->size         = (Korl_Math_V2f32){sizeX, sizeY};
 }
 korl_internal void korl_gui_frameBegin(void)
 {

@@ -21,7 +21,7 @@ typedef struct _Korl_Gui_Window
 {
     const void* identifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
     bool usedThisFrame;
-    bool isFirstFrame;
+    bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
     bool isOpen;
     bool isContentHidden;
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlags;// flags raised indicate the presence of special widgets

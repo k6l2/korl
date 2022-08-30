@@ -5,6 +5,7 @@
 #include "korl-interface-platform.h"
 #include "korl-stb-ds.h"
 #include "korl-checkCast.h"
+#include "korl-stringPool.h"
 #define _KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS 1
 typedef struct _Korl_Time_Probe
 {
@@ -16,11 +17,23 @@ typedef struct _Korl_Time_Probe
     int line;
     Korl_Time_ProbeHandle parent;// 0 (invalid handle) if there is no parent
 } _Korl_Time_Probe;
+typedef enum _Korl_Time_ProbeData_Type
+    { _KORL_TIME_PROBE_DATA_TYPE_U32
+} _Korl_Time_ProbeData_Type;
+typedef struct _Korl_Time_ProbeData
+{
+    Korl_Time_ProbeHandle probeHandle;
+    _Korl_Time_ProbeData_Type type;
+    u32 bufferOffsetLabel;
+    u32 bufferOffsetData;
+} _Korl_Time_ProbeData;
 typedef struct _Korl_Time_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
-    _Korl_Time_Probe* stbDaTimeProbes;
+    _Korl_Time_Probe*      stbDaTimeProbes;
     Korl_Time_ProbeHandle* stbDaTimeProbeStack;
+    u8*                    stbDaTimeProbeDataRaw;
+    _Korl_Time_ProbeData*  stbDaTimeProbeData;
     bool systemSupportsDesiredTimerGranularity;
     bool sleepIsGranular;
 } _Korl_Time_Context;
@@ -56,8 +69,10 @@ korl_internal void korl_time_initialize(void)
 {
     korl_memory_zero(&_korl_time_context, sizeof(_korl_time_context));
     _korl_time_context.allocatorHandle    = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(16), L"korl-time", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
-    mcarrsetcap(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbes, 1024/*1024 comes out to ~48kB*/);
-    mcarrsetcap(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeStack, 128);
+    mcarrsetcap(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbes      , 1024/*1024 comes out to ~48kB*/);
+    mcarrsetcap(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeStack  , 128);
+    mcarrsetcap(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeDataRaw, korl_math_kilobytes(16));
+    mcarrsetcap(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeData   , 1024);
     /* According to MSDN, this function is _guaranteed_ to succeed on all 
         versions of Windows >= XP, so we really should ensure that it does 
         succeed since high-performance timing capabilitites are critical */
@@ -92,7 +107,7 @@ korl_internal void korl_time_initialize(void)
 }
 korl_internal void korl_time_shutDown(void)
 {
-    if(_korl_time_context.sleepIsGranular 
+    if(   _korl_time_context.sleepIsGranular 
        && timeEndPeriod(_KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
         korl_log(ERROR, "timeEndPeriod failed");
 }
@@ -217,6 +232,23 @@ korl_internal Korl_Time_Counts korl_time_probeEnd(Korl_Time_ProbeHandle timeProb
     korl_assert(timeProbe->timeStampStart <= timeProbe->timeStampEnd);
     return timeProbe->timeStampEnd - timeProbe->timeStampStart;
 }
+korl_internal void korl_time_probeDataU32(const wchar_t* label, u32 data)
+{
+    korl_assert(arrlenu(_korl_time_context.stbDaTimeProbeStack) > 0);
+    const u$ labelSize  = korl_memory_stringSize(label);
+    const u$ labelBytes = (labelSize + 1/*null-terminator*/) * sizeof(*label);
+    const u32 bufferOffsetLabel = korl_checkCast_u$_to_u32(arrlenu(_korl_time_context.stbDaTimeProbeDataRaw));
+    const u32 bufferOffsetData  = korl_checkCast_u$_to_u32(arrlenu(_korl_time_context.stbDaTimeProbeDataRaw) + labelBytes);
+    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeDataRaw, 
+                arrlenu(_korl_time_context.stbDaTimeProbeDataRaw) + labelBytes + sizeof(data));
+    korl_memory_copy(_korl_time_context.stbDaTimeProbeDataRaw + bufferOffsetLabel, label, labelBytes);
+    korl_memory_copy(_korl_time_context.stbDaTimeProbeDataRaw + bufferOffsetData , &data, sizeof(data));
+    mcarrpush(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeData, (_Korl_Time_ProbeData){0});
+    arrlast(_korl_time_context.stbDaTimeProbeData).probeHandle       = arrlast(_korl_time_context.stbDaTimeProbeStack);
+    arrlast(_korl_time_context.stbDaTimeProbeData).type              = _KORL_TIME_PROBE_DATA_TYPE_U32;
+    arrlast(_korl_time_context.stbDaTimeProbeData).bufferOffsetLabel = bufferOffsetLabel;
+    arrlast(_korl_time_context.stbDaTimeProbeData).bufferOffsetData  = bufferOffsetData;
+}
 korl_internal void korl_time_probeLogReport(void)
 {
     const PlatformTimeStamp timeStampStart = korl_timeStamp();
@@ -229,13 +261,13 @@ korl_internal void korl_time_probeLogReport(void)
      *  mm:ss'mmm"uuu
      * 
      * Desired output example:
-     *  ║ mm:ss'mmm"uuu ----[probe_label] function_name; file_name.c:line
-     *  ║ ├ mm:ss'mmm"uuu --[probe_label] function_name; file_name.c:line
-     *  ║ │ ├ mm:ss'mmm"uuu [probe_label] function_name; file_name.c:line
-     *  ║ │ └ mm:ss'mmm"uuu [probe_label] function_name; file_name.c:line
-     *  ║ └ mm:ss'mmm"uuu --[probe_label] function_name; file_name.c:line
-     *  ║   └ mm:ss'mmm"uuu [probe_label] function_name; file_name.c:line
-     *  ║ mm:ss'mmm"uuu ----[probe_label] function_name; file_name.c:line
+     *  ║ mm:ss'mmm"uuu ----[probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
+     *  ║ ├ mm:ss'mmm"uuu --[probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
+     *  ║ │ ├ mm:ss'mmm"uuu [probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
+     *  ║ │ └ mm:ss'mmm"uuu [probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
+     *  ║ └ mm:ss'mmm"uuu --[probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
+     *  ║   └ mm:ss'mmm"uuu [probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
+     *  ║ mm:ss'mmm"uuu ----[probe_label] function_name; file_name.c:line (dataLabel0=data0, ...)
      */
     korl_assert(arrlenu(_korl_time_context.stbDaTimeProbeStack) == 0);
     korl_log_noMeta(INFO, "╔════ ⏲ Time Probes Report ═════ Duration Format: MM:ss'mmm\"uuu ═══════════╗");
@@ -280,6 +312,9 @@ korl_internal void korl_time_probeLogReport(void)
                     longestProbeLabel/2                                                 , L"");
     // print the actual report for each time probe //
     mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), stbDaTimeProbeStack, 0);
+    Korl_StringPool stringPool        = korl_stringPool_create(_korl_time_context.allocatorHandle);
+    Korl_StringPool_String stringData = korl_stringNewEmptyUtf16(&stringPool, 0);
+    u$ currentProbeData = 0;
     for(Korl_Time_ProbeHandle tpi = 0; tpi < arrlenu(_korl_time_context.stbDaTimeProbes); tpi++)
     {
         const _Korl_Time_Probe*const timeProbe = &_korl_time_context.stbDaTimeProbes[tpi];
@@ -319,6 +354,29 @@ korl_internal void korl_time_probeLogReport(void)
         }
         if(timeProbe->parent)
             timeProbeDirectChildren[timeProbe->parent - 1]--;
+        /* accumulate a string containing any data associated with this probe; 
+            here we take advantage of the fact that the probe data entries are 
+            "in-line" with the probe entries */
+        while(   currentProbeData < arrlenu(_korl_time_context.stbDaTimeProbeData) 
+              && _korl_time_context.stbDaTimeProbeData[currentProbeData].probeHandle == tpi + 1)
+        {
+            const u16*const dataLabel = KORL_C_CAST(u16*, _korl_time_context.stbDaTimeProbeDataRaw + _korl_time_context.stbDaTimeProbeData[currentProbeData].bufferOffsetLabel);
+            if(string_getRawSizeUtf16(stringData) == 0)
+                string_appendUtf16(stringData, L"(");
+            else
+                string_appendUtf16(stringData, L", ");
+            string_appendFormatUtf16(stringData, L"%ws: ", dataLabel);
+            switch(_korl_time_context.stbDaTimeProbeData[currentProbeData].type)
+            {
+            case _KORL_TIME_PROBE_DATA_TYPE_U32:{
+                const u32*const data = KORL_C_CAST(u32*, _korl_time_context.stbDaTimeProbeDataRaw + _korl_time_context.stbDaTimeProbeData[currentProbeData].bufferOffsetData);
+                string_appendFormatUtf16(stringData, L"%u", *data);
+                break;}
+            }
+            currentProbeData++;
+        }
+        if(string_getRawSizeUtf16(stringData))
+            string_appendUtf16(stringData, L")");
         /**/
         const f64 probeCoverageRatio = KORL_C_CAST(f64, timeProbeCoverageCounts[tpi]) 
                                      / KORL_C_CAST(f64, korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd));
@@ -326,16 +384,19 @@ korl_internal void korl_time_probeLogReport(void)
         if(timeProbeDirectChildren[tpi])
             korl_assert(0 < korl_memory_stringFormatBuffer(bufferCoverageRatio, sizeof(bufferCoverageRatio), 
                                                            L"%3hhu%%", KORL_C_CAST(u8, probeCoverageRatio * 100)));
-        korl_log_noMeta(INFO, "║ %ws %ws [%-*ws] %-*ws; %ws:%i",
+        korl_log_noMeta(INFO, "║ %ws %ws [%-*ws] %-*ws; %ws:%i %ws",
                         bufferDuration, bufferCoverageRatio, 
-                        longestProbeLabel, timeProbe->label ? timeProbe->label : L"",
-                        longestProbeFunction, timeProbe->function, file, timeProbe->line);
+                        longestProbeLabel, timeProbe->label ? timeProbe->label : L"", 
+                        longestProbeFunction, timeProbe->function, file, timeProbe->line, 
+                        string_getRawUtf16(stringData));
         mcarrpush(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), stbDaTimeProbeStack, tpi + 1);
+        string_reserveUtf16(stringData, 0);// clear the data string buffer for re-use in future probes
     }
     korl_free(_korl_time_context.allocatorHandle, bufferDuration);
     korl_free(_korl_time_context.allocatorHandle, timeProbeCoverageCounts);
     korl_free(_korl_time_context.allocatorHandle, timeProbeDirectChildren);
     mcarrfree(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), stbDaTimeProbeStack);
+    korl_stringPool_destroy(&stringPool);// no need to free individual strings, since we're just going to destroy the entire pool
     const PlatformTimeStamp timeStampEnd = korl_timeStamp();
     _korl_time_timeStampExtractDifference(timeStampStart, timeStampEnd, 
                                           &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
@@ -345,6 +406,8 @@ korl_internal void korl_time_probeLogReport(void)
 }
 korl_internal void korl_time_probeReset(void)
 {
-    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbes    , 0);
-    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeStack, 0);
+    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbes      , 0);
+    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeStack  , 0);
+    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeDataRaw, 0);
+    mcarrsetlen(KORL_C_CAST(void*, _korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeData   , 0);
 }
