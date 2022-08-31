@@ -100,6 +100,7 @@ typedef struct Korl_StringPool_String
 #define string_getRawWriteableUtf8(stringHandle)                               korl_stringPool_getRawWriteableUtf8(stringHandle)
 #define string_getRawWriteableUtf16(stringHandle)                              korl_stringPool_getRawWriteableUtf16(stringHandle)
 #define string_copy(stringHandle)                                              korl_stringPool_copy(stringHandle, __FILEW__, __LINE__)
+#define string_copyToStringPool(stringPool,stringHandle)                       korl_stringPool_copyToStringPool(stringPool, stringHandle, __FILEW__, __LINE__)
 #define string_append(stringHandle, stringHandleToAppend)                      korl_stringPool_append(stringHandle, stringHandleToAppend, __FILEW__, __LINE__)
 #define string_appendUtf8(stringHandle, cStringUtf8)                           korl_stringPool_appendUtf8(stringHandle, cStringUtf8, __FILEW__, __LINE__)
 #define string_appendUtf16(stringHandle, cStringUtf16)                         korl_stringPool_appendUtf16(stringHandle, cStringUtf16, __FILEW__, __LINE__)
@@ -158,7 +159,8 @@ korl_internal u32                           korl_stringPool_getRawSizeUtf8(Korl_
 korl_internal u32                           korl_stringPool_getRawSizeUtf16(Korl_StringPool_String string);
 korl_internal char*                         korl_stringPool_getRawWriteableUtf8(Korl_StringPool_String string);
 korl_internal wchar_t*                      korl_stringPool_getRawWriteableUtf16(Korl_StringPool_String string);
-korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String        korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String        korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);

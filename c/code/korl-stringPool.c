@@ -718,46 +718,49 @@ korl_internal wchar_t* korl_stringPool_getRawWriteableUtf16(Korl_StringPool_Stri
     korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     return korl_checkCast_pu16_to_pwchar(KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16));
 }
-korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line)
+korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line)
 {
-    // TODO(ekun): Allow copying from one stringPool to another.
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool* sourceContext = string.pool;
     Korl_StringPool_String result;
 
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
-    korl_assert(s < arrlenu(context->stbDaStrings));
-    _Korl_StringPool_String*const newString = _korl_stringPool_addNewString(context, context->stbDaStrings[s].flags);
-    newString->rawSizeUtf8  = context->stbDaStrings[s].rawSizeUtf8;
-    newString->rawSizeUtf16 = context->stbDaStrings[s].rawSizeUtf16;
+    korl_assert(s < arrlenu(sourceContext->stbDaStrings));
+    _Korl_StringPool_String*const newString = _korl_stringPool_addNewString(destContext, sourceContext->stbDaStrings[s].flags);
+    newString->rawSizeUtf8  = sourceContext->stbDaStrings[s].rawSizeUtf8;
+    newString->rawSizeUtf16 = sourceContext->stbDaStrings[s].rawSizeUtf16;
     _Korl_StringPool_StringFlags flagsAdded = _KORL_STRINGPOOL_STRING_FLAGS_NONE;
     if(newString->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
         flagsAdded |= _KORL_STRINGPOOL_STRING_FLAG_UTF8;
-        newString->poolByteOffsetUtf8 = _korl_stringPool_allocate(context, (newString->rawSizeUtf8+1)*sizeof(u8), file, line);
-        korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf8, 
-                         context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8, 
+        newString->poolByteOffsetUtf8 = _korl_stringPool_allocate(destContext, (newString->rawSizeUtf8+1)*sizeof(u8), file, line);
+        korl_memory_copy(destContext->characterPool + newString->poolByteOffsetUtf8, 
+                         sourceContext->characterPool + sourceContext->stbDaStrings[s].poolByteOffsetUtf8, 
                          newString->rawSizeUtf8*sizeof(u8));
         // apply null terminator //
-        u8*const newUtf8 = context->characterPool + newString->poolByteOffsetUtf8;
+        u8*const newUtf8 = destContext->characterPool + newString->poolByteOffsetUtf8;
         newUtf8[newString->rawSizeUtf8] = '\0';
     }
     if(newString->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
         flagsAdded |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
-        newString->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (newString->rawSizeUtf16+1)*sizeof(u16), file, line);
-        korl_memory_copy(context->characterPool + newString->poolByteOffsetUtf16, 
-                         context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16, 
+        newString->poolByteOffsetUtf16 = _korl_stringPool_allocate(destContext, (newString->rawSizeUtf16+1)*sizeof(u16), file, line);
+        korl_memory_copy(destContext->characterPool + newString->poolByteOffsetUtf16, 
+                         sourceContext->characterPool + sourceContext->stbDaStrings[s].poolByteOffsetUtf16, 
                          newString->rawSizeUtf16*sizeof(u16));
         // apply null terminator //
-        u16*const newUtf16 = KORL_C_CAST(u16*, context->characterPool + newString->poolByteOffsetUtf16);
+        u16*const newUtf16 = KORL_C_CAST(u16*, destContext->characterPool + newString->poolByteOffsetUtf16);
         newUtf16[newString->rawSizeUtf16] = L'\0';
     }
     if(flagsAdded != newString->flags)
         korl_log(ERROR, "not all string flags implemented! string flags=0x%X", newString->flags);
 
     result.handle = newString->handle;
-    result.pool = context;
+    result.pool = destContext;
     return result;
+}
+korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line)
+{
+    return korl_stringPool_copyToStringPool(string.pool, string, file, line);
 }
 korl_internal void korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line)
 {
