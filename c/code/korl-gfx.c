@@ -1445,12 +1445,12 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     const u$ textBytes = textBufferSize * sizeof(*text);
     const u$ maxVisibleGlyphCount = textSize * (outlinePixelSize > 0.f ? 2 : 1);
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + assetNameFontBytes
-        + textBytes
-        + maxVisibleGlyphCount * 6*sizeof(Korl_Vulkan_VertexIndex)
-        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Position)
-        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Color4u8)
-        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Uv);
+                        + assetNameFontBytes
+                        + textBytes
+                        + maxVisibleGlyphCount * 6*sizeof(Korl_Vulkan_VertexIndex)
+                        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Position)
+                        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Color4u8)
+                        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Uv);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_allocate(allocatorHandle, totalBytes));
@@ -1544,8 +1544,8 @@ korl_internal KORL_PLATFORM_GFX_BATCH_ADD_LINE(korl_gfx_batchAddLine)
     korl_assert(*pContext);
     const u32 newVertexCount = (*pContext)->_vertexCount + 2;
     const u$ newTotalBytes = sizeof(Korl_Gfx_Batch)
-        + newVertexCount * sizeof(Korl_Vulkan_Position)
-        + newVertexCount * sizeof(Korl_Vulkan_Color4u8);
+                           + newVertexCount * sizeof(Korl_Vulkan_Position)
+                           + newVertexCount * sizeof(Korl_Vulkan_Color4u8);
     (*pContext) = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
     void*const previousVertexColors = (*pContext)->_vertexColors;
