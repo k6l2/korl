@@ -73,6 +73,7 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
         struct
         {
             VkBuffer vulkanBuffer;
+            VkBufferUsageFlags bufferUsageFlags;
         } buffer;
         struct
         {
@@ -91,7 +92,8 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     } deviceObject;
     VkDeviceSize byteOffset;///@TODO: to reduce memory leaks in the Arena's general allocator (& general confusion), we should just get rid of `byteOffsetAligned` & create a new tiny UNALLOCATED allocation right before this allocation in the Arena's allocation list
     VkDeviceSize byteOffsetAligned;// this is the _actual_ byte offset used to bind the device object to the device memory!
-    VkDeviceSize byteSize;
+    VkDeviceSize bytesOccupied;// Derived from the Vulkan memory requirements of this allocation; it's entirely possible for an allocation to occupy more bytes than it utilizes!  This is mostly only useful for the internal allocation strategy.
+    VkDeviceSize bytesUsed;// The size originally requested when the user called allocate.  The user is likely only going to care about this value for the purposes of manipulation of the data stored in this allocation.
     u32 id;// assigned by the Arena that this allocation is contained within
     const wchar_t* file;// currently, korl-vulkan should not be exposed to any dynamic code modules, so we can safely just store raw file string pointers here
     int line;

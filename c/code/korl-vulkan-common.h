@@ -200,6 +200,19 @@ typedef struct _Korl_Vulkan_DeviceAsset
     bool nullify;// Used to defer ultimate destruction of device assets until we can deduce that the _must_ no longer be in use (using framesSinceLastUsed)
     u8 framesSinceLastUsed;
     u8 salt;
+    union
+    {
+        struct
+        {
+            /** A \c stride value of \c 0 here indicates that this buffer does not 
+             * contain the vertex attribute at that respective index of this array */
+            struct
+            {
+                u$ offset;
+                u32 stride;
+            } attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
+        } buffer;
+    } subType;
 } _Korl_Vulkan_DeviceAsset;
 typedef struct _Korl_Vulkan_DeviceAssetDatabase
 {

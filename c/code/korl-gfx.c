@@ -14,7 +14,7 @@
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_gfx_context.stringPool))
 #define _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS 0
-typedef struct _Korl_Gfx_FontGlyphBackedCharacterBoundingBox
+typedef struct _Korl_Gfx_FontGlyphBakedCharacterBoundingBox
 {
     u16 x0,y0,x1,y1; // coordinates of bbox in bitmap
     /** For non-outline glyphs, this value will always be == to \c -bearingLeft 
@@ -23,33 +23,41 @@ typedef struct _Korl_Gfx_FontGlyphBackedCharacterBoundingBox
     /** How much we need to offset the glyph mesh to center it on the baseline 
      * cursor origin. */
     f32 offsetY;
-} _Korl_Gfx_FontGlyphBackedCharacterBoundingBox;///@TODO: fix spelling ಠ_ಠ
+} _Korl_Gfx_FontGlyphBakedCharacterBoundingBox;
 /** Basically just an extension of stbtt_bakedchar */
-typedef struct _Korl_Gfx_FontGlyphBakedCharacter///@TODO: rename to _Korl_Gfx_FontBakedGlyph
+typedef struct _Korl_Gfx_FontBakedGlyph
 {
-    _Korl_Gfx_FontGlyphBackedCharacterBoundingBox bbox;
-    _Korl_Gfx_FontGlyphBackedCharacterBoundingBox bboxOutline;
+    _Korl_Gfx_FontGlyphBakedCharacterBoundingBox bbox;
+    _Korl_Gfx_FontGlyphBakedCharacterBoundingBox bboxOutline;
     f32 advanceX;   // pre-scaled by glyph scale at a particular pixelHeight value
     f32 bearingLeft;// pre-scaled by glyph scale at a particular pixelHeight value
     u32 codePoint;
     int glyphIndex;
+    u32 bakeOrder;// the first glyph that gets baked will be 0, the next will be 1, etc...; can be useful for instanced glyph rendering
     bool isEmpty;// true if stbtt_IsGlyphEmpty for this glyph returned true
-} _Korl_Gfx_FontGlyphBakedCharacter;
+} _Korl_Gfx_FontBakedGlyph;
 typedef struct _Korl_Gfx_FontGlyphBitmapPackRow
 {
     u16 offsetY;
     u16 offsetX;
     u16 sizeY;// _including_ padding
 } _Korl_Gfx_FontGlyphBitmapPackRow;
+typedef struct _Korl_Gfx_FontGlyphVertex
+{
+    Korl_Math_V2f32 position;
+    Korl_Math_V2f32 uv;
+} _Korl_Gfx_FontGlyphVertex;
 typedef struct _Korl_Gfx_FontGlyphPage
 {
     u16                               packRowsSize;
     u16                               packRowsCapacity;
     _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
     Korl_Vulkan_DeviceAssetHandle textureHandle;
+    Korl_Vulkan_DeviceAssetHandle glyphMeshBufferVertices;
     u16 dataSquareSize;
-    u8* data;//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize
+    u8* data;//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize; currently being stored in contiguously memory immediately following this struct
     bool textureOutOfDate;// when this flag is set, it means that there are pending changes to `data` which have yet to be uploaded to the GPU
+    _Korl_Gfx_FontGlyphVertex* stbDaGlyphMeshVertices;
 } _Korl_Gfx_FontGlyphPage;
 typedef struct _Korl_Gfx_FontCache
 {
@@ -64,7 +72,7 @@ typedef struct _Korl_Gfx_FontCache
     f32 pixelOutlineThickness;// if this is 0.f, then an outline has not yet been cached in this fontCache glyphPageList
     //KORL-PERFORMANCE-000-000-000: (minor) convert pointers to contiguous memory into offsets to save some space
     wchar_t* fontAssetName;
-    _Korl_Gfx_FontGlyphBakedCharacter* stbDaGlyphs;//KORL-PERFORMANCE-000-000-031: gfx, fontCache: using a hash map as a lookup table for baked glyphs might be faster
+    _Korl_Gfx_FontBakedGlyph* stbDaGlyphs;//KORL-PERFORMANCE-000-000-031: gfx, fontCache: using a hash map as a lookup table for baked glyphs might be faster
     _Korl_Gfx_FontGlyphPage* glyphPage;
 } _Korl_Gfx_FontCache;
 typedef enum _Korl_Gfx_ResourceType
@@ -133,7 +141,10 @@ korl_internal void _korl_gfx_texture_load(_Korl_Gfx_Resource* resource)
         korl_log(ERROR, "stbi_load_from_memory failed! (%ws)", string_getRawUtf16(resource->subType.texture.stringAssetName));
         return;
     }
-    resource->subType.texture.deviceAssetHandle = korl_vulkan_deviceAsset_createTexture(imageSizeX, imageSizeY);
+    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
+    createInfoTexture.sizeX = imageSizeX;
+    createInfoTexture.sizeY = imageSizeY;
+    resource->subType.texture.deviceAssetHandle = korl_vulkan_deviceAsset_createTexture(&createInfoTexture);
     korl_vulkan_texture_update(resource->subType.texture.deviceAssetHandle, KORL_C_CAST(Korl_Vulkan_Color4u8*, imagePixels));
     stbi_image_free(imagePixels);
 }
@@ -190,12 +201,12 @@ korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyp
     /* update the pack row metrics */
     glyphPage->packRows[packRowIndex].offsetX += korl_checkCast_i$_to_u16(sizeX + PACK_ROW_PADDING);
 }
-korl_internal const _Korl_Gfx_FontGlyphBakedCharacter* _korl_gfx_fontCache_getGlyph(_Korl_Gfx_FontCache* fontCache, u32 codePoint)
+korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl_Gfx_FontCache* fontCache, u32 codePoint)
 {
-    _Korl_Gfx_Context*const gfxContext = &_korl_gfx_context;
+    _Korl_Gfx_Context*const gfxContext      = &_korl_gfx_context;
     _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
     /* iterate over the glyph page codepoints to see if any match codePoint */
-    _Korl_Gfx_FontGlyphBakedCharacter* glyph = NULL;
+    _Korl_Gfx_FontBakedGlyph* glyph = NULL;
     for(u$ g = 0; g < arrlenu(fontCache->stbDaGlyphs); g++)
         if(fontCache->stbDaGlyphs[g].codePoint == codePoint)
         {
@@ -209,10 +220,11 @@ korl_internal const _Korl_Gfx_FontGlyphBakedCharacter* _korl_gfx_fontCache_getGl
         int advanceX;
         int bearingLeft;
         stbtt_GetGlyphHMetrics(&(fontCache->fontInfo), glyphIndex, &advanceX, &bearingLeft);
-        mcarrpush(KORL_C_CAST(void*, gfxContext->allocatorHandle), fontCache->stbDaGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontGlyphBakedCharacter));
+        mcarrpush(KORL_C_CAST(void*, gfxContext->allocatorHandle), fontCache->stbDaGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
         glyph = &arrlast(fontCache->stbDaGlyphs);
         glyph->codePoint   = codePoint;
         glyph->glyphIndex  = glyphIndex;
+        glyph->bakeOrder   = korl_checkCast_u$_to_u32(arrlenu(fontCache->stbDaGlyphs) - 1);
         glyph->isEmpty     = stbtt_IsGlyphEmpty(&(fontCache->fontInfo), glyphIndex);
         glyph->advanceX    = fontCache->fontScale*KORL_C_CAST(f32, advanceX   );
         glyph->bearingLeft = fontCache->fontScale*KORL_C_CAST(f32, bearingLeft);
@@ -236,6 +248,22 @@ korl_internal const _Korl_Gfx_FontGlyphBakedCharacter* _korl_gfx_fontCache_getGl
                                       glyphPage->data + (glyph->bbox.y0*glyphPage->dataSquareSize + glyph->bbox.x0), 
                                       w, h, glyphPage->dataSquareSize, 
                                       fontCache->fontScale, fontCache->fontScale, glyphIndex);
+                /* create the glyph mesh vertices & indices, and append them to 
+                    the appropriate stb_ds array to be uploaded to the GPU later */
+                const f32 x0 = 0.f/*start glyph at baseline cursor origin*/ + glyph->bbox.offsetX;
+                const f32 y0 = 0.f/*start glyph at baseline cursor origin*/ + glyph->bbox.offsetY;
+                const f32 x1 = x0 + (glyph->bbox.x1 - glyph->bbox.x0);
+                const f32 y1 = y0 + (glyph->bbox.y1 - glyph->bbox.y0);
+                const f32 u0 = KORL_C_CAST(f32, glyph->bbox.x0) / KORL_C_CAST(f32, glyphPage->dataSquareSize);
+                const f32 u1 = KORL_C_CAST(f32, glyph->bbox.x1) / KORL_C_CAST(f32, glyphPage->dataSquareSize);
+                const f32 v0 = KORL_C_CAST(f32, glyph->bbox.y0) / KORL_C_CAST(f32, glyphPage->dataSquareSize);
+                const f32 v1 = KORL_C_CAST(f32, glyph->bbox.y1) / KORL_C_CAST(f32, glyphPage->dataSquareSize);
+                const u$ firstVertexOffset = arrlenu(glyphPage->stbDaGlyphMeshVertices);
+                mcarrsetlen(KORL_C_CAST(void*, gfxContext->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, arrlenu(glyphPage->stbDaGlyphMeshVertices) + 4);
+                glyphPage->stbDaGlyphMeshVertices[firstVertexOffset + 0] = (_Korl_Gfx_FontGlyphVertex){.position = (Korl_Math_V2f32){x0, y0}, .uv = (Korl_Math_V2f32){u0, v1}};
+                glyphPage->stbDaGlyphMeshVertices[firstVertexOffset + 1] = (_Korl_Gfx_FontGlyphVertex){.position = (Korl_Math_V2f32){x1, y0}, .uv = (Korl_Math_V2f32){u1, v1}};
+                glyphPage->stbDaGlyphMeshVertices[firstVertexOffset + 2] = (_Korl_Gfx_FontGlyphVertex){.position = (Korl_Math_V2f32){x1, y1}, .uv = (Korl_Math_V2f32){u1, v0}};
+                glyphPage->stbDaGlyphMeshVertices[firstVertexOffset + 3] = (_Korl_Gfx_FontGlyphVertex){.position = (Korl_Math_V2f32){x0, y1}, .uv = (Korl_Math_V2f32){u0, v0}};
             }
             /* bake the glyph outline if the font is configured for outlines */
             if(!korl_math_isNearlyZero(fontCache->pixelOutlineThickness))
@@ -573,10 +601,10 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         const u$ assetNameFontBufferSize = korl_memory_stringSize(batch->_assetNameFont) + 1/*null terminator*/;
         const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*batch->_assetNameFont);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
-            + sizeof(_Korl_Gfx_FontGlyphPage)
-            + PACK_ROWS_CAPACITY*sizeof(_Korl_Gfx_FontGlyphBitmapPackRow)
-            + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE// glyph page bitmap (data)
-            + assetNameFontBufferBytes;
+                                        + sizeof(_Korl_Gfx_FontGlyphPage)
+                                        + PACK_ROWS_CAPACITY*sizeof(_Korl_Gfx_FontGlyphBitmapPackRow)
+                                        + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE// glyph page bitmap (data)
+                                        + assetNameFontBufferBytes;
         /* allocate the required memory from the korl-gfx context allocator */
         *newFontCache = korl_allocate(context->allocatorHandle, fontCacheRequiredBytes);
         korl_assert(*newFontCache);
@@ -594,6 +622,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         glyphPage->dataSquareSize   = GLYPH_PAGE_SQUARE_SIZE;
         glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1/*pointer arithmetic trick to skip to the address following the glyphPage*/);
         glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
+        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(batch->_assetNameFont, fontCache->fontAssetName, assetNameFontBufferSize));
         /* initialize the font info using the raw font asset data */
         korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
@@ -607,6 +636,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         fontCache->fontLineGap = fontCache->fontScale*KORL_C_CAST(f32, lineGap);
     }
     // at this point, `fontCache` should be _guaranteed_ to be valid //
+    korl_assert(fontCache);
+    _Korl_Gfx_FontGlyphPage*const fontGlyphPage = fontCache->glyphPage;
     /* iterate over each character in the batch text, and update the 
         pre-allocated vertex attributes to use the data for the corresponding 
         codepoint in the glyph cache */
@@ -624,8 +655,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     batch->_textAabb = (Korl_Math_Aabb2f32 ){.min = {KORL_F32_MAX, KORL_F32_MAX}, .max = {KORL_F32_MIN, KORL_F32_MIN}};
     for(const wchar_t* character = batch->_text; *character; character++)
     {
-        const _Korl_Gfx_FontGlyphBakedCharacter*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
-        const _Korl_Gfx_FontGlyphBackedCharacterBoundingBox*const bbox = outlinePass 
+        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
+        const _Korl_Gfx_FontGlyphBakedCharacterBoundingBox*const bbox = outlinePass 
             ? &(bakedGlyph->bboxOutline)
             : &(bakedGlyph->bbox);
         const f32 x0 = textBaselineCursor.x + bbox->offsetX;
@@ -635,16 +666,16 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         textBaselineCursor.x += bakedGlyph->advanceX;
         if(*(character + 1))
         {
-            const _Korl_Gfx_FontGlyphBakedCharacter*const bakedGlyphNext = _korl_gfx_fontCache_getGlyph(fontCache, *(character + 1));
+            const _Korl_Gfx_FontBakedGlyph*const bakedGlyphNext = _korl_gfx_fontCache_getGlyph(fontCache, *(character + 1));
             const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo, 
                                                               bakedGlyph    ->glyphIndex, 
                                                               bakedGlyphNext->glyphIndex);
             textBaselineCursor.x += fontCache->fontScale*kernAdvance;
         }
-        const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
-        const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
-        const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
-        const f32 v1 = KORL_C_CAST(f32, bbox->y1) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
+        const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
+        const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
+        const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
+        const f32 v1 = KORL_C_CAST(f32, bbox->y1) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
         if(*character == L'\n')
         {
             textBaselineCursor.x = 0.f;
@@ -683,8 +714,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
         for(const wchar_t* character = batch->_text; *character; character++)
         {
-            const _Korl_Gfx_FontGlyphBakedCharacter*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
-            const _Korl_Gfx_FontGlyphBackedCharacterBoundingBox*const bbox = &(bakedGlyph->bbox);
+            const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
+            const _Korl_Gfx_FontGlyphBakedCharacterBoundingBox*const bbox = &(bakedGlyph->bbox);
             const f32 x0 = textBaselineCursor.x + bbox->offsetX;
             const f32 y0 = textBaselineCursor.y + bbox->offsetY;
             const f32 x1 = x0 + (bbox->x1 - bbox->x0);
@@ -692,16 +723,16 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
             textBaselineCursor.x += bakedGlyph->advanceX;
             if(*(character + 1))
             {
-                const _Korl_Gfx_FontGlyphBakedCharacter*const bakedGlyphNext = _korl_gfx_fontCache_getGlyph(fontCache, *(character + 1));
+                const _Korl_Gfx_FontBakedGlyph*const bakedGlyphNext = _korl_gfx_fontCache_getGlyph(fontCache, *(character + 1));
                 const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo, 
                                                                   bakedGlyph    ->glyphIndex, 
                                                                   bakedGlyphNext->glyphIndex);
                 textBaselineCursor.x += fontCache->fontScale*kernAdvance;
             }
-            const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
-            const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
-            const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
-            const f32 v1 = KORL_C_CAST(f32, bbox->y1) / KORL_C_CAST(f32, fontCache->glyphPage->dataSquareSize);
+            const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
+            const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
+            const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
+            const f32 v1 = KORL_C_CAST(f32, bbox->y1) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
             if(*character == L'\n')
             {
                 textBaselineCursor.x = 0.f;
@@ -737,7 +768,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     }
     /* if a non-zero number of glyphs have been cached, we need to update the 
         fontCache's glyph page texture */
-    if(fontCache->glyphPage->textureOutOfDate)
+    if(fontGlyphPage->textureOutOfDate)
     {
         /* upload the glyph data to the GPU & obtain texture handle */
         /* debug print the glyph page data :) */
@@ -792,25 +823,51 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
             we can upload this image buffer to the graphics device for rendering */
         // allocate a temp R8G8B8A8-format image buffer //
         Korl_Vulkan_Color4u8*const tempImageBuffer = korl_allocate(context->allocatorHandle, 
-                                                                   sizeof(Korl_Vulkan_Color4u8) * fontCache->glyphPage->dataSquareSize * fontCache->glyphPage->dataSquareSize);
+                                                                   sizeof(Korl_Vulkan_Color4u8) * fontGlyphPage->dataSquareSize * fontGlyphPage->dataSquareSize);
         // "expand" the stbtt font bitmap into the image buffer //
-        for(u$ y = 0; y < fontCache->glyphPage->dataSquareSize; y++)
-            for(u$ x = 0; x < fontCache->glyphPage->dataSquareSize; x++)
+        for(u$ y = 0; y < fontGlyphPage->dataSquareSize; y++)
+            for(u$ x = 0; x < fontGlyphPage->dataSquareSize; x++)
                 /* store a pure white pixel with the alpha component set to the stbtt font bitmap value */
-                tempImageBuffer[y*fontCache->glyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = fontCache->glyphPage->data[y*fontCache->glyphPage->dataSquareSize + x]};
+                tempImageBuffer[y*fontGlyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = fontGlyphPage->data[y*fontGlyphPage->dataSquareSize + x]};
         // create a vulkan texture, upload the image buffer to it //
-        if(!fontCache->glyphPage->textureHandle)
-            fontCache->glyphPage->textureHandle = korl_vulkan_deviceAsset_createTexture(fontCache->glyphPage->dataSquareSize
-                                                                                       ,fontCache->glyphPage->dataSquareSize);
-        korl_vulkan_texture_update(fontCache->glyphPage->textureHandle, tempImageBuffer);
+        if(!fontGlyphPage->textureHandle)
+        {
+            KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
+            createInfoTexture.sizeX = fontGlyphPage->dataSquareSize;
+            createInfoTexture.sizeY = fontGlyphPage->dataSquareSize;
+            fontGlyphPage->textureHandle = korl_vulkan_deviceAsset_createTexture(&createInfoTexture);
+        }
+        korl_vulkan_texture_update(fontGlyphPage->textureHandle, tempImageBuffer);
         // free the temporary R8G8B8A8-format image buffer //
         korl_free(context->allocatorHandle, tempImageBuffer);
-        fontCache->glyphPage->textureOutOfDate = false;
+        fontGlyphPage->textureOutOfDate = false;
+        /* create the glyph mesh vertex buffers if they have not already been created */
+        const u$ newGlyphMeshVertexBufferBytes = sizeof(*fontGlyphPage->stbDaGlyphMeshVertices)*arrlenu(fontGlyphPage->stbDaGlyphMeshVertices);
+        if(!fontGlyphPage->glyphMeshBufferVertices)
+        {
+            KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
+            vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_2D;
+            vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphVertex, position);
+            vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphVertex);
+            vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_UV;
+            vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphVertex, uv);
+            vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphVertex);
+            KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfo);
+            createInfo.bytes                          = newGlyphMeshVertexBufferBytes;
+            createInfo.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
+            createInfo.vertexAttributeDescriptors     = vertexAttributeDescriptors;
+            fontGlyphPage->glyphMeshBufferVertices = korl_vulkan_deviceAsset_createVertexBuffer(&createInfo);
+        }
+        else
+            korl_vulkan_vertexBuffer_resize(fontGlyphPage->glyphMeshBufferVertices, newGlyphMeshVertexBufferBytes);
+        /* update the appropriate vertex/index buffers with the latest glyph mesh data */
+        korl_vulkan_vertexBuffer_update(fontGlyphPage->glyphMeshBufferVertices, KORL_C_CAST(u8*, fontGlyphPage->stbDaGlyphMeshVertices), newGlyphMeshVertexBufferBytes, 0/*offset; we're just updating the whole thing*/);
     }
     /* setting the font texture handle to a valid value signifies to other gfx 
         module code that the text mesh has been generated, and thus dependent 
         assets (font, glyph pages) are all loaded & ready to go */
-    batch->_fontTextureHandle = fontCache->glyphPage->textureHandle;
+    ///@TODO: uncomment this when all of the instanced rendering stuff is ready to render
+    //batch->_fontTextureHandle = fontGlyphPage->textureHandle;
 }
 korl_internal void korl_gfx_initialize(void)
 {
@@ -832,6 +889,9 @@ korl_internal void korl_gfx_clearFontCache(void)
         _Korl_Gfx_FontCache*const fontCache = context->stbDaFontCaches[fc];
         if(fontCache->glyphPage->textureHandle)
             korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->textureHandle);
+        if(fontCache->glyphPage->glyphMeshBufferVertices)
+            korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->glyphMeshBufferVertices);
+        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->glyphPage->stbDaGlyphMeshVertices);
         mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbDaGlyphs);
         korl_free(context->allocatorHandle, fontCache);
     }
@@ -1143,6 +1203,11 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     drawState.model    = &model;
     drawState.samplers = &samplers;
     korl_vulkan_setDrawState(&drawState);
+#if 0///@TODO: use this to stage the indices of the quad every time we render text instances?
+    korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
+        { 0, 1, 3
+        , 1, 2, 3 };
+#endif
     korl_vulkan_draw(&vertexData);
     done:
     korl_time_probeStop(gfx_batch);
