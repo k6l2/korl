@@ -268,8 +268,8 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     createInfoSwapChain.presentMode      = presentMode;
     createInfoSwapChain.clipped          = VK_TRUE;
     createInfoSwapChain.oldSwapchain     = VK_NULL_HANDLE;
-    if(context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics != 
-        context->queueFamilyMetaData.indexQueueUnion.indexQueues.present)
+    if(   context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics 
+       != context->queueFamilyMetaData.indexQueueUnion.indexQueues.present)
     {
         createInfoSwapChain.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
         createInfoSwapChain.queueFamilyIndexCount = 2;
@@ -290,11 +290,11 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
         VkFormatProperties formatProperties;
         vkGetPhysicalDeviceFormatProperties(context->physicalDevice, depthBufferFormatCandidates[depthBufferFormatSelection], 
                                             &formatProperties);
-        if(depthBufferTiling == VK_IMAGE_TILING_LINEAR 
-            && ((formatProperties.linearTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
+        if(   depthBufferTiling == VK_IMAGE_TILING_LINEAR 
+           && ((formatProperties.linearTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
             break;
-        if(depthBufferTiling == VK_IMAGE_TILING_OPTIMAL 
-            && ((formatProperties.optimalTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
+        if(   depthBufferTiling == VK_IMAGE_TILING_OPTIMAL 
+           && ((formatProperties.optimalTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
             break;
     }
     korl_assert(depthBufferFormatSelection < korl_arraySize(depthBufferFormatCandidates));
@@ -314,7 +314,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
     attachments[0].format         = surfaceContext->swapChainSurfaceFormat.format;
     attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
     attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
     attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -322,7 +322,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     attachments[0].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     attachments[1].format         = formatDepthBuffer;
     attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass 
     attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -2198,17 +2198,9 @@ korl_internal void korl_vulkan_frameEnd(void)
     submitInfoGraphics[0].pCommandBufferInfos      = commandBufferSubmitInfo;
     submitInfoGraphics[0].signalSemaphoreInfoCount = korl_arraySize(semaphoreSubmitInfoSignal);
     submitInfoGraphics[0].pSignalSemaphoreInfos    = semaphoreSubmitInfoSignal;
-#if 1
-    const VkResult resultQueueSubmit2 = 
-        vkQueueSubmit2(context->queueGraphics, 
-                       (sizeof(submitInfoGraphics) / sizeof((submitInfoGraphics)[0])), 
-                       submitInfoGraphics, 
-                       surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete);
-#else
     _KORL_VULKAN_CHECK(
         vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics, 
                        surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
-#endif
     korl_time_probeStop(submit_gfx_cmds_to_gfx_q);
     /* present the swap chain */
     korl_time_probeStart(present_swap_chain);
