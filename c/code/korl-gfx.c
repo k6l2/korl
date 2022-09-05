@@ -819,7 +819,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(korl_gfx_cameraF
 korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
 {
 #if 0
-    const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
+    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     switch(camera._scissorType)
     {
     case KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO:{
@@ -827,10 +827,10 @@ korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
         korl_assert(camera._viewportScissorPosition.y >= 0 && camera._viewportScissorPosition.y <= 1);
         korl_assert(camera._viewportScissorSize.x >= 0 && camera._viewportScissorSize.x <= 1);
         korl_assert(camera._viewportScissorSize.y >= 0 && camera._viewportScissorSize.y <= 1);
-        korl_vulkan_setScissor(korl_math_round_f32_to_u32(camera._viewportScissorPosition.x * swapchainSize.x), 
-                               korl_math_round_f32_to_u32(camera._viewportScissorPosition.y * swapchainSize.y), 
-                               korl_math_round_f32_to_u32(camera._viewportScissorSize.x * swapchainSize.x), 
-                               korl_math_round_f32_to_u32(camera._viewportScissorSize.y * swapchainSize.y));
+        korl_vulkan_setScissor(korl_math_round_f32_to_u32(camera._viewportScissorPosition.x * surfaceSize.x), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorPosition.y * surfaceSize.y), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorSize.x * surfaceSize.x), 
+                               korl_math_round_f32_to_u32(camera._viewportScissorSize.y * surfaceSize.y));
         break;}
     case KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE:{
         korl_assert(camera._viewportScissorPosition.x >= 0);
@@ -888,7 +888,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(korl_gfx_cameraSetSci
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOrthoSetOriginAnchor)
 {
-    const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
+    // const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();///@TODO: delete?
     switch(context->type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{

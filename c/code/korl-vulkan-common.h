@@ -280,6 +280,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
 typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR surface;
+    Korl_Math_V3f32 frameBeginClearColor;
     /** 
      * Used to ensure that the user calls \c korl_vulkan_frameBegin before, and 
      * the same number of times as, \c korl_vulkan_frameEnd .  This value == 1 

@@ -256,8 +256,8 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_POSITION(korl_gui_windowSetPosition)
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
-    const Korl_Math_V2u32 swapChainSize = korl_vulkan_getSwapchainSize();
-    window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -KORL_C_CAST(f32, swapChainSize.y) + positionY + anchorY*window->size.y};
+    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
+    window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -KORL_C_CAST(f32, surfaceSize.y) + positionY + anchorY*window->size.y};
 }
 korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize)
 {
@@ -318,7 +318,7 @@ korl_internal void korl_gui_frameEnd(void)
     Korl_Gfx_Camera guiCamera = korl_gfx_createCameraOrtho(1.f);
     korl_gfx_cameraOrthoSetOriginAnchor(&guiCamera, 0.f, 1.f);
     u$ windowsRemaining = 0;
-    const Korl_Math_V2u32 swapChainSize = korl_vulkan_getSwapchainSize();
+    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
         _Korl_Gui_Window*const window = &context->stbDaWindows[i];
@@ -385,9 +385,9 @@ korl_internal void korl_gui_frameEnd(void)
             dimensions equal the height of the window title bar style at minimum */
         KORL_MATH_ASSIGN_CLAMP(window->position.x, 
                                -window->size.x + context->style.windowTitleBarPixelSizeY, 
-                               swapChainSize.x - context->style.windowTitleBarPixelSizeY);
+                               surfaceSize.x - context->style.windowTitleBarPixelSizeY);
         KORL_MATH_ASSIGN_CLAMP(window->position.y, 
-                               -KORL_C_CAST(f32, swapChainSize.y) + context->style.windowTitleBarPixelSizeY, 
+                               -KORL_C_CAST(f32, surfaceSize.y) + context->style.windowTitleBarPixelSizeY, 
                                0);
         /* draw the window panel */
         korl_time_probeStart(draw_window_panel);

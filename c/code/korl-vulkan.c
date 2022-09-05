@@ -1911,6 +1911,15 @@ korl_internal void korl_vulkan_destroySurface(void)
 #endif
     vkDestroyDevice(context->device, context->allocator);
 }
+korl_internal Korl_Math_V2u32 korl_vulkan_getSurfaceSize(void)
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    if(surfaceContext->deferredResize)
+        return (Korl_Math_V2u32){ surfaceContext->deferredResizeX
+                                , surfaceContext->deferredResizeY };
+    return (Korl_Math_V2u32){ surfaceContext->swapChainImageExtent.width
+                            , surfaceContext->swapChainImageExtent.height };
+}
 korl_internal void korl_vulkan_clearAllDeviceAssets(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
@@ -1939,7 +1948,13 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void)
     context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
 #endif
 }
-korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
+korl_internal void korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3])
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    for(u8 i = 0; i < korl_arraySize(surfaceContext->frameBeginClearColor.elements); i++)
+        surfaceContext->frameBeginClearColor.elements[i] = clearRgb[i];
+}
+korl_internal void korl_vulkan_frameBegin(void)
 {
     _Korl_Vulkan_Context*const context                        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext          = &g_korl_vulkan_surfaceContext;
@@ -2056,9 +2071,9 @@ korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3])
     // define the color we are going to clear the color attachment with when 
     //    the render pass begins:
     KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
-    clearValues[0].color.float32[0] = clearRgb[0];
-    clearValues[0].color.float32[1] = clearRgb[1];
-    clearValues[0].color.float32[2] = clearRgb[2];
+    clearValues[0].color.float32[0] = surfaceContext->frameBeginClearColor.elements[0];
+    clearValues[0].color.float32[1] = surfaceContext->frameBeginClearColor.elements[1];
+    clearValues[0].color.float32[2] = surfaceContext->frameBeginClearColor.elements[2];
     clearValues[0].color.float32[3] = 1.f;
     clearValues[1].depthStencil.depth = 1.f;
     clearValues[1].depthStencil.stencil = 0;
@@ -2640,15 +2655,6 @@ korl_internal void korl_vulkan_setView(
     ubo->m4f32View = m4f32View;
     vkUnmapMemory(context->device, surfaceContext->deviceMemoryHostVisible.deviceMemory);
 #endif
-}
-korl_internal Korl_Math_V2u32 korl_vulkan_getSwapchainSize(void)
-{
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    if(surfaceContext->deferredResize)
-        return (Korl_Math_V2u32){ surfaceContext->deferredResizeX
-                                , surfaceContext->deferredResizeY };
-    return (Korl_Math_V2u32){ surfaceContext->swapChainImageExtent.width
-                            , surfaceContext->swapChainImageExtent.height };
 }
 korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
 {

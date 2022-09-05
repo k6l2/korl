@@ -117,8 +117,8 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
                 KORL_MOUSE_BUTTON_X2;
         }
         mouseEvent.x = GET_X_LPARAM(lParam);
-        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
-        mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
+        const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize(); 
+        mouseEvent.y = surfaceSize.y - GET_Y_LPARAM(lParam); 
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
@@ -146,17 +146,17 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
                 KORL_MOUSE_BUTTON_X2;
         }
         mouseEvent.x = GET_X_LPARAM(lParam);
-        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
-        mouseEvent.y = swapchainSize.y - GET_Y_LPARAM(lParam); 
+        const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize(); 
+        mouseEvent.y = surfaceSize.y - GET_Y_LPARAM(lParam); 
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
     case WM_MOUSEMOVE:{
-        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize(); 
         Korl_MouseEvent mouseEvent;
         mouseEvent.type = KORL_MOUSE_EVENT_MOVE;
         mouseEvent.x    = GET_X_LPARAM(lParam);
-        mouseEvent.y    = swapchainSize.y - GET_Y_LPARAM(lParam); 
+        mouseEvent.y    = surfaceSize.y - GET_Y_LPARAM(lParam); 
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
@@ -171,9 +171,9 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         {
             korl_logLastError("ScreenToClient failed.");
         }
-        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize(); 
         mouseEvent.x = mousePoint.x;
-        mouseEvent.y = swapchainSize.y - mousePoint.y;
+        mouseEvent.y = surfaceSize.y - mousePoint.y;
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
@@ -188,9 +188,9 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         {
             korl_logLastError("ScreenToClient failed.");
         }
-        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); 
+        const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize(); 
         mouseEvent.x = mousePoint.x;
-        mouseEvent.y = swapchainSize.y - mousePoint.y;
+        mouseEvent.y = surfaceSize.y - mousePoint.y;
         if(context->gameApi.korl_game_onMouseEvent)
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
@@ -407,6 +407,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_vulkan_createSurface(&surfaceUserData, 
                                   clientRect.right  - clientRect.left, 
                                   clientRect.bottom - clientRect.top);
+        korl_vulkan_setSurfaceClearColor((f32[]){0.05f, 0.f, 0.05f});// set default clear color to ~purplish~
     }
     /* initialize game memory & game module */
     KORL_ZERO_STACK(KorlPlatformApi, korlApi);
@@ -507,9 +508,9 @@ korl_internal void korl_windows_window_loop(void)
                 context->gameApi.korl_game_onReload(context->gameMemory, korlApi);
             korl_time_probeStop(save_state_load);
         }
-        korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin((f32[]){0.05f, 0.f, 0.05f});                   korl_time_probeStop(vulkan_frame_begin);
-        korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                                korl_time_probeStop(gui_frame_begin);
-        korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize(); korl_time_probeStop(vulkan_get_swapchain_size);
+        korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin();                                           korl_time_probeStop(vulkan_frame_begin);
+        korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
+        korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize(); korl_time_probeStop(vulkan_get_swapchain_size);
         korl_time_probeStart(game_update);
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
@@ -572,11 +573,11 @@ korl_internal void korl_windows_window_loop(void)
 }
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
-    const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
+    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameMemory, sizeof(_korl_windows_window_context.gameMemory));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &swapchainSize.x, sizeof(swapchainSize.x));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &swapchainSize.y, sizeof(swapchainSize.y));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.x, sizeof(surfaceSize.x));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.y, sizeof(surfaceSize.y));
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {
@@ -593,23 +594,23 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
         return false;
     }
     _korl_windows_window_context.gameMemory = KORL_C_CAST(void*, gameMemory);
-    Korl_Math_V2u32 swapchainSize;
-    if(!ReadFile(hFile, &swapchainSize.x, sizeof(swapchainSize.x), NULL/*bytes read*/, NULL/*no overlapped*/))
+    Korl_Math_V2u32 surfaceSize;
+    if(!ReadFile(hFile, &surfaceSize.x, sizeof(surfaceSize.x), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
     }
-    if(!ReadFile(hFile, &swapchainSize.y, sizeof(swapchainSize.y), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, &surfaceSize.y, sizeof(surfaceSize.y), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
     }
     POINT clientOrigin = {0, 0};
     korl_assert(ClientToScreen(_korl_windows_window_context.window.handle, &clientOrigin));
-    RECT windowRect = (RECT){.left = clientOrigin.x, .top = clientOrigin.y, .right = clientOrigin.x + swapchainSize.x, .bottom = clientOrigin.y + swapchainSize.y};
+    RECT windowRect = (RECT){.left = clientOrigin.x, .top = clientOrigin.y, .right = clientOrigin.x + surfaceSize.x, .bottom = clientOrigin.y + surfaceSize.y};
     korl_assert(AdjustWindowRect(&windowRect, _korl_windows_window_context.window.style, _korl_windows_window_context.window.hasMenu));
     korl_assert(MoveWindow(_korl_windows_window_context.window.handle, windowRect.left, windowRect.top, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, TRUE));
-    korl_vulkan_deferredResize(swapchainSize.x, swapchainSize.y);
+    korl_vulkan_deferredResize(surfaceSize.x, surfaceSize.y);
     return true;
 }
 #undef _LOCAL_STRING_POOL_POINTER
