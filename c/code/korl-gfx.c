@@ -818,6 +818,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(korl_gfx_cameraF
 }
 korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
 {
+#if 0
     const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSwapchainSize();
     switch(camera._scissorType)
     {
@@ -855,6 +856,7 @@ korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
         korl_vulkan_setView(camera.position, camera.target, KORL_MATH_V3F32_Y);
         }break;
     }
+#endif
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR(korl_gfx_cameraSetScissor)
 {
@@ -904,6 +906,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 }
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
+#if 0
     korl_time_probeStart(text_generate_mesh);
     if(batch->_assetNameFont)
         _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAG_LAZY);
@@ -956,6 +959,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
         vertexIndexCount, batch->_vertexIndices, 
         vertexCount, batch->_vertexPositions, batch->_vertexColors, batch->_vertexUvs);
     korl_time_probeStop(vulkan_batch);
+#endif
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured)
 {

@@ -28,25 +28,24 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void);
 korl_internal void korl_vulkan_loadShaders(void);
 korl_internal void korl_vulkan_createPipeline(void);
 #endif//0
-korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3]);
-/** submit all batched graphics command buffers to the Vulkan device */
+korl_internal void korl_vulkan_frameBegin(const f32 clearRgb[3]);///@TODO: make the clear color a configurable state that can be changed at any time for all following frames
 korl_internal void korl_vulkan_frameEnd(void);
 /** 
  * Call this whenever the window is resized.  This will trigger a resize of the 
  * swap chain right before the next draw operation in \c korl_vulkan_draw .
  */
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
-korl_internal void korl_vulkan_batch(
-    Korl_Vulkan_PrimitiveType primitiveType, 
-    u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
-    u32 vertexCount, const Korl_Vulkan_Position* positions, 
-    const Korl_Vulkan_Color4u8* colors, const Korl_Vulkan_Uv* uvs);
+#if 0///@TODO: delete/recycle
+korl_internal void korl_vulkan_batch(Korl_Vulkan_PrimitiveType primitiveType, 
+                                     u32 vertexIndexCount, const Korl_Vulkan_VertexIndex* vertexIndices, 
+                                     u32 vertexCount, const Korl_Vulkan_Position* positions, 
+                                     const Korl_Vulkan_Color4u8* colors, const Korl_Vulkan_Uv* uvs);
 korl_internal void korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(bool value);
 korl_internal void korl_vulkan_batchBlend(bool enabled, 
                                           Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, 
                                           Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget);
-korl_internal void korl_vulkan_setProjectionFov(
-    f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
+#endif
+korl_internal void korl_vulkan_setProjectionFov(f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
 /** 
  * \param originRatioX adjust the position of the origin relative to the size 
  * of the swap chain.  A value of \c 0.5f will center the origin on the screen.  
