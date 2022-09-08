@@ -972,6 +972,7 @@ korl_internal void _korl_memory_allocator_general_setPageFlags(_Korl_Memory_Allo
 }
 korl_internal u$ _korl_memory_allocator_general_occupyAvailablePages(_Korl_Memory_AllocatorGeneral* allocator, u$ pageCount)
 {
+    //KORL-ISSUE-000-000-088: memory: currently, it is possible for general allocator to occupy page flags that lie outside the allocator's range of allocationPages
     u$ allocationPageIndex = allocator->allocationPages;
     korl_shared_const u8 SURROUNDING_GUARD_PAGE_COUNT = 1;
     const u8 bitsPerRegister        = /*bitsPerRegister*/(8*sizeof(*(allocator->availablePageFlags)));
@@ -1186,9 +1187,12 @@ korl_internal void* _korl_memory_allocator_general_allocate(_Korl_Memory_Allocat
     }
     else
         availablePageIndex = _korl_memory_allocator_general_occupyAvailablePages(allocator, allocationPages);
-    if(availablePageIndex >= allocator->allocationPages)
+    if(   availablePageIndex                   >= allocator->allocationPages 
+       || availablePageIndex + allocationPages >= allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
     {
         korl_log(WARNING, "occupyAvailablePages failed!  (allocator may require defragmentation, or may have run out of space)");
+        if(availablePageIndex + allocationPages >= allocator->allocationPages)
+            _korl_memory_allocator_general_setPageFlags(allocator, availablePageIndex, allocationPages, false);//required only because of KORL-ISSUE-000-000-088
         goto guardAllocator_returnResult;
     }
     /* now that we have a set of pages which we can safely assume are unused, we 
