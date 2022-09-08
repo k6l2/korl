@@ -507,27 +507,43 @@ korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceM
 }
 korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_DeviceMemory_Allocator* allocator)
 {
-    korl_assert(!"@TODO: not implemented");
-}
-#if 0///@TODO: delete/recycle
-korl_internal void _korl_vulkan_deviceMemoryLinear_logReport(_Korl_Vulkan_DeviceMemoryLinear*const deviceMemoryLinear)
-{
-    korl_log_noMeta(INFO, "╔════ 🖥 GPU Memory Report ════════════════════════════════╗");
-    korl_log_noMeta(INFO, "║ bytes used=%llu / %llu", deviceMemoryLinear->bytesAllocated, deviceMemoryLinear->byteSize);
-    korl_log_noMeta(INFO, "║ --- Allocations ---");
-    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(deviceMemoryLinear->allocations); a++)
+    VkDeviceSize occupiedBytes = 0;
+    for(u$ a = 0; a < arrlenu(allocator->stbDaArenas); a++)
     {
-        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(deviceMemoryLinear->allocations[a]);
-        const wchar_t* typeRawString;
-        switch(allocation->type)
+        _Korl_Vulkan_DeviceMemory_Arena*const arena = &(allocator->stbDaArenas[a]);
+        for(u$ aa = 0; aa < arrlenu(arena->stbDaAllocations); aa++)
         {
-        case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER: typeRawString = L"VERTEX_BUFFER"; break;
-        case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE:       typeRawString = L"TEXTURE";       break;
-        case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE_BUFFER:  typeRawString = L"IMAGE_BUFFER";  break;
-        default:                                                      typeRawString = NULL;             break;
+            _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(arena->stbDaAllocations[aa]);
+            if(allocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+                occupiedBytes += allocation->byteSize;
         }
-        korl_log_noMeta(INFO, "║ [%u] type=%ws | bytes=%llu | offset=%llu", a, typeRawString, allocation->byteSize, allocation->byteOffset);
+    }
+    korl_log_noMeta(INFO, "╔════ 🖥 GPU Memory Report ════════════════════════════════╗");
+    korl_log_noMeta(INFO, "║ bytes used=%llu / %llu", occupiedBytes, arrlenu(allocator->stbDaArenas)*allocator->bytesPerArena);
+    for(u$ a = 0; a < arrlenu(allocator->stbDaArenas); a++)
+    {
+        korl_log_noMeta(INFO, "║ --- Arena[%llu] ---", a);
+        _Korl_Vulkan_DeviceMemory_Arena*const arena = &(allocator->stbDaArenas[a]);
+        for(u$ aa = 0; aa < arrlenu(arena->stbDaAllocations); aa++)
+        {
+            _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(arena->stbDaAllocations[aa]);
+            if(allocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+                continue;
+            const wchar_t* typeRawString;
+            switch(allocation->type)
+            {
+            case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER: typeRawString = L"VERTEX_BUFFER"; break;
+            case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE:       typeRawString = L"TEXTURE";       break;
+            case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE_BUFFER:  typeRawString = L"IMAGE_BUFFER";  break;
+            default:                                                      typeRawString = NULL;             break;
+            }
+            korl_log_noMeta(INFO, "║ %ws [0x%016X ~ 0x%016X](%llu bytes) \"%ws\" %ws:%i", 
+                            a == arrlenu(arena->stbDaAllocations) - 1 ? L"└" : L"├", 
+                            allocation->byteOffset, allocation->byteOffset + allocation->byteSize, 
+                            allocation->byteSize, 
+                            typeRawString, 
+                            allocation->file, allocation->line);
+        }
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ═════════════════════════════╝");
 }
-#endif

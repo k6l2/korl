@@ -442,17 +442,14 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
     _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
     surfaceContext->depthStencilImageBuffer = 0;
     vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
-#if 0///@TODO: delete/recycle
-    vkFreeCommandBuffers(context->device, context->commandPoolGraphics, 
-                         surfaceContext->swapChainImagesSize, 
-                         surfaceContext->swapChainCommandBuffers);
-#endif
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         vkDestroyFramebuffer(context->device, surfaceContext->swapChainImageContexts[i].frameBuffer, context->allocator);
         vkDestroyImageView  (context->device, surfaceContext->swapChainImageContexts[i].imageView  , context->allocator);
+        vkFreeCommandBuffers(context->device, surfaceContext->swapChainImageContexts[i].commandPool, 1, &surfaceContext->swapChainImageContexts[i].commandBufferGraphics);
         vkDestroyCommandPool(context->device, surfaceContext->swapChainImageContexts[i].commandPool, context->allocator);
     }
+    korl_memory_zero(surfaceContext->swapChainImageContexts, sizeof(surfaceContext->swapChainImageContexts));
     vkDestroySwapchainKHR(context->device, surfaceContext->swapChain, context->allocator);
 }
 #if 0///@TODO: delete/recycle
@@ -1877,6 +1874,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
     context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
 #endif
+    _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryHostVisible);
+    _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryRenderResources);
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {
