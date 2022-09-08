@@ -8,6 +8,7 @@
 #include "korl-assetCache.h"
 #include "korl-vulkan-common.h"
 #include "korl-stb-image.h"
+#include "korl-stb-ds.h"
 #include "korl-time.h"
 #if defined(KORL_PLATFORM_WINDOWS)
 #include <vulkan/vulkan_win32.h>
@@ -304,12 +305,11 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     // surfaceContext->hasStencilComponent = formatDepthBuffer == VK_FORMAT_D32_SFLOAT_S8_UINT
     //                                    || formatDepthBuffer == VK_FORMAT_D24_UNORM_S8_UINT;
     // now that we have selected a format, we can create the depth buffer image //
-    surfaceContext->allocationDepthStencilImageBuffer = 
-        _korl_vulkan_deviceMemoryLinear_allocateImageBuffer(&context->deviceMemoryLinearRenderResources, 
-                                                            surfaceContext->swapChainImageExtent.width, 
-                                                            surfaceContext->swapChainImageExtent.height, 
-                                                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
-                                                            VK_IMAGE_ASPECT_DEPTH_BIT, formatDepthBuffer, depthBufferTiling);
+    surfaceContext->depthStencilImageBuffer = _korl_vulkan_deviceMemory_allocateImageBuffer(&surfaceContext->deviceMemoryRenderResources, 
+                                                                                            surfaceContext->swapChainImageExtent.width, 
+                                                                                            surfaceContext->swapChainImageExtent.height, 
+                                                                                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+                                                                                            VK_IMAGE_ASPECT_DEPTH_BIT, formatDepthBuffer, depthBufferTiling);
     /* ----- create render pass ----- */
     KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
     attachments[0].format         = surfaceContext->swapChainSurfaceFormat.format;
@@ -397,9 +397,11 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
             vkCreateImageView(context->device, &createInfoImageView, context->allocator, 
                               &surfaceContext->swapChainImageContexts[i].imageView));
         /* create a frame buffer for all the swap chain image views */
+        _Korl_Vulkan_DeviceMemory_Alloctation*const allocationDepthStencilImageBuffer = 
+            _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
         VkImageView frameBufferAttachments[] = 
             { surfaceContext->swapChainImageContexts[i].imageView
-            , surfaceContext->allocationDepthStencilImageBuffer->deviceObject.imageBuffer.imageView };
+            , allocationDepthStencilImageBuffer->deviceObject.imageBuffer.imageView };
         KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
         createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         createInfoFrameBuffer.renderPass      = context->renderPass;
@@ -437,12 +439,8 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
-    /* just completely wipe all device objects used as render resources, since 
-        we will likely have to recreate them all anyways if we want to create 
-        another swap chain */
-    _korl_vulkan_deviceMemoryLinear_clear(&context->deviceMemoryLinearRenderResources);
-    /* wipe all device object allocation references for safety here */
-    surfaceContext->allocationDepthStencilImageBuffer = NULL;
+    _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
+    surfaceContext->depthStencilImageBuffer = 0;
     vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
 #if 0///@TODO: delete/recycle
     vkFreeCommandBuffers(context->device, context->commandPoolGraphics, 
@@ -652,16 +650,19 @@ korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
 {
     KORL_ZERO_STACK(_Korl_Vulkan_Pipeline, pipeline);
     pipeline.primitiveTopology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pipeline.flagsOptionalVertexAttributes   = _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR;
+    pipeline.positionDimensions              = 3;
+    pipeline.positionsStride                 = pipeline.positionDimensions*sizeof(f32);
+    pipeline.colorsStride                    = 4*sizeof(u8);// default to RGBA; @TODO: should this be more well-defined somewhere, such as a Korl_Vulkan_ColorChannel datatype or something?
+    pipeline.uvsStride                       = 0;
     pipeline.useDepthTestAndWriteDepthBuffer = true;
-    pipeline.useIndexBuffer                  = true;
     pipeline.blendEnabled                    = true;
-    pipeline.opColor                         = VK_BLEND_OP_ADD;
-    pipeline.factorColorSource               = VK_BLEND_FACTOR_SRC_ALPHA;
-    pipeline.factorColorTarget               = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    pipeline.opAlpha                         = VK_BLEND_OP_ADD;
-    pipeline.factorAlphaSource               = VK_BLEND_FACTOR_ONE;
-    pipeline.factorAlphaTarget               = VK_BLEND_FACTOR_ZERO;
+    pipeline.blend                           = (Korl_Vulkan_DrawState_Blend)
+                                               {.opColor = VK_BLEND_OP_ADD
+                                               ,.factorColorSource = VK_BLEND_FACTOR_SRC_ALPHA
+                                               ,.factorColorTarget = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+                                               ,.opAlpha = VK_BLEND_OP_ADD
+                                               ,.factorAlphaSource = VK_BLEND_FACTOR_ONE
+                                               ,.factorAlphaTarget = VK_BLEND_FACTOR_ZERO};
     return pipeline;
 }
 korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
@@ -675,19 +676,19 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     KORL_ZERO_STACK_ARRAY(VkVertexInputBindingDescription, vertexInputBindings, 3);
     uint32_t vertexBindingDescriptionCount = 1;
     vertexInputBindings[0].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
-    vertexInputBindings[0].stride    = sizeof(Korl_Vulkan_Position);
+    vertexInputBindings[0].stride    = pipeline->positionsStride;
     vertexInputBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    if(pipeline->colorsStride)
     {
         vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
-        vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Color4u8);
+        vertexInputBindings[vertexBindingDescriptionCount].stride    = pipeline->colorsStride;
         vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         vertexBindingDescriptionCount++;
     }
-    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    if(pipeline->uvsStride)
     {
         vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
-        vertexInputBindings[vertexBindingDescriptionCount].stride    = sizeof(Korl_Vulkan_Uv);
+        vertexInputBindings[vertexBindingDescriptionCount].stride    = pipeline->uvsStride;
         vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         vertexBindingDescriptionCount++;
     }
@@ -697,7 +698,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     vertexAttributes[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
     vertexAttributes[0].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
     vertexAttributes[0].offset   = 0;// we're not using interleaved vertex data
-    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    if(pipeline->colorsStride)
     {
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
         vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R8G8B8A8_UNORM;
@@ -705,7 +706,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
         vertexAttributeDescriptionCount++;
     }
-    if(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    if(pipeline->uvsStride)
     {
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
         vertexAttributes[vertexAttributeDescriptionCount].format   = VK_FORMAT_R32G32_SFLOAT;
@@ -751,12 +752,12 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     KORL_ZERO_STACK(VkPipelineColorBlendAttachmentState, colorBlendAttachment);
     colorBlendAttachment.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable         = pipeline->blendEnabled;
-    colorBlendAttachment.srcColorBlendFactor = pipeline->factorColorSource;
-    colorBlendAttachment.dstColorBlendFactor = pipeline->factorColorTarget;
-    colorBlendAttachment.colorBlendOp        = pipeline->opColor;
-    colorBlendAttachment.srcAlphaBlendFactor = pipeline->factorAlphaSource;
-    colorBlendAttachment.dstAlphaBlendFactor = pipeline->factorAlphaTarget;
-    colorBlendAttachment.alphaBlendOp        = pipeline->opAlpha;
+    colorBlendAttachment.srcColorBlendFactor = pipeline->blend.factorColorSource;
+    colorBlendAttachment.dstColorBlendFactor = pipeline->blend.factorColorTarget;
+    colorBlendAttachment.colorBlendOp        = pipeline->blend.opColor;
+    colorBlendAttachment.srcAlphaBlendFactor = pipeline->blend.factorAlphaSource;
+    colorBlendAttachment.dstAlphaBlendFactor = pipeline->blend.factorAlphaTarget;
+    colorBlendAttachment.alphaBlendOp        = pipeline->blend.opAlpha;
     KORL_ZERO_STACK(VkPipelineColorBlendStateCreateInfo, createInfoColorBlend);
     createInfoColorBlend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     createInfoColorBlend.attachmentCount = 1;
@@ -772,26 +773,27 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    if(     pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
-       && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
+    /// @TODO: choose a different shader based on how many position dimensions this pipeline uses
+    if(    pipeline->colorsStride
+       && !pipeline->uvsStride)
         createInfoShaderStages[0].module = context->shaderBatchVertColor;
-    else if(     pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
-            && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
+    else if(    pipeline->uvsStride
+            && !pipeline->colorsStride)
         createInfoShaderStages[0].module = context->shaderBatchVertTexture;
-    else if(   pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
-            && pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR)
+    else if(   pipeline->uvsStride
+            && pipeline->colorsStride)
         createInfoShaderStages[0].module = context->shaderBatchVertColorTexture;
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    if(      pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
-        && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV))
+    if(     pipeline->colorsStride
+        && !pipeline->uvsStride)
         createInfoShaderStages[1].module = context->shaderBatchFragColor;
-    else if(     pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV
-            && !(pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR))
+    else if(    pipeline->uvsStride
+            && !pipeline->colorsStride)
         createInfoShaderStages[1].module = context->shaderBatchFragTexture;
-    else if(   pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR
-            && pipeline->flagsOptionalVertexAttributes & _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV)
+    else if(   pipeline->colorsStride
+            && pipeline->uvsStride)
         createInfoShaderStages[1].module = context->shaderBatchFragColorTexture;
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
@@ -926,7 +928,6 @@ korl_internal void _korl_vulkan_flushBatchPipeline(void)
    surfaceContext->batchState.pipelineVertexIndexCount = 0;
 }
 #endif
-#if 0///@TODO: delete/recycle
 /**
  * Set the current pipeline render state to match the provided \c pipeline 
  * parameter.  If a pipeline which matches the meta data of \c pipeline doesn't 
@@ -942,10 +943,12 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+#if 0///@TODO: delete/recycle
     bool pipelineAboutToChange = false;
+#endif
     u32 newPipelineIndex = korl_arraySize(context->pipelines);
-    if(surfaceContext->batchState.currentPipeline < context->pipelinesCount
-        && _korl_vulkan_pipeline_isMetaDataSame(pipeline, context->pipelines[surfaceContext->batchState.currentPipeline]))
+    if(   surfaceContext->batchState.currentPipeline < context->pipelinesCount
+       && _korl_vulkan_pipeline_isMetaDataSame(pipeline, context->pipelines[surfaceContext->batchState.currentPipeline]))
     {
         // do nothing; just leave the current pipeline selected
         newPipelineIndex = surfaceContext->batchState.currentPipeline;
@@ -955,17 +958,20 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
         /* search for a pipeline that can handle the data we're trying to batch */
         u32 pipelineIndex = _korl_vulkan_addPipeline(pipeline);
         korl_assert(pipelineIndex < context->pipelinesCount);
+#if 0///@TODO: delete/recycle
         pipelineAboutToChange = (pipelineIndex != surfaceContext->batchState.currentPipeline);
+#endif
         newPipelineIndex      = pipelineIndex;
     }
+#if 0///@TODO: delete/recycle
     /* flush the pipeline batch if we're about to change pipelines */
     if(pipelineAboutToChange && surfaceContext->batchState.pipelineVertexCount > 0)
         _korl_vulkan_flushBatchPipeline();
+#endif
     /* then, actually change to a new pipeline for the next batch */
     korl_assert(newPipelineIndex < context->pipelinesCount);//sanity check!
     surfaceContext->batchState.currentPipeline = newPipelineIndex;
 }
-#endif
 #if 0///@TODO: delete/recycle
 /**
  * Calling this ensures that the current descriptor set index of the surface 
@@ -1510,11 +1516,22 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
 #endif
     /* create the device memory allocator we will require to store certain swap 
         chain dependent resources, such as the depth buffer, stencil buffer, etc. */
-    _korl_vulkan_deviceMemoryLinear_create(&context->deviceMemoryLinearRenderResources, 
-                                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-                                           /*bufferUsageFlags*/0, 
-                                           /*imageUsageFlags*/VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
-                                           korl_math_megabytes(64));
+    surfaceContext->deviceMemoryRenderResources = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle, 
+                                                                                             _KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL, 
+                                                                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+                                                                                             /*bufferUsageFlags*/0, 
+                                                                                             /*imageUsageFlags*/VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+                                                                                             korl_math_megabytes(64));
+    /* create device memory allocator used to store host-visible data, such as 
+        staging buffers for vertex attributes, textures, etc... */
+    surfaceContext->deviceMemoryHostVisible = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle, 
+                                                                                         _KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL, 
+                                                                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                                                                                         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                                                                                         /*image usage flags*/0, 
+                                                                                         korl_math_megabytes(8));
+    /* initialize staging buffers collection */
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);
     /* now that the device is created we can create the swap chain 
         - this also requires the command pool since we need to create the 
           graphics command buffers for each element of the swap chain
@@ -1888,13 +1905,16 @@ korl_internal void korl_vulkan_destroySurface(void)
         }
     }
 #endif
-    korl_memory_zero(surfaceContext, sizeof(*surfaceContext));
+    _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryHostVisible);
+    _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryRenderResources);
+    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers);
+    korl_memory_zero(surfaceContext, sizeof(*surfaceContext));// NOTE: Keep this as the last operation in the surface destructor!
     /* destroy the device-specific resources */
 #if 0///@TODO: delete/recycle
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssetsStaging);
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssets);
-#endif
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearRenderResources);
+#endif
     for(size_t p = 0; p < context->pipelinesCount; p++)
         vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
     vkDestroyDescriptorSetLayout(context->device, context->batchDescriptorSetLayout, context->allocator);
@@ -2249,6 +2269,53 @@ korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
     surfaceContext->deferredResize = true;
     surfaceContext->deferredResizeX = sizeX;
     surfaceContext->deferredResizeY = sizeY;
+}
+korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* basic parameter sanity checks */
+    if(vertexData->indexCount)
+        korl_assert(vertexData->indices);
+    korl_assert(vertexData->vertexCount);
+    korl_assert(vertexData->positionDimensions == 2 || vertexData->positionDimensions == 3);
+    korl_assert(vertexData->positions);
+    korl_assert(vertexData->positionsStride);
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    if(surfaceContext->frameStackCounter != 1)
+        return;
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* if there is no pipeline selected, create a default pipeline meta data, 
+        modify it to have the desired render state for this call, then set the 
+        current pipeline meta data to this value */
+    _Korl_Vulkan_Pipeline pipeline;
+    if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
+        pipeline = _korl_vulkan_pipeline_default();
+    else/* otherwise, we want to just modify the current selected pipeline state 
+            to have the desired render state for this call */
+        pipeline = context->pipelines[surfaceContext->batchState.currentPipeline];
+    switch(vertexData->primitiveType)
+    {
+    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{pipeline.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
+    case KORL_VULKAN_PRIMITIVETYPE_LINES:    {pipeline.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;}
+    }
+    pipeline.positionDimensions = vertexData->positionDimensions;
+    pipeline.positionsStride    = vertexData->positionsStride;
+    pipeline.colorsStride       = vertexData->colorsStride;
+    pipeline.uvsStride          = vertexData->uvsStride;
+    _korl_vulkan_setPipelineMetaData(pipeline);
+    /* stage the vertex index/attribute data */
+    // u8* vertexStagingPool = _korl_vulkan_getVertexStagingPool(vertexData);
+    ///@TODO: 
+    /* compose the memory transfer commands to copy the staging memory to device-local memory */
+    ///@TODO: 
+    /* compose the draw commands */
+    ///@TODO: 
 }
 #if 0///@TODO: delete/recycle
 korl_internal void korl_vulkan_batch(Korl_Vulkan_PrimitiveType primitiveType, 

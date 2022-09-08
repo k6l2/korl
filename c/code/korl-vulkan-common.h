@@ -8,10 +8,7 @@
 #include "korl-math.h"
 #include "korl-vulkan.h"
 #include "korl-stringPool.h"
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_STAGING 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTEX_INDICES_DEVICE 10*1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_STAGING 1024
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_VERTICES_DEVICE 10*1024
+#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -39,24 +36,15 @@ typedef struct _Korl_Vulkan_Pipeline
     VkPipeline pipeline;
     /* ---------------------------------------------------------------------- */
     /* pipeline meta data which should be able to fully describe the pipeline 
-        itself */
+        itself: */
     VkPrimitiveTopology primitiveTopology;
-    enum _Korl_Vulkan_Pipeline_OptionalVertexAttributeFlags
-    {
-        _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_COLOR = 1 << 0, 
-        _KORL_VULKAN_PIPELINE_OPTIONALVERTEXATTRIBUTE_FLAG_UV    = 1 << 1
-    } flagsOptionalVertexAttributes;
+    u8 positionDimensions;// only acceptable values: {2, 3}
+    u32 positionsStride;
+    u32 uvsStride;   // 0 => absence of this attribute
+    u32 colorsStride;// 0 => absence of this attribute
     bool useDepthTestAndWriteDepthBuffer;
     bool blendEnabled;
-    VkBlendOp opColor;
-    VkBlendFactor factorColorSource;
-    VkBlendFactor factorColorTarget;
-    VkBlendOp opAlpha;
-    VkBlendFactor factorAlphaSource;
-    VkBlendFactor factorAlphaTarget;
-    /* ---------------------------------------------------------------------- */
-    /* render state that has nothing to do with the pipeline itself */
-    bool useIndexBuffer;
+    Korl_Vulkan_DrawState_Blend blend;
 } _Korl_Vulkan_Pipeline;
 #if 0///@TODO: delete/recycle
 typedef struct _Korl_Vulkan_DeviceAsset
@@ -144,9 +132,6 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssetsStaging;
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssets;
 #endif
-    /** this allocator will maintain device-local objects required during the 
-     * render process, such as depth buffers, etc. */
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearRenderResources;///@TODO: replace this with a better allocator once that code is in place; I just don't want to rip out the depth buffer code from the pipelines since it's going to go back in eventually anyways
 #if 0///@TODO: delete/recycle
     /* database for assets that exist on the device 
         (textures, shaders, buffers, etc) */
@@ -267,10 +252,25 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     VkSampler   textureSampler;
 #endif
 } _Korl_Vulkan_SurfaceContextBatchState;///@TODO: rename to "draw state"?
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 #if 0///@TODO: delete/recycle
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS 1024
 #endif
+/**
+ * Each buffer acts as a linear allocator
+ */
+typedef struct _Korl_Vulkan_Buffer
+{
+    _Korl_Vulkan_DeviceMemory_AllocationHandle allocation;
+    // total bytes occupied by this buffer should be contained within the allocation
+    VkDeviceSize bytesUsed;
+    /** Care must be taken with this value so that it doesn't overflow.  By 
+     * incrementing this value each frame, we can know how many frames ago this 
+     * buffer was used, and we can use this value to determine whether or not 
+     * the GPU can possibly be still using the data contained within it, since 
+     * the swap chain size is a small finite number, and WIP frames are 
+     * processed in order. */
+    u8 framesSinceLastUsed;
+} _Korl_Vulkan_Buffer;
 /**
  * It makes sense for this data structure to be separate from the 
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
@@ -321,7 +321,13 @@ typedef struct _Korl_Vulkan_SurfaceContext
 #if 0///@TODO: delete/recycle
     bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
 #endif
-    _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer;
+    /** this allocator will maintain device-local objects required during the 
+     * render process, such as depth buffers, etc. */
+    _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryRenderResources;
+    _Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;
+    /** Used for allocation of host-visible staging buffers */
+    _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryHostVisible;
+    _Korl_Vulkan_Buffer* stbDaStagingBuffers;
 #if 0///@TODO: delete/recycle
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryHostVisible;// used for batch buffers & descriptor sets
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryDeviceLocal;// used for batch buffers & descriptor sets

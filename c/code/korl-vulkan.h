@@ -35,18 +35,17 @@
 #include "korl-interface-platform.h"
 typedef struct Korl_Vulkan_DrawVertexData
 {
-    Korl_Vulkan_PrimitiveType      primitiveType;    // required
-    Korl_Vulkan_VertexIndex        indexCount;       // optional
-    const Korl_Vulkan_VertexIndex* indices;          // optional
-    u32                            vertexCount;      // required
-    const Korl_Math_V2f32*         positions2d;      // required
-    u32                            positions2dStride;// required
-    const f32*                     positionsZ;       // optional
-    u32                            positionsZStride; // optional
-    const Korl_Math_V2f32*         uvs;              // optional
-    u32                            uvsStride;        // optional
-    const Korl_Vulkan_Color4u8*    colors;           // optional
-    u32                            colorsStride;     // optional
+    Korl_Vulkan_PrimitiveType      primitiveType;     // required
+    Korl_Vulkan_VertexIndex        indexCount;        // optional
+    const Korl_Vulkan_VertexIndex* indices;           // optional
+    u32                            vertexCount;       // required
+    u8                             positionDimensions;// required; only acceptable values: {2, 3}
+    const f32*                     positions;         // required
+    u32                            positionsStride;   // required
+    const Korl_Math_V2f32*         uvs;               // optional
+    u32                            uvsStride;         // optional
+    const Korl_Vulkan_Color4u8*    colors;            // optional
+    u32                            colorsStride;      // optional
 } Korl_Vulkan_DrawVertexData;
 typedef struct Korl_Vulkan_DrawState_Blend
 {

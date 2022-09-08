@@ -343,10 +343,10 @@ typedef enum Korl_Memory_AllocatorFlags
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_PLATFORM_STB_DS_REALLOCATE(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 #define KORL_PLATFORM_STB_DS_FREE(name)       void  name(void* context, void* allocation)
-typedef u32             Korl_Vulkan_VertexIndex;///@TODO: change this back to u16 after I am done adding console rendering support?
-typedef Korl_Math_V3f32 Korl_Vulkan_Position;
-typedef Korl_Math_V2f32 Korl_Vulkan_Uv;
-typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;
+typedef u16             Korl_Vulkan_VertexIndex;
+typedef Korl_Math_V3f32 Korl_Vulkan_Position;///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
+typedef Korl_Math_V2f32 Korl_Vulkan_Uv;      ///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
+typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
 typedef u16             Korl_Vulkan_TextureHandle;/** A value of \c 0 is designated as an INVALID texture handle */
 typedef enum Korl_Vulkan_PrimitiveType
 {
