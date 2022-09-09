@@ -662,13 +662,13 @@ korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
                                                ,.factorAlphaTarget = VK_BLEND_FACTOR_ZERO};
     return pipeline;
 }
-korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
+korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    korl_assert(pipelineIndex < context->pipelinesCount);
-    korl_assert(context->pipelines[pipelineIndex].pipeline == VK_NULL_HANDLE);
-    _Korl_Vulkan_Pipeline*const pipeline = &context->pipelines[pipelineIndex];
+    korl_assert(pipelineIndex < arrlenu(context->stbDaPipelines));
+    korl_assert(context->stbDaPipelines[pipelineIndex].pipeline == VK_NULL_HANDLE);
+    _Korl_Vulkan_Pipeline*const pipeline = &context->stbDaPipelines[pipelineIndex];
     /* set fixed functions & other pipeline parameters */
     KORL_ZERO_STACK_ARRAY(VkVertexInputBindingDescription, vertexInputBindings, 3);
     uint32_t vertexBindingDescriptionCount = 1;
@@ -830,28 +830,25 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
  * \return The index of the pipeline in \c context->pipelines , or 
  *     \c context->pipelineCount if we failed to create a pipeline.
  */
-korl_internal u32 _korl_vulkan_addPipeline(_Korl_Vulkan_Pipeline pipeline)
+korl_internal u$ _korl_vulkan_addPipeline(_Korl_Vulkan_Pipeline pipeline)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    if(context->pipelinesCount >= korl_arraySize(context->pipelines))
-        return context->pipelinesCount;
     /* iterate over all pipelines and ensure that there is, in fact, no other 
         pipeline with the same meta data */
-    u32 pipelineIndex = context->pipelinesCount;
-    for(u32 p = 0; p < context->pipelinesCount; p++)
-        if(_korl_vulkan_pipeline_isMetaDataSame(pipeline, context->pipelines[p]))
+    u$ pipelineIndex = arrlenu(context->stbDaPipelines);
+    for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
+        if(_korl_vulkan_pipeline_isMetaDataSame(pipeline, context->stbDaPipelines[p]))
         {
             pipelineIndex = p;
             break;
         }
     /* if no pipeline found, add a new pipeline to the list */
-    if(pipelineIndex >= context->pipelinesCount)
+    if(pipelineIndex >= arrlenu(context->stbDaPipelines))
     {
-        context->pipelines[context->pipelinesCount] = pipeline;
-        context->pipelines[context->pipelinesCount].pipeline = VK_NULL_HANDLE;
-        context->pipelinesCount++;
-        _korl_vulkan_createPipeline(context->pipelinesCount - 1);
+        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, pipeline);
+        arrlast(context->stbDaPipelines).pipeline = VK_NULL_HANDLE;
+        _korl_vulkan_createPipeline(arrlenu(context->stbDaPipelines) - 1);
     }
     return pipelineIndex;
 }
@@ -951,9 +948,9 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
 #if 0///@TODO: delete/recycle
     bool pipelineAboutToChange = false;
 #endif
-    u32 newPipelineIndex = korl_arraySize(context->pipelines);
-    if(   surfaceContext->batchState.currentPipeline < context->pipelinesCount
-       && _korl_vulkan_pipeline_isMetaDataSame(pipeline, context->pipelines[surfaceContext->batchState.currentPipeline]))
+    u$ newPipelineIndex = arrlenu(context->stbDaPipelines);
+    if(   surfaceContext->batchState.currentPipeline < arrlenu(context->stbDaPipelines)
+       && _korl_vulkan_pipeline_isMetaDataSame(pipeline, context->stbDaPipelines[surfaceContext->batchState.currentPipeline]))
     {
         // do nothing; just leave the current pipeline selected
         newPipelineIndex = surfaceContext->batchState.currentPipeline;
@@ -961,8 +958,8 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
     else
     {
         /* search for a pipeline that can handle the data we're trying to batch */
-        u32 pipelineIndex = _korl_vulkan_addPipeline(pipeline);
-        korl_assert(pipelineIndex < context->pipelinesCount);
+        u$ pipelineIndex = _korl_vulkan_addPipeline(pipeline);
+        korl_assert(pipelineIndex < arrlenu(context->stbDaPipelines));
 #if 0///@TODO: delete/recycle
         pipelineAboutToChange = (pipelineIndex != surfaceContext->batchState.currentPipeline);
 #endif
@@ -974,7 +971,7 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
         _korl_vulkan_flushBatchPipeline();
 #endif
     /* then, actually change to a new pipeline for the next batch */
-    korl_assert(newPipelineIndex < context->pipelinesCount);//sanity check!
+    korl_assert(newPipelineIndex < arrlenu(context->stbDaPipelines));//sanity check!
     surfaceContext->batchState.currentPipeline = newPipelineIndex;
 }
 #if 0///@TODO: delete/recycle
@@ -1974,6 +1971,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
 #endif
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryHostVisible);
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryRenderResources);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, 128);
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {
@@ -2014,8 +2012,9 @@ korl_internal void korl_vulkan_destroySurface(void)
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearAssets);
     _korl_vulkan_deviceMemoryLinear_destroy(&context->deviceMemoryLinearRenderResources);
 #endif
-    for(size_t p = 0; p < context->pipelinesCount; p++)
-        vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
+    for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
+        vkDestroyPipeline(context->device, context->stbDaPipelines[p].pipeline, context->allocator);
+    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines);
     vkDestroyDescriptorSetLayout(context->device, context->batchDescriptorSetLayout, context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderBatchVertColor, context->allocator);
@@ -2111,12 +2110,11 @@ korl_internal void korl_vulkan_frameBegin(void)
                                      surfaceContext->deferredResizeY, 
                                      &deviceSurfaceMetaData);
         /* re-create pipelines */
-        for(u32 p = 0; p < context->pipelinesCount; p++)
+        for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
         {
-            if(context->pipelines[p].pipeline == VK_NULL_HANDLE)
-                continue;
-            vkDestroyPipeline(context->device, context->pipelines[p].pipeline, context->allocator);
-            context->pipelines[p].pipeline = VK_NULL_HANDLE;
+            korl_assert(context->stbDaPipelines[p].pipeline != VK_NULL_HANDLE);
+            vkDestroyPipeline(context->device, context->stbDaPipelines[p].pipeline, context->allocator);
+            context->stbDaPipelines[p].pipeline = VK_NULL_HANDLE;
             _korl_vulkan_createPipeline(p);
         }
         //KORL-ISSUE-000-000-025: re-record command buffers?...
@@ -2408,11 +2406,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         modify it to have the desired render state for this call, then set the 
         current pipeline meta data to this value */
     _Korl_Vulkan_Pipeline pipeline;
-    if(surfaceContext->batchState.currentPipeline >= context->pipelinesCount)
+    if(surfaceContext->batchState.currentPipeline >= arrlenu(context->stbDaPipelines))
         pipeline = _korl_vulkan_pipeline_default();
     else/* otherwise, we want to just modify the current selected pipeline state 
             to have the desired render state for this call */
-        pipeline = context->pipelines[surfaceContext->batchState.currentPipeline];
+        pipeline = context->stbDaPipelines[surfaceContext->batchState.currentPipeline];
     switch(vertexData->primitiveType)
     {
     case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{pipeline.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
@@ -2471,11 +2469,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     }
     korl_time_probeStop(draw_stage_data);
     /* compose the draw commands */
-    korl_assert(surfaceContext->batchState.currentPipeline < context->pipelinesCount && context->pipelinesCount > 0);//try to make sure we have selected a valid pipeline before going further
+    korl_assert(surfaceContext->batchState.currentPipeline < arrlenu(context->stbDaPipelines) && arrlenu(context->stbDaPipelines) > 0);//try to make sure we have selected a valid pipeline before going further
     korl_time_probeStart(draw_compose_gfx_commands);
     vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
                      ,VK_PIPELINE_BIND_POINT_GRAPHICS
-                     ,context->pipelines[surfaceContext->batchState.currentPipeline].pipeline);
+                     ,context->stbDaPipelines[surfaceContext->batchState.currentPipeline].pipeline);
     VkBuffer batchVertexBuffers[] = 
         { bufferStaging
         , bufferStaging

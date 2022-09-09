@@ -14,7 +14,7 @@
 [x] KORL-ISSUE-000-000-013: add blend equations
 [ ] KORL-ISSUE-000-000-014: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
 [ ] KORL-ISSUE-000-000-015: store a collection of shader modules which can be referenced by external API, and store built-in shaders in known positions
-[ ] KORL-ISSUE-000-000-016: robustness: use KORL_MEMORY_POOL_* API, or something similar
+[x] KORL-ISSUE-000-000-016: robustness: use KORL_MEMORY_POOL_* API, or something similar
 [ ] KORL-ISSUE-000-000-017: do we REALLY not need device-local memory for this?  I don't trust the tutorial writer(s) about this.  Maybe this can be probed at some point.
 [ ] KORL-ISSUE-000-000-018: I'm not actually making use of this state anywhere at the moment, so this is currently useless.
 [ ] KORL-ISSUE-000-000-019: Vulkan; HACK: this is a really stupid way of making sure the allocator can handle depth image buffers.  Instead of doing it this way, we should have some way of iterating over all possible format combinations which could potentially be used with this allocator and create a dummy image for each combination.  If we don't remove this hack, we will always be limited to just one type of image buffer per allocator!

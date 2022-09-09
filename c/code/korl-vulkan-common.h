@@ -117,9 +117,7 @@ typedef struct _Korl_Vulkan_Context
     VkShaderModule shaderBatchFragTexture;
     VkShaderModule shaderVertex2d;
     VkShaderModule shaderFragmentColor;
-    //KORL-ISSUE-000-000-016: robustness: use KORL_MEMORY_POOL_* API, or something similar
-    u32 pipelinesCount;
-    _Korl_Vulkan_Pipeline pipelines[1024];
+    _Korl_Vulkan_Pipeline* stbDaPipelines;
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
     VkPipelineLayout pipelineLayout;
     /** the layout for the descriptor data used in batch rendering which is 
@@ -229,7 +227,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
      * If this value is equal to \c korl_arraySize(context->pipelines) , that 
      * means there is no valid render state. 
      */
-    u32  currentPipeline;
+    u$   currentPipeline;
 #if 0///@TODO: delete/recycle
     u32  vertexIndexCountStaging;
     u32  vertexIndexCountDevice;
