@@ -512,13 +512,30 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
         korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize(); korl_time_probeStop(vulkan_get_swapchain_size);
         korl_time_probeStart(game_update);
-#if 1///@TODO: test code for new vulkan implementation; delete later
+#if 0///@TODO: test code for new vulkan implementation; delete later
         // draw a simple triangle //
         {
             Korl_Math_V2f32 positions[] = {{ 0.f ,  0.5f}
                                           ,{ 0.5f, -0.5f}
                                           ,{-0.5f, -0.5f}};
             KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
+            vertexData.vertexCount        = korl_arraySize(positions);
+            vertexData.positionDimensions = 2;
+            vertexData.positionsStride    = sizeof(Korl_Math_V2f32);
+            vertexData.positions          = KORL_C_CAST(f32*, positions);
+            korl_vulkan_draw(&vertexData);
+        }
+#else
+        // draw a quad //
+        {
+            Korl_Vulkan_VertexIndex indices[] = {0, 1, 2, 2, 3, 0};
+            Korl_Math_V2f32 positions[] = {{-0.5f, -0.5f}
+                                          ,{-0.5f,  0.5f}
+                                          ,{ 0.5f,  0.5f}
+                                          ,{ 0.5f, -0.5f}};
+            KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
+            vertexData.indexCount         = korl_arraySize(indices);
+            vertexData.indices            = indices;
             vertexData.vertexCount        = korl_arraySize(positions);
             vertexData.positionDimensions = 2;
             vertexData.positionsStride    = sizeof(Korl_Math_V2f32);
