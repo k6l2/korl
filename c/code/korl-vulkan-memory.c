@@ -5,6 +5,7 @@
 typedef struct _Korl_Vulkan_DeviceMemory_Arena
 {
     VkDeviceMemory deviceMemory;
+    void* hostVisibleMemory;// only used if the Arena uses VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     VkDeviceSize byteSize;
     _Korl_Vulkan_DeviceMemory_Alloctation* stbDaAllocations;
     u16* stbDaUnusedIds;
@@ -19,7 +20,7 @@ korl_internal void _korl_vulkan_deviceMemory_arena_initialize(Korl_Memory_Alloca
 /**
  * \param memoryTypeIndex obtained via calling _korl_vulkan_findMemoryType(memoryTypeBits, memoryPropertyFlags)
  */
-korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_create(Korl_Memory_AllocatorHandle allocatorHandle, VkDeviceSize bytes, uint32_t memoryTypeIndex)
+korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_create(Korl_Memory_AllocatorHandle allocatorHandle, VkDeviceSize bytes, u32 memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlags)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     /* create the device memory used in the arena */
@@ -27,7 +28,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_cr
     KORL_ZERO_STACK(VkMemoryAllocateInfo, allocateInfo);
     allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.allocationSize  = bytes;
-    allocateInfo.memoryTypeIndex = memoryTypeIndex;
+    allocateInfo.memoryTypeIndex = _korl_vulkan_findMemoryType(memoryTypeBits, memoryPropertyFlags);
     _KORL_VULKAN_CHECK(vkAllocateMemory(context->device, &allocateInfo, context->allocator, &deviceMemory));
     /* create & initialize the arena */
     KORL_ZERO_STACK(_Korl_Vulkan_DeviceMemory_Arena, result);
@@ -38,11 +39,19 @@ korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_cr
     mcarrsetlen(KORL_C_CAST(void*, allocatorHandle), result.stbDaUnusedIds, KORL_U16_MAX - 1/*exclude 0, since 0 => invalid id*/);
     for(u32 i = 0; i < arrlenu(result.stbDaUnusedIds); i++)
         result.stbDaUnusedIds[i] = korl_checkCast_u$_to_u16(KORL_U16_MAX - i);// start distributing lowest ids first
+    /* if this Arena is host-visible, map the buffer to memory so we can 
+        access it at any time */
+    if(memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        _KORL_VULKAN_CHECK(vkMapMemory(context->device, deviceMemory
+                                      ,/*device object offset*/0, /*size*/VK_WHOLE_SIZE, /*flags; reserved*/0
+                                      ,&(result.hostVisibleMemory)));
     return result;
 }
 korl_internal void _korl_vulkan_deviceMemory_arena_destroy(Korl_Memory_AllocatorHandle allocatorHandle, _Korl_Vulkan_DeviceMemory_Arena* arena)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    if(arena->hostVisibleMemory)
+        vkUnmapMemory(context->device, arena->deviceMemory);
     vkFreeMemory(context->device, arena->deviceMemory, context->allocator);
     mcarrfree(KORL_C_CAST(void*, allocatorHandle), arena->stbDaAllocations);
     mcarrfree(KORL_C_CAST(void*, allocatorHandle), arena->stbDaUnusedIds);
@@ -103,8 +112,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked _korl_vulkan_de
  * requirements.  
  */
 korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_allocator_allocate(_Korl_Vulkan_DeviceMemory_Allocator* allocator, VkMemoryRequirements memoryRequirements
-                                                                                                 ,_Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked* out_allocationHandleUnpacked
-                                                                                                 ,VkDeviceSize* out_alignedOffset)
+                                                                                                 ,_Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked* out_allocationHandleUnpacked)
 {
     VkDeviceSize alignedOffset = 0;
     u$ newAllocationArenaId = KORL_U64_MAX;
@@ -136,8 +144,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
     {
         _Korl_Vulkan_DeviceMemory_Arena newArena = 
             _korl_vulkan_deviceMemory_arena_create(allocator->allocatorHandle, allocator->bytesPerArena
-                                                  ,_korl_vulkan_findMemoryType(allocator->memoryTypeBits
-                                                                              ,allocator->memoryPropertyFlags));
+                                                  ,allocator->memoryTypeBits , allocator->memoryPropertyFlags);
         mcarrpush(KORL_C_CAST(void*, allocator->allocatorHandle), allocator->stbDaArenas, newArena);
         _Korl_Vulkan_DeviceMemory_Arena*const arena            = &arrlast(allocator->stbDaArenas);
         _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &arrlast(arena->stbDaAllocations);
@@ -156,7 +163,6 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
     korl_assert(arrlenu(arena->stbDaUnusedIds) > 0);// if this fails, we ran out of possible allocation ids
     out_allocationHandleUnpacked->arenaIndex   = newAllocationArenaId;
     out_allocationHandleUnpacked->allocationId = arrpop(arena->stbDaUnusedIds);// here we obtain the new handle id, but we still don't yet know the Allocation struct that will match it...
-    *out_alignedOffset = alignedOffset;
     const VkDeviceSize bytesToOccupy = alignedOffset + memoryRequirements.size - allocation->byteOffset;
     if(bytesToOccupy < allocation->byteSize)
     {
@@ -175,7 +181,8 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
         /* otherwise, we can just use the entire allocation */
     }
     _Korl_Vulkan_DeviceMemory_Alloctation* resultAllocation = &(arena->stbDaAllocations[newAllocationId]);// we need to do this again because allocation is potentially now invalidated
-    resultAllocation->id = out_allocationHandleUnpacked->allocationId;// assign the new Allocation an id that matches the new handle id from earlier
+    resultAllocation->id                = out_allocationHandleUnpacked->allocationId;// assign the new Allocation an id that matches the new handle id from earlier
+    resultAllocation->byteOffsetAligned = alignedOffset;
     return resultAllocation;
 }
 korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle allocatorHandle
@@ -287,14 +294,13 @@ korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemo
     vkGetBufferMemoryRequirements(context->device, buffer, &memoryRequirements);
     /* attempt to find a device memory arena capable of binding the device 
         object to using the device object's memory requirements */
-    VkDeviceSize alignedOffset = 0;
-    _Korl_Vulkan_DeviceMemory_Alloctation*const newAllocation = _korl_vulkan_deviceMemory_allocator_allocate(allocator, memoryRequirements, &unpackedResult, &alignedOffset);
+    _Korl_Vulkan_DeviceMemory_Alloctation*const newAllocation = _korl_vulkan_deviceMemory_allocator_allocate(allocator, memoryRequirements, &unpackedResult);
     newAllocation->file = file;
     newAllocation->line = line;
     /* bind the buffer to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
-    _KORL_VULKAN_CHECK(vkBindBufferMemory(context->device, buffer, allocator->stbDaArenas[unpackedResult.arenaIndex].deviceMemory, alignedOffset));
+    _KORL_VULKAN_CHECK(vkBindBufferMemory(context->device, buffer, allocator->stbDaArenas[unpackedResult.arenaIndex].deviceMemory, newAllocation->byteOffsetAligned));
     /* record the vulkan device objects in our new allocation */
     newAllocation->type                             = _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER;
     newAllocation->deviceObject.buffer.vulkanBuffer = buffer;
@@ -331,14 +337,13 @@ korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemo
     vkGetImageMemoryRequirements(context->device, image, &memoryRequirements);
     /* attempt to find a device memory arena capable of binding the device 
         object to using the device object's memory requirements */
-    VkDeviceSize alignedOffset = 0;
-    _Korl_Vulkan_DeviceMemory_Alloctation*const newAllocation = _korl_vulkan_deviceMemory_allocator_allocate(allocator, memoryRequirements, &unpackedResult, &alignedOffset);
+    _Korl_Vulkan_DeviceMemory_Alloctation*const newAllocation = _korl_vulkan_deviceMemory_allocator_allocate(allocator, memoryRequirements, &unpackedResult);
     newAllocation->file = file;
     newAllocation->line = line;
     /* bind the image to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
-    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, image, allocator->stbDaArenas[unpackedResult.arenaIndex].deviceMemory, alignedOffset));
+    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, image, allocator->stbDaArenas[unpackedResult.arenaIndex].deviceMemory, newAllocation->byteOffsetAligned));
     /* create the image view for the image */
     KORL_ZERO_STACK(VkImageView, imageView);
     KORL_ZERO_STACK(VkImageViewCreateInfo, createInfoImageView);
@@ -416,14 +421,13 @@ korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemo
     korl_assert(memoryRequirements.size <= allocator->bytesPerArena);
     /* attempt to find a device memory arena capable of binding the device 
         object to using the device object's memory requirements */
-    VkDeviceSize alignedOffset = 0;
-    _Korl_Vulkan_DeviceMemory_Alloctation*const newAllocation = _korl_vulkan_deviceMemory_allocator_allocate(allocator, memoryRequirements, &unpackedResult, &alignedOffset);
+    _Korl_Vulkan_DeviceMemory_Alloctation*const newAllocation = _korl_vulkan_deviceMemory_allocator_allocate(allocator, memoryRequirements, &unpackedResult);
     newAllocation->file = file;
     newAllocation->line = line;
     /* bind the image to the device memory, making sure to obey the device 
         memory requirements 
         For some more details, see: https://stackoverflow.com/a/45459196 */
-    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, image, allocator->stbDaArenas[unpackedResult.arenaIndex].deviceMemory, alignedOffset));
+    _KORL_VULKAN_CHECK(vkBindImageMemory(context->device, image, allocator->stbDaArenas[unpackedResult.arenaIndex].deviceMemory, newAllocation->byteOffsetAligned));
     /* create the image view for the image; this _must_ be done after binding 
         the image to memory, otherwise it is a validation error */
     KORL_ZERO_STACK(VkImageView, imageView);
@@ -462,6 +466,17 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
         break;
     }
     return allocation;
+}
+korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle, const _Korl_Vulkan_DeviceMemory_Alloctation* allocation)
+{
+    const _Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked allocationHandleUnpacked = _korl_vulkan_deviceMemory_allocationHandle_unpack(allocationHandle);
+    korl_assert(allocationHandleUnpacked.type != _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED);
+    korl_assert(allocationHandleUnpacked.arenaIndex < arrlenu(allocator->stbDaArenas));
+    korl_assert(allocationHandleUnpacked.allocationId == allocation->id);
+    _Korl_Vulkan_DeviceMemory_Arena*const arena = &(allocator->stbDaArenas[allocationHandleUnpacked.arenaIndex]);
+    korl_assert(allocator->memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    korl_assert(arena->hostVisibleMemory);
+    return KORL_C_CAST(u8*, arena->hostVisibleMemory) + allocation->byteOffsetAligned;
 }
 korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle)
 {
@@ -543,6 +558,7 @@ korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_De
                             allocation->byteSize, 
                             typeRawString, 
                             allocation->file, allocation->line);
+            ///@TODO: log the program address space occupied by host-visible buffer memory maps
         }
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ═════════════════════════════╝");

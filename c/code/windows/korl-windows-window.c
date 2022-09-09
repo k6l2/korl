@@ -512,6 +512,20 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
         korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize(); korl_time_probeStop(vulkan_get_swapchain_size);
         korl_time_probeStart(game_update);
+#if 1///@TODO: test code for new vulkan implementation; delete later
+        // draw a simple triangle //
+        {
+            Korl_Math_V2f32 positions[] = {{ 0.f ,  0.5f}
+                                          ,{ 0.5f, -0.5f}
+                                          ,{-0.5f, -0.5f}};
+            KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
+            vertexData.vertexCount        = korl_arraySize(positions);
+            vertexData.positionDimensions = 2;
+            vertexData.positionsStride    = sizeof(Korl_Math_V2f32);
+            vertexData.positions          = KORL_C_CAST(f32*, positions);
+            korl_vulkan_draw(&vertexData);
+        }
+#endif
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;

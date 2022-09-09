@@ -73,7 +73,6 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
         struct
         {
             VkBuffer vulkanBuffer;
-            ///@TODO: store a mapped address to the entire buffer for its entire lifetime
         } buffer;
         struct
         {
@@ -88,7 +87,8 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
         } imageBuffer;
         /* @vulkan-device-allocation-type */
     } deviceObject;
-    VkDeviceSize byteOffset;
+    VkDeviceSize byteOffset;///@TODO: to reduce memory leaks in the Arena's general allocator, we should just get rid of `byteOffsetAligned` & create a new tiny UNALLOCATED allocation right before this allocation in the Arena's allocation list
+    VkDeviceSize byteOffsetAligned;// this is the _actual_ byte offset used to bind the device object to the device memory!
     VkDeviceSize byteSize;
     u32 id;// assigned by the Arena that this allocation is contained within
     const wchar_t* file;// currently, korl-vulkan should not be exposed to any dynamic code modules, so we can safely just store raw file string pointers here
@@ -118,5 +118,6 @@ korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemo
                                                                                                                 ,VkImageTiling imageTiling
                                                                                                                 ,const wchar_t* file, int line);
 korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_allocator_getAllocation(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
+korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle, const _Korl_Vulkan_DeviceMemory_Alloctation* allocation);
 korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
 korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_DeviceMemory_Allocator* allocator);

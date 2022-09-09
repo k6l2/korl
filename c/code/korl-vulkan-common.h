@@ -115,6 +115,8 @@ typedef struct _Korl_Vulkan_Context
     VkShaderModule shaderBatchFragColor;
     VkShaderModule shaderBatchFragColorTexture;
     VkShaderModule shaderBatchFragTexture;
+    VkShaderModule shaderVertex2d;
+    VkShaderModule shaderFragmentColor;
     //KORL-ISSUE-000-000-016: robustness: use KORL_MEMORY_POOL_* API, or something similar
     u32 pipelinesCount;
     _Korl_Vulkan_Pipeline pipelines[1024];

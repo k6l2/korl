@@ -770,7 +770,11 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
         VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    /// @TODO: choose a different shader based on how many position dimensions this pipeline uses
+    if(pipeline->positionDimensions == 2)
+    {
+        createInfoShaderStages[0].module = context->shaderVertex2d;
+    }
+#if 0///@TODO: recycle/delete
     if(    pipeline->colorsStride
        && !pipeline->uvsStride)
         createInfoShaderStages[0].module = context->shaderBatchVertColor;
@@ -780,9 +784,12 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     else if(   pipeline->uvsStride
             && pipeline->colorsStride)
         createInfoShaderStages[0].module = context->shaderBatchVertColorTexture;
+#endif
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    createInfoShaderStages[1].module = context->shaderFragmentColor;
+#if 0///@TODO: recycle/delete
     if(     pipeline->colorsStride
         && !pipeline->uvsStride)
         createInfoShaderStages[1].module = context->shaderBatchFragColor;
@@ -792,6 +799,7 @@ korl_internal void _korl_vulkan_createPipeline(u32 pipelineIndex)
     else if(   pipeline->colorsStride
             && pipeline->uvsStride)
         createInfoShaderStages[1].module = context->shaderBatchFragColorTexture;
+#endif
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -1178,6 +1186,79 @@ korl_internal void _korl_vulkan_selectTexture(VkImageView imageView, VkSampler s
     vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUbo, 0, NULL);
 }
 #endif
+korl_internal void* _korl_vulkan_getVertexStagingPool(const Korl_Vulkan_DrawVertexData* vertexData, VkDeviceSize* out_byteOffsetStagingBuffer, VkBuffer* out_bufferStaging)
+{
+    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    // _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    const VkDeviceSize bytesRequired = vertexData->vertexCount*vertexData->positionDimensions*sizeof(*vertexData->positions)
+                                     + (vertexData->colors  ? vertexData->vertexCount*sizeof(*vertexData->colors) : 0)
+                                     + (vertexData->uvs     ? vertexData->vertexCount*sizeof(*vertexData->uvs)    : 0)
+                                     + (vertexData->indices ? vertexData->indexCount*sizeof(*vertexData->indices) : 0);
+    /* attempt to find a staging buffer that can hold the vertexData */
+    _Korl_Vulkan_Buffer*                   validBuffer     = NULL;
+    _Korl_Vulkan_DeviceMemory_Alloctation* validAllocation = NULL;
+    for(u$ b = 0; b < arrlenu(surfaceContext->stbDaStagingBuffers); b++)
+    {
+        /// @TODO: remember what buffer index we used the last call to this function; 
+        ///        currently what will happen is that we will prefer to reset the earlier buffers more often, 
+        ///        which will cause all buffers to slowly accumulate data, 
+        ///        which I can easily imagine putting us in the sad position down the line where we will occasionally get a frame "hitch" or something caused by all our buffers resetting or something; 
+        ///        filling our staging pools in a round-robin order seems much more robust against these types of performance hitches, and regardless just seems a lot more cleaner to me...
+        _Korl_Vulkan_Buffer*const                   buffer     = &(surfaceContext->stbDaStagingBuffers[b]);
+        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryHostVisible, buffer->allocation);
+        /* if the buffer has enough room, we can just use it */
+        const VkDeviceSize bufferRemainingBytes = allocation->byteSize - buffer->bytesUsed;
+        if(bufferRemainingBytes >= bytesRequired)
+        {
+            validBuffer     = buffer;
+            validAllocation = allocation;
+            break;
+        }
+        /* otherwise, we need to see if the buffer is currently in use; if not, 
+            we can just reset the buffer and use it */
+        if(buffer->framesSinceLastUsed < surfaceContext->swapChainImagesSize)
+            continue;
+#if KORL_DEBUG
+        korl_log(VERBOSE, "resetting staging buffer [%llu]", b);
+#endif
+        buffer->bytesUsed = 0;
+        validBuffer     = buffer;
+        validAllocation = allocation;
+    }
+    /* if we could not find a staging buffer that can hold vertexData, we can 
+        just attempt to allocate a new one */
+    if(!(validBuffer && validAllocation))
+    {
+#if KORL_DEBUG
+        korl_log(VERBOSE, "allocating new staging buffer; arrlenu(surfaceContext->stbDaStagingBuffers)==%llu"
+                        , arrlenu(surfaceContext->stbDaStagingBuffers));
+#endif
+        _Korl_Vulkan_DeviceMemory_AllocationHandle newBufferAllocationHandle = _korl_vulkan_deviceMemory_allocateBuffer(&surfaceContext->deviceMemoryHostVisible
+                                                                                                                       ,korl_math_megabytes(1)
+                                                                                                                       ,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                                                                                                                        | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+                                                                                                                        | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                                                                                                                       ,VK_SHARING_MODE_EXCLUSIVE);
+        KORL_ZERO_STACK(_Korl_Vulkan_Buffer, newBuffer);
+        newBuffer.allocation = newBufferAllocationHandle;
+        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers, newBuffer);
+        validBuffer     = &arrlast(surfaceContext->stbDaStagingBuffers);
+        validAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryHostVisible, newBufferAllocationHandle);
+    }
+    /* at this point, we should have a valid buffer, and if not we are 
+        essentially "out of memory" */
+    korl_assert(validBuffer && validAllocation);
+    korl_assert(validAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
+    *out_byteOffsetStagingBuffer = validBuffer->bytesUsed;
+    *out_bufferStaging           = validAllocation->deviceObject.buffer.vulkanBuffer;
+    void*const bufferMappedAddress = _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(&surfaceContext->deviceMemoryHostVisible
+                                                                                                    ,validBuffer->allocation, validAllocation);
+    u8*const resultAddress = KORL_C_CAST(u8*, bufferMappedAddress) + validBuffer->bytesUsed;
+    validBuffer->framesSinceLastUsed = 0;
+    validBuffer->bytesUsed          += bytesRequired;
+    return resultAddress;
+}
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
 korl_internal void _korl_vulkan_createSurface(void* userData);
@@ -1513,20 +1594,23 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
 #endif
     /* create the device memory allocator we will require to store certain swap 
         chain dependent resources, such as the depth buffer, stencil buffer, etc. */
-    surfaceContext->deviceMemoryRenderResources = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle, 
-                                                                                             _KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL, 
-                                                                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-                                                                                             /*bufferUsageFlags*/0, 
-                                                                                             /*imageUsageFlags*/VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
-                                                                                             korl_math_megabytes(64));
+    surfaceContext->deviceMemoryRenderResources = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
+                                                                                            ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
+                                                                                            ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                                                                            ,/*bufferUsageFlags*/0
+                                                                                            ,/*imageUsageFlags*/VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+                                                                                            ,korl_math_megabytes(64));
     /* create device memory allocator used to store host-visible data, such as 
         staging buffers for vertex attributes, textures, etc... */
-    surfaceContext->deviceMemoryHostVisible = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle, 
-                                                                                         _KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL, 
-                                                                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-                                                                                         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-                                                                                         /*image usage flags*/0, 
-                                                                                         korl_math_megabytes(8));
+    surfaceContext->deviceMemoryHostVisible = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
+                                                                                        ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
+                                                                                        ,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
+                                                                                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT///@TODO: we could potentially get more performance here by removing HOST_COHERENT & manually calling vkFlushMappedMemoryRanges & vkInvalidateMappedMemoryRanges on bulk memory ranges; timings necessary
+                                                                                        ,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                                                                                         | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+                                                                                         | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT///@TODO: we could potentially get more performance here by using VK_BUFFER_USAGE_TRANSFER_SRC_BIT and transferring this data to device-local memory
+                                                                                        ,/*image usage flags*/0
+                                                                                        ,korl_math_megabytes(8));
     /* initialize staging buffers collection */
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);
     /* now that the device is created we can create the swap chain 
@@ -1815,12 +1899,16 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_AssetCache_AssetData assetShaderBatchFragmentColor;
     Korl_AssetCache_AssetData assetShaderBatchFragmentTexture;
     Korl_AssetCache_AssetData assetShaderBatchFragmentColorTexture;
+    Korl_AssetCache_AssetData assetShaderVertex2d;
+    Korl_AssetCache_AssetData assetShaderFragmentColor;
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexColor));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-texture.vert.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexTexture));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color-texture.vert.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexColorTexture));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color.frag.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentColor));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-texture.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentTexture));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentColorTexture));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"                 , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color.frag.spv"              , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColor));
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
     createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1854,6 +1942,16 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _KORL_VULKAN_CHECK(
         vkCreateShaderModule(context->device, &createInfoShader, context->allocator, 
                              &context->shaderBatchFragColorTexture));
+    createInfoShader.codeSize = assetShaderVertex2d.dataBytes;
+    createInfoShader.pCode    = assetShaderVertex2d.data;
+    _KORL_VULKAN_CHECK(
+        vkCreateShaderModule(context->device, &createInfoShader, context->allocator, 
+                             &context->shaderVertex2d));
+    createInfoShader.codeSize = assetShaderFragmentColor.dataBytes;
+    createInfoShader.pCode    = assetShaderFragmentColor.data;
+    _KORL_VULKAN_CHECK(
+        vkCreateShaderModule(context->device, &createInfoShader, context->allocator, 
+                             &context->shaderFragmentColor));
 #if 0///@TODO: delete/recycle
     /* create memory allocators to stage & store persistent assets, like images */
     _korl_vulkan_deviceMemoryLinear_create(
@@ -1906,6 +2004,8 @@ korl_internal void korl_vulkan_destroySurface(void)
 #endif
     _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryHostVisible);
     _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryRenderResources);
+    /* NOTE: we don't have to free individual device memory allocations in each 
+             Buffer, since the entire allocators are being destroyed above! */
     mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));// NOTE: Keep this as the last operation in the surface destructor!
     /* destroy the device-specific resources */
@@ -1924,6 +2024,8 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyShaderModule(context->device, context->shaderBatchFragColor, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderBatchFragTexture, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderBatchFragColorTexture, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderVertex2d, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderFragmentColor, context->allocator);
 #if 0///@TODO: delete/recycle
     vkDestroyCommandPool(context->device, context->commandPoolTransfer, context->allocator);
     vkDestroyCommandPool(context->device, context->commandPoolGraphics, context->allocator);
@@ -2035,6 +2137,15 @@ korl_internal void korl_vulkan_frameBegin(void)
             vkWaitForFences(context->device, 1, 
                             &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete, 
                             VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+    /* at this point, we know for certain that a frame has been processed, so we 
+        can update our memory pools to reflect this history, allowing us to 
+        reuse pools that we can deduce _must_ no longer be in use */
+    for(u$ b = 0; b < arrlenu(surfaceContext->stbDaStagingBuffers); b++)
+    {
+        _Korl_Vulkan_Buffer*const buffer = &(surfaceContext->stbDaStagingBuffers[b]);
+        if(buffer->framesSinceLastUsed < KORL_U8_MAX)
+            buffer->framesSinceLastUsed++;
+    }
     /* acquire the next image from the swap chain */
     _KORL_VULKAN_CHECK(
         vkAcquireNextImageKHR(context->device, surfaceContext->swapChain, 
@@ -2275,12 +2386,16 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* basic parameter sanity checks */
-    if(vertexData->indexCount)
-        korl_assert(vertexData->indices);
+    if(vertexData->indexCount || vertexData->indices)
+        korl_assert(vertexData->indexCount && vertexData->indices);
+    if(vertexData->colorsStride || vertexData->colors)
+        korl_assert(vertexData->colorsStride && vertexData->colors);
+    if(vertexData->uvsStride || vertexData->uvs)
+        korl_assert(vertexData->uvsStride && vertexData->uvs);
     korl_assert(vertexData->vertexCount);
     korl_assert(vertexData->positionDimensions == 2 || vertexData->positionDimensions == 3);
     korl_assert(vertexData->positions);
-    korl_assert(vertexData->positionsStride);
+    korl_assert(vertexData->positionsStride == 2*sizeof(f32) || vertexData->positionsStride == 3*sizeof(f32));
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     if(surfaceContext->frameStackCounter != 1)
@@ -2309,12 +2424,94 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     pipeline.uvsStride          = vertexData->uvsStride;
     _korl_vulkan_setPipelineMetaData(pipeline);
     /* stage the vertex index/attribute data */
-    // u8* vertexStagingPool = _korl_vulkan_getVertexStagingPool(vertexData);
-    ///@TODO: 
-    /* compose the memory transfer commands to copy the staging memory to device-local memory */
-    ///@TODO: 
+    korl_time_probeStart(draw_stage_data);
+    VkDeviceSize byteOffsetStagingBuffer = 0;
+    VkBuffer     bufferStaging           = VK_NULL_HANDLE;
+    u8* vertexStagingMemory = _korl_vulkan_getVertexStagingPool(vertexData, &byteOffsetStagingBuffer, &bufferStaging);
+    VkDeviceSize byteOffsetStagingBufferIndices   = 0
+               , byteOffsetStagingBufferPositions = 0
+               , byteOffsetStagingBufferColors    = 0
+               , byteOffsetStagingBufferUvs       = 0;
+    ///@TODO: if we allow interleaved vertex data, we can copy _everything_ to the staging buffer in a single memcopy operation!
+    if(vertexData->indices)
+    {
+        const u$ stageDataBytes = vertexData->indexCount*sizeof(*vertexData->indices);
+        // we can safely assume all vertex index data is never interleaved with anything for now:
+        korl_memory_copy(vertexStagingMemory, vertexData->indices, stageDataBytes);
+        byteOffsetStagingBufferIndices = byteOffsetStagingBuffer;
+        vertexStagingMemory     += stageDataBytes;
+        byteOffsetStagingBuffer += stageDataBytes;
+    }
+    {
+        const u$ positionSize   = vertexData->positionDimensions*sizeof(*vertexData->positions);
+        const u$ stageDataBytes = vertexData->vertexCount*positionSize;
+        korl_assert(vertexData->positionsStride == positionSize);// for now, interleaved vertex data is not supported
+        korl_memory_copy(vertexStagingMemory, vertexData->positions, stageDataBytes);
+        byteOffsetStagingBufferPositions = byteOffsetStagingBuffer;
+        vertexStagingMemory     += stageDataBytes;
+        byteOffsetStagingBuffer += stageDataBytes;
+    }
+    if(vertexData->colors)
+    {
+        const u$ stageDataBytes = vertexData->vertexCount*sizeof(*vertexData->colors);
+        korl_assert(vertexData->positionsStride == sizeof(*vertexData->colors));// for now, interleaved vertex data is not supported
+        korl_memory_copy(vertexStagingMemory, vertexData->colors, stageDataBytes);
+        byteOffsetStagingBufferColors = byteOffsetStagingBuffer;
+        vertexStagingMemory     += stageDataBytes;
+        byteOffsetStagingBuffer += stageDataBytes;
+    }
+    if(vertexData->uvs)
+    {
+        const u$ stageDataBytes = vertexData->vertexCount*sizeof(*vertexData->uvs);
+        korl_assert(vertexData->positionsStride == sizeof(*vertexData->uvs));// for now, interleaved vertex data is not supported
+        korl_memory_copy(vertexStagingMemory, vertexData->uvs, stageDataBytes);
+        byteOffsetStagingBufferUvs = byteOffsetStagingBuffer;
+        vertexStagingMemory     += stageDataBytes;
+        byteOffsetStagingBuffer += stageDataBytes;
+    }
+    korl_time_probeStop(draw_stage_data);
     /* compose the draw commands */
-    ///@TODO: 
+    korl_assert(surfaceContext->batchState.currentPipeline < context->pipelinesCount && context->pipelinesCount > 0);//try to make sure we have selected a valid pipeline before going further
+    korl_time_probeStart(draw_compose_gfx_commands);
+    vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
+                     ,VK_PIPELINE_BIND_POINT_GRAPHICS
+                     ,context->pipelines[surfaceContext->batchState.currentPipeline].pipeline);
+    VkBuffer batchVertexBuffers[] = 
+        { bufferStaging
+        , bufferStaging
+        , bufferStaging };
+    const VkDeviceSize batchVertexBufferOffsets[] = 
+        { byteOffsetStagingBufferPositions
+        , byteOffsetStagingBufferColors
+        , byteOffsetStagingBufferUvs };
+    korl_assert(korl_arraySize(batchVertexBuffers) == korl_arraySize(batchVertexBufferOffsets));
+    vkCmdBindVertexBuffers(swapChainImageContext->commandBufferGraphics
+                          ,0/*first binding*/, korl_arraySize(batchVertexBuffers)
+                          ,batchVertexBuffers, batchVertexBufferOffsets);
+#if 0///@TODO: recycle
+    //KORL-PERFORMANCE-000-000-013: speed: only bind descriptor sets when needed
+    vkCmdBindDescriptorSets(
+        surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
+        VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineLayout, 
+        0/*first set*/, 1/*set count */, 
+        &surfaceContext->batchDescriptorSets[surfaceContext->frameSwapChainImageIndex][surfaceContext->batchState.descriptorSetIndexCurrent], 
+        /*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
+#endif
+    if(vertexData->indices)
+    {
+        vkCmdBindIndexBuffer(swapChainImageContext->commandBufferGraphics
+                            ,bufferStaging, byteOffsetStagingBufferIndices
+                            ,_korl_vulkan_vertexIndexType());
+        vkCmdDrawIndexed(swapChainImageContext->commandBufferGraphics
+                        ,vertexData->indexCount
+                        ,/*instance count*/1, /*firstIndex*/0, /*vertexOffset*/0
+                        ,/*firstInstance*/0);
+    }
+    else
+        vkCmdDraw(swapChainImageContext->commandBufferGraphics
+                 ,vertexData->vertexCount
+                 ,/*instance count*/1, /*firstIndex*/0, /*firstInstance*/0);
+    korl_time_probeStop(draw_compose_gfx_commands);
 }
 #if 0///@TODO: delete/recycle
 korl_internal void korl_vulkan_batch(Korl_Vulkan_PrimitiveType primitiveType, 
