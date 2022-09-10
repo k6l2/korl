@@ -521,11 +521,11 @@ korl_internal void korl_windows_window_loop(void)
             KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
             vertexData.vertexCount        = korl_arraySize(positions);
             vertexData.positionDimensions = 2;
-            vertexData.positionsStride    = sizeof(Korl_Math_V2f32);
+            vertexData.positionsStride    = sizeof(*positions);
             vertexData.positions          = KORL_C_CAST(f32*, positions);
             korl_vulkan_draw(&vertexData);
         }
-#else
+#elif 0
         // draw a quad //
         {
             Korl_Vulkan_VertexIndex indices[] = {0, 1, 2, 2, 3, 0};
@@ -538,8 +538,27 @@ korl_internal void korl_windows_window_loop(void)
             vertexData.indices            = indices;
             vertexData.vertexCount        = korl_arraySize(positions);
             vertexData.positionDimensions = 2;
-            vertexData.positionsStride    = sizeof(Korl_Math_V2f32);
+            vertexData.positionsStride    = sizeof(*positions);
             vertexData.positions          = KORL_C_CAST(f32*, positions);
+            korl_vulkan_draw(&vertexData);
+        }
+#else
+        // draw 3D axis at the world-space origin //
+        {
+            Korl_Math_V3f32 positions[] = {{0, 0, 0},{1, 0, 0}
+                                          ,{0, 0, 0},{0, 1, 0}
+                                          ,{0, 0, 0},{0, 0, 1}};
+            Korl_Vulkan_Color4u8 colors[] = {{255,0,0,255},{255,0,0,255}
+                                            ,{0,255,0,255},{0,255,0,255}
+                                            ,{0,0,255,255},{0,0,255,255}};
+            KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
+            vertexData.primitiveType      = KORL_VULKAN_PRIMITIVETYPE_LINES;
+            vertexData.vertexCount        = korl_arraySize(positions);
+            vertexData.positionDimensions = korl_arraySize(positions->elements);
+            vertexData.positionsStride    = sizeof(*positions);
+            vertexData.positions          = KORL_C_CAST(f32*, positions);
+            vertexData.colorsStride       = sizeof(*colors);
+            vertexData.colors             = colors;
             korl_vulkan_draw(&vertexData);
         }
 #endif

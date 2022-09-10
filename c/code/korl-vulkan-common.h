@@ -116,6 +116,7 @@ typedef struct _Korl_Vulkan_Context
     VkShaderModule shaderBatchFragColorTexture;
     VkShaderModule shaderBatchFragTexture;
     VkShaderModule shaderVertex2d;
+    VkShaderModule shaderVertex3dColor;
     VkShaderModule shaderFragmentColor;
     _Korl_Vulkan_Pipeline* stbDaPipelines;
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
@@ -166,12 +167,18 @@ _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Model     ) &
 #if 0///@TODO: delete/recycle
 #define _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT 2// @async-staging-buffer-to-device-memory-transfers
 #endif
+typedef struct _Korl_Vulkan_DescriptorPool
+{
+    VkDescriptorPool vkDescriptorPool;
+    u$ setsAllocated;
+} _Korl_Vulkan_DescriptorPool;
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView   imageView;
     VkFramebuffer frameBuffer;
     VkCommandPool commandPool;// the command buffers in this pool should all be considered _transient_; the command pool will be cleared at the start of each frame
     VkCommandBuffer commandBufferGraphics;
+    _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
 #if 0///@TODO: delete/recycle
     VkSemaphore   semaphoreImageAvailable;
     VkSemaphore   semaphoreRenderDone;
@@ -224,7 +231,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     /** 
      * This is an index into the array of pipelines currently in the 
      * _Korl_Vulkan_Context. This can essentially be our batch "render state".  
-     * If this value is equal to \c korl_arraySize(context->pipelines) , that 
+     * If this value is >= \c arrlenu(context->stbDaPipelines) , that 
      * means there is no valid render state. 
      */
     u$   currentPipeline;
@@ -252,9 +259,6 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     VkSampler   textureSampler;
 #endif
 } _Korl_Vulkan_SurfaceContextBatchState;///@TODO: rename to "draw state"?
-#if 0///@TODO: delete/recycle
-#define _KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS 1024
-#endif
 /**
  * Each buffer acts as a linear allocator
  */
