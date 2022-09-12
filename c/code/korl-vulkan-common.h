@@ -42,8 +42,7 @@ typedef struct _Korl_Vulkan_Pipeline
     u32 positionsStride;
     u32 uvsStride;   // 0 => absence of this attribute
     u32 colorsStride;// 0 => absence of this attribute
-    bool useDepthTestAndWriteDepthBuffer;
-    bool blendEnabled;
+    Korl_Vulkan_DrawState_Features features;
     Korl_Vulkan_DrawState_Blend blend;
 } _Korl_Vulkan_Pipeline;
 #if 0///@TODO: delete/recycle
@@ -124,7 +123,7 @@ typedef struct _Korl_Vulkan_Context
     /** the layout for the descriptor data used in batch rendering which is 
      * shared between all KORL Vulkan Surfaces
      * (UBO, view projection, and currently texture asset) */
-    VkDescriptorSetLayout batchDescriptorSetLayout;
+    VkDescriptorSetLayout batchDescriptorSetLayout;///@TODO: rename to descriptorSetLayoutUniformTransforms
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
 #if 0///@TODO: delete/recycle
@@ -145,32 +144,26 @@ typedef struct _Korl_Vulkan_Context
     Korl_Vulkan_TextureHandle textureHandleDefaultTexture;
 #endif
 } _Korl_Vulkan_Context;
-#if 0///@TODO: delete/recycle
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
  * data alignment spec after this struct definition!  See Vulkan Specification 
  * `15.6.4. Offset and Stride Assignment` for details.
  */
-typedef struct _Korl_Vulkan_SwapChainImageBatchUbo
+typedef struct _Korl_Vulkan_SwapChainImageUniformTransforms
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
     //KORL-PERFORMANCE-000-000-009: pass model as push constant instead?  Timings required.
-    Korl_Math_M4f32 m4f32Model;
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
-} _Korl_Vulkan_SwapChainImageBatchUbo;
-/* Ensure _Korl_Vulkan_SwapChainImageBatchUbo member alignment here: */
-_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Projection) & 16) == 0);
-_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32View      ) & 16) == 0);
-_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageBatchUbo, m4f32Model     ) & 16) == 0);
-#endif
-#if 0///@TODO: delete/recycle
-#define _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT 2// @async-staging-buffer-to-device-memory-transfers
-#endif
+} _Korl_Vulkan_SwapChainImageUniformTransforms;
+/* Ensure _Korl_Vulkan_SwapChainImageUniformTransforms member alignment here: */
+_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32Projection) & 16) == 0);
+_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
 typedef struct _Korl_Vulkan_DescriptorPool
 {
     VkDescriptorPool vkDescriptorPool;
-    u$ setsAllocated;
+    u$ setsAllocatedUniformBuffer;
+    u$ setsAllocatedImageSampler;
 } _Korl_Vulkan_DescriptorPool;
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
@@ -234,7 +227,10 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
      * If this value is >= \c arrlenu(context->stbDaPipelines) , that 
      * means there is no valid render state. 
      */
-    u$   currentPipeline;
+    u$ currentPipeline;
+    _Korl_Vulkan_Pipeline pipelineConfigurationCache;
+    Korl_Math_M4f32 m4f32Projection;
+    Korl_Math_M4f32 m4f32View;
 #if 0///@TODO: delete/recycle
     u32  vertexIndexCountStaging;
     u32  vertexIndexCountDevice;

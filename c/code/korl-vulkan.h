@@ -47,6 +47,11 @@ typedef struct Korl_Vulkan_DrawVertexData
     const Korl_Vulkan_Color4u8*    colors;            // optional
     u32                            colorsStride;      // optional
 } Korl_Vulkan_DrawVertexData;
+typedef struct Korl_Vulkan_DrawState_Features
+{
+    u32 enableBlend     : 1;
+    u32 enableDepthTest : 1;
+} Korl_Vulkan_DrawState_Features;
 typedef struct Korl_Vulkan_DrawState_Blend
 {
     Korl_Vulkan_BlendOperation opColor;
@@ -56,11 +61,43 @@ typedef struct Korl_Vulkan_DrawState_Blend
     Korl_Vulkan_BlendFactor factorAlphaSource;
     Korl_Vulkan_BlendFactor factorAlphaTarget;
 } Korl_Vulkan_DrawState_Blend;
+typedef enum Korl_Vulkan_DrawState_ProjectionType
+    { KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV
+    , KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC
+    , KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT
+} Korl_Vulkan_DrawState_ProjectionType;
+typedef struct Korl_Vulkan_DrawState_Projection
+{
+    Korl_Vulkan_DrawState_ProjectionType type;
+    union
+    {
+        struct
+        {
+            f32 horizontalFovDegrees;
+            f32 clipNear;
+            f32 clipFar;
+        } fov;
+        struct
+        {
+            f32 fixedHeight;
+            f32 depth;
+            f32 originRatioX;
+            f32 originRatioY;
+        } orthographic;
+    } subType;
+} Korl_Vulkan_DrawState_Projection;
+typedef struct Korl_Vulkan_DrawState_View
+{
+    Korl_Math_V3f32 positionEye;
+    Korl_Math_V3f32 positionTarget;
+    Korl_Math_V3f32 worldUpNormal;
+} Korl_Vulkan_DrawState_View;
 typedef struct Korl_Vulkan_DrawState
 {
-    u32 enableBlend     : 1;
-    u32 enableDepthTest : 1;
-    const Korl_Vulkan_DrawState_Blend* blend;
+    const Korl_Vulkan_DrawState_Features*   features;
+    const Korl_Vulkan_DrawState_Blend*      blend;
+    const Korl_Vulkan_DrawState_Projection* projection;
+    const Korl_Vulkan_DrawState_View*       view;
 } Korl_Vulkan_DrawState;
 korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void korl_vulkan_construct(void);

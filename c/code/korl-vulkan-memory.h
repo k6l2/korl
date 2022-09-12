@@ -87,7 +87,7 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
         } imageBuffer;
         /* @vulkan-device-allocation-type */
     } deviceObject;
-    VkDeviceSize byteOffset;///@TODO: to reduce memory leaks in the Arena's general allocator, we should just get rid of `byteOffsetAligned` & create a new tiny UNALLOCATED allocation right before this allocation in the Arena's allocation list
+    VkDeviceSize byteOffset;///@TODO: to reduce memory leaks in the Arena's general allocator (& general confusion), we should just get rid of `byteOffsetAligned` & create a new tiny UNALLOCATED allocation right before this allocation in the Arena's allocation list
     VkDeviceSize byteOffsetAligned;// this is the _actual_ byte offset used to bind the device object to the device memory!
     VkDeviceSize byteSize;
     u32 id;// assigned by the Arena that this allocation is contained within

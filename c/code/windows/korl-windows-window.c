@@ -542,13 +542,24 @@ korl_internal void korl_windows_window_loop(void)
             vertexData.positions          = KORL_C_CAST(f32*, positions);
             korl_vulkan_draw(&vertexData);
         }
-#else
+#elif 1
         // draw 3D axis at the world-space origin //
         {
+            const Korl_Vulkan_DrawState_Projection projection = (Korl_Vulkan_DrawState_Projection){.type        = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV
+                                                                                                  ,.subType.fov = {.horizontalFovDegrees = 90
+                                                                                                                  ,.clipNear             = 1
+                                                                                                                  ,.clipFar              = 100}};
+            const Korl_Vulkan_DrawState_View view = (Korl_Vulkan_DrawState_View){.positionEye    = {10,10,10}
+                                                                                ,.positionTarget = KORL_MATH_V3F32_ZERO
+                                                                                ,.worldUpNormal  = KORL_MATH_V3F32_Z};
+            KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+            drawState.projection = &projection;
+            drawState.view       = &view;
+            korl_vulkan_setDrawState(&drawState);
             Korl_Math_V3f32 positions[] = {{0, 0, 0},{1, 0, 0}
                                           ,{0, 0, 0},{0, 1, 0}
                                           ,{0, 0, 0},{0, 0, 1}};
-            Korl_Vulkan_Color4u8 colors[] = {{255,0,0,255},{255,0,0,255}
+            Korl_Vulkan_Color4u8 colors[] = {{255,0,0,255},{255,0,0,255}///@TODO: support no alpha channel (if we find out that it's possible to copy less data, which might actually not be possible due to alignment now that I'm thinking about it)
                                             ,{0,255,0,255},{0,255,0,255}
                                             ,{0,0,255,255},{0,0,255,255}};
             KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
