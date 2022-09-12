@@ -92,12 +92,19 @@ typedef struct Korl_Vulkan_DrawState_View
     Korl_Math_V3f32 positionTarget;
     Korl_Math_V3f32 worldUpNormal;
 } Korl_Vulkan_DrawState_View;
+typedef struct Korl_Vulkan_DrawState_Model
+{
+    Korl_Math_V3f32      translation;
+    Korl_Math_Quaternion rotation;
+    Korl_Math_V3f32      scale;
+} Korl_Vulkan_DrawState_Model;
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*   features;
     const Korl_Vulkan_DrawState_Blend*      blend;
     const Korl_Vulkan_DrawState_Projection* projection;
     const Korl_Vulkan_DrawState_View*       view;
+    const Korl_Vulkan_DrawState_Model*      model;
 } Korl_Vulkan_DrawState;
 korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void korl_vulkan_construct(void);

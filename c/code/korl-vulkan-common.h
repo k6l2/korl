@@ -153,12 +153,15 @@ typedef struct _Korl_Vulkan_SwapChainImageUniformTransforms
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
-    //KORL-PERFORMANCE-000-000-009: pass model as push constant instead?  Timings required.
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
 } _Korl_Vulkan_SwapChainImageUniformTransforms;
 /* Ensure _Korl_Vulkan_SwapChainImageUniformTransforms member alignment here: */
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32Projection) & 16) == 0);
 _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
+typedef struct _Korl_Vulkan_DrawPushConstants
+{
+    Korl_Math_M4f32 m4f32Model;
+} _Korl_Vulkan_DrawPushConstants;
 typedef struct _Korl_Vulkan_DescriptorPool
 {
     VkDescriptorPool vkDescriptorPool;
@@ -231,6 +234,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     _Korl_Vulkan_Pipeline pipelineConfigurationCache;
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
+    _Korl_Vulkan_DrawPushConstants pushConstants;
 #if 0///@TODO: delete/recycle
     u32  vertexIndexCountStaging;
     u32  vertexIndexCountDevice;

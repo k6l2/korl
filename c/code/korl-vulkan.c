@@ -1911,10 +1911,15 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     }
 #endif
     /* create pipeline layout */
+    KORL_ZERO_STACK(VkPushConstantRange, pushConstantRange);
+    pushConstantRange.size       = sizeof(_Korl_Vulkan_DrawPushConstants);
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     KORL_ZERO_STACK(VkPipelineLayoutCreateInfo, createInfoPipelineLayout);
-    createInfoPipelineLayout.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    createInfoPipelineLayout.setLayoutCount = 1;
-    createInfoPipelineLayout.pSetLayouts    = &context->batchDescriptorSetLayout;
+    createInfoPipelineLayout.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    createInfoPipelineLayout.setLayoutCount         = 1;
+    createInfoPipelineLayout.pSetLayouts            = &context->batchDescriptorSetLayout;
+    createInfoPipelineLayout.pushConstantRangeCount = 1;
+    createInfoPipelineLayout.pPushConstantRanges    = &pushConstantRange;
     _KORL_VULKAN_CHECK(
         vkCreatePipelineLayout(context->device, &createInfoPipelineLayout, context->allocator
                               ,&context->pipelineLayout));
@@ -2278,6 +2283,9 @@ done:
     surfaceContext->frameStackCounter++;
     /* clear the vertex batch metrics for the upcoming frame */
     korl_memory_zero(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
+    surfaceContext->batchState.pushConstants.m4f32Model = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->batchState.m4f32View                = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->batchState.m4f32Projection          = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->batchState.pipelineConfigurationCache = _korl_vulkan_pipeline_default();
 #if 0///@TODO: delete/recycle
     /* Select a known valid internal texture by default.  
@@ -2472,6 +2480,8 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         }
     if(state->view)
         surfaceContext->batchState.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
+    if(state->model)
+        surfaceContext->batchState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
 }
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData)
 {
@@ -2602,6 +2612,10 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                            ,0/*first set*/, 1/*set count */
                            ,&descriptorSetUniformTransforms
                            ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
+    vkCmdPushConstants(swapChainImageContext->commandBufferGraphics, context->pipelineLayout
+                      ,VK_SHADER_STAGE_VERTEX_BIT
+                      ,/*offset*/0, sizeof(surfaceContext->batchState.pushConstants)
+                      ,&surfaceContext->batchState.pushConstants);
     if(vertexData->indices)
     {
         vkCmdBindIndexBuffer(swapChainImageContext->commandBufferGraphics
@@ -2646,47 +2660,6 @@ korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
     vkCmdSetScissor(
         surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
         0/*firstScissor*/, 1/*scissorCount*/, &scissor);
-#endif
-}
-korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale)
-{
-    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    if(surfaceContext->frameStackCounter != 1)
-        return;
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-    /* create the model matrix */
-    const Korl_Math_M4f32 m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(rotation, scale, position);
-#if 0///@TODO: delete/recycle
-    /* if the descriptor set state we are attempting to set is identical to the 
-        last known state, then we don't need to do anything */
-    if(korl_math_m4f32_isNearEqual(&m4f32Model, &surfaceContext->batchState.m4f32Model))
-        return;
-    korl_memory_copy(&surfaceContext->batchState.m4f32Model, &m4f32Model, sizeof(m4f32Model));
-    /* ensure the current descriptor set index of the batch state is not being 
-        used by any previously batched geometry */
-    korl_time_probeStart(batch_descriptorSet_flush); _korl_vulkan_batchDescriptorSetFlush(); korl_time_probeStop(batch_descriptorSet_flush);
-    /* calculate the stride of each batch descriptor set UBO within the buffer */
-    KORL_ZERO_STACK(VkPhysicalDeviceProperties, physicalDeviceProperties);
-    vkGetPhysicalDeviceProperties(context->physicalDevice, &physicalDeviceProperties);
-    const VkDeviceSize batchUboStride = korl_math_roundUpPowerOf2(sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), physicalDeviceProperties.limits.minUniformBufferOffsetAlignment);
-    /* send the data for the matrix into the staging buffer memory */
-    KORL_ZERO_STACK(void*, mappedDeviceMemory);
-    _KORL_VULKAN_CHECK(
-        vkMapMemory(
-            context->device, surfaceContext->deviceMemoryHostVisible.deviceMemory, 
-            swapChainImageContext->bufferStagingUbo->byteOffset + surfaceContext->batchState.descriptorSetIndexCurrent*batchUboStride, 
-            /*bytes*/sizeof(_Korl_Vulkan_SwapChainImageBatchUbo), 
-            0/*flags*/, &mappedDeviceMemory));
-    _Korl_Vulkan_SwapChainImageBatchUbo*const ubo = KORL_C_CAST(_Korl_Vulkan_SwapChainImageBatchUbo*, mappedDeviceMemory);
-    ubo->m4f32Model = m4f32Model;
-    vkUnmapMemory(context->device, surfaceContext->deviceMemoryHostVisible.deviceMemory);
 #endif
 }
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)

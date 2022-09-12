@@ -552,9 +552,13 @@ korl_internal void korl_windows_window_loop(void)
             const Korl_Vulkan_DrawState_View view = (Korl_Vulkan_DrawState_View){.positionEye    = {10,10,10}
                                                                                 ,.positionTarget = KORL_MATH_V3F32_ZERO
                                                                                 ,.worldUpNormal  = KORL_MATH_V3F32_Z};
+            const Korl_Vulkan_DrawState_Model model = (Korl_Vulkan_DrawState_Model){.translation = {0,0,0}
+                                                                                   ,.rotation    = KORL_MATH_QUATERNION_IDENTITY
+                                                                                   ,.scale       = {100,100,100}};
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
             drawState.projection = &projection;
             drawState.view       = &view;
+            drawState.model      = &model;
             korl_vulkan_setDrawState(&drawState);
             Korl_Math_V3f32 positions[] = {{0, 0, 0},{1, 0, 0}
                                           ,{0, 0, 0},{0, 1, 0}
