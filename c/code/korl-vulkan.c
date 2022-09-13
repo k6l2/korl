@@ -784,6 +784,8 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     else if(pipeline->positionDimensions == 3)
         if(pipeline->colorsStride)
             createInfoShaderStages[0].module = context->shaderVertex3dColor;
+        else
+            createInfoShaderStages[0].module = context->shaderVertex3d;
 #if 0///@TODO: recycle/delete
     if(    pipeline->colorsStride
        && !pipeline->uvsStride)
@@ -1931,6 +1933,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_AssetCache_AssetData assetShaderBatchFragmentTexture;
     Korl_AssetCache_AssetData assetShaderBatchFragmentColorTexture;
     Korl_AssetCache_AssetData assetShaderVertex2d;
+    Korl_AssetCache_AssetData assetShaderVertex3d;
     Korl_AssetCache_AssetData assetShaderVertex3dColor;
     Korl_AssetCache_AssetData assetShaderFragmentColor;
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchVertexColor));
@@ -1940,6 +1943,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-texture.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentTexture));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-batch-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderBatchFragmentColorTexture));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"                 , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d.vert.spv"                 , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3d));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-color.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dColor));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color.frag.spv"              , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColor));
     /* create shader modules */
@@ -1966,6 +1970,9 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     createInfoShader.codeSize = assetShaderVertex2d.dataBytes;
     createInfoShader.pCode    = assetShaderVertex2d.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2d));
+    createInfoShader.codeSize = assetShaderVertex3d.dataBytes;
+    createInfoShader.pCode    = assetShaderVertex3d.data;
+    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex3d));
     createInfoShader.codeSize = assetShaderVertex3dColor.dataBytes;
     createInfoShader.pCode    = assetShaderVertex3dColor.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex3dColor));
@@ -2047,6 +2054,7 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyShaderModule(context->device, context->shaderBatchFragTexture, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderBatchFragColorTexture, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex2d, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderVertex3d, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex3dColor, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderFragmentColor, context->allocator);
 #if 0///@TODO: delete/recycle
@@ -2454,7 +2462,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             const f32 top    = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) - state->projection->subType.orthographic.originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
             const f32 far    = -state->projection->subType.orthographic.depth;
             const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->batchState.m4f32View = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+            surfaceContext->batchState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
             break;}
         case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
             const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 
@@ -2469,7 +2477,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             const f32 top    = state->projection->subType.orthographic.fixedHeight - state->projection->subType.orthographic.originRatioY*state->projection->subType.orthographic.fixedHeight;
             const f32 far    = -state->projection->subType.orthographic.depth;
             const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->batchState.m4f32View = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+            surfaceContext->batchState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
             break;}
         default:{
             korl_log(ERROR, "invalid projection type: %i", state->projection->type);
