@@ -542,7 +542,7 @@ korl_internal void korl_windows_window_loop(void)
             vertexData.positions          = KORL_C_CAST(f32*, positions);
             korl_vulkan_draw(&vertexData);
         }
-#elif 1
+#elif 0
         // draw 3D axis at the world-space origin //
         {
             const Korl_Vulkan_DrawState_Projection projection = (Korl_Vulkan_DrawState_Projection){.type        = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV

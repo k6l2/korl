@@ -235,6 +235,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
     _Korl_Vulkan_DrawPushConstants pushConstants;
+    VkRect2D scissor;
 #if 0///@TODO: delete/recycle
     u32  vertexIndexCountStaging;
     u32  vertexIndexCountDevice;
@@ -254,7 +255,6 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
     Korl_Math_M4f32 m4f32Model;
-    VkRect2D scissor;
     VkImageView textureImageView;
     VkSampler   textureSampler;
 #endif

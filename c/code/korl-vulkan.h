@@ -98,6 +98,13 @@ typedef struct Korl_Vulkan_DrawState_Model
     Korl_Math_Quaternion rotation;
     Korl_Math_V3f32      scale;
 } Korl_Vulkan_DrawState_Model;
+typedef struct Korl_Vulkan_DrawState_Scissor
+{
+    u32 x;
+    u32 y;
+    u32 width;
+    u32 height;
+} Korl_Vulkan_DrawState_Scissor;
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*   features;
@@ -105,6 +112,7 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_Projection* projection;
     const Korl_Vulkan_DrawState_View*       view;
     const Korl_Vulkan_DrawState_Model*      model;
+    const Korl_Vulkan_DrawState_Scissor*    scissor;
 } Korl_Vulkan_DrawState;
 korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void korl_vulkan_construct(void);
@@ -146,25 +154,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
  *   This could also potentially have nice implementation simplification as well, since I noticed a lot of the implementations of these
  *   start out & end in basically the same way!
  * ----------------------------------------------------------------------------------------------------------------------------- */
-korl_internal void korl_vulkan_setProjectionFov(f32 horizontalFovDegrees, f32 clipNear, f32 clipFar);
-/** 
- * \param originRatioX adjust the position of the origin relative to the size 
- * of the swap chain.  A value of \c 0.5f will center the origin on the screen.  
- * A value of \c 0.f will center the origin on the left side of the screen.
- * \param originRatioY adjust the position of the origin relative to the size 
- * of the swap chain.  A value of \c 0.5f will center the origin on the screen.  
- * A value of \c 0.f will center the origin on the top of the screen.
- */
-korl_internal void korl_vulkan_setProjectionOrthographic(f32 depth, f32 originRatioX, f32 originRatioY);
-korl_internal void korl_vulkan_setProjectionOrthographicFixedHeight(f32 fixedHeight, f32 depth, f32 originRatioX, f32 originRatioY);
-korl_internal void korl_vulkan_setView(Korl_Math_V3f32 positionEye, Korl_Math_V3f32 positionTarget, Korl_Math_V3f32 worldUpNormal);
-/**
- * Values of parameters are in window-space coordinates.  The upper-left corner 
- * of the viewport is the origin, and the lower-right corner lies in the 
- * positive range of both axes.
- */
-korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height);
-korl_internal void korl_vulkan_setModel(Korl_Vulkan_Position position, Korl_Math_Quaternion rotation, Korl_Vulkan_Position scale);
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);
 korl_internal Korl_Vulkan_TextureHandle korl_vulkan_textureCreate(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer);

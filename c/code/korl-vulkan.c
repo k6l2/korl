@@ -2247,13 +2247,6 @@ korl_internal void korl_vulkan_frameBegin(void)
     beginInfoRenderPass.pClearValues      = clearValues;
     vkCmdBeginRenderPass(swapChainImageContext->commandBufferGraphics, 
                          &beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
-    /* before calling any drawing commands, we must define the scissor since we 
-        are currently using dynamic scissor settings in our pipelines */
-    KORL_ZERO_STACK(VkRect2D, scissor);
-    scissor.offset = (VkOffset2D){.x = 0, .y = 0};
-    scissor.extent = surfaceContext->swapChainImageExtent;
-    vkCmdSetScissor(swapChainImageContext->commandBufferGraphics, 
-                    0/*firstScissor*/, 1/*scissorCount*/, &scissor);
 #if 0///@TODO: delete/recycle
     /* clear the state of the first batch descriptor set */
     /* calculate the stride of each batch descriptor set UBO within the buffer */
@@ -2282,11 +2275,15 @@ done:
     korl_assert(surfaceContext->frameStackCounter == 0);
     surfaceContext->frameStackCounter++;
     /* clear the vertex batch metrics for the upcoming frame */
+    KORL_ZERO_STACK(VkRect2D, scissorDefault);
+    scissorDefault.offset = (VkOffset2D){.x = 0, .y = 0};
+    scissorDefault.extent = surfaceContext->swapChainImageExtent;
     korl_memory_zero(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
-    surfaceContext->batchState.pushConstants.m4f32Model = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->batchState.m4f32View                = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->batchState.m4f32Projection          = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->batchState.pushConstants.m4f32Model   = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->batchState.m4f32View                  = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->batchState.m4f32Projection            = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->batchState.pipelineConfigurationCache = _korl_vulkan_pipeline_default();
+    surfaceContext->batchState.scissor                    = surfaceContext->batchState.scissor = scissorDefault;
 #if 0///@TODO: delete/recycle
     /* Select a known valid internal texture by default.  
         NOTE: This is done because it is possible for the initial descriptor set 
@@ -2482,6 +2479,11 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->batchState.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
     if(state->model)
         surfaceContext->batchState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
+    if(state->scissor)
+    {
+        surfaceContext->batchState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
+        surfaceContext->batchState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
+    }
 }
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData)
 {
@@ -2616,6 +2618,8 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                       ,VK_SHADER_STAGE_VERTEX_BIT
                       ,/*offset*/0, sizeof(surfaceContext->batchState.pushConstants)
                       ,&surfaceContext->batchState.pushConstants);
+    vkCmdSetScissor(swapChainImageContext->commandBufferGraphics, 
+                    0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->batchState.scissor);
     if(vertexData->indices)
     {
         vkCmdBindIndexBuffer(swapChainImageContext->commandBufferGraphics
@@ -2631,36 +2635,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                  ,vertexData->vertexCount
                  ,/*instance count*/1, /*firstIndex*/0, /*firstInstance*/0);
     korl_time_probeStop(draw_compose_gfx_commands);
-}
-korl_internal void korl_vulkan_setScissor(u32 x, u32 y, u32 width, u32 height)
-{
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    if(surfaceContext->frameStackCounter != 1)
-        return;
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-#if 0///@TODO: delete/recycle
-    /* if the descriptor set state we are attempting to set is identical to the 
-        last known state, then we don't need to do anything */
-    KORL_ZERO_STACK(VkRect2D, scissor);
-    scissor.offset = (VkOffset2D){.x = x, .y = y};
-    scissor.extent = (VkExtent2D){.width = width, .height = height};
-    if(0 == korl_memory_compare(&scissor, &surfaceContext->batchState.scissor, sizeof(scissor)))
-        return;
-    korl_memory_copy(&surfaceContext->batchState.scissor, &scissor, sizeof(scissor));
-    /* we're changing render state, so need to make sure we're not going to 
-        modify already batched draw calls */
-    _korl_vulkan_flushBatchPipeline();
-    /* submit a dynamic scissor adjustment to the command buffer */
-    vkCmdSetScissor(
-        surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
-        0/*firstScissor*/, 1/*scissorCount*/, &scissor);
-#endif
 }
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
 {

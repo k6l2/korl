@@ -417,13 +417,8 @@ typedef struct Korl_Gfx_Camera
         {
             Korl_Math_V2f32 originAnchor;
             f32 clipDepth;
-        } orthographic;
-        struct
-        {
-            Korl_Math_V2f32 originAnchor;
-            f32 clipDepth;
             f32 fixedHeight;
-        } orthographicFixedHeight;
+        } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
 typedef enum Korl_Gfx_Batch_Flags
