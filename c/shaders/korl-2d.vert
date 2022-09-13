@@ -4,7 +4,7 @@ layout(binding = 0, row_major) uniform UniformBufferObject
     mat4 projection;
     mat4 view;
 } ubo;
-layout(push_constant) uniform UniformPushConstants
+layout(push_constant, row_major) uniform UniformPushConstants
 {
     mat4 model;
 } pushConstants;
