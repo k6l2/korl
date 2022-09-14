@@ -450,6 +450,7 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
         vkDestroyFramebuffer(context->device,swapChainImageContext->frameBuffer, context->allocator);
         vkDestroyImageView  (context->device,swapChainImageContext->imageView  , context->allocator);
         vkFreeCommandBuffers(context->device,swapChainImageContext->commandPool, 1, &(swapChainImageContext->commandBufferGraphics));
+        vkFreeCommandBuffers(context->device,swapChainImageContext->commandPool, 1, &(swapChainImageContext->commandBufferTransfer));
         vkDestroyCommandPool(context->device,swapChainImageContext->commandPool, context->allocator);
         for(u$ d = 0; d < arrlenu(swapChainImageContext->stbDaDescriptorPools); d++)
         {
@@ -1636,9 +1637,20 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
                                                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT///@TODO: we could potentially get more performance here by removing HOST_COHERENT & manually calling vkFlushMappedMemoryRanges & vkInvalidateMappedMemoryRanges on bulk memory ranges; timings necessary
-                                                                                        ,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                                                                                        ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                                                                                         | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                                                                                          | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-                                                                                         | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT///@TODO: we could potentially get more performance here by using VK_BUFFER_USAGE_TRANSFER_SRC_BIT and transferring this data to device-local memory
+                                                                                         | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                                                                                        ,/*image usage flags*/0
+                                                                                        ,korl_math_megabytes(8));
+    /* create a device memory allocator used to store device-local data, such as 
+        mesh manifolds, SSBOs, textures, etc...  mostly things that persist for 
+        many frames and have a high cost associated with data transfers to the 
+        device */
+    surfaceContext->deviceMemoryDeviceLocal = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
+                                                                                        ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
+                                                                                        ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                                                                        ,VK_BUFFER_USAGE_TRANSFER_DST_BIT
                                                                                         ,/*image usage flags*/0
                                                                                         ,korl_math_megabytes(8));
     /* initialize staging buffers collection */
@@ -1661,15 +1673,14 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         createInfoFence.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
         {
-            _KORL_VULKAN_CHECK(
-                vkCreateSemaphore(context->device, &createInfoSemaphore, context->allocator, 
-                                  &surfaceContext->wipFrames[i].semaphoreImageAvailable));
-            _KORL_VULKAN_CHECK(
-                vkCreateSemaphore(context->device, &createInfoSemaphore, context->allocator, 
-                                  &surfaceContext->wipFrames[i].semaphoreRenderDone));
-            _KORL_VULKAN_CHECK(
-                vkCreateFence(context->device, &createInfoFence, context->allocator, 
-                              &surfaceContext->wipFrames[i].fenceFrameComplete));
+            _KORL_VULKAN_CHECK(vkCreateSemaphore(context->device, &createInfoSemaphore, context->allocator, 
+                                                 &surfaceContext->wipFrames[i].semaphoreTransfersDone));
+            _KORL_VULKAN_CHECK(vkCreateSemaphore(context->device, &createInfoSemaphore, context->allocator, 
+                                                 &surfaceContext->wipFrames[i].semaphoreImageAvailable));
+            _KORL_VULKAN_CHECK(vkCreateSemaphore(context->device, &createInfoSemaphore, context->allocator, 
+                                                 &surfaceContext->wipFrames[i].semaphoreRenderDone));
+            _KORL_VULKAN_CHECK(vkCreateFence(context->device, &createInfoFence, context->allocator, 
+                                             &surfaceContext->wipFrames[i].fenceFrameComplete));
         }
     }
 #if 0///@TODO: delete/recycle
@@ -2011,6 +2022,7 @@ korl_internal void korl_vulkan_destroySurface(void)
     /* destroy the surface-specific resources */
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
+        vkDestroySemaphore(context->device, surfaceContext->wipFrames[i].semaphoreTransfersDone, context->allocator);
         vkDestroySemaphore(context->device, surfaceContext->wipFrames[i].semaphoreImageAvailable, context->allocator);
         vkDestroySemaphore(context->device, surfaceContext->wipFrames[i].semaphoreRenderDone, context->allocator);
         vkDestroyFence(context->device, surfaceContext->wipFrames[i].fenceFrameComplete, context->allocator);
@@ -2030,6 +2042,7 @@ korl_internal void korl_vulkan_destroySurface(void)
         }
     }
 #endif
+    _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryDeviceLocal);
     _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryHostVisible);
     _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryRenderResources);
     /* NOTE: we don't have to free individual device memory allocations in each 
@@ -2215,10 +2228,12 @@ korl_internal void korl_vulkan_frameBegin(void)
         swapChainImageContext->commandBufferStagingBuffers[s] = VK_NULL_HANDLE;
 #endif
     /* ----- begin the swap chain command buffer for this frame ----- */
-    /* free the graphics command buffer from the previous frame, since it is no 
-        longer valid */
+    /* free the primary command buffers from the previous frame, since they are 
+        no longer valid */
     vkFreeCommandBuffers(context->device, swapChainImageContext->commandPool, 1, &swapChainImageContext->commandBufferGraphics);
-    /* allocate a command buffer for each of the swap chain frame buffers */
+    vkFreeCommandBuffers(context->device, swapChainImageContext->commandPool, 1, &swapChainImageContext->commandBufferTransfer);
+    /* allocate a command buffer for each of the swap chain frame buffers 
+        (graphics & transfer) */
     KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
     allocateInfoCommandBuffers.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfoCommandBuffers.commandPool        = swapChainImageContext->commandPool;
@@ -2227,6 +2242,9 @@ korl_internal void korl_vulkan_frameBegin(void)
     _KORL_VULKAN_CHECK(
         vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers, 
                                  &swapChainImageContext->commandBufferGraphics));
+    _KORL_VULKAN_CHECK(
+        vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers, 
+                                 &swapChainImageContext->commandBufferTransfer));
 #if 0///@TODO: delete/recycle
     _KORL_VULKAN_CHECK(
         vkResetCommandBuffer(surfaceContext->swapChainCommandBuffers[surfaceContext->frameSwapChainImageIndex], 
@@ -2235,8 +2253,8 @@ korl_internal void korl_vulkan_frameBegin(void)
     KORL_ZERO_STACK(VkCommandBufferBeginInfo, beginInfoCommandBuffer);
     beginInfoCommandBuffer.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfoCommandBuffer.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    _KORL_VULKAN_CHECK(
-        vkBeginCommandBuffer(swapChainImageContext->commandBufferGraphics, &beginInfoCommandBuffer));
+    _KORL_VULKAN_CHECK(vkBeginCommandBuffer(swapChainImageContext->commandBufferGraphics, &beginInfoCommandBuffer));
+    _KORL_VULKAN_CHECK(vkBeginCommandBuffer(swapChainImageContext->commandBufferTransfer, &beginInfoCommandBuffer));
     // define the color we are going to clear the color attachment with when 
     //    the render pass begins:
     KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
@@ -2320,8 +2338,28 @@ korl_internal void korl_vulkan_frameEnd(void)
     korl_time_probeStop(flush_batch_staging);
 #endif
     vkCmdEndRenderPass(swapChainImageContext->commandBufferGraphics);
-    _KORL_VULKAN_CHECK(
-        vkEndCommandBuffer(swapChainImageContext->commandBufferGraphics));
+    _KORL_VULKAN_CHECK(vkEndCommandBuffer(swapChainImageContext->commandBufferGraphics));
+    _KORL_VULKAN_CHECK(vkEndCommandBuffer(swapChainImageContext->commandBufferTransfer));
+    /* submit transfer commands to the graphics queue */
+    {
+        korl_time_probeStart(submit_xfer_cmds_to_gfx_q);
+        KORL_ZERO_STACK_ARRAY(VkCommandBufferSubmitInfo, commandBufferSubmitInfo, 1);
+        commandBufferSubmitInfo[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        commandBufferSubmitInfo[0].commandBuffer = swapChainImageContext->commandBufferTransfer;
+        KORL_ZERO_STACK_ARRAY(VkSemaphoreSubmitInfo, semaphoreSubmitInfoSignal, 1);
+        semaphoreSubmitInfoSignal[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        semaphoreSubmitInfoSignal[0].semaphore = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreTransfersDone;
+        semaphoreSubmitInfoSignal[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        KORL_ZERO_STACK_ARRAY(VkSubmitInfo2, submitInfoGraphics, 1);
+        submitInfoGraphics[0].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfoGraphics[0].commandBufferInfoCount   = korl_arraySize(commandBufferSubmitInfo);
+        submitInfoGraphics[0].pCommandBufferInfos      = commandBufferSubmitInfo;
+        submitInfoGraphics[0].signalSemaphoreInfoCount = korl_arraySize(semaphoreSubmitInfoSignal);
+        submitInfoGraphics[0].pSignalSemaphoreInfos    = semaphoreSubmitInfoSignal;
+        _KORL_VULKAN_CHECK(
+            vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics, /*signal fence*/VK_NULL_HANDLE));
+        korl_time_probeStop(submit_xfer_cmds_to_gfx_q);
+    }
     /* submit graphics commands to the graphics queue */
 #if 0///@TODO: delete/recycle
     uint32_t submitGraphicsWaitSemaphoreCount = 0;
@@ -2364,10 +2402,13 @@ korl_internal void korl_vulkan_frameEnd(void)
         vkQueueSubmit(context->queueGraphics, 1, &submitInfoGraphics, 
                       surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
 #endif
-    KORL_ZERO_STACK_ARRAY(VkSemaphoreSubmitInfo, semaphoreSubmitInfoWait, 1);
+    KORL_ZERO_STACK_ARRAY(VkSemaphoreSubmitInfo, semaphoreSubmitInfoWait, 2);
     semaphoreSubmitInfoWait[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     semaphoreSubmitInfoWait[0].semaphore = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable;
     semaphoreSubmitInfoWait[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    semaphoreSubmitInfoWait[1].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    semaphoreSubmitInfoWait[1].semaphore = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreTransfersDone;
+    semaphoreSubmitInfoWait[1].stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
     KORL_ZERO_STACK_ARRAY(VkCommandBufferSubmitInfo, commandBufferSubmitInfo, 1);
     commandBufferSubmitInfo[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
     commandBufferSubmitInfo[0].commandBuffer = swapChainImageContext->commandBufferGraphics;
@@ -2429,11 +2470,11 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     if(surfaceContext->frameStackCounter != 1)
-        return;
+        goto done;
     /* if the swap chain image context is invalid for this frame for some reason, 
         then just do nothing (this happens during deferred resize for example) */
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
+        goto done;
     /* all we have to do is configure the pipeline config cache here, as the 
         actual vulkan pipeline will be created & bound when we call draw */
     if(state->features)
@@ -2493,6 +2534,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->batchState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
         surfaceContext->batchState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
     }
+    done:
     korl_time_probeStop(set_draw_state);
 }
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData)
@@ -2500,6 +2542,14 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* help ensure that this code never runs outside of a set of 
+        frameBegin/frameEnd calls */
+    if(surfaceContext->frameStackCounter != 1)
+        return;
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
     /* basic parameter sanity checks */
     if(vertexData->indexCount || vertexData->indices)
         korl_assert(vertexData->indexCount && vertexData->indices);
@@ -2511,14 +2561,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     korl_assert(vertexData->positionDimensions == 2 || vertexData->positionDimensions == 3);
     korl_assert(vertexData->positions);
     korl_assert(vertexData->positionsStride == 2*sizeof(f32) || vertexData->positionsStride == 3*sizeof(f32));
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    if(surfaceContext->frameStackCounter != 1)
-        return;
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
     /* configure the pipeline config cache with the vertex data properties */
     korl_time_probeStart(draw_config_pipeline);
     switch(vertexData->primitiveType)
@@ -2558,6 +2600,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUniformTransforms, 0, NULL);
     korl_time_probeStop(draw_descriptor_set_alloc);
     /* stage the vertex index/attribute data */
+    ///@TODO: we could potentially get more performance here by transferring this data to device-local memory
     korl_time_probeStart(draw_stage_vertices);
     byteOffsetStagingBuffer = 0;
     bufferStaging           = VK_NULL_HANDLE;

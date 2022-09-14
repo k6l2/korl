@@ -175,6 +175,10 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     VkFramebuffer frameBuffer;
     VkCommandPool commandPool;// the command buffers in this pool should all be considered _transient_; the command pool will be cleared at the start of each frame
     VkCommandBuffer commandBufferGraphics;
+    VkCommandBuffer commandBufferTransfer;
+    /// @TODO: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), 
+    ///        and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; 
+    ///        theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
     _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
 #if 0///@TODO: delete/recycle
     VkSemaphore   semaphoreImageAvailable;
@@ -315,6 +319,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     unsigned wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
     struct
     {
+        VkSemaphore semaphoreTransfersDone;// tells the primary graphics command buffer submission that memory transfers are complete for this frame
         VkSemaphore semaphoreImageAvailable;
         VkSemaphore semaphoreRenderDone;
         VkFence     fenceFrameComplete;
@@ -337,6 +342,9 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryHostVisible;// used for batch buffers & descriptor sets
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryDeviceLocal;// used for batch buffers & descriptor sets
 #endif
+    /** Used for allocation of device-local assets, such as textures, mesh 
+     * manifolds, SSBOs, etc... */
+    _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 
