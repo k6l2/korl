@@ -1290,6 +1290,98 @@ korl_internal VkDescriptorSet _korl_vulkan_newDescriptorSet(VkDescriptorSetLayou
                                 ,&resultDescriptorSet));
     return resultDescriptorSet;
 }
+korl_internal _Korl_Vulkan_DeviceAssetDatabase _korl_vulkan_deviceAssetDatabase_create(Korl_Memory_AllocatorHandle allocatorHandle, _Korl_Vulkan_DeviceMemory_Allocator* deviceMemoryAllocator)
+{
+    KORL_ZERO_STACK(_Korl_Vulkan_DeviceAssetDatabase, result);
+    result.memoryContext         = KORL_C_CAST(void*, allocatorHandle);
+    result.deviceMemoryAllocator = deviceMemoryAllocator;
+    mcarrsetcap(result.memoryContext, result.stbDaAssets, 1024);
+    return result;
+}
+korl_internal void _korl_vulkan_deviceAssetDatabase_destroy(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase)
+{
+    for(u$ i = 0; i < arrlenu(deviceAssetDatabase->stbDaAssets); i++)
+        _korl_vulkan_deviceMemory_allocator_free(deviceAssetDatabase->deviceMemoryAllocator, deviceAssetDatabase->stbDaAssets[i].deviceAllocation);
+    mcarrfree(deviceAssetDatabase->memoryContext, deviceAssetDatabase->stbDaAssets);
+    korl_memory_zero(deviceAssetDatabase, sizeof(*deviceAssetDatabase));
+}
+korl_internal void _korl_vulkan_deviceAssetDatabase_cycleAssetLifetimes(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase)
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    for(u$ i = 0; i < arrlenu(deviceAssetDatabase->stbDaAssets); i++)
+    {
+        _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[i]);
+        if(asset->deviceAllocation == 0)
+            continue;
+        if(asset->framesSinceLastUsed < KORL_U8_MAX)
+            asset->framesSinceLastUsed++;
+        if(asset->nullify && asset->framesSinceLastUsed >= surfaceContext->swapChainImagesSize)
+        {
+            _korl_vulkan_deviceMemory_allocator_free(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
+            asset->deviceAllocation = 0;
+        }
+    }
+}
+typedef struct _Korl_Vulkan_DeviceAssetHandle_Unpacked
+{
+    _Korl_Vulkan_DeviceMemory_Allocation_Type type;
+    u16                                       databaseIndex;
+    u8                                        salt;
+} _Korl_Vulkan_DeviceAssetHandle_Unpacked;
+korl_internal Korl_Vulkan_DeviceAssetHandle _korl_vulkan_deviceAssetHandle_pack(_Korl_Vulkan_DeviceAssetHandle_Unpacked unpackedHandle)
+{
+    return (KORL_C_CAST(Korl_Vulkan_DeviceAssetHandle, unpackedHandle.type         ) << 24)
+         | (KORL_C_CAST(Korl_Vulkan_DeviceAssetHandle, unpackedHandle.salt         ) << 16)
+         |  KORL_C_CAST(Korl_Vulkan_DeviceAssetHandle, unpackedHandle.databaseIndex);
+}
+korl_internal _Korl_Vulkan_DeviceAssetHandle_Unpacked _korl_vulkan_deviceAssetHandle_unpack(Korl_Vulkan_DeviceAssetHandle handle)
+{
+    KORL_ZERO_STACK(_Korl_Vulkan_DeviceAssetHandle_Unpacked, handleUnpacked);
+    handleUnpacked.type          = KORL_C_CAST(_Korl_Vulkan_DeviceMemory_Allocation_Type, handle >> 24);
+    handleUnpacked.salt          = KORL_C_CAST(u8                                       , handle >> 16);
+    handleUnpacked.databaseIndex = KORL_C_CAST(u16                                      , handle);
+    return handleUnpacked;
+}
+korl_internal Korl_Vulkan_DeviceAssetHandle _korl_vulkan_deviceAssetDatabase_add(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle)
+{
+    KORL_ZERO_STACK(_Korl_Vulkan_DeviceAssetHandle_Unpacked, handleUnpacked);
+    /* find a device asset slot that is not in use */
+    handleUnpacked.databaseIndex = korl_checkCast_u$_to_u16(arrlenu(deviceAssetDatabase->stbDaAssets));
+    for(u$ a = 0; a < arrlenu(deviceAssetDatabase->stbDaAssets); a++)
+    {
+        _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[a]);
+        if(asset->deviceAllocation == 0)
+        {
+            handleUnpacked.databaseIndex = korl_checkCast_u$_to_u16(a);
+            korl_memory_zero(asset, sizeof(*asset));
+            break;
+        }
+    }
+    /* if there is no available slot, add a new slot */
+    if(handleUnpacked.databaseIndex >= arrlenu(deviceAssetDatabase->stbDaAssets))
+    {
+        mcarrpush(deviceAssetDatabase->memoryContext, deviceAssetDatabase->stbDaAssets, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_DeviceAsset));
+        handleUnpacked.databaseIndex = korl_checkCast_u$_to_u16(arrlenu(deviceAssetDatabase->stbDaAssets) - 1);
+    }
+    /* populate the new asset in the database */
+    _Korl_Vulkan_DeviceAsset*const asset = &arrlast(deviceAssetDatabase->stbDaAssets);
+    asset->deviceAllocation = allocationHandle;
+    asset->salt             = deviceAssetDatabase->nextSalt++;
+    _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
+    handleUnpacked.salt = asset->salt;
+    handleUnpacked.type = assetAllocation->type;
+    return _korl_vulkan_deviceAssetHandle_pack(handleUnpacked);
+}
+korl_internal void _korl_vulkan_deviceAssetDatabase_nullify(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase, Korl_Vulkan_DeviceAssetHandle deviceAssetHandle)
+{
+    _Korl_Vulkan_DeviceAssetHandle_Unpacked handleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(deviceAssetHandle);
+    korl_assert(handleUnpacked.databaseIndex < arrlenu(deviceAssetDatabase->stbDaAssets));
+    _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[handleUnpacked.databaseIndex]);
+    korl_assert(asset->salt == handleUnpacked.salt);
+    _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
+    korl_assert(assetAllocation->type == handleUnpacked.type);
+    asset->nullify = true;
+}
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
 korl_internal void _korl_vulkan_createSurface(void* userData);
@@ -2010,6 +2102,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
     context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
 #endif
+    surfaceContext->deviceAssetDatabase = _korl_vulkan_deviceAssetDatabase_create(context->allocatorHandle, &(surfaceContext->deviceMemoryDeviceLocal));
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryHostVisible);
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryRenderResources);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, 128);
@@ -2020,6 +2113,7 @@ korl_internal void korl_vulkan_destroySurface(void)
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* destroy the surface-specific resources */
+    _korl_vulkan_deviceAssetDatabase_destroy(&surfaceContext->deviceAssetDatabase);
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         vkDestroySemaphore(context->device, surfaceContext->wipFrames[i].semaphoreTransfersDone, context->allocator);
@@ -2189,6 +2283,9 @@ korl_internal void korl_vulkan_frameBegin(void)
         if(buffer->framesSinceLastUsed < KORL_U8_MAX)
             buffer->framesSinceLastUsed++;
     }
+    /* same as with staging buffers, we can now nullify device assets that we 
+        know are no longer being used */
+    _korl_vulkan_deviceAssetDatabase_cycleAssetLifetimes(&(surfaceContext->deviceAssetDatabase));
     /* acquire the next image from the swap chain */
     _KORL_VULKAN_CHECK(
         vkAcquireNextImageKHR(context->device, surfaceContext->swapChain, 
@@ -2847,51 +2944,20 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAsset
     }
 #endif
 }
-korl_internal Korl_Vulkan_TextureHandle korl_vulkan_textureCreate(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer)
+korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTexture(u32 sizeX, u32 sizeY)
 {
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-#if 0///@TODO: delete/recycle
-    /* allocate a device-local image object for the texture */
-    _Korl_Vulkan_DeviceMemory_Alloctation* deviceImage = 
-        _korl_vulkan_deviceMemoryLinear_allocateTexture(
-            &context->deviceMemoryLinearAssets, sizeX, sizeY, 
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    /* transfer the staging image buffer to the device-local texture object */
-    _korl_vulkan_transferImageBufferToTexture(imageBuffer, sizeX, sizeY, deviceImage);
-    /* create a new texture handle to uniquely identify the texture device asset */
-    //KORL-PERFORMANCE-000-000-016: speed: consider storing texture assets in a fixed-size table
-    Korl_Vulkan_TextureHandle textureHandle = 0;
-    for(Korl_Vulkan_TextureHandle t = 1; t < (Korl_Vulkan_TextureHandle)~0; t++)
-    {
-        bool textureHandleUsed = false;
-        for(u$ d = 0; d < KORL_MEMORY_POOL_SIZE(context->deviceAssets); d++)
-        {
-            if(context->deviceAssets[d].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
-                continue;
-            if(context->deviceAssets[d].subType.texture.handle == t)
-            {
-                textureHandleUsed = true;
-                break;
-            }
-        }
-        if(!textureHandleUsed)
-        {
-            textureHandle = t;
-            break;
-        }
-    }
-    korl_assert(textureHandle != 0);
-    /* create a new device asset to assign the handle to */
-    korl_assert(!KORL_MEMORY_POOL_ISFULL(context->deviceAssets));
-    _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
-    asset->type                             = _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE;
-    asset->subType.texture.deviceAllocation = deviceImage;
-    asset->subType.texture.handle           = textureHandle;
-    /* return the new texture handle */
-    return textureHandle;
-#else
-    return 0;
-#endif
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle = 
+        _korl_vulkan_deviceMemory_allocateTexture(surfaceContext->deviceAssetDatabase.deviceMemoryAllocator
+                                                 ,sizeX, sizeY
+                                                 ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT 
+                                                  | VK_IMAGE_USAGE_SAMPLED_BIT);
+    return _korl_vulkan_deviceAssetDatabase_add(&(surfaceContext->deviceAssetDatabase), allocationHandle);
+}
+korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle)
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    _korl_vulkan_deviceAssetDatabase_nullify(&(surfaceContext->deviceAssetDatabase), deviceAssetHandle);
 }
 korl_internal void korl_vulkan_textureUpdate(Korl_Vulkan_TextureHandle textureHandle, u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer)
 {

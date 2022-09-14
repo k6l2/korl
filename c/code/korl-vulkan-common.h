@@ -45,30 +45,6 @@ typedef struct _Korl_Vulkan_Pipeline
     Korl_Vulkan_DrawState_Features features;
     Korl_Vulkan_DrawState_Blend blend;
 } _Korl_Vulkan_Pipeline;
-#if 0///@TODO: delete/recycle
-typedef struct _Korl_Vulkan_DeviceAsset
-{
-    enum _Korl_Vulkan_DeviceAsset_Type
-    {
-        _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE, 
-        _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE
-    } type;
-    union
-    {
-        struct
-        {
-            //KORL-PERFORMANCE-000-000-007: hash strings
-            Korl_StringPool_String name;
-            _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
-        } assetTexture;
-        struct
-        {
-            Korl_Vulkan_TextureHandle handle;
-            _Korl_Vulkan_DeviceMemory_Alloctation* deviceAllocation;
-        } texture;
-    } subType;
-} _Korl_Vulkan_DeviceAsset;
-#endif
 typedef struct _Korl_Vulkan_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
@@ -280,6 +256,20 @@ typedef struct _Korl_Vulkan_Buffer
      * processed in order. */
     u8 framesSinceLastUsed;
 } _Korl_Vulkan_Buffer;
+typedef struct _Korl_Vulkan_DeviceAsset
+{
+    _Korl_Vulkan_DeviceMemory_AllocationHandle deviceAllocation;
+    bool nullify;// Used to defer ultimate destruction of device assets until we can deduce that the _must_ no longer be in use (using framesSinceLastUsed)
+    u8 framesSinceLastUsed;
+    u8 salt;
+} _Korl_Vulkan_DeviceAsset;
+typedef struct _Korl_Vulkan_DeviceAssetDatabase
+{
+    void* memoryContext;
+    _Korl_Vulkan_DeviceMemory_Allocator* deviceMemoryAllocator;
+    _Korl_Vulkan_DeviceAsset* stbDaAssets;
+    u8 nextSalt;
+} _Korl_Vulkan_DeviceAssetDatabase;
 /**
  * It makes sense for this data structure to be separate from the 
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
@@ -345,6 +335,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     /** Used for allocation of device-local assets, such as textures, mesh 
      * manifolds, SSBOs, etc... */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
+    _Korl_Vulkan_DeviceAssetDatabase deviceAssetDatabase;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

@@ -134,6 +134,8 @@ korl_internal void korl_vulkan_frameEnd(void);
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
+korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTexture(u32 sizeX, u32 sizeY);
+korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle);
 
 
 
@@ -155,7 +157,5 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
  * ----------------------------------------------------------------------------------------------------------------------------- */
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);
-korl_internal Korl_Vulkan_TextureHandle korl_vulkan_textureCreate(u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer);
 korl_internal void korl_vulkan_textureUpdate(Korl_Vulkan_TextureHandle textureHandle, u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer);
-korl_internal void korl_vulkan_textureDestroy(Korl_Vulkan_TextureHandle textureHandle);
 korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandle);

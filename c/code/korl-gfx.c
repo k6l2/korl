@@ -40,7 +40,7 @@ typedef struct _Korl_Gfx_FontGlyphPage
     u16                               packRowsSize;
     u16                               packRowsCapacity;
     _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
-    Korl_Vulkan_TextureHandle textureHandle;
+    Korl_Vulkan_DeviceAssetHandle textureHandle;
     u16 dataSquareSize;
     u8* data;//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize
     bool textureOutOfDate;// when this flag is set, it means that there are pending changes to `data` which have yet to be uploaded to the GPU
@@ -728,15 +728,10 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                 /* store a pure white pixel with the alpha component set to the stbtt font bitmap value */
                 tempImageBuffer[y*fontCache->glyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = fontCache->glyphPage->data[y*fontCache->glyphPage->dataSquareSize + x]};
         // create a vulkan texture, upload the image buffer to it //
-        if(fontCache->glyphPage->textureHandle)
-            korl_vulkan_textureUpdate(fontCache->glyphPage->textureHandle, 
-                                      fontCache->glyphPage->dataSquareSize, 
-                                      fontCache->glyphPage->dataSquareSize, 
-                                      tempImageBuffer);
-        else
-            fontCache->glyphPage->textureHandle = korl_vulkan_textureCreate(fontCache->glyphPage->dataSquareSize, 
-                                                                            fontCache->glyphPage->dataSquareSize, 
-                                                                            tempImageBuffer);
+        if(!fontCache->glyphPage->textureHandle)
+            fontCache->glyphPage->textureHandle = korl_vulkan_deviceAsset_createTexture(fontCache->glyphPage->dataSquareSize
+                                                                                       ,fontCache->glyphPage->dataSquareSize);
+        ///@TODO: update the texture using \c tempImageBuffer
         // free the temporary R8G8B8A8-format image buffer //
         korl_free(context->allocatorHandle, tempImageBuffer);
         fontCache->glyphPage->textureOutOfDate = false;
@@ -763,7 +758,7 @@ korl_internal void korl_gfx_clearFontCache(void)
     {
         _Korl_Gfx_FontCache*const fontCache = context->stbDaFontCaches[fc];
         if(fontCache->glyphPage->textureHandle)
-            korl_vulkan_textureDestroy(fontCache->glyphPage->textureHandle);
+            korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->textureHandle);
         mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbDaGlyphs);
         korl_free(context->allocatorHandle, fontCache);
     }

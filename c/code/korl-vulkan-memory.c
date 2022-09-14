@@ -529,31 +529,31 @@ korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_De
         for(u$ aa = 0; aa < arrlenu(arena->stbDaAllocations); aa++)
         {
             _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(arena->stbDaAllocations[aa]);
-            if(allocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+            if(allocation->type != _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
                 occupiedBytes += allocation->byteSize;
         }
     }
     korl_log_noMeta(INFO, "╔════ 🖥 GPU Memory Report ════════════════════════════════╗");
+    korl_log_noMeta(INFO, "║ arenas: %llu", arrlenu(allocator->stbDaArenas));
     korl_log_noMeta(INFO, "║ bytes used=%llu / %llu", occupiedBytes, arrlenu(allocator->stbDaArenas)*allocator->bytesPerArena);
     for(u$ a = 0; a < arrlenu(allocator->stbDaArenas); a++)
     {
-        korl_log_noMeta(INFO, "║ --- Arena[%llu] ---", a);
         _Korl_Vulkan_DeviceMemory_Arena*const arena = &(allocator->stbDaArenas[a]);
+        korl_log_noMeta(INFO, "║ --- Arena[%llu] --- allocations: %llu", a, arrlenu(arena->stbDaAllocations));
         for(u$ aa = 0; aa < arrlenu(arena->stbDaAllocations); aa++)
         {
             _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(arena->stbDaAllocations[aa]);
-            if(allocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
-                continue;
             const wchar_t* typeRawString;
             switch(allocation->type)
             {
+            case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED:   typeRawString = L"UNALLOCATED";   break;
             case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER: typeRawString = L"VERTEX_BUFFER"; break;
             case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE:       typeRawString = L"TEXTURE";       break;
             case _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_IMAGE_BUFFER:  typeRawString = L"IMAGE_BUFFER";  break;
             default:                                                      typeRawString = NULL;             break;
             }
             korl_log_noMeta(INFO, "║ %ws [0x%016X ~ 0x%016X](%llu bytes) \"%ws\" %ws:%i", 
-                            a == arrlenu(arena->stbDaAllocations) - 1 ? L"└" : L"├", 
+                            aa == arrlenu(arena->stbDaAllocations) - 1 ? L"└" : L"├", 
                             allocation->byteOffset, allocation->byteOffset + allocation->byteSize, 
                             allocation->byteSize, 
                             typeRawString, 
