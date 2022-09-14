@@ -2425,6 +2425,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    korl_time_probeStart(set_draw_state);
     /* help ensure that this code never runs outside of a set of 
         frameBegin/frameEnd calls */
     if(surfaceContext->frameStackCounter != 1)
@@ -2492,6 +2493,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->batchState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
         surfaceContext->batchState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
     }
+    korl_time_probeStop(set_draw_state);
 }
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData)
 {
@@ -2518,6 +2520,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return;
     /* configure the pipeline config cache with the vertex data properties */
+    korl_time_probeStart(draw_config_pipeline);
     switch(vertexData->primitiveType)
     {
     case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{surfaceContext->batchState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
@@ -2528,6 +2531,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     surfaceContext->batchState.pipelineConfigurationCache.colorsStride       = vertexData->colorsStride;
     surfaceContext->batchState.pipelineConfigurationCache.uvsStride          = vertexData->uvsStride;
     _korl_vulkan_setPipelineMetaData(surfaceContext->batchState.pipelineConfigurationCache);
+    korl_time_probeStop(draw_config_pipeline);
     /* stage uniform data */
     korl_time_probeStart(draw_stage_descriptors);
     VkDeviceSize byteOffsetStagingBuffer = 0;
@@ -2538,6 +2542,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     stagingMemoryUniformTransforms->m4f32View       = surfaceContext->batchState.m4f32View;
     korl_time_probeStop(draw_stage_descriptors);
     /* allocate & configure descriptor set(s) for this draw operation */
+    korl_time_probeStart(draw_descriptor_set_alloc);
     VkDescriptorSet descriptorSetUniformTransforms = _korl_vulkan_newDescriptorSet(context->batchDescriptorSetLayout, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     KORL_ZERO_STACK(VkDescriptorBufferInfo, descriptorBufferInfoUniformTransforms);
     descriptorBufferInfoUniformTransforms.buffer = bufferStaging;
@@ -2551,6 +2556,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     writeDescriptorSetUniformTransforms.descriptorCount = 1;
     writeDescriptorSetUniformTransforms.pBufferInfo     = &descriptorBufferInfoUniformTransforms;
     vkUpdateDescriptorSets(context->device, 1, &writeDescriptorSetUniformTransforms, 0, NULL);
+    korl_time_probeStop(draw_descriptor_set_alloc);
     /* stage the vertex index/attribute data */
     korl_time_probeStart(draw_stage_vertices);
     byteOffsetStagingBuffer = 0;

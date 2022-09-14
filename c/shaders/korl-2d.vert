@@ -7,6 +7,7 @@ layout(binding = 0, row_major) uniform UniformBufferObject
 layout(push_constant, row_major) uniform UniformPushConstants
 {
     mat4 model;
+    ///@TODO: add a vec4 uniform fragment color
 } pushConstants;
 layout(location = 0) in vec2 attributePosition;
 // layout(location = 1) in vec4 attributeColor;

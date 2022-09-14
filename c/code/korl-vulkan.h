@@ -22,7 +22,6 @@
  * korl_vulkan_draw
  * ----- Data Structures -----
  * Korl_Vulkan_DrawVertexData
- * Korl_Vulkan_DrawState_Blend
  * Korl_Vulkan_DrawState
  */
 #pragma once

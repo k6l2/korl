@@ -818,6 +818,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(korl_gfx_cameraF
 }
 korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
 {
+    korl_time_probeStart(useCamera);
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Scissor, scissor);
     switch(camera._scissorType)
@@ -875,6 +876,7 @@ korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
     drawState.view       = &view;
     drawState.projection = &projection;
     korl_vulkan_setDrawState(&drawState);
+    korl_time_probeStop(useCamera);
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR(korl_gfx_cameraSetScissor)
 {
@@ -924,6 +926,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 }
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
+    korl_time_probeStart(gfx_batch);
 #if 0///@TODO: figure this out
     korl_time_probeStart(text_generate_mesh);
     if(batch->_assetNameFont)
@@ -1010,9 +1013,11 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     if(batch->_vertexColors) vertexData.colorsStride = sizeof(*batch->_vertexColors);
     if(batch->_vertexUvs)    vertexData.uvsStride    = sizeof(*batch->_vertexUvs);
     korl_vulkan_draw(&vertexData);
+    korl_time_probeStop(gfx_batch);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured)
 {
+    korl_time_probeStart(create_batch_rect_tex);
     /* calculate required amount of memory for the batch */
     const u$ assetNameTextureSize = korl_memory_stringSize(assetNameTexture) + 1;
     const u$ assetNameTextureBytes = assetNameTextureSize * sizeof(*assetNameTexture);
@@ -1064,10 +1069,12 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
         , {0, 0} };
     korl_memory_copy(result->_vertexUvs, vertexTextureUvs, sizeof(vertexTextureUvs));
     /* return the batch */
+    korl_time_probeStop(create_batch_rect_tex);
     return result;
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBatchRectangleColored)
 {
+    korl_time_probeStart(create_batch_rect_color);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
         + 6 * sizeof(Korl_Vulkan_VertexIndex)
@@ -1112,10 +1119,12 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     for(u$ c = 0; c < result->_vertexCount; c++)
         result->_vertexColors[c] = color;
     /**/
+    korl_time_probeStop(create_batch_rect_color);
     return result;
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
 {
+    korl_time_probeStart(create_batch_circle);
     /* we can't really make a circle shape with < 3 points around the circumference */
     korl_assert(pointCount >= 3);
     /* calculate required amount of memory for the batch */
@@ -1163,10 +1172,12 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
         result->_vertexIndices[3*p + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(((p + 1) % pointCount) + 1);
     }
     /**/
+    korl_time_probeStop(create_batch_circle);
     return result;
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTriangles)
 {
+    korl_time_probeStart(create_batch_tris);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
         + 3*triangleCount * sizeof(Korl_Vulkan_Position)
@@ -1189,10 +1200,12 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTrian
     result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*, result + 1);
     result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 3*triangleCount*sizeof(Korl_Vulkan_Position));
     /* return the batch */
+    korl_time_probeStop(create_batch_tris);
     return result;
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
 {
+    korl_time_probeStart(create_batch_lines);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
         + 2*lineCount * sizeof(Korl_Vulkan_Position)
@@ -1215,10 +1228,12 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
     result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*, result + 1);
     result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 2*lineCount*sizeof(Korl_Vulkan_Position));
     /* return the batch */
+    korl_time_probeStop(create_batch_lines);
     return result;
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
 {
+    korl_time_probeStart(create_batch_text);
     korl_assert(text);
     korl_assert(textPixelHeight  >= 1.f);
     korl_assert(outlinePixelSize >= 0.f);
@@ -1288,6 +1303,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     //  do about it for now except defer until a later time //
     _korl_gfx_textGenerateMesh(result, KORL_ASSETCACHE_GET_FLAG_LAZY);
     /* return the batch */
+    korl_time_probeStop(create_batch_text);
     return result;
 }
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_BLEND_STATE(korl_gfx_batchSetBlendState)
