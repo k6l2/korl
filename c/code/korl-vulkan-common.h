@@ -324,6 +324,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     /** Used for allocation of host-visible staging buffers */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryHostVisible;
     _Korl_Vulkan_Buffer* stbDaStagingBuffers;
+    u16 stagingBufferIndexLastUsed;// used to more evenly distribute the usage of staging buffers instead of more heavily utilizing some far more than others
 #if 0///@TODO: delete/recycle
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryHostVisible;// used for batch buffers & descriptor sets
     _Korl_Vulkan_DeviceMemoryLinear deviceMemoryDeviceLocal;// used for batch buffers & descriptor sets

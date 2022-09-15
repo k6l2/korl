@@ -781,12 +781,8 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
     _Korl_Vulkan_DeviceMemory_Alloctation* validAllocation = NULL;
     for(u$ b = 0; b < arrlenu(surfaceContext->stbDaStagingBuffers); b++)
     {
-        /// @TODO: remember what buffer index we used the last call to this function; 
-        ///        currently what will happen is that we will prefer to reset the earlier buffers more often, 
-        ///        which will cause all buffers to slowly accumulate data, 
-        ///        which I can easily imagine putting us in the sad position down the line where we will occasionally get a frame "hitch" or something caused by all our buffers resetting or something; 
-        ///        filling our staging pools in a round-robin order seems much more robust against these types of performance hitches, and regardless just seems a lot more cleaner to me...
-        _Korl_Vulkan_Buffer*const                   buffer     = &(surfaceContext->stbDaStagingBuffers[b]);
+        const u$ bufferIndexOffsetFromLastUsed                 = (b + surfaceContext->stagingBufferIndexLastUsed) % arrlenu(surfaceContext->stbDaStagingBuffers);
+        _Korl_Vulkan_Buffer*const                   buffer     = &(surfaceContext->stbDaStagingBuffers[bufferIndexOffsetFromLastUsed]);
         _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryHostVisible, buffer->allocation);
         /* if the buffer has enough room, we can just use it */
         const VkDeviceSize alignedBytesUsed = alignmentRequired 
@@ -840,6 +836,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
         essentially "out of memory" */
     korl_assert(validBuffer && validAllocation);
     korl_assert(validAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
+    surfaceContext->stagingBufferIndexLastUsed = korl_checkCast_u$_to_u16(validBuffer - surfaceContext->stbDaStagingBuffers);
     *out_byteOffsetStagingBuffer = validBuffer->bytesUsed;
     *out_bufferStaging           = validAllocation->deviceObject.buffer.vulkanBuffer;
     void*const bufferMappedAddress = _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(&surfaceContext->deviceMemoryHostVisible
