@@ -84,12 +84,6 @@ typedef struct _Korl_Vulkan_Context
     VkCommandPool commandPoolTransfer;
 #endif
     //KORL-ISSUE-000-000-015: add shader module collection
-    VkShaderModule shaderBatchVertColor;
-    VkShaderModule shaderBatchVertColorTexture;
-    VkShaderModule shaderBatchVertTexture;
-    VkShaderModule shaderBatchFragColor;
-    VkShaderModule shaderBatchFragColorTexture;
-    VkShaderModule shaderBatchFragTexture;
     VkShaderModule shaderVertex2d;
     VkShaderModule shaderVertex3d;
     VkShaderModule shaderVertex3dColor;
