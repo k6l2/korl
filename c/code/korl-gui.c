@@ -156,7 +156,7 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.colorScrollBarPressed          = (Korl_Vulkan_Color4u8){  0,   0,   0, 255};
     _korl_gui_context.style.colorText                      = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
     _korl_gui_context.style.colorTextOutline               = (Korl_Vulkan_Color4u8){  0,   5,   0, 255};
-    _korl_gui_context.style.textOutlinePixelSize           = 1.f;
+    _korl_gui_context.style.textOutlinePixelSize           = 0.f;
     _korl_gui_context.style.fontWindowText                 = NULL;// just use the default font inside korl-gfx
     _korl_gui_context.style.windowTextPixelSizeY           = 24.f;
     _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;

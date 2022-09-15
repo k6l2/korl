@@ -385,6 +385,8 @@ korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemo
     newAllocation->deviceObject.texture.image     = image;
     newAllocation->deviceObject.texture.imageView = imageView;
     newAllocation->deviceObject.texture.sampler   = sampler;
+    newAllocation->deviceObject.texture.sizeX     = imageSizeX;
+    newAllocation->deviceObject.texture.sizeY     = imageSizeY;
     unpackedResult.type = newAllocation->type;
     return _korl_vulkan_deviceMemory_allocationHandle_pack(unpackedResult);
 }

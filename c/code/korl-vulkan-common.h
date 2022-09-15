@@ -93,7 +93,9 @@ typedef struct _Korl_Vulkan_Context
     VkShaderModule shaderVertex2d;
     VkShaderModule shaderVertex3d;
     VkShaderModule shaderVertex3dColor;
+    VkShaderModule shaderVertex3dUv;
     VkShaderModule shaderFragmentColor;
+    VkShaderModule shaderFragmentColorTexture;
     _Korl_Vulkan_Pipeline* stbDaPipelines;
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
     VkPipelineLayout pipelineLayout;
@@ -142,8 +144,7 @@ typedef struct _Korl_Vulkan_DrawPushConstants
 typedef struct _Korl_Vulkan_DescriptorPool
 {
     VkDescriptorPool vkDescriptorPool;
-    u$ setsAllocatedUniformBuffer;
-    u$ setsAllocatedImageSampler;
+    u$ setsAllocated;
 } _Korl_Vulkan_DescriptorPool;
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
@@ -217,6 +218,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     Korl_Math_M4f32 m4f32View;
     _Korl_Vulkan_DrawPushConstants pushConstants;
     VkRect2D scissor;
+    Korl_Vulkan_DeviceAssetHandle texture;
 #if 0///@TODO: delete/recycle
     u32  vertexIndexCountStaging;
     u32  vertexIndexCountDevice;

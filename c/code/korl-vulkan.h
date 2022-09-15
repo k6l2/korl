@@ -104,6 +104,10 @@ typedef struct Korl_Vulkan_DrawState_Scissor
     u32 width;
     u32 height;
 } Korl_Vulkan_DrawState_Scissor;
+typedef struct Korl_Vulkan_DrawState_Samplers
+{
+    Korl_Vulkan_DeviceAssetHandle texture;
+} Korl_Vulkan_DrawState_Samplers;
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*   features;
@@ -112,6 +116,7 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_View*       view;
     const Korl_Vulkan_DrawState_Model*      model;
     const Korl_Vulkan_DrawState_Scissor*    scissor;
+    const Korl_Vulkan_DrawState_Samplers*   samplers;
 } Korl_Vulkan_DrawState;
 korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void korl_vulkan_construct(void);
@@ -136,7 +141,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
 korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTexture(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle);
-
+korl_internal void korl_vulkan_deviceAsset_updateTexture(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 
 
 
@@ -157,5 +162,4 @@ korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle
  * ----------------------------------------------------------------------------------------------------------------------------- */
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);
-korl_internal void korl_vulkan_textureUpdate(Korl_Vulkan_TextureHandle textureHandle, u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer);
 korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandle);

@@ -731,7 +731,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         if(!fontCache->glyphPage->textureHandle)
             fontCache->glyphPage->textureHandle = korl_vulkan_deviceAsset_createTexture(fontCache->glyphPage->dataSquareSize
                                                                                        ,fontCache->glyphPage->dataSquareSize);
-        ///@TODO: update the texture using \c tempImageBuffer
+        korl_vulkan_deviceAsset_updateTexture(fontCache->glyphPage->textureHandle, tempImageBuffer);
         // free the temporary R8G8B8A8-format image buffer //
         korl_free(context->allocatorHandle, tempImageBuffer);
         fontCache->glyphPage->textureOutOfDate = false;
@@ -922,7 +922,6 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
     korl_time_probeStart(gfx_batch);
-#if 0///@TODO: figure this out
     korl_time_probeStart(text_generate_mesh);
     if(batch->_assetNameFont)
         _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAG_LAZY);
@@ -930,71 +929,13 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     if(batch->_vertexCount <= 0)
     {
         korl_log(WARNING, "attempted batch is empty");
-        return;
+        goto done;
     }
     if(batch->_assetNameFont && !batch->_fontTextureHandle)
     {
         korl_log(WARNING, "text batch mesh not yet obtained from font asset");
-        return;
+        goto done;
     }
-    u32 vertexIndexCount          = batch->_vertexIndexCount;
-    u32 vertexCount               = batch->_vertexCount;
-    Korl_Vulkan_Position position = batch->_position;
-    if(batch->_assetNameTexture)
-        korl_vulkan_useImageAssetAsTexture(batch->_assetNameTexture);
-    else if(batch->_assetNameFont)
-    {
-        korl_time_probeStart(vulkan_use_texture);
-        korl_vulkan_useTexture(batch->_fontTextureHandle);
-        korl_time_probeStop(vulkan_use_texture);
-        vertexIndexCount = korl_checkCast_u$_to_u32(6*batch->_textVisibleCharacterCount * (batch->_textPixelOutline > 0.f ? 2 : 1));
-        vertexCount      = korl_checkCast_u$_to_u32(4*batch->_textVisibleCharacterCount * (batch->_textPixelOutline > 0.f ? 2 : 1));
-        korl_assert(vertexIndexCount <= batch->_vertexIndexCount);
-        korl_assert(vertexCount      <= batch->_vertexCount);
-        /* we need to somehow position the text mesh in a way that satisfies the 
-            text position anchor */
-        // align position with the bottom-left corner of the batch AABB
-        korl_math_v2f32_assignSubtract(&position.xy, batch->_textAabb.min);
-        // offset position by the position anchor ratio, using the AABB size
-        korl_math_v2f32_assignSubtract(&position.xy, korl_math_v2f32_multiply(korl_math_aabb2f32_size(batch->_textAabb), 
-                                                                              batch->_textPositionAnchor));
-    }
-    korl_time_probeStart(vulkan_set_model);
-    korl_vulkan_setModel(position, batch->_rotation, batch->_scale);
-    korl_time_probeStop(vulkan_set_model);
-    korl_time_probeStart(vulkan_set_depthTest);
-    korl_vulkan_batchSetUseDepthTestAndWriteDepthBuffer(!(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST));
-    korl_time_probeStop(vulkan_set_depthTest);
-    korl_time_probeStart(vulkan_set_blend);
-    korl_vulkan_batchBlend(!(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING), 
-                           batch->opColor, batch->factorColorSource, batch->factorColorTarget, 
-                           batch->opAlpha, batch->factorAlphaSource, batch->factorAlphaTarget);
-    korl_time_probeStop(vulkan_set_blend);
-    korl_time_probeStart(vulkan_batch);
-    korl_vulkan_batch(batch->primitiveType, 
-        vertexIndexCount, batch->_vertexIndices, 
-        vertexCount, batch->_vertexPositions, batch->_vertexColors, batch->_vertexUvs);
-    korl_time_probeStop(vulkan_batch);
-#endif
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
-    features.enableBlend     = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING);
-    features.enableDepthTest = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
-    blend.opColor           = batch->opColor;
-    blend.factorColorSource = batch->factorColorSource;
-    blend.factorColorTarget = batch->factorColorTarget;
-    blend.opAlpha           = batch->opAlpha;
-    blend.factorAlphaSource = batch->factorAlphaSource;
-    blend.factorAlphaTarget = batch->factorAlphaTarget;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
-    model.scale       = batch->_scale;
-    model.rotation    = batch->_rotation;
-    model.translation = batch->_position;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.features = &features;
-    drawState.blend    = &blend;
-    drawState.model    = &model;
-    korl_vulkan_setDrawState(&drawState);
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
     vertexData.primitiveType      = batch->primitiveType;
     vertexData.indexCount         = korl_vulkan_safeCast_u$_to_vertexIndex(batch->_vertexIndexCount);
@@ -1007,7 +948,61 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     vertexData.uvs                = batch->_vertexUvs;
     if(batch->_vertexColors) vertexData.colorsStride = sizeof(*batch->_vertexColors);
     if(batch->_vertexUvs)    vertexData.uvsStride    = sizeof(*batch->_vertexUvs);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+    model.scale       = batch->_scale;
+    model.rotation    = batch->_rotation;
+    model.translation = batch->_position;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
+    if(batch->_assetNameFont)
+    {
+        /* use glyph texture */
+        samplers.texture = batch->_fontTextureHandle;
+        /* calculate vertex & index counts based on text mesh */
+        vertexData.indexCount  = korl_vulkan_safeCast_u$_to_vertexIndex(6*batch->_textVisibleCharacterCount * (batch->_textPixelOutline > 0.f ? 2 : 1));
+        vertexData.vertexCount = korl_checkCast_u$_to_u32(              4*batch->_textVisibleCharacterCount * (batch->_textPixelOutline > 0.f ? 2 : 1));
+        korl_assert(vertexData.indexCount  <= batch->_vertexIndexCount);
+        korl_assert(vertexData.vertexCount <= batch->_vertexCount);
+        /* we need to somehow position the text mesh in a way that satisfies the 
+            text position anchor */
+        // align position with the bottom-left corner of the batch AABB
+        korl_math_v2f32_assignSubtract(&model.translation.xy, batch->_textAabb.min);
+        // offset position by the position anchor ratio, using the AABB size
+        korl_math_v2f32_assignSubtract(&model.translation.xy, korl_math_v2f32_multiply(korl_math_aabb2f32_size(batch->_textAabb)
+                                                                                      ,batch->_textPositionAnchor));
+#if 1///@TODO: temporary code; disable vertex colors for now, since this is super expensive for text anyway!
+        vertexData.colors       = NULL;
+        vertexData.colorsStride = 0;
+#endif
+    }
+#if 1///@TODO: temporary code for allowing textured rectangles to be drawn without a texture; delete later!!!
+    else
+    {
+        vertexData.uvs       = NULL;
+        vertexData.uvsStride = 0;
+    }
+#endif
+#if 0///@TODO: figure this out
+    if(batch->_assetNameTexture)
+        korl_vulkan_useImageAssetAsTexture(batch->_assetNameTexture);
+#endif
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
+    features.enableBlend     = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING);
+    features.enableDepthTest = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
+    blend.opColor           = batch->opColor;
+    blend.factorColorSource = batch->factorColorSource;
+    blend.factorColorTarget = batch->factorColorTarget;
+    blend.opAlpha           = batch->opAlpha;
+    blend.factorAlphaSource = batch->factorAlphaSource;
+    blend.factorAlphaTarget = batch->factorAlphaTarget;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    drawState.features = &features;
+    drawState.blend    = &blend;
+    drawState.model    = &model;
+    drawState.samplers = &samplers;
+    korl_vulkan_setDrawState(&drawState);
     korl_vulkan_draw(&vertexData);
+    done:
     korl_time_probeStop(gfx_batch);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured)

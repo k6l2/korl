@@ -79,6 +79,8 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
             VkImage image;
             VkImageView imageView;
             VkSampler sampler;
+            u32 sizeX;
+            u32 sizeY;
         } texture;
         struct
         {
