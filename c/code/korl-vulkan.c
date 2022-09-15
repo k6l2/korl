@@ -1360,16 +1360,6 @@ korl_internal Korl_Vulkan_DeviceAssetHandle _korl_vulkan_deviceAssetDatabase_add
     handleUnpacked.type = assetAllocation->type;
     return _korl_vulkan_deviceAssetHandle_pack(handleUnpacked);
 }
-korl_internal void _korl_vulkan_deviceAssetDatabase_nullify(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase, Korl_Vulkan_DeviceAssetHandle deviceAssetHandle)
-{
-    _Korl_Vulkan_DeviceAssetHandle_Unpacked handleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(deviceAssetHandle);
-    korl_assert(handleUnpacked.databaseIndex < arrlenu(deviceAssetDatabase->stbDaAssets));
-    _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[handleUnpacked.databaseIndex]);
-    korl_assert(asset->salt == handleUnpacked.salt);
-    _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
-    korl_assert(assetAllocation->type == handleUnpacked.type);
-    asset->nullify = true;
-}
 korl_internal _Korl_Vulkan_DeviceAsset* _korl_vulkan_deviceAssetDatabase_get(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase, Korl_Vulkan_DeviceAssetHandle deviceAssetHandle, _Korl_Vulkan_DeviceMemory_Alloctation** out_deviceMemoryAllocation)
 {
     _Korl_Vulkan_DeviceAssetHandle_Unpacked handleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(deviceAssetHandle);
@@ -1378,7 +1368,8 @@ korl_internal _Korl_Vulkan_DeviceAsset* _korl_vulkan_deviceAssetDatabase_get(_Ko
     korl_assert(asset->salt == handleUnpacked.salt);
     _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
     korl_assert(assetAllocation->type == handleUnpacked.type);
-    *out_deviceMemoryAllocation = assetAllocation;
+    if(out_deviceMemoryAllocation)
+        *out_deviceMemoryAllocation = assetAllocation;
     return asset;
 }
 /** This API is platform-specific, and thus must be defined within the code base 
@@ -2994,7 +2985,7 @@ korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTextur
 korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    _korl_vulkan_deviceAssetDatabase_nullify(&(surfaceContext->deviceAssetDatabase), deviceAssetHandle);
+    _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), deviceAssetHandle, NULL/*out_deviceMemoryAllocation*/)->nullify = true;
 }
 korl_internal void korl_vulkan_deviceAsset_updateTexture(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData)
 {
@@ -3065,76 +3056,4 @@ korl_internal void korl_vulkan_deviceAsset_updateTexture(Korl_Vulkan_DeviceAsset
                         ,/*bufferBarrierCount*/0, /*bufferBarriers*/NULL
                         ,/*imageBarrierCount*/1, &barrierImageMemory);
     ///@TODO: even though this technique _should_ make sure that the upcoming frame will have the correct pixel data, we are still not properly isolating texture memory from frames that are still WIP
-}
-korl_internal void korl_vulkan_textureUpdate(Korl_Vulkan_TextureHandle textureHandle, u32 sizeX, u32 sizeY, Korl_Vulkan_Color4u8* imageBuffer)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-#if 0///@TODO: delete/recycle
-    /* get the device asset via texture handle */
-    _Korl_Vulkan_DeviceAsset* asset = NULL;
-    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->deviceAssets); a++)
-        if(   context->deviceAssets[a].type == _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE
-           && context->deviceAssets[a].subType.texture.handle == textureHandle)
-        {
-            asset = &(context->deviceAssets[a]);
-            break;
-        }
-    korl_assert(asset);
-    /* transfer the image buffer to the device asset's device memory allocation */
-    _korl_vulkan_transferImageBufferToTexture(imageBuffer, sizeX, sizeY, asset->subType.texture.deviceAllocation);
-#endif
-}
-korl_internal void korl_vulkan_textureDestroy(Korl_Vulkan_TextureHandle textureHandle)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-#if 0///@TODO: delete/recycle
-    /* find the index of the device asset associated with textureHandle */
-    u$ deviceAssetIndexLoaded = 0;
-    for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
-    {
-        if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
-            continue;
-        if(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.handle == textureHandle)
-            break;
-    }
-    if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
-    {
-        korl_log(WARNING, "texture handle %u not found", textureHandle);
-        return;
-    }
-    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-    _korl_vulkan_deviceMemoryLinear_free(&context->deviceMemoryLinearAssets, 
-                                         context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation);
-    KORL_MEMORY_POOL_REMOVE(context->deviceAssets, deviceAssetIndexLoaded);
-#endif
-}
-korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandle)
-{
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    if(surfaceContext->frameStackCounter != 1)
-        return;
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-#if 0///@TODO: delete/recycle
-    /* find the index of the device asset associated with textureHandle */
-    u$ deviceAssetIndexLoaded = 0;
-    for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
-    {
-        if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
-            continue;
-        if(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.handle == textureHandle)
-            break;
-    }
-    if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
-        return;
-    /* if the device asset exists & is valid, use it for batched texturing */
-    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-    _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView, 
-                               context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler);
-#endif
 }

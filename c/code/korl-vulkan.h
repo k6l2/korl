@@ -162,4 +162,3 @@ korl_internal void korl_vulkan_deviceAsset_updateTexture(Korl_Vulkan_DeviceAsset
  * ----------------------------------------------------------------------------------------------------------------------------- */
 korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);
-korl_internal void korl_vulkan_useTexture(Korl_Vulkan_TextureHandle textureHandle);
