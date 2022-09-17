@@ -78,11 +78,6 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
     VkQueue queueGraphics;
     VkQueue queuePresent;
-#if 0///@TODO: delete/recycle
-    VkCommandPool commandPoolGraphics;
-    /** Used to issue commands to transfer memory to device-local storage */
-    VkCommandPool commandPoolTransfer;
-#endif
     //KORL-ISSUE-000-000-015: add shader module collection
     VkShaderModule shaderVertex2d;
     VkShaderModule shaderVertex3d;
@@ -99,17 +94,6 @@ typedef struct _Korl_Vulkan_Context
     VkDescriptorSetLayout batchDescriptorSetLayout;///@TODO: rename to descriptorSetLayoutUniformTransforms
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
-#if 0///@TODO: delete/recycle
-    /* we need a place to store assets which exist & persist between multiple 
-        swap chain images */
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssetsStaging;
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryLinearAssets;
-#endif
-#if 0///@TODO: delete/recycle
-    /* database for assets that exist on the device 
-        (textures, shaders, buffers, etc) */
-    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceAsset, deviceAssets, 1024);
-#endif
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool stringPool;
@@ -151,48 +135,6 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     ///        and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; 
     ///        theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
     _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
-#if 0///@TODO: delete/recycle
-    VkSemaphore   semaphoreImageAvailable;
-    VkSemaphore   semaphoreRenderDone;
-    VkFence       fenceFrameComplete;
-    /** we just use this to store a copy of the fence that belongs to the WIP 
-     * frame we're assigned to use; this is not an actual fence that we need to 
-     * manage.  The actual fence is managed by our parent _Korl_Vulkan_SurfaceContext */
-    VkFence fenceWipFrame;
-    /** This is used to keep track of which of the below staging buffers we are 
-     * currently writing to, in the range of 
-     * [0, _KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT) 
-     * @async-staging-buffer-to-device-memory-transfers */
-    u8 stagingBufferIndex;
-    /** These fences will be tied to the submission of command buffers used to 
-     * transfer memory from the appropriate staging buffer to device-local 
-     * memory.  @async-staging-buffer-to-device-memory-transfers */
-    VkFence fenceStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    /** These semaphores will be tied to the submission of command buffers used 
-     * to transfer memory from the appropriate staging buffer to device-local 
-     * memory.  In \c frameEnd , the final \c vkQueueSubmit of the batch command 
-     * buffer is expected to wait on these semaphores to ensure that the staging 
-     * buffer data is fully transferred before batched rendering begins.  
-     * @async-staging-buffer-to-device-memory-transfers */
-    VkSemaphore semaphoreStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    /** Used to store the handle to a pending command buffer which was 
-     * configured to transfer staging buffer data to device-local memory from 
-     * the respective staging buffer index.  We need to store this handle 
-     * because we can only free the command buffer once it is no longer in a 
-     * PENDING state (vulkan spec VUID-vkFreeCommandBuffers-pCommandBuffers-00047), 
-     * and this state change happens asynchronously.  
-     * @async-staging-buffer-to-device-memory-transfers */
-    VkCommandBuffer commandBufferStagingBuffers[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchIndices  [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchPositions[_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchColors   [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingBatchUvs      [_KORL_VULKAN_SWAPCHAIN_IMAGE_CONTEXT_STAGING_BUFFER_COUNT];
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferStagingUbo;//KORL-ISSUE-000-000-017: do we REALLY not need device-local memory for this?
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchIndices;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchPositions;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchColors;
-    _Korl_Vulkan_DeviceMemory_Alloctation* bufferDeviceBatchUvs;
-#endif
 } _Korl_Vulkan_SwapChainImageContext;
 /** 
  * the contents of this struct are expected to be nullified at the end of each 
@@ -266,6 +208,13 @@ typedef struct _Korl_Vulkan_DeviceAssetDatabase
     _Korl_Vulkan_DeviceAsset* stbDaAssets;
     u8 nextSalt;
 } _Korl_Vulkan_DeviceAssetDatabase;
+typedef struct _Korl_Vulkan_QueuedTextureUpload
+{
+    VkBuffer        bufferTransferFrom;
+    VkDeviceSize    bufferStagingOffset;
+    Korl_Math_V2u32 imageSize;
+    VkImage         imageTransferTo;
+} _Korl_Vulkan_QueuedTextureUpload;
 /**
  * It makes sense for this data structure to be separate from the 
  * \c Korl_Vulkan_Context , as this state needs to be created on a per-window 
@@ -292,15 +241,6 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkImage                            swapChainImages       [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     // VkCommandBuffer                    swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];///@TODO: delete/recycle
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-#if 0///@TODO: delete/recycle
-    /** 
-     * Currently only used to manage batch rendering shared UBO descriptors, but 
-     * probably might be expanded to manage even more.
-     */
-    VkDescriptorPool batchDescriptorPool;
-    /** Used for batch rendering descriptor sets, such as shared UBO data, etc. */
-    VkDescriptorSet batchDescriptorSets[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE][_KORL_VULKAN_SURFACECONTEXT_MAX_BATCH_DESCRIPTOR_SETS];
-#endif
     unsigned wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
     unsigned wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
     struct
@@ -325,14 +265,12 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryHostVisible;
     _Korl_Vulkan_Buffer* stbDaStagingBuffers;
     u16 stagingBufferIndexLastUsed;// used to more evenly distribute the usage of staging buffers instead of more heavily utilizing some far more than others
-#if 0///@TODO: delete/recycle
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryHostVisible;// used for batch buffers & descriptor sets
-    _Korl_Vulkan_DeviceMemoryLinear deviceMemoryDeviceLocal;// used for batch buffers & descriptor sets
-#endif
     /** Used for allocation of device-local assets, such as textures, mesh 
      * manifolds, SSBOs, etc... */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
     _Korl_Vulkan_DeviceAssetDatabase deviceAssetDatabase;
+    Korl_Vulkan_DeviceAssetHandle defaultTexture;
+    _Korl_Vulkan_QueuedTextureUpload* stbDaQueuedTextureUploads;// this collection will be cleared each time frameEnd is called during a valid frame, where it will be used to compose memory transfer commands for the current frame's commandBufferTransfer
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

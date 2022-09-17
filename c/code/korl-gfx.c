@@ -7,6 +7,11 @@
 #include "korl-time.h"
 #include "korl-stb-truetype.h"
 #include "korl-stb-ds.h"
+#include "korl-stringPool.h"
+#if defined(_LOCAL_STRING_POOL_POINTER)
+#   undef _LOCAL_STRING_POOL_POINTER
+#endif
+#define _LOCAL_STRING_POOL_POINTER (&(_korl_gfx_context.stringPool))
 #define _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS 0
 typedef struct _Korl_Gfx_FontGlyphBackedCharacterBoundingBox
 {
@@ -61,13 +66,76 @@ typedef struct _Korl_Gfx_FontCache
     _Korl_Gfx_FontGlyphBakedCharacter* stbDaGlyphs;//KORL-PERFORMANCE-000-000-031: gfx, fontCache: using a hash map as a lookup table for baked glyphs might be faster
     _Korl_Gfx_FontGlyphPage* glyphPage;
 } _Korl_Gfx_FontCache;
+typedef enum _Korl_Gfx_ResourceType
+    { _KORL_GFX_RESOURCE_TYPE_NONE
+    , _KORL_GFX_RESOURCE_TYPE_TEXTURE
+} _Korl_Gfx_ResourceType;
+typedef struct _Korl_Gfx_ResourceHandleUnpacked
+{
+    _Korl_Gfx_ResourceType type;
+    u16 index;
+    u8 salt;
+} _Korl_Gfx_ResourceHandleUnpacked;
+typedef struct _Korl_Gfx_Resource
+{
+    _Korl_Gfx_ResourceType type;
+    u8 salt;
+    Korl_AssetCache_Get_Flags assetCacheGetFlags;
+    union
+    {
+        struct
+        {
+            Korl_Vulkan_DeviceAssetHandle deviceAssetHandle;// the user should expect textures to be lazy-loaded (or should they?...)
+            Korl_StringPool_String        stringAssetName;
+        } texture;
+    } subType;
+}_Korl_Gfx_Resource;
 typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
     _Korl_Gfx_FontCache** stbDaFontCaches;
+    _Korl_Gfx_Resource* stbDaResources;
+    u8 nextResourceSalt;
+    Korl_StringPool stringPool;// used for Resource database strings
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
+korl_internal _Korl_Gfx_ResourceHandleUnpacked _korl_gfx_resourceHandle_unpack(Korl_Gfx_ResourceHandle handle)
+{
+    return (_Korl_Gfx_ResourceHandleUnpacked){.type  =  handle >> 24
+                                             ,.salt  = (handle >> 16) & 0xFF
+                                             ,.index =  handle        & 0xFFFF};
+}
+korl_internal Korl_Gfx_ResourceHandle _korl_gfx_resourceHandle_pack(_Korl_Gfx_ResourceHandleUnpacked handleUnpacked)
+{
+    return (KORL_C_CAST(Korl_Gfx_ResourceHandle, handleUnpacked.type) << 24)
+         | (KORL_C_CAST(Korl_Gfx_ResourceHandle, handleUnpacked.salt) << 16)
+         |  KORL_C_CAST(Korl_Gfx_ResourceHandle, handleUnpacked.index);
+}
+korl_internal void _korl_gfx_texture_load(_Korl_Gfx_Resource* resource)
+{
+    korl_assert(resource->type == _KORL_GFX_RESOURCE_TYPE_TEXTURE);
+    if(resource->subType.texture.deviceAssetHandle)///@TODO: is this condition to check if the texture is loaded okay?  It might not be if device asset handles can become invalidated....
+        return;
+    Korl_AssetCache_AssetData assetData;
+    const Korl_AssetCache_Get_Result resultAssetCacheGet = korl_assetCache_get(string_getRawUtf16(resource->subType.texture.stringAssetName)
+                                                                              ,resource->assetCacheGetFlags
+                                                                              ,&assetData);
+    if(resultAssetCacheGet == KORL_ASSETCACHE_GET_RESULT_PENDING)
+        return;
+    korl_assert(resultAssetCacheGet == KORL_ASSETCACHE_GET_RESULT_LOADED);
+    /* decode the raw image data from the asset */
+    int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
+    stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
+    if(!imagePixels)
+    {
+        korl_log(ERROR, "stbi_load_from_memory failed! (%ws)", string_getRawUtf16(resource->subType.texture.stringAssetName));
+        return;
+    }
+    resource->subType.texture.deviceAssetHandle = korl_vulkan_deviceAsset_createTexture(imageSizeX, imageSizeY);
+    korl_vulkan_texture_update(resource->subType.texture.deviceAssetHandle, KORL_C_CAST(Korl_Vulkan_Color4u8*, imagePixels));
+    stbi_image_free(imagePixels);
+}
 korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyphPage, const int sizeX, const int sizeY, 
                                               u16* out_x0, u16* out_y0, u16* out_x1, u16* out_y1)
 {
@@ -731,7 +799,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         if(!fontCache->glyphPage->textureHandle)
             fontCache->glyphPage->textureHandle = korl_vulkan_deviceAsset_createTexture(fontCache->glyphPage->dataSquareSize
                                                                                        ,fontCache->glyphPage->dataSquareSize);
-        korl_vulkan_deviceAsset_updateTexture(fontCache->glyphPage->textureHandle, tempImageBuffer);
+        korl_vulkan_texture_update(fontCache->glyphPage->textureHandle, tempImageBuffer);
         // free the temporary R8G8B8A8-format image buffer //
         korl_free(context->allocatorHandle, tempImageBuffer);
         fontCache->glyphPage->textureOutOfDate = false;
@@ -750,6 +818,8 @@ korl_internal void korl_gfx_initialize(void)
                                                             KORL_MEMORY_ALLOCATOR_FLAGS_NONE, 
                                                             NULL/*let platform choose address*/);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 16);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaResources, 1024);
+    context->stringPool = korl_stringPool_create(context->allocatorHandle);
 }
 korl_internal void korl_gfx_clearFontCache(void)
 {
@@ -763,6 +833,74 @@ korl_internal void korl_gfx_clearFontCache(void)
         korl_free(context->allocatorHandle, fontCache);
     }
     mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 0);
+}
+korl_internal KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(korl_gfx_resource_createTexture)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    /* find an unused Resource in the database */
+    _Korl_Gfx_Resource* newResource = NULL;
+    for(u$ a = 0; a < arrlenu(context->stbDaResources); a++)
+    {
+        _Korl_Gfx_Resource*const resource = &(context->stbDaResources[a]);
+        if(resource->type != _KORL_GFX_RESOURCE_TYPE_NONE)
+            continue;
+        newResource = resource;
+        break;
+    }
+    /* if there was no unused Resource, make a new one */
+    if(!newResource)
+    {
+        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Resource));
+        newResource = &arrlast(context->stbDaResources);
+    }
+    /* now we should have a valid Resource to create a texture from */
+    korl_assert(newResource);
+    newResource->salt                              = context->nextResourceSalt++;
+    newResource->type                              = _KORL_GFX_RESOURCE_TYPE_TEXTURE;
+    newResource->assetCacheGetFlags                = assetCacheGetFlags;
+    newResource->subType.texture.stringAssetName   = string_newUtf16(assetNameTexture);
+    newResource->subType.texture.deviceAssetHandle = 0;// initialize a texture with no device-backed resources (no actual texture)
+    _korl_gfx_texture_load(newResource);
+    return _korl_gfx_resourceHandle_pack((_Korl_Gfx_ResourceHandleUnpacked){.index = korl_checkCast_u$_to_u16(newResource - context->stbDaResources)
+                                                                           ,.salt  = newResource->salt
+                                                                           ,.type  = newResource->type});
+}
+korl_internal KORL_PLATFORM_GFX_RESOURCE_DESTROY(korl_gfx_resource_destroy)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    const _Korl_Gfx_ResourceHandleUnpacked unpackedHandle = _korl_gfx_resourceHandle_unpack(resourceHandle);
+    korl_assert(unpackedHandle.index < arrlenu(context->stbDaResources));
+    _Korl_Gfx_Resource*const resource = &(context->stbDaResources[unpackedHandle.index]);
+    if(resource->type == _KORL_GFX_RESOURCE_TYPE_NONE)
+    {
+        korl_log(WARNING, "resource already destroyed: 0x%X", resourceHandle);
+        return;
+    }
+    korl_assert(unpackedHandle.salt == resource->salt);
+    korl_assert(unpackedHandle.type == resource->type);
+    switch(resource->type)
+    {
+    case _KORL_GFX_RESOURCE_TYPE_TEXTURE:{
+        if(resource->subType.texture.deviceAssetHandle)
+            korl_vulkan_deviceAsset_destroy(resource->subType.texture.deviceAssetHandle);
+        break;}
+    default:{
+        korl_log(ERROR, "invalid resource type: handle=0x%X type=%i", resourceHandle, resource->type);
+        break;}
+    }
+    korl_memory_zero(resource, sizeof(*resource));
+}
+korl_internal KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(korl_gfx_texture_getSize)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    const _Korl_Gfx_ResourceHandleUnpacked unpackedHandle = _korl_gfx_resourceHandle_unpack(resourceHandle);
+    korl_assert(unpackedHandle.index < arrlenu(context->stbDaResources));
+    korl_assert(unpackedHandle.type == _KORL_GFX_RESOURCE_TYPE_TEXTURE);
+    _Korl_Gfx_Resource*const resource = &(context->stbDaResources[unpackedHandle.index]);
+    korl_assert(unpackedHandle.salt == resource->salt);
+    korl_assert(unpackedHandle.type == resource->type);
+    _korl_gfx_texture_load(resource);
+    return korl_vulkan_texture_getSize(resource->subType.texture.deviceAssetHandle);
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)
 {
@@ -1401,3 +1539,4 @@ korl_internal KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(korl_gfx_batchCircleSetCo
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
 }
+#undef _LOCAL_STRING_POOL_POINTER

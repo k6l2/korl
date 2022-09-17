@@ -998,14 +998,83 @@ korl_internal Korl_Vulkan_DeviceAssetHandle _korl_vulkan_deviceAssetDatabase_add
 korl_internal _Korl_Vulkan_DeviceAsset* _korl_vulkan_deviceAssetDatabase_get(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase, Korl_Vulkan_DeviceAssetHandle deviceAssetHandle, _Korl_Vulkan_DeviceMemory_Alloctation** out_deviceMemoryAllocation)
 {
     _Korl_Vulkan_DeviceAssetHandle_Unpacked handleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(deviceAssetHandle);
-    korl_assert(handleUnpacked.databaseIndex < arrlenu(deviceAssetDatabase->stbDaAssets));
+    if(handleUnpacked.databaseIndex >= arrlenu(deviceAssetDatabase->stbDaAssets))
+        return NULL;
     _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[handleUnpacked.databaseIndex]);
-    korl_assert(asset->salt == handleUnpacked.salt);
+    if(asset->salt != handleUnpacked.salt)
+        return NULL;
+    if(asset->nullify)
+        return NULL;
     _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
-    korl_assert(assetAllocation->type == handleUnpacked.type);
+    korl_assert(assetAllocation);
+    if(assetAllocation->type != handleUnpacked.type)
+        return NULL;
     if(out_deviceMemoryAllocation)
         *out_deviceMemoryAllocation = assetAllocation;
     return asset;
+}
+korl_internal void _korl_vulkan_dequeueTransferCommands(void)
+{
+    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    for(u$ c = 0; c < arrlenu(surfaceContext->stbDaQueuedTextureUploads); c++)
+    {
+        _Korl_Vulkan_QueuedTextureUpload*const queuedTextureUpload = &(surfaceContext->stbDaQueuedTextureUploads[c]);
+        /* compose the commands to transfer the staging buffer pixel data to the 
+            device-local memory occupied by the device asset */
+        // transition the image layout from undefined => transfer_destination_optimal //
+        KORL_ZERO_STACK(VkImageMemoryBarrier, barrierImageMemory);
+        barrierImageMemory.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrierImageMemory.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrierImageMemory.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrierImageMemory.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrierImageMemory.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrierImageMemory.image                           = queuedTextureUpload->imageTransferTo;
+        barrierImageMemory.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrierImageMemory.subresourceRange.levelCount     = 1;
+        barrierImageMemory.subresourceRange.layerCount     = 1;
+        barrierImageMemory.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+        #if 0// already defaulted to 0
+        barrierImageMemory.subresourceRange.baseMipLevel   = 0;
+        barrierImageMemory.subresourceRange.baseArrayLayer = 0;
+        barrierImageMemory.srcAccessMask                   = 0;
+        #endif
+        vkCmdPipelineBarrier(swapChainImageContext->commandBufferTransfer
+                            ,/*srcStageMask*/VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                            ,/*dstStageMask*/VK_PIPELINE_STAGE_TRANSFER_BIT
+                            ,/*dependencyFlags*/0
+                            ,/*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL
+                            ,/*bufferBarrierCount*/0, /*bufferBarriers*/NULL
+                            ,/*imageBarrierCount*/1, &barrierImageMemory);
+        // copy the buffer from staging buffer => device-local image //
+        KORL_ZERO_STACK(VkBufferImageCopy, imageCopyRegion);
+        // default zero values indicate no buffer padding, copy to image origin, copy to base mip level & array layer
+        imageCopyRegion.bufferOffset                = queuedTextureUpload->bufferStagingOffset;
+        imageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageCopyRegion.imageSubresource.layerCount = 1;
+        imageCopyRegion.imageExtent.width           = queuedTextureUpload->imageSize.x;
+        imageCopyRegion.imageExtent.height          = queuedTextureUpload->imageSize.y;
+        imageCopyRegion.imageExtent.depth           = 1;
+        vkCmdCopyBufferToImage(swapChainImageContext->commandBufferTransfer
+                              ,queuedTextureUpload->bufferTransferFrom, queuedTextureUpload->imageTransferTo
+                              ,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /*regionCount*/1, &imageCopyRegion);
+        // transition the image layout from tranfer_destination_optimal => shader_read_only_optimal //
+        // we can recycle the VkImageMemoryBarrier from the first transition here:  
+        barrierImageMemory.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrierImageMemory.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrierImageMemory.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrierImageMemory.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(swapChainImageContext->commandBufferTransfer
+                            ,/*srcStageMask*/VK_PIPELINE_STAGE_TRANSFER_BIT
+                            ,/*dstStageMask*/VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                            ,/*dependencyFlags*/0
+                            ,/*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL
+                            ,/*bufferBarrierCount*/0, /*bufferBarriers*/NULL
+                            ,/*imageBarrierCount*/1, &barrierImageMemory);
+        ///@TODO: even though this technique _should_ make sure that the upcoming frame will have the correct pixel data, we are still not properly isolating texture memory from frames that are still WIP
+    }
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads, 0);
 }
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
@@ -1416,12 +1485,12 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_AssetCache_AssetData assetShaderVertex3dUv;
     Korl_AssetCache_AssetData assetShaderFragmentColor;
     Korl_AssetCache_AssetData assetShaderFragmentColorTexture;
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"                 , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d.vert.spv"                 , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3d));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-color.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dColor));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-uv.vert.spv"              , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dUv));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color.frag.spv"              , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColor));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color-texture.frag.spv"      , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColorTexture));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3d));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-color.vert.spv"     , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dColor));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-uv.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dUv));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color.frag.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColor));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColorTexture));
     /* create shader modules */
     KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
     createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1443,14 +1512,10 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     createInfoShader.codeSize = assetShaderFragmentColorTexture.dataBytes;
     createInfoShader.pCode    = assetShaderFragmentColorTexture.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderFragmentColorTexture));
-#if 0///@TODO: delete/recycle
-    /* create a default texture asset to be used whenever we fail to get texture 
-        assets for example 
-        @create-default-texture-copypasta */
-    Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
-    context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
-#endif
     surfaceContext->deviceAssetDatabase = _korl_vulkan_deviceAssetDatabase_create(context->allocatorHandle, &(surfaceContext->deviceMemoryDeviceLocal));
+    surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(1, 1);
+    Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
+    korl_vulkan_texture_update(surfaceContext->defaultTexture, &defaultTextureColor);
     korl_log(INFO, "deviceMemoryHostVisible report:");
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryHostVisible);
     korl_log(INFO, "deviceMemoryRenderResources report:");
@@ -1458,6 +1523,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     korl_log(INFO, "deviceMemoryDeviceLocal report:");
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryDeviceLocal);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, 128);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads, 16);
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {
@@ -1480,6 +1546,7 @@ korl_internal void korl_vulkan_destroySurface(void)
     /* NOTE: we don't have to free individual device memory allocations in each 
              Buffer, since the entire allocators are being destroyed above! */
     mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers);
+    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));// NOTE: Keep this as the last operation in the surface destructor!
     /* destroy the device-specific resources */
     for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
@@ -1525,11 +1592,6 @@ korl_internal void korl_vulkan_clearAllDeviceAssets(void)
         }
     }
     KORL_MEMORY_POOL_EMPTY(context->deviceAssets);
-    /* create a default texture asset to be used whenever we fail to get texture 
-        assets for example 
-        @create-default-texture-copypasta */
-    Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
-    context->textureHandleDefaultTexture = korl_vulkan_textureCreate(1, 1, &defaultTextureColor);
 #endif
 }
 korl_internal void korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3])
@@ -1633,12 +1695,10 @@ korl_internal void korl_vulkan_frameBegin(void)
     allocateInfoCommandBuffers.commandPool        = swapChainImageContext->commandPool;
     allocateInfoCommandBuffers.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocateInfoCommandBuffers.commandBufferCount = 1;
-    _KORL_VULKAN_CHECK(
-        vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers
-                                ,&swapChainImageContext->commandBufferGraphics));
-    _KORL_VULKAN_CHECK(
-        vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers
-                                ,&swapChainImageContext->commandBufferTransfer));
+    _KORL_VULKAN_CHECK(vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers
+                                               ,&swapChainImageContext->commandBufferGraphics));
+    _KORL_VULKAN_CHECK(vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers
+                                               ,&swapChainImageContext->commandBufferTransfer));
     KORL_ZERO_STACK(VkCommandBufferBeginInfo, beginInfoCommandBuffer);
     beginInfoCommandBuffer.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfoCommandBuffer.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1677,13 +1737,7 @@ done:
     surfaceContext->batchState.m4f32Projection            = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->batchState.pipelineConfigurationCache = _korl_vulkan_pipeline_default();
     surfaceContext->batchState.scissor                    = surfaceContext->batchState.scissor = scissorDefault;
-#if 0///@TODO: delete/recycle
-    /* Select a known valid internal texture by default.  
-        NOTE: This is done because it is possible for the initial descriptor set 
-              to be configured to use image/samplers for a texture asset which 
-              is no longer loaded, which will eventually cause a validation error.  */
-    korl_vulkan_useTexture(context->textureHandleDefaultTexture);
-#endif
+    surfaceContext->batchState.texture                    = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->batchState.currentPipeline = arrcap(context->stbDaPipelines);
@@ -1696,6 +1750,12 @@ korl_internal void korl_vulkan_frameEnd(void)
     /* if we got an invalid next swapchain image index, just do nothing */
     if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         goto done;
+    /* before we end the transfer command buffer, we can compose all the 
+        transfer commands which were queued at any time prior to the end of the 
+        current frame; effectively allowing us to queue device memory transfers 
+        at any time during program execution */
+    _korl_vulkan_dequeueTransferCommands();
+    /* now we can finalize the primary command buffers for the current frame */
     vkCmdEndRenderPass(swapChainImageContext->commandBufferGraphics);
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(swapChainImageContext->commandBufferGraphics));
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(swapChainImageContext->commandBufferTransfer));
@@ -1858,6 +1918,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->batchState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
     }
     if(state->samplers)
+        /// @TODO: maybe instead of just setting a device asset handle here, we can query the asset database to know whether or not the asset can be used at this point right away
         surfaceContext->batchState.texture = state->samplers->texture;
     done:
     korl_time_probeStop(set_draw_state);
@@ -2042,105 +2103,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                  ,/*instance count*/1, /*firstIndex*/0, /*firstInstance*/0);
     korl_time_probeStop(draw_compose_gfx_commands);
 }
-korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName)
-{
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    /* help ensure that this code never runs outside of a set of 
-        frameBegin/frameEnd calls */
-    if(surfaceContext->frameStackCounter != 1)
-        return;
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-#if 0///@TODO: delete/recycle
-    /* check and see if the asset is already loaded as a device texture */
-    u$ deviceAssetIndexLoaded = 0;
-    for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
-    {
-        if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE)
-            continue;
-        if(korl_stringPool_equalsUtf16(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.name, 
-                                       assetName))
-            break;
-    }
-    /* if it is, select this texture for later use and return */
-    if(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets))
-        goto done_conditionallySelectLoadedAsset;
-    /* request the image asset from the asset manager; if the asset isn't loaded 
-        we can stop here */
-    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
-    if(KORL_ASSETCACHE_GET_RESULT_LOADED != korl_assetCache_get(assetName, KORL_ASSETCACHE_GET_FLAG_LAZY, &assetData))
-    {
-        /* locate the internal "default texture" asset so we can actually render something; 
-            not doing so would result in invalid rendering operation (validation layer error) */
-        deviceAssetIndexLoaded = 0;
-        for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
-        {
-            if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
-                continue;
-            if(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.handle == context->textureHandleDefaultTexture)
-                break;
-        }
-        korl_assert(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets));
-        goto done_conditionallySelectLoadedAsset;
-    }
-    /* decode the raw image data from the asset */
-    int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
-    stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
-    if(!imagePixels)
-    {
-        korl_log(ERROR, "stbi_load_from_memory failed! (%ls)", assetName);
-        /* locate the internal "default texture" asset so we can actually render something; 
-            not doing so would result in invalid rendering operation (validation layer error) */
-        deviceAssetIndexLoaded = 0;
-        for(; deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++deviceAssetIndexLoaded)
-        {
-            if(context->deviceAssets[deviceAssetIndexLoaded].type != _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
-                continue;
-            if(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.handle == context->textureHandleDefaultTexture)
-                break;
-        }
-        korl_assert(deviceAssetIndexLoaded < KORL_MEMORY_POOL_SIZE(context->deviceAssets));
-        goto done_conditionallySelectLoadedAsset;
-    }
-    /* allocate a device-local image object for the texture */
-    _Korl_Vulkan_DeviceMemory_Alloctation* deviceImage = 
-        _korl_vulkan_deviceMemoryLinear_allocateTexture(
-            &context->deviceMemoryLinearAssets, imageSizeX, imageSizeY, 
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    /* transfer the staging image buffer to the device-local texture object */
-    _korl_vulkan_transferImageBufferToTexture(imagePixels, imageSizeX, imageSizeY, deviceImage);
-    /* free the raw image data */
-    stbi_image_free(imagePixels);
-    /* add the device asset to the `deviceAssets` database */
-    _Korl_Vulkan_DeviceAsset*const asset = KORL_MEMORY_POOL_ADD(context->deviceAssets);
-    asset->type                                  = _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE;
-    asset->subType.assetTexture.deviceAllocation = deviceImage;
-    asset->subType.assetTexture.name             = korl_stringNewUtf16(&context->stringPool, assetName);
-    korl_assert(asset->subType.assetTexture.name.handle);
-    deviceAssetIndexLoaded = KORL_MEMORY_POOL_SIZE(context->deviceAssets) - 1;
-done_conditionallySelectLoadedAsset:
-    /* if we do not have a valid index for a loaded device asset, just do nothing */
-    if(deviceAssetIndexLoaded >= KORL_MEMORY_POOL_SIZE(context->deviceAssets))
-        return;
-    /* handle the TEXTURE device asset type, in case we couldn't get an 
-        ASSET_TEXTURE for some reason (not loaded yet, etc...) */
-    if(context->deviceAssets[deviceAssetIndexLoaded].type == _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE)
-    {
-        korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-        _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.imageView, 
-                                   context->deviceAssets[deviceAssetIndexLoaded].subType.texture.deviceAllocation->deviceObject.texture.sampler);
-        return;
-    }
-    /* we have a valid ASSET_TEXTURE device asset, so we can just select it */
-    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].type == _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE);
-    korl_assert(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-    _korl_vulkan_selectTexture(context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.imageView, 
-                               context->deviceAssets[deviceAssetIndexLoaded].subType.assetTexture.deviceAllocation->deviceObject.texture.sampler);
-#endif
-}
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
@@ -2209,13 +2171,16 @@ korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTextur
 korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), deviceAssetHandle, NULL/*out_deviceMemoryAllocation*/)->nullify = true;
+    _Korl_Vulkan_DeviceAsset* asset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), deviceAssetHandle, NULL/*out_deviceMemoryAllocation*/);
+    if(asset)
+        asset->nullify = true;
+    else
+        korl_log(ERROR, "failed to get asset: 0x%X", deviceAssetHandle);
 }
-korl_internal void korl_vulkan_deviceAsset_updateTexture(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData)
+korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData)
 {
-    _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
-    /// @TODO: what happens if this occurs with an "invalid" swap chain image context??? (minimized window); perhaps we need to be able to guarantee that at least transfer commands will be submitted each frame???
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
     _Korl_Vulkan_DeviceAsset*const deviceAsset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), textureHandle, &deviceMemoryAllocation);
     korl_assert(deviceMemoryAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
@@ -2229,55 +2194,23 @@ korl_internal void korl_vulkan_deviceAsset_updateTexture(Korl_Vulkan_DeviceAsset
     void*const pixelDataStagingMemory = _korl_vulkan_getStagingPool(imageBytes, 0/*alignment*/, &bufferStaging, &bufferStagingOffset);
     /* copy the pixel data to the staging buffer */
     korl_memory_copy(pixelDataStagingMemory, pixelData, imageBytes);
-    /* compose the commands to transfer the staging buffer pixel data to the 
-        device-local memory occupied by the device asset */
-    // transition the image layout from undefined => transfer_destination_optimal //
-    KORL_ZERO_STACK(VkImageMemoryBarrier, barrierImageMemory);
-    barrierImageMemory.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrierImageMemory.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrierImageMemory.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrierImageMemory.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrierImageMemory.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrierImageMemory.image                           = deviceMemoryAllocation->deviceObject.texture.image;
-    barrierImageMemory.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrierImageMemory.subresourceRange.levelCount     = 1;
-    barrierImageMemory.subresourceRange.layerCount     = 1;
-    barrierImageMemory.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-    #if 0// already defaulted to 0
-    barrierImageMemory.subresourceRange.baseMipLevel   = 0;
-    barrierImageMemory.subresourceRange.baseArrayLayer = 0;
-    barrierImageMemory.srcAccessMask                   = 0;
-    #endif
-    vkCmdPipelineBarrier(swapChainImageContext->commandBufferTransfer
-                        ,/*srcStageMask*/VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-                        ,/*dstStageMask*/VK_PIPELINE_STAGE_TRANSFER_BIT
-                        ,/*dependencyFlags*/0
-                        ,/*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL
-                        ,/*bufferBarrierCount*/0, /*bufferBarriers*/NULL
-                        ,/*imageBarrierCount*/1, &barrierImageMemory);
-    // copy the buffer from staging buffer => device-local image //
-    KORL_ZERO_STACK(VkBufferImageCopy, imageCopyRegion);
-    // default zero values indicate no buffer padding, copy to image origin, copy to base mip level & array layer
-    imageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageCopyRegion.imageSubresource.layerCount = 1;
-    imageCopyRegion.imageExtent.width           = deviceMemoryAllocation->deviceObject.texture.sizeX;
-    imageCopyRegion.imageExtent.height          = deviceMemoryAllocation->deviceObject.texture.sizeY;
-    imageCopyRegion.imageExtent.depth           = 1;
-    vkCmdCopyBufferToImage(swapChainImageContext->commandBufferTransfer
-                          ,bufferStaging, deviceMemoryAllocation->deviceObject.texture.image
-                          ,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /*regionCount*/1, &imageCopyRegion);
-    // transition the image layout from tranfer_destination_optimal => shader_read_only_optimal //
-    // we can recycle the VkImageMemoryBarrier from the first transition here:  
-    barrierImageMemory.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrierImageMemory.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrierImageMemory.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrierImageMemory.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(swapChainImageContext->commandBufferTransfer
-                        ,/*srcStageMask*/VK_PIPELINE_STAGE_TRANSFER_BIT
-                        ,/*dstStageMask*/VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                        ,/*dependencyFlags*/0
-                        ,/*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL
-                        ,/*bufferBarrierCount*/0, /*bufferBarriers*/NULL
-                        ,/*imageBarrierCount*/1, &barrierImageMemory);
-    ///@TODO: even though this technique _should_ make sure that the upcoming frame will have the correct pixel data, we are still not properly isolating texture memory from frames that are still WIP
+    /* queue this transfer command for later, when the swapChainImageContext is actually _valid_ */
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedTextureUpload));
+    arrlast(surfaceContext->stbDaQueuedTextureUploads).bufferTransferFrom  = bufferStaging;
+    arrlast(surfaceContext->stbDaQueuedTextureUploads).bufferStagingOffset = bufferStagingOffset;
+    arrlast(surfaceContext->stbDaQueuedTextureUploads).imageSize           = (Korl_Math_V2u32){.x = deviceMemoryAllocation->deviceObject.texture.sizeX
+                                                                                              ,.y = deviceMemoryAllocation->deviceObject.texture.sizeY};
+    arrlast(surfaceContext->stbDaQueuedTextureUploads).imageTransferTo     = deviceMemoryAllocation->deviceObject.texture.image;
+}
+korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceAssetHandle textureHandle)
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
+    _Korl_Vulkan_DeviceAsset* deviceAsset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), textureHandle, &deviceMemoryAllocation);
+    if(!deviceAsset)
+        deviceAsset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->defaultTexture, &deviceMemoryAllocation);
+    korl_assert(deviceAsset);
+    korl_assert(deviceMemoryAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
+    return (Korl_Math_V2u32){.x = deviceMemoryAllocation->deviceObject.texture.sizeX
+                            ,.y = deviceMemoryAllocation->deviceObject.texture.sizeY};
 }
