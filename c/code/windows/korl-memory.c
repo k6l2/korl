@@ -190,7 +190,7 @@ korl_internal u$ _korl_memory_unpackCommon(void* unpackedData, u$ unpackedDataBy
 /** This is a modified version of `stbds_hash_string` from `stb_ds.h` */
 korl_internal u$ _korl_memory_hashString(const wchar_t* rawWideString)
 {
-    korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x31415926;
+    korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x3141592631415926;
     u$ hash = _KORL_MEMORY_STRING_HASH_SEED;
     while (*rawWideString)
         hash = _KORL_MEMORY_ROTATE_LEFT(hash, 9) + *rawWideString++;
@@ -295,6 +295,23 @@ korl_internal KORL_PLATFORM_ARRAY_U16_COMPARE(korl_memory_arrayU16Compare)
             else if(dataA[i] > dataB[i])
                 return 1;
     return 0;
+}
+/** this is mostly copy-pasta from \c _korl_memory_hashString */
+korl_internal KORL_PLATFORM_ARRAY_CONST_U16_HASH(korl_memory_acu16_hash)
+{
+    korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x3141592631415926;
+    u$ hash = _KORL_MEMORY_STRING_HASH_SEED;
+    for(u$ i = 0; i < arrayCU16.size; i++)
+        hash = _KORL_MEMORY_ROTATE_LEFT(hash, 9) + arrayCU16.data[i];
+    // Thomas Wang 64-to-32 bit mix function, hopefully also works in 32 bits
+    hash ^= _KORL_MEMORY_STRING_HASH_SEED;
+    hash = (~hash) + (hash << 18);
+    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,31);
+    hash = hash * 21;
+    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,11);
+    hash += (hash << 6);
+    hash ^= _KORL_MEMORY_ROTATE_RIGHT(hash,22);
+    return hash + _KORL_MEMORY_STRING_HASH_SEED;
 }
 korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare)
 {

@@ -718,6 +718,18 @@ korl_internal wchar_t* korl_stringPool_getRawWriteableUtf16(Korl_StringPool_Stri
     korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     return korl_checkCast_pu16_to_pwchar(KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16));
 }
+korl_internal acu16 korl_stringPool_getRawAcu16(Korl_StringPool_String string)
+{
+    Korl_StringPool* context = string.pool;
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    /* if the utf16 version of the string hasn't been created, create it */
+    _korl_stringPool_deduceEncoding(context, &context->stbDaStrings[s], _KORL_STRINGPOOL_STRING_FLAG_UTF16, __FILEW__, __LINE__);
+    acu16 result;
+    result.data = KORL_C_CAST(const u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16);
+    result.size = context->stbDaStrings[s].rawSizeUtf16;
+    return result;
+}
 korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line)
 {
     Korl_StringPool* sourceContext = string.pool;

@@ -278,6 +278,7 @@ enum KorlEnumLogLevel
  * \return \c 0 if the length & contents of the arrays are equal
  */
 #define KORL_PLATFORM_ARRAY_U16_COMPARE(name) int name(const u16* dataA, u$ sizeA, const u16* dataB, u$ sizeB)
+#define KORL_PLATFORM_ARRAY_CONST_U16_HASH(name) u$ name(acu16 arrayCU16)
 /**
  * \return \c 0 if the two strings are equal
  */
@@ -440,6 +441,7 @@ typedef struct Korl_Gfx_Batch
     //KORL-PERFORMANCE-000-000-017: GFX; separate batch capacity with batch vertex/index counts
     u32 _vertexIndexCount;
     u32 _vertexCount;
+    Korl_Gfx_ResourceHandle _texture;
     f32                  _textPixelHeight;
     f32                  _textPixelOutline;
     u$                   _textVisibleCharacterCount;
@@ -453,7 +455,6 @@ typedef struct Korl_Gfx_Batch
      * Default value is \c {0,1} (upper-left corner of text AABB will be located 
      * at \c _position ). */
     Korl_Math_V2f32      _textPositionAnchor;
-    wchar_t* _assetNameTexture;
     //KORL-PERFORMANCE-000-000-002: memory: you will never have a texture & font asset at the same time, so we could potentially overload this to the same string pointer
     wchar_t* _assetNameFont;
     //KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
@@ -472,7 +473,7 @@ typedef struct Korl_Gfx_Batch
 } Korl_Gfx_Batch;
 #define KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(name)          Korl_Gfx_ResourceHandle name(const wchar_t* assetNameTexture, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 #define KORL_PLATFORM_GFX_RESOURCE_DESTROY(name)                  void                   name(Korl_Gfx_ResourceHandle resourceHandle)
-#define KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(name)                 Korl_Math_V2u32         name(Korl_Gfx_ResourceHandle resourceHandle)
+#define KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(name)                 Korl_Math_V2u32         name(Korl_Gfx_ResourceHandle resourceHandleTexture)
 #define KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(name)                Korl_Gfx_Camera         name(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target)
 #define KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(name)              Korl_Gfx_Camera         name(f32 clipDepth)
 #define KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(name) Korl_Gfx_Camera         name(f32 fixedHeight, f32 clipDepth)
@@ -482,7 +483,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(name)       void                    name(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
 #define KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(name)   void                    name(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
 #define KORL_PLATFORM_GFX_BATCH(name)                            void                    name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
-#define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name)  Korl_Gfx_Batch*         name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, const wchar_t* assetNameTexture)
+#define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name)  Korl_Gfx_Batch*         name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Gfx_ResourceHandle resourceHandleTexture)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(name)   Korl_Gfx_Batch*         name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(name)              Korl_Gfx_Batch*         name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(name)           Korl_Gfx_Batch*         name(Korl_Memory_AllocatorHandle allocatorHandle, u32 triangleCount)
@@ -532,6 +533,7 @@ typedef KORL_PLATFORM_MEMORY_MOVE                         (fnSig_korl_memory_mov
 typedef KORL_PLATFORM_MEMORY_COMPARE                      (fnSig_korl_memory_compare);
 typedef KORL_PLATFORM_ARRAY_U8_COMPARE                    (fnSig_korl_memory_arrayU8Compare);
 typedef KORL_PLATFORM_ARRAY_U16_COMPARE                   (fnSig_korl_memory_arrayU16Compare);
+typedef KORL_PLATFORM_ARRAY_CONST_U16_HASH                (fnSig_korl_memory_acu16_hash);
 typedef KORL_PLATFORM_STRING_COMPARE                      (fnSig_korl_memory_stringCompare);
 typedef KORL_PLATFORM_STRING_COMPARE_UTF8                 (fnSig_korl_memory_stringCompareUtf8);
 typedef KORL_PLATFORM_STRING_SIZE                         (fnSig_korl_memory_stringSize);
@@ -548,6 +550,9 @@ typedef KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY              (fnSig_korl_memory_all
 typedef KORL_PLATFORM_STB_DS_REALLOCATE                   (fnSig_korl_stb_ds_reallocate);
 typedef KORL_PLATFORM_STB_DS_FREE                         (fnSig_korl_stb_ds_free);
 typedef KORL_PLATFORM_ASSETCACHE_GET                      (fnSig_korl_assetCache_get);
+typedef KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE         (fnSig_korl_gfx_resource_createTexture);
+typedef KORL_PLATFORM_GFX_RESOURCE_DESTROY                (fnSig_korl_gfx_resource_destroy);
+typedef KORL_PLATFORM_GFX_TEXTURE_GET_SIZE                (fnSig_korl_gfx_texture_getSize);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_FOV               (fnSig_korl_gfx_createCameraFov);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO             (fnSig_korl_gfx_createCameraOrtho);
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(fnSig_korl_gfx_createCameraOrthoFixedHeight);
@@ -602,6 +607,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_memory_compare                   * korl_memory_compare;\
     fnSig_korl_memory_arrayU8Compare            * korl_memory_arrayU8Compare;\
     fnSig_korl_memory_arrayU16Compare           * korl_memory_arrayU16Compare;\
+    fnSig_korl_memory_acu16_hash                * korl_memory_acu16_hash;\
     fnSig_korl_memory_stringCompare             * korl_memory_stringCompare;\
     fnSig_korl_memory_stringCompareUtf8         * korl_memory_stringCompareUtf8;\
     fnSig_korl_memory_stringSize                * korl_memory_stringSize;\
@@ -618,6 +624,9 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_stb_ds_reallocate                * _korl_stb_ds_reallocate;\
     fnSig_korl_stb_ds_free                      * _korl_stb_ds_free;\
     fnSig_korl_assetCache_get                   * korl_assetCache_get;\
+    fnSig_korl_gfx_resource_createTexture       * korl_gfx_resource_createTexture;\
+    fnSig_korl_gfx_resource_destroy             * korl_gfx_resource_destroy;\
+    fnSig_korl_gfx_texture_getSize              * korl_gfx_texture_getSize;\
     fnSig_korl_gfx_createCameraFov              * korl_gfx_createCameraFov;\
     fnSig_korl_gfx_createCameraOrtho            * korl_gfx_createCameraOrtho;\
     fnSig_korl_gfx_createCameraOrthoFixedHeight * korl_gfx_createCameraOrthoFixedHeight;\
@@ -672,6 +681,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName).korl_memory_compare                   = korl_memory_compare;\
     (apiVariableName).korl_memory_arrayU8Compare            = korl_memory_arrayU8Compare;\
     (apiVariableName).korl_memory_arrayU16Compare           = korl_memory_arrayU16Compare;\
+    (apiVariableName).korl_memory_acu16_hash                = korl_memory_acu16_hash;\
     (apiVariableName).korl_memory_stringCompare             = korl_memory_stringCompare;\
     (apiVariableName).korl_memory_stringCompareUtf8         = korl_memory_stringCompareUtf8;\
     (apiVariableName).korl_memory_stringSize                = korl_memory_stringSize;\
@@ -688,6 +698,9 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName)._korl_stb_ds_reallocate               = _korl_stb_ds_reallocate;\
     (apiVariableName)._korl_stb_ds_free                     = _korl_stb_ds_free;\
     (apiVariableName).korl_assetCache_get                   = korl_assetCache_get;\
+    (apiVariableName).korl_gfx_resource_createTexture       = korl_gfx_resource_createTexture;\
+    (apiVariableName).korl_gfx_resource_destroy             = korl_gfx_resource_destroy;\
+    (apiVariableName).korl_gfx_texture_getSize              = korl_gfx_texture_getSize;\
     (apiVariableName).korl_gfx_createCameraFov              = korl_gfx_createCameraFov;\
     (apiVariableName).korl_gfx_createCameraOrtho            = korl_gfx_createCameraOrtho;\
     (apiVariableName).korl_gfx_createCameraOrthoFixedHeight = korl_gfx_createCameraOrthoFixedHeight;\
@@ -742,6 +755,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     korl_memory_compare                   = (apiVariableName).korl_memory_compare;\
     korl_memory_arrayU8Compare            = (apiVariableName).korl_memory_arrayU8Compare;\
     korl_memory_arrayU16Compare           = (apiVariableName).korl_memory_arrayU16Compare;\
+    korl_memory_acu16_hash                = (apiVariableName).korl_memory_acu16_hash;\
     korl_memory_stringCompare             = (apiVariableName).korl_memory_stringCompare;\
     korl_memory_stringCompareUtf8         = (apiVariableName).korl_memory_stringCompareUtf8;\
     korl_memory_stringSize                = (apiVariableName).korl_memory_stringSize;\
@@ -758,6 +772,9 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     _korl_stb_ds_reallocate               = (apiVariableName)._korl_stb_ds_reallocate;\
     _korl_stb_ds_free                     = (apiVariableName)._korl_stb_ds_free;\
     korl_assetCache_get                   = (apiVariableName).korl_assetCache_get;\
+    korl_gfx_resource_createTexture       = (apiVariableName).korl_gfx_resource_createTexture;\
+    korl_gfx_resource_destroy             = (apiVariableName).korl_gfx_resource_destroy;\
+    korl_gfx_texture_getSize              = (apiVariableName).korl_gfx_texture_getSize;\
     korl_gfx_createCameraFov              = (apiVariableName).korl_gfx_createCameraFov;\
     korl_gfx_createCameraOrtho            = (apiVariableName).korl_gfx_createCameraOrtho;\
     korl_gfx_createCameraOrthoFixedHeight = (apiVariableName).korl_gfx_createCameraOrthoFixedHeight;\

@@ -7,6 +7,7 @@
 #include "korl-time.h"
 #include "korl-stb-truetype.h"
 #include "korl-stb-ds.h"
+#include "korl-stb-image.h"
 #include "korl-stringPool.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -890,15 +891,21 @@ korl_internal KORL_PLATFORM_GFX_RESOURCE_DESTROY(korl_gfx_resource_destroy)
     }
     korl_memory_zero(resource, sizeof(*resource));
 }
-korl_internal KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(korl_gfx_texture_getSize)
+korl_internal _Korl_Gfx_Resource* _korl_gfx_resource_get(Korl_Gfx_ResourceHandle resourceHandle, _Korl_Gfx_ResourceType expectedType)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     const _Korl_Gfx_ResourceHandleUnpacked unpackedHandle = _korl_gfx_resourceHandle_unpack(resourceHandle);
     korl_assert(unpackedHandle.index < arrlenu(context->stbDaResources));
-    korl_assert(unpackedHandle.type == _KORL_GFX_RESOURCE_TYPE_TEXTURE);
+    korl_assert(unpackedHandle.type == expectedType);
     _Korl_Gfx_Resource*const resource = &(context->stbDaResources[unpackedHandle.index]);
-    korl_assert(unpackedHandle.salt == resource->salt);
-    korl_assert(unpackedHandle.type == resource->type);
+    korl_assert(resource->salt == unpackedHandle.salt);
+    korl_assert(resource->type == expectedType);
+    return resource;
+}
+korl_internal KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(korl_gfx_texture_getSize)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    _Korl_Gfx_Resource*const resource = _korl_gfx_resource_get(resourceHandleTexture, _KORL_GFX_RESOURCE_TYPE_TEXTURE);
     _korl_gfx_texture_load(resource);
     return korl_vulkan_texture_getSize(resource->subType.texture.deviceAssetHandle);
 }
@@ -1112,13 +1119,8 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
         vertexData.colorsStride = 0;
 #endif
     }
-#if 1///@TODO: temporary code for allowing textured rectangles to be drawn without a texture; delete later!!!
-    else
-    {
-        vertexData.uvs       = NULL;
-        vertexData.uvsStride = 0;
-    }
-#endif
+    if(batch->_texture)
+        samplers.texture = _korl_gfx_resource_get(batch->_texture, _KORL_GFX_RESOURCE_TYPE_TEXTURE)->subType.texture.deviceAssetHandle;
 #if 0///@TODO: figure this out
     if(batch->_assetNameTexture)
         korl_vulkan_useImageAssetAsTexture(batch->_assetNameTexture);
@@ -1147,10 +1149,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
 {
     korl_time_probeStart(create_batch_rect_tex);
     /* calculate required amount of memory for the batch */
-    const u$ assetNameTextureSize = korl_memory_stringSize(assetNameTexture) + 1;
-    const u$ assetNameTextureBytes = assetNameTextureSize * sizeof(*assetNameTexture);
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + assetNameTextureBytes
         + 6 * sizeof(Korl_Vulkan_VertexIndex)
         + 4 * sizeof(Korl_Vulkan_Position)
         + 4 * sizeof(Korl_Vulkan_Uv);
@@ -1170,13 +1169,11 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
     result->opAlpha           = KORL_BLEND_OP_ADD;
     result->factorAlphaSource = KORL_BLEND_FACTOR_ONE;
     result->factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
-    result->_assetNameTexture = KORL_C_CAST(wchar_t*, result + 1);
-    result->_vertexIndices    = KORL_C_CAST(Korl_Vulkan_VertexIndex*, KORL_C_CAST(u8*, result->_assetNameTexture) + assetNameTextureBytes);
+    result->_texture          = resourceHandleTexture;
+    result->_vertexIndices    = KORL_C_CAST(wchar_t*, result + 1);
     result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*   , KORL_C_CAST(u8*, result->_vertexIndices   ) + 6*sizeof(Korl_Vulkan_VertexIndex));
     result->_vertexUvs        = KORL_C_CAST(Korl_Vulkan_Uv*         , KORL_C_CAST(u8*, result->_vertexPositions ) + 4*sizeof(Korl_Vulkan_Position));
     /* initialize the batch's dynamic data */
-    if(korl_memory_stringCopy(assetNameTexture, result->_assetNameTexture, assetNameTextureSize) != korl_checkCast_u$_to_i$(assetNameTextureSize))
-        korl_log(ERROR, "failed to copy asset name \"%ls\" to batch", assetNameTexture);
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
         { 0, 1, 3
         , 1, 2, 3 };

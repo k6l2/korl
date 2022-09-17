@@ -270,6 +270,10 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
     _Korl_Vulkan_DeviceAssetDatabase deviceAssetDatabase;
     Korl_Vulkan_DeviceAssetHandle defaultTexture;
+    ///@TODO: we could theoretically refactor korl-vulkan such that \c korl_vulkan_frameBegin is no longer a thing (or at least is an internal API which is only ever called once during initialization, & once during frameEnd to "begin" the next frame)
+    ///       and if we are able to do this, there would be absolutely no need for \c stbDaQueuedTextureUploads (it could be removed entirely)
+    ///       in addition, this would allow us to completely remove the API requirement that certain functions must be called during frameBegin/End, 
+    ///       which would also allow us to remove \c frameStackCounter
     _Korl_Vulkan_QueuedTextureUpload* stbDaQueuedTextureUploads;// this collection will be cleared each time frameEnd is called during a valid frame, where it will be used to compose memory transfer commands for the current frame's commandBufferTransfer
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;

@@ -143,23 +143,5 @@ korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTextur
 korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle);
 korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceAssetHandle textureHandle);
-
-
-
-
-
-
-
-
-
-
-
-
-
-/** @TODO: everything below here needs to be refactored, and at the very least the implementation needs to be re-written; 
- * - consider making a lot of these be a part of `Korl_Vulkan_DrawState` for API simplification?  
- *   This could also potentially have nice implementation simplification as well, since I noticed a lot of the implementations of these
- *   start out & end in basically the same way!
- * ----------------------------------------------------------------------------------------------------------------------------- */
-korl_internal void korl_vulkan_useImageAssetAsTexture(const wchar_t* assetName);
+/** @TODO: move this code into korl-gfx */
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);
