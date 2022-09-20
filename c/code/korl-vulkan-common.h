@@ -83,6 +83,7 @@ typedef struct _Korl_Vulkan_Context
     VkShaderModule shaderVertex3d;
     VkShaderModule shaderVertex3dColor;
     VkShaderModule shaderVertex3dUv;
+    VkShaderModule shaderVertexText;
     VkShaderModule shaderFragmentColor;
     VkShaderModule shaderFragmentColorTexture;
     _Korl_Vulkan_Pipeline* stbDaPipelines;

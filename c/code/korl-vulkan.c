@@ -13,11 +13,14 @@
 #if defined(KORL_PLATFORM_WINDOWS)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
-#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_UBO     0/// @TODO: rename to _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_UNIFORM_TRANSFORMS
-#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE 1
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS        0
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE           1
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_GLYPH_VERTEX_DATA 2
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION 0
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR    1
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV       2
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 8
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_GLYPH_ID 9
 korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
     { "VK_LAYER_KHRONOS_validation"
     , "VK_LAYER_KHRONOS_synchronization2" };
@@ -1457,8 +1460,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     // not really sure where this should go, but I know that it just needs to 
     //    be created BEFORE the pipelines are created, since they are used there //
     //KORL-PERFORMANCE-000-000-015: split this into multiple descriptor sets based on change frequency
-    KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 2);
-    descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_UBO;
+    KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 3);
+    descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS;
     descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
     descriptorSetLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
@@ -1466,6 +1469,10 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     descriptorSetLayoutBindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     descriptorSetLayoutBindings[1].descriptorCount = 1;//size of the array in the shader
     descriptorSetLayoutBindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+    descriptorSetLayoutBindings[2].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_GLYPH_VERTEX_DATA;
+    descriptorSetLayoutBindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorSetLayoutBindings[2].descriptorCount = 1;//size of the array in the shader
+    descriptorSetLayoutBindings[2].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
     KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
     createInfoDescriptorSetLayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     createInfoDescriptorSetLayout.bindingCount = korl_arraySize(descriptorSetLayoutBindings);
@@ -1491,12 +1498,14 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_AssetCache_AssetData assetShaderVertex3d;
     Korl_AssetCache_AssetData assetShaderVertex3dColor;
     Korl_AssetCache_AssetData assetShaderVertex3dUv;
+    Korl_AssetCache_AssetData assetShaderVertexText;
     Korl_AssetCache_AssetData assetShaderFragmentColor;
     Korl_AssetCache_AssetData assetShaderFragmentColorTexture;
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3d));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-color.vert.spv"     , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dColor));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-uv.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dUv));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-text.vert.spv"         , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertexText));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color.frag.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColor));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColorTexture));
     /* create shader modules */
@@ -1514,6 +1523,9 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     createInfoShader.codeSize = assetShaderVertex3dUv.dataBytes;
     createInfoShader.pCode    = assetShaderVertex3dUv.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex3dUv));
+    createInfoShader.codeSize = assetShaderVertexText.dataBytes;
+    createInfoShader.pCode    = assetShaderVertexText.data;
+    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertexText));
     createInfoShader.codeSize = assetShaderFragmentColor.dataBytes;
     createInfoShader.pCode    = assetShaderFragmentColor.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderFragmentColor));
@@ -1572,6 +1584,7 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyShaderModule(context->device, context->shaderVertex3d, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex3dColor, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex3dUv, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderVertexText, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderFragmentColor, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderFragmentColorTexture, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
@@ -1995,7 +2008,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     descriptorBufferInfoUniformTransforms.offset = byteOffsetStagingBuffer;
     descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorSetWrites[descriptorWriteCount].dstSet          = descriptorSetUniformTransforms;
-    descriptorSetWrites[descriptorWriteCount].dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_UBO;
+    descriptorSetWrites[descriptorWriteCount].dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS;
     descriptorSetWrites[descriptorWriteCount].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorSetWrites[descriptorWriteCount].descriptorCount = 1;
     descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &descriptorBufferInfoUniformTransforms;
