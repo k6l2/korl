@@ -357,6 +357,7 @@ typedef enum Korl_Memory_AllocatorFlags
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_PLATFORM_STB_DS_REALLOCATE(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 #define KORL_PLATFORM_STB_DS_FREE(name)       void  name(void* context, void* allocation)
+/// @TODO: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
 typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;      ///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
@@ -453,6 +454,7 @@ typedef struct Korl_Gfx_Batch
     //KORL-PERFORMANCE-000-000-017: GFX; separate batch capacity with batch vertex/index counts
     u32 _vertexIndexCount;
     u32 _vertexCount;
+    u32 _instanceCount;
     Korl_Gfx_ResourceHandle _texture;
     f32                  _textPixelHeight;
     f32                  _textPixelOutline;
@@ -478,10 +480,14 @@ typedef struct Korl_Gfx_Batch
     Korl_Vulkan_BlendFactor factorAlphaSource;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
     Korl_Vulkan_BlendFactor factorAlphaTarget;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
     Korl_Vulkan_DeviceAssetHandle _fontTextureHandle;
+    Korl_Vulkan_DeviceAssetHandle _glyphMeshBufferVertices;
     Korl_Vulkan_VertexIndex* _vertexIndices;
     Korl_Vulkan_Position*    _vertexPositions;
     Korl_Vulkan_Color4u8*    _vertexColors;
     Korl_Vulkan_Uv*          _vertexUvs;
+    u8                       _instancePositionDimensions;
+    f32*                     _instancePositions;// @TODO: at this point, I am feeling the strong desire to rip apart korl-gfx and refactor all this, since _vertexPositions feels so inflexible :(
+    u32*                     _instanceU32s;// we need a place to store the indices of each glyph in the instanced draw call
 } Korl_Gfx_Batch;
 #define KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(name)          Korl_Gfx_ResourceHandle name(const wchar_t* assetNameTexture, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 #define KORL_PLATFORM_GFX_RESOURCE_DESTROY(name)                  void                   name(Korl_Gfx_ResourceHandle resourceHandle)

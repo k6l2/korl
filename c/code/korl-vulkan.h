@@ -34,17 +34,23 @@
 #include "korl-interface-platform.h"
 typedef struct Korl_Vulkan_DrawVertexData
 {
-    Korl_Vulkan_PrimitiveType      primitiveType;     // required
-    Korl_Vulkan_VertexIndex        indexCount;        // optional
-    const Korl_Vulkan_VertexIndex* indices;           // optional
-    u32                            vertexCount;       // required
-    u8                             positionDimensions;// required; only acceptable values: {2, 3}
-    const f32*                     positions;         // required
-    u32                            positionsStride;   // required
-    const Korl_Math_V2f32*         uvs;               // optional
-    u32                            uvsStride;         // optional
-    const Korl_Vulkan_Color4u8*    colors;            // optional
-    u32                            colorsStride;      // optional
+    Korl_Vulkan_PrimitiveType      primitiveType;
+    Korl_Vulkan_VertexIndex        indexCount;
+    const Korl_Vulkan_VertexIndex* indices;
+    u32                            vertexCount;
+    u8                             positionDimensions;        // only acceptable values: {2, 3}
+    const f32*                     positions;
+    u32                            positionsStride;
+    const Korl_Math_V2f32*         uvs;
+    u32                            uvsStride;
+    const Korl_Vulkan_Color4u8*    colors;
+    u32                            colorsStride;
+    u32                            instanceCount;
+    u8                             instancePositionDimensions;// only acceptable values: {2, 3}
+    const f32*                     instancePositions;
+    u32                            instancePositionsStride;
+    const u32*                     instanceUint;
+    u32                            instanceUintStride;
 } Korl_Vulkan_DrawVertexData;
 typedef struct Korl_Vulkan_DrawState_Features
 {
@@ -108,15 +114,20 @@ typedef struct Korl_Vulkan_DrawState_Samplers
 {
     Korl_Vulkan_DeviceAssetHandle texture;
 } Korl_Vulkan_DrawState_Samplers;
+typedef struct Korl_Vulkan_DrawState_StorageBuffers
+{
+    Korl_Vulkan_DeviceAssetHandle vertex;
+} Korl_Vulkan_DrawState_StorageBuffers;
 typedef struct Korl_Vulkan_DrawState
 {
-    const Korl_Vulkan_DrawState_Features*   features;
-    const Korl_Vulkan_DrawState_Blend*      blend;
-    const Korl_Vulkan_DrawState_Projection* projection;
-    const Korl_Vulkan_DrawState_View*       view;
-    const Korl_Vulkan_DrawState_Model*      model;
-    const Korl_Vulkan_DrawState_Scissor*    scissor;
-    const Korl_Vulkan_DrawState_Samplers*   samplers;
+    const Korl_Vulkan_DrawState_Features*       features;
+    const Korl_Vulkan_DrawState_Blend*          blend;
+    const Korl_Vulkan_DrawState_Projection*     projection;
+    const Korl_Vulkan_DrawState_View*           view;
+    const Korl_Vulkan_DrawState_Model*          model;
+    const Korl_Vulkan_DrawState_Scissor*        scissor;
+    const Korl_Vulkan_DrawState_Samplers*       samplers;
+    const Korl_Vulkan_DrawState_StorageBuffers* storageBuffers;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX
@@ -142,6 +153,7 @@ typedef struct Korl_Vulkan_CreateInfoVertexBuffer
     u$ bytes;
     u$ vertexAttributeDescriptorCount;
     const Korl_Vulkan_VertexAttributeDescriptor* vertexAttributeDescriptors;
+    bool useAsStorageBuffer;
 } Korl_Vulkan_CreateInfoVertexBuffer;
 korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void korl_vulkan_construct(void);

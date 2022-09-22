@@ -21,8 +21,8 @@ layout(binding = 2) readonly buffer BufferGlyphMeshData
 // layout(location = 0) in vec2 attributePosition;
 // layout(location = 1) in vec4 attributeColor;
 //layout(location = 2) in vec2 attributeUv;
-layout(location = 8) in vec2 instanceAttributeGlyphPosition;
-layout(location = 9) in uint instanceAttributeGlyphIndex;
+layout(location = 3) in vec2 instanceAttributeGlyphPosition;
+layout(location = 4) in uint instanceAttributeGlyphIndex;
 layout(location = 0) out vec4 fragmentColor;
 layout(location = 1) out vec2 fragmentUv;
 void main() 

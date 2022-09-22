@@ -38,10 +38,13 @@ typedef struct _Korl_Vulkan_Pipeline
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself: */
     VkPrimitiveTopology primitiveTopology;
-    u8 positionDimensions;// only acceptable values: {2, 3}
-    u32 positionsStride;
-    u32 uvsStride;   // 0 => absence of this attribute
-    u32 colorsStride;// 0 => absence of this attribute
+    u8 positionDimensions;        // only acceptable values: {2, 3}
+    u8 instancePositionDimensions;// only acceptable values: {2, 3}
+    u32 positionsStride;       // 0 => absence of this attribute
+    u32 uvsStride;             // 0 => absence of this attribute
+    u32 colorsStride;          // 0 => absence of this attribute
+    u32 instancePositionStride;// 0 => absence of this attribute
+    u32 instanceUintStride;    // 0 => absence of this attribute
     Korl_Vulkan_DrawState_Features features;
     Korl_Vulkan_DrawState_Blend blend;
 } _Korl_Vulkan_Pipeline;
@@ -156,6 +159,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     _Korl_Vulkan_DrawPushConstants pushConstants;
     VkRect2D scissor;
     Korl_Vulkan_DeviceAssetHandle texture;
+    Korl_Vulkan_DeviceAssetHandle vertexStorageBuffer;
 #if 0///@TODO: delete/recycle
     u32  vertexIndexCountStaging;
     u32  vertexIndexCountDevice;

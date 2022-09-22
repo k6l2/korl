@@ -656,6 +656,10 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     for(const wchar_t* character = batch->_text; *character; character++)
     {
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
+        /* set text instanced vertex data */
+        KORL_C_CAST(Korl_Math_V2f32*, batch->_instancePositions)[currentGlyph] = textBaselineCursor;
+        batch->_instanceU32s[currentGlyph]                                     = bakedGlyph->bakeOrder;
+        /* using glyph metrics, we can calculate text AABB & advance the baseline cursor */
         const _Korl_Gfx_FontGlyphBakedCharacterBoundingBox*const bbox = outlinePass 
             ? &(bakedGlyph->bboxOutline)
             : &(bakedGlyph->bbox);
@@ -686,86 +690,14 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
             continue;
         batch->_textAabb.min = korl_math_v2f32_min(batch->_textAabb.min, (Korl_Math_V2f32){x0, y0});
         batch->_textAabb.max = korl_math_v2f32_max(batch->_textAabb.max, (Korl_Math_V2f32){x1, y1});
-        /* using currentGlyph, we can now write the vertex data for 
-            the current glyph quad we just obtained the metrics for */
-        batch->_vertexIndices[6*currentGlyph + 0] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 0);
-        batch->_vertexIndices[6*currentGlyph + 1] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 1);
-        batch->_vertexIndices[6*currentGlyph + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 3);
-        batch->_vertexIndices[6*currentGlyph + 3] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 1);
-        batch->_vertexIndices[6*currentGlyph + 4] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 2);
-        batch->_vertexIndices[6*currentGlyph + 5] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 3);
-        batch->_vertexPositions[4*currentGlyph + 0] = (Korl_Vulkan_Position){x0, y0, 0};
-        batch->_vertexPositions[4*currentGlyph + 1] = (Korl_Vulkan_Position){x1, y0, 0};
-        batch->_vertexPositions[4*currentGlyph + 2] = (Korl_Vulkan_Position){x1, y1, 0};
-        batch->_vertexPositions[4*currentGlyph + 3] = (Korl_Vulkan_Position){x0, y1, 0};
-        batch->_vertexUvs[4*currentGlyph + 0] = (Korl_Vulkan_Uv){u0, v1};
-        batch->_vertexUvs[4*currentGlyph + 1] = (Korl_Vulkan_Uv){u1, v1};
-        batch->_vertexUvs[4*currentGlyph + 2] = (Korl_Vulkan_Uv){u1, v0};
-        batch->_vertexUvs[4*currentGlyph + 3] = (Korl_Vulkan_Uv){u0, v0};
-        batch->_vertexColors[4*currentGlyph + 0] = outlinePass ? batch->_textColorOutline : batch->_textColor;
-        batch->_vertexColors[4*currentGlyph + 1] = outlinePass ? batch->_textColorOutline : batch->_textColor;
-        batch->_vertexColors[4*currentGlyph + 2] = outlinePass ? batch->_textColorOutline : batch->_textColor;
-        batch->_vertexColors[4*currentGlyph + 3] = outlinePass ? batch->_textColorOutline : batch->_textColor;
         currentGlyph++;
         batch->_textVisibleCharacterCount++;
     }
     if(outlinePass)
     {
-        textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
-        for(const wchar_t* character = batch->_text; *character; character++)
-        {
-            const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
-            const _Korl_Gfx_FontGlyphBakedCharacterBoundingBox*const bbox = &(bakedGlyph->bbox);
-            const f32 x0 = textBaselineCursor.x + bbox->offsetX;
-            const f32 y0 = textBaselineCursor.y + bbox->offsetY;
-            const f32 x1 = x0 + (bbox->x1 - bbox->x0);
-            const f32 y1 = y0 + (bbox->y1 - bbox->y0);
-            textBaselineCursor.x += bakedGlyph->advanceX;
-            if(*(character + 1))
-            {
-                const _Korl_Gfx_FontBakedGlyph*const bakedGlyphNext = _korl_gfx_fontCache_getGlyph(fontCache, *(character + 1));
-                const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo, 
-                                                                  bakedGlyph    ->glyphIndex, 
-                                                                  bakedGlyphNext->glyphIndex);
-                textBaselineCursor.x += fontCache->fontScale*kernAdvance;
-            }
-            const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
-            const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
-            const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
-            const f32 v1 = KORL_C_CAST(f32, bbox->y1) / KORL_C_CAST(f32, fontGlyphPage->dataSquareSize);
-            if(*character == L'\n')
-            {
-                textBaselineCursor.x = 0.f;
-                textBaselineCursor.y -= (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
-                continue;
-            }
-            if(bakedGlyph->isEmpty)
-                continue;
-            batch->_textAabb.min = korl_math_v2f32_min(batch->_textAabb.min, (Korl_Math_V2f32){x0, y0});
-            batch->_textAabb.max = korl_math_v2f32_max(batch->_textAabb.max, (Korl_Math_V2f32){x1, y1});
-            /* using currentGlyph, we can now write the vertex data for 
-                the current glyph quad we just obtained the metrics for */
-            batch->_vertexIndices[6*currentGlyph + 0] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 0);
-            batch->_vertexIndices[6*currentGlyph + 1] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 1);
-            batch->_vertexIndices[6*currentGlyph + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 3);
-            batch->_vertexIndices[6*currentGlyph + 3] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 1);
-            batch->_vertexIndices[6*currentGlyph + 4] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 2);
-            batch->_vertexIndices[6*currentGlyph + 5] = korl_vulkan_safeCast_u$_to_vertexIndex(4*currentGlyph + 3);
-            batch->_vertexPositions[4*currentGlyph + 0] = (Korl_Vulkan_Position){x0, y0, 0};
-            batch->_vertexPositions[4*currentGlyph + 1] = (Korl_Vulkan_Position){x1, y0, 0};
-            batch->_vertexPositions[4*currentGlyph + 2] = (Korl_Vulkan_Position){x1, y1, 0};
-            batch->_vertexPositions[4*currentGlyph + 3] = (Korl_Vulkan_Position){x0, y1, 0};
-            batch->_vertexUvs[4*currentGlyph + 0] = (Korl_Vulkan_Uv){u0, v1};
-            batch->_vertexUvs[4*currentGlyph + 1] = (Korl_Vulkan_Uv){u1, v1};
-            batch->_vertexUvs[4*currentGlyph + 2] = (Korl_Vulkan_Uv){u1, v0};
-            batch->_vertexUvs[4*currentGlyph + 3] = (Korl_Vulkan_Uv){u0, v0};
-            batch->_vertexColors[4*currentGlyph + 0] = batch->_textColor;
-            batch->_vertexColors[4*currentGlyph + 1] = batch->_textColor;
-            batch->_vertexColors[4*currentGlyph + 2] = batch->_textColor;
-            batch->_vertexColors[4*currentGlyph + 3] = batch->_textColor;
-            currentGlyph++;
-        }
+        korl_assert(!"not implemented; this implementation sucked anyway");
     }
+    batch->_instanceCount = currentGlyph;
     /* if a non-zero number of glyphs have been cached, we need to update the 
         fontCache's glyph page texture */
     if(fontGlyphPage->textureOutOfDate)
@@ -845,17 +777,9 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         const u$ newGlyphMeshVertexBufferBytes = sizeof(*fontGlyphPage->stbDaGlyphMeshVertices)*arrlenu(fontGlyphPage->stbDaGlyphMeshVertices);
         if(!fontGlyphPage->glyphMeshBufferVertices)
         {
-            KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
-            vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_2D;
-            vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphVertex, position);
-            vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphVertex);
-            vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_UV;
-            vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphVertex, uv);
-            vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphVertex);
             KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfo);
-            createInfo.bytes                          = newGlyphMeshVertexBufferBytes;
-            createInfo.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
-            createInfo.vertexAttributeDescriptors     = vertexAttributeDescriptors;
+            createInfo.bytes              = newGlyphMeshVertexBufferBytes;
+            createInfo.useAsStorageBuffer = true;
             fontGlyphPage->glyphMeshBufferVertices = korl_vulkan_deviceAsset_createVertexBuffer(&createInfo);
         }
         else
@@ -866,8 +790,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     /* setting the font texture handle to a valid value signifies to other gfx 
         module code that the text mesh has been generated, and thus dependent 
         assets (font, glyph pages) are all loaded & ready to go */
-    ///@TODO: uncomment this when all of the instanced rendering stuff is ready to render
-    //batch->_fontTextureHandle = fontGlyphPage->textureHandle;
+    batch->_fontTextureHandle       = fontGlyphPage->textureHandle;
+    batch->_glyphMeshBufferVertices = fontGlyphPage->glyphMeshBufferVertices;
 }
 korl_internal void korl_gfx_initialize(void)
 {
@@ -1128,12 +1052,15 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 }
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
+    korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
+        { 0, 1, 3
+        , 1, 2, 3 };
     korl_time_probeStart(gfx_batch);
     korl_time_probeStart(text_generate_mesh);
     if(batch->_assetNameFont)
         _korl_gfx_textGenerateMesh(batch, KORL_ASSETCACHE_GET_FLAG_LAZY);
     korl_time_probeStop(text_generate_mesh);
-    if(batch->_vertexCount <= 0)
+    if(batch->_vertexCount <= 0 && batch->_instanceCount <= 0)
     {
         korl_log(WARNING, "attempted batch is empty");
         goto done;
@@ -1144,31 +1071,42 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
         goto done;
     }
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
-    vertexData.primitiveType      = batch->primitiveType;
-    vertexData.indexCount         = korl_vulkan_safeCast_u$_to_vertexIndex(batch->_vertexIndexCount);
-    vertexData.indices            = batch->_vertexIndices;
-    vertexData.vertexCount        = batch->_vertexCount;
-    vertexData.positionDimensions = sizeof(*batch->_vertexPositions)/sizeof(*vertexData.positions);
-    vertexData.positions          = batch->_vertexPositions->elements;
-    vertexData.positionsStride    = sizeof(*batch->_vertexPositions);
-    vertexData.colors             = batch->_vertexColors;
-    vertexData.uvs                = batch->_vertexUvs;
-    if(batch->_vertexColors) vertexData.colorsStride = sizeof(*batch->_vertexColors);
-    if(batch->_vertexUvs)    vertexData.uvsStride    = sizeof(*batch->_vertexUvs);
+    vertexData.primitiveType              = batch->primitiveType;
+    vertexData.indexCount                 = korl_vulkan_safeCast_u$_to_vertexIndex(batch->_vertexIndexCount);
+    vertexData.indices                    = batch->_vertexIndices;
+    vertexData.vertexCount                = batch->_vertexCount;
+    vertexData.positionDimensions         = sizeof(*batch->_vertexPositions)/sizeof(*vertexData.positions);
+    vertexData.positions                  = batch->_vertexPositions->elements;
+    vertexData.colors                     = batch->_vertexColors;
+    vertexData.uvs                        = batch->_vertexUvs;
+    vertexData.instanceCount              = batch->_instanceCount;
+    vertexData.instancePositions          = batch->_instancePositions;
+    vertexData.instancePositionDimensions = batch->_instancePositionDimensions;
+    vertexData.instanceUint               = batch->_instanceU32s;
+    if(batch->_vertexPositions)   vertexData.positionsStride         = sizeof(*batch->_vertexPositions);
+    if(batch->_vertexColors)      vertexData.colorsStride            = sizeof(*batch->_vertexColors);
+    if(batch->_vertexUvs)         vertexData.uvsStride               = sizeof(*batch->_vertexUvs);
+    if(batch->_instancePositions) vertexData.instancePositionsStride = batch->_instancePositionDimensions*sizeof(*batch->_instancePositions);
+    if(batch->_instanceU32s)      vertexData.instanceUintStride      = sizeof(*batch->_instanceU32s);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
     model.scale       = batch->_scale;
     model.rotation    = batch->_rotation;
     model.translation = batch->_position;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     if(batch->_assetNameFont)
     {
+        /* each glyph is going to be drawn with the same set of vertex indices, 
+            so we can just use a common data structure to draw all the glyph 
+            mesh instances; since we are currently limited to triangles, we can 
+            use a universal triangle quad index set here */
+        vertexData.indices    = triQuadIndices;
+        vertexData.indexCount = korl_arraySize(triQuadIndices);
         /* use glyph texture */
         samplers.texture = batch->_fontTextureHandle;
-        /* calculate vertex & index counts based on text mesh */
-        vertexData.indexCount  = korl_vulkan_safeCast_u$_to_vertexIndex(6*batch->_textVisibleCharacterCount * (batch->_textPixelOutline > 0.f ? 2 : 1));
-        vertexData.vertexCount = korl_checkCast_u$_to_u32(              4*batch->_textVisibleCharacterCount * (batch->_textPixelOutline > 0.f ? 2 : 1));
-        korl_assert(vertexData.indexCount  <= batch->_vertexIndexCount);
-        korl_assert(vertexData.vertexCount <= batch->_vertexCount);
+        /* use the glyph mesh vertices buffer as the shader storage buffer 
+            object binding */
+        storageBuffers.vertex = batch->_glyphMeshBufferVertices;
         /* we need to somehow position the text mesh in a way that satisfies the 
             text position anchor */
         // align position with the bottom-left corner of the batch AABB
@@ -1183,10 +1121,6 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     }
     if(batch->_texture)
         samplers.texture = _korl_gfx_resource_get(batch->_texture, _KORL_GFX_RESOURCE_TYPE_TEXTURE)->subType.texture.deviceAssetHandle;
-#if 0///@TODO: figure this out
-    if(batch->_assetNameTexture)
-        korl_vulkan_useImageAssetAsTexture(batch->_assetNameTexture);
-#endif
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
     features.enableBlend     = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING);
     features.enableDepthTest = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
@@ -1198,16 +1132,12 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     blend.factorAlphaSource = batch->factorAlphaSource;
     blend.factorAlphaTarget = batch->factorAlphaTarget;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.features = &features;
-    drawState.blend    = &blend;
-    drawState.model    = &model;
-    drawState.samplers = &samplers;
+    drawState.features       = &features;
+    drawState.blend          = &blend;
+    drawState.model          = &model;
+    drawState.samplers       = &samplers;
+    drawState.storageBuffers = &storageBuffers;
     korl_vulkan_setDrawState(&drawState);
-#if 0///@TODO: use this to stage the indices of the quad every time we render text instances?
-    korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
-        { 0, 1, 3
-        , 1, 2, 3 };
-#endif
     korl_vulkan_draw(&vertexData);
     done:
     korl_time_probeStop(gfx_batch);
@@ -1447,37 +1377,31 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
                         + assetNameFontBytes
                         + textBytes
-                        + maxVisibleGlyphCount * 6*sizeof(Korl_Vulkan_VertexIndex)
-                        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Position)
-                        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Color4u8)
-                        + maxVisibleGlyphCount * 4*sizeof(Korl_Vulkan_Uv);
+                        + maxVisibleGlyphCount * sizeof(Korl_Math_V2f32)// glyph instance positions
+                        + maxVisibleGlyphCount * sizeof(u32);           // instance glyph mesh index
     /* allocate the memory */
-    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_allocate(allocatorHandle, totalBytes));
+    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
-    result->allocatorHandle     = allocatorHandle;
-    result->primitiveType       = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
-    result->_scale              = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
-    result->_rotation           = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexIndexCount   = korl_checkCast_u$_to_u32(maxVisibleGlyphCount*6);
-    result->_vertexCount        = korl_checkCast_u$_to_u32(maxVisibleGlyphCount*4);
-    result->_textPixelHeight    = textPixelHeight;
-    result->_textPixelOutline   = outlinePixelSize;
-    result->_textColor          = color;
-    result->_textColorOutline   = colorOutline;
-    result->_textPositionAnchor = (Korl_Math_V2f32){0,1};
-    result->_assetNameFont      = KORL_C_CAST(wchar_t*, result + 1);
-    result->_text               = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, result->_assetNameFont) + assetNameFontBytes);
-    result->opColor             = KORL_BLEND_OP_ADD;
-    result->factorColorSource   = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget   = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha             = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource   = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget   = KORL_BLEND_FACTOR_ZERO;
-    result->_vertexIndices      = KORL_C_CAST(Korl_Vulkan_VertexIndex*, KORL_C_CAST(u8*, result->_text) + textBytes);
-    result->_vertexPositions    = KORL_C_CAST(Korl_Vulkan_Position*   , KORL_C_CAST(u8*, result->_vertexIndices  ) + maxVisibleGlyphCount*6*sizeof(*result->_vertexIndices));
-    result->_vertexColors       = KORL_C_CAST(Korl_Vulkan_Color4u8*   , KORL_C_CAST(u8*, result->_vertexPositions) + maxVisibleGlyphCount*4*sizeof(*result->_vertexPositions));
-    result->_vertexUvs          = KORL_C_CAST(Korl_Vulkan_Uv*         , KORL_C_CAST(u8*, result->_vertexColors   ) + maxVisibleGlyphCount*4*sizeof(*result->_vertexColors));
+    result->allocatorHandle             = allocatorHandle;
+    result->primitiveType               = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->_scale                      = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
+    result->_rotation                   = KORL_MATH_QUATERNION_IDENTITY;
+    result->_textPixelHeight            = textPixelHeight;
+    result->_textPixelOutline           = outlinePixelSize;
+    result->_textColor                  = color;
+    result->_textColorOutline           = colorOutline;
+    result->_textPositionAnchor         = (Korl_Math_V2f32){0,1};
+    result->_assetNameFont              = KORL_C_CAST(wchar_t*, result + 1);
+    result->_text                       = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, result->_assetNameFont) + assetNameFontBytes);
+    result->opColor                     = KORL_BLEND_OP_ADD;
+    result->factorColorSource           = KORL_BLEND_FACTOR_SRC_ALPHA;
+    result->factorColorTarget           = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    result->opAlpha                     = KORL_BLEND_OP_ADD;
+    result->factorAlphaSource           = KORL_BLEND_FACTOR_ONE;
+    result->factorAlphaTarget           = KORL_BLEND_FACTOR_ZERO;
+    result->_instancePositionDimensions = 2;
+    result->_instancePositions          = KORL_C_CAST(f32*, KORL_C_CAST(u8*, result->_text) + textBytes);
+    result->_instanceU32s               = KORL_C_CAST(u32*, KORL_C_CAST(u8*, result->_instancePositions) + maxVisibleGlyphCount*sizeof(*result->_instancePositions));
     /* initialize the batch's dynamic data */
     if(    korl_memory_stringCopy(assetNameFont, result->_assetNameFont, assetNameFontBufferSize) 
         != korl_checkCast_u$_to_i$(assetNameFontBufferSize))
