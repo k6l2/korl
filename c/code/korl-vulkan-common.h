@@ -45,6 +45,7 @@ typedef struct _Korl_Vulkan_Pipeline
     u32 colorsStride;          // 0 => absence of this attribute
     u32 instancePositionStride;// 0 => absence of this attribute
     u32 instanceUintStride;    // 0 => absence of this attribute
+    bool useTexture;
     Korl_Vulkan_DrawState_Features features;
     Korl_Vulkan_DrawState_Blend blend;
 } _Korl_Vulkan_Pipeline;

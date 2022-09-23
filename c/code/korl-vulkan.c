@@ -692,7 +692,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    if(pipeline->uvsStride)
+    if(pipeline->useTexture)
         createInfoShaderStages[1].module = context->shaderFragmentColorTexture;
     else
         createInfoShaderStages[1].module = context->shaderFragmentColor;
@@ -2056,6 +2056,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     surfaceContext->batchState.pipelineConfigurationCache.instancePositionDimensions = vertexData->instancePositionDimensions;
     surfaceContext->batchState.pipelineConfigurationCache.instancePositionStride     = vertexData->instancePositionsStride;
     surfaceContext->batchState.pipelineConfigurationCache.instanceUintStride         = vertexData->instanceUintStride;
+    surfaceContext->batchState.pipelineConfigurationCache.useTexture                 = (0 != surfaceContext->batchState.texture);
     _korl_vulkan_setPipelineMetaData(surfaceContext->batchState.pipelineConfigurationCache);
     korl_time_probeStop(draw_config_pipeline);
     /* stage uniform data */
@@ -2088,7 +2089,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     }
     // conditionally write the texture sampler if we require it //
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
-    if(vertexData->uvs && surfaceContext->batchState.texture)
+    if(surfaceContext->batchState.texture)
     {
         _Korl_Vulkan_DeviceMemory_Alloctation* textureAllocation = NULL;
         _Korl_Vulkan_DeviceAsset*const deviceAsset =

@@ -11,8 +11,7 @@ layout(push_constant, row_major) uniform UniformPushConstants
 } pushConstants;
 struct GlyphVertex
 {
-    vec2 position;
-    vec2 uv;
+    vec4 position2d_uv;
 };
 layout(binding = 2) readonly buffer BufferGlyphMeshData
 {
@@ -27,8 +26,10 @@ layout(location = 0) out vec4 fragmentColor;
 layout(location = 1) out vec2 fragmentUv;
 void main() 
 {
-    GlyphVertex glyphVertex = bufferGlyphMeshData.glyphVertices[instanceAttributeGlyphIndex + gl_VertexIndex];
-    gl_Position   = ubo.projection * ubo.view * pushConstants.model * vec4(glyphVertex.position, 0.0, 1.0);
+    const uint glyphMeshVertexIndex = 4*instanceAttributeGlyphIndex + gl_VertexIndex;
+    const GlyphVertex glyphVertex   = bufferGlyphMeshData.glyphVertices[glyphMeshVertexIndex];
+    const vec2 modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
+    gl_Position   = ubo.projection * ubo.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
     fragmentColor = vec4(1.0);
-    fragmentUv    = glyphVertex.uv;
+    fragmentUv    = glyphVertex.position2d_uv.zw;
 }
