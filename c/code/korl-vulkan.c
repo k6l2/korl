@@ -901,12 +901,12 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
 }
 korl_internal void* _korl_vulkan_getVertexStagingPool(const Korl_Vulkan_DrawVertexData* vertexData, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
 {
-    const VkDeviceSize bytesRequired = (vertexData->positions         ? vertexData->vertexCount*vertexData->positionDimensions*sizeof(*vertexData->positions) : 0)
-                                     + (vertexData->colors            ? vertexData->vertexCount*sizeof(*vertexData->colors)                                   : 0)
-                                     + (vertexData->uvs               ? vertexData->vertexCount*sizeof(*vertexData->uvs)                                      : 0)
-                                     + (vertexData->indices           ? vertexData->indexCount*sizeof(*vertexData->indices)                                   : 0)
-                                     + (vertexData->instancePositions ? vertexData->instanceCount*sizeof(*vertexData->instancePositions)                      : 0)
-                                     + (vertexData->instanceUint      ? vertexData->instanceCount*sizeof(*vertexData->instanceUint)                           : 0);
+    const VkDeviceSize bytesRequired = (vertexData->positions         ? vertexData->vertexCount*vertexData->positionDimensions*sizeof(*vertexData->positions)                   : 0)
+                                     + (vertexData->colors            ? vertexData->vertexCount*sizeof(*vertexData->colors)                                                     : 0)
+                                     + (vertexData->uvs               ? vertexData->vertexCount*sizeof(*vertexData->uvs)                                                        : 0)
+                                     + (vertexData->indices           ? vertexData->indexCount*sizeof(*vertexData->indices)                                                     : 0)
+                                     + (vertexData->instancePositions ? vertexData->instanceCount*vertexData->instancePositionDimensions*sizeof(*vertexData->instancePositions) : 0)
+                                     + (vertexData->instanceUint      ? vertexData->instanceCount*sizeof(*vertexData->instanceUint)                                             : 0);
     return _korl_vulkan_getStagingPool(bytesRequired, /*alignment*/0, out_bufferStaging, out_byteOffsetStagingBuffer);
 }
 korl_internal void* _korl_vulkan_getDescriptorStagingPool(VkDeviceSize descriptorBytes, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
