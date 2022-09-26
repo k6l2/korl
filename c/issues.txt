@@ -118,7 +118,7 @@
 [ ] KORL-PERFORMANCE-000-000-028: memory: (likely extremely minor): _*general_enumerateAllocations: we should be able to skip more page flag registers immediately if we know we occupy 1 or more full registers
 [ ] KORL-PERFORMANCE-000-000-029: memory: general allocator: occupiedPageOffset: Intuitively, I would assume that this code is just strictly sub-optimal, since we are just stupidly iterating over bit flags manually.  I feel like bitscans conducted on entire registers would be much more efficient.  However, I made an attempt at doing that here and either my code just sucks, or that technique was _actually_ sub-optimal (unlikely).  Alas, I am getting really sick of working on this code, so I am going to put this on the back-burner until performance ever becomes an issue in the future (if ever).
 [ ] KORL-PERFORMANCE-000-000-030: memory: general allocator: does using bittest intrinsic result in better performance?  https://docs.microsoft.com/en-us/cpp/intrinsics/bittest-bittest64?view=msvc-170
-[ ] KORL-PERFORMANCE-000-000-031: gfx, fontCache: using a hash map as a lookup table for baked glyphs might be faster
+[x] KORL-PERFORMANCE-000-000-031: gfx, fontCache: using a hash map as a lookup table for baked glyphs might be faster
 [x] KORL-FEATURE-000-000-000: add vectored exception handler so we can generate crash dumps & flush logs
 [ ] KORL-FEATURE-000-000-001: GFX: add support for outlined geometry (requires refactoring this API to use >= 1 sub-batches per Batch)
 [ ] KORL-FEATURE-000-000-002: GFX: add support for outlined text (not sure how to do this with stbtt, maybe check how other implementations do this?); Technically this code works, but it's far too SLOW to be of use honestly.

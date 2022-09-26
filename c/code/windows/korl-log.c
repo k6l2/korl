@@ -237,7 +237,7 @@ korl_internal void _korl_log_vaList(
     {
         // we can fit the entire log line into the buffer //
         korl_memory_copy(buffer, context->transientBuffer, logLineSize*sizeof(*context->transientBuffer));
-#if 0///@TODO: just delete this?  I don't know if keeping a persistent list of log lines is actually going to be worth it in the long run, since the vulkan/gfx modules are being overhauled
+#if 1///@TODO: just delete this?  I don't know if keeping a persistent list of log lines is actually going to be worth it in the long run, since the vulkan/gfx modules are being overhauled
         // add a new line entry to the running list of log lines //
         mcarrpush(KORL_C_CAST(void*, context->allocatorHandleTransient), context->stbDaLines, (Korl_Log_Line){0});
         if(prependMetaTag)
@@ -259,7 +259,7 @@ korl_internal void _korl_log_vaList(
         korl_memory_copy(buffer, context->transientBuffer, bufferAvailable*sizeof(*context->transientBuffer));
         korl_memory_copy(bufferOverflow, context->transientBuffer + bufferAvailable, 
                          (logLineSize - bufferAvailable)*sizeof(*context->transientBuffer));
-#if 0///@TODO: just delete this?  I don't know if keeping a persistent list of log lines is actually going to be worth it in the long run, since the vulkan/gfx modules are being overhauled
+#if 1///@TODO: just delete this?  I don't know if keeping a persistent list of log lines is actually going to be worth it in the long run, since the vulkan/gfx modules are being overhauled
         // add the split new line entry to the running list of log lines //
         mcarrpush(KORL_C_CAST(void*, context->allocatorHandleTransient), context->stbDaLines, (Korl_Log_Line){0});
         const wchar_t*const contextBufferEnd = context->buffer + context->bufferBytes/sizeof(*context->buffer);

@@ -827,6 +827,8 @@ korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Vulkan_Blend
 }
 korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDeviceSize alignmentRequired, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
 {
+    const u$ stagingBufferArenaBytes = korl_math_megabytes(8);
+    korl_assert(bytesRequired <= stagingBufferArenaBytes);
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* attempt to find a staging buffer that can hold the vertexData */
@@ -856,7 +858,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
         if(buffer->framesSinceLastUsed < surfaceContext->swapChainImagesSize)
             continue;
 #if KORL_DEBUG
-        korl_log(VERBOSE, "resetting staging buffer [%llu]", b);
+        korl_log(VERBOSE, "resetting staging buffer [%llu]", bufferIndexOffsetFromLastUsed);
 #endif
         buffer->bytesUsed = 0;
         validBuffer     = buffer;
@@ -872,7 +874,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
                         , arrlenu(surfaceContext->stbDaStagingBuffers));
 #endif
         _Korl_Vulkan_DeviceMemory_AllocationHandle newBufferAllocationHandle = _korl_vulkan_deviceMemory_allocateBuffer(&surfaceContext->deviceMemoryHostVisible
-                                                                                                                       ,korl_math_megabytes(1)
+                                                                                                                       ,stagingBufferArenaBytes
                                                                                                                        ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT 
                                                                                                                         | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                                                                                                                         | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
@@ -1472,7 +1474,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                          | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
                                                                                          | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
                                                                                         ,/*image usage flags*/0
-                                                                                        ,korl_math_megabytes(8));
+                                                                                        ,korl_math_megabytes(32));
     /* create a device memory allocator used to store device-local data, such as 
         mesh manifolds, SSBOs, textures, etc...  mostly things that persist for 
         many frames and have a high cost associated with data transfers to the 
@@ -1482,7 +1484,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                         ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                                                                         ,VK_BUFFER_USAGE_TRANSFER_DST_BIT
                                                                                         ,/*image usage flags*/0
-                                                                                        ,korl_math_megabytes(8));
+                                                                                        ,korl_math_megabytes(32));
     /* initialize staging buffers collection */
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);
     /* now that the device is created we can create the swap chain 
