@@ -249,6 +249,8 @@ set "buildCommand=%buildCommand% setupapi.lib"
 set "buildCommand=%buildCommand% vulkan-1.lib"
 rem     for bluetooth module
 set "buildCommand=%buildCommand% ws2_32.lib"
+rem     for VirtualAlloc2 & MapViewOfFile3
+set "buildCommand=%buildCommand% onecore.lib"
 echo %buildCommand%
 echo:
 %buildCommand%

@@ -35,6 +35,13 @@ typedef struct _Korl_Log_Context
      * why? because we want to truncate huge logs, and the most important data 
      * in a log is most likely at the beginning & end */
     wchar_t* buffer;
+    /** This virtual address will point to the beginning of a region of memory 
+     * which is mapped in the following way: [A][B][B], where [A] is mapped to a 
+     * physical region in memory which contains the persistent chunk of the very 
+     * beginning of the log, and [B] is mapped to a physical region in memory 
+     * which can be used as a ring buffer. */
+    void* rawLog;
+    u$ rawLogChunkBytes;// how many bytes the system decided to use for each region of physical memory; this is not necessarily going to be == to the value we requested because the system needs to obey memory alignment requirements
     u$ bufferedCharacters;
     u$ bufferOffset;// the head of the buffer, where we will next write log text
     bool errorAssertionTriggered;
@@ -387,12 +394,22 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
 }
 korl_internal void korl_log_initialize(void)
 {
+    KORL_ZERO_STACK_ARRAY(u16, virtualRegionMapRawLog, 3);
+    virtualRegionMapRawLog[0] = 0;// map to the persistent log buffer region
+    virtualRegionMapRawLog[1] = 1;// map to the ring log buffer region
+    virtualRegionMapRawLog[2] = 1;// map to the ring log buffer region
+    KORL_ZERO_STACK(Korl_Memory_FileMapAllocation_CreateInfo, createInfoRawLog);
+    createInfoRawLog.physicalMemoryChunkBytes = korl_math_megabytes(4);
+    createInfoRawLog.physicalRegionCount      = 2;// one region for the persistent log buffer, & one for the ring buffer
+    createInfoRawLog.virtualRegionCount       = korl_arraySize(virtualRegionMapRawLog);
+    createInfoRawLog.virtualRegionMap         = virtualRegionMapRawLog;
     korl_memory_zero(&_korl_log_context, sizeof(_korl_log_context));
     _korl_log_context.allocatorHandlePersistent = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-log-persistent", KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS, NULL/*let platform choose address*/);
     _korl_log_context.allocatorHandleTransient  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-log-transient" , KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS, NULL/*let platform choose address*/);
     _korl_log_context.bufferBytes               = _KORL_LOG_BUFFER_BYTES_MIN;
     _korl_log_context.buffer                    = KORL_C_CAST(wchar_t*, korl_allocate(_korl_log_context.allocatorHandlePersistent, _korl_log_context.bufferBytes));
     _korl_log_context.logFileEnabled            = true;// assume we will use a log file eventually, until the user specifies we wont
+    _korl_log_context.rawLog                    = korl_memory_fileMapAllocation_create(&createInfoRawLog, &_korl_log_context.rawLogChunkBytes);
     InitializeCriticalSection(&_korl_log_context.criticalSection);
     mcarrsetcap(KORL_C_CAST(void*, _korl_log_context.allocatorHandleTransient), _korl_log_context.stbDaLines, 8*1024);
     /* there's no reason to have to assert that the buffer was created here, 
@@ -400,6 +417,16 @@ korl_internal void korl_log_initialize(void)
         did, and the resulting error will likely be easy to catch, so I'm just 
         going to leave this commented out for now */
     //korl_assert(_korl_log_context.buffer);
+#if KORL_DEBUG
+    /* test the rawLog file mapped allocation */
+    const wchar_t testString0[] = L"Persistent Log Buffer Region";
+    const wchar_t testString1[] = L"Ring Log Buffer Region";
+    korl_memory_stringCopy(testString0, _korl_log_context.rawLog, korl_arraySize(testString0));
+    korl_memory_stringCopy(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + _korl_log_context.rawLogChunkBytes), korl_arraySize(testString0));
+    korl_assert(0 == korl_memory_stringCompare(testString0, _korl_log_context.rawLog));
+    korl_assert(0 == korl_memory_stringCompare(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
+    korl_assert(0 == korl_memory_stringCompare(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
+#endif
 }
 korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
 {

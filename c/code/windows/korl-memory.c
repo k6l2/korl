@@ -2080,6 +2080,62 @@ korl_internal bool korl_memory_allocator_containsAllocation(void* opaqueAllocato
     return allocation >= allocator->userData 
         && KORL_C_CAST(const u8*, allocation) < KORL_C_CAST(const u8*, allocator->userData) + allocator->maxBytes;
 }
+korl_internal void* korl_memory_fileMapAllocation_create(const Korl_Memory_FileMapAllocation_CreateInfo* createInfo, u$* out_physicalMemoryChunkBytes)
+{
+    /** system compatibility notice:
+     * VirtualAlloc2 & MapViewOfFile3 require Windows 10+ 😟 */
+    /* satisfy memory alignment requirements of the requested physical memory chunk bytes; 
+        we need to use dwAllocationGranularity here because each resulting 
+        virtual alloc region must have a base address that is aligned to this 
+        value, including the ones split from a placeholder region */
+    korl_assert(0 != _korl_memory_context.systemInfo.dwAllocationGranularity);
+    KORL_ZERO_STACK(ULARGE_INTEGER, physicalMemoryChunkBytes);
+    physicalMemoryChunkBytes.QuadPart = korl_math_roundUpPowerOf2(createInfo->physicalMemoryChunkBytes, _korl_memory_context.systemInfo.dwAllocationGranularity);
+    /* reserve a placeholder region in virtual memory */
+    void*const virtualAddressPlaceholder = VirtualAlloc2(/*process*/NULL, /*baseAddress*/NULL
+                                                        ,createInfo->virtualRegionCount*physicalMemoryChunkBytes.QuadPart
+                                                        ,MEM_RESERVE | MEM_RESERVE_PLACEHOLDER
+                                                        ,PAGE_NOACCESS
+                                                        ,/*extendedParameters*/NULL, /*parameterCount*/0);
+    if(!virtualAddressPlaceholder)
+        korl_logLastError("VirtualAlloc2 failed");
+    /* split the placeholder region into the user-requested # of regions */
+    for(u16 v = createInfo->virtualRegionCount - 1; v > 0; v--)
+        if(!VirtualFree(KORL_C_CAST(u8*, virtualAddressPlaceholder) + v*physicalMemoryChunkBytes.QuadPart
+                       ,physicalMemoryChunkBytes.QuadPart
+                       ,MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER))
+            korl_logLastError("VirtualFree failed");
+    /* create pagefile-backed chunks of physical memory */
+    KORL_ZERO_STACK_ARRAY(HANDLE, physicalChunkHandles, 8);
+    korl_assert(createInfo->physicalRegionCount <= korl_arraySize(physicalChunkHandles));
+    for(u16 p = 0; p < createInfo->physicalRegionCount; p++)
+    {
+        physicalChunkHandles[p] = CreateFileMapping(/*hFile; invalid=>pageFile*/INVALID_HANDLE_VALUE
+                                                   ,/*fileMappingAttributes*/NULL
+                                                   ,PAGE_READWRITE
+                                                   ,physicalMemoryChunkBytes.HighPart
+                                                   ,physicalMemoryChunkBytes.LowPart
+                                                   ,/*name*/NULL);
+        if(NULL == physicalChunkHandles[p])
+            korl_logLastError("CreateFileMapping failed");
+    }
+    /* map the virtual memory regions into the physical memory regions */
+    for(u16 v = 0; v < createInfo->virtualRegionCount; v++)
+    {
+        void*const view = MapViewOfFile3(physicalChunkHandles[createInfo->virtualRegionMap[v]]
+                                        ,/*process*/NULL
+                                        ,KORL_C_CAST(u8*, virtualAddressPlaceholder) + v*physicalMemoryChunkBytes.QuadPart
+                                        ,/*offset*/0
+                                        ,physicalMemoryChunkBytes.QuadPart
+                                        ,MEM_REPLACE_PLACEHOLDER
+                                        ,PAGE_READWRITE
+                                        ,/*extendedParams*/NULL, /*paramCount*/0);
+        if(!view)
+            korl_logLastError("MapViewOfFile3 failed");
+    }
+    *out_physicalMemoryChunkBytes = physicalMemoryChunkBytes.QuadPart;
+    return virtualAddressPlaceholder;
+}
 korl_internal u$ korl_memory_packStringI8(const i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
 {
     return _korl_memory_packCommon(KORL_C_CAST(u8*, data), dataSize*sizeof(*data), bufferCursor, bufferEnd);

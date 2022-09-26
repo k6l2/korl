@@ -15,6 +15,13 @@ typedef struct Korl_Memory_AllocationMeta
      */
     u$ bytes;
 } Korl_Memory_AllocationMeta;
+typedef struct Korl_Memory_FileMapAllocation_CreateInfo
+{
+    u$         physicalMemoryChunkBytes;// this is merely a request; the final physical memory chunk bytes value will be >= to this in order to satisfy memory alignment constraints
+    u16        physicalRegionCount;
+    u16        virtualRegionCount;
+    const u16* virtualRegionMap;
+} Korl_Memory_FileMapAllocation_CreateInfo;
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
@@ -64,6 +71,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_
  * \return \c true if the allocator with the given \c name exists */
 korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Memory_AllocatorHandle* out_allocatorHandle);
 korl_internal bool korl_memory_allocator_containsAllocation(void* opaqueAllocator, const void* allocation);
+korl_internal void* korl_memory_fileMapAllocation_create(const Korl_Memory_FileMapAllocation_CreateInfo* createInfo, u$* out_physicalMemoryChunkBytes);
 /** These memory (un)pack API can be used to quickly store & retrieve data 
  * to/from a memory buffer in a platform-agnostic way.  For example, if machine 
  * A packs a 64-bit integer into a memory buffer, and sends this data to machine 
