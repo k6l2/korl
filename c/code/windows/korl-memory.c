@@ -2136,6 +2136,12 @@ korl_internal void* korl_memory_fileMapAllocation_create(const Korl_Memory_FileM
     *out_physicalMemoryChunkBytes = physicalMemoryChunkBytes.QuadPart;
     return virtualAddressPlaceholder;
 }
+korl_internal void korl_memory_fileMapAllocation_destroy(void* allocation, u$ bytesPerRegion, u16 regionCount)
+{
+    for(u16 r = 0; r < regionCount; r++)
+        if(!UnmapViewOfFile(KORL_C_CAST(u8*, allocation) + r*bytesPerRegion))
+            korl_logLastError("UnmapViewOfFile failed");
+}
 korl_internal u$ korl_memory_packStringI8(const i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
 {
     return _korl_memory_packCommon(KORL_C_CAST(u8*, data), dataSize*sizeof(*data), bufferCursor, bufferEnd);

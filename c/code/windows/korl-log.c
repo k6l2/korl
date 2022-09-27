@@ -411,6 +411,7 @@ korl_internal void korl_log_shutDown(void)
         korl_file_write(context->fileDescriptor, bufferOffset, remainingBytes);
     }
     korl_file_close(&context->fileDescriptor);
+    korl_memory_fileMapAllocation_destroy(context->rawLog, context->rawLogChunkBytes, 3);
 skipFileCleanup:
     return;
 }

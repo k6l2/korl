@@ -72,6 +72,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_
 korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Memory_AllocatorHandle* out_allocatorHandle);
 korl_internal bool korl_memory_allocator_containsAllocation(void* opaqueAllocator, const void* allocation);
 korl_internal void* korl_memory_fileMapAllocation_create(const Korl_Memory_FileMapAllocation_CreateInfo* createInfo, u$* out_physicalMemoryChunkBytes);
+korl_internal void korl_memory_fileMapAllocation_destroy(void* allocation, u$ bytesPerRegion, u16 regionCount);
 /** These memory (un)pack API can be used to quickly store & retrieve data 
  * to/from a memory buffer in a platform-agnostic way.  For example, if machine 
  * A packs a 64-bit integer into a memory buffer, and sends this data to machine 
