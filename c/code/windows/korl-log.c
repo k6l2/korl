@@ -121,29 +121,6 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
     /* we can skip most of this if there are no log outputs enabled */
     if(!context->logFileEnabled && !context->useLogOutputDebugger && !context->useLogOutputConsole)
         goto _korl_log_vaList_done;
-    /* calculate the buffer size required for the formatted log message & meta data tag */
-    const wchar_t* cStringLogLevel = L"???";
-    switch(logLevel)
-    {
-    case KORL_LOG_LEVEL_ASSERT: {cStringLogLevel = L"ASSERT";  break;}
-    case KORL_LOG_LEVEL_ERROR:  {cStringLogLevel = L"ERROR";   break;}
-    case KORL_LOG_LEVEL_WARNING:{cStringLogLevel = L"WARNING"; break;}
-    case KORL_LOG_LEVEL_INFO:   {cStringLogLevel = L"INFO";    break;}
-    case KORL_LOG_LEVEL_VERBOSE:{cStringLogLevel = L"VERBOSE"; break;}
-    }
-    // only print the file name, not the full path!
-    for(const wchar_t* fileNameCursor = cStringFileName; fileNameCursor && *fileNameCursor; fileNameCursor++)
-        if(*fileNameCursor == '\\' || *fileNameCursor == '/')
-            cStringFileName = fileNameCursor + 1;
-    //  //
-    const int bufferSizeFormat  = _vscwprintf(format, vaList) + 1/*newline character*/;//excluding the null terminator
-    const int bufferSizeMetaTag = _scwprintf(_KORL_LOG_META_DATA_STRING, 
-                                             cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
-                                             systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
-                                             cStringFileName, cStringFunctionName);//excluding the null terminator
-    korl_assert(bufferSizeFormat  > 0);
-    korl_assert(bufferSizeMetaTag > 0);
-    korl_assert((bufferSizeFormat + 1/*null-terminator*/)*sizeof(*format) < _KORL_LOG_BUFFER_REGION_BYTES);// ensure that any given log entry will fit within one full region of the circular log buffer
     /**/
     EnterCriticalSection(&(context->criticalSection));
     /* figure out where we are in the raw log buffer */
@@ -152,27 +129,44 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
         : (context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes;
     wchar_t*const logBuffer = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, context->rawLog) + rawLogOffset);
     /* print the log message to the raw log buffer */
-    const bool prependMetaTag = !context->disableMetaTags && cStringFileName && cStringFunctionName && lineNumber > 0;
     int charactersWrittenTotal = 0;
     int charactersWritten;
     // write the log meta tag //
-    if(prependMetaTag)
+    if(!context->disableMetaTags && cStringFileName && cStringFunctionName && lineNumber > 0)
     {
-        charactersWritten = swprintf_s(logBuffer + charactersWrittenTotal, bufferSizeMetaTag + 1/*for '\0'*/, _KORL_LOG_META_DATA_STRING, 
-                                       cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute, 
-                                       systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber, 
-                                       cStringFileName, cStringFunctionName);
-        korl_assert(charactersWritten == bufferSizeMetaTag);
+        const wchar_t* cStringLogLevel = L"???";
+        switch(logLevel)
+        {
+        case KORL_LOG_LEVEL_ASSERT: {cStringLogLevel = L"ASSERT";  break;}
+        case KORL_LOG_LEVEL_ERROR:  {cStringLogLevel = L"ERROR";   break;}
+        case KORL_LOG_LEVEL_WARNING:{cStringLogLevel = L"WARNING"; break;}
+        case KORL_LOG_LEVEL_INFO:   {cStringLogLevel = L"INFO";    break;}
+        case KORL_LOG_LEVEL_VERBOSE:{cStringLogLevel = L"VERBOSE"; break;}
+        }
+        // only print the file name, not the full path!
+        for(const wchar_t* fileNameCursor = cStringFileName; fileNameCursor && *fileNameCursor; fileNameCursor++)
+            if(*fileNameCursor == '\\' || *fileNameCursor == '/')
+                cStringFileName = fileNameCursor + 1;
+        //  //
+        charactersWritten = swprintf(logBuffer + charactersWrittenTotal
+                                    ,(context->rawLogChunkBytes / sizeof(*logBuffer)) - charactersWrittenTotal
+                                    ,_KORL_LOG_META_DATA_STRING
+                                    ,cStringLogLevel, systemTimeLocal.wHour, systemTimeLocal.wMinute
+                                    ,systemTimeLocal.wSecond, systemTimeLocal.wMilliseconds, lineNumber
+                                    ,cStringFileName, cStringFunctionName);
+        korl_assert(charactersWritten > 0);
         charactersWrittenTotal += charactersWritten;
     }
     // write the log message //
-    charactersWritten = vswprintf_s(logBuffer + charactersWrittenTotal, bufferSizeFormat, format, vaList);
-    korl_assert(charactersWritten == bufferSizeFormat - 1/*we haven't written the `\n` yet*/);
+    charactersWritten = vswprintf(logBuffer + charactersWrittenTotal
+                                 ,(context->rawLogChunkBytes / sizeof(*logBuffer)) - charactersWrittenTotal
+                                 ,format, vaList);
+    korl_assert(charactersWritten > 0);
     charactersWrittenTotal += charactersWritten;
     // write a newline character //
-    charactersWritten = swprintf_s(logBuffer + charactersWrittenTotal, 1 + 1/*for '\0'*/, L"\n");
-    korl_assert(charactersWritten == 1);
-    charactersWrittenTotal += charactersWritten;
+    logBuffer[charactersWrittenTotal++] = L'\n';
+    logBuffer[charactersWrittenTotal  ] = L'\0';
+    korl_assert(charactersWrittenTotal*sizeof(logBuffer) < _KORL_LOG_BUFFER_REGION_BYTES);
     // finally, we can update the log context book keeping for buffered logs //
     context->loggedBytes += charactersWrittenTotal*sizeof(*logBuffer);
     /* optionally write the buffered log entry to the debugger */
@@ -187,10 +181,10 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
                                                   ? STD_OUTPUT_HANDLE 
                                                   : STD_ERROR_HANDLE);
         korl_assert(handleConsole != INVALID_HANDLE_VALUE);
-        korl_assert(0 != WriteConsole(handleConsole, logBuffer, 
-                                      korl_checkCast_u$_to_u32(charactersWrittenTotal), 
-                                      NULL/*out_charsWritten; I don't care*/, 
-                                      NULL/*reserved; _must_ be NULL*/));
+        korl_assert(0 != WriteConsole(handleConsole, logBuffer
+                                     ,korl_checkCast_u$_to_u32(charactersWrittenTotal)
+                                     ,NULL/*out_charsWritten; I don't care*/
+                                     ,NULL/*reserved; _must_ be NULL*/));
     }
     if(logLevel == KORL_LOG_LEVEL_ERROR && !errorAssertionTriggered)
         /* when we're not attached to a debugger (for example, in 
@@ -201,13 +195,13 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
             fact that the assert condition fails in the log module is irrelevant */
         _korl_crash_assertConditionFailed(logBuffer, cStringFileName, cStringFunctionName, lineNumber);
     /* ----- write the buffered log entry to log file ----- */
-    if((context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE) 
-        && (   context->logFileBytesWritten < context->rawLogChunkBytes
-            || context->useLogFileBig))
+    if(   (context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE) 
+       && (   context->logFileBytesWritten < context->rawLogChunkBytes
+           || context->useLogFileBig))
     {
         /* clean out async write descriptors that have finished 
             until the pool has room for one more operation */
-        while (KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors))
+        while(KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors))
             for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(context->asyncWriteDescriptors);)
             {
                 const Korl_File_GetAsyncIoResult resultAsyncIo = 
@@ -246,8 +240,8 @@ korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
     korl_assert(variadicArgumentCount == formatSubstitutions);
     va_list vaList;
     va_start(vaList, format);
-    _korl_log_vaList(variadicArgumentCount, logLevel, cStringFileName, 
-                     cStringFunctionName, lineNumber, format, vaList);
+    _korl_log_vaList(variadicArgumentCount, logLevel, cStringFileName
+                    ,cStringFunctionName, lineNumber, format, vaList);
     va_end(vaList);
 }
 korl_internal void korl_log_initialize(void)
@@ -279,6 +273,7 @@ korl_internal void korl_log_initialize(void)
     korl_assert(0 == korl_memory_stringCompare(testString0, _korl_log_context.rawLog));
     korl_assert(0 == korl_memory_stringCompare(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
     korl_assert(0 == korl_memory_stringCompare(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
+    korl_memory_zero(_korl_log_context.rawLog, 2*_korl_log_context.rawLogChunkBytes);
 #endif
 }
 korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
