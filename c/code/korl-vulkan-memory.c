@@ -158,8 +158,8 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
         newAllocationArenaId = arrlenu(allocator->stbDaArenas)  - 1;
         newAllocationId      = arrlenu(arena->stbDaAllocations) - 1;
     }
-    _Korl_Vulkan_DeviceMemory_Arena*const       arena      = &(allocator->stbDaArenas[newAllocationArenaId]);
-    _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(arena->stbDaAllocations[newAllocationId]);
+    _Korl_Vulkan_DeviceMemory_Arena*const  arena      = &(allocator->stbDaArenas[newAllocationArenaId]);
+    _Korl_Vulkan_DeviceMemory_Alloctation* allocation = &(arena->stbDaAllocations[newAllocationId]);
     /* now that we have a valid arena index & allocation index; we can actually 
         claim or create the occupied allocation to utilize */
     korl_assert(arrlenu(arena->stbDaUnusedIds) > 0);// if this fails, we ran out of possible allocation ids
@@ -172,17 +172,17 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
             within `allocation`, we need to create a new allocation so 
             that we can keep track of the unused portion */
         KORL_ZERO_STACK(_Korl_Vulkan_DeviceMemory_Alloctation, tempAllocation);
-        tempAllocation.byteOffset = allocation->byteOffset;
-        tempAllocation.bytesOccupied   = bytesToOccupy;
-        allocation->byteOffset = tempAllocation.byteOffset + tempAllocation.bytesOccupied;
-        allocation->bytesOccupied  -= tempAllocation.bytesOccupied;
+        tempAllocation.byteOffset    = allocation->byteOffset;
+        tempAllocation.bytesOccupied = bytesToOccupy;
+        allocation->byteOffset     = tempAllocation.byteOffset + tempAllocation.bytesOccupied;
+        allocation->bytesOccupied -= tempAllocation.bytesOccupied;
         mcarrins(KORL_C_CAST(void*, allocator->allocatorHandle), arena->stbDaAllocations, newAllocationId, tempAllocation);
+        /* allocation is now potentially invalid if the allocations array was re-sized! */
+        allocation = &(arena->stbDaAllocations[newAllocationId]);
     }
     else
-    {
         /* otherwise, we can just use the entire allocation */
         korl_assert(bytesToOccupy == allocation->bytesOccupied);
-    }
     allocation->bytesUsed = bytes;
     _Korl_Vulkan_DeviceMemory_Alloctation* resultAllocation = &(arena->stbDaAllocations[newAllocationId]);// we need to do this again because allocation is potentially now invalidated
     resultAllocation->id                = out_allocationHandleUnpacked->allocationId;// assign the new Allocation an id that matches the new handle id from earlier

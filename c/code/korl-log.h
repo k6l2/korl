@@ -23,3 +23,4 @@ korl_internal void korl_log_shutDown(void);
  * This symbol is only exposed for the compiler! */
 korl_internal KORL_PLATFORM_LOG(_korl_log_variadic);
 korl_internal KORL_PLATFORM_LOG_GET_LINES(korl_log_getLines);
+korl_internal KORL_PLATFORM_LOG_GET_BUFFER(korl_log_getBuffer);

@@ -5,6 +5,22 @@
 #include "korl-interface-platform.h"
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_clearFontCache(void);
+/** Any font cache glyph pages that have had glyphs added/removed/modified will 
+ * be marked as "out-of-date"; calling this API will cause the updates to be 
+ * propogated to the graphics device. */
+korl_internal void korl_gfx_flushGlyphPages(void);
+typedef struct Korl_Gfx_Text
+{
+    Korl_Memory_AllocatorHandle allocator;
+    struct _Korl_Gfx_Text_Line* stbDaLines;
+    f32 textPixelHeight;
+    acu16 utf16AssetNameFont;
+} Korl_Gfx_Text;
+korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
+korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);
+korl_internal void           korl_gfx_text_eraseFront(Korl_Gfx_Text* context, u$ characterCount);
+korl_internal void           korl_gfx_text_append(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator);
+korl_internal void           korl_gfx_text_draw(const Korl_Gfx_Text* context);
 korl_internal KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(korl_gfx_resource_createTexture);
 korl_internal KORL_PLATFORM_GFX_RESOURCE_DESTROY(korl_gfx_resource_destroy);
 korl_internal KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(korl_gfx_texture_getSize);

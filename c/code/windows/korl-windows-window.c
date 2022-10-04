@@ -580,9 +580,35 @@ korl_internal void korl_windows_window_loop(void)
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
+#if 1///@TODO: delete later; just testing new korl-gfx API
+        // test obtaining log buffer & updating a graphics cache for it //
+        {
+            korl_shared_variable u$ cacheLoggedBytes = 0;
+            korl_shared_variable Korl_Gfx_Text* gfxText = NULL;
+            u$ loggedBytes = 0;
+            acu16 logBuffer = korl_log_getBuffer(&loggedBytes);
+            const u$ newLoggedBytes = loggedBytes - cacheLoggedBytes;
+            if(!gfxText)
+            {
+                const wchar_t assetNameFont[] = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf";
+                gfxText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = assetNameFont, .size = korl_arraySize(assetNameFont)}, 24.f);
+                korl_gfx_text_append(gfxText, logBuffer, context->allocatorHandle);
+            }
+            // else if(newLoggedBytes)
+            // {
+            //     korl_gfx_text_eraseFront(&gfxText, newLoggedBytes / sizeof(*logBuffer.data));
+            //     korl_gfx_text_append(&gfxText
+            //                         ,(acu16){.data = logBuffer.data + ((logBuffer.size - newLoggedBytes)/sizeof(*logBuffer.data))
+            //                                 ,.size = newLoggedBytes});
+            // }
+            korl_gfx_text_draw(gfxText);
+            cacheLoggedBytes = loggedBytes;
+        }
+#endif
         korl_time_probeStop(game_update);
-        korl_time_probeStart(gui_frame_end);    korl_gui_frameEnd();    korl_time_probeStop(gui_frame_end);
-        korl_time_probeStart(vulkan_frame_end); korl_vulkan_frameEnd(); korl_time_probeStop(vulkan_frame_end);
+        korl_time_probeStart(gui_frame_end);     korl_gui_frameEnd();        korl_time_probeStop(gui_frame_end);
+        korl_time_probeStart(flush_glyph_pages); korl_gfx_flushGlyphPages(); korl_time_probeStop(flush_glyph_pages);
+        korl_time_probeStart(vulkan_frame_end);  korl_vulkan_frameEnd();     korl_time_probeStop(vulkan_frame_end);
         /* regulate frame rate to our game module's target frame rate */
         //KORL-ISSUE-000-000-059: window: find a frame timing solution that works if vulkan API blocks for some reason
         const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();

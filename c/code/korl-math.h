@@ -18,12 +18,14 @@ typedef union Korl_Math_V2f32
     f32 elements[2];
 } Korl_Math_V2f32;
 const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {0, 0};
+const Korl_Math_V2f32 KORL_MATH_V2F32_ONE  = {1, 1};
 typedef union Korl_Math_V3f32
 {
     struct { f32 x, y, z; };
     Korl_Math_V2f32 xy;
     f32 elements[3];
 } Korl_Math_V3f32;
+const Korl_Math_V3f32 KORL_MATH_V3F32_ONE  = {1, 1, 1};
 const Korl_Math_V3f32 KORL_MATH_V3F32_ZERO = {0, 0, 0};
 const Korl_Math_V3f32 KORL_MATH_V3F32_X    = {1, 0, 0};
 const Korl_Math_V3f32 KORL_MATH_V3F32_Y    = {0, 1, 0};

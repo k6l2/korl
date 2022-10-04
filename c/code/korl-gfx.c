@@ -51,6 +51,11 @@ typedef struct _Korl_Gfx_FontGlyphVertex
 {
     Korl_Math_V4f32 position2d_uv;
 } _Korl_Gfx_FontGlyphVertex;
+typedef struct _Korl_Gfx_FontGlyphInstance
+{
+    u32             meshIndex;
+    Korl_Math_V2f32 position;
+} _Korl_Gfx_FontGlyphInstance;
 typedef struct _Korl_Gfx_FontGlyphPage
 {
     u16                               packRowsSize;
@@ -406,22 +411,14 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
     korl_assert(glyph);
     return glyph;
 }
-/** Vertex order for each glyph quad:
- * [ bottom-left
- * , bottom-right
- * , top-right
- * , top-left ] */
-korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
+korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetNameFont, f32 textPixelHeight, f32 textPixelOutline)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    if(!batch->_assetNameFont || batch->_fontTextureHandle)
-        return;
+    /* get the font asset */
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetDataFont);
-    korl_time_probeStart(get_asset_cache);
-    const Korl_AssetCache_Get_Result resultAssetCacheGetFont = korl_assetCache_get(batch->_assetNameFont, assetCacheGetFlags, &assetDataFont);
-    korl_time_probeStop(get_asset_cache);
+    const Korl_AssetCache_Get_Result resultAssetCacheGetFont = korl_assetCache_get(utf16AssetNameFont.data, KORL_ASSETCACHE_GET_FLAGS_NONE, &assetDataFont);
     if(resultAssetCacheGetFont != KORL_ASSETCACHE_GET_RESULT_LOADED)
-        return;
+        return NULL;
 #if KORL_DEBUG && 0// testing stb_truetype bitmap rendering API
     korl_shared_variable bool bitmapTestDone = false;
     if(!bitmapTestDone)
@@ -588,10 +585,10 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     for(; existingFontCacheIndex < arrlenu(context->stbDaFontCaches); existingFontCacheIndex++)
         // find the font cache with a matching font asset name AND render 
         //  parameters such as font pixel height, etc... //
-        if(   0 == korl_memory_stringCompare(batch->_assetNameFont, context->stbDaFontCaches[existingFontCacheIndex]->fontAssetName) 
-           && context->stbDaFontCaches[existingFontCacheIndex]->pixelHeight == batch->_textPixelHeight 
+        if(   0 == korl_memory_stringCompare(utf16AssetNameFont.data, context->stbDaFontCaches[existingFontCacheIndex]->fontAssetName) 
+           && context->stbDaFontCaches[existingFontCacheIndex]->pixelHeight == textPixelHeight 
            && (   context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
-               || context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == batch->_textPixelOutline))
+               || context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == textPixelOutline))
             break;
     korl_time_probeStop(match_font_cache);
     _Korl_Gfx_FontCache* fontCache = NULL;
@@ -606,8 +603,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         /* calculate how much memory we need */
         korl_shared_const u16 GLYPH_PAGE_SQUARE_SIZE = 512;
         korl_shared_const u16 PACK_ROWS_CAPACITY     = 64;
-        const u$ assetNameFontBufferSize = korl_memory_stringSize(batch->_assetNameFont) + 1/*null terminator*/;
-        const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*batch->_assetNameFont);
+        const u$ assetNameFontBufferSize = korl_memory_stringSize(utf16AssetNameFont.data) + 1/*null terminator*/;
+        const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*utf16AssetNameFont.data);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
                                         + sizeof(_Korl_Gfx_FontGlyphPage)
                                         + PACK_ROWS_CAPACITY*sizeof(_Korl_Gfx_FontGlyphBitmapPackRow)
@@ -621,8 +618,8 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
 #if KORL_DEBUG
         korl_assert(korl_memory_isNull(*newFontCache, fontCacheRequiredBytes));
 #endif//KORL_DEBUG
-        fontCache->pixelHeight             = batch->_textPixelHeight;
-        fontCache->pixelOutlineThickness   = batch->_textPixelOutline;
+        fontCache->pixelHeight             = textPixelHeight;
+        fontCache->pixelOutlineThickness   = textPixelOutline;
         fontCache->fontAssetName           = KORL_C_CAST(wchar_t*, fontCache + 1);
         fontCache->glyphPage               = KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, fontCache->fontAssetName) + assetNameFontBufferBytes);
         mchmdefault(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbHmGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
@@ -632,7 +629,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1/*pointer arithmetic trick to skip to the address following the glyphPage*/);
         glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
         mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
-        korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(batch->_assetNameFont, fontCache->fontAssetName, assetNameFontBufferSize));
+        korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(utf16AssetNameFont.data, fontCache->fontAssetName, assetNameFontBufferSize));
         /* initialize the font info using the raw font asset data */
         korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
         fontCache->fontScale = stbtt_ScaleForPixelHeight(&(fontCache->fontInfo), fontCache->pixelHeight);
@@ -645,8 +642,24 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         fontCache->fontLineGap = fontCache->fontScale*KORL_C_CAST(f32, lineGap);
         korl_time_probeStop(create_font_cache);
     }
-    // at this point, `fontCache` should be _guaranteed_ to be valid //
-    korl_assert(fontCache);
+    return fontCache;
+}
+/** Vertex order for each glyph quad:
+ * [ bottom-left
+ * , bottom-right
+ * , top-right
+ * , top-left ] */
+korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    if(!batch->_assetNameFont || batch->_fontTextureHandle)
+        return;
+    _Korl_Gfx_FontCache* fontCache = _korl_gfx_matchFontCache((acu16){.data = batch->_assetNameFont
+                                                                     ,.size = korl_memory_stringSize(batch->_assetNameFont)}
+                                                             ,batch->_textPixelHeight
+                                                             ,batch->_textPixelOutline);
+    if(!fontCache)
+        return;
     _Korl_Gfx_FontGlyphPage*const fontGlyphPage = fontCache->glyphPage;
     /* iterate over each character in the batch text, and update the 
         pre-allocated vertex attributes to use the data for the corresponding 
@@ -714,10 +727,50 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         korl_assert(!"not implemented; this implementation sucked anyway");
     }
     batch->_instanceCount = currentGlyph;
-    /* if a non-zero number of glyphs have been cached, we need to update the 
-        fontCache's glyph page texture */
-    if(fontGlyphPage->textureOutOfDate)
+    /* setting the font texture handle to a valid value signifies to other gfx 
+        module code that the text mesh has been generated, and thus dependent 
+        assets (font, glyph pages) are all loaded & ready to go */
+    ///@TODO: this probably wont work anymore, since we are defering the glyph page update until the end of this frame
+    batch->_fontTextureHandle       = fontGlyphPage->textureHandle;
+    batch->_glyphMeshBufferVertices = fontGlyphPage->glyphMeshBufferVertices;
+}
+korl_internal void korl_gfx_initialize(void)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    korl_memory_zero(context, sizeof(*context));
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL
+                                                           ,korl_math_megabytes(8), L"korl-gfx"
+                                                           ,KORL_MEMORY_ALLOCATOR_FLAGS_NONE
+                                                           ,NULL/*let platform choose address*/);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 16);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaResources, 1024);
+    context->stringPool = korl_stringPool_create(context->allocatorHandle);
+}
+korl_internal void korl_gfx_clearFontCache(void)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
     {
+        _Korl_Gfx_FontCache*const fontCache = context->stbDaFontCaches[fc];
+        if(fontCache->glyphPage->textureHandle)
+            korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->textureHandle);
+        if(fontCache->glyphPage->glyphMeshBufferVertices)
+            korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->glyphMeshBufferVertices);
+        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->glyphPage->stbDaGlyphMeshVertices);
+        mchmfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbHmGlyphs);
+        korl_free(context->allocatorHandle, fontCache);
+    }
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 0);
+}
+korl_internal void korl_gfx_flushGlyphPages(void)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
+    {
+        _Korl_Gfx_FontCache*const     fontCache     = context->stbDaFontCaches[fc];
+        _Korl_Gfx_FontGlyphPage*const fontGlyphPage = fontCache->glyphPage;
+        if(!fontCache->glyphPage->textureOutOfDate)
+            continue;
         /* upload the glyph data to the GPU & obtain texture handle */
 #if KORL_DEBUG && _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS
         /* debug print the glyph page data :) */
@@ -807,39 +860,200 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         korl_vulkan_vertexBuffer_update(fontGlyphPage->glyphMeshBufferVertices, KORL_C_CAST(u8*, fontGlyphPage->stbDaGlyphMeshVertices), newGlyphMeshVertexBufferBytes, 0/*offset; we're just updating the whole thing*/);
         korl_time_probeStop(update_glyph_mesh_ssbo);
     }
-    /* setting the font texture handle to a valid value signifies to other gfx 
-        module code that the text mesh has been generated, and thus dependent 
-        assets (font, glyph pages) are all loaded & ready to go */
-    batch->_fontTextureHandle       = fontGlyphPage->textureHandle;
-    batch->_glyphMeshBufferVertices = fontGlyphPage->glyphMeshBufferVertices;
 }
-korl_internal void korl_gfx_initialize(void)
+typedef struct _Korl_Gfx_Text_Line
 {
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
+    u32 visibleCharacters;
+} _Korl_Gfx_Text_Line;
+korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
+{
+    const u$ bytesRequired = sizeof(Korl_Gfx_Text) + utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data);
+    Korl_Gfx_Text*const result    = korl_allocate(allocator, bytesRequired);
+    u16*const resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
+    result->allocator          = allocator;
+    result->textPixelHeight    = textPixelHeight;
+    result->utf16AssetNameFont = (acu16){.data = resultAssetNameFont, .size = utf16AssetNameFont.size};
+    mcarrsetcap(KORL_C_CAST(void*, result->allocator), result->stbDaLines, 64);
+    korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
+#if 0/** @TODO: genius idea bro: instead of just creating one giant buffer device asset for all the text & then having to update _all_ the glyph positions for the entire buffer every time a line is added/removed, 
+                we can just have a dynamic array of "text lines", each of which contains it's own buffer device asset, 
+                and we can just send the model for each "text line" each frame, which can easily be updated based on the current y-position of the text line, 
+                which is expected to change often anyways (since text lines are constantly getting added/removed)
+                Pros:
+                - no need to update all the glyph positions of a giant text buffer every time text is added/removed, 
+                  which I would expect to be _huge_ gains since this is going to happen quite often, and the buffer is large!
+                Cons:
+                - each text line is its own draw call
+                - we _must_ send each text line's model each frame
+                - maintaining dynamic collection means the user _must_ use a heap allocator externally ☹ */
+    /* create a vulkan device asset which will contain the cached instance 
+        glyphIndex & glyphPosition vertex attributes, with enough room in it to 
+        contain the maximum possible # of visible characters inside the text */
+    KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
+    vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
+    vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
+    vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D;
+    vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
+    vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
+    vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT;
+    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoVertexBuffer);
+    createInfoVertexBuffer.bytes                          = utf16Text.size*sizeof(_Korl_Gfx_FontGlyphInstance);
+    createInfoVertexBuffer.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
+    createInfoVertexBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
+    result.deviceAssetBufferText = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoVertexBuffer);
+#endif
+    return result;
+}
+korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
+{
+    mcarrfree(KORL_C_CAST(void*, context->allocator), context->stbDaLines);
+    korl_free(context->allocator, context);
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, 
-                                                            korl_math_megabytes(8), L"korl-gfx", 
-                                                            KORL_MEMORY_ALLOCATOR_FLAGS_NONE, 
-                                                            NULL/*let platform choose address*/);
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 16);
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaResources, 1024);
-    context->stringPool = korl_stringPool_create(context->allocatorHandle);
 }
-korl_internal void korl_gfx_clearFontCache(void)
+korl_internal void korl_gfx_text_eraseFront(Korl_Gfx_Text* context, u$ characterCount)
 {
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
+}
+korl_internal void korl_gfx_text_append(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator)
+{
+    /* get the font asset matching the provided asset name */
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
+    korl_assert(fontCache);
+    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    /* initialize scratch space for storing glyph instance data of the current 
+        working text line */
+    const u$ currentLineBufferBytes = utf16Text.size*(sizeof(u32/*glyph mesh bake order*/) + sizeof(Korl_Math_V2f32/*glyph position*/));
+    _Korl_Gfx_FontGlyphInstance*const currentLineBuffer = korl_allocate(stackAllocator, currentLineBufferBytes);
+    /* iterate over each character of utf16Text & build all the text lines */
+    _Korl_Gfx_Text_Line* currentLine = NULL;
+    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
+    int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
+    for(u$ c = 0; c < utf16Text.size; c++)
     {
-        _Korl_Gfx_FontCache*const fontCache = context->stbDaFontCaches[fc];
-        if(fontCache->glyphPage->textureHandle)
-            korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->textureHandle);
-        if(fontCache->glyphPage->glyphMeshBufferVertices)
-            korl_vulkan_deviceAsset_destroy(fontCache->glyphPage->glyphMeshBufferVertices);
-        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->glyphPage->stbDaGlyphMeshVertices);
-        mchmfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbHmGlyphs);
-        korl_free(context->allocatorHandle, fontCache);
+        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, utf16Text.data[c]);
+        if(textBaselineCursor.x > 0.f)
+        {
+            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
+                                                             ,glyphIndexPrevious
+                                                             ,bakedGlyph->glyphIndex);
+            glyphIndexPrevious = bakedGlyph->glyphIndex;
+            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
+        }
+        const f32 x0 = textBaselineCursor.x + bakedGlyph->bbox.offsetX;
+        const f32 y0 = textBaselineCursor.y + bakedGlyph->bbox.offsetY;
+        const f32 x1 = x0 + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
+        const f32 y1 = y0 + (bakedGlyph->bbox.y1 - bakedGlyph->bbox.y0);
+        // batch->_textAabb.min = korl_math_v2f32_min(batch->_textAabb.min, (Korl_Math_V2f32){x0, y0});
+        // batch->_textAabb.max = korl_math_v2f32_max(batch->_textAabb.max, (Korl_Math_V2f32){x1, y1});
+        textBaselineCursor.x += bakedGlyph->advanceX;
+        if(utf16Text.data[c] == L'\n')
+        {
+            textBaselineCursor.x  = 0.f;
+            textBaselineCursor.y -= lineDeltaY;
+            /* if we had a current working text line, we need to flush the text 
+                instance data we've accumulated so far into a vertex buffer 
+                device asset */
+            if(currentLine)
+            {
+                KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
+                vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
+                vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
+                vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D;
+                vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
+                vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
+                vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT;
+                KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoVertexBuffer);
+                createInfoVertexBuffer.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
+                createInfoVertexBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
+                createInfoVertexBuffer.bytes                          = currentLine->visibleCharacters*sizeof(*currentLineBuffer);
+                currentLine->deviceAssetBufferText = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoVertexBuffer);
+                korl_vulkan_vertexBuffer_update(currentLine->deviceAssetBufferText, currentLineBuffer, createInfoVertexBuffer.bytes, 0/*device buffer offset*/);
+            }
+            currentLine = NULL;
+            continue;
+        }
+        if(bakedGlyph->isEmpty)
+            continue;
+        /* at this point, we know that this is a valid visible character, which 
+            must be accumulated into a text line; if we don't have a current 
+            working text line at this point, we need to make one */
+        if(!currentLine)
+        {
+            mcarrpush(KORL_C_CAST(void*, context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
+            currentLine = &arrlast(context->stbDaLines);
+        }
+        currentLineBuffer[currentLine->visibleCharacters].position  = textBaselineCursor;
+        currentLineBuffer[currentLine->visibleCharacters].meshIndex = bakedGlyph->bakeOrder;
+        currentLine->visibleCharacters++;
     }
-    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 0);
+    /* clean up */
+    korl_free(stackAllocator, currentLineBuffer);
+}
+korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context)
+{
+    /* get the font asset matching the provided asset name */
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
+    korl_assert(fontCache);
+#if 1///@TODO: kinda hacky; if we're trying to draw glyphs from a page that hasn't been updated on the GPU yet, we just don't draw that frame since we don't yet know the glyph page device asset handles yet (glyph atlas texture, glyph mesh buffer)
+    if(fontCache->glyphPage->textureOutOfDate)
+        return;
+#endif
+    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    /**/
+    korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
+        { 0, 1, 3
+        , 1, 2, 3 };
+    KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
+    vertexData.primitiveType           = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    vertexData.indexCount              = korl_arraySize(triQuadIndices);
+    vertexData.indices                 = triQuadIndices;
+    vertexData.instancePositionsStride = 2*sizeof(f32);
+    vertexData.instanceUintStride      = sizeof(u32);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
+    samplers.texture = fontCache->glyphPage->textureHandle;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
+    storageBuffers.vertex = fontCache->glyphPage->glyphMeshBufferVertices;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
+    features.enableBlend = true;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
+    blend.opColor           = KORL_BLEND_OP_ADD;
+    blend.factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
+    blend.factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    blend.opAlpha           = KORL_BLEND_OP_ADD;
+    blend.factorAlphaSource = KORL_BLEND_FACTOR_ONE;
+    blend.factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    drawState.features       = &features;
+    drawState.blend          = &blend;
+    drawState.samplers       = &samplers;
+    drawState.storageBuffers = &storageBuffers;
+    korl_vulkan_setDrawState(&drawState);
+    Korl_Math_V3f32 currentLinePosition = KORL_MATH_V3F32_ZERO;/// @TODO: allow the user to set the Korl_Gfx_Text position, which should initialize this value
+    for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
+    {
+        KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+        model.scale       = KORL_MATH_V3F32_ONE;
+        model.rotation    = KORL_MATH_QUATERNION_IDENTITY;
+        model.translation = currentLinePosition;
+        KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
+        drawStateLine.model = &model;
+        korl_vulkan_setDrawState(&drawStateLine);
+        vertexData.instanceCount                 = line->visibleCharacters;
+        vertexData.deviceAssetHandleVertexBuffer = line->deviceAssetBufferText;
+        korl_vulkan_draw(&vertexData);
+        currentLinePosition.y -= lineDeltaY;
+    }
+#if 0///@TODO: recycle
+    {
+        /* we need to somehow position the text mesh in a way that satisfies the 
+            text position anchor */
+        // align position with the bottom-left corner of the batch AABB
+        korl_math_v2f32_assignSubtract(&model.translation.xy, batch->_textAabb.min);
+        // offset position by the position anchor ratio, using the AABB size
+        korl_math_v2f32_assignSubtract(&model.translation.xy, korl_math_v2f32_multiply(korl_math_aabb2f32_size(batch->_textAabb)
+                                                                                      ,batch->_textPositionAnchor));
+    }
+#endif
 }
 korl_internal KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(korl_gfx_resource_createTexture)
 {

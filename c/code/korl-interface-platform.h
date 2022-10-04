@@ -252,10 +252,11 @@ enum KorlEnumLogLevel
     , KORL_LOG_LEVEL_INFO
     , KORL_LOG_LEVEL_VERBOSE };
 /** Do not call this function directly; use the \c korl_log macro instead! */
-#define KORL_PLATFORM_LOG(name) void name(\
-    unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel, \
-    const wchar_t* cStringFileName, const wchar_t* cStringFunctionName, \
-    int lineNumber, const wchar_t* format, ...)
+#define KORL_PLATFORM_LOG(name) void name(unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel\
+                                         ,const wchar_t* cStringFileName, const wchar_t* cStringFunctionName\
+                                         ,int lineNumber, const wchar_t* format, ...)
+#define KORL_PLATFORM_LOG_GET_BUFFER(name) acu16 name(u$* out_loggedBytes)
+/// @TODO: delete the Korl_Log_Line stuff if we can get away with just obtaining the raw log buffer
 typedef struct Korl_Log_Line
 {
     acu16 text;
@@ -270,9 +271,8 @@ typedef struct Korl_Log_Line
  * contents of the log buffer data structures are subject to constant change! */
 #define KORL_PLATFORM_LOG_GET_LINES(name) const Korl_Log_Line* name(void)
 /** Do not call this function directly; use the \c korl_assert macro instead! */
-#define KORL_PLATFORM_ASSERT_FAILURE(name) void name(\
-    const wchar_t* conditionString, const wchar_t* cStringFileName, \
-    const wchar_t* cStringFunctionName, int lineNumber)
+#define KORL_PLATFORM_ASSERT_FAILURE(name) void name(const wchar_t* conditionString, const wchar_t* cStringFileName\
+                                                    ,const wchar_t* cStringFunctionName, int lineNumber)
 // #define KORL_PLATFORM_MEMORY_FILL(name)    void name(void* memory, u$ bytes, u8 pattern)
 #define KORL_PLATFORM_MEMORY_ZERO(name)    void name(void* memory, u$ bytes)
 #define KORL_PLATFORM_MEMORY_COPY(name)    void name(void* destination, const void* source, u$ bytes)
@@ -542,6 +542,7 @@ typedef enum Korl_Bluetooth_ReadResult
 #define KORL_PLATFORM_BLUETOOTH_READ(name)       Korl_Bluetooth_ReadResult   name(Korl_Bluetooth_SocketHandle socketHandle, Korl_Memory_AllocatorHandle allocator, au8* out_data)
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
+typedef KORL_PLATFORM_LOG_GET_BUFFER                      (fnSig_korl_log_getBuffer);
 typedef KORL_PLATFORM_LOG_GET_LINES                       (fnSig_korl_log_getLines);
 typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
 typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secondsSinceTimeStamp);
@@ -616,6 +617,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
 #define KORL_INTERFACE_PLATFORM_API_DECLARE \
     fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
     fnSig_korlPlatformLog                       * _korl_log_variadic;\
+    fnSig_korl_log_getBuffer                    * korl_log_getBuffer;\
     fnSig_korl_log_getLines                     * korl_log_getLines;\
     fnSig_korl_timeStamp                        * korl_timeStamp;\
     fnSig_korl_time_secondsSinceTimeStamp       * korl_time_secondsSinceTimeStamp;\
@@ -690,6 +692,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
 #define KORL_INTERFACE_PLATFORM_API_SET(apiVariableName) \
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
+    (apiVariableName).korl_log_getBuffer                    = korl_log_getBuffer;\
     (apiVariableName).korl_log_getLines                     = korl_log_getLines;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
     (apiVariableName).korl_time_secondsSinceTimeStamp       = korl_time_secondsSinceTimeStamp;\
@@ -764,6 +767,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
 #define KORL_INTERFACE_PLATFORM_API_GET(apiVariableName) \
     _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
+    korl_log_getBuffer                    = (apiVariableName).korl_log_getBuffer;\
     korl_log_getLines                     = (apiVariableName).korl_log_getLines;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_time_secondsSinceTimeStamp       = (apiVariableName).korl_time_secondsSinceTimeStamp;\

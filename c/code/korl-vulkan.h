@@ -35,6 +35,7 @@
 typedef struct Korl_Vulkan_DrawVertexData
 {
     Korl_Vulkan_PrimitiveType      primitiveType;
+    Korl_Vulkan_DeviceAssetHandle  deviceAssetHandleVertexBuffer;
     Korl_Vulkan_VertexIndex        indexCount;
     const Korl_Vulkan_VertexIndex* indices;
     u32                            vertexCount;
@@ -131,10 +132,10 @@ typedef struct Korl_Vulkan_DrawState
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX
-    , KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_2D
-    , KORL_VULKAN_VERTEX_ATTRIBUTE_UV
+    // , KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_2D
+    // , KORL_VULKAN_VERTEX_ATTRIBUTE_UV
     , KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D
-    , KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_OBJECT_INDEX
+    , KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT
     , KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT// keep last!
 } Korl_Vulkan_VertexAttribute;
 typedef struct Korl_Vulkan_VertexAttributeDescriptor
@@ -182,6 +183,6 @@ korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle
 korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceAssetHandle textureHandle);
 korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceAssetHandle bufferHandle, u$ bytes);
-korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle bufferHandle, const u8* data, u$ dataBytes, u$ deviceLocalBufferOffset);
+korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
 /** @TODO: move this code into korl-gfx */
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);

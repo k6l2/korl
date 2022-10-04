@@ -2025,24 +2025,43 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return;
     /* basic parameter sanity checks */
-    if(vertexData->indexCount || vertexData->indices)
-        korl_assert(vertexData->indexCount && vertexData->indices);
-    if(vertexData->colorsStride || vertexData->colors)
-        korl_assert(vertexData->colorsStride && vertexData->colors);
-    if(vertexData->uvsStride || vertexData->uvs)
-        korl_assert(vertexData->uvsStride && vertexData->uvs);
-    korl_assert(vertexData->vertexCount || vertexData->instanceCount);
-    if(vertexData->positions)
+    if(vertexData->deviceAssetHandleVertexBuffer)
     {
-        korl_assert(   vertexData->positionDimensions == 2 
-                    || vertexData->positionDimensions == 3);
-        korl_assert(   vertexData->positionsStride == 2*sizeof(*vertexData->positions) 
-                    || vertexData->positionsStride == 3*sizeof(*vertexData->positions));
+        ///@TODO: ???
     }
-    if(vertexData->instancePositions)
+    else
     {
-        korl_assert(vertexData->instancePositionDimensions == 2);
-        korl_assert(vertexData->instancePositionsStride == 2*sizeof(*vertexData->instancePositions));
+        if(vertexData->indexCount || vertexData->indices)
+            korl_assert(vertexData->indexCount && vertexData->indices);
+        if(vertexData->colorsStride || vertexData->colors)
+            korl_assert(vertexData->colorsStride && vertexData->colors);
+        if(vertexData->uvsStride || vertexData->uvs)
+            korl_assert(vertexData->uvsStride && vertexData->uvs);
+        korl_assert(vertexData->vertexCount || vertexData->instanceCount);
+        if(vertexData->positions)
+        {
+            korl_assert(   vertexData->positionDimensions == 2 
+                        || vertexData->positionDimensions == 3);
+            korl_assert(   vertexData->positionsStride == 2*sizeof(*vertexData->positions) 
+                        || vertexData->positionsStride == 3*sizeof(*vertexData->positions));
+        }
+        if(vertexData->instancePositions)
+        {
+            korl_assert(vertexData->instancePositionDimensions == 2);
+            korl_assert(vertexData->instancePositionsStride == 2*sizeof(*vertexData->instancePositions));
+        }
+    }
+    /* if the user is attempting to draw with a custom vertex buffer, we need to 
+        obtain it now to configure the pipeline */
+    _Korl_Vulkan_DeviceAsset*              deviceAssetVertexBuffer            = NULL;
+    _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocationVertexBuffer = NULL;
+    if(vertexData->deviceAssetHandleVertexBuffer)
+    {
+        deviceAssetVertexBuffer =
+             _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), vertexData->deviceAssetHandleVertexBuffer
+                                                 ,&deviceMemoryAllocationVertexBuffer);
+        korl_assert(deviceAssetVertexBuffer);
+        korl_assert(deviceMemoryAllocationVertexBuffer->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
     }
     /* configure the pipeline config cache with the vertex data properties */
     korl_time_probeStart(draw_config_pipeline);
@@ -2059,6 +2078,26 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     surfaceContext->batchState.pipelineConfigurationCache.instancePositionStride     = vertexData->instancePositionsStride;
     surfaceContext->batchState.pipelineConfigurationCache.instanceUintStride         = vertexData->instanceUintStride;
     surfaceContext->batchState.pipelineConfigurationCache.useTexture                 = (0 != surfaceContext->batchState.texture);
+    if(vertexData->deviceAssetHandleVertexBuffer)
+    {
+        for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
+        {
+            if(0 == deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride)
+                continue;
+            switch(d)
+            {
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D:{
+                surfaceContext->batchState.pipelineConfigurationCache.instancePositionDimensions = 2;
+                surfaceContext->batchState.pipelineConfigurationCache.instancePositionStride     = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                break;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT:{
+                surfaceContext->batchState.pipelineConfigurationCache.instanceUintStride = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                break;}
+            default:
+                korl_log(ERROR, "vertex attribute [%u] not implemented", d);
+            }
+        }
+    }
     _korl_vulkan_setPipelineMetaData(surfaceContext->batchState.pipelineConfigurationCache);
     korl_time_probeStop(draw_config_pipeline);
     /* stage uniform data */
@@ -2203,25 +2242,50 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         byteOffsetStagingBuffer += stageDataBytes;
     }
     korl_time_probeStop(draw_stage_vertices);
-    /* compose the draw commands */
-    korl_assert(surfaceContext->batchState.currentPipeline < arrlenu(context->stbDaPipelines) && arrlenu(context->stbDaPipelines) > 0);//try to make sure we have selected a valid pipeline before going further
-    korl_time_probeStart(draw_compose_gfx_commands);
-    vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
-                     ,VK_PIPELINE_BIND_POINT_GRAPHICS
-                     ,context->stbDaPipelines[surfaceContext->batchState.currentPipeline].pipeline);
     VkBuffer batchVertexBuffers[] = 
         { bufferStaging
         , bufferStaging
         , bufferStaging
         , bufferStaging
         , bufferStaging };
-    const VkDeviceSize batchVertexBufferOffsets[] = 
+    VkDeviceSize batchVertexBufferOffsets[] = 
         { byteOffsetStagingBufferPositions
         , byteOffsetStagingBufferColors
         , byteOffsetStagingBufferUvs
         , byteOffsetStagingBufferInstancePositions
         , byteOffsetStagingBufferInstanceU32s };
     korl_assert(korl_arraySize(batchVertexBuffers) == korl_arraySize(batchVertexBufferOffsets));
+    /* if we're passing a vertex buffer in the vertex data, that means we have 
+        to bind to a user-managed device asset buffer instead of a staging 
+        buffer for a non-zero number of vertex (instance) attributes */
+    if(vertexData->deviceAssetHandleVertexBuffer)
+    {
+        for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
+        {
+            if(0 == deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride)
+                continue;
+            u32 attributeBinding = KORL_U32_MAX;
+            switch(d)
+            {
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D:{
+                attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION;
+                break;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT:{
+                attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_UINT;
+                break;}
+            default:
+                korl_log(ERROR, "vertex attribute [%u] not implemented", d);
+            }
+            batchVertexBuffers      [attributeBinding] = deviceMemoryAllocationVertexBuffer->deviceObject.buffer.vulkanBuffer;
+            batchVertexBufferOffsets[attributeBinding] = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].offset;
+        }
+    }
+    /* compose the draw commands */
+    korl_assert(surfaceContext->batchState.currentPipeline < arrlenu(context->stbDaPipelines) && arrlenu(context->stbDaPipelines) > 0);//try to make sure we have selected a valid pipeline before going further
+    korl_time_probeStart(draw_compose_gfx_commands);
+    vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
+                     ,VK_PIPELINE_BIND_POINT_GRAPHICS
+                     ,context->stbDaPipelines[surfaceContext->batchState.currentPipeline].pipeline);
     vkCmdBindVertexBuffers(swapChainImageContext->commandBufferGraphics
                           ,0/*first binding*/, korl_arraySize(batchVertexBuffers)
                           ,batchVertexBuffers, batchVertexBufferOffsets);
@@ -2437,7 +2501,7 @@ korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceAssetHandle
         any command buffers */
     dummyAsset->nullify = true;
 }
-korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle bufferHandle, const u8* data, u$ dataBytes, u$ deviceLocalBufferOffset)
+korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset)
 {
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];

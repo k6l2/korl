@@ -126,7 +126,7 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
     /* figure out where we are in the raw log buffer */
     const u$ rawLogOffset = context->loggedBytes < context->rawLogChunkBytes
         ? context->loggedBytes
-        : (context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes;
+        : context->rawLogChunkBytes + ((context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes);
     wchar_t*const logBuffer = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, context->rawLog) + rawLogOffset);
     /* print the log message to the raw log buffer */
     int charactersWrittenTotal = 0;
@@ -397,7 +397,7 @@ korl_internal void korl_log_shutDown(void)
             the circular buffer which wrapped to the beginning */
         korl_shared_const wchar_t LOG_MESSAGE_CUT[] = L"\n\n----- LOG FILE CUT -----\n\n\n";
         korl_file_write(context->fileDescriptor, LOG_MESSAGE_CUT, sizeof(LOG_MESSAGE_CUT));
-        const u$ rawLogOffset = (context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes;
+        const u$ rawLogOffset = context->rawLogChunkBytes + ((context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes);
         wchar_t*const logBuffer = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, context->rawLog) + rawLogOffset);
         korl_file_write(context->fileDescriptor
                        ,logBuffer + 1/*skip \0 terminator to reach the "head" of the ring buffer*/
@@ -418,4 +418,16 @@ skipFileCleanup:
 korl_internal KORL_PLATFORM_LOG_GET_LINES(korl_log_getLines)
 {
     return NULL;///@TODO: just delete this API, since we can just have the caller parse the lines for us.  This assumes that the caller is intelligently caching the lines, because I have tried doing this without caching log data and it seems _way_ too slow!
+}
+korl_internal KORL_PLATFORM_LOG_GET_BUFFER(korl_log_getBuffer)
+{
+    _Korl_Log_Context*const context = &_korl_log_context;
+    if(out_loggedBytes)
+        *out_loggedBytes = context->loggedBytes;
+    if(context->loggedBytes < 2*context->rawLogChunkBytes)
+        return (acu16){.data = context->rawLog
+                      ,.size = context->loggedBytes / sizeof(u16)};
+    const u$ rawLogOffset = context->rawLogChunkBytes + ((context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes);
+    return (acu16){.data = KORL_C_CAST(u16*, KORL_C_CAST(u8*, context->rawLog) + rawLogOffset) + 1
+                  ,.size = context->rawLogChunkBytes / sizeof(u16)};
 }
