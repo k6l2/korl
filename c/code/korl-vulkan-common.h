@@ -145,7 +145,7 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
  * the contents of this struct are expected to be nullified at the end of each 
  * call to \c frameBegin() 
  */
-typedef struct _Korl_Vulkan_SurfaceContextBatchState
+typedef struct _Korl_Vulkan_SurfaceContextDrawState
 {
     /** 
      * This is an index into the array of pipelines currently in the 
@@ -183,7 +183,7 @@ typedef struct _Korl_Vulkan_SurfaceContextBatchState
     VkImageView textureImageView;
     VkSampler   textureSampler;
 #endif
-} _Korl_Vulkan_SurfaceContextBatchState;///@TODO: rename to "draw state"?
+} _Korl_Vulkan_SurfaceContextDrawState;
 /**
  * Each buffer acts as a linear allocator
  */
@@ -272,7 +272,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
     /** expected to be nullified at the end of each call to \c frameBegin() */
-    _Korl_Vulkan_SurfaceContextBatchState batchState;///@TODO: rename to "draw state"?
+    _Korl_Vulkan_SurfaceContextDrawState drawState;
+    _Korl_Vulkan_SurfaceContextDrawState drawStateLast;// assigned at the end of every draw call; used to determine if we need to allocate/bind a new/different descriptorSet/pipeline
 #if 0///@TODO: delete/recycle
     bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
 #endif

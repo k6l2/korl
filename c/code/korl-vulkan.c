@@ -772,12 +772,10 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
     _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     u$ newPipelineIndex = arrlenu(context->stbDaPipelines);
-    if(   surfaceContext->batchState.currentPipeline < arrlenu(context->stbDaPipelines)
-       && _korl_vulkan_pipeline_isMetaDataSame(pipeline, context->stbDaPipelines[surfaceContext->batchState.currentPipeline]))
-    {
+    if(   surfaceContext->drawState.currentPipeline < arrlenu(context->stbDaPipelines)
+       && _korl_vulkan_pipeline_isMetaDataSame(pipeline, context->stbDaPipelines[surfaceContext->drawState.currentPipeline]))
         // do nothing; just leave the current pipeline selected
-        newPipelineIndex = surfaceContext->batchState.currentPipeline;
-    }
+        newPipelineIndex = surfaceContext->drawState.currentPipeline;
     else
     {
         /* search for a pipeline that can handle the data we're trying to batch */
@@ -787,7 +785,7 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
     }
     /* then, actually change to a new pipeline for the next batch */
     korl_assert(newPipelineIndex < arrlenu(context->stbDaPipelines));//sanity check!
-    surfaceContext->batchState.currentPipeline = newPipelineIndex;
+    surfaceContext->drawState.currentPipeline = newPipelineIndex;
 }
 korl_internal VkBlendOp _korl_vulkan_blendOperation_to_vulkan(Korl_Vulkan_BlendOperation blendOp)
 {
@@ -1817,16 +1815,17 @@ done:
     KORL_ZERO_STACK(VkRect2D, scissorDefault);
     scissorDefault.offset = (VkOffset2D){.x = 0, .y = 0};
     scissorDefault.extent = surfaceContext->swapChainImageExtent;
-    korl_memory_zero(&surfaceContext->batchState, sizeof(surfaceContext->batchState));
-    surfaceContext->batchState.pushConstants.m4f32Model   = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->batchState.m4f32View                  = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->batchState.m4f32Projection            = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->batchState.pipelineConfigurationCache = _korl_vulkan_pipeline_default();
-    surfaceContext->batchState.scissor                    = surfaceContext->batchState.scissor = scissorDefault;
-    surfaceContext->batchState.texture                    = surfaceContext->defaultTexture;
+    korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
+    korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
+    surfaceContext->drawState.pushConstants.m4f32Model   = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.m4f32View                  = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.m4f32Projection            = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pipelineConfigurationCache = _korl_vulkan_pipeline_default();
+    surfaceContext->drawState.scissor                    = surfaceContext->drawState.scissor = scissorDefault;
+    surfaceContext->drawState.texture                    = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
-    surfaceContext->batchState.currentPipeline = arrcap(context->stbDaPipelines);
+    surfaceContext->drawState.currentPipeline = arrcap(context->stbDaPipelines);
 }
 korl_internal void korl_vulkan_frameEnd(void)
 {
@@ -1948,11 +1947,11 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         actual vulkan pipeline will be created & bound when we call draw */
     if(state->features)
     {
-        surfaceContext->batchState.pipelineConfigurationCache.features.enableBlend     = 0 != state->features->enableBlend;
-        surfaceContext->batchState.pipelineConfigurationCache.features.enableDepthTest = 0 != state->features->enableDepthTest;
+        surfaceContext->drawState.pipelineConfigurationCache.features.enableBlend     = 0 != state->features->enableBlend;
+        surfaceContext->drawState.pipelineConfigurationCache.features.enableDepthTest = 0 != state->features->enableDepthTest;
     }
     if(state->blend)
-        surfaceContext->batchState.pipelineConfigurationCache.blend = *state->blend;
+        surfaceContext->drawState.pipelineConfigurationCache.blend = *state->blend;
     if(state->projection)
         switch(state->projection->type)
         {
@@ -1961,10 +1960,10 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
                 ? 1.f 
                 :  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)
                  / KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
-            surfaceContext->batchState.m4f32Projection = korl_math_m4f32_projectionFov(state->projection->subType.fov.horizontalFovDegrees
-                                                                                      ,viewportWidthOverHeight
-                                                                                      ,state->projection->subType.fov.clipNear
-                                                                                      ,state->projection->subType.fov.clipFar);
+            surfaceContext->drawState.m4f32Projection = korl_math_m4f32_projectionFov(state->projection->subType.fov.horizontalFovDegrees
+                                                                                     ,viewportWidthOverHeight
+                                                                                     ,state->projection->subType.fov.clipNear
+                                                                                     ,state->projection->subType.fov.clipFar);
             break;}
         case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC:{
             const f32 left   = 0.f - state->projection->subType.orthographic.originRatioX*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width );
@@ -1973,7 +1972,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             const f32 top    = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) - state->projection->subType.orthographic.originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
             const f32 far    = -state->projection->subType.orthographic.depth;
             const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->batchState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+            surfaceContext->drawState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
             break;}
         case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
             const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 
@@ -1988,26 +1987,26 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             const f32 top    = state->projection->subType.orthographic.fixedHeight - state->projection->subType.orthographic.originRatioY*state->projection->subType.orthographic.fixedHeight;
             const f32 far    = -state->projection->subType.orthographic.depth;
             const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->batchState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+            surfaceContext->drawState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
             break;}
         default:{
             korl_log(ERROR, "invalid projection type: %i", state->projection->type);
             break;}
         }
     if(state->view)
-        surfaceContext->batchState.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
+        surfaceContext->drawState.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
     if(state->model)
-        surfaceContext->batchState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
+        surfaceContext->drawState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
     if(state->scissor)
     {
-        surfaceContext->batchState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
-        surfaceContext->batchState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
+        surfaceContext->drawState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
+        surfaceContext->drawState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
     }
     if(state->samplers)
         /// @TODO: maybe instead of just setting a device asset handle here, we can query the asset database to know whether or not the asset can be used at this point right away
-        surfaceContext->batchState.texture = state->samplers->texture;
+        surfaceContext->drawState.texture = state->samplers->texture;
     if(state->storageBuffers)
-        surfaceContext->batchState.vertexStorageBuffer = state->storageBuffers->vertex;
+        surfaceContext->drawState.vertexStorageBuffer = state->storageBuffers->vertex;
     done:
     korl_time_probeStop(set_draw_state);
 }
@@ -2067,17 +2066,17 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     korl_time_probeStart(draw_config_pipeline);
     switch(vertexData->primitiveType)
     {
-    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{surfaceContext->batchState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
-    case KORL_VULKAN_PRIMITIVETYPE_LINES:    {surfaceContext->batchState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;}
+    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{surfaceContext->drawState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
+    case KORL_VULKAN_PRIMITIVETYPE_LINES:    {surfaceContext->drawState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;}
     }
-    surfaceContext->batchState.pipelineConfigurationCache.positionDimensions         = vertexData->positionDimensions;
-    surfaceContext->batchState.pipelineConfigurationCache.positionsStride            = vertexData->positionsStride;
-    surfaceContext->batchState.pipelineConfigurationCache.colorsStride               = vertexData->colorsStride;
-    surfaceContext->batchState.pipelineConfigurationCache.uvsStride                  = vertexData->uvsStride;
-    surfaceContext->batchState.pipelineConfigurationCache.instancePositionDimensions = vertexData->instancePositionDimensions;
-    surfaceContext->batchState.pipelineConfigurationCache.instancePositionStride     = vertexData->instancePositionsStride;
-    surfaceContext->batchState.pipelineConfigurationCache.instanceUintStride         = vertexData->instanceUintStride;
-    surfaceContext->batchState.pipelineConfigurationCache.useTexture                 = (0 != surfaceContext->batchState.texture);
+    surfaceContext->drawState.pipelineConfigurationCache.positionDimensions         = vertexData->positionDimensions;
+    surfaceContext->drawState.pipelineConfigurationCache.positionsStride            = vertexData->positionsStride;
+    surfaceContext->drawState.pipelineConfigurationCache.colorsStride               = vertexData->colorsStride;
+    surfaceContext->drawState.pipelineConfigurationCache.uvsStride                  = vertexData->uvsStride;
+    surfaceContext->drawState.pipelineConfigurationCache.instancePositionDimensions = vertexData->instancePositionDimensions;
+    surfaceContext->drawState.pipelineConfigurationCache.instancePositionStride     = vertexData->instancePositionsStride;
+    surfaceContext->drawState.pipelineConfigurationCache.instanceUintStride         = vertexData->instanceUintStride;
+    surfaceContext->drawState.pipelineConfigurationCache.useTexture                 = (0 != surfaceContext->drawState.texture);
     if(vertexData->deviceAssetHandleVertexBuffer)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
@@ -2087,29 +2086,33 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
             switch(d)
             {
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D:{
-                surfaceContext->batchState.pipelineConfigurationCache.instancePositionDimensions = 2;
-                surfaceContext->batchState.pipelineConfigurationCache.instancePositionStride     = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                surfaceContext->drawState.pipelineConfigurationCache.instancePositionDimensions = 2;
+                surfaceContext->drawState.pipelineConfigurationCache.instancePositionStride     = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
                 break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT:{
-                surfaceContext->batchState.pipelineConfigurationCache.instanceUintStride = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                surfaceContext->drawState.pipelineConfigurationCache.instanceUintStride = deviceAssetVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
                 break;}
             default:
                 korl_log(ERROR, "vertex attribute [%u] not implemented", d);
             }
         }
     }
-    _korl_vulkan_setPipelineMetaData(surfaceContext->batchState.pipelineConfigurationCache);
+    const u$ pipelinePrevious = surfaceContext->drawState.currentPipeline;
+    _korl_vulkan_setPipelineMetaData(surfaceContext->drawState.pipelineConfigurationCache);
+    const bool pipelineChanged = (pipelinePrevious != surfaceContext->drawState.currentPipeline);
     korl_time_probeStop(draw_config_pipeline);
     /* stage uniform data */
     korl_time_probeStart(draw_stage_descriptors);
     VkDeviceSize byteOffsetStagingBuffer = 0;
     VkBuffer     bufferStaging           = VK_NULL_HANDLE;
+    /// @TODO: only ever get new VP uniform staging memory if the VP state has changed!
     _Korl_Vulkan_SwapChainImageUniformTransforms* stagingMemoryUniformTransforms = 
         _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformTransforms), &bufferStaging, &byteOffsetStagingBuffer);
-    stagingMemoryUniformTransforms->m4f32Projection = surfaceContext->batchState.m4f32Projection;
-    stagingMemoryUniformTransforms->m4f32View       = surfaceContext->batchState.m4f32View;
+    stagingMemoryUniformTransforms->m4f32Projection = surfaceContext->drawState.m4f32Projection;
+    stagingMemoryUniformTransforms->m4f32View       = surfaceContext->drawState.m4f32View;
     korl_time_probeStop(draw_stage_descriptors);
     /* allocate & configure descriptor set(s) for this draw operation */
+    /// @TODO: only ever allocate & configure a descriptor set if there are a non-zero # of descriptor set writes!!!
     korl_time_probeStart(draw_descriptor_set_alloc);
     VkDescriptorSet descriptorSet = _korl_vulkan_newDescriptorSet(context->batchDescriptorSetLayout);
     KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet, descriptorSetWrites, 3);
@@ -2130,11 +2133,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     }
     // conditionally write the texture sampler if we require it //
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
-    if(surfaceContext->batchState.texture)
+    if(surfaceContext->drawState.texture)
     {
         _Korl_Vulkan_DeviceMemory_Alloctation* textureAllocation = NULL;
         _Korl_Vulkan_DeviceAsset*const deviceAsset =
-             _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->batchState.texture, &textureAllocation);
+             _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->drawState.texture, &textureAllocation);
         deviceAsset->framesSinceLastUsed = 0;// reset the frames since the asset has last been used, to prevent the asset database from destroying this data while it's potentially still being used to render
         korl_assert(textureAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2151,11 +2154,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     }
     // conditionally write vertex storage buffers to the descriptor set //
     KORL_ZERO_STACK(VkDescriptorBufferInfo, descriptorBufferInfoVertexStorage);
-    if(surfaceContext->batchState.vertexStorageBuffer)
+    if(surfaceContext->drawState.vertexStorageBuffer)
     {
         _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
         _Korl_Vulkan_DeviceAsset*const deviceAsset =
-             _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->batchState.vertexStorageBuffer, &deviceMemoryAllocation);
+             _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->drawState.vertexStorageBuffer, &deviceMemoryAllocation);
         descriptorBufferInfoVertexStorage.buffer = deviceMemoryAllocation->deviceObject.buffer.vulkanBuffer;
         descriptorBufferInfoVertexStorage.range  = deviceMemoryAllocation->bytesUsed;
 #if 0   // already set to default value
@@ -2281,14 +2284,12 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         }
     }
     /* compose the draw commands */
-    korl_assert(surfaceContext->batchState.currentPipeline < arrlenu(context->stbDaPipelines) && arrlenu(context->stbDaPipelines) > 0);//try to make sure we have selected a valid pipeline before going further
+    korl_assert(surfaceContext->drawState.currentPipeline < arrlenu(context->stbDaPipelines) && arrlenu(context->stbDaPipelines) > 0);//try to make sure we have selected a valid pipeline before going further
     korl_time_probeStart(draw_compose_gfx_commands);
-    vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
-                     ,VK_PIPELINE_BIND_POINT_GRAPHICS
-                     ,context->stbDaPipelines[surfaceContext->batchState.currentPipeline].pipeline);
-    vkCmdBindVertexBuffers(swapChainImageContext->commandBufferGraphics
-                          ,0/*first binding*/, korl_arraySize(batchVertexBuffers)
-                          ,batchVertexBuffers, batchVertexBufferOffsets);
+    if(pipelineChanged)
+        vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
+                         ,VK_PIPELINE_BIND_POINT_GRAPHICS
+                         ,context->stbDaPipelines[surfaceContext->drawState.currentPipeline].pipeline);
     //KORL-PERFORMANCE-000-000-013: speed: only bind descriptor sets when needed
     vkCmdBindDescriptorSets(swapChainImageContext->commandBufferGraphics
                            ,VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineLayout
@@ -2297,10 +2298,13 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                            ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
     vkCmdPushConstants(swapChainImageContext->commandBufferGraphics, context->pipelineLayout
                       ,VK_SHADER_STAGE_VERTEX_BIT
-                      ,/*offset*/0, sizeof(surfaceContext->batchState.pushConstants)
-                      ,&surfaceContext->batchState.pushConstants);
+                      ,/*offset*/0, sizeof(surfaceContext->drawState.pushConstants)
+                      ,&surfaceContext->drawState.pushConstants);
     vkCmdSetScissor(swapChainImageContext->commandBufferGraphics
-                   ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->batchState.scissor);
+                   ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
+    vkCmdBindVertexBuffers(swapChainImageContext->commandBufferGraphics
+                          ,0/*first binding*/, korl_arraySize(batchVertexBuffers)
+                          ,batchVertexBuffers, batchVertexBufferOffsets);
     const uint32_t instanceCount = vertexData->instanceCount ? vertexData->instanceCount : 1;
     if(vertexData->indices)
     {
