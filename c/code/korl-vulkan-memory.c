@@ -17,9 +17,6 @@ korl_internal void _korl_vulkan_deviceMemory_arena_initialize(Korl_Memory_Alloca
     korl_memory_zero(&(arena->stbDaAllocations[0]), sizeof(arena->stbDaAllocations[0]));
     arena->stbDaAllocations[0].bytesOccupied = arena->byteSize;
 }
-/**
- * \param memoryTypeIndex obtained via calling _korl_vulkan_findMemoryType(memoryTypeBits, memoryPropertyFlags)
- */
 korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_create(Korl_Memory_AllocatorHandle allocatorHandle, VkDeviceSize bytes, u32 memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlags)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;

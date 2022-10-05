@@ -13,12 +13,12 @@
 #if defined(KORL_PLATFORM_WINDOWS)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
-#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS            0
-#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE               1
-#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER 2
-#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION 0
-#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR    1
-#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV       2
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS            0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE               0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER 0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION          0
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR             1
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV                2
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 3
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_UINT     4
 korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
@@ -963,7 +963,7 @@ korl_internal VkDescriptorSet _korl_vulkan_newDescriptorSet(VkDescriptorSetLayou
     allocInfoDescriptorSets.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfoDescriptorSets.descriptorPool     = validDescriptorPool->vkDescriptorPool;
     allocInfoDescriptorSets.descriptorSetCount = 1;
-    allocInfoDescriptorSets.pSetLayouts        = &context->batchDescriptorSetLayout;
+    allocInfoDescriptorSets.pSetLayouts        = &descriptorSetLayout;
     _KORL_VULKAN_CHECK(
         vkAllocateDescriptorSets(context->device, &allocInfoDescriptorSets
                                 ,&resultDescriptorSet));
@@ -1513,38 +1513,59 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                              &surfaceContext->wipFrames[i].fenceFrameComplete));
         }
     }
-    /* --- create batch descriptor set layout --- */
+    /* --- create batch descriptor set layouts --- */
     // not really sure where this should go, but I know that it just needs to 
     //    be created BEFORE the pipelines are created, since they are used there //
-    //KORL-PERFORMANCE-000-000-015: split this into multiple descriptor sets based on change frequency
-    KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 3);
-    descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS;
-    descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
-    descriptorSetLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
-    descriptorSetLayoutBindings[1].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE;
-    descriptorSetLayoutBindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorSetLayoutBindings[1].descriptorCount = 1;//size of the array in the shader
-    descriptorSetLayoutBindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
-    descriptorSetLayoutBindings[2].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER;
-    descriptorSetLayoutBindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    descriptorSetLayoutBindings[2].descriptorCount = 1;//size of the array in the shader
-    descriptorSetLayoutBindings[2].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
-    KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
-    createInfoDescriptorSetLayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    createInfoDescriptorSetLayout.bindingCount = korl_arraySize(descriptorSetLayoutBindings);
-    createInfoDescriptorSetLayout.pBindings    = descriptorSetLayoutBindings;
-    _KORL_VULKAN_CHECK(
-        vkCreateDescriptorSetLayout(context->device, &createInfoDescriptorSetLayout, context->allocator
-                                   ,&context->batchDescriptorSetLayout));
+    {
+        KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 1);
+        descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS;
+        descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
+        descriptorSetLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
+        KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
+        createInfoDescriptorSetLayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfoDescriptorSetLayout.bindingCount = korl_arraySize(descriptorSetLayoutBindings);
+        createInfoDescriptorSetLayout.pBindings    = descriptorSetLayoutBindings;
+        _KORL_VULKAN_CHECK(
+            vkCreateDescriptorSetLayout(context->device, &createInfoDescriptorSetLayout, context->allocator
+                                       ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS]));
+    }
+    {
+        KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 1);
+        descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER;
+        descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
+        descriptorSetLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
+        KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
+        createInfoDescriptorSetLayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfoDescriptorSetLayout.bindingCount = korl_arraySize(descriptorSetLayoutBindings);
+        createInfoDescriptorSetLayout.pBindings    = descriptorSetLayoutBindings;
+        _KORL_VULKAN_CHECK(
+            vkCreateDescriptorSetLayout(context->device, &createInfoDescriptorSetLayout, context->allocator
+                                       ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO]));
+    }
+    {
+        KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 1);
+        descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE;
+        descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
+        descriptorSetLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+        KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
+        createInfoDescriptorSetLayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfoDescriptorSetLayout.bindingCount = korl_arraySize(descriptorSetLayoutBindings);
+        createInfoDescriptorSetLayout.pBindings    = descriptorSetLayoutBindings;
+        _KORL_VULKAN_CHECK(
+            vkCreateDescriptorSetLayout(context->device, &createInfoDescriptorSetLayout, context->allocator
+                                       ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS]));
+    }
     /* create pipeline layout */
     KORL_ZERO_STACK(VkPushConstantRange, pushConstantRange);
     pushConstantRange.size       = sizeof(_Korl_Vulkan_DrawPushConstants);
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     KORL_ZERO_STACK(VkPipelineLayoutCreateInfo, createInfoPipelineLayout);
     createInfoPipelineLayout.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    createInfoPipelineLayout.setLayoutCount         = 1;
-    createInfoPipelineLayout.pSetLayouts            = &context->batchDescriptorSetLayout;
+    createInfoPipelineLayout.setLayoutCount         = korl_arraySize(context->descriptorSetLayouts);
+    createInfoPipelineLayout.pSetLayouts            = context->descriptorSetLayouts;
     createInfoPipelineLayout.pushConstantRangeCount = 1;
     createInfoPipelineLayout.pPushConstantRanges    = &pushConstantRange;
     _KORL_VULKAN_CHECK(
@@ -1635,7 +1656,8 @@ korl_internal void korl_vulkan_destroySurface(void)
     for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
         vkDestroyPipeline(context->device, context->stbDaPipelines[p].pipeline, context->allocator);
     mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines);
-    vkDestroyDescriptorSetLayout(context->device, context->batchDescriptorSetLayout, context->allocator);
+    for(u$ d = 0; d < korl_arraySize(context->descriptorSetLayouts); d++)
+        vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayouts[d], context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex2d, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex3d, context->allocator);
@@ -1817,12 +1839,12 @@ done:
     scissorDefault.extent = surfaceContext->swapChainImageExtent;
     korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
     korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
-    surfaceContext->drawState.pushConstants.m4f32Model   = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.m4f32View                  = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.m4f32Projection            = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pipelineConfigurationCache = _korl_vulkan_pipeline_default();
-    surfaceContext->drawState.scissor                    = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.texture                    = surfaceContext->defaultTexture;
+    surfaceContext->drawState.pushConstants.m4f32Model      = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.uboTransforms.m4f32View       = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.uboTransforms.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pipelineConfigurationCache    = _korl_vulkan_pipeline_default();
+    surfaceContext->drawState.scissor                       = surfaceContext->drawState.scissor = scissorDefault;
+    surfaceContext->drawState.texture                       = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->drawState.currentPipeline = arrcap(context->stbDaPipelines);
@@ -1960,10 +1982,10 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
                 ? 1.f 
                 :  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)
                  / KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
-            surfaceContext->drawState.m4f32Projection = korl_math_m4f32_projectionFov(state->projection->subType.fov.horizontalFovDegrees
-                                                                                     ,viewportWidthOverHeight
-                                                                                     ,state->projection->subType.fov.clipNear
-                                                                                     ,state->projection->subType.fov.clipFar);
+            surfaceContext->drawState.uboTransforms.m4f32Projection = korl_math_m4f32_projectionFov(state->projection->subType.fov.horizontalFovDegrees
+                                                                                                   ,viewportWidthOverHeight
+                                                                                                   ,state->projection->subType.fov.clipNear
+                                                                                                   ,state->projection->subType.fov.clipFar);
             break;}
         case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC:{
             const f32 left   = 0.f - state->projection->subType.orthographic.originRatioX*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width );
@@ -1972,7 +1994,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             const f32 top    = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) - state->projection->subType.orthographic.originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
             const f32 far    = -state->projection->subType.orthographic.depth;
             const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->drawState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+            surfaceContext->drawState.uboTransforms.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
             break;}
         case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
             const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 
@@ -1987,14 +2009,14 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             const f32 top    = state->projection->subType.orthographic.fixedHeight - state->projection->subType.orthographic.originRatioY*state->projection->subType.orthographic.fixedHeight;
             const f32 far    = -state->projection->subType.orthographic.depth;
             const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->drawState.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
+            surfaceContext->drawState.uboTransforms.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
             break;}
         default:{
             korl_log(ERROR, "invalid projection type: %i", state->projection->type);
             break;}
         }
     if(state->view)
-        surfaceContext->drawState.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
+        surfaceContext->drawState.uboTransforms.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
     if(state->model)
         surfaceContext->drawState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
     if(state->scissor)
@@ -2101,39 +2123,46 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     _korl_vulkan_setPipelineMetaData(surfaceContext->drawState.pipelineConfigurationCache);
     const bool pipelineChanged = (pipelinePrevious != surfaceContext->drawState.currentPipeline);
     korl_time_probeStop(draw_config_pipeline);
-    /* stage uniform data */
-    korl_time_probeStart(draw_stage_descriptors);
+    /* stage uniform data (descriptor set staging);  here we will examine the 
+        current draw state & see if it differs from the last used draw state;  
+        if it does, we will compose the minimum # of descriptor set stages & 
+        writes to update the device draw state appropriately;  only then will we 
+        update/bind descriptor sets, since this is a very expensive operation! */
     VkDeviceSize byteOffsetStagingBuffer = 0;
     VkBuffer     bufferStaging           = VK_NULL_HANDLE;
-    /// @TODO: only ever get new VP uniform staging memory if the VP state has changed!
-    _Korl_Vulkan_SwapChainImageUniformTransforms* stagingMemoryUniformTransforms = 
-        _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformTransforms), &bufferStaging, &byteOffsetStagingBuffer);
-    stagingMemoryUniformTransforms->m4f32Projection = surfaceContext->drawState.m4f32Projection;
-    stagingMemoryUniformTransforms->m4f32View       = surfaceContext->drawState.m4f32View;
-    korl_time_probeStop(draw_stage_descriptors);
-    /* allocate & configure descriptor set(s) for this draw operation */
-    /// @TODO: only ever allocate & configure a descriptor set if there are a non-zero # of descriptor set writes!!!
-    korl_time_probeStart(draw_descriptor_set_alloc);
-    VkDescriptorSet descriptorSet = _korl_vulkan_newDescriptorSet(context->batchDescriptorSetLayout);
-    KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet, descriptorSetWrites, 3);
+    KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet           , descriptorSetWrites         , 3);
+    KORL_ZERO_STACK_ARRAY(_Korl_Vulkan_DescriptorSetIndex, descriptorSetWriteSetIndices, 3);
     uint32_t descriptorWriteCount = 0;
+    KORL_ZERO_STACK_ARRAY(bool, descriptorSetIndicesChanged, _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT);
     // write the uniform transform buffer (view-projection transforms) //
     KORL_ZERO_STACK(VkDescriptorBufferInfo, descriptorBufferInfoUniformTransforms);
+    if(0 != korl_memory_compare(&surfaceContext->drawState.uboTransforms// only ever get new VP uniform staging memory if the VP state has changed!
+                               ,&surfaceContext->drawStateLast.uboTransforms
+                               ,sizeof(surfaceContext->drawState.uboTransforms)))
     {
+        /* stage the UBO transforms */
+        _Korl_Vulkan_SwapChainImageUniformTransforms* stagingMemoryUniformTransforms = 
+            _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformTransforms), &bufferStaging, &byteOffsetStagingBuffer);
+        stagingMemoryUniformTransforms->m4f32Projection = surfaceContext->drawState.uboTransforms.m4f32Projection;
+        stagingMemoryUniformTransforms->m4f32View       = surfaceContext->drawState.uboTransforms.m4f32View;
+        /* prepare a descriptor set write with the staged UBO */
         descriptorBufferInfoUniformTransforms.buffer = bufferStaging;
         descriptorBufferInfoUniformTransforms.range  = sizeof(*stagingMemoryUniformTransforms);
         descriptorBufferInfoUniformTransforms.offset = byteOffsetStagingBuffer;
         descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorSetWrites[descriptorWriteCount].dstSet          = descriptorSet;
         descriptorSetWrites[descriptorWriteCount].dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS;
         descriptorSetWrites[descriptorWriteCount].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorSetWrites[descriptorWriteCount].descriptorCount = 1;
         descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &descriptorBufferInfoUniformTransforms;
+        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS;
+        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }
     // conditionally write the texture sampler if we require it //
     KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
-    if(surfaceContext->drawState.texture)
+    if(   surfaceContext->drawState.texture
+       && surfaceContext->drawState.texture != surfaceContext->drawStateLast.texture)// only compose a descriptor set write if the draw state has changed!
     {
         _Korl_Vulkan_DeviceMemory_Alloctation* textureAllocation = NULL;
         _Korl_Vulkan_DeviceAsset*const deviceAsset =
@@ -2145,36 +2174,53 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         descriptorImageInfo.sampler     = textureAllocation->deviceObject.texture.sampler;
         korl_assert(descriptorWriteCount < korl_arraySize(descriptorSetWrites));
         descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorSetWrites[descriptorWriteCount].dstSet          = descriptorSet;
         descriptorSetWrites[descriptorWriteCount].dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE;
         descriptorSetWrites[descriptorWriteCount].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorSetWrites[descriptorWriteCount].descriptorCount = 1;
         descriptorSetWrites[descriptorWriteCount].pImageInfo      = &descriptorImageInfo;
+        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS;
+        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }
     // conditionally write vertex storage buffers to the descriptor set //
     KORL_ZERO_STACK(VkDescriptorBufferInfo, descriptorBufferInfoVertexStorage);
-    if(surfaceContext->drawState.vertexStorageBuffer)
+    if(   surfaceContext->drawState.vertexStorageBuffer
+       && surfaceContext->drawState.vertexStorageBuffer != surfaceContext->drawStateLast.vertexStorageBuffer)// only compose a descriptor set write if the draw state has changed!
     {
         _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
         _Korl_Vulkan_DeviceAsset*const deviceAsset =
              _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->drawState.vertexStorageBuffer, &deviceMemoryAllocation);
         descriptorBufferInfoVertexStorage.buffer = deviceMemoryAllocation->deviceObject.buffer.vulkanBuffer;
         descriptorBufferInfoVertexStorage.range  = deviceMemoryAllocation->bytesUsed;
-#if 0   // already set to default value
+        #if 0 // already set to default value
         descriptorBufferInfoVertexStorage.offset = 0;
-#endif
+        #endif
         descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorSetWrites[descriptorWriteCount].dstSet          = descriptorSet;
         descriptorSetWrites[descriptorWriteCount].dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER;
         descriptorSetWrites[descriptorWriteCount].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorSetWrites[descriptorWriteCount].descriptorCount = 1;
         descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &descriptorBufferInfoVertexStorage;
+        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO;
+        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }
     korl_assert(descriptorWriteCount <= korl_arraySize(descriptorSetWrites));
-    vkUpdateDescriptorSets(context->device, descriptorWriteCount, descriptorSetWrites, 0/*copyCount*/, NULL/*copies*/);
-    korl_time_probeStop(draw_descriptor_set_alloc);
+    /* allocate a new descriptor set conditionally, and configure the composed 
+        descriptor set writes to modify it */
+    KORL_ZERO_STACK_ARRAY(VkDescriptorSet, descriptorSets, _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT);
+    if(descriptorWriteCount)
+    {
+        korl_time_probeStart(draw_descriptor_set_alloc); {
+            for(u32 d = 0; d < _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT; d++)
+                if(descriptorSetIndicesChanged[d])
+                    descriptorSets[d] = _korl_vulkan_newDescriptorSet(context->descriptorSetLayouts[d]);
+            for(uint32_t d = 0; d < descriptorWriteCount; d++)
+                descriptorSetWrites[d].dstSet = descriptorSets[descriptorSetWriteSetIndices[d]];
+        } korl_time_probeStop(draw_descriptor_set_alloc);
+        vkUpdateDescriptorSets(context->device, descriptorWriteCount, descriptorSetWrites, 0/*copyCount*/, NULL/*copies*/);
+    }
     /* stage the vertex index/attribute data */
     ///@TODO: we could potentially get more performance here by transferring this data to device-local memory
     korl_time_probeStart(draw_stage_vertices);
@@ -2290,12 +2336,28 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         vkCmdBindPipeline(swapChainImageContext->commandBufferGraphics
                          ,VK_PIPELINE_BIND_POINT_GRAPHICS
                          ,context->stbDaPipelines[surfaceContext->drawState.currentPipeline].pipeline);
-    //KORL-PERFORMANCE-000-000-013: speed: only bind descriptor sets when needed
-    vkCmdBindDescriptorSets(swapChainImageContext->commandBufferGraphics
-                           ,VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineLayout
-                           ,0/*first set*/, 1/*set count */
-                           ,&descriptorSet
-                           ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
+    for(u32 d = 0; d < _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT; d++)
+    {
+        if(descriptorSets[d] == VK_NULL_HANDLE)
+            continue;
+        /* in an effort to minimize the total number of calls to vkCmdBindDescriptorSets, 
+            we try to accumulate the largest possible number of contiguous descriptor sets 
+            which are waiting to be bound: */
+        const uint32_t firstSet = d;
+        uint32_t setCount = 1;
+        while(d + 1 < _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT)
+        {
+            if(descriptorSets[d + 1] == VK_NULL_HANDLE)
+                break;
+            setCount++;
+            d++;
+        }
+        vkCmdBindDescriptorSets(swapChainImageContext->commandBufferGraphics
+                               ,VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipelineLayout
+                               ,firstSet
+                               ,setCount/*set count */, &(descriptorSets[firstSet])
+                               ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
+    }
     vkCmdPushConstants(swapChainImageContext->commandBufferGraphics, context->pipelineLayout
                       ,VK_SHADER_STAGE_VERTEX_BIT
                       ,/*offset*/0, sizeof(surfaceContext->drawState.pushConstants)
@@ -2321,6 +2383,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                  ,vertexData->vertexCount
                  ,instanceCount, /*firstIndex*/0, /*firstInstance*/0);
     korl_time_probeStop(draw_compose_gfx_commands);
+    surfaceContext->drawStateLast = surfaceContext->drawState;
 }
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload)
 {

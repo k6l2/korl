@@ -1,5 +1,5 @@
 #version 450
-layout(binding = 0, row_major) uniform UniformBufferObject
+layout(binding = 0, set = 0, row_major) uniform UniformBufferObject
 {
     mat4 projection;
     mat4 view;
@@ -13,7 +13,7 @@ struct GlyphVertex
 {
     vec4 position2d_uv;
 };
-layout(binding = 2) readonly buffer BufferGlyphMeshData
+layout(binding = 0, set = 1) readonly buffer BufferGlyphMeshData
 {
     GlyphVertex glyphVertices[];
 } bufferGlyphMeshData;

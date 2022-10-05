@@ -9,6 +9,15 @@
 #include "korl-vulkan.h"
 #include "korl-stringPool.h"
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
+typedef enum _Korl_Vulkan_DescriptorSetIndex
+    /* ideally, these descriptor sets indices are defined in the order of least- 
+        to most-frequently-changed for performance reasons; see 
+        "Pipeline Layout Compatibility" in the Vulkan spec for more details */
+    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT// Keep last!
+} _Korl_Vulkan_DescriptorSetIndex;
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -93,10 +102,9 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_Pipeline* stbDaPipelines;
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
     VkPipelineLayout pipelineLayout;
-    /** the layout for the descriptor data used in batch rendering which is 
-     * shared between all KORL Vulkan Surfaces
-     * (UBO, view projection, and currently texture asset) */
-    VkDescriptorSetLayout batchDescriptorSetLayout;///@TODO: rename to descriptorSetLayoutUniformTransforms
+    /** layouts for the descriptor data which are shared between all KORL Vulkan Surfaces
+     * (UBO, view projection, texture samplers, etc...) */
+    VkDescriptorSetLayout descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT];
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
     /** Primarily used to store device asset names; not sure if this will be 
@@ -155,10 +163,11 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
      */
     u$ currentPipeline;
     _Korl_Vulkan_Pipeline pipelineConfigurationCache;
-    Korl_Math_M4f32 m4f32Projection;
-    Korl_Math_M4f32 m4f32View;
+    /** ----- dynamic uniform state (push constants, etc...) ----- */
     _Korl_Vulkan_DrawPushConstants pushConstants;
     VkRect2D scissor;
+    /** ----- descriptor state ----- */
+    _Korl_Vulkan_SwapChainImageUniformTransforms uboTransforms;
     Korl_Vulkan_DeviceAssetHandle texture;
     Korl_Vulkan_DeviceAssetHandle vertexStorageBuffer;
 #if 0///@TODO: delete/recycle
