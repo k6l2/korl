@@ -874,35 +874,10 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->allocator          = allocator;
     result->textPixelHeight    = textPixelHeight;
     result->utf16AssetNameFont = (acu16){.data = resultAssetNameFont, .size = utf16AssetNameFont.size};
+    result->modelRotate        = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelScale         = KORL_MATH_V3F32_ONE;
     mcarrsetcap(KORL_C_CAST(void*, result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
-#if 0/** @TODO: genius idea bro: instead of just creating one giant buffer device asset for all the text & then having to update _all_ the glyph positions for the entire buffer every time a line is added/removed, 
-                we can just have a dynamic array of "text lines", each of which contains it's own buffer device asset, 
-                and we can just send the model for each "text line" each frame, which can easily be updated based on the current y-position of the text line, 
-                which is expected to change often anyways (since text lines are constantly getting added/removed)
-                Pros:
-                - no need to update all the glyph positions of a giant text buffer every time text is added/removed, 
-                  which I would expect to be _huge_ gains since this is going to happen quite often, and the buffer is large!
-                Cons:
-                - each text line is its own draw call
-                - we _must_ send each text line's model each frame
-                - maintaining dynamic collection means the user _must_ use a heap allocator externally ☹ */
-    /* create a vulkan device asset which will contain the cached instance 
-        glyphIndex & glyphPosition vertex attributes, with enough room in it to 
-        contain the maximum possible # of visible characters inside the text */
-    KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
-    vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
-    vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
-    vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D;
-    vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
-    vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
-    vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT;
-    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoVertexBuffer);
-    createInfoVertexBuffer.bytes                          = utf16Text.size*sizeof(_Korl_Gfx_FontGlyphInstance);
-    createInfoVertexBuffer.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
-    createInfoVertexBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
-    result.deviceAssetBufferText = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoVertexBuffer);
-#endif
     return result;
 }
 korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
@@ -990,6 +965,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
 }
 korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ characterCount)
 {
+    korl_assert(!"@TODO");
 }
 korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context)
 {
@@ -1030,20 +1006,20 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context)
     drawState.samplers       = &samplers;
     drawState.storageBuffers = &storageBuffers;
     korl_vulkan_setDrawState(&drawState);
-    Korl_Math_V3f32 currentLinePosition = KORL_MATH_V3F32_ZERO;/// @TODO: allow the user to set the Korl_Gfx_Text position, which should initialize this value
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+    model.scale       = context->modelScale;
+    model.rotation    = context->modelRotate;
+    model.translation = context->modelTranslate;
+    model.translation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
     {
-        KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
-        model.scale       = KORL_MATH_V3F32_ONE;
-        model.rotation    = KORL_MATH_QUATERNION_IDENTITY;
-        model.translation = currentLinePosition;
         KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
         drawStateLine.model = &model;
         korl_vulkan_setDrawState(&drawStateLine);
         vertexData.instanceCount                 = line->visibleCharacters;
         vertexData.deviceAssetHandleVertexBuffer = line->deviceAssetBufferText;
         korl_vulkan_draw(&vertexData);
-        currentLinePosition.y -= lineDeltaY;
+        model.translation.y -= lineDeltaY;
     }
 #if 0///@TODO: recycle
     {

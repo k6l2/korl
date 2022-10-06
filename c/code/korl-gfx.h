@@ -15,6 +15,9 @@ typedef struct Korl_Gfx_Text
     struct _Korl_Gfx_Text_Line* stbDaLines;
     f32 textPixelHeight;
     acu16 utf16AssetNameFont;
+    Korl_Math_V3f32      modelTranslate;
+    Korl_Math_Quaternion modelRotate;
+    Korl_Math_V3f32      modelScale;
 } Korl_Gfx_Text;
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
 korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);
