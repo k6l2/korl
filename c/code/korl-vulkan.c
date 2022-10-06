@@ -2381,7 +2381,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     else
         vkCmdDraw(swapChainImageContext->commandBufferGraphics
                  ,vertexData->vertexCount
-                 ,instanceCount, /*firstIndex*/0, /*firstInstance*/0);
+                 ,instanceCount, /*firstVertex*/0, /*firstInstance*/0);
     korl_time_probeStop(draw_compose_gfx_commands);
     surfaceContext->drawStateLast = surfaceContext->drawState;
 }

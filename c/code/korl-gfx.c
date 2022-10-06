@@ -911,15 +911,12 @@ korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
     korl_free(context->allocator, context);
     korl_memory_zero(context, sizeof(*context));
 }
-korl_internal void korl_gfx_text_eraseFront(Korl_Gfx_Text* context, u$ characterCount)
-{
-}
-korl_internal void korl_gfx_text_append(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator)
+korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator)
 {
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
-    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    // const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;// we don't need this, since each line has an implicit Y size anyway
     /* initialize scratch space for storing glyph instance data of the current 
         working text line */
     const u$ currentLineBufferBytes = utf16Text.size*(sizeof(u32/*glyph mesh bake order*/) + sizeof(Korl_Math_V2f32/*glyph position*/));
@@ -945,11 +942,13 @@ korl_internal void korl_gfx_text_append(Korl_Gfx_Text* context, acu16 utf16Text,
         const f32 y1 = y0 + (bakedGlyph->bbox.y1 - bakedGlyph->bbox.y0);
         // batch->_textAabb.min = korl_math_v2f32_min(batch->_textAabb.min, (Korl_Math_V2f32){x0, y0});
         // batch->_textAabb.max = korl_math_v2f32_max(batch->_textAabb.max, (Korl_Math_V2f32){x1, y1});
+        const Korl_Math_V2f32 glyphPosition = textBaselineCursor;
         textBaselineCursor.x += bakedGlyph->advanceX;
         if(utf16Text.data[c] == L'\n')
         {
             textBaselineCursor.x  = 0.f;
-            textBaselineCursor.y -= lineDeltaY;
+            // textBaselineCursor.y -= lineDeltaY;// no need to do this; each line has an implicit Y size, and when we draw we will move the line's model position appropriately
+            glyphIndexPrevious = -1;
             /* if we had a current working text line, we need to flush the text 
                 instance data we've accumulated so far into a vertex buffer 
                 device asset */
@@ -982,12 +981,15 @@ korl_internal void korl_gfx_text_append(Korl_Gfx_Text* context, acu16 utf16Text,
             mcarrpush(KORL_C_CAST(void*, context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
             currentLine = &arrlast(context->stbDaLines);
         }
-        currentLineBuffer[currentLine->visibleCharacters].position  = textBaselineCursor;
+        currentLineBuffer[currentLine->visibleCharacters].position  = glyphPosition;
         currentLineBuffer[currentLine->visibleCharacters].meshIndex = bakedGlyph->bakeOrder;
         currentLine->visibleCharacters++;
     }
     /* clean up */
     korl_free(stackAllocator, currentLineBuffer);
+}
+korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ characterCount)
+{
 }
 korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context)
 {

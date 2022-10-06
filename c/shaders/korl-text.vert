@@ -11,7 +11,7 @@ layout(push_constant, row_major) uniform UniformPushConstants
 } pushConstants;
 struct GlyphVertex
 {
-    vec4 position2d_uv;
+    vec4 position2d_uv;// position occupies .xy, uv occupies .zw
 };
 layout(binding = 0, set = 1) readonly buffer BufferGlyphMeshData
 {

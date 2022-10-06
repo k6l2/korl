@@ -592,7 +592,7 @@ korl_internal void korl_windows_window_loop(void)
             {
                 const wchar_t assetNameFont[] = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf";
                 gfxText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = assetNameFont, .size = korl_arraySize(assetNameFont)}, 24.f);
-                korl_gfx_text_append(gfxText, logBuffer, context->allocatorHandle);
+                korl_gfx_text_fifoAdd(gfxText, logBuffer, context->allocatorHandle);
             }
             // else if(newLoggedBytes)
             // {
