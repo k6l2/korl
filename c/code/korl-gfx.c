@@ -117,6 +117,11 @@ typedef struct _Korl_Gfx_Context
     u8 nextResourceSalt;
     Korl_StringPool stringPool;// used for Resource database strings
 } _Korl_Gfx_Context;
+typedef struct _Korl_Gfx_Text_Line
+{
+    Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
+    u32 visibleCharacters;
+} _Korl_Gfx_Text_Line;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
 korl_internal _Korl_Gfx_ResourceHandleUnpacked _korl_gfx_resourceHandle_unpack(Korl_Gfx_ResourceHandle handle)
 {
@@ -734,6 +739,17 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     batch->_fontTextureHandle       = fontGlyphPage->textureHandle;
     batch->_glyphMeshBufferVertices = fontGlyphPage->glyphMeshBufferVertices;
 }
+korl_internal _Korl_Gfx_Resource* _korl_gfx_resource_get(Korl_Gfx_ResourceHandle resourceHandle, _Korl_Gfx_ResourceType expectedType)
+{
+    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    const _Korl_Gfx_ResourceHandleUnpacked unpackedHandle = _korl_gfx_resourceHandle_unpack(resourceHandle);
+    korl_assert(unpackedHandle.index < arrlenu(context->stbDaResources));
+    korl_assert(unpackedHandle.type == expectedType);
+    _Korl_Gfx_Resource*const resource = &(context->stbDaResources[unpackedHandle.index]);
+    korl_assert(resource->salt == unpackedHandle.salt);
+    korl_assert(resource->type == expectedType);
+    return resource;
+}
 korl_internal void korl_gfx_initialize(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
@@ -861,11 +877,6 @@ korl_internal void korl_gfx_flushGlyphPages(void)
         korl_time_probeStop(update_glyph_mesh_ssbo);
     }
 }
-typedef struct _Korl_Gfx_Text_Line
-{
-    Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
-    u32 visibleCharacters;
-} _Korl_Gfx_Text_Line;
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
 {
     const u$ bytesRequired = sizeof(Korl_Gfx_Text) + utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data);
@@ -886,7 +897,7 @@ korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
     korl_free(context->allocator, context);
     korl_memory_zero(context, sizeof(*context));
 }
-korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator)
+korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
@@ -902,6 +913,8 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
     for(u$ c = 0; c < utf16Text.size; c++)
     {
+        if(!codepointTest(codepointTestUserData, utf16Text.data[c]))
+            continue;
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, utf16Text.data[c]);
         if(textBaselineCursor.x > 0.f)
         {
@@ -1088,17 +1101,6 @@ korl_internal KORL_PLATFORM_GFX_RESOURCE_DESTROY(korl_gfx_resource_destroy)
         break;}
     }
     korl_memory_zero(resource, sizeof(*resource));
-}
-korl_internal _Korl_Gfx_Resource* _korl_gfx_resource_get(Korl_Gfx_ResourceHandle resourceHandle, _Korl_Gfx_ResourceType expectedType)
-{
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    const _Korl_Gfx_ResourceHandleUnpacked unpackedHandle = _korl_gfx_resourceHandle_unpack(resourceHandle);
-    korl_assert(unpackedHandle.index < arrlenu(context->stbDaResources));
-    korl_assert(unpackedHandle.type == expectedType);
-    _Korl_Gfx_Resource*const resource = &(context->stbDaResources[unpackedHandle.index]);
-    korl_assert(resource->salt == unpackedHandle.salt);
-    korl_assert(resource->type == expectedType);
-    return resource;
 }
 korl_internal KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(korl_gfx_texture_getSize)
 {

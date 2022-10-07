@@ -386,6 +386,38 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
     if(context->gameDll)
         _korl_windows_window_findGameApiAddresses(context->gameDll);
 }
+typedef struct _Korl_Windows_Window_CodepointTest_Log
+{
+    bool isMetaData;
+    u8 trailingMetaTagCodepoints;
+    u8 metaTagComponent;// 0=>log level, 1=>time stamp, 2=>line, 3=>file, 4=>function
+} _Korl_Windows_Window_CodepointTest_Log;
+korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_windows_window_codepointTest_log)///@TODO: remove/move this; this is just scaffolding
+{
+    // log meta data example:
+    //╟INFO   ┆11:48'00"525┆   58┆korl-vulkan.c┆_korl_vulkan_debugUtilsMessengerCallback╢ 
+    _Korl_Windows_Window_CodepointTest_Log*const data = KORL_C_CAST(_Korl_Windows_Window_CodepointTest_Log*, userData);
+    if(data->isMetaData)
+    {
+        if(codepoint == L'╢')
+        {
+            data->trailingMetaTagCodepoints = 2;
+            data->isMetaData                = false;
+        }
+        else if(codepoint == L'┆')
+            data->metaTagComponent++;
+    }
+    else if(codepoint == L'╟')
+    {
+        data->isMetaData       = true;
+        data->metaTagComponent = 0;
+    }
+    if(data->trailingMetaTagCodepoints)
+        data->trailingMetaTagCodepoints--;
+    if(data->isMetaData || data->trailingMetaTagCodepoints)
+        return false;
+    return true;
+}
 korl_internal void korl_windows_window_loop(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
@@ -592,8 +624,9 @@ korl_internal void korl_windows_window_loop(void)
             {
                 const wchar_t assetNameFont[] = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf";
                 gfxText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = assetNameFont, .size = korl_arraySize(assetNameFont)}, 24.f);
-                gfxText->modelTranslate.xy = (Korl_Math_V2f32){-500,8750};
-                korl_gfx_text_fifoAdd(gfxText, logBuffer, context->allocatorHandle);
+                // gfxText->modelTranslate.xy = (Korl_Math_V2f32){-500,8750};
+                KORL_ZERO_STACK(_Korl_Windows_Window_CodepointTest_Log, codepointTestData);
+                korl_gfx_text_fifoAdd(gfxText, logBuffer, context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
             }
             // else if(newLoggedBytes)
             // {
