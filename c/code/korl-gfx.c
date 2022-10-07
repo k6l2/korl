@@ -913,7 +913,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
     for(u$ c = 0; c < utf16Text.size; c++)
     {
-        if(!codepointTest(codepointTestUserData, utf16Text.data[c]))
+        if(codepointTest && !codepointTest(codepointTestUserData, utf16Text.data[c]))
             continue;
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, utf16Text.data[c]);
         if(textBaselineCursor.x > 0.f)
