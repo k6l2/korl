@@ -415,10 +415,6 @@ korl_internal void korl_log_shutDown(void)
 skipFileCleanup:
     return;
 }
-korl_internal KORL_PLATFORM_LOG_GET_LINES(korl_log_getLines)
-{
-    return NULL;///@TODO: just delete this API, since we can just have the caller parse the lines for us.  This assumes that the caller is intelligently caching the lines, because I have tried doing this without caching log data and it seems _way_ too slow!
-}
 korl_internal KORL_PLATFORM_LOG_GET_BUFFER(korl_log_getBuffer)
 {
     _Korl_Log_Context*const context = &_korl_log_context;

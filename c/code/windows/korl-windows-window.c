@@ -636,8 +636,8 @@ korl_internal void korl_windows_window_loop(void)
             //                                 ,.size = newLoggedBytes});
             // }
             korl_gfx_text_draw(gfxText, korl_math_aabb2f32_fromExpandedV2(context->gameMemory->gameCamera.pos
-                                                                         ,0.25f*context->gameMemory->gameCamera.viewSizeZoomed.x
-                                                                         ,0.25f*context->gameMemory->gameCamera.viewSizeZoomed.y));
+                                                                         ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.x
+                                                                         ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.y));
             cacheLoggedBytes = loggedBytes;
         }
 #endif

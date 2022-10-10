@@ -245,31 +245,18 @@ typedef struct Korl_GamepadEvent
 #define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
 #define KORL_PLATFORM_GUI_WIDGET_TEXT(name)          void name(const acu16* texts, u$ textsSize, u$ textsStride)
 #define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
-enum KorlEnumLogLevel
+typedef enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT
     , KORL_LOG_LEVEL_ERROR
     , KORL_LOG_LEVEL_WARNING
     , KORL_LOG_LEVEL_INFO
-    , KORL_LOG_LEVEL_VERBOSE };
+    , KORL_LOG_LEVEL_VERBOSE
+} KorlEnumLogLevel;
 /** Do not call this function directly; use the \c korl_log macro instead! */
 #define KORL_PLATFORM_LOG(name) void name(unsigned variadicArgumentCount, enum KorlEnumLogLevel logLevel\
                                          ,const wchar_t* cStringFileName, const wchar_t* cStringFunctionName\
                                          ,int lineNumber, const wchar_t* format, ...)
 #define KORL_PLATFORM_LOG_GET_BUFFER(name) acu16 name(u$* out_loggedBytes)
-/// @TODO: delete the Korl_Log_Line stuff if we can get away with just obtaining the raw log buffer
-typedef struct Korl_Log_Line
-{
-    acu16 text;
-    acu16 textOverflow;// needed in case the log line overflows the circular log buffer
-    ///@TODO: do we need something like this? it is possible to just store the meta data directly without having to parse the log lines anymore: //bool hasMetaTag;
-    ///@TODO: store logLevel, date/timestamp, file, & line meta dataS
-} Korl_Log_Line;
-/** \return a stb_ds dynamic array of \c Korl_Log_Line ; the caller should _not_ 
- * modify the result in any way.  The caller is also advised to perform whatever 
- * work is necessary on the result data as fast as possible and then nullify the 
- * address and any other addresses contained within the array, since the 
- * contents of the log buffer data structures are subject to constant change! */
-#define KORL_PLATFORM_LOG_GET_LINES(name) const Korl_Log_Line* name(void)
 /** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_PLATFORM_ASSERT_FAILURE(name) void name(const wchar_t* conditionString, const wchar_t* cStringFileName\
                                                     ,const wchar_t* cStringFunctionName, int lineNumber)
@@ -543,7 +530,6 @@ typedef enum Korl_Bluetooth_ReadResult
 typedef KORL_PLATFORM_ASSERT_FAILURE                      (fnSig_korlPlatformAssertFailure);
 typedef KORL_PLATFORM_LOG                                 (fnSig_korlPlatformLog);
 typedef KORL_PLATFORM_LOG_GET_BUFFER                      (fnSig_korl_log_getBuffer);
-typedef KORL_PLATFORM_LOG_GET_LINES                       (fnSig_korl_log_getLines);
 typedef KORL_PLATFORM_GET_TIMESTAMP                       (fnSig_korl_timeStamp);
 typedef KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP             (fnSig_korl_time_secondsSinceTimeStamp);
 typedef KORL_PLATFORM_MEMORY_ZERO                         (fnSig_korl_memory_zero);
@@ -618,7 +604,6 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korlPlatformAssertFailure             * _korl_crash_assertConditionFailed;\
     fnSig_korlPlatformLog                       * _korl_log_variadic;\
     fnSig_korl_log_getBuffer                    * korl_log_getBuffer;\
-    fnSig_korl_log_getLines                     * korl_log_getLines;\
     fnSig_korl_timeStamp                        * korl_timeStamp;\
     fnSig_korl_time_secondsSinceTimeStamp       * korl_time_secondsSinceTimeStamp;\
     fnSig_korl_memory_zero                      * korl_memory_zero;\
@@ -693,7 +678,6 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName)._korl_crash_assertConditionFailed     = _korl_crash_assertConditionFailed;\
     (apiVariableName)._korl_log_variadic                    = _korl_log_variadic;\
     (apiVariableName).korl_log_getBuffer                    = korl_log_getBuffer;\
-    (apiVariableName).korl_log_getLines                     = korl_log_getLines;\
     (apiVariableName).korl_timeStamp                        = korl_timeStamp;\
     (apiVariableName).korl_time_secondsSinceTimeStamp       = korl_time_secondsSinceTimeStamp;\
     (apiVariableName).korl_memory_zero                      = korl_memory_zero;\
@@ -768,7 +752,6 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     _korl_crash_assertConditionFailed     = (apiVariableName)._korl_crash_assertConditionFailed;\
     _korl_log_variadic                    = (apiVariableName)._korl_log_variadic;\
     korl_log_getBuffer                    = (apiVariableName).korl_log_getBuffer;\
-    korl_log_getLines                     = (apiVariableName).korl_log_getLines;\
     korl_timeStamp                        = (apiVariableName).korl_timeStamp;\
     korl_time_secondsSinceTimeStamp       = (apiVariableName).korl_time_secondsSinceTimeStamp;\
     korl_memory_zero                      = (apiVariableName).korl_memory_zero;\
