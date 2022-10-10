@@ -913,9 +913,10 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     _Korl_Gfx_Text_Line* currentLine = NULL;
     Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
     int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
+    Korl_Math_V4f32 currentLineColor = KORL_MATH_V4F32_ONE;// default all line colors to white
     for(u$ c = 0; c < utf16Text.size; c++)
     {
-        if(codepointTest && !codepointTest(codepointTestUserData, utf16Text.data[c]))
+        if(codepointTest && !codepointTest(codepointTestUserData, utf16Text.data + c, &currentLineColor))
             continue;
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, utf16Text.data[c]);
         if(textBaselineCursor.x > 0.f)
@@ -956,7 +957,8 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
                 currentLine->deviceAssetBufferText = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoVertexBuffer);
                 korl_vulkan_vertexBuffer_update(currentLine->deviceAssetBufferText, currentLineBuffer, createInfoVertexBuffer.bytes, 0/*device buffer offset*/);
             }
-            currentLine = NULL;
+            currentLine      = NULL;
+            currentLineColor = KORL_MATH_V4F32_ONE;// default next line color to white
             continue;
         }
         if(bakedGlyph->isEmpty)
@@ -968,9 +970,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         {
             mcarrpush(KORL_C_CAST(void*, context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
             currentLine = &arrlast(context->stbDaLines);
-            currentLine->color = KORL_MATH_V4F32_ONE;
-            if(arrlenu(context->stbDaLines) % 2 == 0)
-                currentLine->color.xyz = (Korl_Math_V3f32){0, 1, 0};///@TODO: test code; delete later
+            currentLine->color = currentLineColor;
         }
         currentLineBuffer[currentLine->visibleCharacters].position  = glyphPosition;
         currentLineBuffer[currentLine->visibleCharacters].meshIndex = bakedGlyph->bakeOrder;

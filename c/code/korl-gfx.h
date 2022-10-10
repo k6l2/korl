@@ -20,7 +20,7 @@ typedef struct Korl_Gfx_Text
     Korl_Math_V3f32      modelScale;
 } Korl_Gfx_Text;
 /** \return \c true if the codepoint should be drawn, \c false otherwise */
-#define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, u16 codepoint)
+#define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, const u16* pCodepoint, Korl_Math_V4f32* currentLineColor)
 typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
 korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);

@@ -388,33 +388,71 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
 }
 typedef struct _Korl_Windows_Window_CodepointTest_Log
 {
-    bool isMetaData;
     u8 trailingMetaTagCodepoints;
     u8 metaTagComponent;// 0=>log level, 1=>time stamp, 2=>line, 3=>file, 4=>function
+    const u16* pCodepointMetaTagStart;
 } _Korl_Windows_Window_CodepointTest_Log;
 korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_windows_window_codepointTest_log)///@TODO: remove/move this; this is just scaffolding
 {
     // log meta data example:
     //╟INFO   ┆11:48'00"525┆   58┆korl-vulkan.c┆_korl_vulkan_debugUtilsMessengerCallback╢ 
     _Korl_Windows_Window_CodepointTest_Log*const data = KORL_C_CAST(_Korl_Windows_Window_CodepointTest_Log*, userData);
-    if(data->isMetaData)
+    if(data->pCodepointMetaTagStart)
     {
-        if(codepoint == L'╢')
+        bool endOfMetaTagComponent = false;
+        if(*pCodepoint == L'╢')
         {
             data->trailingMetaTagCodepoints = 2;
-            data->isMetaData                = false;
+            data->pCodepointMetaTagStart    = NULL;
+            endOfMetaTagComponent = true;
         }
-        else if(codepoint == L'┆')
+        else if(*pCodepoint == L'┆')
+            endOfMetaTagComponent = true;
+        if(endOfMetaTagComponent)
+        {
+            switch(data->metaTagComponent)
+            {
+            case 0:{// log level
+                korl_assert(currentLineColor);
+                switch(*data->pCodepointMetaTagStart)
+                {
+                case L'A':{// ASSERT
+                    currentLineColor->xyz = (Korl_Math_V3f32){1, 0, 0};// red
+                    break;}
+                case L'E':{// ERROR
+                    currentLineColor->xyz = (Korl_Math_V3f32){1, 0, 0};// red
+                    break;}
+                case L'W':{// WARNING
+                    currentLineColor->xyz = (Korl_Math_V3f32){1, 1, 0};// yellow
+                    break;}
+                case L'I':{// INFO
+                    // do nothing; the line color defaults to white!
+                    break;}
+                case L'V':{// VERBOSE
+                    currentLineColor->xyz = (Korl_Math_V3f32){0, 1, 1};// cyan
+                    break;}
+                }
+                break;}
+            case 1:{// time
+                break;}
+            case 2:{// line #
+                break;}
+            case 3:{// file
+                break;}
+            case 4:{// function
+                break;}
+            }
             data->metaTagComponent++;
+        }
     }
-    else if(codepoint == L'╟')
+    else if(*pCodepoint == L'╟')
     {
-        data->isMetaData       = true;
-        data->metaTagComponent = 0;
+        data->pCodepointMetaTagStart = pCodepoint + 1;
+        data->metaTagComponent       = 0;
     }
     if(data->trailingMetaTagCodepoints)
         data->trailingMetaTagCodepoints--;
-    if(data->isMetaData || data->trailingMetaTagCodepoints)
+    if(data->pCodepointMetaTagStart || data->trailingMetaTagCodepoints)
         return false;
     return true;
 }
