@@ -145,8 +145,8 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_Wich
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radians)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){.x = radius * cosf(radians)
-                                                  ,.y = radius * sinf(radians)};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius * cosf(radians)
+                                                  ,radius * sinf(radians)};
 }
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v)
 {

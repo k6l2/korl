@@ -121,6 +121,7 @@ typedef struct _Korl_Gfx_Text_Line
 {
     Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
     u32 visibleCharacters;
+    Korl_Math_Aabb2f32 modelAabb;
 } _Korl_Gfx_Text_Line;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
 korl_internal _Korl_Gfx_ResourceHandleUnpacked _korl_gfx_resourceHandle_unpack(Korl_Gfx_ResourceHandle handle)
@@ -928,8 +929,6 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         const f32 y0 = textBaselineCursor.y + bakedGlyph->bbox.offsetY;
         const f32 x1 = x0 + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
         const f32 y1 = y0 + (bakedGlyph->bbox.y1 - bakedGlyph->bbox.y0);
-        // batch->_textAabb.min = korl_math_v2f32_min(batch->_textAabb.min, (Korl_Math_V2f32){x0, y0});
-        // batch->_textAabb.max = korl_math_v2f32_max(batch->_textAabb.max, (Korl_Math_V2f32){x1, y1});
         const Korl_Math_V2f32 glyphPosition = textBaselineCursor;
         textBaselineCursor.x += bakedGlyph->advanceX;
         if(utf16Text.data[c] == L'\n')
@@ -971,6 +970,8 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         }
         currentLineBuffer[currentLine->visibleCharacters].position  = glyphPosition;
         currentLineBuffer[currentLine->visibleCharacters].meshIndex = bakedGlyph->bakeOrder;
+        currentLine->modelAabb.min = korl_math_v2f32_min(currentLine->modelAabb.min, (Korl_Math_V2f32){x0, y0});
+        currentLine->modelAabb.max = korl_math_v2f32_max(currentLine->modelAabb.max, (Korl_Math_V2f32){x1, y1});
         currentLine->visibleCharacters++;
     }
     /* clean up */
@@ -980,7 +981,7 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ character
 {
     korl_assert(!"@TODO");
 }
-korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context)
+korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
@@ -1026,12 +1027,17 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context)
     model.translation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
     {
-        KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
-        drawStateLine.model = &model;
-        korl_vulkan_setDrawState(&drawStateLine);
-        vertexData.instanceCount                 = line->visibleCharacters;
-        vertexData.deviceAssetHandleVertexBuffer = line->deviceAssetBufferText;
-        korl_vulkan_draw(&vertexData);
+        if(model.translation.y < visibleRegion.min.y - fontCache->fontAscent)
+            break;
+        if(model.translation.y <= visibleRegion.max.y + korl_math_abs(fontCache->fontDescent))
+        {
+            KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
+            drawStateLine.model = &model;
+            korl_vulkan_setDrawState(&drawStateLine);
+            vertexData.instanceCount                 = line->visibleCharacters;
+            vertexData.deviceAssetHandleVertexBuffer = line->deviceAssetBufferText;
+            korl_vulkan_draw(&vertexData);
+        }
         model.translation.y -= lineDeltaY;
     }
 #if 0///@TODO: recycle
