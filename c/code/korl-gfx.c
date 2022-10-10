@@ -122,6 +122,7 @@ typedef struct _Korl_Gfx_Text_Line
     Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
     u32 visibleCharacters;
     Korl_Math_Aabb2f32 modelAabb;
+    Korl_Math_V4f32 color;
 } _Korl_Gfx_Text_Line;
 korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
 korl_internal _Korl_Gfx_ResourceHandleUnpacked _korl_gfx_resourceHandle_unpack(Korl_Gfx_ResourceHandle handle)
@@ -967,6 +968,9 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         {
             mcarrpush(KORL_C_CAST(void*, context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
             currentLine = &arrlast(context->stbDaLines);
+            currentLine->color = KORL_MATH_V4F32_ONE;
+            if(arrlenu(context->stbDaLines) % 2 == 0)
+                currentLine->color.xyz = (Korl_Math_V3f32){0, 1, 0};///@TODO: test code; delete later
         }
         currentLineBuffer[currentLine->visibleCharacters].position  = glyphPosition;
         currentLineBuffer[currentLine->visibleCharacters].meshIndex = bakedGlyph->bakeOrder;
@@ -1024,6 +1028,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     model.scale       = context->modelScale;
     model.rotation    = context->modelRotate;
     model.translation = context->modelTranslate;
+    model.color       = KORL_MATH_V4F32_ONE;
     model.translation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
     {
@@ -1031,6 +1036,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             break;
         if(model.translation.y <= visibleRegion.max.y + korl_math_abs(fontCache->fontDescent))
         {
+            model.color = line->color;
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
             drawStateLine.model = &model;
             korl_vulkan_setDrawState(&drawStateLine);
@@ -1312,6 +1318,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     model.scale       = batch->_scale;
     model.rotation    = batch->_rotation;
     model.translation = batch->_position;
+    model.color       = KORL_MATH_V4F32_ONE;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     if(batch->_assetNameFont)

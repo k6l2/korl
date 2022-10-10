@@ -7,7 +7,7 @@ layout(binding = 0, set = 0, row_major) uniform UniformBufferObject
 layout(push_constant, row_major) uniform UniformPushConstants
 {
     mat4 model;
-    ///@TODO: add a vec4 uniform fragment color
+    vec4 color;
 } pushConstants;
 layout(location = 0) in vec2 attributePosition;
 // layout(location = 1) in vec4 attributeColor;
@@ -17,8 +17,8 @@ layout(location = 0) out vec4 fragmentColor;
 void main() 
 {
     // gl_Position = ubo.projection * ubo.view * ubo.model * vec4(attributePosition, 1.0);
-    gl_Position = ubo.projection * ubo.view * pushConstants.model * vec4(attributePosition, 0.0, 1.0);
+    gl_Position   = ubo.projection * ubo.view * pushConstants.model * vec4(attributePosition, 0.0, 1.0);
+    fragmentColor = pushConstants.color;
     // fragmentColor = attributeColor;
-    fragmentColor = vec4(1.0);
     //fragmentUv = attributeUv;
 }

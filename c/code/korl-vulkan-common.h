@@ -131,6 +131,7 @@ _STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View
 typedef struct _Korl_Vulkan_DrawPushConstants
 {
     Korl_Math_M4f32 m4f32Model;
+    Korl_Math_V4f32 color;
 } _Korl_Vulkan_DrawPushConstants;
 typedef struct _Korl_Vulkan_DescriptorPool
 {

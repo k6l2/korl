@@ -1840,6 +1840,7 @@ done:
     korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
     korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
     surfaceContext->drawState.pushConstants.m4f32Model      = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pushConstants.color           = KORL_MATH_V4F32_ONE;// default the model color to white
     surfaceContext->drawState.uboTransforms.m4f32View       = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.uboTransforms.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache    = _korl_vulkan_pipeline_default();
@@ -2018,7 +2019,10 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     if(state->view)
         surfaceContext->drawState.uboTransforms.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
     if(state->model)
+    {
         surfaceContext->drawState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
+        surfaceContext->drawState.pushConstants.color      = state->model->color;
+    }
     if(state->scissor)
     {
         surfaceContext->drawState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};

@@ -7,7 +7,7 @@ layout(binding = 0, set = 0, row_major) uniform UniformBufferObject
 layout(push_constant, row_major) uniform UniformPushConstants
 {
     mat4 model;
-    ///@TODO: add a vec4 uniform fragment color
+    vec4 color;
 } pushConstants;
 struct GlyphVertex
 {
@@ -30,6 +30,6 @@ void main()
     const GlyphVertex glyphVertex   = bufferGlyphMeshData.glyphVertices[glyphMeshVertexIndex];
     const vec2 modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
     gl_Position   = ubo.projection * ubo.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
-    fragmentColor = vec4(1.0);
+    fragmentColor = pushConstants.color;
     fragmentUv    = glyphVertex.position2d_uv.zw;
 }

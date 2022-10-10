@@ -37,6 +37,8 @@ typedef union Korl_Math_V4f32
     Korl_Math_V2f32 xy;
     f32 elements[4];
 } Korl_Math_V4f32;
+const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};
+const Korl_Math_V4f32 KORL_MATH_V4F32_ZERO = {0, 0, 0, 0};
 typedef Korl_Math_V4f32 Korl_Math_Quaternion;
 const Korl_Math_Quaternion KORL_MATH_QUATERNION_IDENTITY = {0, 0, 0, 1};
 typedef union Korl_Math_M4f32
