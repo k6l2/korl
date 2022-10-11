@@ -484,6 +484,8 @@ korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddr
 }
 korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle)
 {
+    if(allocationHandle == 0)
+        return;// null handle should just silently do nothing here
     const _Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked allocationHandleUnpacked = _korl_vulkan_deviceMemory_allocationHandle_unpack(allocationHandle);
     korl_assert(allocationHandleUnpacked.type != _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED);
     korl_assert(allocationHandleUnpacked.arenaIndex < arrlenu(allocator->stbDaArenas));

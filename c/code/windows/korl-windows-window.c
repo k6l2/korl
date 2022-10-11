@@ -222,7 +222,7 @@ korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
-    _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8/*@TODO: change this back to 1 when we're done testing*/), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_windows_window_context.stringPool      = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
@@ -666,13 +666,16 @@ korl_internal void korl_windows_window_loop(void)
                 KORL_ZERO_STACK(_Korl_Windows_Window_CodepointTest_Log, codepointTestData);
                 korl_gfx_text_fifoAdd(gfxText, logBuffer, context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
             }
-            // else if(newLoggedBytes)
-            // {
-            //     korl_gfx_text_eraseFront(&gfxText, newLoggedBytes / sizeof(*logBuffer.data));
-            //     korl_gfx_text_append(&gfxText
-            //                         ,(acu16){.data = logBuffer.data + ((logBuffer.size - newLoggedBytes)/sizeof(*logBuffer.data))
-            //                                 ,.size = newLoggedBytes});
-            // }
+            else if(newLoggedBytes)
+            {
+                const u$ newLoggedCharacters = newLoggedBytes/sizeof(*logBuffer.data);
+                KORL_ZERO_STACK(_Korl_Windows_Window_CodepointTest_Log, codepointTestData);
+                korl_gfx_text_fifoAdd(gfxText
+                                     ,(acu16){.data = logBuffer.data + (logBuffer.size - newLoggedCharacters)
+                                             ,.size = newLoggedCharacters}
+                                     ,context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
+                // korl_gfx_text_eraseFront(&gfxText, newLoggedBytes / sizeof(*logBuffer.data));
+            }
             korl_gfx_text_draw(gfxText, korl_math_aabb2f32_fromExpandedV2(context->gameMemory->gameCamera.pos
                                                                          ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.x
                                                                          ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.y));

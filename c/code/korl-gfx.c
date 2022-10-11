@@ -955,6 +955,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
                 createInfoVertexBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
                 createInfoVertexBuffer.bytes                          = currentLine->visibleCharacters*sizeof(*currentLineBuffer);
                 currentLine->deviceAssetBufferText = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoVertexBuffer);
+                korl_assert(currentLine->deviceAssetBufferText);
                 korl_vulkan_vertexBuffer_update(currentLine->deviceAssetBufferText, currentLineBuffer, createInfoVertexBuffer.bytes, 0/*device buffer offset*/);
             }
             currentLine      = NULL;

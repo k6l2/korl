@@ -600,7 +600,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     {
         const VkFormat format = pipeline->instancePositionDimensions == 2 
             ? VK_FORMAT_R32G32_SFLOAT
-            : pipeline->positionDimensions == 3
+            : pipeline->instancePositionDimensions == 3
               ? VK_FORMAT_R32G32B32_SFLOAT
               : VK_FORMAT_UNDEFINED;
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION;
@@ -1005,7 +1005,7 @@ korl_internal void _korl_vulkan_deviceAssetDatabase_cycleAssetLifetimes(_Korl_Vu
         if(asset->nullify && asset->framesSinceLastUsed >= surfaceContext->swapChainImagesSize)
         {
             _korl_vulkan_deviceMemory_allocator_free(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
-            arrdelswap(deviceAssetDatabase->stbDaAssets, i);
+            korl_memory_zero(asset, sizeof(*asset));
         }
         else
             i++;
@@ -1053,7 +1053,7 @@ korl_internal Korl_Vulkan_DeviceAssetHandle _korl_vulkan_deviceAssetDatabase_add
         handleUnpacked.databaseIndex = korl_checkCast_u$_to_u16(arrlenu(deviceAssetDatabase->stbDaAssets) - 1);
     }
     /* populate the new asset in the database */
-    _Korl_Vulkan_DeviceAsset*const asset = &arrlast(deviceAssetDatabase->stbDaAssets);
+    _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[handleUnpacked.databaseIndex]);
     asset->deviceAllocation = allocationHandle;
     asset->salt             = deviceAssetDatabase->nextSalt++;
     _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
@@ -1067,16 +1067,28 @@ korl_internal _Korl_Vulkan_DeviceAsset* _korl_vulkan_deviceAssetDatabase_get(_Ko
 {
     _Korl_Vulkan_DeviceAssetHandle_Unpacked handleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(deviceAssetHandle);
     if(handleUnpacked.databaseIndex >= arrlenu(deviceAssetDatabase->stbDaAssets))
+    {
+        korl_log(WARNING, "databaseIndex %hu invalid", handleUnpacked.databaseIndex);
         return NULL;
+    }
     _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[handleUnpacked.databaseIndex]);
     if(asset->salt != handleUnpacked.salt)
+    {
+        korl_log(WARNING, "salt %hhu != %hhu", asset->salt, handleUnpacked.salt);
         return NULL;
+    }
     if(asset->nullify)
+    {
+        korl_log(WARNING, "asset flagged for nullification");
         return NULL;
+    }
     _Korl_Vulkan_DeviceMemory_Alloctation*const assetAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
     korl_assert(assetAllocation);
     if(assetAllocation->type != handleUnpacked.type)
+    {
+        korl_log(WARNING, "asset type %u != %u", assetAllocation->type, handleUnpacked.type);
         return NULL;
+    }
     if(out_deviceMemoryAllocation)
         *out_deviceMemoryAllocation = assetAllocation;
     return asset;
@@ -2052,7 +2064,9 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     /* basic parameter sanity checks */
     if(vertexData->deviceAssetHandleVertexBuffer)
     {
-        ///@TODO: ???
+        /* if we're using a vertex buffer device asset for vertex data, we can't 
+            do sanity checks on vertex data until we obtain the device asset and 
+            extract the vertex attribute descriptors from it; do nothing */
     }
     else
     {
@@ -2088,7 +2102,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         korl_assert(deviceAssetVertexBuffer);
         korl_assert(deviceMemoryAllocationVertexBuffer->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
     }
-    /* configure the pipeline config cache with the vertex data properties */
+    /* prepare the pipeline config cache with the vertex data properties */
     korl_time_probeStart(draw_config_pipeline);
     switch(vertexData->primitiveType)
     {
@@ -2123,6 +2137,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
             }
         }
     }
+    /* now that we have potentially configured the pipeline config cache to use 
+        the vertex data from a vertex buffer, we can do a final round of sanity 
+        checks before attempting to configure a pipeline */
+    ///@TODO: ??? at the very least, we need to ensure that if we are passing instance positions, the instance position dimension value is set correctly!
+    /* now we can actually configure the pipeline */
     const u$ pipelinePrevious = surfaceContext->drawState.currentPipeline;
     _korl_vulkan_setPipelineMetaData(surfaceContext->drawState.pipelineConfigurationCache);
     const bool pipelineChanged = (pipelinePrevious != surfaceContext->drawState.currentPipeline);
