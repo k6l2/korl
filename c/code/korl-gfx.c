@@ -668,12 +668,13 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     if(!fontCache)
         return;
     _Korl_Gfx_FontGlyphPage*const fontGlyphPage = fontCache->glyphPage;
+    if(batch->_textVisibleCharacterCount)
+        goto done_setFontTextureHandle;
     /* iterate over each character in the batch text, and update the 
         pre-allocated vertex attributes to use the data for the corresponding 
         codepoint in the glyph cache */
     Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
     u32 currentGlyph = 0;
-    batch->_textVisibleCharacterCount = 0;
     const bool outlinePass = (batch->_textPixelOutline > 0.f);
     /* While we're at it, we can also generate the text mesh AABB...
         We need to accumulate the AABB taking into account the following properties:
@@ -737,7 +738,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     /* setting the font texture handle to a valid value signifies to other gfx 
         module code that the text mesh has been generated, and thus dependent 
         assets (font, glyph pages) are all loaded & ready to go */
-    ///@TODO: this probably wont work anymore, since we are defering the glyph page update until the end of this frame
+    done_setFontTextureHandle:
     batch->_fontTextureHandle       = fontGlyphPage->textureHandle;
     batch->_glyphMeshBufferVertices = fontGlyphPage->glyphMeshBufferVertices;
 }
@@ -1740,7 +1741,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_GET_AABB(korl_gfx_batchTextGetAabb)
 {
     korl_assert(batchContext->_text && batchContext->_assetNameFont);
     _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAG_LAZY);
-    if(!batchContext->_fontTextureHandle)
+    if(!batchContext->_textVisibleCharacterCount)
         return (Korl_Math_Aabb2f32){{0, 0}, {0, 0}};
     return batchContext->_textAabb;
 }
