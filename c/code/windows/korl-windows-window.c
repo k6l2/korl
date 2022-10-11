@@ -653,6 +653,7 @@ korl_internal void korl_windows_window_loop(void)
 #if 1///@TODO: delete later; just testing new korl-gfx API
         // test obtaining log buffer & updating a graphics cache for it //
         {
+            korl_shared_const u$ MAX_TEXT_LINES = 1000;
             korl_shared_variable u$ cacheLoggedBytes = 0;
             korl_shared_variable Korl_Gfx_Text* gfxText = NULL;
             u$ loggedBytes = 0;
@@ -676,6 +677,9 @@ korl_internal void korl_windows_window_loop(void)
                                      ,context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
                 // korl_gfx_text_eraseFront(&gfxText, newLoggedBytes / sizeof(*logBuffer.data));
             }
+            const u$ textLines = arrlenu(gfxText->stbDaLines);
+            if(textLines > MAX_TEXT_LINES)
+                korl_gfx_text_fifoRemove(gfxText, textLines - MAX_TEXT_LINES);
             korl_gfx_text_draw(gfxText, korl_math_aabb2f32_fromExpandedV2(context->gameMemory->gameCamera.pos
                                                                          ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.x
                                                                          ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.y));

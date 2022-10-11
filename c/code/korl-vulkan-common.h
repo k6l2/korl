@@ -8,6 +8,7 @@
 #include "korl-math.h"
 #include "korl-vulkan.h"
 #include "korl-stringPool.h"
+#define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 typedef enum _Korl_Vulkan_DescriptorSetIndex
     /* ideally, these descriptor sets indices are defined in the order of least- 
@@ -149,6 +150,9 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     ///        and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; 
     ///        theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
     _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
+#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+    u$* stbDaInUseDeviceAssetIndices;
+#endif
 } _Korl_Vulkan_SwapChainImageContext;
 /** 
  * the contents of this struct are expected to be nullified at the end of each 

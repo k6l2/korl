@@ -426,6 +426,10 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
                                 &surfaceContext->swapChainImageContexts[i].commandPool));
         /* initialize pool of descriptor pools */
         mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaDescriptorPools, 8);
+#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+        /* initialize a debug pool of device asset indices */
+        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
+#endif
     }
 }
 korl_internal void _korl_vulkan_destroySwapChain(void)
@@ -450,6 +454,9 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
             vkDestroyDescriptorPool(context->device, swapChainImageContext->stbDaDescriptorPools[d].vkDescriptorPool, context->allocator);
         }
         mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaDescriptorPools);
+#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices);
+#endif
     }
     korl_memory_zero(surfaceContext->swapChainImageContexts, sizeof(surfaceContext->swapChainImageContexts));
     vkDestroySwapchainKHR(context->device, surfaceContext->swapChain, context->allocator);
@@ -988,27 +995,31 @@ korl_internal void _korl_vulkan_deviceAssetDatabase_destroy(_Korl_Vulkan_DeviceA
 korl_internal void _korl_vulkan_deviceAssetDatabase_cycleAssetLifetimes(_Korl_Vulkan_DeviceAssetDatabase* deviceAssetDatabase)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    // _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     ///@TODO: perhaps a better solution is having a "deletion queue" where we 
     ///       only have to examine the front of the queue to see if any device 
     ///       assets should be deleted, instead of having to iterate over the 
     ///       entire device asset database every frame
-    for(u$ i = 0; i < arrlenu(deviceAssetDatabase->stbDaAssets); )
+    for(u$ i = 0; i < arrlenu(deviceAssetDatabase->stbDaAssets); i++)
     {
         _Korl_Vulkan_DeviceAsset*const asset = &(deviceAssetDatabase->stbDaAssets[i]);
         if(asset->deviceAllocation == 0)
-        {
-            i++;
             continue;
-        }
         if(asset->framesSinceLastUsed < KORL_U8_MAX)
             asset->framesSinceLastUsed++;
         if(asset->nullify && asset->framesSinceLastUsed >= surfaceContext->swapChainImagesSize)
         {
+#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+            for(u$ sci = 0; sci < surfaceContext->swapChainImagesSize; sci++)
+            {
+                _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[sci];
+                for(u$ iu = 0; iu < arrlenu(swapChainImageContext->stbDaInUseDeviceAssetIndices); iu++)
+                    korl_assert(i != swapChainImageContext->stbDaInUseDeviceAssetIndices[iu]);
+            }
+#endif
             _korl_vulkan_deviceMemory_allocator_free(deviceAssetDatabase->deviceMemoryAllocator, asset->deviceAllocation);
             korl_memory_zero(asset, sizeof(*asset));
         }
-        else
-            i++;
     }
 }
 typedef struct _Korl_Vulkan_DeviceAssetHandle_Unpacked
@@ -1089,6 +1100,7 @@ korl_internal _Korl_Vulkan_DeviceAsset* _korl_vulkan_deviceAssetDatabase_get(_Ko
         korl_log(WARNING, "asset type %u != %u", assetAllocation->type, handleUnpacked.type);
         return NULL;
     }
+    asset->framesSinceLastUsed = 0;// reset the frames since the asset has last been used, to prevent the asset database from destroying this data while it's potentially still being used to render
     if(out_deviceMemoryAllocation)
         *out_deviceMemoryAllocation = assetAllocation;
     return asset;
@@ -1784,6 +1796,10 @@ korl_internal void korl_vulkan_frameBegin(void)
     /* same as with staging buffers, we can now nullify device assets that we 
         know are no longer being used */
     _korl_vulkan_deviceAssetDatabase_cycleAssetLifetimes(&(surfaceContext->deviceAssetDatabase));
+#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+    /* reset the debug pool of device asset indices */
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
+#endif
     /* acquire the next image from the swap chain */
     _KORL_VULKAN_CHECK(
         vkAcquireNextImageKHR(context->device, surfaceContext->swapChain
@@ -2190,7 +2206,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         _Korl_Vulkan_DeviceMemory_Alloctation* textureAllocation = NULL;
         _Korl_Vulkan_DeviceAsset*const deviceAsset =
              _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), surfaceContext->drawState.texture, &textureAllocation);
-        deviceAsset->framesSinceLastUsed = 0;// reset the frames since the asset has last been used, to prevent the asset database from destroying this data while it's potentially still being used to render
+        korl_assert(!deviceAsset->nullify);
+#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+        const _Korl_Vulkan_DeviceAssetHandle_Unpacked deviceAssetHandleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(surfaceContext->drawState.texture);
+        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, deviceAssetHandleUnpacked.databaseIndex);
+#endif
         korl_assert(textureAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descriptorImageInfo.imageView   = textureAllocation->deviceObject.texture.imageView;
@@ -2513,7 +2533,13 @@ korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_DeviceAsset* asset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), deviceAssetHandle, NULL/*out_deviceMemoryAllocation*/);
     if(asset)
+    {
+#if KORL_DEBUG && 0
+        const _Korl_Vulkan_DeviceAssetHandle_Unpacked deviceAssetHandleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(deviceAssetHandle);
+        korl_log(VERBOSE, "nullifying asset %hu", deviceAssetHandleUnpacked.databaseIndex);
+#endif
         asset->nullify = true;
+    }
     else
         korl_log(ERROR, "failed to get asset: 0x%X", deviceAssetHandle);
 }

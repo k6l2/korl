@@ -120,7 +120,7 @@ typedef struct _Korl_Gfx_Context
 typedef struct _Korl_Gfx_Text_Line
 {
     Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
-    u32 visibleCharacters;
+    u32 visibleCharacters;// used to determine how many glyph instances are in the draw call
     Korl_Math_Aabb2f32 modelAabb;
     Korl_Math_V4f32 color;
 } _Korl_Gfx_Text_Line;
@@ -982,9 +982,12 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     /* clean up */
     korl_free(stackAllocator, currentLineBuffer);
 }
-korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ characterCount)
+korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
 {
-    korl_assert(!"@TODO");
+    const u$ linesToRemove = KORL_MATH_MIN(lineCount, arrlenu(context->stbDaLines));
+    for(u$ l = 0; l < linesToRemove; l++)
+        korl_vulkan_deviceAsset_destroy(context->stbDaLines[l].deviceAssetBufferText);
+    arrdeln(context->stbDaLines, 0, linesToRemove);
 }
 korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
@@ -1047,7 +1050,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
         }
         model.translation.y -= lineDeltaY;
     }
-#if 0///@TODO: recycle
+#if 0///@TODO: recycle?  need to actually utilize this graphics rendering code in the GUI module to see what the user needs to be able to do with positioning...
     {
         /* we need to somehow position the text mesh in a way that satisfies the 
             text position anchor */

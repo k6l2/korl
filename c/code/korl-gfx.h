@@ -12,7 +12,7 @@ korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
     Korl_Memory_AllocatorHandle allocator;
-    struct _Korl_Gfx_Text_Line* stbDaLines;
+    struct _Korl_Gfx_Text_Line* stbDaLines;// the user can obtain the line count by calling arrlenu(text->stbDaLines)
     f32 textPixelHeight;
     acu16 utf16AssetNameFont;
     Korl_Math_V3f32      modelTranslate;
@@ -25,7 +25,7 @@ typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
 korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);
 korl_internal void           korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData);
-korl_internal void           korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ characterCount);
+korl_internal void           korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount);
 korl_internal void           korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
 korl_internal KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(korl_gfx_resource_createTexture);
 korl_internal KORL_PLATFORM_GFX_RESOURCE_DESTROY(korl_gfx_resource_destroy);
