@@ -898,14 +898,12 @@ korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
 {
     mcarrfree(KORL_C_CAST(void*, context->allocator), context->stbDaLines);
     korl_free(context->allocator, context);
-    korl_memory_zero(context, sizeof(*context));
 }
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
-    // const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;// we don't need this, since each line has an implicit Y size anyway
     /* initialize scratch space for storing glyph instance data of the current 
         working text line */
     const u$ currentLineBufferBytes = utf16Text.size*(sizeof(u32/*glyph mesh bake order*/) + sizeof(Korl_Math_V2f32/*glyph position*/));
@@ -939,11 +937,11 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
             textBaselineCursor.x  = 0.f;
             // textBaselineCursor.y -= lineDeltaY;// no need to do this; each line has an implicit Y size, and when we draw we will move the line's model position appropriately
             glyphIndexPrevious = -1;
-            /* if we had a current working text line, we need to flush the text 
-                instance data we've accumulated so far into a vertex buffer 
-                device asset */
             if(currentLine)
             {
+                /* if we had a current working text line, we need to flush the text 
+                    instance data we've accumulated so far into a vertex buffer 
+                    device asset */
                 KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
                 vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
                 vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
@@ -958,6 +956,9 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
                 currentLine->deviceAssetBufferText = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoVertexBuffer);
                 korl_assert(currentLine->deviceAssetBufferText);
                 korl_vulkan_vertexBuffer_update(currentLine->deviceAssetBufferText, currentLineBuffer, createInfoVertexBuffer.bytes, 0/*device buffer offset*/);
+                /* update the Text object's model AABB with the new line 
+                    graphics we just added */
+                KORL_MATH_ASSIGN_CLAMP_MAX(context->_modelAabb.max.x, currentLine->modelAabb.max.x);
             }
             currentLine      = NULL;
             currentLineColor = KORL_MATH_V4F32_ONE;// default next line color to white
@@ -980,15 +981,34 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         currentLine->modelAabb.max = korl_math_v2f32_max(currentLine->modelAabb.max, (Korl_Math_V2f32){x1, y1});
         currentLine->visibleCharacters++;
     }
+    /* we can easily calculate the height of the Text object's current AABB 
+        using the font's cached metrics */
+    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    context->_modelAabb.min.y = arrlenu(context->stbDaLines) * -lineDeltaY;
     /* clean up */
     korl_free(stackAllocator, currentLineBuffer);
 }
 korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
 {
+    /* get the font asset matching the provided asset name */
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
+    korl_assert(fontCache);
+    /**/
     const u$ linesToRemove = KORL_MATH_MIN(lineCount, arrlenu(context->stbDaLines));
-    for(u$ l = 0; l < linesToRemove; l++)
-        korl_vulkan_deviceAsset_destroy(context->stbDaLines[l].deviceAssetBufferText);
+    context->_modelAabb.max.x = 0;
+    for(u$ l = 0; l < arrlenu(context->stbDaLines); l++)
+    {
+        if(l < linesToRemove)
+        {
+            korl_vulkan_deviceAsset_destroy(context->stbDaLines[l].deviceAssetBufferText);
+            continue;
+        }
+        const _Korl_Gfx_Text_Line*const line = &(context->stbDaLines[l]);
+        KORL_MATH_ASSIGN_CLAMP_MAX(context->_modelAabb.max.x, line->modelAabb.max.x);
+    }
     arrdeln(context->stbDaLines, 0, linesToRemove);
+    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    context->_modelAabb.min.y = arrlenu(context->stbDaLines) * -lineDeltaY;
 }
 korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {

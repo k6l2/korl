@@ -56,6 +56,7 @@ typedef struct _Korl_Gui_Widget
         struct
         {
             const wchar_t* displayText;
+            Korl_Gfx_Text* gfxText;
         } text;
         struct
         {

@@ -16,7 +16,77 @@
 #include "sort.h"
 #include "korl-stb-ds.h"
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID[] = L"DEBUG";
-korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType)
+typedef struct _Korl_Gui_CodepointTestData_Log
+{
+    u8 trailingMetaTagCodepoints;
+    u8 metaTagComponent;// 0=>log level, 1=>time stamp, 2=>line, 3=>file, 4=>function
+    const u16* pCodepointMetaTagStart;
+} _Korl_Gui_CodepointTestData_Log;
+korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
+{
+    // log meta data example:
+    //╟INFO   ┆11:48'00"525┆   58┆korl-vulkan.c┆_korl_vulkan_debugUtilsMessengerCallback╢ 
+    _Korl_Gui_CodepointTestData_Log*const data = KORL_C_CAST(_Korl_Gui_CodepointTestData_Log*, userData);
+    if(data->pCodepointMetaTagStart)
+    {
+        bool endOfMetaTagComponent = false;
+        if(*pCodepoint == L'╢')
+        {
+            data->trailingMetaTagCodepoints = 2;
+            data->pCodepointMetaTagStart    = NULL;
+            endOfMetaTagComponent = true;
+        }
+        else if(*pCodepoint == L'┆')
+            endOfMetaTagComponent = true;
+        if(endOfMetaTagComponent)
+        {
+            switch(data->metaTagComponent)
+            {
+            case 0:{// log level
+                korl_assert(currentLineColor);
+                switch(*data->pCodepointMetaTagStart)
+                {
+                case L'A':{// ASSERT
+                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 0, 0};// red
+                    break;}
+                case L'E':{// ERROR
+                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 0, 0};// red
+                    break;}
+                case L'W':{// WARNING
+                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 1, 0};// yellow
+                    break;}
+                case L'I':{// INFO
+                    // do nothing; the line color defaults to white!
+                    break;}
+                case L'V':{// VERBOSE
+                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){0, 1, 1};// cyan
+                    break;}
+                }
+                break;}
+            case 1:{// time
+                break;}
+            case 2:{// line #
+                break;}
+            case 3:{// file
+                break;}
+            case 4:{// function
+                break;}
+            }
+            data->metaTagComponent++;
+        }
+    }
+    else if(*pCodepoint == L'╟')
+    {
+        data->pCodepointMetaTagStart = pCodepoint + 1;
+        data->metaTagComponent       = 0;
+    }
+    if(data->trailingMetaTagCodepoints)
+        data->trailingMetaTagCodepoints--;
+    if(data->pCodepointMetaTagStart || data->trailingMetaTagCodepoints)
+        return false;
+    return true;
+}
+korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType, bool* out_newAllocation)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
@@ -33,6 +103,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier,
             && context->stbDaWidgets[w].identifier == identifier)
         {
             widgetIndex = w;
+            *out_newAllocation = false;
             goto widgetIndexValid;
         }
     }
@@ -44,6 +115,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier,
     widget->identifier             = identifier;
     widget->parentWindowIdentifier = context->stbDaWindows[context->currentWindowIndex].identifier;
     widget->type                   = widgetType;
+    *out_newAllocation = true;
 widgetIndexValid:
     widget = &context->stbDaWidgets[widgetIndex];
     korl_assert(widget->type == widgetType);
@@ -76,19 +148,35 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
         {
         case KORL_GUI_WIDGET_TYPE_TEXT:{
             korl_time_probeStart(widget_text);
-            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-            const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
-            const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
-            widget->cachedAabb.min = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){               0.f, batchTextAabbSize.y});
-            widget->cachedAabb.max = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){batchTextAabbSize.x,                0.f});
-            widget->cachedIsInteractive = false;
-            if(batchGraphics)
+            if(widget->subType.text.gfxText)
             {
-                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
-                korl_gfx_batchSetPosition2d(batchText, widgetCursor.x, widgetCursor.y);
-                korl_time_probeStart(gfx_batch);
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                korl_time_probeStop(gfx_batch);
+                korl_assert(!widget->subType.text.displayText);
+                widget->cachedAabb = widget->subType.text.gfxText->_modelAabb;
+                korl_math_v2f32_assignAdd(&(widget->cachedAabb.min), widgetCursor);
+                korl_math_v2f32_assignAdd(&(widget->cachedAabb.max), widgetCursor);
+                if(batchGraphics)
+                {
+                    widget->subType.text.gfxText->modelTranslate.xy = widgetCursor;
+                    korl_gfx_text_draw(widget->subType.text.gfxText, korl_math_aabb2f32_fromPoints(window->position.x, window->position.y, window->position.x + window->size.x, window->position.y - window->size.y));
+                }
+            }
+            else if(widget->subType.text.displayText)
+            {
+                korl_assert(!widget->subType.text.gfxText);
+                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.text.displayText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
+                const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
+                widget->cachedAabb.min = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){               0.f, batchTextAabbSize.y});
+                widget->cachedAabb.max = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){batchTextAabbSize.x,                0.f});
+                widget->cachedIsInteractive = false;
+                if(batchGraphics)
+                {
+                    //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
+                    korl_gfx_batchSetPosition2d(batchText, widgetCursor.x, widgetCursor.y);
+                    korl_time_probeStart(gfx_batch);
+                    korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    korl_time_probeStop(gfx_batch);
+                }
             }
             korl_time_probeStop(widget_text);
             break;}
@@ -131,6 +219,19 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
         }
         window->cachedContentAabb = korl_math_aabb2f32_union(window->cachedContentAabb, widget->cachedAabb);
         widgetCursor.y -= widget->cachedAabb.max.y - widget->cachedAabb.min.y;
+    }
+}
+korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    switch(widget->type)
+    {
+    case KORL_GUI_WIDGET_TYPE_TEXT:{
+        if(widget->subType.text.gfxText)
+            korl_gfx_text_destroy(widget->subType.text.gfxText);
+        break;}
+    case KORL_GUI_WIDGET_TYPE_BUTTON:{
+        break;}
     }
 }
 korl_internal void korl_gui_initialize(void)
@@ -303,7 +404,10 @@ korl_internal void korl_gui_frameEnd(void)
                 widgetsRemaining++;
             }
             else
+            {
+                _korl_gui_widget_destroy(widget);
                 continue;
+            }
         }
         mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
         korl_time_probeStop(nullify_unused_widgets);
@@ -351,7 +455,7 @@ korl_internal void korl_gui_frameEnd(void)
             /* iterate over all this window's widgets, obtaining their AABBs & 
                 accumulating their geometry to determine how big the window 
                 needs to be */
-            _korl_gui_processWidgetGraphics(window, false, 0.f, 0.f);
+            _korl_gui_processWidgetGraphics(window, false, 0.f, 0.f);///@TODO: attempt to completely remove this call, and remove the second parameter for that matter
             Korl_Math_Aabb2f32 windowTotalAabb = window->cachedContentAabb;
             /* take the AABB of the window's title bar into account as well */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
@@ -661,7 +765,8 @@ korl_internal void korl_gui_frameEnd(void)
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT);
+    bool newAllocation = false;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     va_list vaList;
     va_start(vaList, textFormat);
     widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
@@ -670,22 +775,37 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(texts, KORL_GUI_WIDGET_TYPE_TEXT);
-    wchar_t* displayText = NULL;
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandleStack), displayText, 1024);
-    for(u$ t = 0; t < textsSize; t++)
+    bool newAllocation = false;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(identifier, KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
+    if(newAllocation)
     {
-        const au16*const text = KORL_C_CAST(const au16*, KORL_C_CAST(u8*, texts) + t*textsStride);
-        const u$ displayTextSizePrevious = arrlenu(displayText);
-        mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleStack), displayText, arrlenu(displayText) + text->size);
-        korl_memory_copy(displayText + displayTextSizePrevious, text->data, text->size*sizeof(*text->data));
+        korl_assert(korl_memory_isNull(&widget->subType.text, sizeof(widget->subType.text)));
+        widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, (acu16){.data = context->style.fontWindowText, .size = korl_memory_stringSize(context->style.fontWindowText)}, context->style.windowTextPixelSizeY);
     }
-    widget->subType.text.displayText = displayText;
+    /* at this point, we either have a new gfxText on the widget, or we're using 
+        an already existing widget's gfxText member; in either case, we need to 
+        now append the provided newText to the gfxText member of the text widget */
+    if(newText.size)
+    {
+        KORL_ZERO_STACK(_Korl_Gui_CodepointTestData_Log, codepointTestDataLog);
+        if(flags & KORL_GUI_WIDGET_TEXT_FLAG_LOG)
+        {
+            codepointTest         = _korl_gui_codepointTest_log;
+            codepointTestUserData = &codepointTestDataLog;
+            // it should be possible to nest the internal log codepointTest with the user-provided one instead of completely overriding it; 
+            //  maybe at some point in the future if that becomes useful behavior...
+        }
+        korl_gfx_text_fifoAdd(widget->subType.text.gfxText, newText, context->allocatorHandleStack, codepointTest, codepointTestUserData);
+    }
+    const u$ textLines = arrlenu(widget->subType.text.gfxText->stbDaLines);
+    if(textLines > maxLineCount)
+        korl_gfx_text_fifoRemove(widget->subType.text.gfxText, textLines - maxLineCount);
 }
 korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON);
+    bool newAllocation = false;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
     va_list vaList;
     va_start(vaList, textFormat);
     widget->subType.button.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);

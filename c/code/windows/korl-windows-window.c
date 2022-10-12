@@ -386,6 +386,7 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
     if(context->gameDll)
         _korl_windows_window_findGameApiAddresses(context->gameDll);
 }
+#if 0///@TODO: delete
 typedef struct _Korl_Windows_Window_CodepointTest_Log
 {
     u8 trailingMetaTagCodepoints;
@@ -456,6 +457,7 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_windows_window_codepointTest_lo
         return false;
     return true;
 }
+#endif
 korl_internal void korl_windows_window_loop(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
@@ -650,7 +652,7 @@ korl_internal void korl_windows_window_loop(void)
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
-#if 1///@TODO: delete later; just testing new korl-gfx API
+#if 0///@TODO: delete later; just testing new korl-gfx API
         // test obtaining log buffer & updating a graphics cache for it //
         {
             korl_shared_const u$ MAX_TEXT_LINES = 1000;
@@ -675,7 +677,6 @@ korl_internal void korl_windows_window_loop(void)
                                      ,(acu16){.data = logBuffer.data + (logBuffer.size - newLoggedCharacters)
                                              ,.size = newLoggedCharacters}
                                      ,context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
-                // korl_gfx_text_eraseFront(&gfxText, newLoggedBytes / sizeof(*logBuffer.data));
             }
             const u$ textLines = arrlenu(gfxText->stbDaLines);
             if(textLines > MAX_TEXT_LINES)

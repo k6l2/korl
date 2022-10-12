@@ -225,6 +225,13 @@ typedef struct Korl_GamepadEvent
         } axis;
     } subType;
 } Korl_GamepadEvent;
+/** \return \c true if the codepoint should be drawn, \c false otherwise */
+#define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, const u16* pCodepoint, Korl_Math_V4f32* currentLineColor)
+typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
+typedef enum Korl_Gui_Widget_Text_Flags
+    { KORL_GUI_WIDGET_TEXT_FLAGS_NONE
+    , KORL_GUI_WIDGET_TEXT_FLAG_LOG// format the text assuming that it is raw KORL log buffer text
+} Korl_Gui_Widget_Text_Flags;
 #define KORL_PLATFORM_GUI_SET_FONT_ASSET(name)       void name(const wchar_t* fontAssetName)
 #define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_PLATFORM_GUI_WINDOW_END(name)           void name(void)
@@ -243,7 +250,7 @@ typedef struct Korl_GamepadEvent
 #define KORL_PLATFORM_GUI_WINDOW_SET_POSITION(name)  void name(f32 anchorX, f32 anchorY, f32 positionX, f32 positionY)
 #define KORL_PLATFORM_GUI_WINDOW_SET_SIZE(name)      void name(f32 sizeX, f32 sizeY)
 #define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
-#define KORL_PLATFORM_GUI_WIDGET_TEXT(name)          void name(const acu16* texts, u$ textsSize, u$ textsStride)
+#define KORL_PLATFORM_GUI_WIDGET_TEXT(name)          void name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
 #define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
 typedef enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT

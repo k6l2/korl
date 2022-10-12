@@ -18,10 +18,8 @@ typedef struct Korl_Gfx_Text
     Korl_Math_V3f32      modelTranslate;
     Korl_Math_Quaternion modelRotate;
     Korl_Math_V3f32      modelScale;
+    Korl_Math_Aabb2f32 _modelAabb;// not valid until fifo add/remove APIs have been called
 } Korl_Gfx_Text;
-/** \return \c true if the codepoint should be drawn, \c false otherwise */
-#define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, const u16* pCodepoint, Korl_Math_V4f32* currentLineColor)
-typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
 korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);
 korl_internal void           korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData);
