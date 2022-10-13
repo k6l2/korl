@@ -1166,7 +1166,16 @@ korl_internal void _korl_vulkan_dequeueTransferCommands(void)
                             ,/*imageBarrierCount*/1, &barrierImageMemory);
         ///@TODO: even though this technique _should_ make sure that the upcoming frame will have the correct pixel data, we are still not properly isolating texture memory from frames that are still WIP
     }
-    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads, 0);
+    for(u$ c = 0; c < arrlenu(surfaceContext->stbDaQueuedBufferTransfers); c++)
+    {
+        _Korl_Vulkan_QueuedBufferTransfer*const queuedBufferTransfer = &(surfaceContext->stbDaQueuedBufferTransfers[c]);
+        vkCmdCopyBuffer(swapChainImageContext->commandBufferTransfer
+                       ,queuedBufferTransfer->bufferSource
+                       ,queuedBufferTransfer->bufferTarget
+                       ,1, &(queuedBufferTransfer->copyRegion));
+    }
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads , 0);
+    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedBufferTransfers, 0);
 }
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
@@ -1652,6 +1661,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryDeviceLocal);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, 128);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads, 16);
+    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedBufferTransfers, 16);
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {
@@ -1675,6 +1685,7 @@ korl_internal void korl_vulkan_destroySurface(void)
              Buffer, since the entire allocators are being destroyed above! */
     mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers);
     mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedTextureUploads);
+    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedBufferTransfers);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));// NOTE: Keep this as the last operation in the surface destructor!
     /* destroy the device-specific resources */
     for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
@@ -2582,8 +2593,8 @@ korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_Devi
 }
 korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceAssetHandle bufferHandle, u$ bytes)
 {
-    _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
     _Korl_Vulkan_DeviceAsset* deviceAsset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), bufferHandle, &deviceMemoryAllocation);
     if(!deviceAsset)
@@ -2606,12 +2617,11 @@ korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceAssetHandle
     dummyAsset->deviceAllocation  = deviceAsset->deviceAllocation;
     deviceAsset->deviceAllocation = resizedAllocationHandle;
     /* compose memory copy commands to copy from the old device memory allocation to the new one */
-    KORL_ZERO_STACK(VkBufferCopy, bufferCopyRegion);
-    bufferCopyRegion.size = KORL_MATH_MIN(bytes, deviceMemoryAllocation->bytesUsed);
-    vkCmdCopyBuffer(swapChainImageContext->commandBufferTransfer
-                   ,deviceMemoryAllocation->deviceObject.buffer.vulkanBuffer
-                   ,resizedAllocation->deviceObject.buffer.vulkanBuffer
-                   ,1, &bufferCopyRegion);
+    /* queue this transfer command for later, when the swapChainImageContext is actually _valid_ */
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedBufferTransfers, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedBufferTransfer));
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).copyRegion.size = KORL_MATH_MIN(bytes, deviceMemoryAllocation->bytesUsed);
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).bufferSource    = deviceMemoryAllocation->deviceObject.buffer.vulkanBuffer;
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).bufferTarget    = resizedAllocation->deviceObject.buffer.vulkanBuffer;
     /* flag the dummy device asset to be nullified in the future, which should 
         only ever happen after we can be certain that it is no longer in use by 
         any command buffers */
@@ -2619,8 +2629,8 @@ korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceAssetHandle
 }
 korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset)
 {
-    _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
     _Korl_Vulkan_DeviceAsset* deviceAsset = _korl_vulkan_deviceAssetDatabase_get(&(surfaceContext->deviceAssetDatabase), bufferHandle, &deviceMemoryAllocation);
     if(!deviceAsset)
@@ -2634,12 +2644,11 @@ korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle
     /* copy the data to the staging buffer */
     korl_memory_copy(stagingMemory, data, dataBytes);
     /* compose memory transfer commands to move the staging memory into the device asset */
-    KORL_ZERO_STACK(VkBufferCopy, bufferCopyRegion);
-    bufferCopyRegion.srcOffset = bufferStagingOffset;
-    bufferCopyRegion.dstOffset = deviceLocalBufferOffset;
-    bufferCopyRegion.size      = KORL_MATH_MIN(dataBytes, deviceMemoryAllocation->bytesUsed);
-    vkCmdCopyBuffer(swapChainImageContext->commandBufferTransfer
-                   ,bufferStaging
-                   ,deviceMemoryAllocation->deviceObject.buffer.vulkanBuffer
-                   ,1, &bufferCopyRegion);
+    /* queue this transfer command for later, when the swapChainImageContext is actually _valid_ */
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaQueuedBufferTransfers, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedBufferTransfer));
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).copyRegion.srcOffset = bufferStagingOffset;
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).copyRegion.dstOffset = deviceLocalBufferOffset;
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).copyRegion.size      = KORL_MATH_MIN(dataBytes, deviceMemoryAllocation->bytesUsed);
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).bufferSource         = bufferStaging;
+    arrlast(surfaceContext->stbDaQueuedBufferTransfers).bufferTarget         = deviceMemoryAllocation->deviceObject.buffer.vulkanBuffer;
 }
