@@ -3,10 +3,9 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-memoryPool.h"
+#include "korl-vulkan.h"
 #include "korl-vulkan-memory.h"
 #include "korl-math.h"
-#include "korl-vulkan.h"
 #include "korl-stringPool.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
@@ -111,9 +110,6 @@ typedef struct _Korl_Vulkan_Context
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool stringPool;
-#if 0///@TODO: delete/recycle
-    Korl_Vulkan_TextureHandle textureHandleDefaultTexture;
-#endif
 } _Korl_Vulkan_Context;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
@@ -173,37 +169,15 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     VkRect2D scissor;
     /** ----- descriptor state ----- */
     _Korl_Vulkan_SwapChainImageUniformTransforms uboTransforms;
-    Korl_Vulkan_DeviceAssetHandle texture;
-    Korl_Vulkan_DeviceAssetHandle vertexStorageBuffer;
-#if 0///@TODO: delete/recycle
-    u32  vertexIndexCountStaging;
-    u32  vertexIndexCountDevice;
-    u32  vertexCountStaging;
-    u32  vertexCountDevice;
-    /* While the above metrics represent the TOTAL number of vertex 
-        attributes/indices in batch buffers, the following metrics represent the 
-        number of vertex attributes/indices in the current pipeline batch.  The 
-        batch buffers will probably hold multiple pipeline batches. */
-    u32  pipelineVertexIndexCount;
-    u32  pipelineVertexCount;
-    u32  descriptorSetIndexCurrent;
-    bool descriptorSetIsUsed;// true if ANY geometry has been staged using the current working batch descriptor set
-    /* descriptor set state cache; used to prevent the descriptor set from 
-        flushing unless we are _actually_ changing the state of the descriptor 
-        set, since this is likely to be an expensive operation */
-    Korl_Math_M4f32 m4f32Projection;
-    Korl_Math_M4f32 m4f32View;
-    Korl_Math_M4f32 m4f32Model;
-    VkImageView textureImageView;
-    VkSampler   textureSampler;
-#endif
+    Korl_Vulkan_DeviceMemory_AllocationHandle texture;
+    Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
 } _Korl_Vulkan_SurfaceContextDrawState;
 /**
  * Each buffer acts as a linear allocator
  */
 typedef struct _Korl_Vulkan_Buffer
 {
-    _Korl_Vulkan_DeviceMemory_AllocationHandle allocation;
+    Korl_Vulkan_DeviceMemory_AllocationHandle allocation;
     // total bytes occupied by this buffer should be contained within the allocation
     VkDeviceSize bytesUsed;
     /** Care must be taken with this value so that it doesn't overflow.  By 
@@ -214,33 +188,11 @@ typedef struct _Korl_Vulkan_Buffer
      * processed in order. */
     u8 framesSinceLastUsed;
 } _Korl_Vulkan_Buffer;
-typedef struct _Korl_Vulkan_DeviceAsset
+typedef struct _Korl_Vulkan_QueuedFreeDeviceLocalAllocation
 {
-    _Korl_Vulkan_DeviceMemory_AllocationHandle deviceAllocation;
-    bool nullify;// Used to defer ultimate destruction of device assets until we can deduce that the _must_ no longer be in use (using framesSinceLastUsed)
-    u8 framesSinceLastUsed;
-    u8 salt;
-    union
-    {
-        struct
-        {
-            /** A \c stride value of \c 0 here indicates that this buffer does not 
-             * contain the vertex attribute at that respective index of this array */
-            struct
-            {
-                u$ offset;
-                u32 stride;
-            } attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
-        } buffer;
-    } subType;
-} _Korl_Vulkan_DeviceAsset;
-typedef struct _Korl_Vulkan_DeviceAssetDatabase
-{
-    void* memoryContext;
-    _Korl_Vulkan_DeviceMemory_Allocator* deviceMemoryAllocator;
-    _Korl_Vulkan_DeviceAsset* stbDaAssets;
-    u8 nextSalt;
-} _Korl_Vulkan_DeviceAssetDatabase;
+    Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle;
+    u8 framesSinceQueued;// once this # reaches the SurfaceContext's swapChainImagesSize, we know that this device memory _must_ no longer be in use, and so we can free it
+} _Korl_Vulkan_QueuedFreeDeviceLocalAllocation;
 typedef struct _Korl_Vulkan_QueuedTextureUpload
 {
     VkBuffer        bufferTransferFrom;
@@ -294,13 +246,11 @@ typedef struct _Korl_Vulkan_SurfaceContext
     /** expected to be nullified at the end of each call to \c frameBegin() */
     _Korl_Vulkan_SurfaceContextDrawState drawState;
     _Korl_Vulkan_SurfaceContextDrawState drawStateLast;// assigned at the end of every draw call; used to determine if we need to allocate/bind a new/different descriptorSet/pipeline
-#if 0///@TODO: delete/recycle
     bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
-#endif
     /** this allocator will maintain device-local objects required during the 
      * render process, such as depth buffers, etc. */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryRenderResources;
-    _Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;
+    Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;
     /** Used for allocation of host-visible staging buffers */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryHostVisible;
     _Korl_Vulkan_Buffer* stbDaStagingBuffers;
@@ -308,8 +258,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     /** Used for allocation of device-local assets, such as textures, mesh 
      * manifolds, SSBOs, etc... */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
-    _Korl_Vulkan_DeviceAssetDatabase deviceAssetDatabase;
-    Korl_Vulkan_DeviceAssetHandle defaultTexture;
+    _Korl_Vulkan_QueuedFreeDeviceLocalAllocation* stbDaDeviceLocalFreeQueue;// used to defer the destruction of device-local assets until we know that they are no longer in use
+    Korl_Vulkan_DeviceMemory_AllocationHandle defaultTexture;
     ///@TODO: we could theoretically refactor korl-vulkan such that \c korl_vulkan_frameBegin is no longer a thing (or at least is an internal API which is only ever called once during initialization, & once during frameEnd to "begin" the next frame)
     ///       and if we are able to do this, there would be absolutely no need for \c stbDaQueuedTextureUploads (it could be removed entirely)
     ///       in addition, this would allow us to completely remove the API requirement that certain functions must be called during frameBegin/End, 

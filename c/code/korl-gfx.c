@@ -14,6 +14,7 @@
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_gfx_context.stringPool))
 #define _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS 0
+_STATIC_ASSERT(sizeof(Korl_Vulkan_DeviceMemory_AllocationHandle) == sizeof(Korl_Gfx_DeviceMemoryAllocationHandle));
 typedef struct _Korl_Gfx_FontGlyphBakedCharacterBoundingBox
 {
     u16 x0,y0,x1,y1; // coordinates of bbox in bitmap
@@ -61,8 +62,8 @@ typedef struct _Korl_Gfx_FontGlyphPage
     u16                               packRowsSize;
     u16                               packRowsCapacity;
     _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
-    Korl_Vulkan_DeviceAssetHandle textureHandle;
-    Korl_Vulkan_DeviceAssetHandle glyphMeshBufferVertices;
+    Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle;
+    Korl_Vulkan_DeviceMemory_AllocationHandle glyphMeshBufferVertices;
     u16 dataSquareSize;
     u8* data;//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize; currently being stored in contiguously memory immediately following this struct
     bool textureOutOfDate;// when this flag is set, it means that there are pending changes to `data` which have yet to be uploaded to the GPU
@@ -103,8 +104,8 @@ typedef struct _Korl_Gfx_Resource
     {
         struct
         {
-            Korl_Vulkan_DeviceAssetHandle deviceAssetHandle;// the user should expect textures to be lazy-loaded (or should they?...)
-            Korl_StringPool_String        stringAssetName;
+            Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle;// the user should expect textures to be lazy-loaded (or should they?...)
+            Korl_StringPool_String                    stringAssetName;
         } texture;
     } subType;
 }_Korl_Gfx_Resource;
@@ -119,7 +120,7 @@ typedef struct _Korl_Gfx_Context
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {
-    Korl_Vulkan_DeviceAssetHandle deviceAssetBufferText;
+    Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetBufferText;
     u32 visibleCharacters;// used to determine how many glyph instances are in the draw call
     Korl_Math_Aabb2f32 modelAabb;
     Korl_Math_V4f32 color;
@@ -685,18 +686,9 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     batch->_textAabb = (Korl_Math_Aabb2f32 ){.min = {0.f, 0.f}, .max = {0.f, 0.f}};
     int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
     korl_time_probeStart(process_characters);
-#if 0///@TODO: delete; just testing...
-    korl_time_probeStart(get_glyph_A);
-    _Korl_Gfx_FontBakedGlyph bakedGlyphA = *_korl_gfx_fontCache_getGlyph(fontCache, 'A');
-    korl_time_probeStop(get_glyph_A);
-#endif
     for(const wchar_t* character = batch->_text; *character; character++)
     {
-#if 0///@TODO: delete; just testing...
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = &bakedGlyphA;
-#else
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
-#endif
 #if 1///@TODO: apparently calculating kerning advance is _extremely_ expensive when the batch->_text is large; should this be an opt-in option to trade CPU time for font rendering accuracy?
         if(textBaselineCursor.x > 0.f)
         {
@@ -874,7 +866,7 @@ korl_internal void korl_gfx_flushGlyphPages(void)
             fontGlyphPage->glyphMeshBufferVertices = korl_vulkan_deviceAsset_createVertexBuffer(&createInfo);
         }
         else
-            korl_vulkan_vertexBuffer_resize(fontGlyphPage->glyphMeshBufferVertices, newGlyphMeshVertexBufferBytes);
+            korl_vulkan_vertexBuffer_resize(&fontGlyphPage->glyphMeshBufferVertices, newGlyphMeshVertexBufferBytes);
         /* update the appropriate vertex/index buffers with the latest glyph mesh data */
         korl_vulkan_vertexBuffer_update(fontGlyphPage->glyphMeshBufferVertices, KORL_C_CAST(u8*, fontGlyphPage->stbDaGlyphMeshVertices), newGlyphMeshVertexBufferBytes, 0/*offset; we're just updating the whole thing*/);
         korl_time_probeStop(update_glyph_mesh_ssbo);
@@ -1065,8 +1057,8 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
             drawStateLine.model = &model;
             korl_vulkan_setDrawState(&drawStateLine);
-            vertexData.instanceCount                 = line->visibleCharacters;
-            vertexData.deviceAssetHandleVertexBuffer = line->deviceAssetBufferText;
+            vertexData.instanceCount                      = line->visibleCharacters;
+            vertexData.deviceAllocationHandleVertexBuffer = line->deviceAssetBufferText;
             korl_vulkan_draw(&vertexData);
         }
         model.translation.y -= lineDeltaY;
@@ -1285,7 +1277,6 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(korl_gfx_cameraSetSci
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOrthoSetOriginAnchor)
 {
-    // const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();///@TODO: delete?
     switch(context->type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{

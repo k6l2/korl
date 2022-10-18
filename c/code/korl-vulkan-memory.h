@@ -35,10 +35,10 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-vulkan.h"// we need to put the device memory allocation handle in here since it is exposed to code that uses korl-vulkan; also contains vertex attribute enum count
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include <vulkan/vulkan.h>
-typedef u64 _Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef enum _Korl_Vulkan_DeviceMemory_AllocatorType
     { _KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
 } _Korl_Vulkan_DeviceMemory_AllocatorType;
@@ -74,6 +74,13 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
         {
             VkBuffer vulkanBuffer;
             VkBufferUsageFlags bufferUsageFlags;
+            /** A \c stride value of \c 0 here indicates that this buffer does not 
+             * contain the vertex attribute at that respective index of this array */
+            struct
+            {
+                u$ offset;
+                u32 stride;
+            } attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
         } buffer;
         struct
         {
@@ -89,7 +96,7 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
             VkImageView imageView;
         } imageBuffer;
         /* @vulkan-device-allocation-type */
-    } deviceObject;
+    } subType;
     VkDeviceSize byteOffset;///@TODO: to reduce memory leaks in the Arena's general allocator (& general confusion), we should just get rid of `byteOffsetAligned` & create a new tiny UNALLOCATED allocation right before this allocation in the Arena's allocation list
     VkDeviceSize byteOffsetAligned;// this is the _actual_ byte offset used to bind the device object to the device memory!
     VkDeviceSize bytesOccupied;// Derived from the Vulkan memory requirements of this allocation; it's entirely possible for an allocation to occupy more bytes than it utilizes!  This is mostly only useful for the internal allocation strategy.
@@ -97,10 +104,11 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     u32 id;// assigned by the Arena that this allocation is contained within
     const wchar_t* file;// currently, korl-vulkan should not be exposed to any dynamic code modules, so we can safely just store raw file string pointers here
     int line;
+    bool freeQueued;
 } _Korl_Vulkan_DeviceMemory_Alloctation;
-#define _korl_vulkan_deviceMemory_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode)                                                     _korl_vulkan_deviceMemory_allocator_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, __FILEW__, __LINE__)
-#define _korl_vulkan_deviceMemory_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags)                                                 _korl_vulkan_deviceMemory_allocator_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, __FILEW__, __LINE__)
-#define _korl_vulkan_deviceMemory_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling) _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, __FILEW__, __LINE__)
+#define _korl_vulkan_deviceMemory_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, out_allocation)                                                     _korl_vulkan_deviceMemory_allocator_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, out_allocation, __FILEW__, __LINE__)
+#define _korl_vulkan_deviceMemory_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, out_allocation)                                                 _korl_vulkan_deviceMemory_allocator_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, out_allocation, __FILEW__, __LINE__)
+#define _korl_vulkan_deviceMemory_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, out_allocation) _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, out_allocation, __FILEW__, __LINE__)
 korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle allocatorHandle
                                                                                             ,_Korl_Vulkan_DeviceMemory_AllocatorType type
                                                                                             ,VkMemoryPropertyFlagBits memoryPropertyFlags
@@ -110,18 +118,24 @@ korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allo
 korl_internal void _korl_vulkan_deviceMemory_allocator_destroy(_Korl_Vulkan_DeviceMemory_Allocator* allocator);
 //KORL-ISSUE-000-000-023: add support for memory allocators to defragment pages
 korl_internal void _korl_vulkan_deviceMemory_allocator_clear(_Korl_Vulkan_DeviceMemory_Allocator* allocator);
-korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateBuffer(_Korl_Vulkan_DeviceMemory_Allocator* allocator
-                                                                                                           ,VkDeviceSize bytes, VkBufferUsageFlags bufferUsageFlags, VkSharingMode sharingMode
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateBuffer(_Korl_Vulkan_DeviceMemory_Allocator* allocator
+                                                                                                          ,VkDeviceSize bytes, VkBufferUsageFlags bufferUsageFlags, VkSharingMode sharingMode
+                                                                                                          ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
+                                                                                                          ,const wchar_t* file, int line);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateTexture(_Korl_Vulkan_DeviceMemory_Allocator* allocator
+                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags
+                                                                                                           ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
                                                                                                            ,const wchar_t* file, int line);
-korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateTexture(_Korl_Vulkan_DeviceMemory_Allocator* allocator
-                                                                                                            ,u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags
-                                                                                                            ,const wchar_t* file, int line);
-korl_internal _Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(_Korl_Vulkan_DeviceMemory_Allocator* allocator
-                                                                                                                ,u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags
-                                                                                                                ,VkImageAspectFlags imageAspectFlags, VkFormat imageFormat
-                                                                                                                ,VkImageTiling imageTiling
-                                                                                                                ,const wchar_t* file, int line);
-korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_allocator_getAllocation(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
-korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle, const _Korl_Vulkan_DeviceMemory_Alloctation* allocation);
-korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceMemory_Allocator* allocator, _Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(_Korl_Vulkan_DeviceMemory_Allocator* allocator
+                                                                                                               ,u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags
+                                                                                                               ,VkImageAspectFlags imageAspectFlags, VkFormat imageFormat
+                                                                                                               ,VkImageTiling imageTiling
+                                                                                                               ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
+                                                                                                               ,const wchar_t* file, int line);
+korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_allocator_getAllocation(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
+korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle, const _Korl_Vulkan_DeviceMemory_Alloctation* allocation);
+korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
 korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_DeviceMemory_Allocator* allocator);
+#define _KORL_VULKAN_DEVICEMEMORY_ALLOCATOR_FOR_EACH_CALLBACK(name) void name(void* userData, _Korl_Vulkan_DeviceMemory_Alloctation* allocation, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle)
+typedef _KORL_VULKAN_DEVICEMEMORY_ALLOCATOR_FOR_EACH_CALLBACK(fnSig_korl_vulkan_deviceMemory_allocator_forEachCallback);
+korl_internal void _korl_vulkan_deviceMemory_allocator_forEach(_Korl_Vulkan_DeviceMemory_Allocator* allocator, fnSig_korl_vulkan_deviceMemory_allocator_forEachCallback* callback, void* callbackUserData);

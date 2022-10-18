@@ -32,26 +32,27 @@
 #include "korl-memory.h"
 #include "korl-assetCache.h"
 #include "korl-interface-platform.h"
+typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef struct Korl_Vulkan_DrawVertexData
 {
-    Korl_Vulkan_PrimitiveType      primitiveType;
-    Korl_Vulkan_DeviceAssetHandle  deviceAssetHandleVertexBuffer;
-    Korl_Vulkan_VertexIndex        indexCount;
-    const Korl_Vulkan_VertexIndex* indices;
-    u32                            vertexCount;
-    u8                             positionDimensions;        // only acceptable values: {2, 3}
-    const f32*                     positions;
-    u32                            positionsStride;
-    const Korl_Math_V2f32*         uvs;
-    u32                            uvsStride;
-    const Korl_Vulkan_Color4u8*    colors;
-    u32                            colorsStride;
-    u32                            instanceCount;
-    u8                             instancePositionDimensions;// only acceptable values: {2, 3}
-    const f32*                     instancePositions;
-    u32                            instancePositionsStride;
-    const u32*                     instanceUint;
-    u32                            instanceUintStride;
+    Korl_Vulkan_PrimitiveType                 primitiveType;
+    Korl_Vulkan_DeviceMemory_AllocationHandle deviceAllocationHandleVertexBuffer;
+    Korl_Vulkan_VertexIndex                   indexCount;
+    const Korl_Vulkan_VertexIndex*            indices;
+    u32                                       vertexCount;
+    u8                                        positionDimensions;        // only acceptable values: {2, 3}
+    const f32*                                positions;
+    u32                                       positionsStride;
+    const Korl_Math_V2f32*                    uvs;
+    u32                                       uvsStride;
+    const Korl_Vulkan_Color4u8*               colors;
+    u32                                       colorsStride;
+    u32                                       instanceCount;
+    u8                                        instancePositionDimensions;// only acceptable values: {2, 3}
+    const f32*                                instancePositions;
+    u32                                       instancePositionsStride;
+    const u32*                                instanceUint;
+    u32                                       instanceUintStride;
 } Korl_Vulkan_DrawVertexData;
 typedef struct Korl_Vulkan_DrawState_Features
 {
@@ -114,11 +115,11 @@ typedef struct Korl_Vulkan_DrawState_Scissor
 } Korl_Vulkan_DrawState_Scissor;
 typedef struct Korl_Vulkan_DrawState_Samplers
 {
-    Korl_Vulkan_DeviceAssetHandle texture;
+    Korl_Vulkan_DeviceMemory_AllocationHandle texture;
 } Korl_Vulkan_DrawState_Samplers;
 typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
-    Korl_Vulkan_DeviceAssetHandle vertex;
+    Korl_Vulkan_DeviceMemory_AllocationHandle vertex;
 } Korl_Vulkan_DrawState_StorageBuffers;
 typedef struct Korl_Vulkan_DrawState
 {
@@ -163,7 +164,7 @@ korl_internal void korl_vulkan_destroy(void);
 korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_destroySurface(void);
 korl_internal Korl_Math_V2u32 korl_vulkan_getSurfaceSize(void);
-korl_internal void korl_vulkan_clearAllDeviceAssets(void);
+korl_internal void korl_vulkan_clearAllDeviceAllocations(void);
 #if 0//KORL-ISSUE-000-000-027: Vulkan; feature: add shader/pipeline resource API
 /** 
  * This must be called AFTER \c korl_vulkan_createSurface since shader modules 
@@ -178,12 +179,12 @@ korl_internal void korl_vulkan_frameEnd(void);
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
-korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo);
-korl_internal Korl_Vulkan_DeviceAssetHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
-korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceAssetHandle deviceAssetHandle);
-korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceAssetHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
-korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceAssetHandle textureHandle);
-korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceAssetHandle bufferHandle, u$ bytes);
-korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceAssetHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
+korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
+korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
+korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
+korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
+korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
 /** @TODO: move this code into korl-gfx */
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload);

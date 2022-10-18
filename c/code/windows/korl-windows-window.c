@@ -569,7 +569,7 @@ korl_internal void korl_windows_window_loop(void)
             context->deferSaveStateLoad = false;
             deferProbeReport = true;
             korl_time_probeStart(save_state_load);
-            korl_vulkan_clearAllDeviceAssets();
+            korl_vulkan_clearAllDeviceAllocations();
             korl_gfx_clearFontCache();
             korl_log_clearAsyncIo();
             korl_file_finishAllAsyncOperations();
@@ -584,109 +584,9 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
         korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize(); korl_time_probeStop(vulkan_get_swapchain_size);
         korl_time_probeStart(game_update);
-#if 0///@TODO: test code for new vulkan implementation; delete later
-        // draw a simple triangle //
-        {
-            Korl_Math_V2f32 positions[] = {{ 0.f ,  0.5f}
-                                          ,{ 0.5f, -0.5f}
-                                          ,{-0.5f, -0.5f}};
-            KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
-            vertexData.vertexCount        = korl_arraySize(positions);
-            vertexData.positionDimensions = 2;
-            vertexData.positionsStride    = sizeof(*positions);
-            vertexData.positions          = KORL_C_CAST(f32*, positions);
-            korl_vulkan_draw(&vertexData);
-        }
-#elif 0
-        // draw a quad //
-        {
-            Korl_Vulkan_VertexIndex indices[] = {0, 1, 2, 2, 3, 0};
-            Korl_Math_V2f32 positions[] = {{-0.5f, -0.5f}
-                                          ,{-0.5f,  0.5f}
-                                          ,{ 0.5f,  0.5f}
-                                          ,{ 0.5f, -0.5f}};
-            KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
-            vertexData.indexCount         = korl_arraySize(indices);
-            vertexData.indices            = indices;
-            vertexData.vertexCount        = korl_arraySize(positions);
-            vertexData.positionDimensions = 2;
-            vertexData.positionsStride    = sizeof(*positions);
-            vertexData.positions          = KORL_C_CAST(f32*, positions);
-            korl_vulkan_draw(&vertexData);
-        }
-#elif 0
-        // draw 3D axis at the world-space origin //
-        {
-            const Korl_Vulkan_DrawState_Projection projection = (Korl_Vulkan_DrawState_Projection){.type        = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV
-                                                                                                  ,.subType.fov = {.horizontalFovDegrees = 90
-                                                                                                                  ,.clipNear             = 1
-                                                                                                                  ,.clipFar              = 100}};
-            const Korl_Vulkan_DrawState_View view = (Korl_Vulkan_DrawState_View){.positionEye    = {10,10,10}
-                                                                                ,.positionTarget = KORL_MATH_V3F32_ZERO
-                                                                                ,.worldUpNormal  = KORL_MATH_V3F32_Z};
-            const Korl_Vulkan_DrawState_Model model = (Korl_Vulkan_DrawState_Model){.translation = {0,0,0}
-                                                                                   ,.rotation    = KORL_MATH_QUATERNION_IDENTITY
-                                                                                   ,.scale       = {100,100,100}};
-            KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-            drawState.projection = &projection;
-            drawState.view       = &view;
-            drawState.model      = &model;
-            korl_vulkan_setDrawState(&drawState);
-            Korl_Math_V3f32 positions[] = {{0, 0, 0},{1, 0, 0}
-                                          ,{0, 0, 0},{0, 1, 0}
-                                          ,{0, 0, 0},{0, 0, 1}};
-            Korl_Vulkan_Color4u8 colors[] = {{255,0,0,255},{255,0,0,255}///@TODO: support no alpha channel (if we find out that it's possible to copy less data, which might actually not be possible due to alignment now that I'm thinking about it)
-                                            ,{0,255,0,255},{0,255,0,255}
-                                            ,{0,0,255,255},{0,0,255,255}};
-            KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
-            vertexData.primitiveType      = KORL_VULKAN_PRIMITIVETYPE_LINES;
-            vertexData.vertexCount        = korl_arraySize(positions);
-            vertexData.positionDimensions = korl_arraySize(positions->elements);
-            vertexData.positionsStride    = sizeof(*positions);
-            vertexData.positions          = KORL_C_CAST(f32*, positions);
-            vertexData.colorsStride       = sizeof(*colors);
-            vertexData.colors             = colors;
-            korl_vulkan_draw(&vertexData);
-        }
-#endif
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
-#if 0///@TODO: delete later; just testing new korl-gfx API
-        // test obtaining log buffer & updating a graphics cache for it //
-        {
-            korl_shared_const u$ MAX_TEXT_LINES = 1000;
-            korl_shared_variable u$ cacheLoggedBytes = 0;
-            korl_shared_variable Korl_Gfx_Text* gfxText = NULL;
-            u$ loggedBytes = 0;
-            acu16 logBuffer = korl_log_getBuffer(&loggedBytes);
-            const u$ newLoggedBytes = loggedBytes - cacheLoggedBytes;
-            if(!gfxText)
-            {
-                const wchar_t assetNameFont[] = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf";
-                gfxText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = assetNameFont, .size = korl_arraySize(assetNameFont)}, 24.f);
-                // gfxText->modelTranslate.xy = (Korl_Math_V2f32){-500,8750};
-                KORL_ZERO_STACK(_Korl_Windows_Window_CodepointTest_Log, codepointTestData);
-                korl_gfx_text_fifoAdd(gfxText, logBuffer, context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
-            }
-            else if(newLoggedBytes)
-            {
-                const u$ newLoggedCharacters = newLoggedBytes/sizeof(*logBuffer.data);
-                KORL_ZERO_STACK(_Korl_Windows_Window_CodepointTest_Log, codepointTestData);
-                korl_gfx_text_fifoAdd(gfxText
-                                     ,(acu16){.data = logBuffer.data + (logBuffer.size - newLoggedCharacters)
-                                             ,.size = newLoggedCharacters}
-                                     ,context->allocatorHandle, _korl_windows_window_codepointTest_log, &codepointTestData);
-            }
-            const u$ textLines = arrlenu(gfxText->stbDaLines);
-            if(textLines > MAX_TEXT_LINES)
-                korl_gfx_text_fifoRemove(gfxText, textLines - MAX_TEXT_LINES);
-            korl_gfx_text_draw(gfxText, korl_math_aabb2f32_fromExpandedV2(context->gameMemory->gameCamera.pos
-                                                                         ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.x
-                                                                         ,0.5f*context->gameMemory->gameCamera.viewSizeZoomed.y));
-            cacheLoggedBytes = loggedBytes;
-        }
-#endif
         korl_time_probeStop(game_update);
         korl_time_probeStart(gui_frame_end);     korl_gui_frameEnd();        korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(flush_glyph_pages); korl_gfx_flushGlyphPages(); korl_time_probeStop(flush_glyph_pages);

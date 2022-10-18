@@ -356,9 +356,8 @@ typedef u16             Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V3f32 Korl_Vulkan_Position;///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
 typedef Korl_Math_V2f32 Korl_Vulkan_Uv;      ///@TODO: maybe just get rid of these data types, since Korl_Vulkan doesn't seem like it needs to "know" the format of vertex attribute data
 typedef Korl_Math_V4u8  Korl_Vulkan_Color4u8;
-typedef u16             Korl_Vulkan_TextureHandle;/** A value of \c 0 is designated as an INVALID texture handle */ ///@TODO: delete/deprecate this
-typedef u32             Korl_Vulkan_DeviceAssetHandle;/** Composed of: asset type : 8-bits, database id : 16-bits, salt : 8-bits */
 typedef u32             Korl_Gfx_ResourceHandle;// composed of: {index : 16-bits, salt : 8-bits, type : 8-bits}
+typedef u64             Korl_Gfx_DeviceMemoryAllocationHandle;
 typedef enum Korl_Vulkan_PrimitiveType
 {
     KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,
@@ -473,8 +472,8 @@ typedef struct Korl_Gfx_Batch
     Korl_Vulkan_BlendOperation opAlpha;       // only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
     Korl_Vulkan_BlendFactor factorAlphaSource;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
     Korl_Vulkan_BlendFactor factorAlphaTarget;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
-    Korl_Vulkan_DeviceAssetHandle _fontTextureHandle;
-    Korl_Vulkan_DeviceAssetHandle _glyphMeshBufferVertices;
+    Korl_Gfx_DeviceMemoryAllocationHandle _fontTextureHandle;       ///@TODO: replace Korl_Gfx_DeviceMemoryAllocationHandle with a "korl-resource" handle?...
+    Korl_Gfx_DeviceMemoryAllocationHandle _glyphMeshBufferVertices; ///@TODO: replace Korl_Gfx_DeviceMemoryAllocationHandle with a "korl-resource" handle?...
     Korl_Vulkan_VertexIndex* _vertexIndices;
     Korl_Vulkan_Position*    _vertexPositions;
     Korl_Vulkan_Color4u8*    _vertexColors;
