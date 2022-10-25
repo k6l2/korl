@@ -10,6 +10,7 @@
 #include "korl-stringPool.h"
 #include "korl-checkCast.h"
 #include "korl-stb-ds.h"
+#include "korl-resource.h"
 #include <minidumpapiset.h>
 #ifdef _LOCAL_STRING_POOL_POINTER
 #undef _LOCAL_STRING_POOL_POINTER
@@ -1122,33 +1123,36 @@ korl_internal void korl_file_saveStateCreate(void)
     mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), enumContext->stbDaSaveStateBuffer , 0);
     enumContext->allocatorCount = 0;
     /* code module specific data */
-    const u64 windowDescriptorByteStart = arrlenu(enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartWindow = arrlenu(enumContext->stbDaSaveStateBuffer);
     korl_windows_window_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
-    const u64 assetCacheDescriptorByteStart = arrlenu(enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartAssetCache = arrlenu(enumContext->stbDaSaveStateBuffer);
     korl_assetCache_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartResource = arrlenu(enumContext->stbDaSaveStateBuffer);
+    korl_resource_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
     /* begin iteration over memory allocators, copying allocations to the save 
         state buffer, as well as count how many allocations there are per 
         allocator */
-    const u64 allocationDescriptorByteStart = arrlenu(enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartAllocations = arrlenu(enumContext->stbDaSaveStateBuffer);
     enumContext->currentAllocator = 0;
     korl_time_probeStart(enum_allocations);
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocationPass, enumContext);
     korl_time_probeStop(enum_allocations);
     /* now that we have copied all the allocation descriptors, we can copy the 
         allocator descriptors */
-    const u$ allocatorDescriptorByteStart = arrlenu(enumContext->stbDaSaveStateBuffer);
+    const u$ descriptorByteStartAllocators = arrlenu(enumContext->stbDaSaveStateBuffer);
     enumContext->currentAllocator = 0;
     korl_time_probeStart(enum_allocators);
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass, enumContext);
     korl_time_probeStop(enum_allocators);
     /* finally, we can write the save state manifest to the end of the save state buffer */
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, _KORL_SAVESTATE_UNIQUE_FILE_ID, sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1);
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &_KORL_SAVESTATE_VERSION      , sizeof(_KORL_SAVESTATE_VERSION));
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &enumContext->allocatorCount  , sizeof(enumContext->allocatorCount));
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocatorDescriptorByteStart , sizeof(allocatorDescriptorByteStart));
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocationDescriptorByteStart, sizeof(allocationDescriptorByteStart));
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &windowDescriptorByteStart    , sizeof(windowDescriptorByteStart));
-    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &assetCacheDescriptorByteStart, sizeof(assetCacheDescriptorByteStart));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, _KORL_SAVESTATE_UNIQUE_FILE_ID , sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1);
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &_KORL_SAVESTATE_VERSION       , sizeof(_KORL_SAVESTATE_VERSION));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &enumContext->allocatorCount   , sizeof(enumContext->allocatorCount));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAllocators , sizeof(descriptorByteStartAllocators));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAllocations, sizeof(descriptorByteStartAllocations));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartWindow     , sizeof(descriptorByteStartWindow));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAssetCache , sizeof(descriptorByteStartAssetCache));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartResource   , sizeof(descriptorByteStartResource));
 }
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
 {
@@ -1223,18 +1227,20 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     /* read & parse & process the save state file */
     /* first, we need to extract the savestate manifest which is placed at the 
         very end of the file */
-    u8 allocatorCount;
-    u$ allocatorDescriptorByteStart;
-    u64 allocationDescriptorByteStart;
-    u64 windowDescriptorByteStart;
-    u64 assetCacheDescriptorByteStart;
+    u8  allocatorCount;
+    u$  descriptorByteStartAllocators;
+    u64 descriptorByteStartAllocations;
+    u64 descriptorByteStartWindow;
+    u64 descriptorByteStartAssetCache;
+    u64 descriptorByteStartResource;
     const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
                                    + sizeof(_KORL_SAVESTATE_VERSION) 
                                    + sizeof(allocatorCount) 
-                                   + sizeof(allocatorDescriptorByteStart) 
-                                   + sizeof(allocationDescriptorByteStart) 
-                                   + sizeof(windowDescriptorByteStart) 
-                                   + sizeof(assetCacheDescriptorByteStart);
+                                   + sizeof(descriptorByteStartAllocators) 
+                                   + sizeof(descriptorByteStartAllocations) 
+                                   + sizeof(descriptorByteStartWindow) 
+                                   + sizeof(descriptorByteStartAssetCache)
+                                   + sizeof(descriptorByteStartResource);
     LARGE_INTEGER filePointerDistanceToMove;
     filePointerDistanceToMove.QuadPart = -korl_checkCast_u$_to_i$(manifestBytesRequired);
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_END))
@@ -1261,28 +1267,33 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         korl_logLastError("ReadFile failed");
         goto cleanUp;
     }
-    if(!ReadFile(hFile, &allocatorDescriptorByteStart, sizeof(allocatorDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, &descriptorByteStartAllocators, sizeof(descriptorByteStartAllocators), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
     }
-    if(!ReadFile(hFile, &allocationDescriptorByteStart, sizeof(allocationDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, &descriptorByteStartAllocations, sizeof(descriptorByteStartAllocations), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
     }
-    if(!ReadFile(hFile, &windowDescriptorByteStart, sizeof(windowDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, &descriptorByteStartWindow, sizeof(descriptorByteStartWindow), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
     }
-    if(!ReadFile(hFile, &assetCacheDescriptorByteStart, sizeof(assetCacheDescriptorByteStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, &descriptorByteStartAssetCache, sizeof(descriptorByteStartAssetCache), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    if(!ReadFile(hFile, &descriptorByteStartResource, sizeof(descriptorByteStartResource), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
     }
     /* now we can jump to the allocator descriptors and read those in */
-    filePointerDistanceToMove.QuadPart = allocatorDescriptorByteStart;
+    filePointerDistanceToMove.QuadPart = descriptorByteStartAllocators;
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
     {
         korl_logLastError("SetFilePointerEx failed");
@@ -1334,7 +1345,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         we should now be able to jump back to the beginning of the savestate 
         file and iterate over all the allocations, populating them with the 
         saved allocation data in the savestate file */
-    filePointerDistanceToMove.QuadPart = allocationDescriptorByteStart;
+    filePointerDistanceToMove.QuadPart = descriptorByteStartAllocations;
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
     {
         korl_logLastError("SetFilePointerEx failed");
@@ -1387,7 +1398,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         }
     }
     /* load the window module state */
-    filePointerDistanceToMove.QuadPart = windowDescriptorByteStart;
+    filePointerDistanceToMove.QuadPart = descriptorByteStartWindow;
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
     {
         korl_logLastError("SetFilePointerEx failed");
@@ -1399,7 +1410,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     /* load the assetCache module state */
-    filePointerDistanceToMove.QuadPart = assetCacheDescriptorByteStart;
+    filePointerDistanceToMove.QuadPart = descriptorByteStartAssetCache;
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
     {
         korl_logLastError("SetFilePointerEx failed");
@@ -1408,6 +1419,18 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     if(!korl_assetCache_saveStateRead(hFile))
     {
         korl_logLastError("korl_assetCache_saveStateRead failed");
+        goto cleanUp;
+    }
+    /* load the resource module state */
+    filePointerDistanceToMove.QuadPart = descriptorByteStartResource;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    if(!korl_resource_saveStateRead(hFile))
+    {
+        korl_logLastError("korl_resource_saveStateRead failed");
         goto cleanUp;
     }
     korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));

@@ -57,7 +57,7 @@ typedef struct Korl_StringPool_String
         return (handle != 0);
     }
 } Korl_StringPool_String;
-#else
+#else///@TODO: cleanup; we don't have to have two separate struct definitions here
 typedef struct Korl_StringPool_String
 {
     Korl_StringPool_StringHandle handle;
@@ -99,6 +99,7 @@ typedef struct Korl_StringPool_String
 #define string_getRawSizeUtf16(stringHandle)                                   korl_stringPool_getRawSizeUtf16(stringHandle)
 #define string_getRawWriteableUtf8(stringHandle)                               korl_stringPool_getRawWriteableUtf8(stringHandle)
 #define string_getRawWriteableUtf16(stringHandle)                              korl_stringPool_getRawWriteableUtf16(stringHandle)
+#define string_getRawAcu16(stringHandle)                                       korl_stringPool_getRawAcu16(stringHandle)
 #define string_copy(stringHandle)                                              korl_stringPool_copy(stringHandle, __FILEW__, __LINE__)
 #define string_copyToStringPool(stringPool,stringHandle)                       korl_stringPool_copyToStringPool(stringPool, stringHandle, __FILEW__, __LINE__)
 #define string_append(stringHandle, stringHandleToAppend)                      korl_stringPool_append(stringHandle, stringHandleToAppend, __FILEW__, __LINE__)

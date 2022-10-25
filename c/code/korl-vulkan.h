@@ -36,7 +36,7 @@ typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef struct Korl_Vulkan_DrawVertexData
 {
     Korl_Vulkan_PrimitiveType                 primitiveType;
-    Korl_Vulkan_DeviceMemory_AllocationHandle deviceAllocationHandleVertexBuffer;
+    Korl_Resource_Handle                      resourceHandleVertexBuffer;
     Korl_Vulkan_VertexIndex                   indexCount;
     const Korl_Vulkan_VertexIndex*            indices;
     u32                                       vertexCount;
@@ -115,11 +115,11 @@ typedef struct Korl_Vulkan_DrawState_Scissor
 } Korl_Vulkan_DrawState_Scissor;
 typedef struct Korl_Vulkan_DrawState_Samplers
 {
-    Korl_Vulkan_DeviceMemory_AllocationHandle texture;
+    Korl_Resource_Handle resourceHandleTexture;
 } Korl_Vulkan_DrawState_Samplers;
 typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
-    Korl_Vulkan_DeviceMemory_AllocationHandle vertex;
+    Korl_Resource_Handle resourceHandleVertex;
 } Korl_Vulkan_DrawState_StorageBuffers;
 typedef struct Korl_Vulkan_DrawState
 {

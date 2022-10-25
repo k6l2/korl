@@ -5,9 +5,6 @@
 #include "korl-interface-platform.h"
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_clearFontCache(void);
-/** Any font cache glyph pages that have had glyphs added/removed/modified will 
- * be marked as "out-of-date"; calling this API will cause the updates to be 
- * propogated to the graphics device. */
 korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
@@ -15,7 +12,7 @@ typedef struct Korl_Gfx_Text
     struct _Korl_Gfx_Text_Line* stbDaLines;// the user can obtain the line count by calling arrlenu(text->stbDaLines)
     f32 textPixelHeight;
     acu16 utf16AssetNameFont;
-    Korl_Math_V3f32      modelTranslate;
+    Korl_Math_V3f32      modelTranslate;// the model-space origin of a Gfx_Text is the upper-left corner of the model-space AABB
     Korl_Math_Quaternion modelRotate;
     Korl_Math_V3f32      modelScale;
     Korl_Math_Aabb2f32 _modelAabb;// not valid until fifo add/remove APIs have been called
@@ -25,9 +22,6 @@ korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);
 korl_internal void           korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData);
 korl_internal void           korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount);
 korl_internal void           korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
-korl_internal KORL_PLATFORM_GFX_RESOURCE_CREATE_TEXTURE(korl_gfx_resource_createTexture);
-korl_internal KORL_PLATFORM_GFX_RESOURCE_DESTROY(korl_gfx_resource_destroy);
-korl_internal KORL_PLATFORM_GFX_TEXTURE_GET_SIZE(korl_gfx_texture_getSize);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(korl_gfx_createCameraOrthoFixedHeight);

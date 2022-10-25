@@ -10,6 +10,7 @@
 #include "korl-stb-image.h"
 #include "korl-stb-ds.h"
 #include "korl-time.h"
+#include "korl-resource.h"
 #if defined(KORL_PLATFORM_WINDOWS)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
@@ -1776,8 +1777,8 @@ done:
 }
 korl_internal void korl_vulkan_frameEnd(void)
 {
-    _Korl_Vulkan_Context*const context                             = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext               = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
     /* if we got an invalid next swapchain image index, just do nothing */
     if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
@@ -1953,10 +1954,9 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->drawState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
     }
     if(state->samplers)
-        /// @TODO: maybe instead of just setting a device asset handle here, we can query the asset database to know whether or not the asset can be used at this point right away
-        surfaceContext->drawState.texture = state->samplers->texture;
+        surfaceContext->drawState.texture = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->samplers->resourceHandleTexture);
     if(state->storageBuffers)
-        surfaceContext->drawState.vertexStorageBuffer = state->storageBuffers->vertex;
+        surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
     done:
     korl_time_probeStop(set_draw_state);
 }
@@ -1974,7 +1974,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return;
     /* basic parameter sanity checks */
-    if(vertexData->deviceAllocationHandleVertexBuffer)
+    if(vertexData->resourceHandleVertexBuffer)
     {
         /* if we're using a vertex buffer device asset for vertex data, we can't 
             do sanity checks on vertex data until we obtain the device asset and 
@@ -2004,10 +2004,12 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     }
     /* if the user is attempting to draw with a custom vertex buffer, we need to 
         obtain it now to configure the pipeline */
+    Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandleVertexBuffer = 0;
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocationVertexBuffer = NULL;
-    if(vertexData->deviceAllocationHandleVertexBuffer)
+    if(vertexData->resourceHandleVertexBuffer)
     {
-        deviceMemoryAllocationVertexBuffer = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, vertexData->deviceAllocationHandleVertexBuffer);
+        deviceMemoryAllocationHandleVertexBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(vertexData->resourceHandleVertexBuffer);
+        deviceMemoryAllocationVertexBuffer       = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, deviceMemoryAllocationHandleVertexBuffer);
         korl_assert(deviceMemoryAllocationVertexBuffer);
         korl_assert(!deviceMemoryAllocationVertexBuffer->freeQueued);
         korl_assert(deviceMemoryAllocationVertexBuffer->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
@@ -2027,7 +2029,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     surfaceContext->drawState.pipelineConfigurationCache.instancePositionStride     = vertexData->instancePositionsStride;
     surfaceContext->drawState.pipelineConfigurationCache.instanceUintStride         = vertexData->instanceUintStride;
     surfaceContext->drawState.pipelineConfigurationCache.useTexture                 = (0 != surfaceContext->drawState.texture);
-    if(vertexData->deviceAllocationHandleVertexBuffer)
+    if(vertexData->resourceHandleVertexBuffer)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
         {
@@ -2241,7 +2243,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     /* if we're passing a vertex buffer in the vertex data, that means we have 
         to bind to a user-managed device asset buffer instead of a staging 
         buffer for a non-zero number of vertex (instance) attributes */
-    if(vertexData->deviceAllocationHandleVertexBuffer)
+    if(vertexData->resourceHandleVertexBuffer)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
         {
