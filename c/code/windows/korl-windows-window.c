@@ -18,6 +18,9 @@
 #include "korl-stringPool.h"
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
+#if KORL_DEBUG
+    #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE 1
+#endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
@@ -459,6 +462,35 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_windows_window_codepointTest_lo
     return true;
 }
 #endif
+#if _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
+typedef struct _Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData
+{
+    u32 allocationCount;
+    const wchar_t* name;
+} _Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData;
+typedef struct _Korl_Windows_Window_DebugMemoryEnumContext
+{
+    _Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData* stbDaAllocatorData;
+} _Korl_Windows_Window_DebugMemoryEnumContext;
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_windows_window_loop_allocationEnumCallback)
+{
+    _Korl_Windows_Window_Context*const                context     = &_korl_windows_window_context;
+    _Korl_Windows_Window_DebugMemoryEnumContext*const enumContext = KORL_C_CAST(_Korl_Windows_Window_DebugMemoryEnumContext*, userData);
+    arrlast(enumContext->stbDaAllocatorData).allocationCount++;
+    return true;// true => continue enumerating
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_windows_window_loop_allocatorEnumCallback)
+{
+    _Korl_Windows_Window_Context*const                context     = &_korl_windows_window_context;
+    _Korl_Windows_Window_DebugMemoryEnumContext*const enumContext = KORL_C_CAST(_Korl_Windows_Window_DebugMemoryEnumContext*, userData);
+    // if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
+    //     return true;//true => continue iterating over allocators
+    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), enumContext->stbDaAllocatorData, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData));
+    arrlast(enumContext->stbDaAllocatorData).name = allocatorName;
+    korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_windows_window_loop_allocationEnumCallback, enumContext, NULL/*allocatorVirtualAddressEnd; don't care*/);
+    return true;//true => continue iterating over allocators
+}
+#endif
 korl_internal void korl_windows_window_loop(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
@@ -583,7 +615,22 @@ korl_internal void korl_windows_window_loop(void)
         }
         korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin();                                           korl_time_probeStop(vulkan_frame_begin);
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
-        korl_time_probeStart(vulkan_get_swapchain_size); const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize(); korl_time_probeStop(vulkan_get_swapchain_size);
+#if _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
+        {
+            KORL_ZERO_STACK(_Korl_Windows_Window_DebugMemoryEnumContext, debugEnumContext);
+            mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), debugEnumContext.stbDaAllocatorData, 32);
+            korl_memory_allocator_enumerateAllocators(_korl_windows_window_loop_allocatorEnumCallback, &debugEnumContext);
+            korl_gui_widgetTextFormat(L"Memory Allocator State:");
+            for(u$ a = 0; a < arrlenu(debugEnumContext.stbDaAllocatorData); a++)
+            {
+                korl_gui_setLoopIndex(a);
+                korl_gui_widgetTextFormat(L"[%u]: {name: \"%ws\", alloc#: %u}", a, debugEnumContext.stbDaAllocatorData[a].name, debugEnumContext.stbDaAllocatorData[a].allocationCount);
+            }
+            korl_gui_setLoopIndex(0);
+            mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), debugEnumContext.stbDaAllocatorData);
+        }
+#endif
+        const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize();
         korl_time_probeStart(game_update);
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))

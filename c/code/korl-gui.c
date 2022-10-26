@@ -86,10 +86,16 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
         return false;
     return true;
 }
-korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier, u$ widgetType, bool* out_newAllocation)
+korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
+    /* combine the widget-specific identifierHash with the context loop index */
+    u64 identifierHashComponents[2];
+    identifierHashComponents[0] = identifierHash;
+    identifierHashComponents[1] = context->loopIndex;
+    const u64 identifierHashPrime = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                        ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
     /* if there is no current active window, then we should just default to use 
         an internal "debug" window to allow the user to just create widgets at 
         any time without worrying about creating a window first */
@@ -99,8 +105,8 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier,
     u$ widgetIndex = arrcap(context->stbDaWidgets);
     for(u$ w = 0; w < arrlenu(context->stbDaWidgets); ++w)
     {
-        if(    context->stbDaWidgets[w].parentWindowIdentifier == context->stbDaWindows[context->currentWindowIndex].identifier
-            && context->stbDaWidgets[w].identifier == identifier)
+        if(    context->stbDaWidgets[w].parentWindowIdentifierHash == context->stbDaWindows[context->currentWindowIndex].identifierHash
+            && context->stbDaWidgets[w].identifierHash             == identifierHashPrime)
         {
             widgetIndex = w;
             *out_newAllocation = false;
@@ -112,9 +118,9 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(const void*const identifier,
     mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
     _Korl_Gui_Widget* widget = &context->stbDaWidgets[widgetIndex];
     korl_memory_zero(widget, sizeof(*widget));
-    widget->identifier             = identifier;
-    widget->parentWindowIdentifier = context->stbDaWindows[context->currentWindowIndex].identifier;
-    widget->type                   = widgetType;
+    widget->identifierHash             = identifierHashPrime;
+    widget->parentWindowIdentifierHash = context->stbDaWindows[context->currentWindowIndex].identifierHash;
+    widget->type                       = widgetType;
     *out_newAllocation = true;
 widgetIndexValid:
     widget = &context->stbDaWidgets[widgetIndex];
@@ -141,7 +147,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
     for(u$ j = 0; j < arrlenu(context->stbDaWidgets); ++j)
     {
         _Korl_Gui_Widget*const widget = &context->stbDaWidgets[j];
-        if(widget->parentWindowIdentifier != window->identifier)
+        if(widget->parentWindowIdentifierHash != window->identifierHash)
             continue;
         widgetCursor.y -= context->style.widgetSpacingY;
         switch(widget->type)
@@ -199,11 +205,11 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
                 korl_gfx_batchSetPosition2dV2f32(batchButton, widgetCursor);
                 if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, context->mouseHoverPosition))
                 {
-                    if(context->isMouseDown && !context->isWindowDragged && context->identifierMouseDownWidget == widget->identifier)
+                    if(context->isMouseDown && !context->isWindowDragged && context->identifierHashMouseDownWidget == widget->identifierHash)
                     {
                         korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonPressed);
                     }
-                    else if(context->isMouseHovering && context->identifierMouseHoveredWidget == widget->identifier)
+                    else if(context->isMouseHovering && context->identifierHashMouseHoveredWidget == widget->identifierHash)
                     {
                         korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonActive);
                     }
@@ -283,16 +289,24 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
+    /* assemble the window identifier hash */
+    u64 identifierHashComponents[2];
+    identifierHashComponents[0] = korl_checkCast_cvoidp_to_u64(titleBarText);
+    identifierHashComponents[1] = context->loopIndex;
+    const u64 identifierHash = titleBarText == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID 
+        ? korl_checkCast_cvoidp_to_u64(_KORL_GUI_ORPHAN_WIDGET_WINDOW_ID)
+        : korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                              ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
     /* The only time that the current window index is allowed to be valid is 
         when the user was spawning orphan widgets, which are sent to a default 
         internal "debug" window.  Otherwise, we are in an invalid state. */
     if(context->currentWindowIndex >= 0)
-        korl_assert(context->stbDaWindows[context->currentWindowIndex].identifier == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID);
+        korl_assert(context->stbDaWindows[context->currentWindowIndex].identifierHash == korl_checkCast_cvoidp_to_u64(_KORL_GUI_ORPHAN_WIDGET_WINDOW_ID));
     /* check to see if this identifier is already registered */
     for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
         _Korl_Gui_Window*const window = &context->stbDaWindows[i];
-        if(window->identifier == identifier)
+        if(window->identifierHash == identifierHash)
         {
             context->currentWindowIndex = korl_checkCast_u$_to_i16(i);
             if(!window->isOpen && out_isOpen && *out_isOpen)
@@ -311,11 +325,12 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
     context->currentWindowIndex = korl_checkCast_u$_to_i16(arrlenu(context->stbDaWindows));
     mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, (_Korl_Gui_Window){0});
     _Korl_Gui_Window* newWindow = &context->stbDaWindows[context->currentWindowIndex];
-    newWindow->identifier   = identifier;
-    newWindow->position     = nextWindowPosition;
-    newWindow->size         = (Korl_Math_V2f32){ 128.f, 128.f };
-    newWindow->isFirstFrame = true;
-    newWindow->isOpen       = true;
+    newWindow->identifierHash = identifierHash;
+    newWindow->titleBarText   = titleBarText;
+    newWindow->position       = nextWindowPosition;
+    newWindow->size           = (Korl_Math_V2f32){ 128.f, 128.f };
+    newWindow->isFirstFrame   = true;
+    newWindow->isOpen         = true;
 done_currentWindowIndexValid:
     newWindow = &context->stbDaWindows[context->currentWindowIndex];
     newWindow->usedThisFrame       = true;
@@ -383,7 +398,7 @@ korl_internal void korl_gui_frameEnd(void)
         to a valid id at this point is if the user is making orphan widgets. */
     if(context->currentWindowIndex >= 0)
     {
-        korl_assert(context->stbDaWindows[context->currentWindowIndex].identifier == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID);
+        korl_assert(context->stbDaWindows[context->currentWindowIndex].identifierHash == korl_checkCast_cvoidp_to_u64(_KORL_GUI_ORPHAN_WIDGET_WINDOW_ID));
         korl_gui_windowEnd();
     }
     context->frameSequenceCounter--;
@@ -394,8 +409,8 @@ korl_internal void korl_gui_frameEnd(void)
         for(u$ i = 0; i < arrlenu(context->stbDaWidgets); i++)
         {
             _Korl_Gui_Widget*const widget = &context->stbDaWidgets[i];
-            korl_assert(widget->identifier);
-            korl_assert(widget->parentWindowIdentifier);
+            korl_assert(widget->identifierHash);
+            korl_assert(widget->parentWindowIdentifierHash);
             if(widget->usedThisFrame)
             {
                 widget->usedThisFrame = false;
@@ -425,7 +440,7 @@ korl_internal void korl_gui_frameEnd(void)
     for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
         _Korl_Gui_Window*const window = &context->stbDaWindows[i];
-        korl_assert(window->identifier);
+        korl_assert(window->identifierHash);
         /* if the window wasn't used this frame, skip it and prepare to remove 
             it from the memory pool */
         if(window->usedThisFrame)
@@ -460,7 +475,7 @@ korl_internal void korl_gui_frameEnd(void)
             /* take the AABB of the window's title bar into account as well */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
-                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->titleBarText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
                 const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
                 f32 titleBarOptimalSizeX = batchTextSize.x;
                 if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
@@ -520,7 +535,7 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batchSetVertexColor(batchWindowPanel, 1, context->style.colorTitleBar);
             korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             /* draw the window title bar text */
-            Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->identifier, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+            Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->titleBarText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
             const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
             korl_gfx_batchSetPosition2d(batchWindowTitleText, 
                                         window->position.x, 
@@ -537,7 +552,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                     titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
                 korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
                 Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
-                if(    context->identifierMouseHoveredWindow == window->identifier
+                if(    context->identifierHashMouseHoveredWindow == window->identifierHash
                     && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
                     if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
                         colorTitleBarButton = context->style.colorButtonPressed;
@@ -569,7 +584,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                     titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
                 korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
                 Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
-                if(    context->identifierMouseHoveredWindow == window->identifier
+                if(    context->identifierHashMouseHoveredWindow == window->identifierHash
                     && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
                     if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
                         colorTitleBarButton = context->style.colorButtonPressed;
@@ -653,7 +668,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                    context->style.colorScrollBar);
             if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X)
                 korl_gfx_batchRectangleSetColor(batchScrollBarX, context->style.colorScrollBarPressed);
-            else if(context->identifierMouseHoveredWindow == window->identifier)
+            else if(context->identifierHashMouseHoveredWindow == window->identifierHash)
             {
                 const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(scrollBarPositionX                                 , window->position.y - window->size.y, 
                                                                                        scrollBarPositionX + window->cachedScrollBarLengthX, window->position.y - window->size.y + context->style.windowScrollBarPixelWidth);
@@ -683,7 +698,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                    context->style.colorScrollBar);
             if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y)
                 korl_gfx_batchRectangleSetColor(batchScrollBarY, context->style.colorScrollBarPressed);
-            else if(context->identifierMouseHoveredWindow == window->identifier)
+            else if(context->identifierHashMouseHoveredWindow == window->identifierHash)
             {
                 const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(window->position.x + window->size.x                                           , scrollBarPositionY, 
                                                                                        window->position.x + window->size.x - context->style.windowScrollBarPixelWidth, scrollBarPositionY - window->cachedScrollBarLengthY);
@@ -733,17 +748,17 @@ korl_internal void korl_gui_frameEnd(void)
         Korl_Vulkan_Color4u8 colorBorder = context->style.colorWindowBorder;
         if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
             if(context->isMouseHovering 
-                && context->identifierMouseHoveredWindow == window->identifier
+                && context->identifierHashMouseHoveredWindow == window->identifierHash
                 && context->mouseHoverWindowEdgeFlags == KORL_GUI_MOUSE_HOVER_FLAGS_NONE)
                 colorBorder = context->style.colorWindowBorderResize;
             else
                 colorBorder = context->style.colorWindowBorderActive;
-        else if(context->isMouseHovering && context->identifierMouseHoveredWindow == window->identifier)
+        else if(context->isMouseHovering && context->identifierHashMouseHoveredWindow == window->identifierHash)
             colorBorder = context->style.colorWindowBorderHovered;
-        const Korl_Vulkan_Color4u8 colorBorderUp    = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color4u8 colorBorderRight = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color4u8 colorBorderDown  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color4u8 colorBorderLeft  = (context->identifierMouseHoveredWindow == window->identifier && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderUp    = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderRight = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderDown  = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
+        const Korl_Vulkan_Color4u8 colorBorderLeft  = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
         const Korl_Math_Aabb2f32 windowAabb = korl_math_aabb2f32_fromPoints(window->position.x                 , window->position.y - window->size.y, 
                                                                             window->position.x + window->size.x, window->position.y                  );
         Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);
@@ -762,11 +777,16 @@ korl_internal void korl_gui_frameEnd(void)
     korl_time_probeStop(generate_draw_commands);
     mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 }
+korl_internal void korl_gui_setLoopIndex(u$ loopIndex)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    context->loopIndex = loopIndex;
+}
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
-    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     va_list vaList;
     va_start(vaList, textFormat);
     widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
@@ -776,7 +796,7 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
-    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(identifier, KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(identifier), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     if(newAllocation)
     {
         korl_assert(korl_memory_isNull(&widget->subType.text, sizeof(widget->subType.text)));
@@ -805,7 +825,7 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
-    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(textFormat, KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
     va_list vaList;
     va_start(vaList, textFormat);
     widget->subType.button.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);

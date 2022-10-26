@@ -4,7 +4,7 @@
 [x] KORL-ISSUE-000-000-003: robustness: this is the "quick & dirty" stbtt API, ergo it's probably a good idea to switch to the lower-level API to be able to do things like lazy glyph caching, better packing, outlines, etc...
 [ ] KORL-ISSUE-000-000-004: maybe change the scissor parameters to be an integral data type, since at some point a rounding strategy must occur anyways, and this information is obscured by this API, just for the sake of making it easier to call with f32 data... Which, I don't know if that's a great tradeoff honestly.
 [ ] KORL-ISSUE-000-000-005: simplify: is it possible to just have a "createRectangle" function, and then add texture or color components to it in later calls?  And if so, is this API good (benefits/detriments to usability/readability/performance?)? My initial thoughts on this are: (1) this would introduce unnecessary performance penalties since we cannot know ahead of time what memory to allocate for the batch (whether or not we need UVs, colors, etc.) (2) the resulting API might become more complex anyways, and increase friction for the user
-[ ] KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+[x] KORL-ISSUE-000-000-006: GUI: switch to use of a strong hash function instead of pointer; so for now, I'm just going to hash the identifier strings passed to window/widget API with an internal "loop counter", which allows us to create widgets with the same identifier inside of a for loop, for example;  in other words, I'm not sure how useful it would be to hash the actual window/widget identifier strings instead of just using their pointer addresses like we're doing right now
 [x] KORL-ISSUE-000-000-007: do we need to reassign the order of the widgets for the current window?  I wont bother with this until I learn a little bit about API usage...
 [ ] KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
 [ ] KORL-ISSUE-000-000-009: I have no idea why, but the Vulkan renderer is not drawing the upper-left corner of the window border correctly, so the first line's x-coordinate is offset by a half pixel
@@ -146,7 +146,7 @@
 [ ] KORL-FEATURE-000-000-024: gui/gfx: add DPI-awareness & support
 [ ] KORL-FEATURE-000-000-025: add gamepad support; Resources: https://github.com/MysteriousJ/Joystick-Input-Examples, http://gyrowiki.jibbsmart.com/blog:finding-gravity-with-sensor-fusion.  Desired device support: XBOX360, XBONE, DS3, DS4, SwitchPro.  Desired input support: buttons, axes, touchPad, gyro/accel(sensor-fusion API?).  Desired output support: force-feedback.
 [ ] KORL-FEATURE-000-000-026: add "create new project" script
-[ ] KORL-FEATURE-000-000-027: [DUPLICATE OF KORL-FEATURE-000-000-009] gui: display time probe metrics, in potentially an interactable way
+[x] KORL-FEATURE-000-000-027: [DUPLICATE OF KORL-FEATURE-000-000-009] gui: display time probe metrics, in potentially an interactable way
 [ ] KORL-FEATURE-000-000-028: gui: display memory metrics, in potentially an interactable way
 [ ] KORL-FEATURE-000-000-029: add audio support; maybe use WASAPI & a mixer layer?  Desired support: WAVE files, OGG/Vorbis files.
 [ ] KORL-FEATURE-000-000-030: 3D collision detection

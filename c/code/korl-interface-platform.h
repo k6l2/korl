@@ -235,7 +235,7 @@ typedef enum Korl_Gui_Widget_Text_Flags
     , KORL_GUI_WIDGET_TEXT_FLAG_LOG// format the text assuming that it is raw KORL log buffer text
 } Korl_Gui_Widget_Text_Flags;
 #define KORL_PLATFORM_GUI_SET_FONT_ASSET(name)       void name(const wchar_t* fontAssetName)
-#define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* identifier, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
+#define KORL_PLATFORM_GUI_WINDOW_BEGIN(name)         void name(const wchar_t* titleBarText, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_PLATFORM_GUI_WINDOW_END(name)           void name(void)
 /**
  * \param anchorX Ratio to be applied to the window size in the \c X dimension, 

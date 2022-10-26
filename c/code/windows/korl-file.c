@@ -240,7 +240,6 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_sa
     korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocation, sizeof(allocation));
     korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &meta->bytes, sizeof(meta->bytes));
     korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, allocation, meta->bytes);
-    ///@TODO: trace out-of-memory crash when toggling the GUI console on/off a bunch of times in a row; smells like a memory leak...
     enumContext->stbDaAllocationCounts[enumContext->allocatorCount - 1]++;// accumulate the total # of allocations per allocator
     return true;// true => continue enumerating
 }

@@ -19,7 +19,8 @@ typedef enum _Korl_Gui_SpecialWidgetFlags
 } _Korl_Gui_SpecialWidgetFlags;
 typedef struct _Korl_Gui_Window
 {
-    const void* identifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+    u64 identifierHash;
+    const wchar_t* titleBarText;
     bool usedThisFrame;
     bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
     bool isOpen;
@@ -40,8 +41,8 @@ typedef struct _Korl_Gui_Window
 } _Korl_Gui_Window;
 typedef struct _Korl_Gui_Widget
 {
-    const void* parentWindowIdentifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
-    const void* identifier;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+    u64 parentWindowIdentifierHash;
+    u64 identifierHash;
     u16 orderIndex;// related to _Korl_Gui_Window::widgets; determines the order in which widgets are processed/displayed in their parent/window
     bool usedThisFrame;
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
@@ -121,11 +122,12 @@ typedef struct _Korl_Gui_Context
     bool isWindowResizing;// only raised when we click a window's resize edge
     Korl_Math_V2f32 mouseDownWindowOffset;
     Korl_Math_V2f32 mouseDownOffsetSpecialWidget;
-    const void* identifierMouseDownWidget;
+    u64 identifierHashMouseDownWidget;
     bool isMouseHovering;
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
-    const void* identifierMouseHoveredWidget;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
-    const void* identifierMouseHoveredWindow;//KORL-ISSUE-000-000-006: switch to use of a strong hash function instead of pointer
+    u64 identifierHashMouseHoveredWidget;
+    u64 identifierHashMouseHoveredWindow;
+    u$ loopIndex;// combined with window/widget identifiers to create the final identifierHash
     enum
     {
         KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,

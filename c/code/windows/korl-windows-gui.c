@@ -27,12 +27,12 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         const Korl_Math_V2f32 mouseV2f32 = { korl_checkCast_i$_to_f32(mouseX)
                                            , korl_checkCast_i$_to_f32(mouseY) };
         /* deactivate the top level window, in case it wasn't already */
-        context->isTopLevelWindowActive       = false;
-        context->isMouseDown                  = false;
-        context->isWindowDragged              = false;
-        context->isWindowResizing             = false;
-        context->identifierMouseDownWidget    = NULL;
-        context->specialWidgetFlagsMouseDown  = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
+        context->isTopLevelWindowActive        = false;
+        context->isMouseDown                   = false;
+        context->isWindowDragged               = false;
+        context->isWindowResizing              = false;
+        context->identifierHashMouseDownWidget = 0;
+        context->specialWidgetFlagsMouseDown   = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
         /* check to see if we clicked on any windows from the previous frame 
             - note that we're processing windows from front->back, since 
               windows[0] is always the farthest back window */
@@ -41,7 +41,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             const _Korl_Gui_Window*const window = &context->stbDaWindows[w];
             if(!window->isOpen)
                 continue;
-            korl_assert(window->identifier);
+            korl_assert(window->identifierHash);
             const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
             const Korl_Math_Aabb2f32 windowExpandedAabb = 
                 { .min = { window->position.x                  - windowAabbExpansion, window->position.y - window->size.y - windowAabbExpansion }
@@ -116,12 +116,12 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             for(u$ wi = 0; wi < arrlenu(context->stbDaWidgets); wi++)
             {
                 _Korl_Gui_Widget*const widget = &context->stbDaWidgets[wi];
-                if(widget->parentWindowIdentifier != window->identifier || !widget->cachedIsInteractive)
+                if(widget->parentWindowIdentifierHash != window->identifierHash || !widget->cachedIsInteractive)
                     continue;
                 if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, mouseV2f32))
                 {
                     context->mouseHoverPosition = mouseV2f32;
-                    context->identifierMouseDownWidget = widget->identifier;
+                    context->identifierHashMouseDownWidget = widget->identifierHash;
                     context->isWindowDragged  = false;
                     context->isWindowResizing = false;
                     break;
@@ -159,7 +159,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                 _Korl_Gui_Window*const window = &context->stbDaWindows[w];
                 if(!window->isOpen)
                     continue;
-                if(window->identifier != context->identifierMouseHoveredWindow)
+                if(window->identifierHash != context->identifierHashMouseHoveredWindow)
                     continue;
                 Korl_Math_V2f32 titlebarButtonCursor = { window->position.x + window->size.x - context->style.windowTitleBarPixelSizeY
                                                        , window->position.y };
@@ -186,14 +186,14 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                 break;
             }
         }
-        if(context->identifierMouseDownWidget)
+        if(context->identifierHashMouseDownWidget)
         {
             /* find the mouse-down widget, and check to see if we're still 
                 hovering it, allowing us to perform a full mouse click */
             for(u$ w = 0; w < arrlenu(context->stbDaWidgets); w++)
             {
                 _Korl_Gui_Widget*const widget = &context->stbDaWidgets[w];
-                if(widget->identifier != context->identifierMouseDownWidget)
+                if(widget->identifierHash != context->identifierHashMouseDownWidget)
                     continue;
                 if(!korl_math_aabb2f32_containsV2f32(widget->cachedAabb, mouseV2f32))
                     continue;
@@ -283,16 +283,16 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             /* check to see whether or not we're hovering over any windows from 
                 the previous frame, and if we are record the cursor position 
                 relative to the window */
-            context->isMouseHovering               = false;
-            context->identifierMouseHoveredWidget  = NULL;
-            context->identifierMouseHoveredWindow  = NULL;
-            context->mouseHoverWindowEdgeFlags     = 0;
+            context->isMouseHovering                  = false;
+            context->identifierHashMouseHoveredWidget = 0;
+            context->identifierHashMouseHoveredWindow = 0;
+            context->mouseHoverWindowEdgeFlags        = 0;
             for(i$ w = arrlenu(context->stbDaWindows) - 1; w >= 0; w--)
             {
                 const _Korl_Gui_Window*const window = &context->stbDaWindows[w];
                 if(!window->isOpen)
                     continue;
-                korl_assert(window->identifier);
+                korl_assert(window->identifierHash);
                 const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
                 const Korl_Math_Aabb2f32 windowExpandedAabb = 
                     { .min = { window->position.x                  - windowAabbExpansion, window->position.y - window->size.y - windowAabbExpansion }
@@ -324,15 +324,15 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
                     context->mouseHoverWindowEdgeFlags = 0;
                 context->isMouseHovering = true;
                 context->mouseHoverPosition = mouseV2f32;
-                context->identifierMouseHoveredWindow = window->identifier;
+                context->identifierHashMouseHoveredWindow = window->identifierHash;
                 for(u$ wi = 0; wi < arrlenu(context->stbDaWidgets); wi++)
                 {
                     _Korl_Gui_Widget*const widget = &context->stbDaWidgets[wi];
-                    if(widget->parentWindowIdentifier != window->identifier)
+                    if(widget->parentWindowIdentifierHash != window->identifierHash)
                         continue;
                     if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, mouseV2f32))
                     {
-                        context->identifierMouseHoveredWidget = widget->identifier;
+                        context->identifierHashMouseHoveredWidget = widget->identifierHash;
                         break;
                     }
                 }
@@ -358,7 +358,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             _Korl_Gui_Window*const window = &context->stbDaWindows[w];
             if(!window->isOpen)
                 continue;
-            korl_assert(window->identifier);
+            korl_assert(window->identifierHash);
             const f32 windowAabbExpansion = (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE) ? _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS : 0.f;
             const Korl_Math_Aabb2f32 windowExpandedAabb = 
                 { .min = { window->position.x                  - windowAabbExpansion, window->position.y - window->size.y - windowAabbExpansion }

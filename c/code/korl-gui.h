@@ -4,7 +4,7 @@
 #include "korl-gui-common.h"
 #include "korl-interface-platform.h"
 korl_internal void korl_gui_initialize(void);
-korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset);
+korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset);///@TODO: switch to a general "style stack" type of API?; probably more flexible than this
 /** Start batching a new GUI window.  The user _must_ call \c korl_gui_windowEnd 
  * after each call to \c korl_gui_windowBegin . */
 korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin);
@@ -15,6 +15,8 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize);
  * call \c korl_gui_frameEnd after each call to \c korl_gui_frameBegin . */
 korl_internal void korl_gui_frameBegin(void);
 korl_internal void korl_gui_frameEnd(void);
+/** Make sure to reset this value back to \c 0 after you are finished looping! */
+korl_internal void korl_gui_setLoopIndex(u$ loopIndex);
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat);
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText);
 /** 

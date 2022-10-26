@@ -85,4 +85,9 @@ korl_internal const char* korl_checkCast_cpu8_to_cpchar(const u8* x)
     korl_assert(sizeof(*x) == sizeof(*result));
     return result;
 }
+korl_internal u64 korl_checkCast_cvoidp_to_u64(const void* x)
+{
+    korl_assert(sizeof(x) == sizeof(u64));
+    return KORL_C_CAST(u64, x);
+}
 #pragma warning(pop)
