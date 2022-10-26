@@ -5,6 +5,7 @@
 #include "stb/stb_ds.h"
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
+#define KORL_STB_DS_MC_CAST(x) ((void*)x) //@TODO: replace every memory context cast I've done so far with this
 korl_internal void korl_stb_ds_initialize(void);
 korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes);
 #if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)

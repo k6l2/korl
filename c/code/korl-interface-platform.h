@@ -36,7 +36,7 @@ typedef enum Korl_AssetCache_Get_Result
  * automatically.
  */
 #define KORL_PLATFORM_ASSETCACHE_GET(name) Korl_AssetCache_Get_Result name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags, Korl_AssetCache_AssetData* o_assetData)
-typedef u64 Korl_Resource_Handle;// type: 2-bits, multimediaType: 2-bits, uniqueId: 60-bits (I think what we're going to do for FILE type resources is that we'll just generate a 64-bit hash using the file name and then trip the top 4 bits; we'll just assume that file hashes will be unique enough for this to not matter & assert that all file name hashes do in fact have 60 unique bits); 0 => invlid handle, as usual
+typedef u64 Korl_Resource_Handle;
 #define KORL_PLATFORM_RESOURCE_FROM_FILE(name) Korl_Resource_Handle name(acu16 fileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 /** Do not use this value directly, since the meaning of this data is 
  * platform-dependent.  Instead, use the platform APIs which uses this type.  

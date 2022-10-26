@@ -2,6 +2,7 @@
 #include "korl-vulkan.h"
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
+korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
     {_KORL_RESOURCE_TYPE_INVALID // this value indicates the entire Resource Handle is not valid
     ,_KORL_RESOURCE_TYPE_FILE    // Resource is derived from a korl-assetCache file
@@ -39,7 +40,7 @@ typedef struct _Korl_Resource
     } subType;
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType; example: an image resource data will point to an RGBA bitmap
     u$    dataBytes;
-    bool dirty;
+    bool dirty;// if this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
 } _Korl_Resource;
 typedef struct _Korl_Resource_Map
 {
@@ -59,19 +60,19 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_handle_unpack(Korl_R
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
     unpackedHandle.type           = (handle >> 62) & 0b11;
     unpackedHandle.multimediaType = (handle >> 60) & 0b11;
-    unpackedHandle.uniqueId       =  handle        & 0x0FFFFFFFFFFFFFFF;
+    unpackedHandle.uniqueId       =  handle        & _KORL_RESOURCE_UNIQUE_ID_MAX;
     return unpackedHandle;
 }
 korl_internal Korl_Resource_Handle _korl_resource_handle_pack(_Korl_Resource_Handle_Unpacked unpackedHandle)
 {
-    return KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.type)           << 62
-         | KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.multimediaType) << 60
-         | unpackedHandle.uniqueId;
+    return ((KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.type)           & 0b11) << 62)
+         | ((KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.multimediaType) & 0b11) << 60)
+         | (                                   unpackedHandle.uniqueId        & _KORL_RESOURCE_UNIQUE_ID_MAX);
 }
 korl_internal void korl_resource_initialize(void)
 {
     korl_memory_zero(&_korl_resource_context, sizeof(_korl_resource_context));
-    _korl_resource_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
+    _korl_resource_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
     mchmdefault(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
     mcarrsetcap(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 128);
 }
@@ -98,7 +99,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
     }
     if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
         korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);
-    korl_assert(unpackedHandle.multimediaType);
+    ///@TODO: assert that multimediaType is valid?
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* check if the resource was already added */
@@ -108,7 +109,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
     {
         mchmput(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
         hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
-        korl_assert(hashMapIndex);
+        korl_assert(hashMapIndex >= 0);
         if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
             _korl_resource_context.stbHmResources[hashMapIndex].value.subType.graphics.type = graphicsType;
     }
@@ -161,6 +162,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
 }
 korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo)
 {
+    korl_assert(_korl_resource_context.nextUniqueId <= _KORL_RESOURCE_UNIQUE_ID_MAX);// assuming this ever fires under normal circumstances (_highly_ unlikely), we will need to implement a system to recycle old unused UIDs or something
     /* construct the new resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
     unpackedHandle.type           = _KORL_RESOURCE_TYPE_RUNTIME;
@@ -186,6 +188,7 @@ korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const Korl_V
 }
 korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo)
 {
+    korl_assert(_korl_resource_context.nextUniqueId <= _KORL_RESOURCE_UNIQUE_ID_MAX);// assuming this ever fires under normal circumstances (_highly_ unlikely), we will need to implement a system to recycle old unused UIDs or something
     /* construct the new resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
     unpackedHandle.type           = _KORL_RESOURCE_TYPE_RUNTIME;
@@ -236,11 +239,16 @@ korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void*
 {
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
-    const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+    _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
     korl_assert(dataBytes <= resource->dataBytes);
     korl_memory_copy(resource->data, data, dataBytes);
+    if(!resource->dirty)
+    {
+        mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
+        resource->dirty = true;
+    }
 }
 korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize)
 {
@@ -303,6 +311,8 @@ korl_internal void korl_resource_flushUpdates(void)
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle)
 {
+    if(!handle)
+        return 0;// silently return a NULL device memory allocation handle if the resource handle is NULL
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
@@ -326,6 +336,51 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
     /* go through each Resource & re-create the transcoded multimedia assets, 
         since we should expect that when a memory state is loaded all multimedia 
         device assets are invalidated! */
-    korl_assert(!"@TODO");
+    for(u$ r = 0; r < arrlenu(_korl_resource_context.stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
+    {
+        _Korl_Resource_Map*const resourceMapItem = &(_korl_resource_context.stbHmResources[r]);
+        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapItem->key);
+        switch(unpackedHandle.type)
+        {
+        case _KORL_RESOURCE_TYPE_FILE:{
+            /* maybe just free the data allocation & reset the resource to the 
+                unloaded state?  the external device memory allocations should 
+                all be invalid at this point, so we should be able to just 
+                nullify this struct */
+            korl_free(_korl_resource_context.allocatorHandle, resourceMapItem->value.data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
+            korl_memory_zero(&resourceMapItem->value, sizeof(resourceMapItem->value));
+            break;}
+        case _KORL_RESOURCE_TYPE_RUNTIME:{
+            /* here we can just re-create each device memory allocation & mark 
+                each asset as dirty, and they will get updated at the end of the 
+                frame, since we already have all the CPU-encoded asset data from 
+                the memory state */
+            switch(unpackedHandle.multimediaType)
+            {
+            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
+                switch(resourceMapItem->value.subType.graphics.type)
+                {
+                case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
+                    resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture);
+                    break;}
+                case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
+                    resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer);
+                    break;}
+                default:
+                    korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);
+                    break;
+                }
+                break;}
+            default:
+                korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
+                break;
+            }
+            resourceMapItem->value.dirty = true;
+            break;}
+        default:
+            korl_log(ERROR, "invalid resource type %i", unpackedHandle.type);
+            break;
+        }
+    }
     return true;
 }

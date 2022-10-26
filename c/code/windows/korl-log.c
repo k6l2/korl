@@ -37,6 +37,7 @@ typedef struct _Korl_Log_Context
     bool useLogFileBig;
     bool logFileEnabled;
     bool disableMetaTags;
+    /// @TODO: add a flag to _enable_ async log file writes; stop doing async log file writes by default since that code path is likely _super_ slow
     Korl_File_Descriptor fileDescriptor;
     KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
     u$ logFileBytesWritten;
