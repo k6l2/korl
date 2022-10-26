@@ -808,6 +808,9 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
 }
 korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
 {
+    const _Korl_Gfx_Text_Line*const linesEnd = context->stbDaLines + arrlen(context->stbDaLines);
+    for(_Korl_Gfx_Text_Line* line = context->stbDaLines; line < linesEnd; line++)
+        korl_resource_destroy(line->resourceHandleBufferText);
     mcarrfree(KORL_C_CAST(void*, context->allocator), context->stbDaLines);
     korl_free(context->allocator, context);
 }
