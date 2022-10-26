@@ -1181,6 +1181,7 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     model.translation = batch->_position;
     model.color       = KORL_MATH_V4F32_ONE;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
+    samplers.resourceHandleTexture = batch->_texture;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     if(batch->_assetNameFont)
     {
@@ -1207,7 +1208,6 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
         vertexData.colorsStride = 0;
 #endif
     }
-    samplers.resourceHandleTexture = batch->_texture;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
     features.enableBlend     = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING);
     features.enableDepthTest = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
