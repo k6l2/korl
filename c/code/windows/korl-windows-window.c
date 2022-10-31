@@ -19,7 +19,7 @@
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
 #if KORL_DEBUG
-    #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE 1
+    // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -462,7 +462,7 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_windows_window_codepointTest_lo
     return true;
 }
 #endif
-#if _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
+#ifdef _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
 typedef struct _Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData
 {
     u32 allocationCount;
@@ -615,7 +615,7 @@ korl_internal void korl_windows_window_loop(void)
         }
         korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin();                                           korl_time_probeStop(vulkan_frame_begin);
         korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
-#if _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
+#ifdef _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
         {
             KORL_ZERO_STACK(_Korl_Windows_Window_DebugMemoryEnumContext, debugEnumContext);
             mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), debugEnumContext.stbDaAllocatorData, 32);
