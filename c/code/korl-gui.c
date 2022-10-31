@@ -273,6 +273,16 @@ korl_internal void korl_gui_initialize(void)
     mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
 }
+korl_internal void korl_gui_destroyAllWidgets(void)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    for(u$ w = 0; w < arrlenu(context->stbDaWidgets); ++w)
+    {
+        _Korl_Gui_Widget*const widget = &context->stbDaWidgets[w];
+        _korl_gui_widget_destroy(widget);
+    }
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, 0);
+}
 korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -424,7 +434,7 @@ korl_internal void korl_gui_frameEnd(void)
                 continue;
             }
         }
-        mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
+        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
         korl_time_probeStop(nullify_unused_widgets);
     }
     /* sort the widgets based on their orderIndex, allowing us to always process 

@@ -534,8 +534,8 @@ korl_internal void korl_windows_window_loop(void)
             korl_log_clearAsyncIo();
             korl_file_finishAllAsyncOperations();
             korl_assetCache_clearAllFileHandles();
+            korl_gui_destroyAllWidgets();
             korl_vulkan_clearAllDeviceAllocations();
-            ///@TODO: destroy runtime Korl_Resource_Handles inside korl-gui, since our handles will be invalid; maybe just destroy all widgets?
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             if(context->gameApi.korl_game_onReload)
