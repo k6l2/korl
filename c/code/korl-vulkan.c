@@ -1676,14 +1676,14 @@ korl_internal void korl_vulkan_frameBegin(void)
     /* same as with staging buffers, we can now nullify device assets that we 
         know are no longer being used */
     u$ freedDeviceLocalAllocations = 0;
-    u8 framesSinceQueuedLast = 0;// used to help ensure that the device local free queue does in fact contain monotonically increasing values for each member's framesSinceQueued value
+    u8 framesSinceQueuedLast = KORL_U8_MAX;// used to help ensure that the device local free queue does in fact contain monotonically increasing values for each member's framesSinceQueued value
     for(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation* queuedFreeDeviceAllocation = surfaceContext->stbDaDeviceLocalFreeQueue;
         queuedFreeDeviceAllocation < surfaceContext->stbDaDeviceLocalFreeQueue + arrlen(surfaceContext->stbDaDeviceLocalFreeQueue);
         queuedFreeDeviceAllocation++)
     {
-        korl_assert(queuedFreeDeviceAllocation->framesSinceQueued >= framesSinceQueuedLast);
+        korl_assert(queuedFreeDeviceAllocation->framesSinceQueued <= framesSinceQueuedLast);// items later in the queue are newer, ergo should have <= the # of frames of later items
         framesSinceQueuedLast = queuedFreeDeviceAllocation->framesSinceQueued;
-        if(queuedFreeDeviceAllocation->framesSinceQueued < 255)
+        if(queuedFreeDeviceAllocation->framesSinceQueued < KORL_U8_MAX)
             queuedFreeDeviceAllocation->framesSinceQueued++;
         if(queuedFreeDeviceAllocation->framesSinceQueued > surfaceContext->swapChainImagesSize)
         {
