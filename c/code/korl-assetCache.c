@@ -9,7 +9,7 @@
 #ifdef _LOCAL_STRING_POOL_POINTER
 #undef _LOCAL_STRING_POOL_POINTER
 #endif
-#define _LOCAL_STRING_POOL_POINTER (&(_korl_assetCache_context.stringPool))
+#define _LOCAL_STRING_POOL_POINTER _korl_assetCache_context.stringPool
 typedef enum _Korl_AssetCache_AssetState
     { _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED// the file hasn't been opened yet
     , _KORL_ASSET_CACHE_ASSET_STATE_PENDING    // the file is open, and we are async loading the asset
@@ -35,7 +35,7 @@ typedef struct _Korl_AssetCache_Context
     _Korl_AssetCache_Asset* stbDaAssets;
     /** this allocator will store all the data for the raw assets */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    Korl_StringPool stringPool;
+    Korl_StringPool* stringPool;// @korl-string-pool-no-data-segment-storage
 } _Korl_AssetCache_Context;
 korl_global_variable _Korl_AssetCache_Context _korl_assetCache_context;
 korl_internal void korl_assetCache_initialize(void)
@@ -44,7 +44,8 @@ korl_internal void korl_assetCache_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     //KORL-PERFORMANCE-000-000-026: savestate/assetCache: there is no need to save/load every asset; we only need assets that have been flagged as "operation critical"
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
-    context->stringPool      = korl_stringPool_create(context->allocatorHandle);
+    context->stringPool      = korl_allocate(context->allocatorHandle, sizeof(*context->stringPool));
+    *context->stringPool     = korl_stringPool_create(context->allocatorHandle);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size
 }
 korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
@@ -247,21 +248,14 @@ korl_internal void korl_assetCache_clearAllFileHandles(void)
 }
 korl_internal void korl_assetCache_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
-    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &context->stbDaAssets, sizeof(context->stbDaAssets));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &context->stringPool , sizeof(context->stringPool));
+    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_assetCache_context, sizeof(_korl_assetCache_context));
+    ///
 }
 korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
 {
-    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    if(!ReadFile(hFile, &context->stbDaAssets, sizeof(context->stbDaAssets), NULL/*bytes read*/, NULL/*no overlapped*/))
-    {
-        korl_logLastError("ReadFile failed");
-        return false;
-    }
-    //KORL-ISSUE-000-000-079: stringPool/file/savestate: either create a (de)serialization API for stringPool, or just put context state into a single allocation?
-    if(!ReadFile(hFile, &context->stringPool, sizeof(context->stringPool), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, &_korl_assetCache_context, sizeof(_korl_assetCache_context), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;

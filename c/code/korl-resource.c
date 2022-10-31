@@ -279,6 +279,7 @@ korl_internal void korl_resource_flushUpdates(void)
         _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
         korl_assert(resource->dirty);
         const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(*dirtyHandle);
+        korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
         switch(unpackedHandle.multimediaType)
         {
         case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{

@@ -136,6 +136,17 @@ typedef struct Korl_StringPool_String
 #define korl_stringPrependUtf8(stringHandle, cStringUtf8)                                             korl_stringPool_prependUtf8(stringHandle, cStringUtf8, __FILEW__, __LINE__)
 #define korl_stringPrependUtf16(stringHandle, cStringUtf16)                                           korl_stringPool_prependUtf16(stringHandle, cStringUtf16, __FILEW__, __LINE__)
 /* string pool API */
+/** Because of the fact that korl-stringPool now deals with string handles that 
+ * contain the StringPool pointer itself, we can no longer store StringPools in 
+ * data segments which are serialized to memory states, since it is impossible 
+ * to keep this address stable after loading a memory state!  We must either: 
+ * - choose to use a StringPool* & dynamically allocate the StringPool struct on 
+ *   the heap using allocatorHandle, or 
+ * - we can revert back to using the old StringPool API that requires passing 
+ *   the StringPool* for each API call
+ * The user of this code module is advised to be careful about how they manage 
+ * the Korl_StringPool returned by this function given the behavior described 
+ * above! @korl-string-pool-no-data-segment-storage */
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
 korl_internal Korl_StringPool_String        korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);

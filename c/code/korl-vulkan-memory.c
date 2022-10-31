@@ -10,7 +10,7 @@ typedef struct _Korl_Vulkan_DeviceMemory_Arena
     VkDeviceMemory deviceMemory;
     void* hostVisibleMemory;// only used if the Arena uses VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     VkDeviceSize byteSize;
-    _Korl_Vulkan_DeviceMemory_Alloctation* stbDaAllocations;/// @TODO: using this data structure will likely result in poor access performance & better add/remove performance, but this seems like exactly the opposite of what we want to optimize; intuitively, I would imagine that access performance is far more important than add/remove performance; a better thing to do to improve access performance would be to use a different data structure to store the Allocation structs in persistent memory locations for their entire lifetimes
+    _Korl_Vulkan_DeviceMemory_Alloctation* stbDaAllocations;/// @TODO: using this data structure will likely result in poor access performance & better add/remove performance, but this seems like exactly the opposite of what we want to optimize; intuitively, I would imagine that access performance is far more important than add/remove performance; a better thing to do to improve access performance would be to use a different data structure to store the Allocation structs in persistent memory locations for their entire lifetimes; another poor side effect of the current implementation is that if the user calls _getAllocation followed by code that creates a new allocation, the previously received allocation address _can_ immediately become an invalid/dangling pointer 🚨🚨🚨🚨🚨🚨
     u16* stbDaUnusedIds;
 } _Korl_Vulkan_DeviceMemory_Arena;
 korl_internal void _korl_vulkan_deviceMemory_arena_initialize(Korl_Memory_AllocatorHandle allocatorHandle, _Korl_Vulkan_DeviceMemory_Arena* arena)
