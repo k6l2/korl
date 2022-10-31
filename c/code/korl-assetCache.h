@@ -34,7 +34,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get);
  *   event, since code modules which consume assets must then process the assets 
  *   in various ways (generate database diffs, uploading textures to the GPU, 
  *   etc...) */
-#define KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(name) void name(const wchar_t* rawUtf16AssetName, Korl_AssetCache_AssetData assetData)
+#define KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(name) void name(acu16 rawUtf16AssetName, Korl_AssetCache_AssetData assetData)
 typedef KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(fnSig_korl_assetCache_onAssetHotReloadedCallback);
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded);
 korl_internal void korl_assetCache_clearAllFileHandles(void);

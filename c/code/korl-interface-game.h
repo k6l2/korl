@@ -12,7 +12,7 @@
  * @return false if the platform should close the game application
  */
 #define KORL_GAME_UPDATE(name)            bool name(f32 deltaSeconds, u32 windowSizeX, u32 windowSizeY, bool windowIsFocused)
-#define KORL_GAME_ON_ASSET_RELOADED(name) void name(const wchar_t* rawUtf16AssetName, Korl_AssetCache_AssetData assetData)
+#define KORL_GAME_ON_ASSET_RELOADED(name) void name(acu16 rawUtf16AssetName, Korl_AssetCache_AssetData assetData)
 typedef KORL_GAME_ON_RELOAD        (fnSig_korl_game_onReload);
 typedef KORL_GAME_INITIALIZE       (fnSig_korl_game_initialize);
 typedef KORL_GAME_ON_KEYBOARD_EVENT(fnSig_korl_game_onKeyboardEvent);

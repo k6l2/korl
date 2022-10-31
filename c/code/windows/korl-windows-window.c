@@ -209,7 +209,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_window_onAssetHotReloaded)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
-    korl_vulkan_onAssetHotReload(rawUtf16AssetName, assetData);
+    korl_resource_onAssetHotReload(rawUtf16AssetName, assetData);
     if(context->gameApi.korl_game_onAssetReloaded)
         context->gameApi.korl_game_onAssetReloaded(rawUtf16AssetName, assetData);
 }

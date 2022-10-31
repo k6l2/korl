@@ -162,8 +162,8 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                 korl_file_close(&asset->fileDescriptor);
                 asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
                 asset->flags = KORL_ASSETCACHE_GET_FLAGS_NONE;
-                const wchar_t*const rawUtf16AssetName = string_getRawUtf16(asset->name);
-                korl_log(INFO, "Asset \"%ws\" has been hot-reloaded!  Running callbacks...", rawUtf16AssetName);
+                const acu16 rawUtf16AssetName = string_getRawAcu16(asset->name);
+                korl_log(INFO, "Asset \"%ws\" has been hot-reloaded!  Running callbacks...", rawUtf16AssetName.data);
                 callbackOnAssetHotReloaded(rawUtf16AssetName, asset->data);
                 break;}
             case KORL_FILE_GET_ASYNC_IO_RESULT_PENDING:{

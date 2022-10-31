@@ -2321,61 +2321,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     korl_time_probeStop(draw_compose_gfx_commands);
     surfaceContext->drawStateLast = surfaceContext->drawState;
 }
-korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_vulkan_onAssetHotReload)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-#if 0///@TODO: delete/recycle
-    /* check to see if the asset is loaded in our database */
-    _Korl_Vulkan_DeviceAsset* deviceAsset = NULL;
-    for(u$ dai = 0; dai < KORL_MEMORY_POOL_SIZE(context->deviceAssets); ++dai)
-    {
-        Korl_StringPool_String stringDeviceAssetName;
-        stringDeviceAssetName.handle = 0;
-
-        switch(context->deviceAssets[dai].type)
-        {
-        case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
-            stringDeviceAssetName = context->deviceAssets[dai].subType.assetTexture.name;
-            break;}
-        case _KORL_VULKAN_DEVICEASSET_TYPE_TEXTURE:{
-            break;}
-        }
-        if(0 == stringDeviceAssetName.handle)
-            continue;// device asset type not supported
-        if(korl_stringPool_equalsUtf16(stringDeviceAssetName, rawUtf16AssetName))
-        {
-            deviceAsset = &(context->deviceAssets[dai]);
-            break;
-        }
-    }
-    if(!deviceAsset)
-        /* if the asset name isn't found in the device asset database, then we 
-            don't have to do anything */
-        return;
-    /* perform asset hot-reloading logic */
-    switch(deviceAsset->type)
-    {
-    case _KORL_VULKAN_DEVICEASSET_TYPE_ASSET_TEXTURE:{
-        _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));///@TODO: instead of having to wait for the entire device to become idle before we clobber all of the device assets, we should maybe do something more intelligent here, like mark the assets for removal at a later time when we know it is safe to do so (for example, we can say that the last swap chain image the asset may have been used was the current SCI, so the next time we acquire the SCI we know for sure that we can delete it since the GPU must have finished working with it, and this state hasn't been cleared since then)
-        _korl_vulkan_deviceMemoryLinear_free(&context->deviceMemoryLinearAssets, deviceAsset->subType.assetTexture.deviceAllocation);
-        int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
-        stbi_uc*const imagePixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
-        if(!imagePixels)
-            korl_log(ERROR, "stbi_load_from_memory failed! assetName=\"%ws\"", rawUtf16AssetName);
-        _Korl_Vulkan_DeviceMemory_Alloctation*const deviceImage = 
-            _korl_vulkan_deviceMemoryLinear_allocateTexture(
-                &context->deviceMemoryLinearAssets, imageSizeX, imageSizeY, 
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-        _korl_vulkan_transferImageBufferToTexture(imagePixels, imageSizeX, imageSizeY, deviceImage);
-        stbi_image_free(imagePixels);
-        deviceAsset->subType.assetTexture.deviceAllocation = deviceImage;
-        break;}
-    default:{
-        korl_log(ERROR, "device asset type %i not implemented", deviceAsset->type);
-        break;}
-    }
-#endif
-}
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;

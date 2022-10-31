@@ -81,3 +81,4 @@ korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDa
  * Win32 API?
  * KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file? */
 korl_internal bool korl_resource_saveStateRead(HANDLE hFile);
+korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload);

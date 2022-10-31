@@ -2,6 +2,8 @@
 #include "korl-vulkan.h"
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
+#include "korl-stringPool.h"
+#define _LOCAL_STRING_POOL_POINTER _korl_resource_context.stringPool
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
     {_KORL_RESOURCE_TYPE_INVALID // this value indicates the entire Resource Handle is not valid
@@ -41,6 +43,7 @@ typedef struct _Korl_Resource
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType; example: an image resource data will point to an RGBA bitmap
     u$    dataBytes;
     bool dirty;// if this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
+    Korl_StringPool_String stringFileName;
 } _Korl_Resource;
 typedef struct _Korl_Resource_Map
 {
@@ -53,6 +56,7 @@ typedef struct _Korl_Resource_Context
     _Korl_Resource_Map* stbHmResources;
     Korl_Resource_Handle* stbDsDirtyResourceHandles;
     u$ nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
+    Korl_StringPool* stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
 } _Korl_Resource_Context;
 korl_global_variable _Korl_Resource_Context _korl_resource_context;
 korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_handle_unpack(Korl_Resource_Handle handle)
@@ -69,14 +73,7 @@ korl_internal Korl_Resource_Handle _korl_resource_handle_pack(_Korl_Resource_Han
          | ((KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.multimediaType) & 0b11) << 60)
          | (                                   unpackedHandle.uniqueId        & _KORL_RESOURCE_UNIQUE_ID_MAX);
 }
-korl_internal void korl_resource_initialize(void)
-{
-    korl_memory_zero(&_korl_resource_context, sizeof(_korl_resource_context));
-    _korl_resource_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
-    mchmdefault(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    mcarrsetcap(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 128);
-}
-korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
+korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHandle(acu16 fileName, _Korl_Resource_Graphics_Type* out_graphicsType)
 {
     /* hash the file name, generate our resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
@@ -98,7 +95,25 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
         }
     }
     if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
+    {
         korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);
+        *out_graphicsType = graphicsType;
+    }
+    return unpackedHandle;
+}
+korl_internal void korl_resource_initialize(void)
+{
+    korl_memory_zero(&_korl_resource_context, sizeof(_korl_resource_context));
+    _korl_resource_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
+    _korl_resource_context.stringPool      = korl_allocate(_korl_resource_context.allocatorHandle, sizeof(*_korl_resource_context.stringPool));
+    mchmdefault(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    mcarrsetcap(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 128);
+    *_korl_resource_context.stringPool = korl_stringPool_create(_korl_resource_context.allocatorHandle);
+}
+korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
+{
+    _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);
     ///@TODO: assert that multimediaType is valid?
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
@@ -110,6 +125,8 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
         mchmput(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
         hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
         korl_assert(hashMapIndex >= 0);
+        _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+        resource->stringFileName = string_newAcu16(fileName);
     }
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     /* regardless of whether or not the resource was just added, we still need to make sure that the asset was loaded for it */
@@ -229,6 +246,8 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
         korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
         break;}
     }
+    /* if the resource backed by a file, we should destroy the cached file name string */
+    string_free(resource->stringFileName);
     /* destroy the cached decoded raw asset data */
     korl_free(_korl_resource_context.allocatorHandle, resource->data);
     /* remove the resource from the database */
@@ -348,7 +367,8 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
                 all be invalid at this point, so we should be able to just 
                 nullify this struct */
             korl_free(_korl_resource_context.allocatorHandle, resourceMapItem->value.data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
-            korl_memory_zero(&resourceMapItem->value, sizeof(resourceMapItem->value));
+            resourceMapItem->value.data      = NULL;
+            resourceMapItem->value.dataBytes = 0;
             break;}
         case _KORL_RESOURCE_TYPE_RUNTIME:{
             /* here we can just re-create each device memory allocation & mark 
@@ -384,3 +404,21 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
     }
     return true;
 }
+korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload)
+{
+    /* check to see if the asset is loaded in our database */
+    _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(rawUtf16AssetName, &graphicsType);
+    ///@TODO: assert that multimediaType is valid?
+    const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    if(hashMapIndex < 0)
+        return;// if the asset isn't found in the resource database, then we don't have to do anything
+    /* perform asset hot-reloading logic; clear the cached resource so that the 
+        next time it is obtained by the user (via _fromFile) it is re-transcoded */
+    _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+    korl_free(_korl_resource_context.allocatorHandle, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
+    resource->data      = NULL;
+    resource->dataBytes = 0;
+}
+#undef _LOCAL_STRING_POOL_POINTER

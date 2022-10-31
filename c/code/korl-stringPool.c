@@ -483,6 +483,14 @@ korl_internal Korl_StringPool_String korl_stringPool_newFromAci8(Korl_StringPool
                                                 file, line);
     return result;
 }
+korl_internal Korl_StringPool_String korl_stringPool_newFromAcu16(Korl_StringPool* context, acu16 constArrayCu16, const wchar_t* file, int line)
+{
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, constArrayCu16.data
+                                                                        ,korl_checkCast_u$_to_u32(constArrayCu16.size)
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF16
+                                                                        ,file, line);
+    return result;
+}
 korl_internal Korl_StringPool_String korl_stringPool_newEmptyUtf8(Korl_StringPool* context, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
     Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/, 
