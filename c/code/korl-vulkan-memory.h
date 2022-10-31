@@ -100,7 +100,6 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     VkDeviceSize byteOffset;// this value will _always_ be aligned according to the memory requirements of the device object contained in this allocation
     VkDeviceSize bytesOccupied;// Derived from the Vulkan memory requirements of this allocation; it's entirely possible for an allocation to occupy more bytes than it utilizes!  This is mostly only useful for the internal allocation strategy.
     VkDeviceSize bytesUsed;// The size originally requested when the user called allocate.  The user is likely only going to care about this value for the purposes of manipulation of the data stored in this allocation.
-    u32 id;// assigned by the Arena that this allocation is contained within
     const wchar_t* file;// currently, korl-vulkan should not be exposed to any dynamic code modules, so we can safely just store raw file string pointers here
     int line;
     bool freeQueued;
@@ -132,7 +131,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
                                                                                                                ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
                                                                                                                ,const wchar_t* file, int line);
 korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_allocator_getAllocation(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
-korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle, const _Korl_Vulkan_DeviceMemory_Alloctation* allocation);
+korl_internal void* _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
 korl_internal void _korl_vulkan_deviceMemory_allocator_free(_Korl_Vulkan_DeviceMemory_Allocator* allocator, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle);
 korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_DeviceMemory_Allocator* allocator);
 #define _KORL_VULKAN_DEVICEMEMORY_ALLOCATOR_FOR_EACH_CALLBACK(name) void name(void* userData, _Korl_Vulkan_DeviceMemory_Alloctation* allocation, Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle)

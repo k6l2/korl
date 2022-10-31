@@ -55,6 +55,7 @@ korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
         korl_log(ERROR  , "{%hs} %hs", messageTypeString, pCallbackData->pMessage);
     else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         korl_log(WARNING, "{%hs} %hs", messageTypeString, pCallbackData->pMessage);
+        ///@TODO: Validation Performance Warning: [ UNASSIGNED-CoreValidation-Shader-OutputNotConsumed ] Object 0: handle = 0xba7514000000002a, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0x609a13b | vertex shader writes to output location 1.0 which is not consumed by fragment shader. Enable VK_KHR_maintenance4 device extension to allow relaxed interface matching between input and output vectors.
     else
         korl_log(INFO   , "{%hs} %hs", messageTypeString, pCallbackData->pMessage);
     /* according to documentation, we MUST always return VK_FALSE! */
@@ -900,8 +901,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
     surfaceContext->stagingBufferIndexLastUsed = korl_checkCast_u$_to_u16(validBuffer - surfaceContext->stbDaStagingBuffers);
     *out_byteOffsetStagingBuffer = validBuffer->bytesUsed;
     *out_bufferStaging           = validAllocation->subType.buffer.vulkanBuffer;
-    void*const bufferMappedAddress = _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(&surfaceContext->deviceMemoryHostVisible
-                                                                                                    ,validBuffer->allocation, validAllocation);
+    void*const bufferMappedAddress = _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(&surfaceContext->deviceMemoryHostVisible, validBuffer->allocation);
     u8*const resultAddress = KORL_C_CAST(u8*, bufferMappedAddress) + validBuffer->bytesUsed;
     validBuffer->framesSinceLastUsed = 0;
     validBuffer->bytesUsed          += bytesRequired;
