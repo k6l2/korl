@@ -110,8 +110,6 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
         mchmput(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
         hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
         korl_assert(hashMapIndex >= 0);
-        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-            _korl_resource_context.stbHmResources[hashMapIndex].value.subType.graphics.type = graphicsType;
     }
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     /* regardless of whether or not the resource was just added, we still need to make sure that the asset was loaded for it */
@@ -127,6 +125,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
             switch(unpackedHandle.multimediaType)
             {
             case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
+                resource->subType.graphics.type = graphicsType;
                 switch(resource->subType.graphics.type)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
@@ -336,7 +335,7 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
     /* go through each Resource & re-create the transcoded multimedia assets, 
         since we should expect that when a memory state is loaded all multimedia 
         device assets are invalidated! */
-    for(u$ r = 0; r < arrlenu(_korl_resource_context.stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
+    for(u$ r = 0; r < hmlenu(_korl_resource_context.stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
     {
         _Korl_Resource_Map*const resourceMapItem = &(_korl_resource_context.stbHmResources[r]);
         const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapItem->key);

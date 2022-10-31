@@ -651,6 +651,8 @@ korl_internal void _korl_vulkan_deviceMemory_allocator_forEach(_Korl_Vulkan_Devi
         for(u$ aa = 0; aa < arrlenu(arena->stbDaAllocations); aa++)
         {
             _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = &(arena->stbDaAllocations[aa]);
+            if(allocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_UNALLOCATED)
+                continue;
             KORL_ZERO_STACK(_Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked, allocationHandleUnpacked);
             allocationHandleUnpacked.arenaIndex   = korl_checkCast_u$_to_u16(a);
             allocationHandleUnpacked.type         = allocation->type;
