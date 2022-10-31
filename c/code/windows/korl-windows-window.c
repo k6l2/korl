@@ -226,7 +226,7 @@ korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
-    _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8/*@TODO: change this back to 1 when we're done testing*/), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_windows_window_context.stringPool      = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
@@ -390,78 +390,6 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
     if(context->gameDll)
         _korl_windows_window_findGameApiAddresses(context->gameDll);
 }
-#if 0///@TODO: delete
-typedef struct _Korl_Windows_Window_CodepointTest_Log
-{
-    u8 trailingMetaTagCodepoints;
-    u8 metaTagComponent;// 0=>log level, 1=>time stamp, 2=>line, 3=>file, 4=>function
-    const u16* pCodepointMetaTagStart;
-} _Korl_Windows_Window_CodepointTest_Log;
-korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_windows_window_codepointTest_log)///@TODO: remove/move this; this is just scaffolding
-{
-    // log meta data example:
-    //╟INFO   ┆11:48'00"525┆   58┆korl-vulkan.c┆_korl_vulkan_debugUtilsMessengerCallback╢ 
-    _Korl_Windows_Window_CodepointTest_Log*const data = KORL_C_CAST(_Korl_Windows_Window_CodepointTest_Log*, userData);
-    if(data->pCodepointMetaTagStart)
-    {
-        bool endOfMetaTagComponent = false;
-        if(*pCodepoint == L'╢')
-        {
-            data->trailingMetaTagCodepoints = 2;
-            data->pCodepointMetaTagStart    = NULL;
-            endOfMetaTagComponent = true;
-        }
-        else if(*pCodepoint == L'┆')
-            endOfMetaTagComponent = true;
-        if(endOfMetaTagComponent)
-        {
-            switch(data->metaTagComponent)
-            {
-            case 0:{// log level
-                korl_assert(currentLineColor);
-                switch(*data->pCodepointMetaTagStart)
-                {
-                case L'A':{// ASSERT
-                    currentLineColor->xyz = (Korl_Math_V3f32){1, 0, 0};// red
-                    break;}
-                case L'E':{// ERROR
-                    currentLineColor->xyz = (Korl_Math_V3f32){1, 0, 0};// red
-                    break;}
-                case L'W':{// WARNING
-                    currentLineColor->xyz = (Korl_Math_V3f32){1, 1, 0};// yellow
-                    break;}
-                case L'I':{// INFO
-                    // do nothing; the line color defaults to white!
-                    break;}
-                case L'V':{// VERBOSE
-                    currentLineColor->xyz = (Korl_Math_V3f32){0, 1, 1};// cyan
-                    break;}
-                }
-                break;}
-            case 1:{// time
-                break;}
-            case 2:{// line #
-                break;}
-            case 3:{// file
-                break;}
-            case 4:{// function
-                break;}
-            }
-            data->metaTagComponent++;
-        }
-    }
-    else if(*pCodepoint == L'╟')
-    {
-        data->pCodepointMetaTagStart = pCodepoint + 1;
-        data->metaTagComponent       = 0;
-    }
-    if(data->trailingMetaTagCodepoints)
-        data->trailingMetaTagCodepoints--;
-    if(data->pCodepointMetaTagStart || data->trailingMetaTagCodepoints)
-        return false;
-    return true;
-}
-#endif
 #ifdef _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
 typedef struct _Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData
 {
@@ -607,6 +535,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_file_finishAllAsyncOperations();
             korl_assetCache_clearAllFileHandles();
             korl_vulkan_clearAllDeviceAllocations();
+            ///@TODO: destroy runtime Korl_Resource_Handles inside korl-gui, since our handles will be invalid; maybe just destroy all widgets?
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             if(context->gameApi.korl_game_onReload)
