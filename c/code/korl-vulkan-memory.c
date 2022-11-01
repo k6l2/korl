@@ -675,7 +675,7 @@ korl_internal void _korl_vulkan_deviceMemory_allocator_logReport(_Korl_Vulkan_De
                                ,allocation->bytesOccupied
                                ,typeRawString
                                ,allocation->file, allocation->line);
-            ///@TODO: log the program address space occupied by host-visible buffer memory maps
+            /// KORL-ISSUE-000-000-089: vulkan-memory: log the program address space occupied by host-visible buffer memory maps
         }
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ═════════════════════════════╝");

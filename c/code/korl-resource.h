@@ -65,6 +65,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
+#include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
 korl_internal void korl_resource_initialize(void);
 korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile);
 korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
@@ -73,7 +74,6 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle);
 korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* data, u$ dataBytes);
 korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize);
 korl_internal void korl_resource_flushUpdates(void);
-///@TODO: organization: Korl_Vulkan_DeviceMemory_AllocationHandle is not declared yet; it is in korl-vulkan.h, but don't we want to _not_ expose that to the user of korl-resource?... HMMmmmmm
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
 korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
 /** I don't like how this API requires us to do file I/O in modules outside of 

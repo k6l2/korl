@@ -35,24 +35,24 @@
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef struct Korl_Vulkan_DrawVertexData
 {
-    Korl_Vulkan_PrimitiveType                 primitiveType;
-    Korl_Resource_Handle                      resourceHandleVertexBuffer;
-    Korl_Vulkan_VertexIndex                   indexCount;
-    const Korl_Vulkan_VertexIndex*            indices;
-    u32                                       vertexCount;
-    u8                                        positionDimensions;        // only acceptable values: {2, 3}
-    const f32*                                positions;
-    u32                                       positionsStride;
-    const Korl_Math_V2f32*                    uvs;
-    u32                                       uvsStride;
-    const Korl_Vulkan_Color4u8*               colors;
-    u32                                       colorsStride;
-    u32                                       instanceCount;
-    u8                                        instancePositionDimensions;// only acceptable values: {2, 3}
-    const f32*                                instancePositions;
-    u32                                       instancePositionsStride;
-    const u32*                                instanceUint;
-    u32                                       instanceUintStride;
+    Korl_Vulkan_PrimitiveType      primitiveType;
+    Korl_Resource_Handle           resourceHandleVertexBuffer;
+    Korl_Vulkan_VertexIndex        indexCount;
+    const Korl_Vulkan_VertexIndex* indices;
+    u32                            vertexCount;
+    u8                             positionDimensions;        // only acceptable values: {2, 3}
+    const f32*                     positions;
+    u32                            positionsStride;
+    const Korl_Math_V2f32*         uvs;
+    u32                            uvsStride;
+    const Korl_Vulkan_Color4u8*    colors;
+    u32                            colorsStride;
+    u32                            instanceCount;
+    u8                             instancePositionDimensions;// only acceptable values: {2, 3}
+    const f32*                     instancePositions;
+    u32                            instancePositionsStride;
+    const u32*                     instanceUint;
+    u32                            instanceUintStride;
 } Korl_Vulkan_DrawVertexData;
 typedef struct Korl_Vulkan_DrawState_Features
 {
@@ -104,7 +104,7 @@ typedef struct Korl_Vulkan_DrawState_Model
     Korl_Math_V3f32      translation;
     Korl_Math_Quaternion rotation;
     Korl_Math_V3f32      scale;
-    Korl_Math_V4f32      color;///@TODO: maybe move this elsewhere later?...  not sure yet
+    Korl_Math_V4f32      color;
 } Korl_Vulkan_DrawState_Model;
 typedef struct Korl_Vulkan_DrawState_Scissor
 {

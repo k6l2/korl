@@ -1,5 +1,4 @@
 #include "korl-resource.h"
-#include "korl-vulkan.h"
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
 #include "korl-stringPool.h"
@@ -114,7 +113,6 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
 {
     _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);
-    ///@TODO: assert that multimediaType is valid?
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* check if the resource was already added */
@@ -147,7 +145,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
                     int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
-                    /* @TODO: performance; stbi API unfortunately doesn't seem to have the ability for the user to provide their own allocator, so we need an extra alloc/copy/free here */
+                    ///KORL-PERFORMANCE-000-000-032: resource: stbi API unfortunately doesn't seem to have the ability for the user to provide their own allocator, so we need an extra alloc/copy/free here
                     {
                         stbi_uc*const stbiPixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
                         korl_assert(stbiPixels);
@@ -407,10 +405,9 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload)
 {
     /* check to see if the asset is loaded in our database */
-    _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
+    _Korl_Resource_Graphics_Type graphicsType           = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(rawUtf16AssetName, &graphicsType);
-    ///@TODO: assert that multimediaType is valid?
-    const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
+    const Korl_Resource_Handle handle                   = _korl_resource_handle_pack(unpackedHandle);
     ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     if(hashMapIndex < 0)
         return;// if the asset isn't found in the resource database, then we don't have to do anything
