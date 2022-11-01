@@ -142,9 +142,7 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     VkCommandPool commandPool;// the command buffers in this pool should all be considered _transient_; the command pool will be cleared at the start of each frame
     VkCommandBuffer commandBufferGraphics;
     VkCommandBuffer commandBufferTransfer;
-    /// @TODO: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), 
-    ///        and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; 
-    ///        theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
+    // KORL-PERFORMANCE-000-000-037: vulkan: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
     _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
     u$* stbDaInUseDeviceAssetIndices;
@@ -230,7 +228,6 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkSwapchainKHR     swapChain;
     u32                                swapChainImagesSize;
     VkImage                            swapChainImages       [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    // VkCommandBuffer                    swapChainCommandBuffers[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];///@TODO: delete/recycle
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     unsigned wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
     unsigned wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image

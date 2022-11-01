@@ -5,7 +5,7 @@
 #include "korl-math.h"
 #include "korl-checkCast.h"
 #include "korl-file.h"
-#include "korl-stb-ds.h"///@TODO: WARNING: the stb-ds module is initialized _after_ the log module; this is okay for now as far as I can tell since the stb-ds code can still function without the module being loaded, as all it does right now is just run unit tests, but this obviously not clean
+#include "korl-stb-ds.h"/// KORL-ISSUE-000-000-091: log: WARNING: the stb-ds module is initialized _after_ the log module; this is okay for now as far as I can tell since the stb-ds code can still function without the module being loaded, as all it does right now is just run unit tests, but this obviously not clean
 #include <stdio.h>// for freopen_s
 /* NOTE:  Windows implementation of %S & %s is NON-STANDARD, so as with here, we 
     need to make sure to _never_ use just %s or %S, and instead opt to use 

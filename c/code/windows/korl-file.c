@@ -44,7 +44,7 @@ typedef struct _Korl_File_Context
      * this code module.
      * Individual elements of this pool are considered to be "unused" if the 
      * \c handle member == \c 0 .  */
-    _Korl_File_AsyncOpertion asyncPool[1024];///@TODO: why did I have to change this 64=>1024?  This feels so jank right now...
+    _Korl_File_AsyncOpertion asyncPool[128];/// KORL-ISSUE-000-000-090: file: why did I have to change this 64=>128?  This feels so jank right now...
     Korl_File_AsyncIoHandle nextAsyncIoHandle;
     HANDLE handleIoCompletionPort;
     u64* stbDaUsedFileAsyncKeys;

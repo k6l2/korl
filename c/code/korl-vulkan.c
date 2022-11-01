@@ -514,7 +514,7 @@ korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
     pipeline.primitiveTopology        = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     pipeline.positionDimensions       = 3;
     pipeline.positionsStride          = pipeline.positionDimensions*sizeof(f32);
-    pipeline.colorsStride             = 4*sizeof(u8);// default to RGBA; @TODO: should this be more well-defined somewhere, such as a Korl_Vulkan_ColorChannel datatype or something?
+    pipeline.colorsStride             = 4*sizeof(u8);// KORL-FEATURE-000-000-043: vulkan: add ability to configure color; default color is RGBA; should this be more well-defined somewhere, such as a Korl_Vulkan_ColorChannel datatype or something?
     pipeline.uvsStride                = 0;
     pipeline.features.enableBlend     = true;
     pipeline.features.enableDepthTest = true;
@@ -1036,7 +1036,7 @@ korl_internal void _korl_vulkan_dequeueTransferCommands(void)
                             ,/*memoryBarrierCount*/0, /*pMemoryBarriers*/NULL
                             ,/*bufferBarrierCount*/0, /*bufferBarriers*/NULL
                             ,/*imageBarrierCount*/1, &barrierImageMemory);
-        ///@TODO: even though this technique _should_ make sure that the upcoming frame will have the correct pixel data, we are still not properly isolating texture memory from frames that are still WIP
+        // KORL-ISSUE-000-000-092: vulkan: even though this technique _should_ make sure that the upcoming frame will have the correct pixel data, we are still not properly isolating texture memory from frames that are still WIP
     }
     for(u$ c = 0; c < arrlenu(surfaceContext->stbDaQueuedBufferTransfers); c++)
     {
@@ -1371,9 +1371,9 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     surfaceContext->deviceMemoryHostVisible = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
-                                                                                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT///@TODO: we could potentially get more performance here by removing HOST_COHERENT & manually calling vkFlushMappedMemoryRanges & vkInvalidateMappedMemoryRanges on bulk memory ranges; timings necessary
+                                                                                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT// KORL-PERFORMANCE-000-000-034: vulkan: we could potentially get more performance here by removing HOST_COHERENT & manually calling vkFlushMappedMemoryRanges & vkInvalidateMappedMemoryRanges on bulk memory ranges; timings necessary
                                                                                         ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                                                                                         | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT///@TODO: potentially better device performance by removing these *_BUFFER bits, then adding a device-local vertex data pool to which we transfer all vertex data to
+                                                                                         | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT// KORL-PERFORMANCE-000-000-033: vulkan: potentially better device performance by removing these *_BUFFER bits, then adding a device-local vertex data pool to which we transfer all vertex data to
                                                                                          | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
                                                                                          | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
                                                                                         ,/*image usage flags*/0
@@ -2058,7 +2058,8 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     /* now that we have potentially configured the pipeline config cache to use 
         the vertex data from a vertex buffer, we can do a final round of sanity 
         checks before attempting to configure a pipeline */
-    ///@TODO: ??? at the very least, we need to ensure that if we are passing instance positions, the instance position dimension value is set correctly!
+    /// It really feels like I should be doing some sanity checks here, but I honestly don't know what I should be checking for...
+    /// Maybe if _korl_vulkan_setPipelineMetaData fails in the future we can revisit this validation step.
     /* now we can actually configure the pipeline */
     const u$ pipelinePrevious = surfaceContext->drawState.currentPipeline;
     _korl_vulkan_setPipelineMetaData(surfaceContext->drawState.pipelineConfigurationCache);
@@ -2164,7 +2165,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         vkUpdateDescriptorSets(context->device, descriptorWriteCount, descriptorSetWrites, 0/*copyCount*/, NULL/*copies*/);
     }
     /* stage the vertex index/attribute data */
-    ///@TODO: we could potentially get more performance here by transferring this data to device-local memory
+    // KORL-PERFORMANCE-000-000-035: vulkan: we could potentially get more performance here by transferring this data to device-local memory
     korl_time_probeStart(draw_stage_vertices);
     byteOffsetStagingBuffer = 0;
     bufferStaging           = VK_NULL_HANDLE;
@@ -2175,7 +2176,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                , byteOffsetStagingBufferUvs               = 0
                , byteOffsetStagingBufferInstancePositions = 0
                , byteOffsetStagingBufferInstanceU32s      = 0;
-    ///@TODO: if we allow interleaved vertex data, we can copy _everything_ to the staging buffer in a single memcopy operation!
+    // KORL-PERFORMANCE-000-000-036: vulkan: if we allow interleaved vertex data, we can copy _everything_ to the staging buffer in a single memcopy operation!
     if(vertexData->indices)
     {
         const u$ stageDataBytes = vertexData->indexCount*sizeof(*vertexData->indices);
