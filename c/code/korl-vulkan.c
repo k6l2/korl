@@ -34,7 +34,12 @@ korl_global_const char* G_KORL_VULKAN_DEVICE_EXTENSIONS[] =
             (PFN_vk##proc)vkGetInstanceProcAddr(context->instance, "vk"#proc); \
         korl_assert(context->vk##proc);                                        \
     }
-#define _KORL_VULKAN_CHECK(operation) korl_assert((operation) == VK_SUCCESS) //@TODO: store the result of operation in a temporary local variable so we can potentially look at it in the debugger
+#define _KORL_VULKAN_CHECK(operation) \
+    do\
+    {\
+        const VkResult _korl_vulkan_checkedResult = (operation);\
+        korl_assert(_korl_vulkan_checkedResult == VK_SUCCESS);\
+    } while(0)
 #if KORL_DEBUG
 korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
