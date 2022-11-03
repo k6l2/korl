@@ -139,9 +139,6 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView   imageView;
     VkFramebuffer frameBuffer;
-    VkCommandPool commandPool;// the command buffers in this pool should all be considered _transient_; the command pool will be cleared at the start of each frame
-    VkCommandBuffer commandBufferGraphics;
-    VkCommandBuffer commandBufferTransfer;
     // KORL-PERFORMANCE-000-000-037: vulkan: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
     _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
@@ -214,13 +211,6 @@ typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR surface;
     Korl_Math_V3f32 frameBeginClearColor;
-    /** 
-     * Used to ensure that the user calls \c korl_vulkan_frameBegin before, and 
-     * the same number of times as, \c korl_vulkan_frameEnd .  This value == 1 
-     * if the last frame delimitter called was \c korl_vulkan_frameBegin , and 
-     * == 0 if the last frame delimitter called was \c korl_vulkan_frameEnd .
-     */
-    u8 frameStackCounter;
     /** the index of the swap chain we are working with for the current frame */
     u32 frameSwapChainImageIndex;
     VkSurfaceFormatKHR swapChainSurfaceFormat;
@@ -237,6 +227,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
         VkSemaphore semaphoreImageAvailable;
         VkSemaphore semaphoreRenderDone;
         VkFence     fenceFrameComplete;
+        VkCommandBuffer commandBufferTransfer;
+        VkCommandBuffer commandBufferGraphics;
     } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     bool deferredResize;
     u32 deferredResizeX, deferredResizeY;
@@ -257,12 +249,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
     _Korl_Vulkan_QueuedFreeDeviceLocalAllocation* stbDaDeviceLocalFreeQueue;// used to defer the destruction of device-local assets until we know that they are no longer in use
     Korl_Vulkan_DeviceMemory_AllocationHandle defaultTexture;
-    ///@TODO: we could theoretically refactor korl-vulkan such that \c korl_vulkan_frameBegin is no longer a thing (or at least is an internal API which is only ever called once during initialization, & once during frameEnd to "begin" the next frame)
-    ///       and if we are able to do this, there would be absolutely no need for \c stbDaQueuedTextureUploads (it could be removed entirely)
-    ///       in addition, this would allow us to completely remove the API requirement that certain functions must be called during frameBegin/End, 
-    ///       which would also allow us to remove \c frameStackCounter
-    _Korl_Vulkan_QueuedTextureUpload*  stbDaQueuedTextureUploads; // this collection will be cleared each time frameEnd is called during a valid frame, where it will be used to compose memory transfer commands for the current frame's commandBufferTransfer
-    _Korl_Vulkan_QueuedBufferTransfer* stbDaQueuedBufferTransfers;// see above comments
+    VkCommandPool   commandPool;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

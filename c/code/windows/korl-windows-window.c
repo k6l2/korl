@@ -542,8 +542,7 @@ korl_internal void korl_windows_window_loop(void)
                 context->gameApi.korl_game_onReload(context->gameMemory, korlApi);
             korl_time_probeStop(save_state_load);
         }
-        korl_time_probeStart(vulkan_frame_begin);        korl_vulkan_frameBegin();                                           korl_time_probeStop(vulkan_frame_begin);
-        korl_time_probeStart(gui_frame_begin);           korl_gui_frameBegin();                                              korl_time_probeStop(gui_frame_begin);
+        korl_time_probeStart(gui_frame_begin); korl_gui_frameBegin(); korl_time_probeStop(gui_frame_begin);
 #ifdef _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
         {
             KORL_ZERO_STACK(_Korl_Windows_Window_DebugMemoryEnumContext, debugEnumContext);

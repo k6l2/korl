@@ -174,7 +174,6 @@ korl_internal void korl_vulkan_loadShaders(void);
 korl_internal void korl_vulkan_createPipeline(void);
 #endif//0
 korl_internal void korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3]);
-korl_internal void korl_vulkan_frameBegin(void);
 korl_internal void korl_vulkan_frameEnd(void);
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
