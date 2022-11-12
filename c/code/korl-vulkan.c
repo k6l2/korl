@@ -320,6 +320,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
                                                                                            ,surfaceContext->swapChainImageExtent.height
                                                                                            ,VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                                                                                            ,VK_IMAGE_ASPECT_DEPTH_BIT, formatDepthBuffer, depthBufferTiling
+                                                                                           ,0// 0 => generate new handle automatically
                                                                                            ,&allocationDepthStencilImageBuffer);
     /* ----- create render pass ----- */
     KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
@@ -880,6 +881,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
                                                                                                                        | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
                                                                                                                        | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
                                                                                                                       ,VK_SHARING_MODE_EXCLUSIVE
+                                                                                                                      ,0// 0 => generate new handle automatically
                                                                                                                       ,&validAllocation);
         KORL_ZERO_STACK(_Korl_Vulkan_Buffer, newBuffer);
         newBuffer.allocation = newBufferAllocationHandle;
@@ -1036,6 +1038,21 @@ korl_internal void _korl_vulkan_frameBegin(void)
         _Korl_Vulkan_Buffer*const buffer = &(surfaceContext->stbDaStagingBuffers[b]);
         if(buffer->framesSinceLastUsed < KORL_U8_MAX)
             buffer->framesSinceLastUsed++;
+    }
+    /* we can now dequeue deep destruction of device memory objects that we know 
+        are no longer being used by the device anymore */
+    for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(surfaceContext->deviceLocalAllocationShallowDequeueBatches); )
+    {
+        _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch*const batch = &(surfaceContext->deviceLocalAllocationShallowDequeueBatches[i]);
+        if(batch->framesSinceQueued < KORL_U8_MAX)
+            batch->framesSinceQueued++;
+        if(batch->framesSinceQueued > surfaceContext->swapChainImagesSize)
+        {
+            _korl_vulkan_deviceMemory_allocator_freeShallowDequeue(&surfaceContext->deviceMemoryDeviceLocal, batch->dequeueCount);
+            KORL_MEMORY_POOL_REMOVE(surfaceContext->deviceLocalAllocationShallowDequeueBatches, i);
+        }
+        else
+            i++;
     }
     /* same as with staging buffers, we can now nullify device assets that we 
         know are no longer being used */
@@ -1633,7 +1650,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
         createInfoTexture.sizeX = 1;
         createInfoTexture.sizeY = 1;
-        surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(&createInfoTexture);
+        surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(&createInfoTexture, 0/*0 => generate new handle*/);
         Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
         korl_vulkan_texture_update(surfaceContext->defaultTexture, &defaultTextureColor);
     }
@@ -1694,21 +1711,23 @@ korl_internal Korl_Math_V2u32 korl_vulkan_getSurfaceSize(void)
 /** Appends each allocator handle to the surface context's device-local free queue. */
 korl_internal _KORL_VULKAN_DEVICEMEMORY_ALLOCATOR_FOR_EACH_CALLBACK(_korl_vulkan_clearAllDeviceAllocations_forEachCallback)
 {
-    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = KORL_C_CAST(_Korl_Vulkan_SurfaceContext*, userData);
+    _Korl_Vulkan_Context*const                                  context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const                           surfaceContext = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch*const dequeueBatch   = KORL_C_CAST(_Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch*, userData);
     if(allocation->freeQueued)
         return;
     if(allocationHandle == surfaceContext->defaultTexture)
         return;
-    KORL_ZERO_STACK(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation, queuedFreeDeviceLocalAllocation);
-    queuedFreeDeviceLocalAllocation.allocationHandle = allocationHandle;
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, queuedFreeDeviceLocalAllocation);
-    allocation->freeQueued = true;
+    ///@TODO: this could be faster if we pass the allocation itself, but this isn't really that important right now...
+    _korl_vulkan_deviceMemory_allocator_freeShallowQueueDestroyDeviceObjects(allocator, allocationHandle);
+    dequeueBatch->dequeueCount++;
 }
 korl_internal void korl_vulkan_clearAllDeviceAllocations(void)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    _korl_vulkan_deviceMemory_allocator_forEach(&surfaceContext->deviceMemoryDeviceLocal, _korl_vulkan_clearAllDeviceAllocations_forEachCallback, surfaceContext);
+    _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch*const dequeueBatch = KORL_MEMORY_POOL_ADD(surfaceContext->deviceLocalAllocationShallowDequeueBatches);
+    korl_memory_zero(dequeueBatch, sizeof(*dequeueBatch));
+    _korl_vulkan_deviceMemory_allocator_forEach(&surfaceContext->deviceMemoryDeviceLocal, _korl_vulkan_clearAllDeviceAllocations_forEachCallback, dequeueBatch);
 }
 korl_internal void korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3])
 {
@@ -2290,16 +2309,17 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     korl_time_probeStop(draw_compose_gfx_commands);
     surfaceContext->drawStateLast = surfaceContext->drawState;
 }
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo)
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     return _korl_vulkan_deviceMemory_allocateTexture(&surfaceContext->deviceMemoryDeviceLocal
                                                     ,createInfo->sizeX, createInfo->sizeY
                                                     ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT 
                                                      | VK_IMAGE_USAGE_SAMPLED_BIT
+                                                    ,requiredHandle
                                                     ,NULL/*out_allocation*/);
 }
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo)
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* determine the buffer usage flags based on the buffer's attribute descriptors */
@@ -2322,6 +2342,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
                                                 ,createInfo->bytes
                                                 ,bufferUsageFlags
                                                 ,VK_SHARING_MODE_EXCLUSIVE
+                                                ,requiredHandle
                                                 ,&deviceMemoryAllocation);
     /* before we return the handle, update the new device asset buffer with the 
         createInfo attribute descriptors */
@@ -2445,6 +2466,7 @@ korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_Allo
                                                 ,bytes
                                                 ,deviceMemoryAllocation->subType.buffer.bufferUsageFlags
                                                 ,VK_SHARING_MODE_EXCLUSIVE
+                                                ,0// 0 => generate new handle automatically
                                                 ,&resizedAllocation);
     /* compose memory copy commands to copy from the old device memory allocation to the new one */
     KORL_ZERO_STACK_ARRAY(VkBufferCopy, copyRegions, 1);

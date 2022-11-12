@@ -306,7 +306,7 @@ korl_internal void korl_file_initialize(void)
     //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(32), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(64), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     context->stringPool             = korl_stringPool_create(context->allocatorHandle);
     context->nextAsyncIoHandle      = 1;
     context->handleIoCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0/*use default; # of processors in the system*/);
@@ -1129,6 +1129,10 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_assetCache_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
     const u64 descriptorByteStartResource = arrlenu(enumContext->stbDaSaveStateBuffer);
     korl_resource_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartGui = arrlenu(enumContext->stbDaSaveStateBuffer);
+    korl_gui_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartGfx = arrlenu(enumContext->stbDaSaveStateBuffer);
+    korl_gfx_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
     /* begin iteration over memory allocators, copying allocations to the save 
         state buffer, as well as count how many allocations there are per 
         allocator */
@@ -1153,6 +1157,8 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartWindow     , sizeof(descriptorByteStartWindow));
     korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAssetCache , sizeof(descriptorByteStartAssetCache));
     korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartResource   , sizeof(descriptorByteStartResource));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartGui        , sizeof(descriptorByteStartGui));
+    korl_stb_ds_arrayAppendU8(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartGfx        , sizeof(descriptorByteStartGfx));
 }
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
 {
@@ -1233,6 +1239,8 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     u64 descriptorByteStartWindow;
     u64 descriptorByteStartAssetCache;
     u64 descriptorByteStartResource;
+    u64 descriptorByteStartGui;
+    u64 descriptorByteStartGfx;
     const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
                                    + sizeof(_KORL_SAVESTATE_VERSION) 
                                    + sizeof(allocatorCount) 
@@ -1240,7 +1248,9 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                                    + sizeof(descriptorByteStartAllocations) 
                                    + sizeof(descriptorByteStartWindow) 
                                    + sizeof(descriptorByteStartAssetCache)
-                                   + sizeof(descriptorByteStartResource);
+                                   + sizeof(descriptorByteStartResource)
+                                   + sizeof(descriptorByteStartGui)
+                                   + sizeof(descriptorByteStartGfx);
     LARGE_INTEGER filePointerDistanceToMove;
     filePointerDistanceToMove.QuadPart = -korl_checkCast_u$_to_i$(manifestBytesRequired);
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_END))
@@ -1288,6 +1298,16 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     if(!ReadFile(hFile, &descriptorByteStartResource, sizeof(descriptorByteStartResource), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    if(!ReadFile(hFile, &descriptorByteStartGui, sizeof(descriptorByteStartGui), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    if(!ReadFile(hFile, &descriptorByteStartGfx, sizeof(descriptorByteStartGfx), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
@@ -1431,6 +1451,30 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     if(!korl_resource_saveStateRead(hFile))
     {
         korl_logLastError("korl_resource_saveStateRead failed");
+        goto cleanUp;
+    }
+    /* load the gui module state */
+    filePointerDistanceToMove.QuadPart = descriptorByteStartGui;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    if(!korl_gui_saveStateRead(hFile))
+    {
+        korl_logLastError("korl_gui_saveStateRead failed");
+        goto cleanUp;
+    }
+    /* load the gfx module state */
+    filePointerDistanceToMove.QuadPart = descriptorByteStartGfx;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    if(!korl_gfx_saveStateRead(hFile))
+    {
+        korl_logLastError("korl_gfx_saveStateRead failed");
         goto cleanUp;
     }
     korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));

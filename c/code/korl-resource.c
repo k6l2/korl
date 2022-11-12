@@ -45,7 +45,7 @@ typedef struct _Korl_Resource
     } subType;
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType; example: an image resource data will point to an RGBA bitmap
     u$    dataBytes;
-    bool dirty;// if this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
+    bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
     Korl_StringPool_String stringFileName;
 } _Korl_Resource;
 typedef struct _Korl_Resource_Map
@@ -107,7 +107,6 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
 korl_internal void korl_resource_initialize(void)
 {
     korl_memory_zero(&_korl_resource_context, sizeof(_korl_resource_context));
-    ///@TODO: why are we leaking on this allocator when loading a memory state?!?!
     _korl_resource_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
     _korl_resource_context.stringPool      = korl_allocate(_korl_resource_context.allocatorHandle, sizeof(*_korl_resource_context.stringPool));
     mchmdefault(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
@@ -162,7 +161,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
                     }
                     resource->subType.graphics.createInfo.texture.sizeX     = korl_checkCast_i$_to_u32(imageSizeX);
                     resource->subType.graphics.createInfo.texture.sizeY     = korl_checkCast_i$_to_u32(imageSizeY);
-                    resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.createInfo.texture);
+                    resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.createInfo.texture, 0/*0 => generate new handle*/);
                     korl_vulkan_texture_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data);
                     break;}
                 default:
@@ -201,7 +200,7 @@ korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const Korl_V
     resource->data      = korl_allocate(_korl_resource_context.allocatorHandle, createInfo->bytes);
     korl_assert(resource->data);
     /* create the multimedia asset */
-    resource->subType.graphics.deviceMemoryAllocationHandle       = korl_vulkan_deviceAsset_createVertexBuffer(createInfo);
+    resource->subType.graphics.deviceMemoryAllocationHandle       = korl_vulkan_deviceAsset_createVertexBuffer(createInfo, 0/*0 => generate new handle*/);
     resource->subType.graphics.createInfo.vertexBuffer.createInfo = *createInfo;
     // we have to perform a deep-copy of the vertex buffer create info struct, since the vertex attribute descriptors is stored in the create info as a pointer
     korl_assert(createInfo->vertexAttributeDescriptorCount <= korl_arraySize(resource->subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors));
@@ -231,7 +230,7 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     resource->data      = korl_allocate(_korl_resource_context.allocatorHandle, resource->dataBytes);
     korl_assert(resource->data);
     /* create the multimedia asset */
-    resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(createInfo);
+    resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(createInfo, 0/*0 => generate new handle*/);
     resource->subType.graphics.createInfo.texture           = *createInfo;
     return handle;
 }
@@ -388,11 +387,11 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
                 switch(resourceMapItem->value.subType.graphics.type)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture);
+                    korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
                     break;}
                 case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
                     resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo.vertexAttributeDescriptors = resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
-                    resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo);
+                    korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
                     break;}
                 default:
                     korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);
@@ -403,6 +402,7 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
                 korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
                 break;
             }
+            mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, resourceMapItem->key);
             resourceMapItem->value.dirty = true;
             break;}
         default:

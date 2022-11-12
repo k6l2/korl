@@ -4,7 +4,6 @@
 #include "korl-vulkan.h"
 #include "korl-interface-platform.h"
 korl_internal void korl_gfx_initialize(void);
-korl_internal void korl_gfx_clearFontCache(void);
 korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
@@ -74,3 +73,9 @@ korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR(korl_gfx_batchTex
 korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(korl_gfx_batchRectangleSetSize);
 korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(korl_gfx_batchRectangleSetColor);
 korl_internal KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(korl_gfx_batchCircleSetColor);
+korl_internal void korl_gfx_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
+/** I don't like how this API requires us to do file I/O in modules outside of 
+ * korl-file; maybe improve this in the future to use korl-file API instea of 
+ * Win32 API?
+ * KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file? */
+korl_internal bool korl_gfx_saveStateRead(HANDLE hFile);

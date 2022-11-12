@@ -7,6 +7,7 @@
 #include "korl-vulkan-memory.h"
 #include "korl-math.h"
 #include "korl-stringPool.h"
+#include "korl-memoryPool.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 typedef enum _Korl_Vulkan_DescriptorSetIndex
@@ -188,6 +189,11 @@ typedef struct _Korl_Vulkan_QueuedFreeDeviceLocalAllocation
     Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle;
     u8 framesSinceQueued;// once this # reaches the SurfaceContext's swapChainImagesSize, we know that this device memory _must_ no longer be in use, and so we can free it
 } _Korl_Vulkan_QueuedFreeDeviceLocalAllocation;
+typedef struct _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch
+{
+    u$ dequeueCount;
+    u8 framesSinceQueued;// once this # reaches the SurfaceContext's swapChainImagesSize, we know that this device memory _must_ no longer be in use, and so we can free it
+} _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch;
 typedef struct _Korl_Vulkan_QueuedTextureUpload
 {
     VkBuffer        bufferTransferFrom;
@@ -247,6 +253,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
     /** Used for allocation of device-local assets, such as textures, mesh 
      * manifolds, SSBOs, etc... */
     _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
+    KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch, deviceLocalAllocationShallowDequeueBatches, 8);// used to remember how many device-local allocations we performed a shallow free on, so that we can completely free them when we know they are definitely no longer in use
     _Korl_Vulkan_QueuedFreeDeviceLocalAllocation* stbDaDeviceLocalFreeQueue;// used to defer the destruction of device-local assets until we know that they are no longer in use
     Korl_Vulkan_DeviceMemory_AllocationHandle defaultTexture;
     VkCommandPool   commandPool;

@@ -687,24 +687,10 @@ korl_internal void korl_gfx_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                            ,korl_math_megabytes(8), L"korl-gfx"
-                                                           ,KORL_MEMORY_ALLOCATOR_FLAGS_NONE
+                                                           ,KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE
                                                            ,NULL/*let platform choose address*/);
     mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 16);
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
-}
-korl_internal void korl_gfx_clearFontCache(void)
-{
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
-    {
-        _Korl_Gfx_FontCache*const fontCache = context->stbDaFontCaches[fc];
-        korl_resource_destroy(fontCache->glyphPage->resourceHandleTexture);
-        korl_resource_destroy(fontCache->glyphPage->resourceHandleSsboGlyphMeshVertices);
-        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->glyphPage->stbDaGlyphMeshVertices);
-        mchmfree(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbHmGlyphs);
-        korl_free(context->allocatorHandle, fontCache);
-    }
-    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 0);
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
@@ -868,6 +854,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
                 createInfoVertexBuffer.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
                 createInfoVertexBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
                 createInfoVertexBuffer.bytes                          = currentLine->visibleCharacters*sizeof(*currentLineBuffer);
+                ///@TODO: creating a new vertex buffer for each line is a huge red flag for performance issues; we should instead just utilize a single vertex buffer for any given Korl_Gfx_Text object, and have each individual text line utilize an offset into this buffer for rendering commands
                 currentLine->resourceHandleBufferText = korl_resource_createVertexBuffer(&createInfoVertexBuffer);
                 korl_assert(currentLine->resourceHandleBufferText);// shouldn't be necessary, but why not?
                 korl_resource_update(currentLine->resourceHandleBufferText, currentLineBuffer, createInfoVertexBuffer.bytes);
@@ -1628,5 +1615,20 @@ korl_internal KORL_PLATFORM_GFX_BATCH_CIRCLE_SET_COLOR(korl_gfx_batchCircleSetCo
     korl_assert(context->_vertexColors);
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
+}
+korl_internal void korl_gfx_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
+{
+    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_gfx_context, sizeof(_korl_gfx_context));
+}
+korl_internal bool korl_gfx_saveStateRead(HANDLE hFile)
+{
+    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
+    if(!ReadFile(hFile, &_korl_gfx_context, sizeof(_korl_gfx_context), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    return true;
 }
 #undef _LOCAL_STRING_POOL_POINTER

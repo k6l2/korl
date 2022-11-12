@@ -11,7 +11,11 @@
  *     region of the window.
  * korl_vulkan_destroySurface
  * korl_vulkan_getSurfaceSize
- * korl_vulkan_clearAllDeviceAssets
+ * korl_vulkan_clearAllDeviceAllocations
+ *     Just to clarify here, calling this function doesn't actually destroy the 
+ *     device allocations; it simply allows us to create new allocations which 
+ *     can potentially occupy the same place in memory as well as possess the 
+ *     same allocation handle.
  * korl_vulkan_setSurfaceClearColor
  * korl_vulkan_frameBegin
  * korl_vulkan_frameEnd
@@ -178,8 +182,8 @@ korl_internal void korl_vulkan_frameEnd(void);
 korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo);
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);

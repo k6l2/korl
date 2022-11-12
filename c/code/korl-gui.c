@@ -243,8 +243,8 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(128), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);///@TODO: having a large gui stack necessarily means that we will likely be sending a shit-ton of data from CPU=>GPU every frame, which is a huge performance smell; investigate a way to reduce this number and send less data to the GPU each frame
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(  1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(64), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
@@ -272,16 +272,6 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
     mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
-}
-korl_internal void korl_gui_destroyAllWidgets(void)
-{
-    _Korl_Gui_Context*const context = &_korl_gui_context;
-    for(u$ w = 0; w < arrlenu(context->stbDaWidgets); ++w)
-    {
-        _Korl_Gui_Widget*const widget = &context->stbDaWidgets[w];
-        _korl_gui_widget_destroy(widget);
-    }
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, 0);
 }
 korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
 {
@@ -843,4 +833,27 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat
     const u8 resultActuationCount = widget->subType.button.actuationCount;
     widget->subType.button.actuationCount = 0;
     return resultActuationCount;
+}
+korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
+{
+    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_gui_context, sizeof(_korl_gui_context));
+}
+korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
+{
+    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
+    if(!ReadFile(hFile, &_korl_gui_context, sizeof(_korl_gui_context), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    /* If the memory state style was assigned, it is always going to point to 
+        the text buffer for the font asset name inside the context.  The problem 
+        of course is that the context is in data segment memory, so we have to 
+        reassign this pointer to be the same address in the currently running 
+        application instance data segment for the gui context. */
+    ///@TODO: this is really janky, and I hope in the future this can be deleted
+    if(_korl_gui_context.style.fontWindowText)
+        _korl_gui_context.style.fontWindowText = _korl_gui_context.fontAssetName;
+    return true;
 }
