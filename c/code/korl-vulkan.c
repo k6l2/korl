@@ -1718,7 +1718,7 @@ korl_internal _KORL_VULKAN_DEVICEMEMORY_ALLOCATOR_FOR_EACH_CALLBACK(_korl_vulkan
         return;
     if(allocationHandle == surfaceContext->defaultTexture)
         return;
-    ///@TODO: this could be faster if we pass the allocation itself, but this isn't really that important right now...
+    // KORL-PERFORMANCE-000-000-038: vulkan: MINOR; this could be faster if we pass the allocation itself, but this isn't really that important right now...
     _korl_vulkan_deviceMemory_allocator_freeShallowQueueDestroyDeviceObjects(allocator, allocationHandle);
     dequeueBatch->dequeueCount++;
 }

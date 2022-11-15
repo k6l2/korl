@@ -30,8 +30,7 @@ korl_internal void _korl_vulkan_deviceMemory_arena_initialize(Korl_Memory_Alloca
     /* initialize the list of unused allocation slot indices */
     mcarrsetlen(KORL_C_CAST(void*, allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, arrlen(arena->stbDaAllocationSlots));
     for(u$ i = 0; i < arrlenu(arena->stbDaUnusedAllocationSlotIndices); i++)
-        ///@TODO: reverse this order, so that when we pop we take the lower #s first!
-        arena->stbDaUnusedAllocationSlotIndices[i] = korl_checkCast_u$_to_u16(i);
+        arena->stbDaUnusedAllocationSlotIndices[i] = korl_checkCast_u$_to_u16(arrlenu(arena->stbDaUnusedAllocationSlotIndices) - 1 - i);
 }
 korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_create(Korl_Memory_AllocatorHandle allocatorHandle, VkDeviceSize bytes, u32 memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlags)
 {
@@ -214,18 +213,30 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
         {
             const u$ slotCountPrevious = arrlenu(arena->stbDaAllocationSlots);
             mcarrsetlen(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaAllocationSlots, KORL_MATH_MAX(2*slotCountPrevious, requiredHandleUnpacked.allocationId + 1u));
+            /* if we have slots:
+                [0][1][2][3][4][5]
+                [X][X][X][ ][ ][ ]// where 'X' indicates the slot is occupied
+                we want to add the following unused slot indices:
+                [5][4][3]// decending order, since pop operations take from the end of the array
+                where:
+                    arrlenu(arena->stbDaAllocationSlots) == 6
+                    slotCountPrevious == 3
+                    i == {3, 4, 5}
+                    arrlenu(arena->stbDaAllocationSlots) - slotCountPrevious == 3
+                    i - slotCountPrevious = {0, 1, 2}
+                    arrlenu(arena->stbDaAllocationSlots) - 1 == 5
+                    (arrlenu(arena->stbDaAllocationSlots) - 1) - (i - slotCountPrevious) == {5, 4, 3}
+                    @korl-vulkan-memory-unused-allocation-slot-indices-append-formula */
             for(u$ i = slotCountPrevious; i < arrlenu(arena->stbDaAllocationSlots); i++)
-                mcarrpush(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, korl_checkCast_u$_to_u16(i));
+                mcarrpush(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, korl_checkCast_u$_to_u16(arrlenu(arena->stbDaAllocationSlots) - 1 - (i - slotCountPrevious)));
         }
         /* ensure that the required allocation index slot in the chosen arena is 
             actually available (unused); we can do this by finding the index of 
             the allocation slot index in the arena's stbDaUnusedAllocationSlotIndices */
         u$ unusedSlotIndexIndex = 0;
         for(; unusedSlotIndexIndex < arrlenu(arena->stbDaUnusedAllocationSlotIndices); unusedSlotIndexIndex++)
-        {
             if(arena->stbDaUnusedAllocationSlotIndices[unusedSlotIndexIndex] == requiredHandleUnpacked.allocationId)
                 break;
-        }
         korl_assert(unusedSlotIndexIndex < arrlenu(arena->stbDaUnusedAllocationSlotIndices));
         const u16 allocationIndex = arena->stbDaUnusedAllocationSlotIndices[unusedSlotIndexIndex];
         arrdel(arena->stbDaUnusedAllocationSlotIndices, unusedSlotIndexIndex);
@@ -328,7 +339,8 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
         const u$ slotCountPrevious = arrlenu(arena->stbDaAllocationSlots);
         mcarrsetlen(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaAllocationSlots, 2*slotCountPrevious);
         for(u$ i = slotCountPrevious; i < arrlenu(arena->stbDaAllocationSlots); i++)
-            mcarrpush(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, korl_checkCast_u$_to_u16(i));
+            // copied from @korl-vulkan-memory-unused-allocation-slot-indices-append-formula
+            mcarrpush(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, korl_checkCast_u$_to_u16(arrlenu(arena->stbDaAllocationSlots) - 1 - (i - slotCountPrevious)));
     }
     korl_assert(arrlenu(arena->stbDaUnusedAllocationSlotIndices) > 0);
     out_allocationHandleUnpacked->arenaIndex   = korl_checkCast_u$_to_u16(newAllocationArenaId);
