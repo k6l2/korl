@@ -20,6 +20,7 @@
 #include "korl-resource.h"
 #if KORL_DEBUG
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
+    // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -470,6 +471,14 @@ korl_internal void korl_windows_window_loop(void)
     KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 1024);
     loopStats_korlMemoryPoolSize = 0;
     bool deferProbeReport = false;
+#ifdef _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
+    Korl_Gfx_Text* debugText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf", .size = 66}, 24);
+    {
+        const wchar_t* text = L"test line 0\n"
+                              L"line 1\n";
+        korl_gfx_text_fifoAdd(debugText, (acu16){.data = text, .size = korl_memory_stringSize(text)}, context->allocatorHandle, NULL, NULL);
+    }
+#endif
     while(!quit)
     {
         _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
@@ -489,8 +498,8 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(Main_Loop);
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
-        while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/, 
-                          0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
+        while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/
+                         ,0/*filterMin*/, 0/*filterMax*/, PM_REMOVE))
         {
             if(windowMessage.message == WM_QUIT) quit = true;
             const BOOL messageTranslated = TranslateMessage(&windowMessage);
@@ -561,6 +570,9 @@ korl_internal void korl_windows_window_loop(void)
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
+#ifdef _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
+        korl_gfx_text_draw(debugText, korl_math_aabb2f32_fromPoints(KORL_F32_MAX,KORL_F32_MAX, -KORL_F32_MAX,-KORL_F32_MAX));
+#endif
         korl_time_probeStop(game_update);
         korl_time_probeStart(gui_frame_end);          korl_gui_frameEnd();          korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(flush_glyph_pages);      korl_gfx_flushGlyphPages();   korl_time_probeStop(flush_glyph_pages);

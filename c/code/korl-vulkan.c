@@ -2250,7 +2250,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                 korl_log(ERROR, "vertex attribute [%u] not implemented", d);
             }
             batchVertexBuffers      [attributeBinding] = deviceMemoryAllocationVertexBuffer->subType.buffer.vulkanBuffer;
-            batchVertexBufferOffsets[attributeBinding] = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset;
+            batchVertexBufferOffsets[attributeBinding] = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset + vertexData->resourceHandleVertexBufferByteOffset;
         }
     }
     /* compose the draw commands */
@@ -2468,6 +2468,10 @@ korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_Allo
                                                 ,VK_SHARING_MODE_EXCLUSIVE
                                                 ,0// 0 => generate new handle automatically
                                                 ,&resizedAllocation);
+    /* copy/preserve the old buffer's attributeDescriptors to the new buffer */
+    korl_memory_copy(resizedAllocation->subType.buffer.attributeDescriptors
+                    ,       deviceMemoryAllocation->subType.buffer.attributeDescriptors
+                    ,sizeof(deviceMemoryAllocation->subType.buffer.attributeDescriptors));
     /* compose memory copy commands to copy from the old device memory allocation to the new one */
     KORL_ZERO_STACK_ARRAY(VkBufferCopy, copyRegions, 1);
     copyRegions[0].size = KORL_MATH_MIN(bytes, deviceMemoryAllocation->bytesUsed);

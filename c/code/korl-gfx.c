@@ -96,7 +96,6 @@ typedef struct _Korl_Gfx_Context
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {
-    Korl_Resource_Handle resourceHandleBufferText;
     u32 visibleCharacters;// used to determine how many glyph instances are in the draw call
     Korl_Math_Aabb2f32 modelAabb;
     Korl_Math_V4f32 color;
@@ -763,7 +762,7 @@ korl_internal void korl_gfx_flushGlyphPages(void)
                 tempImageBuffer[y*fontGlyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = fontGlyphPage->data[y*fontGlyphPage->dataSquareSize + x]};
         // upload the image buffer to graphics device texture //
         korl_assert(fontGlyphPage->resourceHandleTexture);
-        korl_resource_update(fontGlyphPage->resourceHandleTexture, tempImageBuffer, tempImageBufferSize);
+        korl_resource_update(fontGlyphPage->resourceHandleTexture, tempImageBuffer, tempImageBufferSize, 0/*destinationByteOffset*/);
         // free the temporary R8G8B8A8-format image buffer //
         korl_free(context->allocatorHandle, tempImageBuffer);
         fontGlyphPage->textureOutOfDate = false;
@@ -773,30 +772,40 @@ korl_internal void korl_gfx_flushGlyphPages(void)
         const u$ newGlyphMeshVertexBufferBytes = sizeof(*fontGlyphPage->stbDaGlyphMeshVertices)*arrlenu(fontGlyphPage->stbDaGlyphMeshVertices);
         korl_assert(fontGlyphPage->resourceHandleSsboGlyphMeshVertices);
         korl_resource_resize(fontGlyphPage->resourceHandleSsboGlyphMeshVertices, newGlyphMeshVertexBufferBytes);
-        korl_resource_update(fontGlyphPage->resourceHandleSsboGlyphMeshVertices, fontGlyphPage->stbDaGlyphMeshVertices, newGlyphMeshVertexBufferBytes);
+        korl_resource_update(fontGlyphPage->resourceHandleSsboGlyphMeshVertices, fontGlyphPage->stbDaGlyphMeshVertices, newGlyphMeshVertexBufferBytes, 0/*destinationByteOffset*/);
         /**/
         korl_time_probeStop(update_glyph_mesh_ssbo);
     }
 }
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
 {
+    KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
+    vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
+    vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
+    vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D;
+    vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
+    vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
+    vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT;
+    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoBufferText);
+    createInfoBufferText.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
+    createInfoBufferText.vertexAttributeDescriptors     = vertexAttributeDescriptors;
+    createInfoBufferText.bytes                          = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
     const u$ bytesRequired = sizeof(Korl_Gfx_Text) + utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data);
     Korl_Gfx_Text*const result    = korl_allocate(allocator, bytesRequired);
     u16*const resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
-    result->allocator          = allocator;
-    result->textPixelHeight    = textPixelHeight;
-    result->utf16AssetNameFont = (acu16){.data = resultAssetNameFont, .size = utf16AssetNameFont.size};
-    result->modelRotate        = KORL_MATH_QUATERNION_IDENTITY;
-    result->modelScale         = KORL_MATH_V3F32_ONE;
+    result->allocator                = allocator;
+    result->textPixelHeight          = textPixelHeight;
+    result->utf16AssetNameFont       = (acu16){.data = resultAssetNameFont, .size = utf16AssetNameFont.size};
+    result->modelRotate              = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelScale               = KORL_MATH_V3F32_ONE;
+    result->resourceHandleBufferText = korl_resource_createVertexBuffer(&createInfoBufferText);
     mcarrsetcap(KORL_C_CAST(void*, result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
 }
 korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
 {
-    const _Korl_Gfx_Text_Line*const linesEnd = context->stbDaLines + arrlen(context->stbDaLines);
-    for(_Korl_Gfx_Text_Line* line = context->stbDaLines; line < linesEnd; line++)
-        korl_resource_destroy(line->resourceHandleBufferText);
+    korl_resource_destroy(context->resourceHandleBufferText);
     mcarrfree(KORL_C_CAST(void*, context->allocator), context->stbDaLines);
     korl_free(context->allocator, context);
 }
@@ -842,24 +851,21 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
             {
                 /* if we had a current working text line, we need to flush the text 
                     instance data we've accumulated so far into a vertex buffer 
-                    device asset */
-                KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
-                vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
-                vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
-                vertexAttributeDescriptors[0].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D;
-                vertexAttributeDescriptors[1].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
-                vertexAttributeDescriptors[1].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
-                vertexAttributeDescriptors[1].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT;
-                KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoVertexBuffer);
-                createInfoVertexBuffer.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
-                createInfoVertexBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
-                createInfoVertexBuffer.bytes                          = currentLine->visibleCharacters*sizeof(*currentLineBuffer);
-                ///@TODO: creating a new vertex buffer for each line is a huge red flag for performance issues; we should instead just utilize a single vertex buffer for any given Korl_Gfx_Text object, and have each individual text line utilize an offset into this buffer for rendering commands
-                currentLine->resourceHandleBufferText = korl_resource_createVertexBuffer(&createInfoVertexBuffer);
-                korl_assert(currentLine->resourceHandleBufferText);// shouldn't be necessary, but why not?
-                korl_resource_update(currentLine->resourceHandleBufferText, currentLineBuffer, createInfoVertexBuffer.bytes);
+                    device asset; instead of creating a separate buffer resource 
+                    for each line, we are just going to accumulate a giant 
+                    buffer used by the entire Gfx_Text object */
+                const u$ bufferBytesRequiredMin = (context->totalVisibleGlyphs + currentLine->visibleCharacters) * sizeof(*currentLineBuffer);
+                const u$ currentBufferBytes     = korl_resource_getByteSize(context->resourceHandleBufferText);
+                if(currentBufferBytes < bufferBytesRequiredMin)
+                {
+                    const u$ bufferBytesNew = KORL_MATH_MAX(bufferBytesRequiredMin, 2*currentBufferBytes);
+                    korl_resource_resize(context->resourceHandleBufferText, bufferBytesNew);
+                }
+                korl_resource_update(context->resourceHandleBufferText, currentLineBuffer, currentLine->visibleCharacters * sizeof(*currentLineBuffer), context->totalVisibleGlyphs * sizeof(*currentLineBuffer));
                 /* update the Text object's model AABB with the new line graphics we just added */
                 KORL_MATH_ASSIGN_CLAMP_MAX(context->_modelAabb.max.x, currentLine->modelAabb.max.x);
+                /* update other Text object metrics */
+                context->totalVisibleGlyphs += currentLine->visibleCharacters;
             }
             currentLine      = NULL;
             currentLineColor = KORL_MATH_V4F32_ONE;// default next line color to white
@@ -897,17 +903,20 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
     /**/
     const u$ linesToRemove = KORL_MATH_MIN(lineCount, arrlenu(context->stbDaLines));
     context->_modelAabb.max.x = 0;
+    u$ glyphsToRemove = 0;
     for(u$ l = 0; l < arrlenu(context->stbDaLines); l++)
     {
         if(l < linesToRemove)
         {
-            korl_resource_destroy(context->stbDaLines[l].resourceHandleBufferText);
+            glyphsToRemove += context->stbDaLines[l].visibleCharacters;
             continue;
         }
         const _Korl_Gfx_Text_Line*const line = &(context->stbDaLines[l]);
         KORL_MATH_ASSIGN_CLAMP_MAX(context->_modelAabb.max.x, line->modelAabb.max.x);
     }
     arrdeln(context->stbDaLines, 0, linesToRemove);
+    context->totalVisibleGlyphs -= korl_checkCast_u$_to_u32(glyphsToRemove);
+    korl_resource_shift(context->resourceHandleBufferText, -1/*shift to the left; remove the glyphs instances at the beginning of the buffer*/ * glyphsToRemove*sizeof(_Korl_Gfx_FontGlyphInstance));
     const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     context->_modelAabb.min.y = arrlenu(context->stbDaLines) * -lineDeltaY;
 }
@@ -956,6 +965,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     model.translation = context->modelTranslate;
     model.color       = KORL_MATH_V4F32_ONE;
     model.translation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
+    u$ currentVisibleGlyphOffset = 0;// used to determine the byte (transform required) offset into the Text object's text buffer resource
     for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
     {
         if(model.translation.y < visibleRegion.min.y - fontCache->fontAscent)
@@ -966,11 +976,13 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
             drawStateLine.model = &model;
             korl_vulkan_setDrawState(&drawStateLine);
-            vertexData.instanceCount              = line->visibleCharacters;
-            vertexData.resourceHandleVertexBuffer = line->resourceHandleBufferText;
+            vertexData.instanceCount                        = line->visibleCharacters;
+            vertexData.resourceHandleVertexBuffer           = context->resourceHandleBufferText;
+            vertexData.resourceHandleVertexBufferByteOffset = currentVisibleGlyphOffset*sizeof(_Korl_Gfx_FontGlyphInstance);
             korl_vulkan_draw(&vertexData);
         }
-        model.translation.y -= lineDeltaY;
+        model.translation.y       -= lineDeltaY;
+        currentVisibleGlyphOffset += line->visibleCharacters;
     }
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)

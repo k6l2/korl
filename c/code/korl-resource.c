@@ -259,20 +259,27 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     /* remove the resource from the database */
     mchmdel(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
 }
-korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* data, u$ dataBytes)
+korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 {
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
-    korl_assert(dataBytes <= resource->dataBytes);
-    korl_memory_copy(resource->data, data, dataBytes);
+    korl_assert(destinationByteOffset + sourceDataBytes <= resource->dataBytes);
+    korl_memory_copy(KORL_C_CAST(u8*, resource->data) + destinationByteOffset, sourceData, sourceDataBytes);
     if(!resource->dirty)
     {
         mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
+}
+korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
+{
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    korl_assert(hashMapIndex >= 0);
+    _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+    return resource->dataBytes;
 }
 korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize)
 {
@@ -281,14 +288,64 @@ korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteS
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
-    if(resource->dataBytes != newByteSize && !resource->dirty)
+    if(resource->dataBytes == newByteSize)
+        return;// silently do nothing if we're not actually resizing
+    korl_assert(newByteSize);// for now, ensure that the user is requesting a non-zero # of bytes
+    switch(unpackedHandle.multimediaType)
     {
-        mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
-        resource->dirty = true;
+    case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
+        switch(resource->subType.graphics.type)
+        {
+        case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
+            korl_vulkan_vertexBuffer_resize(&resource->subType.graphics.deviceMemoryAllocationHandle, newByteSize);
+            resource->subType.graphics.createInfo.vertexBuffer.createInfo.bytes = newByteSize;
+            break;}
+        default:{
+            korl_log(ERROR, "invalid graphics type: %i", resource->subType.graphics.type);
+            break;}
+        }
+        break;}
+    default:{
+        korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
+        break;}
     }
     resource->data      = korl_reallocate(_korl_resource_context.allocatorHandle, resource->data, newByteSize);
     resource->dataBytes = newByteSize;
     korl_assert(resource->data);
+}
+korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount)
+{
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    korl_assert(hashMapIndex >= 0);
+    _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
+    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
+    if(byteShiftCount == 0)
+        return;// silently do nothing else if the user doesn't provide a non-zero byte shift amount
+    if(byteShiftCount < 0)
+    {
+        const u$ remainingBytes = korl_checkCast_u$_to_i$(resource->dataBytes) >= (-1*byteShiftCount) 
+                                ? resource->dataBytes + byteShiftCount
+                                : 0;
+        if(remainingBytes)
+            korl_memory_move(resource->data, KORL_C_CAST(u8*, resource->data) + -byteShiftCount, remainingBytes);
+        korl_memory_zero(KORL_C_CAST(u8*, resource->data) + -byteShiftCount, resource->dataBytes - remainingBytes);
+    }
+    else
+    {
+        const u$ remainingBytes = korl_checkCast_u$_to_i$(resource->dataBytes) >= byteShiftCount 
+                                ? resource->dataBytes - byteShiftCount 
+                                : 0;
+        if(remainingBytes)
+            korl_memory_move(KORL_C_CAST(u8*, resource->data) + byteShiftCount, resource->data, remainingBytes);
+        korl_memory_zero(resource->data, resource->dataBytes - remainingBytes);
+    }
+    /* shifting data by a non-zero amount => the resource must be flushed */
+    if(!resource->dirty)
+    {
+        mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
+        resource->dirty = true;
+    }
 }
 korl_internal void korl_resource_flushUpdates(void)
 {
@@ -314,11 +371,6 @@ korl_internal void korl_resource_flushUpdates(void)
                 korl_vulkan_texture_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data);
                 break;}
             case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-                if(resource->subType.graphics.createInfo.vertexBuffer.createInfo.bytes != resource->dataBytes)
-                {
-                    korl_vulkan_vertexBuffer_resize(&resource->subType.graphics.deviceMemoryAllocationHandle, resource->dataBytes);
-                    resource->subType.graphics.createInfo.vertexBuffer.createInfo.bytes = resource->dataBytes;
-                }
                 korl_vulkan_vertexBuffer_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data, resource->dataBytes, 0);
                 break;}
             default:{

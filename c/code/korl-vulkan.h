@@ -41,6 +41,7 @@ typedef struct Korl_Vulkan_DrawVertexData
 {
     Korl_Vulkan_PrimitiveType      primitiveType;
     Korl_Resource_Handle           resourceHandleVertexBuffer;
+    u$                             resourceHandleVertexBufferByteOffset;
     Korl_Vulkan_VertexIndex        indexCount;
     const Korl_Vulkan_VertexIndex* indices;
     u32                            vertexCount;

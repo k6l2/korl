@@ -8,6 +8,7 @@ korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
     Korl_Memory_AllocatorHandle allocator;
+    Korl_Resource_Handle resourceHandleBufferText;// used to store the vertex buffer which contains all of the _Korl_Gfx_FontGlyphInstance data for all the lines contained in this Text object; each line will access an offset into this vertex buffer determined by the sum of all visible characters of all lines prior to it in the stbDaLines list
     struct _Korl_Gfx_Text_Line* stbDaLines;// the user can obtain the line count by calling arrlenu(text->stbDaLines)
     f32 textPixelHeight;
     acu16 utf16AssetNameFont;
@@ -15,6 +16,7 @@ typedef struct Korl_Gfx_Text
     Korl_Math_Quaternion modelRotate;
     Korl_Math_V3f32      modelScale;
     Korl_Math_Aabb2f32 _modelAabb;// not valid until fifo add/remove APIs have been called
+    u32 totalVisibleGlyphs;// redundant value; acceleration for operations on resourceHandleBufferText
 } Korl_Gfx_Text;
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
 korl_internal void           korl_gfx_text_destroy(Korl_Gfx_Text* context);
