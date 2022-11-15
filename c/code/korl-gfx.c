@@ -635,7 +635,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     for(const wchar_t* character = batch->_text; *character; character++)
     {
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, *character);
-#if 1///@TODO: apparently calculating kerning advance is _extremely_ expensive when the batch->_text is large; should this be an opt-in option to trade CPU time for font rendering accuracy?
+        // KORL-PERFORMANCE-000-000-039: gfx: apparently calculating kerning advance is _extremely_ expensive when the batch->_text is large; should this be an opt-in option to trade CPU time for font rendering accuracy?  In practice though, we really should _not_ be making huge text batches; we should always be using Gfx_Text objects for large amounts of text!  
         if(textBaselineCursor.x > 0.f)
         {
             const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
@@ -643,7 +643,6 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                                              ,bakedGlyph->glyphIndex);
             textBaselineCursor.x += fontCache->fontScale*kernAdvance;
         }
-#endif
         /* set text instanced vertex data */
         KORL_C_CAST(Korl_Math_V2f32*, batch->_instancePositions)[currentGlyph] = textBaselineCursor;
         batch->_instanceU32s[currentGlyph]                                     = bakedGlyph->bakeOrder;
@@ -925,10 +924,6 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
-#if 1///@TODO: kinda hacky; if we're trying to draw glyphs from a page that hasn't been updated on the GPU yet, we just don't draw that frame since we don't yet know the glyph page device asset handles yet (glyph atlas texture, glyph mesh buffer)
-    if(fontCache->glyphPage->textureOutOfDate)
-        return;
-#endif
     const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     /**/
     korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
@@ -1205,10 +1200,9 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
         // offset position by the position anchor ratio, using the AABB size
         korl_math_v2f32_assignSubtract(&model.translation.xy, korl_math_v2f32_multiply(korl_math_aabb2f32_size(batch->_textAabb)
                                                                                       ,batch->_textPositionAnchor));
-#if 1///@TODO: temporary code; disable vertex colors for now, since this is super expensive for text anyway!
+        /* disable vertex colors for now, since this is super expensive for text anyway! */
         vertexData.colors       = NULL;
         vertexData.colorsStride = 0;
-#endif
     }
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
     features.enableBlend     = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING);
