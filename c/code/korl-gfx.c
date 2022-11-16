@@ -15,6 +15,16 @@
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_gfx_context.stringPool))
 #define _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS 0
+/* Since we expect that all KORL renderer code requires right-handed 
+    triangle normals (counter-clockwise vertex winding), all tri quads have 
+    the following formation:
+    [3]-[2]
+     | \ | 
+    [0]-[1] */
+korl_global_const Korl_Vulkan_VertexIndex _KORL_GFX_TRI_QUAD_INDICES[] = 
+    { 0, 1, 3
+    , 1, 2, 3 };
+korl_global_const u8 _KORL_GFX_POSITION_DIMENSIONS = 3;// for now, we will always store 3D position data
 _STATIC_ASSERT(sizeof(Korl_Vulkan_DeviceMemory_AllocationHandle) == sizeof(Korl_Gfx_DeviceMemoryAllocationHandle));
 typedef struct _Korl_Gfx_FontGlyphBakedCharacterBoundingBox
 {
@@ -1136,9 +1146,6 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
 }
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {
-    korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
-        { 0, 1, 3
-        , 1, 2, 3 };
     korl_time_probeStart(gfx_batch);
     korl_time_probeStart(text_generate_mesh);
     if(batch->_assetNameFont)
@@ -1159,15 +1166,15 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
     vertexData.indexCount                 = korl_vulkan_safeCast_u$_to_vertexIndex(batch->_vertexIndexCount);
     vertexData.indices                    = batch->_vertexIndices;
     vertexData.vertexCount                = batch->_vertexCount;
-    vertexData.positionDimensions         = sizeof(*batch->_vertexPositions)/sizeof(*vertexData.positions);
-    vertexData.positions                  = batch->_vertexPositions->elements;
+    vertexData.positionDimensions         = batch->_vertexPositionDimensions;
+    vertexData.positions                  = batch->_vertexPositions;
     vertexData.colors                     = batch->_vertexColors;
     vertexData.uvs                        = batch->_vertexUvs;
     vertexData.instanceCount              = batch->_instanceCount;
     vertexData.instancePositions          = batch->_instancePositions;
     vertexData.instancePositionDimensions = batch->_instancePositionDimensions;
     vertexData.instanceUint               = batch->_instanceU32s;
-    if(batch->_vertexPositions)   vertexData.positionsStride         = sizeof(*batch->_vertexPositions);
+    if(batch->_vertexPositions)   vertexData.positionsStride         = batch->_vertexPositionDimensions*sizeof(*batch->_vertexPositions);
     if(batch->_vertexColors)      vertexData.colorsStride            = sizeof(*batch->_vertexColors);
     if(batch->_vertexUvs)         vertexData.uvsStride               = sizeof(*batch->_vertexUvs);
     if(batch->_instancePositions) vertexData.instancePositionsStride = batch->_instancePositionDimensions*sizeof(*batch->_instancePositions);
@@ -1186,8 +1193,8 @@ korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
             so we can just use a common data structure to draw all the glyph 
             mesh instances; since we are currently limited to triangles, we can 
             use a universal triangle quad index set here */
-        vertexData.indices    = triQuadIndices;
-        vertexData.indexCount = korl_arraySize(triQuadIndices);
+        vertexData.indices    = _KORL_GFX_TRI_QUAD_INDICES;
+        vertexData.indexCount = korl_arraySize(_KORL_GFX_TRI_QUAD_INDICES);
         /* use glyph texture */
         samplers.resourceHandleTexture = batch->_fontTextureHandle;
         /* use the glyph mesh vertices buffer as the shader storage buffer 
@@ -1230,35 +1237,33 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
     korl_time_probeStart(create_batch_rect_tex);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + 6 * sizeof(Korl_Vulkan_VertexIndex)
-        + 4 * sizeof(Korl_Vulkan_Position)
-        + 4 * sizeof(Korl_Vulkan_Uv);
+                        + 6 * sizeof(Korl_Vulkan_VertexIndex)
+                        + 4 * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
+                        + 4 * sizeof(Korl_Math_V2f32)/*UVs*/;
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
-    result->allocatorHandle   = allocatorHandle;
-    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
-    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
-    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexIndexCount = 6;
-    result->_vertexCount      = 4;
-    result->opColor           = KORL_BLEND_OP_ADD;
-    result->factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha           = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
-    result->_texture          = resourceHandleTexture;
-    result->_vertexIndices    = KORL_C_CAST(wchar_t*, result + 1);
-    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*   , KORL_C_CAST(u8*, result->_vertexIndices   ) + 6*sizeof(Korl_Vulkan_VertexIndex));
-    result->_vertexUvs        = KORL_C_CAST(Korl_Vulkan_Uv*         , KORL_C_CAST(u8*, result->_vertexPositions ) + 4*sizeof(Korl_Vulkan_Position));
+    result->allocatorHandle           = allocatorHandle;
+    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
+    result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexIndexCount         = 6;
+    result->_vertexCount              = 4;
+    result->opColor                   = KORL_BLEND_OP_ADD;
+    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
+    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    result->opAlpha                   = KORL_BLEND_OP_ADD;
+    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
+    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->_texture                  = resourceHandleTexture;
+    result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
+    result->_vertexIndices            = KORL_C_CAST(wchar_t*        , result + 1);
+    result->_vertexPositions          = KORL_C_CAST(f32*            , KORL_C_CAST(u8*, result->_vertexIndices  ) + 6*sizeof(Korl_Vulkan_VertexIndex));
+    result->_vertexUvs                = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, result->_vertexPositions) + 4*result->_vertexPositionDimensions*sizeof(f32));
     /* initialize the batch's dynamic data */
-    korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
-        { 0, 1, 3
-        , 1, 2, 3 };
-    korl_memory_copy(result->_vertexIndices, vertexIndices, sizeof(vertexIndices));
-    korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
+    korl_memory_copy(result->_vertexIndices, _KORL_GFX_TRI_QUAD_INDICES, sizeof(_KORL_GFX_TRI_QUAD_INDICES));
+    korl_shared_const Korl_Math_V3f32 vertexPositions[] = 
         { {-0.5f, -0.5f, 0.f}
         , { 0.5f, -0.5f, 0.f}
         , { 0.5f,  0.5f, 0.f}
@@ -1266,8 +1271,8 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createB
     korl_memory_copy(result->_vertexPositions, vertexPositions, sizeof(vertexPositions));
     // scale the rectangle mesh vertices by the provided size //
     for(u$ i = 0; i < korl_arraySize(vertexPositions); ++i)
-        korl_math_v2f32_assignMultiply(&result->_vertexPositions[i].xy, size);
-    korl_shared_const Korl_Vulkan_Uv vertexTextureUvs[] = 
+        korl_math_v2f32_assignMultiply(&KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[i].xy, size);
+    korl_shared_const Korl_Math_V2f32 vertexTextureUvs[] = 
         { {0, 1}
         , {1, 1}
         , {1, 0}
@@ -1282,34 +1287,35 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     korl_time_probeStart(create_batch_rect_color);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + 6 * sizeof(Korl_Vulkan_VertexIndex)
-        + 4 * sizeof(Korl_Vulkan_Position)
-        + 4 * sizeof(Korl_Vulkan_Color4u8);
+                        + 6 * sizeof(Korl_Vulkan_VertexIndex)
+                        + 4 * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
+                        + 4 * sizeof(Korl_Vulkan_Color4u8);
     /* allocate the memory */
-    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_allocate(allocatorHandle, totalBytes));
+    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*
+                                             ,korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
-    result->allocatorHandle   = allocatorHandle;
-    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
-    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
-    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexIndexCount = 6;
-    result->_vertexCount      = 4;
-    result->opColor           = KORL_BLEND_OP_ADD;
-    result->factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha           = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
-    result->_vertexIndices    = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
-    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*   , KORL_C_CAST(u8*, result->_vertexIndices   ) + 6*sizeof(Korl_Vulkan_VertexIndex));
-    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color4u8*   , KORL_C_CAST(u8*, result->_vertexPositions ) + 4*sizeof(Korl_Vulkan_Position));
+    result->allocatorHandle           = allocatorHandle;
+    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
+    result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexIndexCount         = 6;
+    result->_vertexCount              = 4;
+    result->opColor                   = KORL_BLEND_OP_ADD;
+    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
+    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    result->opAlpha                   = KORL_BLEND_OP_ADD;
+    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
+    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
+    result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
+    result->_vertexPositions          = KORL_C_CAST(f32*                    , KORL_C_CAST(u8*, result->_vertexIndices   ) + 6*sizeof(Korl_Vulkan_VertexIndex));
+    result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*   , KORL_C_CAST(u8*, result->_vertexPositions ) + 4*result->_vertexPositionDimensions*sizeof(f32));
     /* initialize the batch's dynamic data */
     korl_shared_const Korl_Vulkan_VertexIndex vertexIndices[] = 
         { 0, 1, 3
         , 1, 2, 3 };
     korl_memory_copy(result->_vertexIndices, vertexIndices, sizeof(vertexIndices));
-    korl_shared_const Korl_Vulkan_Position vertexPositions[] = 
+    korl_shared_const Korl_Math_V3f32 vertexPositions[] = 
         { {0.f, 0.f, 0.f}
         , {1.f, 0.f, 0.f}
         , {1.f, 1.f, 0.f}
@@ -1318,8 +1324,8 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
     // scale & offset the rectangle mesh vertices by the provided params //
     for(u$ i = 0; i < korl_arraySize(vertexPositions); ++i)
     {
-        korl_math_v2f32_assignSubtract(&result->_vertexPositions[i].xy, localOriginNormal);
-        korl_math_v2f32_assignMultiply(&result->_vertexPositions[i].xy, size);
+        korl_math_v2f32_assignSubtract(&KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[i].xy, localOriginNormal);
+        korl_math_v2f32_assignMultiply(&KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[i].xy, size);
     }
     for(u$ c = 0; c < result->_vertexCount; c++)
         result->_vertexColors[c] = color;
@@ -1337,36 +1343,37 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
     const u$ vertices = 1/*for center vertex*/+pointCount;
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
         + indices * sizeof(Korl_Vulkan_VertexIndex)
-        + vertices * sizeof(Korl_Vulkan_Position)
+        + vertices * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
         + vertices * sizeof(Korl_Vulkan_Color4u8);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
-    result->allocatorHandle   = allocatorHandle;
-    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
-    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
-    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexIndexCount = korl_checkCast_u$_to_u32(indices);
-    result->_vertexCount      = korl_checkCast_u$_to_u32(vertices);
-    result->opColor           = KORL_BLEND_OP_ADD;
-    result->factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha           = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
-    result->_vertexIndices    = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
-    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*   , KORL_C_CAST(u8*, result->_vertexIndices   ) + indices*sizeof(Korl_Vulkan_VertexIndex));
-    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color4u8*   , KORL_C_CAST(u8*, result->_vertexPositions ) + vertices*sizeof(Korl_Vulkan_Position));
+    result->allocatorHandle           = allocatorHandle;
+    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
+    result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
+    result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexIndexCount         = korl_checkCast_u$_to_u32(indices);
+    result->_vertexCount              = korl_checkCast_u$_to_u32(vertices);
+    result->opColor                   = KORL_BLEND_OP_ADD;
+    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
+    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    result->opAlpha                   = KORL_BLEND_OP_ADD;
+    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
+    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
+    result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
+    result->_vertexPositions          = KORL_C_CAST(f32*                    , KORL_C_CAST(u8*, result->_vertexIndices   ) + indices*sizeof(Korl_Vulkan_VertexIndex));
+    result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*   , KORL_C_CAST(u8*, result->_vertexPositions ) + vertices*result->_vertexPositionDimensions*sizeof(f32));
     /* initialize the batch's dynamic data */
     // vertex[0] is always the center point of the circle //
-    result->_vertexPositions[0] = (Korl_Vulkan_Position){0,0,0};
+    KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[0] = KORL_MATH_V3F32_ZERO;
     const f32 deltaRadians = 2*KORL_PI32 / pointCount;
     for(u32 p = 0; p < pointCount; p++)
     {
         const f32 spokeRadians = p*deltaRadians;
         const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(radius, spokeRadians);
-        result->_vertexPositions[1 + p] = (Korl_Vulkan_Position){spoke.x, spoke.y, 0.f};
+        KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[1 + p] = (Korl_Math_V3f32){spoke.x, spoke.y, 0.f};
     }
     for(u$ c = 0; c < vertices; c++)
         result->_vertexColors[c] = color;
@@ -1385,25 +1392,26 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES(korl_gfx_createBatchTrian
     korl_time_probeStart(create_batch_tris);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + 3*triangleCount * sizeof(Korl_Vulkan_Position)
+        + 3*triangleCount * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
         + 3*triangleCount * sizeof(Korl_Vulkan_Color4u8);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
-    result->allocatorHandle   = allocatorHandle;
-    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
-    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
-    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexCount      = 3*triangleCount;
-    result->opColor           = KORL_BLEND_OP_ADD;
-    result->factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha           = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
-    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*, result + 1);
-    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 3*triangleCount*sizeof(Korl_Vulkan_Position));
+    result->allocatorHandle           = allocatorHandle;
+    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
+    result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexCount              = 3*triangleCount;
+    result->opColor                   = KORL_BLEND_OP_ADD;
+    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
+    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    result->opAlpha                   = KORL_BLEND_OP_ADD;
+    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
+    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
+    result->_vertexPositions          = KORL_C_CAST(f32*                 , result + 1);
+    result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 3*triangleCount*result->_vertexPositionDimensions*sizeof(f32));
     /* return the batch */
     korl_time_probeStop(create_batch_tris);
     return result;
@@ -1413,25 +1421,26 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_LINES(korl_gfx_createBatchLines)
     korl_time_probeStart(create_batch_lines);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
-        + 2*lineCount * sizeof(Korl_Vulkan_Position)
+        + 2*lineCount * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
         + 2*lineCount * sizeof(Korl_Vulkan_Color4u8);
     /* allocate the memory */
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
-    result->allocatorHandle   = allocatorHandle;
-    result->primitiveType     = KORL_VULKAN_PRIMITIVETYPE_LINES;
-    result->_scale            = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
-    result->_rotation         = KORL_MATH_QUATERNION_IDENTITY;
-    result->_vertexCount      = 2*lineCount;
-    result->opColor           = KORL_BLEND_OP_ADD;
-    result->factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha           = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
-    result->_vertexPositions  = KORL_C_CAST(Korl_Vulkan_Position*, result + 1);
-    result->_vertexColors     = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 2*lineCount*sizeof(Korl_Vulkan_Position));
+    result->allocatorHandle           = allocatorHandle;
+    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_LINES;
+    result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
+    result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->_vertexCount              = 2*lineCount;
+    result->opColor                   = KORL_BLEND_OP_ADD;
+    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
+    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    result->opAlpha                   = KORL_BLEND_OP_ADD;
+    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
+    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
+    result->_vertexPositions          = KORL_C_CAST(f32*                 , result + 1);
+    result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 2*lineCount*result->_vertexPositionDimensions*sizeof(f32));
     /* return the batch */
     korl_time_probeStop(create_batch_lines);
     return result;
@@ -1473,7 +1482,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_TEXT(korl_gfx_createBatchText)
     /* initialize the batch struct */
     result->allocatorHandle             = allocatorHandle;
     result->primitiveType               = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
-    result->_scale                      = (Korl_Vulkan_Position){1.f, 1.f, 1.f};
+    result->_scale                      = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                   = KORL_MATH_QUATERNION_IDENTITY;
     result->_textPixelHeight            = textPixelHeight;
     result->_textPixelOutline           = outlinePixelSize;
@@ -1528,7 +1537,9 @@ korl_internal KORL_PLATFORM_GFX_BATCH_SET_BLEND_STATE(korl_gfx_batchSetBlendStat
 }
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION(korl_gfx_batchSetPosition)
 {
-    context->_position = position;
+    korl_assert(positionDimensions == 2 || positionDimensions == 3);
+    for(u8 d = 0; d < positionDimensions; d++)
+        context->_position.elements[d] = position[d];
 }
 korl_internal KORL_PLATFORM_GFX_BATCH_SET_POSITION_2D(korl_gfx_batchSetPosition2d)
 {
@@ -1563,19 +1574,23 @@ korl_internal KORL_PLATFORM_GFX_BATCH_ADD_LINE(korl_gfx_batchAddLine)
     korl_assert(*pContext);
     const u32 newVertexCount = (*pContext)->_vertexCount + 2;
     const u$ newTotalBytes = sizeof(Korl_Gfx_Batch)
-                           + newVertexCount * sizeof(Korl_Vulkan_Position)
+                           + newVertexCount * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
                            + newVertexCount * sizeof(Korl_Vulkan_Color4u8);
     (*pContext) = KORL_C_CAST(Korl_Gfx_Batch*, 
         korl_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
     void*const previousVertexColors = (*pContext)->_vertexColors;
     korl_assert(*pContext);
-    (*pContext)->_vertexPositions = KORL_C_CAST(Korl_Vulkan_Position*, (*pContext) + 1);
-    (*pContext)->_vertexColors    = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, (*pContext)->_vertexPositions) + newVertexCount*sizeof(Korl_Vulkan_Position));
+    (*pContext)->_vertexPositions = KORL_C_CAST(f32*                 , (*pContext) + 1);
+    (*pContext)->_vertexColors    = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, (*pContext)->_vertexPositions) + newVertexCount*_KORL_GFX_POSITION_DIMENSIONS*sizeof(f32));
     korl_memory_move((*pContext)->_vertexColors, previousVertexColors, (*pContext)->_vertexCount*sizeof(Korl_Vulkan_Color4u8));
     (*pContext)->_vertexCount     = newVertexCount;
     /* set the properties of the new line */
-    (*pContext)->_vertexPositions[newVertexCount - 2] = p0;
-    (*pContext)->_vertexPositions[newVertexCount - 1] = p1;
+    korl_assert(positionDimensions == 2 || positionDimensions == 3);
+    for(u8 d = 0; d < positionDimensions; d++)
+    {
+        KORL_C_CAST(Korl_Math_V3f32*, (*pContext)->_vertexPositions)[newVertexCount - 2].elements[d] = p0[d];
+        KORL_C_CAST(Korl_Math_V3f32*, (*pContext)->_vertexPositions)[newVertexCount - 1].elements[d] = p1[d];
+    }
     (*pContext)->_vertexColors[newVertexCount - 2] = color0;
     (*pContext)->_vertexColors[newVertexCount - 1] = color1;
 }
@@ -1583,8 +1598,12 @@ korl_internal KORL_PLATFORM_GFX_BATCH_SET_LINE(korl_gfx_batchSetLine)
 {
     korl_assert(context->_vertexCount > 2*lineIndex + 1);
     korl_assert(context->_vertexColors);
-    context->_vertexPositions[2*lineIndex + 0] = p0;
-    context->_vertexPositions[2*lineIndex + 1] = p1;
+    korl_assert(positionDimensions == 2 || positionDimensions == 3);
+    for(u8 d = 0; d < positionDimensions; d++)
+    {
+        KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[2*lineIndex + 0].elements[d] = p0[d];
+        KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[2*lineIndex + 1].elements[d] = p1[d];
+    }
     context->_vertexColors[2*lineIndex + 0] = color;
     context->_vertexColors[2*lineIndex + 1] = color;
 }
@@ -1604,9 +1623,9 @@ korl_internal KORL_PLATFORM_GFX_BATCH_TEXT_SET_POSITION_ANCHOR(korl_gfx_batchTex
 korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_SIZE(korl_gfx_batchRectangleSetSize)
 {
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
-    const Korl_Math_V2f32 originalSize = korl_math_v2f32_subtract(context->_vertexPositions[2].xy, context->_vertexPositions[0].xy);
+    const Korl_Math_V2f32 originalSize = korl_math_v2f32_subtract(KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[2].xy, KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[0].xy);
     for(u$ c = 0; c < context->_vertexCount; c++)
-        context->_vertexPositions[c].xy = korl_math_v2f32_multiply(size, korl_math_v2f32_divide(context->_vertexPositions[c].xy, originalSize));
+        KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[c].xy = korl_math_v2f32_multiply(size, korl_math_v2f32_divide(KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[c].xy, originalSize));
 }
 korl_internal KORL_PLATFORM_GFX_BATCH_RECTANGLE_SET_COLOR(korl_gfx_batchRectangleSetColor)
 {

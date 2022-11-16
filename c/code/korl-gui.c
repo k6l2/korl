@@ -763,10 +763,10 @@ korl_internal void korl_gui_frameEnd(void)
                                                                             window->position.x + window->size.x, window->position.y                  );
         Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);
         //KORL-ISSUE-000-000-009
-        korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Vulkan_Position){windowAabb.min.x - 0.5f, windowAabb.max.y}, (Korl_Vulkan_Position){windowAabb.max.x, windowAabb.max.y}, colorBorderUp);
-        korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Vulkan_Position){windowAabb.max.x       , windowAabb.max.y}, (Korl_Vulkan_Position){windowAabb.max.x, windowAabb.min.y}, colorBorderRight);
-        korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Vulkan_Position){windowAabb.max.x       , windowAabb.min.y}, (Korl_Vulkan_Position){windowAabb.min.x, windowAabb.min.y}, colorBorderDown);
-        korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Vulkan_Position){windowAabb.min.x       , windowAabb.min.y}, (Korl_Vulkan_Position){windowAabb.min.x, windowAabb.max.y}, colorBorderLeft);
+        korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Math_V3f32){windowAabb.min.x - 0.5f, windowAabb.max.y}.elements, (Korl_Math_V3f32){windowAabb.max.x, windowAabb.max.y}.elements, 2, colorBorderUp);
+        korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Math_V3f32){windowAabb.max.x       , windowAabb.max.y}.elements, (Korl_Math_V3f32){windowAabb.max.x, windowAabb.min.y}.elements, 2, colorBorderRight);
+        korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Math_V3f32){windowAabb.max.x       , windowAabb.min.y}.elements, (Korl_Math_V3f32){windowAabb.min.x, windowAabb.min.y}.elements, 2, colorBorderDown);
+        korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Math_V3f32){windowAabb.min.x       , windowAabb.min.y}.elements, (Korl_Math_V3f32){windowAabb.min.x, windowAabb.max.y}.elements, 2, colorBorderLeft);
         korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
         korl_gfx_useCamera(guiCamera);
         korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
