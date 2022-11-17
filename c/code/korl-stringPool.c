@@ -88,7 +88,7 @@ create_allocation_and_return_currentPoolOffset:
     newAllocation.file           = file;
     newAllocation.line           = line;
     newAllocation.poolByteOffset = korl_checkCast_u$_to_u32(currentPoolOffset);
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAllocations, newAllocation);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAllocations, newAllocation);
     return newAllocation.poolByteOffset;
 }
 korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allocationOffset, u$ bytes, const wchar_t* file, int line)
@@ -200,7 +200,7 @@ korl_internal _Korl_StringPool_String* _korl_stringPool_addNewString(Korl_String
     }
     korl_assert(newHandle);// sanity check
     /* add a new string entry */
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaStrings, KORL_STRUCT_INITIALIZE(_Korl_StringPool_String){0});
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaStrings, KORL_STRUCT_INITIALIZE(_Korl_StringPool_String){0});
     _Korl_StringPool_String*const newString = &arrlast(context->stbDaStrings);
     korl_memory_zero(newString, sizeof(*newString));
     newString->handle = newHandle;
@@ -444,8 +444,8 @@ korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle
     result.nextStringHandle    = 1;
     result.characterPoolBytes  = korl_math_kilobytes(1);
     result.characterPool       = KORL_C_CAST(u8*, korl_allocate(result.allocatorHandle, result.characterPoolBytes));
-    mcarrsetcap(KORL_C_CAST(void*, allocatorHandle), result.stbDaAllocations, 16);
-    mcarrsetcap(KORL_C_CAST(void*, allocatorHandle), result.stbDaStrings    , 16);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(allocatorHandle), result.stbDaAllocations, 16);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(allocatorHandle), result.stbDaStrings    , 16);
     korl_assert(result.characterPool);
     korl_assert(result.stbDaAllocations);
     korl_assert(result.stbDaStrings);
@@ -454,8 +454,8 @@ korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle
 korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
 {
     //KORL-ISSUE-000-000-012: add a cleanup function to verify that there are not memory leaks (ensure that strings & allocations are empty)
-    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAllocations);
-    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaStrings);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAllocations);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaStrings);
     korl_free(context->allocatorHandle, context->characterPool);
     korl_memory_zero(context, sizeof(*context));
 }

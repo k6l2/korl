@@ -425,10 +425,10 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
             vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, 
                                 &surfaceContext->swapChainImageContexts[i].frameBuffer));
         /* initialize pool of descriptor pools */
-        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaDescriptorPools, 8);
+        mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaDescriptorPools, 8);
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
         /* initialize a debug pool of device asset indices */
-        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
+        mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
 #endif
     }
 }
@@ -450,9 +450,9 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
             vkResetDescriptorPool(context->device, swapChainImageContext->stbDaDescriptorPools[d].vkDescriptorPool, /*flags; reserved*/0);
             vkDestroyDescriptorPool(context->device, swapChainImageContext->stbDaDescriptorPools[d].vkDescriptorPool, context->allocator);
         }
-        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaDescriptorPools);
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaDescriptorPools);
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
-        mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices);
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices);
 #endif
     }
     korl_memory_zero(surfaceContext->swapChainImageContexts, sizeof(surfaceContext->swapChainImageContexts));
@@ -745,7 +745,7 @@ korl_internal u$ _korl_vulkan_addPipeline(_Korl_Vulkan_Pipeline pipeline)
     /* if no pipeline found, add a new pipeline to the list */
     if(pipelineIndex >= arrlenu(context->stbDaPipelines))
     {
-        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, pipeline);
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines, pipeline);
         arrlast(context->stbDaPipelines).pipeline = VK_NULL_HANDLE;
         _korl_vulkan_createPipeline(arrlenu(context->stbDaPipelines) - 1);
     }
@@ -886,7 +886,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
                                                                                                                       ,&validAllocation);
         KORL_ZERO_STACK(_Korl_Vulkan_Buffer, newBuffer);
         newBuffer.allocation = newBufferAllocationHandle;
-        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers, newBuffer);
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaStagingBuffers, newBuffer);
         validBuffer     = &arrlast(surfaceContext->stbDaStagingBuffers);
         ///@ASSUMPTION: a reset buffer offset will always satisfy \c alignmentRequired
     }
@@ -941,7 +941,7 @@ korl_internal VkDescriptorSet _korl_vulkan_newDescriptorSet(VkDescriptorSetLayou
     /* if we didn't find an available pool, we need to allocate a new one */
     if(!validDescriptorPool)
     {
-        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaDescriptorPools, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_DescriptorPool));
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaDescriptorPools, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_DescriptorPool));
         validDescriptorPool = &(arrlast(swapChainImageContext->stbDaDescriptorPools));
         KORL_ZERO_STACK_ARRAY(VkDescriptorPoolSize, descriptorPoolSizes, 3);
         descriptorPoolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1077,7 +1077,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
         arrdeln(surfaceContext->stbDaDeviceLocalFreeQueue, 0, freedDeviceLocalAllocations);
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
     /* reset the debug pool of device asset indices */
-    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
 #endif
     if(!unableToAcquireSwapChainImage)
     {
@@ -1503,7 +1503,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                         ,/*image usage flags*/0
                                                                                         ,korl_math_megabytes(32));
     /* initialize staging buffers collection */
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);
     /* now that the device is created we can create the swap chain 
         - this also requires the command pool since we need to create the 
           graphics command buffers for each element of the swap chain
@@ -1638,8 +1638,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         vkCreateCommandPool(context->device, &createInfoCommandPool, context->allocator, 
                             &surfaceContext->commandPool));
     /* initialize the rest of the surface context's host memory structures */
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines, 128);
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines, 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, 128);
     // at this point, the surface context is fully created & ready to begin the first frame //
     /* as soon as the surface is created, we can "kick-start" the first frame; 
         this _must_ be done before attempting to perform any deviceAsset 
@@ -1685,14 +1685,14 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroyCommandPool(context->device, surfaceContext->commandPool, context->allocator);
     /* NOTE: we don't have to free individual device memory allocations in each 
              Buffer, since the entire allocators are being destroyed above! */
-    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue);
-    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaStagingBuffers);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaStagingBuffers);
     vkDestroySurfaceKHR(context->instance, surfaceContext->surface, context->allocator);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));// NOTE: Keep this as the last operation in the surface destructor!
     /* destroy the device-specific resources */
     for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
         vkDestroyPipeline(context->device, context->stbDaPipelines[p].pipeline, context->allocator);
-    mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaPipelines);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines);
     for(u$ d = 0; d < korl_arraySize(context->descriptorSetLayouts); d++)
         vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayouts[d], context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
@@ -2094,7 +2094,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         korl_assert(!textureAllocation->freeQueued);
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
         const _Korl_Vulkan_DeviceAssetHandle_Unpacked deviceAssetHandleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(surfaceContext->drawState.texture);
-        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, deviceAssetHandleUnpacked.databaseIndex);
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, deviceAssetHandleUnpacked.databaseIndex);
 #endif
         korl_assert(textureAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2366,7 +2366,7 @@ korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_Allo
     korl_assert(deviceMemoryAllocation);
     korl_assert(!deviceMemoryAllocation->freeQueued);
     deviceMemoryAllocation->freeQueued = true;
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation));
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation));
     arrlast(surfaceContext->stbDaDeviceLocalFreeQueue).allocationHandle = deviceAssetHandle;
 }
 korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData)

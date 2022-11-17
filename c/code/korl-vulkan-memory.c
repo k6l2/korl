@@ -22,13 +22,13 @@ typedef struct _Korl_Vulkan_DeviceMemory_Arena
 korl_internal void _korl_vulkan_deviceMemory_arena_initialize(Korl_Memory_AllocatorHandle allocatorHandle, _Korl_Vulkan_DeviceMemory_Arena* arena)
 {
     /* initialize an unallocated allocation which occupies the entire memory arena */
-    mcarrsetlen(KORL_C_CAST(void*, allocatorHandle), arena->stbDaUnusedRegions, 1);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandle), arena->stbDaUnusedRegions, 1);
     arrlast(arena->stbDaUnusedRegions).byteOffset = 0;
     arrlast(arena->stbDaUnusedRegions).bytes      = arena->byteSize;
     /* make sure all allocation slots are unoccupied */
     korl_memory_zero(arena->stbDaAllocationSlots, arrlenu(arena->stbDaAllocationSlots)*sizeof(*arena->stbDaAllocationSlots));
     /* initialize the list of unused allocation slot indices */
-    mcarrsetlen(KORL_C_CAST(void*, allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, arrlen(arena->stbDaAllocationSlots));
+    mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, arrlen(arena->stbDaAllocationSlots));
     for(u$ i = 0; i < arrlenu(arena->stbDaUnusedAllocationSlotIndices); i++)
         arena->stbDaUnusedAllocationSlotIndices[i] = korl_checkCast_u$_to_u16(arrlenu(arena->stbDaUnusedAllocationSlotIndices) - 1 - i);
 }
@@ -46,9 +46,9 @@ korl_internal _Korl_Vulkan_DeviceMemory_Arena _korl_vulkan_deviceMemory_arena_cr
     KORL_ZERO_STACK(_Korl_Vulkan_DeviceMemory_Arena, result);
     result.deviceMemory = deviceMemory;
     result.byteSize     = bytes;
-    mcarrsetlen(KORL_C_CAST(void*, allocatorHandle), result.stbDaAllocationSlots            , 128);
-    mcarrsetlen(KORL_C_CAST(void*, allocatorHandle), result.stbDaUnusedAllocationSlotIndices, 128);
-    mcarrsetcap(KORL_C_CAST(void*, allocatorHandle), result.stbDaUnusedRegions              , 128);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandle), result.stbDaAllocationSlots            , 128);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandle), result.stbDaUnusedAllocationSlotIndices, 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(allocatorHandle), result.stbDaUnusedRegions              , 128);
     _korl_vulkan_deviceMemory_arena_initialize(allocatorHandle, &result);
     /* if this Arena is host-visible, map the buffer to memory so we can 
         access it at any time */
@@ -64,9 +64,9 @@ korl_internal void _korl_vulkan_deviceMemory_arena_destroy(Korl_Memory_Allocator
     if(arena->hostVisibleMemory)
         vkUnmapMemory(context->device, arena->deviceMemory);
     vkFreeMemory(context->device, arena->deviceMemory, context->allocator);
-    mcarrfree(KORL_C_CAST(void*, allocatorHandle), arena->stbDaAllocationSlots);
-    mcarrfree(KORL_C_CAST(void*, allocatorHandle), arena->stbDaUnusedAllocationSlotIndices);
-    mcarrfree(KORL_C_CAST(void*, allocatorHandle), arena->stbDaUnusedRegions);
+    mcarrfree(KORL_STB_DS_MC_CAST(allocatorHandle), arena->stbDaAllocationSlots);
+    mcarrfree(KORL_STB_DS_MC_CAST(allocatorHandle), arena->stbDaUnusedAllocationSlotIndices);
+    mcarrfree(KORL_STB_DS_MC_CAST(allocatorHandle), arena->stbDaUnusedRegions);
     korl_memory_zero(arena, sizeof(*arena));
 }
 korl_internal void _korl_vulkan_deviceMemory_allocation_destroy(_Korl_Vulkan_DeviceMemory_Alloctation*const allocation)

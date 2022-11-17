@@ -416,7 +416,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_windows_
     _Korl_Windows_Window_DebugMemoryEnumContext*const enumContext = KORL_C_CAST(_Korl_Windows_Window_DebugMemoryEnumContext*, userData);
     // if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
     //     return true;//true => continue iterating over allocators
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), enumContext->stbDaAllocatorData, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData));
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocatorData, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Window_DebugMemoryEnumContext_AllocatorData));
     arrlast(enumContext->stbDaAllocatorData).name = allocatorName;
     korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_windows_window_loop_allocationEnumCallback, enumContext, NULL/*allocatorVirtualAddressEnd; don't care*/);
     return true;//true => continue iterating over allocators

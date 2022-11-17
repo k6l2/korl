@@ -109,8 +109,8 @@ korl_internal void korl_resource_initialize(void)
     korl_memory_zero(&_korl_resource_context, sizeof(_korl_resource_context));
     _korl_resource_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
     _korl_resource_context.stringPool      = korl_allocate(_korl_resource_context.allocatorHandle, sizeof(*_korl_resource_context.stringPool));
-    mchmdefault(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    mcarrsetcap(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 128);
+    mchmdefault(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 128);
     *_korl_resource_context.stringPool = korl_stringPool_create(_korl_resource_context.allocatorHandle);
 }
 korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
@@ -120,12 +120,12 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* check if the resource was already added */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     /* if the resource is new, we need to add it to the database */
     if(hashMapIndex < 0)
     {
-        mchmput(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-        hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+        mchmput(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+        hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
         korl_assert(hashMapIndex >= 0);
         _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
         resource->stringFileName = string_newAcu16(fileName);
@@ -188,10 +188,10 @@ korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const Korl_V
     unpackedHandle.uniqueId       = _korl_resource_context.nextUniqueId++;
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* add the new resource to the database */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex < 0);
-    mchmput(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    mchmput(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     resource->subType.graphics.type = _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER;
@@ -218,10 +218,10 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     unpackedHandle.uniqueId       = _korl_resource_context.nextUniqueId++;
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* add the new resource to the database */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex < 0);
-    mchmput(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    mchmput(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     resource->subType.graphics.type = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
@@ -238,7 +238,7 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
 {
     if(!handle)
         return;// silently do nothing for NULL handles
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -257,11 +257,11 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     /* destroy the cached decoded raw asset data */
     korl_free(_korl_resource_context.allocatorHandle, resource->data);
     /* remove the resource from the database */
-    mchmdel(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    mchmdel(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
 }
 korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 {
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -270,20 +270,20 @@ korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void*
     korl_memory_copy(KORL_C_CAST(u8*, resource->data) + destinationByteOffset, sourceData, sourceDataBytes);
     if(!resource->dirty)
     {
-        mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
+        mcarrpush(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
 }
 korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
 {
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     return resource->dataBytes;
 }
 korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize)
 {
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -315,7 +315,7 @@ korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteS
 }
 korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount)
 {
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -343,7 +343,7 @@ korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShift
     /* shifting data by a non-zero amount => the resource must be flushed */
     if(!resource->dirty)
     {
-        mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
+        mcarrpush(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
 }
@@ -352,7 +352,7 @@ korl_internal void korl_resource_flushUpdates(void)
     const Korl_Resource_Handle*const dirtyHandlesEnd = _korl_resource_context.stbDsDirtyResourceHandles + arrlen(_korl_resource_context.stbDsDirtyResourceHandles);
     for(const Korl_Resource_Handle* dirtyHandle = _korl_resource_context.stbDsDirtyResourceHandles; dirtyHandle < dirtyHandlesEnd; dirtyHandle++)
     {
-        const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, *dirtyHandle);
+        const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, *dirtyHandle);
         if(hashMapIndex < 0)
         {
             korl_log(WARNING, "updated resource handle invalid (update + delete in same frame, etc.): 0x%X", *dirtyHandle);
@@ -384,7 +384,7 @@ korl_internal void korl_resource_flushUpdates(void)
         }
         resource->dirty = false;
     }
-    mcarrsetlen(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 0);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 0);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle)
 {
@@ -392,7 +392,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanD
         return 0;// silently return a NULL device memory allocation handle if the resource handle is NULL
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     return resource->subType.graphics.deviceMemoryAllocationHandle;
@@ -454,7 +454,7 @@ korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
                 korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
                 break;
             }
-            mcarrpush(KORL_C_CAST(void*, _korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, resourceMapItem->key);
+            mcarrpush(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, resourceMapItem->key);
             resourceMapItem->value.dirty = true;
             break;}
         default:

@@ -213,14 +213,14 @@ korl_internal void korl_memory_initialize(void)
     context->allocatorHandle                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-memory"            , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     context->allocatorHandlePersistentStrings = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(1), L"korl-memory-fileStrings", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     context->stringHashKorlMemory             = _korl_memory_hashString(__FILEW__);// _must_ be run before making any dynamic allocations in the korl-memory module
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, 1024);
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle)                 , context->stbDaFileNameStrings      , 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, 1024);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle)                 , context->stbDaFileNameStrings      , 128);
     korl_assert(sizeof(wchar_t) == sizeof(*context->stbDaFileNameCharacterPool));// we are storing __FILEW__ characters in the Windows platform
     /* add the file name string of this file to the beginning of the file name character pool */
     {
         const u$ rawWideStringSize = korl_memory_stringSize(__FILEW__) + 1/*null-terminator*/;
         const u$ persistDataStartOffset = arrlenu(context->stbDaFileNameCharacterPool);
-        mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
+        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
         wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + persistDataStartOffset;
         korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(__FILEW__, persistDataStart, rawWideStringSize));
     }
@@ -1678,7 +1678,7 @@ korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Me
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_logReport_enumerateCallback)
 {
     _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
-    mcarrpush(KORL_C_CAST(void*, _korl_memory_context.allocatorHandle), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
+    mcarrpush(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
     _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = &arrlast(context->stbDaAllocationMeta);
     newAllocMeta->allocationAddress = allocation;
     newAllocMeta->meta              = *meta;
@@ -1801,13 +1801,13 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
         string entry to use */
     const u$ rawWideStringSize = korl_memory_stringSize(rawWideString) + 1/*null-terminator*/;
     const u$ fileNameCharacterPoolSizePrevious = arrlenu(context->stbDaFileNameCharacterPool);
-    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
     wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + fileNameCharacterPoolSizePrevious;
     korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(rawWideString, persistDataStart, rawWideStringSize));
     const _Korl_Memory_RawString newRawString = { .data = { .data = persistDataStart
                                                           , .size = rawWideStringSize - 1/*ignore the null-terminator*/}
                                                 , .hash = rawWideStringHash};
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFileNameStrings, newRawString);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFileNameStrings, newRawString);
     return newRawString.data.data;
 }
 korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
@@ -1963,7 +1963,7 @@ korl_internal void* korl_memory_reportGenerate(void)
     if(context->report)
     {
         for(u$ i = 0; i < context->report->allocatorCount; i++)
-            mcarrfree(KORL_C_CAST(void*, context->allocatorHandle), context->report->allocatorData[i].stbDaAllocationMeta);
+            mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->report->allocatorData[i].stbDaAllocationMeta);
         korl_free(context->allocatorHandle, context->report);
     }
     _Korl_Memory_Report*const report = korl_allocate(context->allocatorHandle, 
@@ -1988,7 +1988,7 @@ korl_internal void* korl_memory_reportGenerate(void)
         korl_memory_stringCopy(allocator->name, enumContext->name, korl_arraySize(enumContext->name));
         enumContext->allocatorType       = allocator->type;
         enumContext->virtualAddressStart = allocator->userData;
-        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), enumContext->stbDaAllocationMeta, 16);
+        mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocationMeta, 16);
         switch(allocator->type)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{

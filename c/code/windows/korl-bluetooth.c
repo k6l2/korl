@@ -82,7 +82,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
             korl_memory_copy(newEntry.name   , wsaQuerySet->lpszServiceInstanceName, newEntry.nameSize*sizeof(*wsaQuerySet->lpszServiceInstanceName));
             korl_memory_copy(newEntry.address, socketAddressBluetooth              , sizeof(*socketAddressBluetooth));
             newEntry.name[newEntry.nameSize] = L'\0';// null-terminate the raw device name string
-            mcarrpush(KORL_C_CAST(void*, allocator), result, newEntry);
+            mcarrpush(KORL_STB_DS_MC_CAST(allocator), result, newEntry);
         }
         else
         {

@@ -97,7 +97,7 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
         { .type   = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
         , .handle = deviceHandle
         , .path   = stringDevicePath };
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), 
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), 
               context->stbDaDevices, 
               newDevice);
     korl_log(INFO, "xbox gamepad connected: \"%ws\"", string_getRawUtf16(stringDevicePath));
@@ -133,7 +133,7 @@ korl_internal void korl_windows_gamepad_initialize(void)
     korl_memory_zero(&_korl_windows_gamepad_context, sizeof(_korl_windows_gamepad_context));
     _korl_windows_gamepad_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_kilobytes(128), L"korl-gamepad", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*auto-select address*/);
     _korl_windows_gamepad_context.stringPool      = korl_stringPool_create(_korl_windows_gamepad_context.allocatorHandle);
-    mcarrsetcap(KORL_C_CAST(void*, _korl_windows_gamepad_context.allocatorHandle), _korl_windows_gamepad_context.stbDaDevices, 8);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_windows_gamepad_context.allocatorHandle), _korl_windows_gamepad_context.stbDaDevices, 8);
 }
 korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_Memory_AllocatorHandle allocatorHandleLocal)
 {

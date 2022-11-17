@@ -115,7 +115,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widge
     }
     /* otherwise, allocate a new widget */
     widgetIndex = arrlenu(context->stbDaWidgets);
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
     _Korl_Gui_Widget* widget = &context->stbDaWidgets[widgetIndex];
     korl_memory_zero(widget, sizeof(*widget));
     widget->identifierHash             = identifierHashPrime;
@@ -270,8 +270,8 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.widgetSpacingY                 = 0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        = 4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
-    mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
-    mcarrsetcap(KORL_C_CAST(void*, _korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
 }
 korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
 {
@@ -323,7 +323,7 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
         nextWindowPosition = korl_math_v2f32_add(arrlast(context->stbDaWindows).position, 
                                                  (Korl_Math_V2f32){ 32.f, -32.f });
     context->currentWindowIndex = korl_checkCast_u$_to_i16(arrlenu(context->stbDaWindows));
-    mcarrpush(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, (_Korl_Gui_Window){0});
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, (_Korl_Gui_Window){0});
     _Korl_Gui_Window* newWindow = &context->stbDaWindows[context->currentWindowIndex];
     newWindow->identifierHash = identifierHash;
     newWindow->titleBarText   = titleBarText;
@@ -775,7 +775,7 @@ korl_internal void korl_gui_frameEnd(void)
         window->widgets = 0;
     }
     korl_time_probeStop(generate_draw_commands);
-    mcarrsetlen(KORL_C_CAST(void*, context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 }
 korl_internal void korl_gui_setLoopIndex(u$ loopIndex)
 {

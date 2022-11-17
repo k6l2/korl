@@ -170,7 +170,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
     _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
     /* iterate over the glyph page codepoints to see if any match codePoint */
     _Korl_Gfx_FontBakedGlyph* glyph = NULL;
-    const ptrdiff_t glyphMapIndex = mchmgeti(KORL_C_CAST(void*, gfxContext->allocatorHandle), fontCache->stbHmGlyphs, codePoint);
+    const ptrdiff_t glyphMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(gfxContext->allocatorHandle), fontCache->stbHmGlyphs, codePoint);
     if(glyphMapIndex >= 0)
         glyph = &(fontCache->stbHmGlyphs[glyphMapIndex].value);
     /* if the glyph was not found, we need to cache it */
@@ -181,8 +181,8 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
         int bearingLeft;
         stbtt_GetGlyphHMetrics(&(fontCache->fontInfo), glyphIndex, &advanceX, &bearingLeft);
         const u$ firstVertexOffset = arrlenu(glyphPage->stbDaGlyphMeshVertices);
-        mcarrsetlen(KORL_C_CAST(void*, gfxContext->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, arrlenu(glyphPage->stbDaGlyphMeshVertices) + 4);
-        mchmput(KORL_C_CAST(void*, gfxContext->allocatorHandle), fontCache->stbHmGlyphs, codePoint, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
+        mcarrsetlen(KORL_STB_DS_MC_CAST(gfxContext->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, arrlenu(glyphPage->stbDaGlyphMeshVertices) + 4);
+        mchmput(KORL_STB_DS_MC_CAST(gfxContext->allocatorHandle), fontCache->stbHmGlyphs, codePoint, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
         glyph = &((fontCache->stbHmGlyphs + hmlen(fontCache->stbHmGlyphs) - 1)->value);
         glyph->codePoint   = codePoint;
         glyph->glyphIndex  = glyphIndex;
@@ -553,7 +553,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
     {
         korl_time_probeStart(create_font_cache);
         /* add a new font cache address to the context's font cache address pool */
-        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, NULL);
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFontCaches, NULL);
         _Korl_Gfx_FontCache**const newFontCache = &arrlast(context->stbDaFontCaches);
         /* calculate how much memory we need */
         korl_shared_const u16 GLYPH_PAGE_SQUARE_SIZE = 512;
@@ -577,13 +577,13 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         fontCache->pixelOutlineThickness   = textPixelOutline;
         fontCache->fontAssetName           = KORL_C_CAST(wchar_t*, fontCache + 1);
         fontCache->glyphPage               = KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, fontCache->fontAssetName) + assetNameFontBufferBytes);
-        mchmdefault(KORL_C_CAST(void*, context->allocatorHandle), fontCache->stbHmGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
+        mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandle), fontCache->stbHmGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
         _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
         glyphPage->packRowsCapacity = PACK_ROWS_CAPACITY;
         glyphPage->dataSquareSize   = GLYPH_PAGE_SQUARE_SIZE;
         glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1/*pointer arithmetic trick to skip to the address following the glyphPage*/);
         glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
-        mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
+        mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(utf16AssetNameFont.data, fontCache->fontAssetName, assetNameFontBufferSize));
         /* initialize the font info using the raw font asset data */
         korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
@@ -698,7 +698,7 @@ korl_internal void korl_gfx_initialize(void)
                                                            ,korl_math_megabytes(8), L"korl-gfx"
                                                            ,KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE
                                                            ,NULL/*let platform choose address*/);
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaFontCaches, 16);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFontCaches, 16);
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
@@ -809,14 +809,14 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->modelRotate              = KORL_MATH_QUATERNION_IDENTITY;
     result->modelScale               = KORL_MATH_V3F32_ONE;
     result->resourceHandleBufferText = korl_resource_createVertexBuffer(&createInfoBufferText);
-    mcarrsetcap(KORL_C_CAST(void*, result->allocator), result->stbDaLines, 64);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
 }
 korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
 {
     korl_resource_destroy(context->resourceHandleBufferText);
-    mcarrfree(KORL_C_CAST(void*, context->allocator), context->stbDaLines);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines);
     korl_free(context->allocator, context);
 }
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
@@ -888,7 +888,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
             working text line at this point, we need to make one */
         if(!currentLine)
         {
-            mcarrpush(KORL_C_CAST(void*, context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
             currentLine = &arrlast(context->stbDaLines);
             currentLine->color = currentLineColor;
         }

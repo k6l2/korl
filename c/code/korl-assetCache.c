@@ -46,7 +46,7 @@ korl_internal void korl_assetCache_initialize(void)
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     context->stringPool      = korl_allocate(context->allocatorHandle, sizeof(*context->stringPool));
     *context->stringPool     = korl_stringPool_create(context->allocatorHandle);
-    mcarrsetcap(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size
 }
 korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
 {
@@ -66,7 +66,7 @@ korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
     if(!asset)
     {
         /* otherwise, add a new asset */
-        mcarrpush(KORL_C_CAST(void*, context->allocatorHandle), context->stbDaAssets, (_Korl_AssetCache_Asset){0});
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAssets, (_Korl_AssetCache_Asset){0});
         asset = &arrlast(context->stbDaAssets);
         korl_memory_zero(asset, sizeof(*asset));// not _entirely_ sure this is necessary, but I've read that struct initialization using {0} might have portability issues?...
         asset->name = string_newUtf16(assetName);
