@@ -35,9 +35,9 @@ typedef struct _Korl_Log_Context
     bool useLogOutputDebugger;
     bool useLogOutputConsole;
     bool useLogFileBig;
+    bool useLogFileAsync;
     bool logFileEnabled;
     bool disableMetaTags;
-    /// @TODO: add a flag to _enable_ async log file writes; stop doing async log file writes by default since that code path is likely _super_ slow
     Korl_File_Descriptor fileDescriptor;
     KORL_MEMORY_POOL_DECLARE(_Korl_Log_AsyncWriteDescriptor, asyncWriteDescriptors, 64);
     u$ logFileBytesWritten;
@@ -198,6 +198,7 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
         _korl_crash_assertConditionFailed(logBuffer, cStringFileName, cStringFunctionName, lineNumber);
     /* ----- write the buffered log entry to log file ----- */
     if(   (context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE) 
+       && context->useLogFileAsync
        && (   context->logFileBytesWritten < context->rawLogChunkBytes
            || context->useLogFileBig))
     {
@@ -278,8 +279,9 @@ korl_internal void korl_log_initialize(void)
     korl_memory_zero(_korl_log_context.rawLog, 2*_korl_log_context.rawLogChunkBytes);
 #endif
 }
-korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool disableMetaTags)
+korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool useLogFileAsync, bool disableMetaTags)
 {
+    _korl_log_context.useLogFileAsync      = useLogFileAsync;
     _korl_log_context.useLogOutputDebugger = useLogOutputDebugger;
     _korl_log_context.useLogOutputConsole  = useLogOutputConsole;
     _korl_log_context.useLogFileBig        = useLogFileBig;
@@ -320,6 +322,7 @@ korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutp
             korl_log(INFO, "configured to output logs to console");
     }
     //KORL-ISSUE-000-000-075: log: dump log buffer to debugger if configured to output logs to debugger
+    //KORL-ISSUE-000-000-093: log: if (!useLogFileAsync && useLogFileBig), we need to re-configure the log buffer to be "unlimited", since the log lines will not be dumped to the file until the program ends, ergo we need to guarantee that we store all log lines until this time, and a circular buffer will not accomplish this
 }
 korl_internal void korl_log_initiateFile(bool logFileEnabled)
 {
@@ -355,24 +358,27 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     /* It is highly likely that we have processed logs before initiateFile was 
         called, so we must now asynchronously flush the contents of the log 
         buffer to the log file. */
-    EnterCriticalSection(&(context->criticalSection));
-    const u$ loggedCharacters = context->loggedBytes / sizeof(wchar_t);
-    const u$ maxInitCharacters = context->useLogFileBig 
-        ? loggedCharacters
-        : // we will write a maximum of half of the maximum log buffer 
-          // size, because the second half of the buffer is a circular 
-          // buffer whose size we cannot possibly know ahead of time
-          context->rawLogChunkBytes / sizeof(wchar_t);
-    const u$ charactersToWrite = KORL_MATH_MIN(loggedCharacters, maxInitCharacters);
-    if(charactersToWrite)
+    if(context->useLogFileAsync)
     {
-        korl_assert(!KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
-        _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
-        korl_memory_zero(asyncWriteDescriptor, sizeof(*asyncWriteDescriptor));
-        asyncWriteDescriptor->asyncIoHandle = korl_file_writeAsync(context->fileDescriptor, context->rawLog, charactersToWrite*sizeof(wchar_t));
-        context->logFileBytesWritten += charactersToWrite*sizeof(wchar_t);
+        EnterCriticalSection(&(context->criticalSection));
+        const u$ loggedCharacters = context->loggedBytes / sizeof(wchar_t);
+        const u$ maxInitCharacters = context->useLogFileBig 
+            ? loggedCharacters
+            : // we will write a maximum of half of the maximum log buffer 
+              // size, because the second half of the buffer is a circular 
+              // buffer whose size we cannot possibly know ahead of time
+              context->rawLogChunkBytes / sizeof(wchar_t);
+        const u$ charactersToWrite = KORL_MATH_MIN(loggedCharacters, maxInitCharacters);
+        if(charactersToWrite)
+        {
+            korl_assert(!KORL_MEMORY_POOL_ISFULL(context->asyncWriteDescriptors));
+            _Korl_Log_AsyncWriteDescriptor*const asyncWriteDescriptor = KORL_MEMORY_POOL_ADD(context->asyncWriteDescriptors);
+            korl_memory_zero(asyncWriteDescriptor, sizeof(*asyncWriteDescriptor));
+            asyncWriteDescriptor->asyncIoHandle = korl_file_writeAsync(context->fileDescriptor, context->rawLog, charactersToWrite*sizeof(wchar_t));
+            context->logFileBytesWritten += charactersToWrite*sizeof(wchar_t);
+        }
+        LeaveCriticalSection(&(context->criticalSection));
     }
-    LeaveCriticalSection(&(context->criticalSection));
 }
 korl_internal void korl_log_clearAsyncIo(void)
 {
@@ -387,6 +393,23 @@ korl_internal void korl_log_shutDown(void)
     if(!(context->fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_WRITE))
         goto skipFileCleanup;
     korl_log_clearAsyncIo();
+    if(!context->useLogFileAsync)
+    {
+        /* if the log module is configured to _not_ do async writes to the log 
+            file, then at this point we shouldn't have written _any_ log lines 
+            yet to the log file; we need to at minimum write up until the first 
+            log buffer chunk, and if we have not exceeded 2 log chunks, we can 
+            just write the entire buffer contiguously to the log file */
+        const u$ contiguousLogBytes = context->loggedBytes > 2*context->rawLogChunkBytes
+            ? context->rawLogChunkBytes 
+            : context->loggedBytes;
+        const u$ minimumSyncWriteBytes = KORL_MATH_MIN(context->loggedBytes, contiguousLogBytes);
+        if(minimumSyncWriteBytes)
+        {
+            korl_file_write(context->fileDescriptor, context->rawLog, minimumSyncWriteBytes);
+            context->logFileBytesWritten += minimumSyncWriteBytes;
+        }
+    }
     if(context->useLogFileBig)
     {
         /* we don't have to do any sync writing here with the circular buffer, 
@@ -399,11 +422,13 @@ korl_internal void korl_log_shutDown(void)
             the circular buffer which wrapped to the beginning */
         korl_shared_const wchar_t LOG_MESSAGE_CUT[] = L"\n\n----- LOG FILE CUT -----\n\n\n";
         korl_file_write(context->fileDescriptor, LOG_MESSAGE_CUT, sizeof(LOG_MESSAGE_CUT));
+        context->logFileBytesWritten += sizeof(LOG_MESSAGE_CUT);
         const u$ rawLogOffset = context->rawLogChunkBytes + ((context->loggedBytes - context->rawLogChunkBytes) % context->rawLogChunkBytes);
         wchar_t*const logBuffer = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, context->rawLog) + rawLogOffset);
         korl_file_write(context->fileDescriptor
                        ,logBuffer + 1/*skip \0 terminator to reach the "head" of the ring buffer*/
                        ,context->rawLogChunkBytes);
+        context->logFileBytesWritten += context->rawLogChunkBytes;
     }
     else if(context->loggedBytes > context->rawLogChunkBytes)
     {
@@ -411,6 +436,7 @@ korl_internal void korl_log_shutDown(void)
         const u$ remainingBytes       = context->loggedBytes              - context->rawLogChunkBytes;
         const void*const bufferOffset = KORL_C_CAST(u8*, context->rawLog) + context->rawLogChunkBytes;
         korl_file_write(context->fileDescriptor, bufferOffset, remainingBytes);
+        context->logFileBytesWritten += remainingBytes;
     }
     korl_file_close(&context->fileDescriptor);
     korl_memory_fileMapAllocation_destroy(context->rawLog, context->rawLogChunkBytes, 3);

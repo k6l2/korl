@@ -25,16 +25,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 #endif
 {
     bool displayHelp;
+    bool useLogFileAsync;
     bool useLogOutputDebugger;
     bool useLogOutputConsole;
     bool useLogFileBig;
     bool logFileDisable;
     const Korl_CommandLine_ArgumentDescriptor descriptors[] = 
-        { {&displayHelp         , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--help"            , L"-h"  , L"Display all possible command line arguments, then exit the program."}
-        , {&useLogOutputDebugger, KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-debugger"    , L"-ld" , L"Send log output to the debugger, if we are attached to one."}
-        , {&useLogOutputConsole , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-console"     , L"-lc" , L"Send log output to a console.  If the calling process has a console, it will be used.  Otherwise, a new console will be created."}
-        , {&useLogFileBig       , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-big"    , L"-lfb", L"Disable the internal mechanism to limit the size of the log file to some maximum value.  Without this, log files will be cut if capacity is reached; only the beginning/end of the logs will be written to the file, and only the first half of the logs will be written to the file real-time (the second half of the log file will be written when the program ends)."}
-        , {&logFileDisable      , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-disable", L"-lfd", L"Disable logging to a file."} };
+        {{&displayHelp         , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--help"            , L"-h"  , L"Display all possible command line arguments, then exit the program."}
+        ,{&useLogOutputDebugger, KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-debugger"    , L"-ld" , L"Send log output to the debugger, if we are attached to one."}
+        ,{&useLogOutputConsole , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-console"     , L"-lc" , L"Send log output to a console.  If the calling process has a console, it will be used.  Otherwise, a new console will be created."}
+        ,{&useLogFileBig       , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-big"    , L"-lfb", L"Disable the internal mechanism to limit the size of the log file to some maximum value.  Without this, log files will be cut if capacity is reached; only the beginning/end of the logs will be written to the file, and only the first half of the logs will be written to the file real-time (the second half of the log file will be written when the program ends)."}
+        ,{&logFileDisable      , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-disable", L"-lfd", L"Disable logging to a file."}
+        ,{&useLogFileAsync     , KORL_COMMAND_LINE_ARGUMENT_TYPE_BOOL, L"--log-file-async"  , L"-lfa", L"Send log output asynchronously to the log file.  Useful for viewing log output from a file during runtime, but this feature will likely incur performance penalties, so prefer to view log entries at runtime using korl_log_getBuffer & other korl-gui/gfx APIs instead.  Only used if --log-file-disable is not present."}};
     korl_memory_initialize();
     korl_log_initialize();
     korl_log(INFO, "korl_windows_main START ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄");
@@ -43,9 +45,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_time_probeStart(init_module_file);  korl_file_initialize();                                           korl_time_probeStop(init_module_file);
     korl_time_probeStart(init_module_crash); korl_crash_initialize();                                          korl_time_probeStop(init_module_crash);
     korl_time_probeStart(parseCommandLine);  korl_commandLine_parse(descriptors, korl_arraySize(descriptors)); korl_time_probeStop(parseCommandLine);
-    korl_time_probeStart(log_configure);     korl_log_configure(useLogOutputDebugger | displayHelp, 
-                                                                useLogOutputConsole  | displayHelp, 
-                                                                useLogFileBig, displayHelp);                   korl_time_probeStop(log_configure);
+    korl_time_probeStart(log_configure);     korl_log_configure(useLogOutputDebugger | displayHelp
+                                                               ,useLogOutputConsole  | displayHelp
+                                                               ,useLogFileBig
+                                                               ,useLogFileAsync
+                                                               ,displayHelp);                                  korl_time_probeStop(log_configure);
     if(displayHelp)
     {
         korl_commandLine_logUsage(descriptors, korl_arraySize(descriptors));
