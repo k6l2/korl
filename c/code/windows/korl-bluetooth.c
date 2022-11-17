@@ -121,7 +121,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
         if(_korl_bluetooth_context.sockets[i].handle)
         {
             /* ensure that an existing connection doesn't exist for this queryEntry */
-            ///@TODO: maybe compare addresses instead of device names?
+            //KORL-ISSUE-000-000-095: bluetooth: maybe compare addresses instead of device names?
             korl_assert(0 != korl_memory_stringCompare(_korl_bluetooth_context.sockets[i].queryEntry.name, queryEntry->name));
             continue;
         }
