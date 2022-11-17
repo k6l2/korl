@@ -78,11 +78,9 @@ korl_internal Korl_Resource_Handle _korl_resource_handle_pack(_Korl_Resource_Han
 }
 korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHandle(acu16 fileName, _Korl_Resource_Graphics_Type* out_graphicsType)
 {
-    /* hash the file name, generate our resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
-    unpackedHandle.type     = _KORL_RESOURCE_TYPE_FILE;
-    unpackedHandle.uniqueId = korl_memory_acu16_hash(fileName);
     /* automatically determine the type of multimedia this resource is based on the file extension */
+    bool multimediaTypeFound = false;
     korl_shared_const u16* IMAGE_EXTENSIONS[] = {L".png", L".jpg", L".jpeg"};
     _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
@@ -94,14 +92,21 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
         {
             unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
             graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
+            multimediaTypeFound           = true;
             break;
         }
     }
+    if(!multimediaTypeFound)
+        goto returnUnpackedHandle;
+    /* hash the file name, generate our resource handle */
+    unpackedHandle.type     = _KORL_RESOURCE_TYPE_FILE;
+    unpackedHandle.uniqueId = korl_memory_acu16_hash(fileName);
     if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
     {
         korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);
         *out_graphicsType = graphicsType;
     }
+    returnUnpackedHandle:
     return unpackedHandle;
 }
 korl_internal void korl_resource_initialize(void)
@@ -119,6 +124,7 @@ korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
+    korl_assert(handle);
     /* check if the resource was already added */
     ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     /* if the resource is new, we need to add it to the database */
@@ -470,6 +476,8 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
     _Korl_Resource_Graphics_Type graphicsType           = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(rawUtf16AssetName, &graphicsType);
     const Korl_Resource_Handle handle                   = _korl_resource_handle_pack(unpackedHandle);
+    if(!handle)
+        return;// if we weren't able to derive a valid resource handle from the provided asset name, then it _should_ be safe to say that we don't have to do anything here
     ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     if(hashMapIndex < 0)
         return;// if the asset isn't found in the resource database, then we don't have to do anything
