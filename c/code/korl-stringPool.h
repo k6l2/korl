@@ -13,7 +13,6 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
 typedef u32 Korl_StringPool_StringHandle;// NULL => invalid handle, as usual
-
 /** The user of this module probably shouldn't be touching any of this data 
  * directly; use the provided stringPool API instead. */
 typedef struct Korl_StringPool
@@ -41,13 +40,11 @@ typedef enum Korl_StringPool_CompareResult
     , KORL_STRINGPOOL_COMPARE_RESULT_LESS    = -1// lexicographically if string length equal, otherwise by string length
     , KORL_STRINGPOOL_COMPARE_RESULT_GREATER =  1// lexicographically if string length equal, otherwise by string length
 } Korl_StringPool_CompareResult;
-
-#if defined(__cplusplus)
 typedef struct Korl_StringPool_String
 {
     Korl_StringPool_StringHandle handle;
     Korl_StringPool* pool;
-
+#if defined(__cplusplus)
     bool operator==(const Korl_StringPool_String& other) const
     {
         return (handle == other.handle) && (pool == other.pool);
@@ -56,15 +53,8 @@ typedef struct Korl_StringPool_String
     {
         return (handle != 0);
     }
-} Korl_StringPool_String;
-#else///@TODO: cleanup; we don't have to have two separate struct definitions here
-typedef struct Korl_StringPool_String
-{
-    Korl_StringPool_StringHandle handle;
-    Korl_StringPool* pool;
-} Korl_StringPool_String;
 #endif
-
+} Korl_StringPool_String;
 #if defined(__cplusplus)
 /* if we're using C++, we can have convenience macros for function overloads, 
     which are defined later in this header file */
