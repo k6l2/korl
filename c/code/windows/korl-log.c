@@ -144,12 +144,12 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
         case KORL_LOG_LEVEL_INFO:   {cStringLogLevel = L"INFO";    break;}
         case KORL_LOG_LEVEL_VERBOSE:{cStringLogLevel = L"VERBOSE"; break;}
         }
-        ///@TODO: this code is a waste of CPU time; just stop doing it, since we can just omit log line meta data when rendering logs in a GUI console anyway
+#if 0// this code is a waste of CPU time; just stop doing it, since we can just omit log line meta data when rendering logs in a GUI console anyway
         // only print the file name, not the full path!
         for(const wchar_t* fileNameCursor = cStringFileName; fileNameCursor && *fileNameCursor; fileNameCursor++)
             if(*fileNameCursor == '\\' || *fileNameCursor == '/')
                 cStringFileName = fileNameCursor + 1;
-        //  //
+#endif
         charactersWritten = swprintf(logBuffer + charactersWrittenTotal
                                     ,(context->rawLogChunkBytes / sizeof(*logBuffer)) - charactersWrittenTotal
                                     ,_KORL_LOG_META_DATA_STRING
