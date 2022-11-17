@@ -14,6 +14,7 @@
 #if defined(KORL_PLATFORM_WINDOWS)
 #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
+//#define _KORL_VULKAN_LOG_REPORTS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS            0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE               0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER 0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO
@@ -859,7 +860,7 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
         if(buffer->framesSinceLastUsed < surfaceContext->swapChainImagesSize)
             continue;
 #if KORL_DEBUG
-        korl_log(VERBOSE, "resetting staging buffer [%llu]", bufferIndexOffsetFromLastUsed);
+        // korl_log(VERBOSE, "resetting staging buffer [%llu]", bufferIndexOffsetFromLastUsed);
 #endif
         buffer->bytesUsed = 0;
         validBuffer     = buffer;
@@ -871,8 +872,8 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
     if(!(validBuffer && validAllocation))
     {
 #if KORL_DEBUG
-        korl_log(VERBOSE, "allocating new staging buffer; arrlenu(surfaceContext->stbDaStagingBuffers)==%llu"
-                        , arrlenu(surfaceContext->stbDaStagingBuffers));
+        // korl_log(VERBOSE, "allocating new staging buffer; arrlenu(surfaceContext->stbDaStagingBuffers)==%llu"
+        //                 , arrlenu(surfaceContext->stbDaStagingBuffers));
 #endif
         Korl_Vulkan_DeviceMemory_AllocationHandle newBufferAllocationHandle = _korl_vulkan_deviceMemory_allocateBuffer(&surfaceContext->deviceMemoryHostVisible
                                                                                                                       ,stagingBufferArenaBytes
@@ -1654,12 +1655,14 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
         korl_vulkan_texture_update(surfaceContext->defaultTexture, &defaultTextureColor);
     }
+#ifdef _KORL_VULKAN_LOG_REPORTS
     korl_log(INFO, "deviceMemoryHostVisible report:");
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryHostVisible);
     korl_log(INFO, "deviceMemoryRenderResources report:");
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryRenderResources);
     korl_log(INFO, "deviceMemoryDeviceLocal report:");
     _korl_vulkan_deviceMemory_allocator_logReport(&surfaceContext->deviceMemoryDeviceLocal);
+#endif
 }
 korl_internal void korl_vulkan_destroySurface(void)
 {

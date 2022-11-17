@@ -18,6 +18,8 @@
 #include "korl-stringPool.h"
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
+// we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
+// #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
@@ -452,9 +454,11 @@ korl_internal void korl_windows_window_loop(void)
     _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
     _korl_windows_window_gameInitialize(&korlApi);
     korl_time_probeStop(game_initialization);
+#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
     korl_log(INFO, "KORL initialization time probe report:");
     korl_time_probeLogReport();
     u$ renderFrameCount = 0;
+#endif
     bool quit = false;
     /* For reference, this is essentially what the application developers who 
         consume KORL have rated their application as the _maximum_ amount of 
@@ -463,6 +467,7 @@ korl_internal void korl_windows_window_loop(void)
         values. */
     const Korl_Time_Counts timeCountsTargetGamePerFrame = korl_time_countsFromHz(KORL_APP_TARGET_FRAME_HZ);
     PlatformTimeStamp timeStampLast                     = korl_timeStamp();
+#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
     typedef struct _Korl_Window_LoopStats
     {
         Korl_Time_Counts timeTotal;
@@ -471,6 +476,7 @@ korl_internal void korl_windows_window_loop(void)
     KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 1024);
     loopStats_korlMemoryPoolSize = 0;
     bool deferProbeReport = false;
+#endif
 #ifdef _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
     Korl_Gfx_Text* debugText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf", .size = 66}, 24);
     {
@@ -481,6 +487,7 @@ korl_internal void korl_windows_window_loop(void)
 #endif
     while(!quit)
     {
+#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
         _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
             ? NULL
             : KORL_MEMORY_POOL_ADD(loopStats);
@@ -493,6 +500,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_memory_reportLog(korl_memory_reportGenerate());
             deferProbeReport = false;
         }
+#endif
         korl_time_probeReset();
         korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);
@@ -587,15 +595,20 @@ korl_internal void korl_windows_window_loop(void)
             korl_time_sleep(timeCountsTargetGamePerFrame - timeCountsRenderLoop);
         const Korl_Time_Counts timeCountsSleep = korl_time_probeStop(sleep);
         timeStampLast = korl_timeStamp();
+#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
         if(renderFrameCount < ~(u$)0)
             renderFrameCount++;
+#endif
         const Korl_Time_Counts timeCountsMainLoop = korl_time_probeStop(Main_Loop);
+#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
         if(stats)
         {
             stats->timeTotal = timeCountsMainLoop;
             stats->timeSleep = timeCountsSleep;
         }
+#endif
     }
+#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
     /* report frame stats */
     korl_log(INFO, "Window Render Loop Times:");
     Korl_Time_Counts timeCountAverageTotal = 0;
@@ -628,6 +641,7 @@ korl_internal void korl_windows_window_loop(void)
     korl_log(INFO, "Average Sleep Time     : %ws", durationBuffer);
     korl_log(INFO, "Average Unused Frame %% : %f", timeCountAverageSleep * 100.f / timeCountsTargetGamePerFrame);
     /**/
+#endif
     korl_vulkan_destroySurface();
     string_free(stringGameDll);
 }
