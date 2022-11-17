@@ -472,7 +472,8 @@ korl_internal void korl_gui_frameEnd(void)
             /* iterate over all this window's widgets, obtaining their AABBs & 
                 accumulating their geometry to determine how big the window 
                 needs to be */
-            _korl_gui_processWidgetGraphics(window, false, 0.f, 0.f);///@TODO: attempt to completely remove this call, and remove the second parameter for that matter
+            //KORL-PERFORMANCE-000-000-040: gui: MEDIUM-MAJOR; attempt to completely remove the necessity to call _korl_gui_processWidgetGraphics two times inside korl_gui_frameEnd, and remove the second parameter for that matter
+            _korl_gui_processWidgetGraphics(window, false, 0.f, 0.f);
             Korl_Math_Aabb2f32 windowTotalAabb = window->cachedContentAabb;
             /* take the AABB of the window's title bar into account as well */
             if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
