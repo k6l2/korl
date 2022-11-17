@@ -276,14 +276,16 @@ korl_internal void korl_gui_initialize(void)
 korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    if(!fontAssetName)
+    korl_free(context->allocatorHandleHeap, context->style.fontWindowText);
+    context->style.fontWindowText = NULL;
+    if(fontAssetName)
     {
-        context->style.fontWindowText = NULL;
-        return;
+        const u$ fontAssetNameSize = korl_memory_stringSize(fontAssetName);
+        context->style.fontWindowText = korl_allocate(context->allocatorHandleHeap, (fontAssetNameSize + 1/*null terminator*/)*sizeof(*fontAssetName));
+        korl_assert(context->style.fontWindowText);
+        const i$ resultStringCopy = korl_memory_stringCopy(fontAssetName, context->style.fontWindowText, fontAssetNameSize + 1);
+        korl_assert(resultStringCopy > 0);
     }
-    const i$ resultStringCopy = korl_memory_stringCopy(fontAssetName, context->fontAssetName, korl_arraySize(context->fontAssetName));
-    korl_assert(resultStringCopy > 0);
-    context->style.fontWindowText = context->fontAssetName;
 }
 korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
 {
@@ -847,13 +849,5 @@ korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
         korl_logLastError("ReadFile failed");
         return false;
     }
-    /* If the memory state style was assigned, it is always going to point to 
-        the text buffer for the font asset name inside the context.  The problem 
-        of course is that the context is in data segment memory, so we have to 
-        reassign this pointer to be the same address in the currently running 
-        application instance data segment for the gui context. */
-    ///@TODO: this is really janky, and I hope in the future this can be deleted
-    if(_korl_gui_context.style.fontWindowText)
-        _korl_gui_context.style.fontWindowText = _korl_gui_context.fontAssetName;
     return true;
 }

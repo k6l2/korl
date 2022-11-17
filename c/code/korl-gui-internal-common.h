@@ -91,14 +91,13 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color4u8 colorText;
         Korl_Vulkan_Color4u8 colorTextOutline;
         f32 textOutlinePixelSize;
-        const wchar_t* fontWindowText;
+        wchar_t* fontWindowText;
         f32 windowTextPixelSizeY;
         f32 windowTitleBarPixelSizeY;
         f32 widgetSpacingY;
         f32 widgetButtonLabelMargin;
         f32 windowScrollBarPixelWidth;
     } style;
-    wchar_t fontAssetName[128];//buffer to store font asset name configured via setFontAsset API
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value < 0, a new window must be started before 
      * calling any widget API.  If the user calls a widget function outside of 
