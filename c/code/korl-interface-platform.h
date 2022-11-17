@@ -353,7 +353,7 @@ typedef enum Korl_Memory_AllocatorFlags
 #define KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(name)      void                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_PLATFORM_STB_DS_REALLOCATE(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 #define KORL_PLATFORM_STB_DS_FREE(name)       void  name(void* context, void* allocation)
-/// @TODO: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
+//KORL-ISSUE-000-000-096: interface-platform, gfx: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
 typedef u16            Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V4u8 Korl_Vulkan_Color4u8;
 typedef u64            Korl_Gfx_DeviceMemoryAllocationHandle;
@@ -436,6 +436,7 @@ typedef enum Korl_Gfx_Batch_Flags
     KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0,
     KORL_GFX_BATCH_FLAG_DISABLE_BLENDING   = 1 << 1
 } Korl_Gfx_Batch_Flags;
+//KORL-ISSUE-000-000-097: interface-platform, gfx: maybe just destroy Korl_Gfx_Batch & start over, since we've gotten rid of the concept of "batching" in the platform renderer; the primitive storage struct might also benefit from being a polymorphic tagged union
 typedef struct Korl_Gfx_Batch
 {
     Korl_Memory_AllocatorHandle allocatorHandle;// storing the allocator handle allows us to simplify API which expands the capacity of the batch (example: add new line to a line batch)
@@ -474,13 +475,13 @@ typedef struct Korl_Gfx_Batch
     Korl_Resource_Handle _fontTextureHandle;
     Korl_Resource_Handle _glyphMeshBufferVertices;
     Korl_Vulkan_VertexIndex* _vertexIndices;
-    u8                       _vertexPositionDimensions;
-    f32*                     _vertexPositions;
-    Korl_Vulkan_Color4u8*    _vertexColors;
-    Korl_Math_V2f32*         _vertexUvs;
-    u8                       _instancePositionDimensions;
-    f32*                     _instancePositions;// @TODO: at this point, I am feeling the strong desire to rip apart korl-gfx and refactor all this, since _vertexPositions feels so inflexible :(
-    u32*                     _instanceU32s;// we need a place to store the indices of each glyph in the instanced draw call
+    u8                    _vertexPositionDimensions;
+    f32*                  _vertexPositions;
+    Korl_Vulkan_Color4u8* _vertexColors;
+    Korl_Math_V2f32*      _vertexUvs;
+    u8                    _instancePositionDimensions;
+    f32*                  _instancePositions;
+    u32*                  _instanceU32s;// we need a place to store the indices of each glyph in the instanced draw call
 } Korl_Gfx_Batch;
 #define KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(name)                Korl_Gfx_Camera    name(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target)
 #define KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(name)              Korl_Gfx_Camera    name(f32 clipDepth)
