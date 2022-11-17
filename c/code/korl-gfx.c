@@ -228,7 +228,8 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
             /* bake the glyph outline if the font is configured for outlines */
             if(!korl_math_isNearlyZero(fontCache->pixelOutlineThickness))
             {
-                ///@TODO: populate the stbDaGlyphMeshVertices with the outlined glyph
+                //KORL-ISSUE-000-000-094: gfx: font outlines using new Vulkan rendering APIs are not complete
+                korl_assert(!"not implemented: populate the stbDaGlyphMeshVertices with the outlined glyph");
 #if 1
                 /* Originally I was using stb_truetype's SDF API to generate 
                     glyph outlines, but as it turns out, that API just seems to 
