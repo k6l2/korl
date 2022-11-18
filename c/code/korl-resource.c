@@ -47,6 +47,7 @@ typedef struct _Korl_Resource
     u$    dataBytes;
     bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
     Korl_StringPool_String stringFileName;
+    //KORL-FEATURE-000-000-046: resource: right now it is very difficult to trace the owner of a resource; modify API to require FILE:LINE information for Resource allocations
 } _Korl_Resource;
 typedef struct _Korl_Resource_Map
 {
@@ -335,7 +336,7 @@ korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShift
                                 : 0;
         if(remainingBytes)
             korl_memory_move(resource->data, KORL_C_CAST(u8*, resource->data) + -byteShiftCount, remainingBytes);
-        korl_memory_zero(KORL_C_CAST(u8*, resource->data) + -byteShiftCount, resource->dataBytes - remainingBytes);
+        korl_memory_zero(KORL_C_CAST(u8*, resource->data) + remainingBytes, -byteShiftCount);
     }
     else
     {
@@ -344,7 +345,7 @@ korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShift
                                 : 0;
         if(remainingBytes)
             korl_memory_move(KORL_C_CAST(u8*, resource->data) + byteShiftCount, resource->data, remainingBytes);
-        korl_memory_zero(resource->data, resource->dataBytes - remainingBytes);
+        korl_memory_zero(resource->data, byteShiftCount);
     }
     /* shifting data by a non-zero amount => the resource must be flushed */
     if(!resource->dirty)

@@ -116,6 +116,7 @@
 [ ] KORL-FEATURE-000-000-043: vulkan: add ability to configure color; default color is RGBA; should this be more well-defined somewhere, such as a Korl_Vulkan_ColorChannel datatype or something?
 [ ] KORL-FEATURE-000-000-044: vulkan: add ability to create batches, combining draw calls of a bunch of different pipelines; this could be done entirely on the GPU with transfer commands to device-local memory; related to KORL-PERFORMANCE-000-000-035
 [ ] KORL-FEATURE-000-000-045: gui: add some kind of "style stack" API, and deprecate korl_gui_setFontAsset since it seems too inflexible
+[ ] KORL-FEATURE-000-000-046: resource: right now it is very difficult to trace the owner of a resource; modify API to require FILE:LINE information for Resource allocations
 [x] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAG_LAZY is specified
 [x] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
 [x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose
