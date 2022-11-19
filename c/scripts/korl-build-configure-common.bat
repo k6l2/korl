@@ -95,3 +95,4 @@ set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /INCREMENTAL:NO"
 rem     set the checksum in the header of the .exe file (required in order to 
 rem     allow WinDbg to verify the timestamp of the executable, apparently)
 set "KORL_LINKER_OPTIONS=%KORL_LINKER_OPTIONS% /RELEASE"
+rem KORL-ISSUE-000-000-098: build: remove specialized configure scripts (korl-build-configure-debug/optimized/release), and use batch parameters on a single configure script instead (so we can do things like `config fast` instead of `config-fast`)
