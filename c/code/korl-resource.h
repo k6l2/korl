@@ -64,7 +64,7 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-resource.h"
 #include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
 korl_internal void korl_resource_initialize(void);
 korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile);

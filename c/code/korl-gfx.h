@@ -2,7 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-vulkan.h"
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-gfx.h"
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text

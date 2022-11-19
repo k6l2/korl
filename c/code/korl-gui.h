@@ -2,7 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-memory.h"
 #include "korl-gui-common.h"
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-gui.h"
 korl_internal void korl_gui_initialize(void);
 //KORL-FEATURE-000-000-045: gui: add some kind of "style stack" API, and deprecate korl_gui_setFontAsset since it seems too inflexible
 korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset);

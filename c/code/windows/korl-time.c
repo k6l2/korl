@@ -2,7 +2,7 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"
 #include "korl-log.h"
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-time.h"
 #include "korl-stb-ds.h"
 #include "korl-checkCast.h"
 #include "korl-stringPool.h"

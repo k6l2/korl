@@ -1,5 +1,5 @@
 #pragma once
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-time.h"
 /**
  * ----- DataTypes -----
  * Korl_Time_Counts

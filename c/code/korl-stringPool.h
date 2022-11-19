@@ -11,7 +11,6 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-interface-platform.h"
 typedef u32 Korl_StringPool_StringHandle;// NULL => invalid handle, as usual
 /** The user of this module probably shouldn't be touching any of this data 
  * directly; use the provided stringPool API instead. */

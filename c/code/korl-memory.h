@@ -1,6 +1,6 @@
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-memory.h"
 typedef struct Korl_Memory_AllocationMeta
 {
     const wchar_t* file;

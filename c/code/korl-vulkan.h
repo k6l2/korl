@@ -35,7 +35,6 @@
 #include "korl-checkCast.h"
 #include "korl-memory.h"
 #include "korl-assetCache.h"
-#include "korl-interface-platform.h"
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef struct Korl_Vulkan_DrawVertexData
 {

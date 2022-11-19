@@ -10,7 +10,6 @@
 #include "korl-math.h"
 #include "korl-gfx.h"
 #include "korl-windows-gui.h"
-#include "korl-interface-platform.h"
 #include "korl-interface-game.h"
 #include "korl-gui.h"
 #include "korl-file.h"
@@ -440,9 +439,9 @@ korl_internal void korl_windows_window_loop(void)
         KORL_ZERO_STACK(Korl_Windows_Vulkan_SurfaceUserData, surfaceUserData);
         surfaceUserData.hInstance = hInstance;
         surfaceUserData.hWnd      = context->window.handle;
-        korl_vulkan_createSurface(&surfaceUserData, 
-                                  clientRect.right  - clientRect.left, 
-                                  clientRect.bottom - clientRect.top);
+        korl_vulkan_createSurface(&surfaceUserData
+                                 ,clientRect.right  - clientRect.left
+                                 ,clientRect.bottom - clientRect.top);
         korl_vulkan_setSurfaceClearColor((f32[]){0.05f, 0.f, 0.05f});// set default clear color to ~purplish~
     }
     /* initialize game memory & game module */

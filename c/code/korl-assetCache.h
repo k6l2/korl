@@ -16,7 +16,7 @@
  */
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-interface-platform.h"
+#include "korl-interface-platform-assetCache.h"
 #include "korl-windows-globalDefines.h"
 /** Because we know that the asset manager can follow the singleton pattern, we 
  * also know that "destruction" of the asset manager is only going to happen 
