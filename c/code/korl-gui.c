@@ -780,7 +780,7 @@ korl_internal void korl_gui_frameEnd(void)
     korl_time_probeStop(generate_draw_commands);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 }
-korl_internal void korl_gui_setLoopIndex(u$ loopIndex)
+korl_internal KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX(korl_gui_setLoopIndex)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     context->loopIndex = loopIndex;

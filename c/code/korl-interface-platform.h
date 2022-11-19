@@ -249,11 +249,12 @@ typedef enum Korl_Gui_Widget_Text_Flags
  * \param positionX relative to the bottom-left corner of the application window
  * \param positionY relative to the bottom-left corner of the application window
  */
-#define KORL_PLATFORM_GUI_WINDOW_SET_POSITION(name)  void name(f32 anchorX, f32 anchorY, f32 positionX, f32 positionY)
-#define KORL_PLATFORM_GUI_WINDOW_SET_SIZE(name)      void name(f32 sizeX, f32 sizeY)
-#define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)   void name(const wchar_t* textFormat, ...)
-#define KORL_PLATFORM_GUI_WIDGET_TEXT(name)          void name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
-#define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name) u8   name(const wchar_t* textFormat, ...)
+#define KORL_PLATFORM_GUI_WINDOW_SET_POSITION(name)   void name(f32 anchorX, f32 anchorY, f32 positionX, f32 positionY)
+#define KORL_PLATFORM_GUI_WINDOW_SET_SIZE(name)       void name(f32 sizeX, f32 sizeY)
+#define KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX(name) void name(u$ loopIndex)
+#define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)    void name(const wchar_t* textFormat, ...)
+#define KORL_PLATFORM_GUI_WIDGET_TEXT(name)           void name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
+#define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name)  u8   name(const wchar_t* textFormat, ...)
 typedef enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT
     , KORL_LOG_LEVEL_ERROR
@@ -595,6 +596,7 @@ typedef KORL_PLATFORM_GUI_WINDOW_BEGIN                    (fnSig_korl_gui_window
 typedef KORL_PLATFORM_GUI_WINDOW_END                      (fnSig_korl_gui_windowEnd);
 typedef KORL_PLATFORM_GUI_WINDOW_SET_POSITION             (fnSig_korl_gui_windowSetPosition);
 typedef KORL_PLATFORM_GUI_WINDOW_SET_SIZE                 (fnSig_korl_gui_windowSetSize);
+typedef KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX           (fnSig_korl_gui_setLoopIndex);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT                     (fnSig_korl_gui_widgetText);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
@@ -667,6 +669,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_gui_windowEnd                    * korl_gui_windowEnd;\
     fnSig_korl_gui_windowSetPosition            * korl_gui_windowSetPosition;\
     fnSig_korl_gui_windowSetSize                * korl_gui_windowSetSize;\
+    fnSig_korl_gui_setLoopIndex                 * korl_gui_setLoopIndex;\
     fnSig_korl_gui_widgetTextFormat             * korl_gui_widgetTextFormat;\
     fnSig_korl_gui_widgetText                   * korl_gui_widgetText;\
     fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;\
@@ -739,6 +742,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName).korl_gui_windowEnd                    = korl_gui_windowEnd;\
     (apiVariableName).korl_gui_windowSetPosition            = korl_gui_windowSetPosition;\
     (apiVariableName).korl_gui_windowSetSize                = korl_gui_windowSetSize;\
+    (apiVariableName).korl_gui_setLoopIndex                 = korl_gui_setLoopIndex;\
     (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
     (apiVariableName).korl_gui_widgetText                   = korl_gui_widgetText;\
     (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;\
@@ -811,6 +815,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     korl_gui_windowEnd                    = (apiVariableName).korl_gui_windowEnd;\
     korl_gui_windowSetPosition            = (apiVariableName).korl_gui_windowSetPosition;\
     korl_gui_windowSetSize                = (apiVariableName).korl_gui_windowSetSize;\
+    korl_gui_setLoopIndex                 = (apiVariableName).korl_gui_setLoopIndex;\
     korl_gui_widgetTextFormat             = (apiVariableName).korl_gui_widgetTextFormat;\
     korl_gui_widgetText                   = (apiVariableName).korl_gui_widgetText;\
     korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;\
