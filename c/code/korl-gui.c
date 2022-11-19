@@ -126,7 +126,9 @@ widgetIndexValid:
     widget = &context->stbDaWidgets[widgetIndex];
     korl_assert(widget->type == widgetType);
     widget->usedThisFrame = true;
+    widget->realignY      = false;
     widget->orderIndex    = context->stbDaWindows[context->currentWindowIndex].widgets++;
+    context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);
     return widget;
 }
 /**
@@ -144,6 +146,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
     widgetCursor.x -= contentCursorOffsetX;
     widgetCursor.y += contentCursorOffsetY;
     window->cachedContentAabb.min = window->cachedContentAabb.max = widgetCursor;
+    f32 currentWidgetRowHeight = 0;// used to accumulate the AABB Y-size of a row of widgets
     for(u$ j = 0; j < arrlenu(context->stbDaWidgets); ++j)
     {
         _Korl_Gui_Widget*const widget = &context->stbDaWidgets[j];
@@ -224,7 +227,18 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             break;}
         }
         window->cachedContentAabb = korl_math_aabb2f32_union(window->cachedContentAabb, widget->cachedAabb);
-        widgetCursor.y -= widget->cachedAabb.max.y - widget->cachedAabb.min.y;
+        KORL_MATH_ASSIGN_CLAMP_MIN(currentWidgetRowHeight, widget->cachedAabb.max.y - widget->cachedAabb.min.y);
+        if(widget->realignY)
+        {
+            /* do nothing to the widgetCursor Y position, but advance the X position */
+            widgetCursor.x += widget->cachedAabb.max.x - widget->cachedAabb.min.x;
+        }
+        else
+        {
+            widgetCursor.y -= currentWidgetRowHeight;                   // advance to the next Y position below this widget
+            widgetCursor.x  = window->position.x - contentCursorOffsetX;// restore the X position to the value before this loop
+            currentWidgetRowHeight = 0;// we're starting a new horizontal row of widgets; reset the AABB.y size accumulator
+        }
     }
 }
 korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
@@ -358,6 +372,7 @@ done_currentWindowIndexValid:
             newWindow->size.y = newWindow->hiddenContentPreviousSizeY;
     }
     newWindow->specialWidgetFlagsPressed = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
+    context->currentWidgetIndex = -1;
 }
 korl_internal KORL_PLATFORM_GUI_WINDOW_END(korl_gui_windowEnd)
 {
@@ -390,6 +405,7 @@ korl_internal void korl_gui_frameBegin(void)
     korl_assert(context->frameSequenceCounter == 0);
     context->frameSequenceCounter++;
     context->currentWindowIndex = -1;
+    context->currentWidgetIndex = -1;
     korl_memory_allocator_empty(context->allocatorHandleStack);
 }
 korl_internal void korl_gui_frameEnd(void)
@@ -780,10 +796,18 @@ korl_internal void korl_gui_frameEnd(void)
     korl_time_probeStop(generate_draw_commands);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 }
-korl_internal KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX(korl_gui_setLoopIndex)
+korl_internal KORL_PLATFORM_GUI_SET_LOOP_INDEX(korl_gui_setLoopIndex)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     context->loopIndex = loopIndex;
+}
+korl_internal KORL_PLATFORM_GUI_REALIGN_Y(korl_gui_realignY)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    if(   context->currentWidgetIndex < 0
+       || context->currentWidgetIndex >= korl_checkCast_u$_to_i$(arrlenu(context->stbDaWidgets)))
+        return;// silently do nothing if user has not created a widget yet for the current window
+    context->stbDaWidgets[context->currentWidgetIndex].realignY = true;
 }
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
 {

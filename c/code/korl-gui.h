@@ -17,7 +17,8 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize);
 korl_internal void korl_gui_frameBegin(void);
 korl_internal void korl_gui_frameEnd(void);
 /** Make sure to reset this value back to \c 0 after you are finished looping! */
-korl_internal KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX(korl_gui_setLoopIndex);
+korl_internal KORL_PLATFORM_GUI_SET_LOOP_INDEX(korl_gui_setLoopIndex);
+korl_internal KORL_PLATFORM_GUI_REALIGN_Y(korl_gui_realignY);
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat);
 korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText);
 /** 

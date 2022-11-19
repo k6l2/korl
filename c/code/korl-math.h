@@ -3,8 +3,8 @@
 #define KORL_PI32 3.14159f
 #define KORL_MATH_CLAMP(x, min, max)        ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
 #define KORL_MATH_ASSIGN_CLAMP(x, min, max) ((x) = KORL_MATH_CLAMP((x), (min), (max)))
-#define KORL_MATH_ASSIGN_CLAMP_MIN(x, min)  ((x) = KORL_MATH_CLAMP((x), (min), (x)))
-#define KORL_MATH_ASSIGN_CLAMP_MAX(x, max)  ((x) = KORL_MATH_CLAMP((x), (x), (max)))
+#define KORL_MATH_ASSIGN_CLAMP_MIN(x, min)  ((x) = (x) <= (min) ? (min) : (x))
+#define KORL_MATH_ASSIGN_CLAMP_MAX(x, max)  ((x) = (x) >= (max) ? (max) : (x))
 #define KORL_MATH_MIN(a,b)                  ((a) <= (b) ? (a) : (b))
 #define KORL_MATH_MAX(a,b)                  ((a) >= (b) ? (a) : (b))
 typedef union Korl_Math_V2u32

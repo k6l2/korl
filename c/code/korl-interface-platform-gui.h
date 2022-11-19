@@ -22,7 +22,15 @@ typedef enum Korl_Gui_Widget_Text_Flags
  */
 #define KORL_PLATFORM_GUI_WINDOW_SET_POSITION(name)   void name(f32 anchorX, f32 anchorY, f32 positionX, f32 positionY)
 #define KORL_PLATFORM_GUI_WINDOW_SET_SIZE(name)       void name(f32 sizeX, f32 sizeY)
-#define KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX(name) void name(u$ loopIndex)
+#define KORL_PLATFORM_GUI_SET_LOOP_INDEX(name)        void name(u$ loopIndex)
+/**
+ * When a widget is added to a window, the default behavior is to place the 
+ * widget's window-space position at {0, previousWidgetAabb.bottom}.  Invoking 
+ * this function allows the user to change this behavior, such that the new 
+ * widget is placed at {previousWidgetAabb.right, previousWidgetAabb.top}, 
+ * effectively alligning them on the same Y position within the window.
+ */
+#define KORL_PLATFORM_GUI_REALIGN_Y(name)             void name(void)
 #define KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(name)    void name(const wchar_t* textFormat, ...)
 #define KORL_PLATFORM_GUI_WIDGET_TEXT(name)           void name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
 #define KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(name)  u8   name(const wchar_t* textFormat, ...)

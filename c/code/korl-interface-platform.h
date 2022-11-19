@@ -94,7 +94,8 @@ typedef KORL_PLATFORM_GUI_WINDOW_BEGIN                    (fnSig_korl_gui_window
 typedef KORL_PLATFORM_GUI_WINDOW_END                      (fnSig_korl_gui_windowEnd);
 typedef KORL_PLATFORM_GUI_WINDOW_SET_POSITION             (fnSig_korl_gui_windowSetPosition);
 typedef KORL_PLATFORM_GUI_WINDOW_SET_SIZE                 (fnSig_korl_gui_windowSetSize);
-typedef KORL_PLATFORM_GUI_WINDOW_SET_LOOP_INDEX           (fnSig_korl_gui_setLoopIndex);
+typedef KORL_PLATFORM_GUI_SET_LOOP_INDEX                  (fnSig_korl_gui_setLoopIndex);
+typedef KORL_PLATFORM_GUI_REALIGN_Y                       (fnSig_korl_gui_realignY);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT              (fnSig_korl_gui_widgetTextFormat);
 typedef KORL_PLATFORM_GUI_WIDGET_TEXT                     (fnSig_korl_gui_widgetText);
 typedef KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT            (fnSig_korl_gui_widgetButtonFormat);
@@ -169,6 +170,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_gui_windowSetPosition            * korl_gui_windowSetPosition;\
     fnSig_korl_gui_windowSetSize                * korl_gui_windowSetSize;\
     fnSig_korl_gui_setLoopIndex                 * korl_gui_setLoopIndex;\
+    fnSig_korl_gui_realignY                     * korl_gui_realignY;\
     fnSig_korl_gui_widgetTextFormat             * korl_gui_widgetTextFormat;\
     fnSig_korl_gui_widgetText                   * korl_gui_widgetText;\
     fnSig_korl_gui_widgetButtonFormat           * korl_gui_widgetButtonFormat;\
@@ -242,6 +244,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName).korl_gui_windowSetPosition            = korl_gui_windowSetPosition;\
     (apiVariableName).korl_gui_windowSetSize                = korl_gui_windowSetSize;\
     (apiVariableName).korl_gui_setLoopIndex                 = korl_gui_setLoopIndex;\
+    (apiVariableName).korl_gui_realignY                     = korl_gui_realignY;\
     (apiVariableName).korl_gui_widgetTextFormat             = korl_gui_widgetTextFormat;\
     (apiVariableName).korl_gui_widgetText                   = korl_gui_widgetText;\
     (apiVariableName).korl_gui_widgetButtonFormat           = korl_gui_widgetButtonFormat;\
@@ -315,6 +318,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     korl_gui_windowSetPosition            = (apiVariableName).korl_gui_windowSetPosition;\
     korl_gui_windowSetSize                = (apiVariableName).korl_gui_windowSetSize;\
     korl_gui_setLoopIndex                 = (apiVariableName).korl_gui_setLoopIndex;\
+    korl_gui_realignY                     = (apiVariableName).korl_gui_realignY;\
     korl_gui_widgetTextFormat             = (apiVariableName).korl_gui_widgetTextFormat;\
     korl_gui_widgetText                   = (apiVariableName).korl_gui_widgetText;\
     korl_gui_widgetButtonFormat           = (apiVariableName).korl_gui_widgetButtonFormat;\

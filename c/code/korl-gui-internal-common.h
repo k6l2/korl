@@ -45,6 +45,7 @@ typedef struct _Korl_Gui_Widget
     u64 identifierHash;
     u16 orderIndex;// related to _Korl_Gui_Window::widgets; determines the order in which widgets are processed/displayed in their parent/window
     bool usedThisFrame;
+    bool realignY;
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
     bool cachedIsInteractive;
     enum
@@ -104,6 +105,7 @@ typedef struct _Korl_Gui_Context
      * the \c korl_gui_windowBegin/End calls, a default "debug" window will be 
      * automatically selected. */
     i16 currentWindowIndex;
+    i16 currentWidgetIndex;
     /** help ensure the user calls \c korl_gui_frameBegin/End the correct # of 
      * times */
     u8 frameSequenceCounter;
