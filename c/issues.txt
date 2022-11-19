@@ -18,7 +18,6 @@
 [ ] KORL-ISSUE-000-000-031: copypasta: same code that runs in the `done` label (not sure if there is a good way to take this out though)
 [ ] KORL-ISSUE-000-000-034: investigate: WM_PAINT, ValidateRect(hWnd, NULL); ???  I'm not actually sure if this is necessary, so maybe this is very low priority.
 [~] KORL-ISSUE-000-000-036: (low priority) configure STB libs to not link to standard libraries at some point?  This should give us better stability & help clean up our application symbols in general
-[ ] KORL-ISSUE-000-000-040: interface-game-memory: because this file is included in the platform's C translation unit, we can't declare/define any C++ datatypes here (such as classes).  Is this something to be concerned about?...
 [ ] KORL-ISSUE-000-000-046: log: test to validate order of async log writes; we may or may not need to specify the offset to begin writing to the file for each async call, but I'm not sure.  See: https://stackoverflow.com/a/31787459
 [ ] KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
 [ ] KORL-ISSUE-000-000-050: time: make time probe API thread-safe
@@ -138,6 +137,7 @@
 [x] KORL-ISSUE-000-000-037: remove C++20 flag from compile when game module is separate translation unit
 [x] KORL-ISSUE-000-000-038: GUI: text AABBs are not being calculated correctly.  Example: try making a text widget that displays "[E][S][D][F]".  Observed behavior: the calculated AABB includes nothing below the text baseline it seems?...
 [x] KORL-ISSUE-000-000-039: GUI: text AABBs are not being calculated correctly.  Example: make a text widget with just hashes ("---------") above & below other text widgets.  Expected behavior: whitespace above & below the hash characters.  Observed behavior: font metrics are not taken into account; no whitespace is taken into account for spacing between the widgets.
+[x] KORL-ISSUE-000-000-040: interface-game-memory: because this file is included in the platform's C translation unit, we can't declare/define any C++ datatypes here (such as classes).  Is this something to be concerned about?...
 [x] KORL-ISSUE-000-000-041: build: remove exception handling code generation from platform translation unit, once the game translation unit is separated
 [x] KORL-ISSUE-000-000-042: fix the issue with all the %s formatted strings being WRONG in the platform layer!!! (excluding: **\stb, submodules/korl/code)  I'm not sure what caused this, but I should probably finish the log refactor branch first before fixing this issue...
 [x] KORL-ISSUE-000-000-043: memory: when allocations fail, log a warning & return NULL instead of failing an assert

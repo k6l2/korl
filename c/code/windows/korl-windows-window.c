@@ -32,7 +32,7 @@ typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_StringPool stringPool;
-    GameMemory* gameMemory;
+    void* gameContext;
     struct
     {
         HWND handle;
@@ -41,8 +41,8 @@ typedef struct _Korl_Windows_Window_Context
     } window;// for now, we will only ever have _one_ window
     struct
     {
-        fnSig_korl_game_onReload*        korl_game_onReload;
         fnSig_korl_game_initialize*      korl_game_initialize;
+        fnSig_korl_game_onReload*        korl_game_onReload;
         fnSig_korl_game_onKeyboardEvent* korl_game_onKeyboardEvent;
         fnSig_korl_game_onMouseEvent*    korl_game_onMouseEvent;
         fnSig_korl_game_onGamepadEvent*  korl_game_onGamepadEvent;
@@ -217,8 +217,8 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_windo
 }
 korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
 {
-    _korl_windows_window_context.gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        GetProcAddress(hModule, "korl_game_onReload"));
     _korl_windows_window_context.gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      GetProcAddress(hModule, "korl_game_initialize"));
+    _korl_windows_window_context.gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        GetProcAddress(hModule, "korl_game_onReload"));
     _korl_windows_window_context.gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, GetProcAddress(hModule, "korl_game_onKeyboardEvent"));
     _korl_windows_window_context.gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    GetProcAddress(hModule, "korl_game_onMouseEvent"));
     _korl_windows_window_context.gameApi.korl_game_onGamepadEvent  = KORL_C_CAST(fnSig_korl_game_onGamepadEvent*,  GetProcAddress(hModule, "korl_game_onGamepadEvent"));
@@ -345,14 +345,13 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 korl_internal void _korl_windows_window_gameInitialize(KorlPlatformApi* korlApi)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
-    if(context->gameMemory)
+    if(context->gameContext)
         return;
     if(   !context->gameApi.korl_game_initialize
        || !context->gameApi.korl_game_onReload)
        return;
-    context->gameMemory = korl_allocate(context->allocatorHandle, sizeof(GameMemory));
-    context->gameApi.korl_game_onReload(context->gameMemory, *korlApi);
-    context->gameApi.korl_game_initialize();
+    context->gameContext = context->gameApi.korl_game_initialize(*korlApi);
+    context->gameApi.korl_game_onReload(context->gameContext, *korlApi);
 }
 korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf16GameDllFileName)
 {
@@ -526,7 +525,7 @@ korl_internal void korl_windows_window_loop(void)
                && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(context->gameDllLastWriteDateStamp, dateStampLatestFileWrite))
             {
                 _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
-                context->gameApi.korl_game_onReload(context->gameMemory, korlApi);
+                context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             }
         }
         korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded);
@@ -553,7 +552,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
             korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             if(context->gameApi.korl_game_onReload)
-                context->gameApi.korl_game_onReload(context->gameMemory, korlApi);
+                context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             korl_time_probeStop(save_state_load);
         }
         korl_time_probeStart(gui_frame_begin); korl_gui_frameBegin(); korl_time_probeStop(gui_frame_begin);
@@ -648,7 +647,7 @@ korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** 
 {
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameMemory, sizeof(_korl_windows_window_context.gameMemory));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameContext, sizeof(_korl_windows_window_context.gameContext));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.x, sizeof(surfaceSize.x));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.y, sizeof(surfaceSize.y));
 }
@@ -660,13 +659,13 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
         korl_logLastError("ReadFile failed");
         return false;
     }
-    u64 gameMemory;
-    if(!ReadFile(hFile, &gameMemory, sizeof(gameMemory), NULL/*bytes read*/, NULL/*no overlapped*/))
+    u64 gameContext;
+    if(!ReadFile(hFile, &gameContext, sizeof(gameContext), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
     }
-    _korl_windows_window_context.gameMemory = KORL_C_CAST(void*, gameMemory);
+    _korl_windows_window_context.gameContext = KORL_C_CAST(void*, gameContext);
     Korl_Math_V2u32 surfaceSize;
     if(!ReadFile(hFile, &surfaceSize.x, sizeof(surfaceSize.x), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
