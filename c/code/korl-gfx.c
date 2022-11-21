@@ -1336,6 +1336,10 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(korl_gfx_createBa
 }
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
 {
+    return korl_gfx_createBatchCircleSector(allocatorHandle, radius, pointCount, color, 2*KORL_PI32);
+}
+korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE_SECTOR(korl_gfx_createBatchCircleSector)
+{
     korl_time_probeStart(create_batch_circle);
     /* we can't really make a circle shape with < 3 points around the circumference */
     korl_assert(pointCount >= 3);
@@ -1372,7 +1376,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
     const f32 deltaRadians = 2*KORL_PI32 / pointCount;
     for(u32 p = 0; p < pointCount; p++)
     {
-        const f32 spokeRadians = p*deltaRadians;
+        const f32 spokeRadians = KORL_MATH_MIN(p*deltaRadians, sectorRadians);
         const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(radius, spokeRadians);
         KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[1 + p] = (Korl_Math_V3f32){spoke.x, spoke.y, 0.f};
     }
@@ -1383,6 +1387,10 @@ korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE(korl_gfx_createBatchCircle)
         result->_vertexIndices[3*p + 0] = 0;
         result->_vertexIndices[3*p + 1] = korl_vulkan_safeCast_u$_to_vertexIndex(p + 1);
         result->_vertexIndices[3*p + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(((p + 1) % pointCount) + 1);
+        if(p == pointCount - 1 && sectorRadians < 2*KORL_PI32)
+            /* if the circle sector radians does not fill the whole circle, 
+                don't connect the last triangle with the first vertex */
+            result->_vertexIndices[3*p + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(p + 1);
     }
     /**/
     korl_time_probeStop(create_batch_circle);

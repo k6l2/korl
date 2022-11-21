@@ -71,6 +71,7 @@ typedef KORL_PLATFORM_GFX_BATCH                           (fnSig_korl_gfx_batch)
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korl_gfx_createBatchRectangleTextured);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED  (fnSig_korl_gfx_createBatchRectangleColored);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE             (fnSig_korl_gfx_createBatchCircle);
+typedef KORL_PLATFORM_GFX_CREATE_BATCH_CIRCLE_SECTOR      (fnSig_korl_gfx_createBatchCircleSector);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_TRIANGLES          (fnSig_korl_gfx_createBatchTriangles);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_LINES              (fnSig_korl_gfx_createBatchLines);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_TEXT               (fnSig_korl_gfx_createBatchText);
@@ -146,6 +147,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_gfx_createBatchRectangleTextured * korl_gfx_createBatchRectangleTextured;\
     fnSig_korl_gfx_createBatchRectangleColored  * korl_gfx_createBatchRectangleColored;\
     fnSig_korl_gfx_createBatchCircle            * korl_gfx_createBatchCircle;\
+    fnSig_korl_gfx_createBatchCircleSector      * korl_gfx_createBatchCircleSector;\
     fnSig_korl_gfx_createBatchTriangles         * korl_gfx_createBatchTriangles;\
     fnSig_korl_gfx_createBatchLines             * korl_gfx_createBatchLines;\
     fnSig_korl_gfx_createBatchText              * korl_gfx_createBatchText;\
@@ -220,6 +222,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName).korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;\
     (apiVariableName).korl_gfx_createBatchRectangleColored  = korl_gfx_createBatchRectangleColored;\
     (apiVariableName).korl_gfx_createBatchCircle            = korl_gfx_createBatchCircle;\
+    (apiVariableName).korl_gfx_createBatchCircleSector      = korl_gfx_createBatchCircleSector;\
     (apiVariableName).korl_gfx_createBatchTriangles         = korl_gfx_createBatchTriangles;\
     (apiVariableName).korl_gfx_createBatchLines             = korl_gfx_createBatchLines;\
     (apiVariableName).korl_gfx_createBatchText              = korl_gfx_createBatchText;\
@@ -294,6 +297,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     korl_gfx_createBatchRectangleTextured = (apiVariableName).korl_gfx_createBatchRectangleTextured;\
     korl_gfx_createBatchRectangleColored  = (apiVariableName).korl_gfx_createBatchRectangleColored;\
     korl_gfx_createBatchCircle            = (apiVariableName).korl_gfx_createBatchCircle;\
+    korl_gfx_createBatchCircleSector      = (apiVariableName).korl_gfx_createBatchCircleSector;\
     korl_gfx_createBatchTriangles         = (apiVariableName).korl_gfx_createBatchTriangles;\
     korl_gfx_createBatchLines             = (apiVariableName).korl_gfx_createBatchLines;\
     korl_gfx_createBatchText              = (apiVariableName).korl_gfx_createBatchText;\
