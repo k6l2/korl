@@ -650,6 +650,7 @@ korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** 
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameContext, sizeof(_korl_windows_window_context.gameContext));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.x, sizeof(surfaceSize.x));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.y, sizeof(surfaceSize.y));
+    //KORL-ISSUE-000-000-099: windows-window: window "maximized" state is not preserved when loading a memory state; use GetWindowPlacement API to get this state from the window
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {
