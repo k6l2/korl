@@ -4,6 +4,7 @@
 #include "korl-vulkan.h"
 #include "korl-interface-platform-gfx.h"
 korl_internal void korl_gfx_initialize(void);
+korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size);
 korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
@@ -48,6 +49,8 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(korl_gfx_cameraSetSci
  * - if you want the origin to be in the bottom-left corner of the window, pass 
  *   \c {0.f,0.f} as size ratio coordinates */
 korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOrthoSetOriginAnchor);
+korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToWorld);
+korl_internal KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(korl_gfx_camera_worldToWindow);
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch);
 //KORL-ISSUE-000-000-005
 korl_internal KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(korl_gfx_createBatchRectangleTextured);

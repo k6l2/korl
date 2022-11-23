@@ -50,6 +50,7 @@ typedef struct Korl_Gfx_Camera
     } type;
     Korl_Math_V3f32 position;
     Korl_Math_V3f32 target;
+    Korl_Math_V3f32 worldUpNormal;
     /** If the viewport scissor coordinates are stored as ratios, they can 
      * always be valid up until the time the camera gets used to draw, allowing 
      * the swap chain dimensions to change however it likes without requiring us 
@@ -143,6 +144,12 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR(name)               void               name(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(name)       void               name(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
 #define KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(name)   void               name(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
+/** \return false if the coordinate conversion failed */
+#define KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(name)           bool               name(Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition, Korl_Math_V3f32* out_worldEyeRayPosition, Korl_Math_V3f32* out_worldEyeRayDirection)
+/** \return \c {Nan,Nan} if the world position is not contained within the 
+ * camera's clip space. This does NOT mean that \c non-{NaN,NaN} values are on 
+ * the screen!*/
+#define KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(name)           Korl_Math_V2f32    name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_PLATFORM_GFX_BATCH(name)                            void               name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name)  Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(name)   Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color4u8 color)

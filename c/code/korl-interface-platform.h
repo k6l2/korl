@@ -67,6 +67,8 @@ typedef KORL_PLATFORM_GFX_USE_CAMERA                      (fnSig_korl_gfx_useCam
 typedef KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR              (fnSig_korl_gfx_cameraSetScissor);
 typedef KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT      (fnSig_korl_gfx_cameraSetScissorPercent);
 typedef KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR  (fnSig_korl_gfx_cameraOrthoSetOriginAnchor);
+typedef KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD          (fnSig_korl_gfx_camera_windowToWorld);
+typedef KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW          (fnSig_korl_gfx_camera_worldToWindow);
 typedef KORL_PLATFORM_GFX_BATCH                           (fnSig_korl_gfx_batch);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED (fnSig_korl_gfx_createBatchRectangleTextured);
 typedef KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED  (fnSig_korl_gfx_createBatchRectangleColored);
@@ -143,6 +145,8 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_gfx_cameraSetScissor             * korl_gfx_cameraSetScissor;\
     fnSig_korl_gfx_cameraSetScissorPercent      * korl_gfx_cameraSetScissorPercent;\
     fnSig_korl_gfx_cameraOrthoSetOriginAnchor   * korl_gfx_cameraOrthoSetOriginAnchor;\
+    fnSig_korl_gfx_camera_windowToWorld         * korl_gfx_camera_windowToWorld;\
+    fnSig_korl_gfx_camera_worldToWindow         * korl_gfx_camera_worldToWindow;\
     fnSig_korl_gfx_batch                        * korl_gfx_batch;\
     fnSig_korl_gfx_createBatchRectangleTextured * korl_gfx_createBatchRectangleTextured;\
     fnSig_korl_gfx_createBatchRectangleColored  * korl_gfx_createBatchRectangleColored;\
@@ -218,6 +222,8 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName).korl_gfx_cameraSetScissor             = korl_gfx_cameraSetScissor;\
     (apiVariableName).korl_gfx_cameraSetScissorPercent      = korl_gfx_cameraSetScissorPercent;\
     (apiVariableName).korl_gfx_cameraOrthoSetOriginAnchor   = korl_gfx_cameraOrthoSetOriginAnchor;\
+    (apiVariableName).korl_gfx_camera_windowToWorld         = korl_gfx_camera_windowToWorld;\
+    (apiVariableName).korl_gfx_camera_worldToWindow         = korl_gfx_camera_worldToWindow;\
     (apiVariableName).korl_gfx_batch                        = korl_gfx_batch;\
     (apiVariableName).korl_gfx_createBatchRectangleTextured = korl_gfx_createBatchRectangleTextured;\
     (apiVariableName).korl_gfx_createBatchRectangleColored  = korl_gfx_createBatchRectangleColored;\
@@ -293,6 +299,8 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     korl_gfx_cameraSetScissor             = (apiVariableName).korl_gfx_cameraSetScissor;\
     korl_gfx_cameraSetScissorPercent      = (apiVariableName).korl_gfx_cameraSetScissorPercent;\
     korl_gfx_cameraOrthoSetOriginAnchor   = (apiVariableName).korl_gfx_cameraOrthoSetOriginAnchor;\
+    korl_gfx_camera_windowToWorld         = (apiVariableName).korl_gfx_camera_windowToWorld;\
+    korl_gfx_camera_worldToWindow         = (apiVariableName).korl_gfx_camera_worldToWindow;\
     korl_gfx_batch                        = (apiVariableName).korl_gfx_batch;\
     korl_gfx_createBatchRectangleTextured = (apiVariableName).korl_gfx_createBatchRectangleTextured;\
     korl_gfx_createBatchRectangleColored  = (apiVariableName).korl_gfx_createBatchRectangleColored;\

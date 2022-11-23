@@ -103,6 +103,7 @@ typedef struct _Korl_Gfx_Context
     _Korl_Gfx_FontCache** stbDaFontCaches;
     u8 nextResourceSalt;
     Korl_StringPool stringPool;// used for Resource database strings
+    Korl_Math_V2u32 surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {
@@ -690,6 +691,50 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     batch->_fontTextureHandle       = fontGlyphPage->resourceHandleTexture;
     batch->_glyphMeshBufferVertices = fontGlyphPage->resourceHandleSsboGlyphMeshVertices;
 }
+korl_internal Korl_Math_M4f32 _korl_gfx_camera_projection(Korl_Gfx_Camera*const context)
+{
+    switch(context->type)
+    {
+    case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
+        const f32 viewportWidthOverHeight = _korl_gfx_context.surfaceSize.y == 0 
+            ? 1.f 
+            :  KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x)
+             / KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+        return korl_math_m4f32_projectionFov(context->subCamera.perspective.fovHorizonDegrees
+                                            ,viewportWidthOverHeight
+                                            ,context->subCamera.perspective.clipNear
+                                            ,context->subCamera.perspective.clipFar);}
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
+        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x);
+        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+        const f32 right  = KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x) - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x);
+        const f32 top    = KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y) - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+        const f32 far    = -context->subCamera.orthographic.clipDepth;
+        const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+        return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
+        const f32 viewportWidthOverHeight = _korl_gfx_context.surfaceSize.y == 0 
+            ? 1.f 
+            :  KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x) 
+             / KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+        /* w / fixedHeight == windowAspectRatio */
+        const f32 width  = context->subCamera.orthographic.fixedHeight * viewportWidthOverHeight;
+        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*width;
+        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*context->subCamera.orthographic.fixedHeight;
+        const f32 right  = width       - context->subCamera.orthographic.originAnchor.x*width;
+        const f32 top    = context->subCamera.orthographic.fixedHeight - context->subCamera.orthographic.originAnchor.y*context->subCamera.orthographic.fixedHeight;
+        const f32 far    = -context->subCamera.orthographic.clipDepth;
+        const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+        return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
+    default:{
+        korl_log(ERROR, "invalid camera type: %i", context->type);
+        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Math_M4f32);}
+    }
+}
+korl_internal Korl_Math_M4f32 _korl_gfx_camera_view(Korl_Gfx_Camera*const context)
+{
+    return korl_math_m4f32_lookAt(&context->position, &context->target, &context->worldUpNormal);
+}
 korl_internal void korl_gfx_initialize(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
@@ -700,6 +745,10 @@ korl_internal void korl_gfx_initialize(void)
                                                            ,NULL/*let platform choose address*/);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFontCaches, 16);
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
+}
+korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size)
+{
+    _korl_gfx_context.surfaceSize = size;
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
@@ -996,6 +1045,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_FOV(korl_gfx_createCameraFov)
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.position                                = position;
     result.target                                  = target;
+    result.worldUpNormal                           = KORL_MATH_V3F32_Z;
     result._viewportScissorPosition                = (Korl_Math_V2f32){0, 0};
     result._viewportScissorSize                    = (Korl_Math_V2f32){1, 1};
     result.subCamera.perspective.clipNear          = clipNear;
@@ -1008,6 +1058,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho)
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.type                                = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC;
     result.position                            = KORL_MATH_V3F32_ZERO;
+    result.worldUpNormal                       = KORL_MATH_V3F32_Y;
     result.target                              = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
     result._viewportScissorPosition            = (Korl_Math_V2f32){0, 0};
     result._viewportScissorSize                = (Korl_Math_V2f32){1, 1};
@@ -1020,6 +1071,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(korl_gfx_create
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.type                                = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
     result.position                            = KORL_MATH_V3F32_ZERO;
+    result.worldUpNormal                       = KORL_MATH_V3F32_Y;
     result.target                              = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
     result._viewportScissorPosition            = (Korl_Math_V2f32){0, 0};
     result._viewportScissorSize                = (Korl_Math_V2f32){1, 1};
@@ -1041,7 +1093,6 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(korl_gfx_cameraF
 korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
 {
     korl_time_probeStart(useCamera);
-    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Scissor, scissor);
     switch(camera._scissorType)
     {
@@ -1050,10 +1101,10 @@ korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
         korl_assert(camera._viewportScissorPosition.y >= 0 && camera._viewportScissorPosition.y <= 1);
         korl_assert(camera._viewportScissorSize.x >= 0 && camera._viewportScissorSize.x <= 1);
         korl_assert(camera._viewportScissorSize.y >= 0 && camera._viewportScissorSize.y <= 1);
-        scissor.x      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.x * surfaceSize.x);
-        scissor.y      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.y * surfaceSize.y);
-        scissor.width  = korl_math_round_f32_to_u32(camera._viewportScissorSize.x * surfaceSize.x);
-        scissor.height = korl_math_round_f32_to_u32(camera._viewportScissorSize.y * surfaceSize.y);
+        scissor.x      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.x * _korl_gfx_context.surfaceSize.x);
+        scissor.y      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.y * _korl_gfx_context.surfaceSize.y);
+        scissor.width  = korl_math_round_f32_to_u32(camera._viewportScissorSize.x * _korl_gfx_context.surfaceSize.x);
+        scissor.height = korl_math_round_f32_to_u32(camera._viewportScissorSize.y * _korl_gfx_context.surfaceSize.y);
         break;}
     case KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE:{
         korl_assert(camera._viewportScissorPosition.x >= 0);
@@ -1067,25 +1118,23 @@ korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera)
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_View, view);
     view.positionEye    = camera.position;
     view.positionTarget = camera.target;
+    view.worldUpNormal  = camera.worldUpNormal;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Projection, projection);
     switch(camera.type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
-        view.worldUpNormal = KORL_MATH_V3F32_Z;
         projection.type                             = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV;
         projection.subType.fov.horizontalFovDegrees = camera.subCamera.perspective.fovHorizonDegrees;
         projection.subType.fov.clipNear             = camera.subCamera.perspective.clipNear;
         projection.subType.fov.clipFar              = camera.subCamera.perspective.clipFar;
         break;}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
-        view.worldUpNormal = KORL_MATH_V3F32_Y;
         projection.type                              = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC;
         projection.subType.orthographic.depth        = camera.subCamera.orthographic.clipDepth;
         projection.subType.orthographic.originRatioX = camera.subCamera.orthographic.originAnchor.x;
         projection.subType.orthographic.originRatioY = camera.subCamera.orthographic.originAnchor.y;
         break;}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-        view.worldUpNormal = KORL_MATH_V3F32_Y;
         projection.type                              = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
         projection.subType.orthographic.depth        = camera.subCamera.orthographic.clipDepth;
         projection.subType.orthographic.originRatioX = camera.subCamera.orthographic.originAnchor.x;
@@ -1144,6 +1193,105 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
         context->subCamera.orthographic.originAnchor.y = swapchainSizeRatioOriginY;
         }break;
     }
+}
+korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToWorld)
+{
+    //@TODO: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
+    const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
+    const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
+    const Korl_Math_M4f32 viewInverse       = korl_math_m4f32_invert(&view);
+    const Korl_Math_M4f32 projectionInverse = korl_math_m4f32_invert(&projection);
+    if(korl_math_isNanf32(viewInverse.r0c0))
+    {
+        korl_log(WARNING, "failed to invert view matrix");
+        return false;
+    }
+    if(korl_math_isNanf32(projectionInverse.r0c0))
+    {
+        korl_log(WARNING, "failed to invert projection matrix");
+        return false;
+    }
+    const Korl_Math_V2f32 v2f32WindowPos = {KORL_C_CAST(f32, windowPosition.x)
+                                           ,KORL_C_CAST(f32, windowPosition.y)};
+    /* We can determine if a projection matrix is orthographic or frustum based 
+        on the last element of the W row.  See: 
+        http://www.songho.ca/opengl/gl_projectionmatrix.html */
+    korl_assert(   projection.r3c3 == 1 
+                || projection.r3c3 == 0);
+    const bool isOrthographic = projection.r3c3 == 1;
+    /* viewport-space => normalized-device-space */
+    const Korl_Math_V2f32 eyeRayNds = 
+        {  2*v2f32WindowPos.x / _korl_gfx_context.surfaceSize.x - 1
+        , -2*v2f32WindowPos.y / _korl_gfx_context.surfaceSize.y + 1 };
+    /* normalized-device-space => homogeneous-clip-space */
+    /* arbitrarily set the eye ray direction vector as far to the "back" of the 
+        homogeneous clip space box; we set the Z coordinate to 0, since Vulkan 
+        (with no extensions, which I don't want to use) requires a normalized 
+        depth buffer */
+    /// @TODO: ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
+    const Korl_Math_V4f32 eyeRayDirectionHcs = {eyeRayNds.x, eyeRayNds.y, 0, 1};
+    /* homogeneous-clip-space => eye-space */
+    Korl_Math_V4f32 eyeRayDirectionEs = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayDirectionHcs);
+    if(!isOrthographic)
+        eyeRayDirectionEs.w = 0;
+    /* eye-space => world-space */
+    const Korl_Math_V4f32 eyeRayDirectionWs = korl_math_m4f32_multiplyV4f32(&viewInverse, &eyeRayDirectionEs);
+    if(isOrthographic)
+    {
+        /* the orthographic eye position should be as far to the "front" of the 
+            homogenous clip space box, which means setting the Z coordinate to a 
+            value of 1 */
+        /// @TODO: ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
+        const Korl_Math_V4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y, 1, 1};
+        const Korl_Math_V4f32 eyeRayPositionEs  = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayPositionHcs);
+        const Korl_Math_V4f32 eyeRayPositionWs  = korl_math_m4f32_multiplyV4f32(&viewInverse      , &eyeRayPositionEs);
+        *out_worldEyeRayPosition  = eyeRayPositionWs.xyz;
+        *out_worldEyeRayDirection = korl_math_v3f32_normal(korl_math_v3f32_subtract(eyeRayDirectionWs.xyz, eyeRayPositionWs.xyz));
+    }
+    else
+    {
+        /* camera's eye position can be easily derived from the inverse view 
+            matrix: https://stackoverflow.com/a/39281556/4526664 */
+        *out_worldEyeRayPosition  = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){viewInverse.r0c3, viewInverse.r1c3, viewInverse.r2c3};
+        *out_worldEyeRayDirection = korl_math_v3f32_normal(eyeRayDirectionWs.xyz);
+    }
+    return true;
+}
+korl_internal KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(korl_gfx_camera_worldToWindow)
+{
+#if 0///@TODO: delete/recycle
+    local_const v2f32 INVALID_RESULT = {nanf(""), nanf("")};
+    korlAssert(worldPositionDimension < 4);
+    /* obtain viewport size & viewport offset from driver */
+    GLint viewportValues[4];// [x,y, width,height]
+    glGetIntegerv(GL_VIEWPORT, viewportValues);
+    GL_CHECK_ERROR();
+    /* calculate clip-space */
+    v4f32 worldPoint = {0,0,0,1};
+    for(u8 d = 0; d < worldPositionDimension; d++)
+        worldPoint.elements[d] = pWorldPosition[d];
+    const v4f32 cameraSpacePoint = krb::g_context->m4View * worldPoint;
+    const v4f32 clipSpacePoint = 
+        krb::g_context->m4Projection * cameraSpacePoint;
+    if(kmath::isNearlyZero(clipSpacePoint.elements[3]))
+        return INVALID_RESULT;
+    /* calculate normalized-device-coordinate-space 
+        y is inverted here because screen-space y axis is flipped! */
+    const v3f32 ndcSpacePoint = 
+        { clipSpacePoint.elements[0] / clipSpacePoint.elements[3]
+        , clipSpacePoint.elements[1] / clipSpacePoint.elements[3] * -1
+        , clipSpacePoint.elements[2] / clipSpacePoint.elements[3] };
+    /* Calculate screen-space.  GLSL formula: 
+        ((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
+    const v2f32 result = 
+        { ((ndcSpacePoint.x + 1.f) / 2.f) * viewportValues[2] + 
+            viewportValues[0]
+        , ((ndcSpacePoint.y + 1.f) / 2.f) * viewportValues[3] + 
+            viewportValues[1] };
+    return result;
+#endif
+    korl_assert(!"not yet implemented");
+    return (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
 }
 korl_internal KORL_PLATFORM_GFX_BATCH(korl_gfx_batch)
 {

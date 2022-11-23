@@ -464,6 +464,120 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*co
 }
 #pragma warning(push)
 #pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
+korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const m)
+{
+    Korl_Math_M4f32 result;
+    /* implementation derived from MESA's GLU lib: 
+        https://stackoverflow.com/a/1148405/4526664 
+        @TODO: investigate MESA's license, or maybe just roll my own code here? */
+    result.elements[ 0] =  m->elements[ 5] * m->elements[10] * m->elements[15] 
+                        -  m->elements[ 5] * m->elements[11] * m->elements[14] 
+                        -  m->elements[ 9] * m->elements[ 6] * m->elements[15] 
+                        +  m->elements[ 9] * m->elements[ 7] * m->elements[14] 
+                        +  m->elements[13] * m->elements[ 6] * m->elements[11] 
+                        -  m->elements[13] * m->elements[ 7] * m->elements[10];
+    result.elements[ 4] = -m->elements[ 4] * m->elements[10] * m->elements[15] 
+                        +  m->elements[ 4] * m->elements[11] * m->elements[14] 
+                        +  m->elements[ 8] * m->elements[ 6] * m->elements[15] 
+                        -  m->elements[ 8] * m->elements[ 7] * m->elements[14] 
+                        -  m->elements[12] * m->elements[ 6] * m->elements[11] 
+                        +  m->elements[12] * m->elements[ 7] * m->elements[10];
+    result.elements[ 8] =  m->elements[ 4] * m->elements[ 9] * m->elements[15] 
+                        -  m->elements[ 4] * m->elements[11] * m->elements[13] 
+                        -  m->elements[ 8] * m->elements[ 5] * m->elements[15] 
+                        +  m->elements[ 8] * m->elements[ 7] * m->elements[13] 
+                        +  m->elements[12] * m->elements[ 5] * m->elements[11] 
+                        -  m->elements[12] * m->elements[ 7] * m->elements[ 9];
+    result.elements[12] = -m->elements[ 4] * m->elements[ 9] * m->elements[14] 
+                        +  m->elements[ 4] * m->elements[10] * m->elements[13] 
+                        +  m->elements[ 8] * m->elements[ 5] * m->elements[14] 
+                        -  m->elements[ 8] * m->elements[ 6] * m->elements[13] 
+                        -  m->elements[12] * m->elements[ 5] * m->elements[10] 
+                        +  m->elements[12] * m->elements[ 6] * m->elements[9];
+    result.elements[ 1] = -m->elements[ 1] * m->elements[10] * m->elements[15] 
+                        +  m->elements[ 1] * m->elements[11] * m->elements[14] 
+                        +  m->elements[ 9] * m->elements[ 2] * m->elements[15] 
+                        -  m->elements[ 9] * m->elements[ 3] * m->elements[14] 
+                        -  m->elements[13] * m->elements[ 2] * m->elements[11] 
+                        +  m->elements[13] * m->elements[ 3] * m->elements[10];
+    result.elements[ 5] =  m->elements[ 0] * m->elements[10] * m->elements[15] 
+                        -  m->elements[ 0] * m->elements[11] * m->elements[14] 
+                        -  m->elements[ 8] * m->elements[ 2] * m->elements[15] 
+                        +  m->elements[ 8] * m->elements[ 3] * m->elements[14] 
+                        +  m->elements[12] * m->elements[ 2] * m->elements[11] 
+                        -  m->elements[12] * m->elements[ 3] * m->elements[10];
+    result.elements[ 9] = -m->elements[ 0] * m->elements[ 9] * m->elements[15] 
+                        +  m->elements[ 0] * m->elements[11] * m->elements[13] 
+                        +  m->elements[ 8] * m->elements[ 1] * m->elements[15] 
+                        -  m->elements[ 8] * m->elements[ 3] * m->elements[13] 
+                        -  m->elements[12] * m->elements[ 1] * m->elements[11] 
+                        +  m->elements[12] * m->elements[ 3] * m->elements[9];
+    result.elements[13] =  m->elements[ 0] * m->elements[ 9] * m->elements[14] 
+                        -  m->elements[ 0] * m->elements[10] * m->elements[13] 
+                        -  m->elements[ 8] * m->elements[ 1] * m->elements[14] 
+                        +  m->elements[ 8] * m->elements[ 2] * m->elements[13] 
+                        +  m->elements[12] * m->elements[ 1] * m->elements[10] 
+                        -  m->elements[12] * m->elements[ 2] * m->elements[ 9];
+    result.elements[ 2] =  m->elements[ 1] * m->elements[ 6] * m->elements[15] 
+                        -  m->elements[ 1] * m->elements[ 7] * m->elements[14] 
+                        -  m->elements[ 5] * m->elements[ 2] * m->elements[15] 
+                        +  m->elements[ 5] * m->elements[ 3] * m->elements[14] 
+                        +  m->elements[13] * m->elements[ 2] * m->elements[ 7] 
+                        -  m->elements[13] * m->elements[ 3] * m->elements[ 6];
+    result.elements[ 6] = -m->elements[ 0] * m->elements[ 6] * m->elements[15] 
+                        +  m->elements[ 0] * m->elements[ 7] * m->elements[14] 
+                        +  m->elements[ 4] * m->elements[ 2] * m->elements[15] 
+                        -  m->elements[ 4] * m->elements[ 3] * m->elements[14] 
+                        -  m->elements[12] * m->elements[ 2] * m->elements[ 7] 
+                        +  m->elements[12] * m->elements[ 3] * m->elements[ 6];
+    result.elements[10] =  m->elements[ 0] * m->elements[ 5] * m->elements[15] 
+                        -  m->elements[ 0] * m->elements[ 7] * m->elements[13] 
+                        -  m->elements[ 4] * m->elements[ 1] * m->elements[15] 
+                        +  m->elements[ 4] * m->elements[ 3] * m->elements[13] 
+                        +  m->elements[12] * m->elements[ 1] * m->elements[ 7] 
+                        -  m->elements[12] * m->elements[ 3] * m->elements[ 5];
+    result.elements[14] = -m->elements[ 0] * m->elements[ 5] * m->elements[14] 
+                        +  m->elements[ 0] * m->elements[ 6] * m->elements[13] 
+                        +  m->elements[ 4] * m->elements[ 1] * m->elements[14] 
+                        -  m->elements[ 4] * m->elements[ 2] * m->elements[13] 
+                        -  m->elements[12] * m->elements[ 1] * m->elements[ 6] 
+                        +  m->elements[12] * m->elements[ 2] * m->elements[ 5];
+    result.elements[ 3] = -m->elements[ 1] * m->elements[ 6] * m->elements[11] 
+                        +  m->elements[ 1] * m->elements[ 7] * m->elements[10] 
+                        +  m->elements[ 5] * m->elements[ 2] * m->elements[11] 
+                        -  m->elements[ 5] * m->elements[ 3] * m->elements[10] 
+                        -  m->elements[ 9] * m->elements[ 2] * m->elements[ 7] 
+                        +  m->elements[ 9] * m->elements[ 3] * m->elements[ 6];
+    result.elements[ 7] =  m->elements[ 0] * m->elements[ 6] * m->elements[11] 
+                        -  m->elements[ 0] * m->elements[ 7] * m->elements[10] 
+                        -  m->elements[ 4] * m->elements[ 2] * m->elements[11] 
+                        +  m->elements[ 4] * m->elements[ 3] * m->elements[10] 
+                        +  m->elements[ 8] * m->elements[ 2] * m->elements[ 7] 
+                        -  m->elements[ 8] * m->elements[ 3] * m->elements[ 6];
+    result.elements[11] = -m->elements[ 0] * m->elements[ 5] * m->elements[11] 
+                        +  m->elements[ 0] * m->elements[ 7] * m->elements[ 9] 
+                        +  m->elements[ 4] * m->elements[ 1] * m->elements[11] 
+                        -  m->elements[ 4] * m->elements[ 3] * m->elements[ 9] 
+                        -  m->elements[ 8] * m->elements[ 1] * m->elements[ 7] 
+                        +  m->elements[ 8] * m->elements[ 3] * m->elements[ 5];
+    result.elements[15] =  m->elements[ 0] * m->elements[ 5] * m->elements[10] 
+                        -  m->elements[ 0] * m->elements[ 6] * m->elements[ 9] 
+                        -  m->elements[ 4] * m->elements[ 1] * m->elements[10] 
+                        +  m->elements[ 4] * m->elements[ 2] * m->elements[ 9] 
+                        +  m->elements[ 8] * m->elements[ 1] * m->elements[ 6] 
+                        -  m->elements[ 8] * m->elements[ 2] * m->elements[ 5];
+    f32 det = m->elements[0] * result.elements[0] + m->elements[1] * result.elements[ 4] 
+            + m->elements[2] * result.elements[8] + m->elements[3] * result.elements[12];
+    if (korl_math_isNearlyZero(det))
+    {
+        result.r0c0 = korl_math_nanf32();
+        return result;
+    }
+    det = 1.0f / det;
+    for (u8 i = 0; i < 16; i++)
+        result.elements[i] *= det;
+    return result;
+}
 korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB)
 {
     //KORL-PERFORMANCE-000-000-005
@@ -473,6 +587,13 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*con
     for(u8 mARow = 0; mARow < 4; mARow++)
         for(u8 mBCol = 0; mBCol < 4; mBCol++)
             result.elements[mARow*4 + mBCol] = korl_math_v4f32_dot(&mA->rows[mARow], &mBTranspose.rows[mBCol]);
+    return result;
+}
+korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32(const Korl_Math_M4f32*const m, const Korl_Math_V4f32*const v)
+{
+    Korl_Math_V4f32 result;
+    for(u$ r = 0; r < korl_arraySize(m->rows); r++)
+        result.elements[r] = korl_math_v4f32_dot(&m->rows[r], v);
     return result;
 }
 #pragma warning(pop)

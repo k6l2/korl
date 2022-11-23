@@ -129,8 +129,8 @@ typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*       features;
     const Korl_Vulkan_DrawState_Blend*          blend;
-    const Korl_Vulkan_DrawState_Projection*     projection;
-    const Korl_Vulkan_DrawState_View*           view;
+    const Korl_Vulkan_DrawState_Projection*     projection;///@TODO: refactor to just take a M4f32
+    const Korl_Vulkan_DrawState_View*           view;      ///@TODO: refactor to just take a M4f32
     const Korl_Vulkan_DrawState_Model*          model;
     const Korl_Vulkan_DrawState_Scissor*        scissor;
     const Korl_Vulkan_DrawState_Samplers*       samplers;

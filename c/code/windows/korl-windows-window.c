@@ -572,6 +572,7 @@ korl_internal void korl_windows_window_loop(void)
         }
 #endif
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize();
+        korl_gfx_updateSurfaceSize(swapchainSize);
         korl_time_probeStart(game_update);
         if(    context->gameApi.korl_game_update
            && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
