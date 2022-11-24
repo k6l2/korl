@@ -1183,15 +1183,34 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(korl_gfx_cameraOr
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
         korl_assert(!"origin anchor not supported for perspective camera");
-        }break;
+        break;}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
         context->subCamera.orthographic.originAnchor.x = swapchainSizeRatioOriginX;
         context->subCamera.orthographic.originAnchor.y = swapchainSizeRatioOriginY;
-        }break;
+        break;}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
         context->subCamera.orthographic.originAnchor.x = swapchainSizeRatioOriginX;
         context->subCamera.orthographic.originAnchor.y = swapchainSizeRatioOriginY;
-        }break;
+        break;}
+    }
+}
+korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_GET_SIZE(korl_gfx_cameraOrthoGetSize)
+{
+    switch(context->type)
+    {
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
+        return (Korl_Math_V2f32){KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x)
+                                ,KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y)};}
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
+        const f32 viewportWidthOverHeight = _korl_gfx_context.surfaceSize.y == 0 
+            ? 1.f 
+            :   KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x) 
+              / KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+        return (Korl_Math_V2f32){context->subCamera.orthographic.fixedHeight*viewportWidthOverHeight// w / fixedHeight == windowAspectRatio
+                                ,context->subCamera.orthographic.fixedHeight};}
+    default:{
+        korl_log(ERROR, "invalid camera type: %i", context->type);
+        return (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};}
     }
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToWorld)

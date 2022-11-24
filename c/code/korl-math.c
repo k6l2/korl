@@ -216,6 +216,12 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_divide(Korl_Math_V2f32 vA, Korl_Ma
     vA.elements[1] /= vB.elements[1];
     return vA;
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_divideScalar(Korl_Math_V2f32 v, f32 scalar)
+{
+    v.elements[0] /= scalar;
+    v.elements[1] /= scalar;
+    return v;
+}
 korl_internal void korl_math_v2f32_assignAdd(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB)
 {
     vA->elements[0] += vB.elements[0];
@@ -568,7 +574,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const
                         -  m->elements[ 8] * m->elements[ 2] * m->elements[ 5];
     f32 det = m->elements[0] * result.elements[0] + m->elements[1] * result.elements[ 4] 
             + m->elements[2] * result.elements[8] + m->elements[3] * result.elements[12];
-    if (korl_math_isNearlyZero(det))
+    if (korl_math_isNearlyEqualEpsilon(det, 0.f, 1e-7f))
     {
         result.r0c0 = korl_math_nanf32();
         return result;
@@ -808,6 +814,10 @@ korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar)
 korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v)
 {
     return korl_math_v2f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V2f32 operator/(Korl_Math_V2f32 v, f32 scalar)
+{
+    return korl_math_v2f32_divideScalar(v, scalar);
 }
 korl_internal Korl_Math_V2f32& operator+=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
 {

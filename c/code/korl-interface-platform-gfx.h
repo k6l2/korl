@@ -144,6 +144,7 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR(name)               void               name(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(name)       void               name(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
 #define KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(name)   void               name(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
+#define KORL_PLATFORM_GFX_CAMERA_ORTHO_GET_SIZE(name)            Korl_Math_V2f32    name(const Korl_Gfx_Camera*const context)
 /** \return false if the coordinate conversion failed */
 #define KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(name)           bool               name(Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition, Korl_Math_V3f32* out_worldEyeRayPosition, Korl_Math_V3f32* out_worldEyeRayDirection)
 /** \return \c {Nan,Nan} if the world position is not contained within the 
