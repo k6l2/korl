@@ -647,11 +647,11 @@ korl_internal void korl_windows_window_loop(void)
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
+    KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
+    KORL_WINDOWS_CHECK(GetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameContext, sizeof(_korl_windows_window_context.gameContext));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.x, sizeof(surfaceSize.x));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &surfaceSize.y, sizeof(surfaceSize.y));
-    //KORL-ISSUE-000-000-099: windows-window: window "maximized" state is not preserved when loading a memory state; use GetWindowPlacement API to get this state from the window
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &windowPlacement, sizeof(windowPlacement));
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {
@@ -668,23 +668,13 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
         return false;
     }
     _korl_windows_window_context.gameContext = KORL_C_CAST(void*, gameContext);
-    Korl_Math_V2u32 surfaceSize;
-    if(!ReadFile(hFile, &surfaceSize.x, sizeof(surfaceSize.x), NULL/*bytes read*/, NULL/*no overlapped*/))
+    WINDOWPLACEMENT windowPlacement;
+    if(!ReadFile(hFile, &windowPlacement, sizeof(windowPlacement), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
     }
-    if(!ReadFile(hFile, &surfaceSize.y, sizeof(surfaceSize.y), NULL/*bytes read*/, NULL/*no overlapped*/))
-    {
-        korl_logLastError("ReadFile failed");
-        return false;
-    }
-    POINT clientOrigin = {0, 0};
-    korl_assert(ClientToScreen(_korl_windows_window_context.window.handle, &clientOrigin));
-    RECT windowRect = (RECT){.left = clientOrigin.x, .top = clientOrigin.y, .right = clientOrigin.x + surfaceSize.x, .bottom = clientOrigin.y + surfaceSize.y};
-    korl_assert(AdjustWindowRect(&windowRect, _korl_windows_window_context.window.style, _korl_windows_window_context.window.hasMenu));
-    korl_assert(MoveWindow(_korl_windows_window_context.window.handle, windowRect.left, windowRect.top, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, TRUE));
-    korl_vulkan_deferredResize(surfaceSize.x, surfaceSize.y);
+    KORL_WINDOWS_CHECK(SetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
     return true;
 }
 #undef _LOCAL_STRING_POOL_POINTER

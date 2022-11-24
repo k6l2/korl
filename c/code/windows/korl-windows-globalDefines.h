@@ -34,6 +34,13 @@
 #define KORL_EXIT_SUCCESS 0
 #define KORL_EXIT_FAIL_ASSERT 1
 #define KORL_EXIT_FAIL_EXCEPTION 0xDEADC0DE
+/* Convenience macros for Windows API */
+#define KORL_WINDOWS_CHECK(x) \
+    do\
+    {\
+        if(!(x))\
+            korl_logLastError(#x" failed");\
+    }while(0);
 /* Windows application-wide constants */
 korl_global_const TCHAR KORL_APPLICATION_NAME[]         = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
 korl_global_const TCHAR KORL_APPLICATION_VERSION[]      = L""KORL_DEFINE_TO_CSTR(KORL_APP_VERSION);
