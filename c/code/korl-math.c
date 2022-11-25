@@ -517,7 +517,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const
                         +  m->elements[ 8] * m->elements[ 1] * m->elements[15] 
                         -  m->elements[ 8] * m->elements[ 3] * m->elements[13] 
                         -  m->elements[12] * m->elements[ 1] * m->elements[11] 
-                        +  m->elements[12] * m->elements[ 3] * m->elements[9];
+                        +  m->elements[12] * m->elements[ 3] * m->elements[ 9];
     result.elements[13] =  m->elements[ 0] * m->elements[ 9] * m->elements[14] 
                         -  m->elements[ 0] * m->elements[10] * m->elements[13] 
                         -  m->elements[ 8] * m->elements[ 1] * m->elements[14] 
@@ -572,8 +572,10 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const
                         +  m->elements[ 4] * m->elements[ 2] * m->elements[ 9] 
                         +  m->elements[ 8] * m->elements[ 1] * m->elements[ 6] 
                         -  m->elements[ 8] * m->elements[ 2] * m->elements[ 5];
-    f32 det = m->elements[0] * result.elements[0] + m->elements[1] * result.elements[ 4] 
-            + m->elements[2] * result.elements[8] + m->elements[3] * result.elements[12];
+    f32 det = m->elements[0] * result.elements[ 0] 
+            + m->elements[1] * result.elements[ 4] 
+            + m->elements[2] * result.elements[ 8] 
+            + m->elements[3] * result.elements[12];
     if (korl_math_isNearlyEqualEpsilon(det, 0.f, 1e-10f))
     {
         result.r0c0 = korl_math_nanf32();
