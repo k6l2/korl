@@ -53,11 +53,92 @@ typedef struct _Korl_Windows_Window_Context
     KorlPlatformDateStamp gameDllLastWriteDateStamp;
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
+    struct
+    {
+        bool deferSaveConfiguration;
+        Korl_File_Descriptor fileDescriptor;
+        struct
+        {
+            Korl_File_AsyncIoHandle handle;
+            enum
+                {_KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ
+                ,_KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE
+            } operation;
+        } asyncIo;
+        u8* stbDaFileDataBuffer;
+    } configuration;
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
-LRESULT CALLBACK _korl_windows_window_windowProcedure(
-    _In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+korl_internal void _korl_windows_window_configurationLoad(void)
+{
+    korl_shared_const wchar_t* CONFIG_FILE_NAME = L"korl-windows-window.ini";
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
+    korl_assert(context->configuration.fileDescriptor.handle == NULL);
+    if(!korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
+    {
+        /* there is no config file here, so we need to make one */
+        if(!korl_file_create(KORL_FILE_PATHTYPE_LOCAL_DATA, CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
+            korl_log(ERROR, "failed to create file \"%ws\"", CONFIG_FILE_NAME);
+        //@TODO: KORL-FEATURE-000-000-019; if no configuration file is present, choose to place the window in the screen where the mouse cursor is
+    }
+    const u32 fileBytes = korl_file_getTotalBytes(context->configuration.fileDescriptor);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->configuration.stbDaFileDataBuffer, fileBytes);
+    context->configuration.asyncIo.handle    = korl_file_readAsync(context->configuration.fileDescriptor, context->configuration.stbDaFileDataBuffer, fileBytes);
+    context->configuration.asyncIo.operation = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
+}
+korl_internal void _korl_windows_window_configurationStep(void)
+{
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
+    /* if there is currently an asyncIo operation in progress, we have to do 
+        specific behavior based on whether or not we're loading/saving from/to 
+        the config file */
+    if(context->configuration.asyncIo.handle)
+    {
+        const Korl_File_GetAsyncIoResult asyncIoResult = korl_file_getAsyncIoResult(&context->configuration.asyncIo.handle, false/*don't block*/);
+        switch(asyncIoResult)
+        {
+        case KORL_FILE_GET_ASYNC_IO_RESULT_DONE:{
+            /* close the file handle */
+            korl_file_close(&context->configuration.fileDescriptor);
+            switch(context->configuration.asyncIo.operation)
+            {
+            case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ:{
+                /* we have read in the config file; let's use the data we 
+                    obtained to set the current window configuration */
+                korl_assert(!"@TODO");
+                break;}
+            case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE:{
+                /* we have written to the config file; nothing else to do probably */
+                break;}
+            default:
+                korl_log(ERROR, "invalid asyncIo operation: %i", context->configuration.asyncIo.operation);
+                break;
+            }
+            break;}
+        case KORL_FILE_GET_ASYNC_IO_RESULT_PENDING:{
+            /* if async io is still processing, just do nothing */
+            break;}
+        default:
+            korl_log(ERROR, "invalid asyncIoResult: %i", asyncIoResult);
+            break;
+        }
+    }
+    /* if there's no asyncIo operation, we can process pending write config requests */
+    if(!context->configuration.asyncIo.handle && context->configuration.deferSaveConfiguration)
+    {
+        /* construct a data buffer with window configuration to write to the config file */
+        korl_assert(!"@TODO: is there a way that we can store a complex data type for generic 'initialization' file transcoding?");
+        /* open async file handle */
+        korl_assert(!"@TODO");
+        /* dispatch asyncIo write command */
+        korl_assert(!"@TODO");
+        context->configuration.asyncIo.operation = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE;
+        /* clear the defer write flag so that we can raise it again when config changes */
+        context->configuration.deferSaveConfiguration = false;
+    }
+}
+korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     /* ignore all window events that don't belong to the windows we are 
@@ -96,8 +177,8 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
         const UINT clientHeight = HIWORD(lParam);
-        korl_log(VERBOSE, "WM_SIZE - clientSize: %ux%u", clientWidth, clientHeight);
         korl_vulkan_deferredResize(clientWidth, clientHeight);
+        context->configuration.deferSaveConfiguration = true;
         break;}
     case WM_LBUTTONDOWN:
     case WM_MBUTTONDOWN:
@@ -202,6 +283,7 @@ LRESULT CALLBACK _korl_windows_window_windowProcedure(
         break;}
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
     case WM_MOVE:{
+        context->configuration.deferSaveConfiguration = true;
         break;}
     default: 
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -217,19 +299,23 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_windo
 }
 korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
 {
-    _korl_windows_window_context.gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      GetProcAddress(hModule, "korl_game_initialize"));
-    _korl_windows_window_context.gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        GetProcAddress(hModule, "korl_game_onReload"));
-    _korl_windows_window_context.gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, GetProcAddress(hModule, "korl_game_onKeyboardEvent"));
-    _korl_windows_window_context.gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    GetProcAddress(hModule, "korl_game_onMouseEvent"));
-    _korl_windows_window_context.gameApi.korl_game_onGamepadEvent  = KORL_C_CAST(fnSig_korl_game_onGamepadEvent*,  GetProcAddress(hModule, "korl_game_onGamepadEvent"));
-    _korl_windows_window_context.gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModule, "korl_game_update"));
-    _korl_windows_window_context.gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModule, "korl_game_onAssetReloaded"));
+    _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
+    context->gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      GetProcAddress(hModule, "korl_game_initialize"));
+    context->gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        GetProcAddress(hModule, "korl_game_onReload"));
+    context->gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, GetProcAddress(hModule, "korl_game_onKeyboardEvent"));
+    context->gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    GetProcAddress(hModule, "korl_game_onMouseEvent"));
+    context->gameApi.korl_game_onGamepadEvent  = KORL_C_CAST(fnSig_korl_game_onGamepadEvent*,  GetProcAddress(hModule, "korl_game_onGamepadEvent"));
+    context->gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModule, "korl_game_update"));
+    context->gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModule, "korl_game_onAssetReloaded"));
 }
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_windows_window_context.stringPool      = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_windows_window_context.allocatorHandle)
+               ,_korl_windows_window_context.configuration.stbDaFileDataBuffer
+               ,1024);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
         running the game module as a DLL */
@@ -327,20 +413,21 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     const BOOL successAdjustClientRect = 
         AdjustWindowRect(&rectCenteredClient, windowStyle, windowHasMenu);
     if(!successAdjustClientRect) korl_logLastError("AdjustWindowRect failed!");
-    const HWND hWnd = CreateWindowEx(0/*extended style flags*/, _KORL_WINDOWS_WINDOW_CLASS_NAME, 
-                                     KORL_APPLICATION_NAME, windowStyle, 
-                                     rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/, 
-                                     rectCenteredClient.right  - rectCenteredClient.left/*width*/, 
-                                     rectCenteredClient.bottom - rectCenteredClient.top/*height*/, 
-                                     NULL/*hWndParent*/, hMenu, hInstance, 
-                                     NULL/*lpParam; passed to WM_CREATE*/);
+    const HWND hWnd = CreateWindowEx(0/*extended style flags*/, _KORL_WINDOWS_WINDOW_CLASS_NAME
+                                    ,KORL_APPLICATION_NAME, windowStyle
+                                    ,rectCenteredClient.left/*X*/, rectCenteredClient.top/*Y*/
+                                    ,rectCenteredClient.right  - rectCenteredClient.left/*width*/
+                                    ,rectCenteredClient.bottom - rectCenteredClient.top/*height*/
+                                    ,NULL/*hWndParent*/, hMenu, hInstance
+                                    ,NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
-    korl_assert(_korl_windows_window_context.window.handle == NULL);
-    _korl_windows_window_context.window.handle  = hWnd;
-    _korl_windows_window_context.window.style   = windowStyle;
-    _korl_windows_window_context.window.hasMenu = windowHasMenu;
+    korl_assert(context->window.handle == NULL);
+    context->window.handle  = hWnd;
+    context->window.style   = windowStyle;
+    context->window.hasMenu = windowHasMenu;
     korl_windows_gamepad_registerWindow(hWnd, context->allocatorHandle);
     korl_windows_mouse_registerWindow(hWnd);
+    _korl_windows_window_configurationLoad();
 }
 korl_internal void _korl_windows_window_gameInitialize(const KorlPlatformApi* korlApi)
 {
@@ -509,6 +596,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeReset();
         korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);
+        _korl_windows_window_configurationStep();
         KORL_ZERO_STACK(MSG, windowMessage);
         korl_time_probeStart(process_window_messages);
         while(PeekMessage(&windowMessage, NULL/*hWnd; NULL -> get all thread messages*/
