@@ -64,6 +64,7 @@ typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO             (fnSig_korl_gfx_create
 typedef KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(fnSig_korl_gfx_createCameraOrthoFixedHeight);
 typedef KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET (fnSig_korl_gfx_cameraFov_rotateAroundTarget);
 typedef KORL_PLATFORM_GFX_USE_CAMERA                      (fnSig_korl_gfx_useCamera);
+typedef KORL_PLATFORM_GFX_CAMERA_GET_CURRENT              (fnSig_korl_gfx_camera_getCurrent);
 typedef KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR              (fnSig_korl_gfx_cameraSetScissor);
 typedef KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT      (fnSig_korl_gfx_cameraSetScissorPercent);
 typedef KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR  (fnSig_korl_gfx_cameraOrthoSetOriginAnchor);
@@ -143,6 +144,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     fnSig_korl_gfx_createCameraOrthoFixedHeight * korl_gfx_createCameraOrthoFixedHeight;\
     fnSig_korl_gfx_cameraFov_rotateAroundTarget * korl_gfx_cameraFov_rotateAroundTarget;\
     fnSig_korl_gfx_useCamera                    * korl_gfx_useCamera;\
+    fnSig_korl_gfx_camera_getCurrent            * korl_gfx_camera_getCurrent;\
     fnSig_korl_gfx_cameraSetScissor             * korl_gfx_cameraSetScissor;\
     fnSig_korl_gfx_cameraSetScissorPercent      * korl_gfx_cameraSetScissorPercent;\
     fnSig_korl_gfx_cameraOrthoSetOriginAnchor   * korl_gfx_cameraOrthoSetOriginAnchor;\
@@ -221,6 +223,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     (apiVariableName).korl_gfx_createCameraOrthoFixedHeight = korl_gfx_createCameraOrthoFixedHeight;\
     (apiVariableName).korl_gfx_cameraFov_rotateAroundTarget = korl_gfx_cameraFov_rotateAroundTarget;\
     (apiVariableName).korl_gfx_useCamera                    = korl_gfx_useCamera;\
+    (apiVariableName).korl_gfx_camera_getCurrent            = korl_gfx_camera_getCurrent;\
     (apiVariableName).korl_gfx_cameraSetScissor             = korl_gfx_cameraSetScissor;\
     (apiVariableName).korl_gfx_cameraSetScissorPercent      = korl_gfx_cameraSetScissorPercent;\
     (apiVariableName).korl_gfx_cameraOrthoSetOriginAnchor   = korl_gfx_cameraOrthoSetOriginAnchor;\
@@ -299,6 +302,7 @@ typedef KORL_PLATFORM_BLUETOOTH_READ                      (fnSig_korl_bluetooth_
     korl_gfx_createCameraOrthoFixedHeight = (apiVariableName).korl_gfx_createCameraOrthoFixedHeight;\
     korl_gfx_cameraFov_rotateAroundTarget = (apiVariableName).korl_gfx_cameraFov_rotateAroundTarget;\
     korl_gfx_useCamera                    = (apiVariableName).korl_gfx_useCamera;\
+    korl_gfx_camera_getCurrent            = (apiVariableName).korl_gfx_camera_getCurrent;\
     korl_gfx_cameraSetScissor             = (apiVariableName).korl_gfx_cameraSetScissor;\
     korl_gfx_cameraSetScissorPercent      = (apiVariableName).korl_gfx_cameraSetScissorPercent;\
     korl_gfx_cameraOrthoSetOriginAnchor   = (apiVariableName).korl_gfx_cameraOrthoSetOriginAnchor;\

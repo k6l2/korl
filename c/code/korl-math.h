@@ -24,6 +24,8 @@ typedef union Korl_Math_V2f32
     f32 elements[2];
 } Korl_Math_V2f32;
 const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {0, 0};
+const Korl_Math_V2f32 KORL_MATH_V2F32_X    = {1, 0};
+const Korl_Math_V2f32 KORL_MATH_V2F32_Y    = {0, 1};
 const Korl_Math_V2f32 KORL_MATH_V2F32_ONE  = {1, 1};
 typedef union Korl_Math_V3f32
 {
@@ -107,7 +109,9 @@ korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 eps
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);
 korl_internal inline f32 korl_math_abs(f32 x);
 korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator);
+korl_internal inline f32 korl_math_cos(f32 x);
 korl_internal inline f32 korl_math_acos(f32 x);
+korl_internal inline f32 korl_math_atan2(f32 numerator, f32 denominator);
 korl_internal inline f32 korl_math_ceil(f32 x);
 korl_internal inline f32 korl_math_sqrt(f32 x);
 korl_internal inline f32 korl_math_nanf32(void);
@@ -130,6 +134,7 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f
 korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal f32 korl_math_v2f32_radiansZ(Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 // korl_internal Korl_Math_V2f32 korl_math_v2f32_addScalar(Korl_Math_V2f32 v, f32 scalar);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
@@ -143,7 +148,7 @@ korl_internal void korl_math_v2f32_assignAddScalar(Korl_Math_V2f32*const v, f32 
 korl_internal void korl_math_v2f32_assignSubtract(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
 korl_internal void korl_math_v2f32_assignSubtractScalar(Korl_Math_V2f32*const v, f32 scalar);
 korl_internal void korl_math_v2f32_assignMultiply(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
-// korl_internal void korl_math_v2f32_assignMultiplyScalar(Korl_Math_V2f32*const v, f32 scalar);
+korl_internal void korl_math_v2f32_assignMultiplyScalar(Korl_Math_V2f32*const v, f32 scalar);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 /* V3f32 **********************************************************************/
@@ -248,6 +253,7 @@ korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 // korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);// component-wise multiplication
 korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar);
 korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v);
+korl_internal Korl_Math_V2f32& operator*=(Korl_Math_V2f32& v, f32 scalar);
 // korl_internal Korl_Math_V2f32 operator/(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 operator/(Korl_Math_V2f32 v, f32 scalar);
 // korl_internal Korl_Math_V2f32 operator/(f32 scalar, Korl_Math_V2f32 v);

@@ -141,16 +141,17 @@ typedef struct Korl_Gfx_Batch
 #define KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(name) Korl_Gfx_Camera    name(f32 fixedHeight, f32 clipDepth)
 #define KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(name)  void               name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)
 #define KORL_PLATFORM_GFX_USE_CAMERA(name)                       void               name(Korl_Gfx_Camera camera)
+#define KORL_PLATFORM_GFX_CAMERA_GET_CURRENT(name)               Korl_Gfx_Camera    name(void)
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR(name)               void               name(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
 #define KORL_PLATFORM_GFX_CAMERA_SET_SCISSOR_PERCENT(name)       void               name(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
 #define KORL_PLATFORM_GFX_CAMERA_ORTHO_SET_ORIGIN_ANCHOR(name)   void               name(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
 #define KORL_PLATFORM_GFX_CAMERA_ORTHO_GET_SIZE(name)            Korl_Math_V2f32    name(const Korl_Gfx_Camera*const context)
 /** \return false if the coordinate conversion failed */
-#define KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(name)           bool               name(Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition, Korl_Math_V3f32* out_worldEyeRayPosition, Korl_Math_V3f32* out_worldEyeRayDirection)
+#define KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(name)           bool               name(const Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition, Korl_Math_V3f32* out_worldEyeRayPosition, Korl_Math_V3f32* out_worldEyeRayDirection)
 /** \return \c {Nan,Nan} if the world position is not contained within the 
  * camera's clip space. This does NOT mean that \c non-{NaN,NaN} values are on 
  * the screen!*/
-#define KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(name)           Korl_Math_V2f32    name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
+#define KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(name)           Korl_Math_V2f32    name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_PLATFORM_GFX_BATCH(name)                            void               name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_TEXTURED(name)  Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_PLATFORM_GFX_CREATE_BATCH_RECTANGLE_COLORED(name)   Korl_Gfx_Batch*    name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color4u8 color)

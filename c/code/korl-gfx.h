@@ -29,6 +29,7 @@ korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO(korl_gfx_createCameraOrtho);
 korl_internal KORL_PLATFORM_GFX_CREATE_CAMERA_ORTHO_FIXED_HEIGHT(korl_gfx_createCameraOrthoFixedHeight);
 korl_internal KORL_PLATFORM_GFX_CAMERA_FOV_ROTATE_AROUND_TARGET(korl_gfx_cameraFov_rotateAroundTarget);
 korl_internal KORL_PLATFORM_GFX_USE_CAMERA(korl_gfx_useCamera);
+korl_internal KORL_PLATFORM_GFX_CAMERA_GET_CURRENT(korl_gfx_camera_getCurrent);
 /** Note that scissor coordinates use swap chain coordinates, where the origin 
  * is the upper-left corner of the swap chain, & {+X,+Y} points to the 
  * bottom-right.  */
