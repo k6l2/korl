@@ -760,6 +760,20 @@ korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_union(Korl_Math_Aabb2f32 aab
     result.max.y = KORL_MATH_MAX(aabbA.max.y, aabbB.max.y);
     return result;
 }
+korl_internal void korl_math_aabb2f32_addPoint(Korl_Math_Aabb2f32*const aabb, f32* point2d)
+{
+    KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.x, point2d[0]);
+    KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.x, point2d[0]);
+    KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.y, point2d[1]);
+    KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.y, point2d[1]);
+}
+korl_internal void korl_math_aabb2f32_addPointV2(Korl_Math_Aabb2f32*const aabb, Korl_Math_V2f32 point)
+{
+    KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.x, point.x);
+    KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.x, point.x);
+    KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.y, point.y);
+    KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.y, point.y);
+}
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z)
 {
     Korl_Math_Aabb3f32 result;

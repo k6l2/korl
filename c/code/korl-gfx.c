@@ -1221,6 +1221,8 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_ORTHO_GET_SIZE(korl_gfx_cameraOrthoGetSiz
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToWorld)
 {
+    Korl_Gfx_ResultRay3d result = {.position ={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}
+                                  ,.direction={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}};
     //@TODO: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
     const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
@@ -1229,12 +1231,12 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
     if(korl_math_isNanf32(viewInverse.r0c0))
     {
         korl_log(WARNING, "failed to invert view matrix");
-        return false;
+        return result;
     }
     if(korl_math_isNanf32(projectionInverse.r0c0))
     {
         korl_log(WARNING, "failed to invert projection matrix");
-        return false;
+        return result;
     }
     const Korl_Math_V2f32 v2f32WindowPos = {KORL_C_CAST(f32, windowPosition.x)
                                            ,KORL_C_CAST(f32, windowPosition.y)};
@@ -1273,17 +1275,17 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
         const Korl_Math_V4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y, 1, 1};
         const Korl_Math_V4f32 eyeRayPositionEs  = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayPositionHcs);
         const Korl_Math_V4f32 eyeRayPositionWs  = korl_math_m4f32_multiplyV4f32(&viewInverse      , &eyeRayPositionEs);
-        *out_worldEyeRayPosition  = eyeRayPositionWs.xyz;
-        *out_worldEyeRayDirection = korl_math_v3f32_normal(korl_math_v3f32_subtract(eyeRayDirectionWs.xyz, eyeRayPositionWs.xyz));
+        result.position  = eyeRayPositionWs.xyz;
+        result.direction = korl_math_v3f32_normal(korl_math_v3f32_subtract(eyeRayDirectionWs.xyz, eyeRayPositionWs.xyz));
     }
     else
     {
         /* camera's eye position can be easily derived from the inverse view 
             matrix: https://stackoverflow.com/a/39281556/4526664 */
-        *out_worldEyeRayPosition  = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){viewInverse.r0c3, viewInverse.r1c3, viewInverse.r2c3};
-        *out_worldEyeRayDirection = korl_math_v3f32_normal(eyeRayDirectionWs.xyz);
+        result.position  = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){viewInverse.r0c3, viewInverse.r1c3, viewInverse.r2c3};
+        result.direction = korl_math_v3f32_normal(eyeRayDirectionWs.xyz);
     }
-    return true;
+    return result;
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(korl_gfx_camera_worldToWindow)
 {
