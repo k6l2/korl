@@ -33,11 +33,14 @@ typedef union Korl_Math_V3f32
     Korl_Math_V2f32 xy;
     f32 elements[3];
 } Korl_Math_V3f32;
-const Korl_Math_V3f32 KORL_MATH_V3F32_ONE  = {1, 1, 1};
-const Korl_Math_V3f32 KORL_MATH_V3F32_ZERO = {0, 0, 0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_X    = {1, 0, 0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_Y    = {0, 1, 0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_Z    = {0, 0, 1};
+const Korl_Math_V3f32 KORL_MATH_V3F32_ONE     = { 1,  1,  1};
+const Korl_Math_V3f32 KORL_MATH_V3F32_ZERO    = { 0,  0,  0};
+const Korl_Math_V3f32 KORL_MATH_V3F32_X       = { 1,  0,  0};
+const Korl_Math_V3f32 KORL_MATH_V3F32_Y       = { 0,  1,  0};
+const Korl_Math_V3f32 KORL_MATH_V3F32_Z       = { 0,  0,  1};
+const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_X = {-1,  0,  0};
+const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Y = { 0, -1,  0};
+const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Z = { 0,  0, -1};
 typedef union Korl_Math_V4f32
 {
     struct { f32 x, y, z, w; };
@@ -135,6 +138,7 @@ korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal f32 korl_math_v2f32_radiansZ(Korl_Math_V2f32 v);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_project(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB, bool vbIsNormalized);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 // korl_internal Korl_Math_V2f32 korl_math_v2f32_addScalar(Korl_Math_V2f32 v, f32 scalar);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_subtract(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);

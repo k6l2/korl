@@ -198,6 +198,13 @@ korl_internal f32 korl_math_v2f32_radiansZ(Korl_Math_V2f32 v)
 {
     return korl_math_atan2(v.y, v.x);
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_project(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB, bool vbIsNormalized)
+{
+    if(!vbIsNormalized)
+        vB = korl_math_v2f32_normal(vB);
+    const f32 scalarProjection = korl_math_v2f32_dot(vA, vB);
+    return korl_math_v2f32_multiplyScalar(vB, scalarProjection);
+}
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     vA.elements[0] += vB.elements[0];
