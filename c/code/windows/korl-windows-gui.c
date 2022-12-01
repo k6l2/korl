@@ -14,7 +14,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
     if(context->frameSequenceCounter != 0)
     {
         //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
-        korl_log(WARNING, "korl_gui_windows_processMessage called outside of korl_gui_frameBegin/End; message will be ignored");
+        // korl_log(WARNING, "korl_gui_windows_processMessage called outside of korl_gui_frameBegin/End; message will be ignored");
         return;
     }
     korl_assert(context->frameSequenceCounter == 0);
