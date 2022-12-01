@@ -129,8 +129,8 @@ typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*       features;
     const Korl_Vulkan_DrawState_Blend*          blend;
-    const Korl_Vulkan_DrawState_Projection*     projection;///@TODO: refactor to just take a M4f32
-    const Korl_Vulkan_DrawState_View*           view;      ///@TODO: refactor to just take a M4f32
+    const Korl_Vulkan_DrawState_Projection*     projection;//KORL-ISSUE-000-000-103: vulkan: likely related to KORL-PERFORMANCE-000-000-041; refactor DrawState View & Projection to be M4f32; korl-vulkan shouldn't be concerned with how the user wants these transforms calculated
+    const Korl_Vulkan_DrawState_View*           view;      //KORL-ISSUE-000-000-103: vulkan: likely related to KORL-PERFORMANCE-000-000-041; refactor DrawState View & Projection to be M4f32; korl-vulkan shouldn't be concerned with how the user wants these transforms calculated
     const Korl_Vulkan_DrawState_Model*          model;
     const Korl_Vulkan_DrawState_Scissor*        scissor;
     const Korl_Vulkan_DrawState_Samplers*       samplers;

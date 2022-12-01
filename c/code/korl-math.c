@@ -188,7 +188,7 @@ korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     return vA.elements[0] * vB.elements[0]
-        +  vA.elements[1] * vB.elements[1];
+         + vA.elements[1] * vB.elements[1];
 }
 korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
@@ -321,8 +321,8 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const 
 korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
     return vA.elements[0] * vB.elements[0]
-        +  vA.elements[1] * vB.elements[1]
-        +  vA.elements[2] * vB.elements[2];
+         + vA.elements[1] * vB.elements[1]
+         + vA.elements[2] * vB.elements[2];
 }
 korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
@@ -500,8 +500,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const
 {
     Korl_Math_M4f32 result;
     /* implementation derived from MESA's GLU lib: 
-        https://stackoverflow.com/a/1148405/4526664 
-        @TODO: investigate MESA's license, or maybe just roll my own code here? */
+        https://stackoverflow.com/a/1148405/4526664 */
     result.elements[ 0] =  m->elements[ 5] * m->elements[10] * m->elements[15] 
                         -  m->elements[ 5] * m->elements[11] * m->elements[14] 
                         -  m->elements[ 9] * m->elements[ 6] * m->elements[15] 

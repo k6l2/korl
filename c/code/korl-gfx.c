@@ -1223,7 +1223,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
 {
     Korl_Gfx_ResultRay3d result = {.position ={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}
                                   ,.direction={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}};
-    //@TODO: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
+    //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
     const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
     const Korl_Math_M4f32 viewInverse       = korl_math_m4f32_invert(&view);
@@ -1247,9 +1247,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
                 || projection.r3c3 == 0);
     const bool isOrthographic = projection.r3c3 == 1;
     /* viewport-space => normalized-device-space */
-    /* @TODO; ASSUMPTION: viewport is the size of the entire window; if we ever want to 
-                   handle separate viewport clip regions per-camera, we will 
-                   have to modify this */
+    //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
     const Korl_Math_V2f32 eyeRayNds = 
         {  2*v2f32WindowPos.x / _korl_gfx_context.surfaceSize.x - 1
         , -2*v2f32WindowPos.y / _korl_gfx_context.surfaceSize.y + 1 };
@@ -1258,7 +1256,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
         homogeneous clip space box; we set the Z coordinate to 0, since Vulkan 
         (with no extensions, which I don't want to use) requires a normalized 
         depth buffer */
-    /// @TODO: ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
+    //KORL-ISSUE-000-000-102: gfx: testing required; ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
     const Korl_Math_V4f32 eyeRayDirectionHcs = {eyeRayNds.x, eyeRayNds.y, 0, 1};
     /* homogeneous-clip-space => eye-space */
     Korl_Math_V4f32 eyeRayDirectionEs = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayDirectionHcs);
@@ -1271,7 +1269,7 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
         /* the orthographic eye position should be as far to the "front" of the 
             homogenous clip space box, which means setting the Z coordinate to a 
             value of 1 */
-        /// @TODO: ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
+        //KORL-ISSUE-000-000-102: gfx: testing required; ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
         const Korl_Math_V4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y, 1, 1};
         const Korl_Math_V4f32 eyeRayPositionEs  = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayPositionHcs);
         const Korl_Math_V4f32 eyeRayPositionWs  = korl_math_m4f32_multiplyV4f32(&viewInverse      , &eyeRayPositionEs);
@@ -1289,12 +1287,10 @@ korl_internal KORL_PLATFORM_GFX_CAMERA_WINDOW_TO_WORLD(korl_gfx_camera_windowToW
 }
 korl_internal KORL_PLATFORM_GFX_CAMERA_WORLD_TO_WINDOW(korl_gfx_camera_worldToWindow)
 {
-    //@TODO: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
+    //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
     const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
-    /* @TODO; ASSUMPTION: viewport is the size of the entire window; if we ever want to 
-                   handle separate viewport clip regions per-camera, we will 
-                   have to modify this */
+    //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
     const Korl_Math_Aabb2f32 viewport     = {.min={0,0}
                                             ,.max={KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x)
                                                   ,KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y)}};
