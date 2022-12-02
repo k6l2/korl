@@ -130,6 +130,7 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_Wich
 /** \return a rotated V2f32 from a starting position of {radius, 0}, rotated 
  * around the +Z axis by \c radians */
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radians);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_rotateHalfPiZ(Korl_Math_V2f32 v);
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v);
 korl_internal f32 korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_normal(Korl_Math_V2f32 v);

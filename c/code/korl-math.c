@@ -156,6 +156,10 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radi
     return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius * cosf(radians)
                                                   ,radius * sinf(radians)};
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_rotateHalfPiZ(Korl_Math_V2f32 v)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-v.y, v.x};
+}
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v)
 {
     return sqrtf(korl_math_v2f32_magnitudeSquared(v));
