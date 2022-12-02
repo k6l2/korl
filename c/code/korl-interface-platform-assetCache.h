@@ -32,4 +32,4 @@ typedef enum Korl_AssetCache_Get_Result
  * the asset cache will use an appropriate strategy to load the asset from disk 
  * automatically.
  */
-#define KORL_PLATFORM_ASSETCACHE_GET(name) Korl_AssetCache_Get_Result name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags, Korl_AssetCache_AssetData* o_assetData)
+#define KORL_FUNCTION_korl_assetCache_get(name) Korl_AssetCache_Get_Result name(const wchar_t*const assetName, Korl_AssetCache_Get_Flags flags, Korl_AssetCache_AssetData* o_assetData)

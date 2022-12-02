@@ -111,14 +111,14 @@ korl_internal void korl_time_shutDown(void)
        && timeEndPeriod(_KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS) != TIMERR_NOERROR)
         korl_log(ERROR, "timeEndPeriod failed");
 }
-korl_internal KORL_PLATFORM_GET_TIMESTAMP(korl_timeStamp)
+korl_internal KORL_FUNCTION_korl_timeStamp(korl_timeStamp)
 {
     KORL_ZERO_STACK(_Korl_Time_TimeStampUnion, timeStampUnion);
     if(!QueryPerformanceCounter(&timeStampUnion.largeInt))
         korl_logLastError("QueryPerformanceCounter failed");
     return timeStampUnion.timeStamp;
 }
-korl_internal KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP(korl_time_secondsSinceTimeStamp)
+korl_internal KORL_FUNCTION_korl_time_secondsSinceTimeStamp(korl_time_secondsSinceTimeStamp)
 {
     _Korl_Time_TimeStampUnion timeStampUnionPrevious;
     timeStampUnionPrevious.timeStamp = pts;

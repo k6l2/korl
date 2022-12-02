@@ -255,7 +255,7 @@ korl_internal bool korl_memory_isLittleEndian(void)
     return !_korl_memory_isBigEndian();
 }
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
-korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare)
+korl_internal KORL_FUNCTION_korl_memory_compare(korl_memory_compare)
 {
     const u8* aBytes = KORL_C_CAST(const u8*, a);
     const u8* bBytes = KORL_C_CAST(const u8*, b);
@@ -268,7 +268,7 @@ korl_internal KORL_PLATFORM_MEMORY_COMPARE(korl_memory_compare)
     }
     return 0;
 }
-korl_internal KORL_PLATFORM_ARRAY_U8_COMPARE(korl_memory_arrayU8Compare)
+korl_internal KORL_FUNCTION_korl_memory_arrayU8Compare(korl_memory_arrayU8Compare)
 {
     if(sizeA < sizeB)
         return -1;
@@ -282,7 +282,7 @@ korl_internal KORL_PLATFORM_ARRAY_U8_COMPARE(korl_memory_arrayU8Compare)
                 return 1;
     return 0;
 }
-korl_internal KORL_PLATFORM_ARRAY_U16_COMPARE(korl_memory_arrayU16Compare)
+korl_internal KORL_FUNCTION_korl_memory_arrayU16Compare(korl_memory_arrayU16Compare)
 {
     if(sizeA < sizeB)
         return -1;
@@ -297,7 +297,7 @@ korl_internal KORL_PLATFORM_ARRAY_U16_COMPARE(korl_memory_arrayU16Compare)
     return 0;
 }
 /** this is mostly copy-pasta from \c _korl_memory_hashString */
-korl_internal KORL_PLATFORM_ARRAY_CONST_U16_HASH(korl_memory_acu16_hash)
+korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash)
 {
     korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x3141592631415926;
     u$ hash = _KORL_MEMORY_STRING_HASH_SEED;
@@ -313,7 +313,7 @@ korl_internal KORL_PLATFORM_ARRAY_CONST_U16_HASH(korl_memory_acu16_hash)
     hash ^= _KORL_MEMORY_ROTATE_RIGHT(hash,22);
     return hash + _KORL_MEMORY_STRING_HASH_SEED;
 }
-korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare)
+korl_internal KORL_FUNCTION_korl_memory_stringCompare(korl_memory_stringCompare)
 {
     for(; *a && *b; ++a, ++b)
     {
@@ -328,7 +328,7 @@ korl_internal KORL_PLATFORM_STRING_COMPARE(korl_memory_stringCompare)
         return -1;
     return 0;
 }
-korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8)
+korl_internal KORL_FUNCTION_korl_memory_stringCompareUtf8(korl_memory_stringCompareUtf8)
 {
     for(; *a && *b; ++a, ++b)
     {
@@ -343,7 +343,7 @@ korl_internal KORL_PLATFORM_STRING_COMPARE_UTF8(korl_memory_stringCompareUtf8)
         return -1;
     return 0;
 }
-korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize)
+korl_internal KORL_FUNCTION_korl_memory_stringSize(korl_memory_stringSize)
 {
     if(!s)
         return 0;
@@ -354,7 +354,7 @@ korl_internal KORL_PLATFORM_STRING_SIZE(korl_memory_stringSize)
     for(; *s; ++s) {}
     return s - sBegin;
 }
-korl_internal KORL_PLATFORM_STRING_SIZE_UTF8(korl_memory_stringSizeUtf8)
+korl_internal KORL_FUNCTION_korl_memory_stringSizeUtf8(korl_memory_stringSizeUtf8)
 {
     if(!s)
         return 0;
@@ -365,7 +365,7 @@ korl_internal KORL_PLATFORM_STRING_SIZE_UTF8(korl_memory_stringSizeUtf8)
     for(; *s; ++s) {}
     return s - sBegin;
 }
-korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy)
+korl_internal KORL_FUNCTION_korl_memory_stringCopy(korl_memory_stringCopy)
 {
     const wchar_t*const destinationEnd = destination + destinationSize;
     i$ charsCopied = 0;
@@ -379,20 +379,20 @@ korl_internal KORL_PLATFORM_STRING_COPY(korl_memory_stringCopy)
     return charsCopied;
 }
 #if 0// still not quite sure if this is needed for anything really...
-korl_internal KORL_PLATFORM_MEMORY_FILL(korl_memory_fill)
+korl_internal KORL_FUNCTION_korl_memory_fill(korl_memory_fill)
 {
     FillMemory(memory, bytes, pattern);
 }
 #endif
-korl_internal KORL_PLATFORM_MEMORY_ZERO(korl_memory_zero)
+korl_internal KORL_FUNCTION_korl_memory_zero(korl_memory_zero)
 {
     SecureZeroMemory(memory, bytes);
 }
-korl_internal KORL_PLATFORM_MEMORY_COPY(korl_memory_copy)
+korl_internal KORL_FUNCTION_korl_memory_copy(korl_memory_copy)
 {
     CopyMemory(destination, source, bytes);
 }
-korl_internal KORL_PLATFORM_MEMORY_MOVE(korl_memory_move)
+korl_internal KORL_FUNCTION_korl_memory_move(korl_memory_move)
 {
     MoveMemory(destination, source, bytes);
 }
@@ -413,7 +413,7 @@ korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allo
     va_end(args);
     return result;
 }
-korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST(korl_memory_stringFormatVaList)
+korl_internal KORL_FUNCTION_korl_memory_stringFormatVaList(korl_memory_stringFormatVaList)
 {
     const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
@@ -423,7 +423,7 @@ korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST(korl_memory_stringFormatVaList)
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
 }
-korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST_UTF8(korl_memory_stringFormatVaListUtf8)
+korl_internal KORL_FUNCTION_korl_memory_stringFormatVaListUtf8(korl_memory_stringFormatVaListUtf8)
 {
     const int bufferSize = _vscprintf(format, vaList) + 1/*for the null terminator*/;
     korl_assert(bufferSize > 0);
@@ -433,7 +433,7 @@ korl_internal KORL_PLATFORM_STRING_FORMAT_VALIST_UTF8(korl_memory_stringFormatVa
     korl_assert(charactersWritten == bufferSize - 1);
     return result;
 }
-korl_internal KORL_PLATFORM_STRING_FORMAT_BUFFER(korl_memory_stringFormatBuffer)
+korl_internal KORL_FUNCTION_korl_memory_stringFormatBuffer(korl_memory_stringFormatBuffer)
 {
     va_list args;
     va_start(args, format);
@@ -1685,7 +1685,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_
     context->totalUsedBytes += meta->bytes;
     return true;// true => continue enumerating
 }
-korl_internal KORL_PLATFORM_MEMORY_CREATE_ALLOCATOR(korl_memory_allocator_create)
+korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_create)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(GetCurrentThreadId() == context->mainThreadId);
@@ -1810,7 +1810,7 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFileNameStrings, newRawString);
     return newRawString.data.data;
 }
-korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allocate)
+korl_internal KORL_FUNCTION_korl_memory_allocator_allocate(korl_memory_allocator_allocate)
 {
     if(bytes == 0)
         return NULL;
@@ -1833,7 +1833,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_ALLOCATE(korl_memory_allocator_allo
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
 }
-korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_reallocate)
+korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocator_reallocate)
 {
     korl_assert(bytes > 0);// CRT realloc documentations says calling it with 0 bytes is "undefined", so let's just never let this case happen
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -1859,7 +1859,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_REALLOCATE(korl_memory_allocator_re
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
 }
-korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
+korl_internal KORL_FUNCTION_korl_memory_allocator_free(korl_memory_allocator_free)
 {
     if(!allocation)
         return;
@@ -1883,7 +1883,7 @@ korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_FREE(korl_memory_allocator_free)
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
-korl_internal KORL_PLATFORM_MEMORY_ALLOCATOR_EMPTY(korl_memory_allocator_empty)
+korl_internal KORL_FUNCTION_korl_memory_allocator_empty(korl_memory_allocator_empty)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);

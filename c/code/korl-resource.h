@@ -67,7 +67,7 @@
 #include "korl-interface-platform-resource.h"
 #include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
 korl_internal void korl_resource_initialize(void);
-korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile);
+korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile);
 korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
 korl_internal Korl_Resource_Handle korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
 korl_internal void korl_resource_destroy(Korl_Resource_Handle handle);

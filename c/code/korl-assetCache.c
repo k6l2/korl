@@ -48,7 +48,7 @@ korl_internal void korl_assetCache_initialize(void)
     *context->stringPool     = korl_stringPool_create(context->allocatorHandle);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size
 }
-korl_internal KORL_PLATFORM_ASSETCACHE_GET(korl_assetCache_get)
+korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
     const u$ assetNameSize = korl_memory_stringSize(assetName);

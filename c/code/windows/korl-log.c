@@ -237,7 +237,7 @@ korl_internal void _korl_log_vaList(unsigned variadicArgumentCount
 _korl_log_vaList_done:
     return;
 }
-korl_internal KORL_PLATFORM_LOG(_korl_log_variadic)
+korl_internal KORL_FUNCTION__korl_log_variadic(_korl_log_variadic)
 {
     const unsigned formatSubstitutions = _korl_log_countFormatSubstitutions(format);
     korl_assert(variadicArgumentCount == formatSubstitutions);
@@ -443,7 +443,7 @@ korl_internal void korl_log_shutDown(void)
 skipFileCleanup:
     return;
 }
-korl_internal KORL_PLATFORM_LOG_GET_BUFFER(korl_log_getBuffer)
+korl_internal KORL_FUNCTION_korl_log_getBuffer(korl_log_getBuffer)
 {
     _Korl_Log_Context*const context = &_korl_log_context;
     if(out_loggedBytes)

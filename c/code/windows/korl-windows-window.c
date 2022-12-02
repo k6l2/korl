@@ -342,7 +342,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     korl_windows_gamepad_registerWindow(hWnd, context->allocatorHandle);
     korl_windows_mouse_registerWindow(hWnd);
 }
-korl_internal void _korl_windows_window_gameInitialize(KorlPlatformApi* korlApi)
+korl_internal void _korl_windows_window_gameInitialize(const KorlPlatformApi* korlApi)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     if(context->gameContext)
@@ -420,6 +420,14 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_windows_
     return true;//true => continue iterating over allocators
 }
 #endif
+korl_internal KorlPlatformApi _korl_windows_window_createPlatformApi(void)
+{
+    KORL_ZERO_STACK(KorlPlatformApi, korlPlatformApi);
+    #define _KORL_PLATFORM_API_MACRO_OPERATION(x) (korlPlatformApi).x = (x);
+    #include "korl-interface-platform-api.h"
+    #undef _KORL_PLATFORM_API_MACRO_OPERATION
+    return korlPlatformApi;
+}
 korl_internal void korl_windows_window_loop(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
@@ -444,8 +452,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_vulkan_setSurfaceClearColor((f32[]){0.05f, 0.f, 0.05f});// set default clear color to ~purplish~
     }
     /* initialize game memory & game module */
-    KORL_ZERO_STACK(KorlPlatformApi, korlApi);
-    KORL_INTERFACE_PLATFORM_API_SET(korlApi);
+    const KorlPlatformApi korlApi = _korl_windows_window_createPlatformApi();
     korl_time_probeStart(game_initialization);
     /* attempt to copy the game DLL to the application temp directory */
     Korl_StringPool_String stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);

@@ -287,7 +287,7 @@ korl_internal void korl_gui_initialize(void)
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
 }
-korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
+korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_free(context->allocatorHandleHeap, context->style.fontWindowText);
@@ -301,7 +301,7 @@ korl_internal KORL_PLATFORM_GUI_SET_FONT_ASSET(korl_gui_setFontAsset)
         korl_assert(resultStringCopy > 0);
     }
 }
-korl_internal KORL_PLATFORM_GUI_WINDOW_BEGIN(korl_gui_windowBegin)
+korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
@@ -374,14 +374,14 @@ done_currentWindowIndexValid:
     newWindow->specialWidgetFlagsPressed = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
     context->currentWidgetIndex = -1;
 }
-korl_internal KORL_PLATFORM_GUI_WINDOW_END(korl_gui_windowEnd)
+korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     context->currentWindowIndex = -1;
 }
-korl_internal KORL_PLATFORM_GUI_WINDOW_SET_POSITION(korl_gui_windowSetPosition)
+korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
@@ -390,7 +390,7 @@ korl_internal KORL_PLATFORM_GUI_WINDOW_SET_POSITION(korl_gui_windowSetPosition)
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -KORL_C_CAST(f32, surfaceSize.y) + positionY + anchorY*window->size.y};
 }
-korl_internal KORL_PLATFORM_GUI_WINDOW_SET_SIZE(korl_gui_windowSetSize)
+korl_internal KORL_FUNCTION_korl_gui_windowSetSize(korl_gui_windowSetSize)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
@@ -796,12 +796,12 @@ korl_internal void korl_gui_frameEnd(void)
     korl_time_probeStop(generate_draw_commands);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 }
-korl_internal KORL_PLATFORM_GUI_SET_LOOP_INDEX(korl_gui_setLoopIndex)
+korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     context->loopIndex = loopIndex;
 }
-korl_internal KORL_PLATFORM_GUI_REALIGN_Y(korl_gui_realignY)
+korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     if(   context->currentWidgetIndex < 0
@@ -809,7 +809,7 @@ korl_internal KORL_PLATFORM_GUI_REALIGN_Y(korl_gui_realignY)
         return;// silently do nothing if user has not created a widget yet for the current window
     context->stbDaWidgets[context->currentWidgetIndex].realignY = true;
 }
-korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
+korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
@@ -819,7 +819,7 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT_FORMAT(korl_gui_widgetTextFormat)
     widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
 }
-korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText)
+korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
@@ -848,7 +848,7 @@ korl_internal KORL_PLATFORM_GUI_WIDGET_TEXT(korl_gui_widgetText)
     if(textLines > maxLineCount)
         korl_gfx_text_fifoRemove(widget->subType.text.gfxText, textLines - maxLineCount);
 }
-korl_internal KORL_PLATFORM_GUI_WIDGET_BUTTON_FORMAT(korl_gui_widgetButtonFormat)
+korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;

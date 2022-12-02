@@ -40,7 +40,7 @@ korl_internal void korl_bluetooth_initialize(void)
                  LOBYTE(wsaVersionRequested), HIBYTE(wsaVersionRequested), 
                  LOBYTE(wsaData.wVersion)   , HIBYTE(wsaData.wVersion));
 }
-korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
+korl_internal KORL_FUNCTION_korl_bluetooth_query(korl_bluetooth_query)
 {
     Korl_Bluetooth_QueryEntry* result        = NULL;
     ULONG wsaQuerySetBytes                   = sizeof(WSAQUERYSET);
@@ -112,7 +112,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_QUERY(korl_bluetooth_query)
     korl_free(allocator, wsaQuerySet);
     return result;
 }
-korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
+korl_internal KORL_FUNCTION_korl_bluetooth_connect(korl_bluetooth_connect)
 {
     _Korl_Bluetooth_Socket* korlSocket = NULL;
     /* find a socket that is unused */
@@ -165,7 +165,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_CONNECT(korl_bluetooth_connect)
     }
     return 0;
 }
-korl_internal KORL_PLATFORM_BLUETOOTH_DISCONNECT(korl_bluetooth_disconnect)
+korl_internal KORL_FUNCTION_korl_bluetooth_disconnect(korl_bluetooth_disconnect)
 {
     /* find the socket using the passed in handle */
     _Korl_Bluetooth_Socket* korlSocket = NULL;
@@ -181,7 +181,7 @@ korl_internal KORL_PLATFORM_BLUETOOTH_DISCONNECT(korl_bluetooth_disconnect)
         korl_log(ERROR, "closesocket failed; error=%i", WSAGetLastError());
     korl_memory_zero(korlSocket, sizeof(*korlSocket));
 }
-korl_internal KORL_PLATFORM_BLUETOOTH_READ(korl_bluetooth_read)
+korl_internal KORL_FUNCTION_korl_bluetooth_read(korl_bluetooth_read)
 {
     /* find the socket using the passed in handle */
     _Korl_Bluetooth_Socket* korlSocket = NULL;

@@ -128,7 +128,7 @@ korl_internal void korl_crash_initialize(void)
                           "The system probably won't be able to log stack "
                           "overflow exceptions.");
 }
-korl_internal KORL_PLATFORM_ASSERT_FAILURE(_korl_crash_assertConditionFailed)
+korl_internal KORL_FUNCTION__korl_crash_assertConditionFailed(_korl_crash_assertConditionFailed)
 {
     const bool isFirstAssert = !_korl_crash_firstAssertLogged;
     /* when we're debugging, it's annoying having to wait a few seconds for the 

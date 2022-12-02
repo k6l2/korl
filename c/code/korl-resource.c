@@ -119,7 +119,7 @@ korl_internal void korl_resource_initialize(void)
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 128);
     *_korl_resource_context.stringPool = korl_stringPool_create(_korl_resource_context.allocatorHandle);
 }
-korl_internal KORL_PLATFORM_RESOURCE_FROM_FILE(korl_resource_fromFile)
+korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
 {
     _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);

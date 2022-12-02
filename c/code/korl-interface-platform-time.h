@@ -8,8 +8,8 @@
  * expect it to be correct when you load it from disk on another 
  * session/machine!) */
 typedef u64 PlatformTimeStamp;
-#define KORL_PLATFORM_GET_TIMESTAMP(name) PlatformTimeStamp name(void)
-#define KORL_PLATFORM_SECONDS_SINCE_TIMESTAMP(name) f32 name(PlatformTimeStamp pts)
+#define KORL_FUNCTION_korl_timeStamp(name) PlatformTimeStamp name(void)
+#define KORL_FUNCTION_korl_time_secondsSinceTimeStamp(name) f32 name(PlatformTimeStamp pts)
 /** Do not use this value directly, since the meaning of this data is 
  * platform-dependent.  Instead, use the platform APIs which uses this type.  
  * This value should be considered lower resolution (milliseconds) than 
