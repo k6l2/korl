@@ -14,7 +14,6 @@
 #include "korl-interface-platform-gfx.h"
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform-bluetooth.h"
-#define KORL_FUNCTION__korl_testApi(name) void name(void)
 /* korl-log interface *********************************************************/
 typedef enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT
