@@ -17,6 +17,7 @@
 #include "korl-stringPool.h"
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
+#include "korl-codec-configuration.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
@@ -28,6 +29,7 @@
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_windows_window_context.stringPool))
 korl_global_const TCHAR _KORL_WINDOWS_WINDOW_CLASS_NAME[] = _T("KorlWindowClass");
+korl_shared_const wchar_t* _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME = L"korl-windows-window.ini";
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
@@ -65,27 +67,26 @@ typedef struct _Korl_Windows_Window_Context
                 ,_KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE
             } operation;
         } asyncIo;
-        u8* stbDaFileDataBuffer;
+        acu8 fileDataBuffer;// temporary storage of the UTF-8 configuration file itself, for both reading & writing
     } configuration;
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
 korl_internal void _korl_windows_window_configurationLoad(void)
 {
-    korl_shared_const wchar_t* CONFIG_FILE_NAME = L"korl-windows-window.ini";
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     korl_assert(context->configuration.fileDescriptor.handle == NULL);
-    if(!korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
+    if(!korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
     {
         /* there is no config file here, so we need to make one */
-        if(!korl_file_create(KORL_FILE_PATHTYPE_LOCAL_DATA, CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
-            korl_log(ERROR, "failed to create file \"%ws\"", CONFIG_FILE_NAME);
+        if(!korl_file_create(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
+            korl_log(ERROR, "failed to create file \"%ws\"", _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME);
         //@TODO: KORL-FEATURE-000-000-019; if no configuration file is present, choose to place the window in the screen where the mouse cursor is
     }
     const u32 fileBytes = korl_file_getTotalBytes(context->configuration.fileDescriptor);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->configuration.stbDaFileDataBuffer, fileBytes);
-    context->configuration.asyncIo.handle    = korl_file_readAsync(context->configuration.fileDescriptor, context->configuration.stbDaFileDataBuffer, fileBytes);
-    context->configuration.asyncIo.operation = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
+    context->configuration.fileDataBuffer.data = korl_reallocate(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
+    context->configuration.asyncIo.handle      = korl_file_readAsync(context->configuration.fileDescriptor, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
+    context->configuration.asyncIo.operation   = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
 }
 korl_internal void _korl_windows_window_configurationStep(void)
 {
@@ -104,9 +105,26 @@ korl_internal void _korl_windows_window_configurationStep(void)
             switch(context->configuration.asyncIo.operation)
             {
             case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ:{
+                KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
                 /* we have read in the config file; let's use the data we 
                     obtained to set the current window configuration */
+                KORL_ZERO_STACK(Korl_Codec_Configuration, configCodec);
+                korl_codec_configuration_create(&configCodec, _korl_windows_window_context.allocatorHandle);
+                korl_codec_configuration_fromUtf8(&configCodec, context->configuration.fileDataBuffer);
+                windowPlacement.flags = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("flags"));
+                windowPlacement.showCmd = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("showCmd"));
+                windowPlacement.ptMinPosition.x = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.x"));
+                windowPlacement.ptMinPosition.y = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.y"));
+                windowPlacement.ptMaxPosition.x = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.x"));
+                windowPlacement.ptMaxPosition.y = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.y"));
+                windowPlacement.rcNormalPosition.left = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.left"));
+                windowPlacement.rcNormalPosition.top = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.top"));
+#if 0
+                korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.x"), windowPlacement.rcNormalPosition.right  - windowPlacement.rcNormalPosition.left);
+                korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.y"), windowPlacement.rcNormalPosition.bottom - windowPlacement.rcNormalPosition.top);
+#endif
                 korl_assert(!"@TODO");
+                korl_codec_configuration_destroy(&configCodec);
                 break;}
             case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE:{
                 /* we have written to the config file; nothing else to do probably */
@@ -128,7 +146,24 @@ korl_internal void _korl_windows_window_configurationStep(void)
     if(!context->configuration.asyncIo.handle && context->configuration.deferSaveConfiguration)
     {
         /* construct a data buffer with window configuration to write to the config file */
-        korl_assert(!"@TODO: is there a way that we can store a complex data type for generic 'initialization' file transcoding?");
+        KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
+        KORL_WINDOWS_CHECK(GetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
+        KORL_ZERO_STACK(Korl_Codec_Configuration, configCodec);
+        korl_codec_configuration_create(&configCodec, _korl_windows_window_context.allocatorHandle);
+        korl_codec_configuration_setU32(&configCodec, KORL_RAW_CONST_UTF8("flags"                  ), windowPlacement.flags);
+        korl_codec_configuration_setU32(&configCodec, KORL_RAW_CONST_UTF8("showCmd"                ), windowPlacement.showCmd);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.x"        ), windowPlacement.ptMinPosition.x);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.y"        ), windowPlacement.ptMinPosition.y);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.x"        ), windowPlacement.ptMaxPosition.x);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.y"        ), windowPlacement.ptMaxPosition.y);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.left"  ), windowPlacement.rcNormalPosition.left);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.top"   ), windowPlacement.rcNormalPosition.top);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.x"), windowPlacement.rcNormalPosition.right  - windowPlacement.rcNormalPosition.left);
+        korl_codec_configuration_setI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.y"), windowPlacement.rcNormalPosition.bottom - windowPlacement.rcNormalPosition.top);
+        acu8 configUtf8 = korl_codec_configuration_toUtf8(&configCodec, _korl_windows_window_context.allocatorHandle);
+        korl_codec_configuration_destroy(&configCodec);
+        korl_free(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data));
+        context->configuration.fileDataBuffer = configUtf8;
         /* open async file handle */
         korl_assert(!"@TODO");
         /* dispatch asyncIo write command */
@@ -313,9 +348,6 @@ korl_internal void korl_windows_window_initialize(void)
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_windows_window_context.stringPool      = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
-    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_windows_window_context.allocatorHandle)
-               ,_korl_windows_window_context.configuration.stbDaFileDataBuffer
-               ,1024);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
         running the game module as a DLL */
@@ -741,7 +773,6 @@ korl_internal void korl_windows_window_loop(void)
 }
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
-    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
     KORL_WINDOWS_CHECK(GetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));

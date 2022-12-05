@@ -106,3 +106,4 @@ shutdownSuccess:
 #include "korl-windows-mouse.c"
 #include "korl-bluetooth.c"
 #include "korl-resource.c"
+#include "korl-codec-configuration.c"
