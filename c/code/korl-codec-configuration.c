@@ -1,9 +1,12 @@
 #include "korl-codec-configuration.h"
 korl_internal void korl_codec_configuration_create(Korl_Codec_Configuration* context, Korl_Memory_AllocatorHandle allocator)
 {
+    korl_assert(korl_memory_isNull(context, sizeof(*context)));
+    context->allocator = allocator;
 }
 korl_internal void korl_codec_configuration_destroy(Korl_Codec_Configuration* context)
 {
+    korl_memory_zero(context, sizeof(*context));
 }
 korl_internal acu8 korl_codec_configuration_toUtf8(Korl_Codec_Configuration* context, Korl_Memory_AllocatorHandle allocatorResult)
 {
