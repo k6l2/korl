@@ -111,20 +111,20 @@ korl_internal void _korl_windows_window_configurationStep(void)
                 KORL_ZERO_STACK(Korl_Codec_Configuration, configCodec);
                 korl_codec_configuration_create(&configCodec, _korl_windows_window_context.allocatorHandle);
                 korl_codec_configuration_fromUtf8(&configCodec, context->configuration.fileDataBuffer);
-                windowPlacement.flags = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("flags"));
-                windowPlacement.showCmd = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("showCmd"));
-                windowPlacement.ptMinPosition.x = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.x"));
-                windowPlacement.ptMinPosition.y = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.y"));
-                windowPlacement.ptMaxPosition.x = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.x"));
-                windowPlacement.ptMaxPosition.y = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.y"));
+                windowPlacement.flags                 = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("flags"));
+                windowPlacement.showCmd               = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("showCmd"));
+                windowPlacement.ptMinPosition.x       = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.x"));
+                windowPlacement.ptMinPosition.y       = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.y"));
+                windowPlacement.ptMaxPosition.x       = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.x"));
+                windowPlacement.ptMaxPosition.y       = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMaxPosition.y"));
                 windowPlacement.rcNormalPosition.left = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.left"));
-                windowPlacement.rcNormalPosition.top = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.top"));
-#if 0
-                korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.x"), windowPlacement.rcNormalPosition.right  - windowPlacement.rcNormalPosition.left);
-                korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.y"), windowPlacement.rcNormalPosition.bottom - windowPlacement.rcNormalPosition.top);
-#endif
-                korl_assert(!"@TODO");
+                windowPlacement.rcNormalPosition.top  = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.top"));
+                const i32 rcNormalSizeX               = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.x"));
+                const i32 rcNormalSizeY               = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("rcNormalPosition.size.y"));
                 korl_codec_configuration_destroy(&configCodec);
+                windowPlacement.rcNormalPosition.right  = windowPlacement.rcNormalPosition.left + rcNormalSizeX;
+                windowPlacement.rcNormalPosition.bottom = windowPlacement.rcNormalPosition.top  + rcNormalSizeY;
+                KORL_WINDOWS_CHECK(SetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
                 break;}
             case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE:{
                 /* we have written to the config file; nothing else to do probably */
@@ -165,12 +165,14 @@ korl_internal void _korl_windows_window_configurationStep(void)
         korl_free(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data));
         context->configuration.fileDataBuffer = configUtf8;
         /* open async file handle */
-        korl_assert(!"@TODO");
-        /* dispatch asyncIo write command */
-        korl_assert(!"@TODO");
-        context->configuration.asyncIo.operation = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE;
-        /* clear the defer write flag so that we can raise it again when config changes */
-        context->configuration.deferSaveConfiguration = false;
+        if(korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
+        {
+            /* dispatch asyncIo write command */
+            context->configuration.asyncIo.handle    = korl_file_writeAsync(context->configuration.fileDescriptor, context->configuration.fileDataBuffer.data, context->configuration.fileDataBuffer.size);
+            context->configuration.asyncIo.operation = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE;
+            /* clear the defer write flag so that we can raise it again when config changes */
+            context->configuration.deferSaveConfiguration = false;
+        }
     }
 }
 korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
