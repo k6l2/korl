@@ -254,6 +254,71 @@ korl_internal bool korl_memory_isLittleEndian(void)
 {
     return !_korl_memory_isBigEndian();
 }
+korl_internal bool korl_memory_isWhitespace(u$ codePoint)
+{
+    korl_shared_const unsigned char WHITESPACE_CHARS[] = {' ', '\t', '\n', '\v', '\f', '\r'};
+    for(u$ w = 0; w < korl_arraySize(WHITESPACE_CHARS); w++)
+        if(codePoint == WHITESPACE_CHARS[w])
+            return true;
+    return false;
+}
+korl_internal bool korl_memory_isNumeric(u$ codePoint)
+{
+    return codePoint >= '0' && codePoint <= '9';
+}
+korl_internal i64 korl_memory_utf8_to_i64(acu8 utf8, u$* out_parsedBytes, bool* out_resultIsValid)
+{
+    korl_assert(out_resultIsValid != NULL);
+    i$   byteOffsetNumberStart = -1;
+    bool isNegative            = false;
+    i64  result                = 0;
+    //KORL-ISSUE-000-000-104: unicode, UTF-8, UTF-16: likely related to KORL-ISSUE-000-000-076; UTF-8 string codepoints can _not_ be randomly accessed via an array index (and for that matter, I think UTF-16 also has this issue?); the only way to properly access UTF-8 string characters is to use an iterator; I have been doing this incorrectly in many places, so my only hope is probably to just search for "utf8" in the code and meticulously fix everything...  Sorry, future me! 😶
+    for(u$ i = 0; i < utf8.size; i++)
+    {
+        const bool isWhiteSpace = korl_memory_isWhitespace(utf8.data[i]);
+        if(isWhiteSpace)
+        {
+            if(byteOffsetNumberStart >= 0)
+            {
+                if(out_parsedBytes)
+                    *out_parsedBytes = i + 1;
+                break;
+            }
+        }
+        else// if(!isWhiteSpace)
+        {
+            const bool isNumeric = korl_memory_isNumeric(utf8.data[i]);
+            if(byteOffsetNumberStart < 0)
+                byteOffsetNumberStart = i;
+            if(isNumeric)
+            {
+                const i64 digit = isNegative
+                                ? -(utf8.data[i] - '0')
+                                :   utf8.data[i] - '0';
+                const i64 resultPrevious = result;
+                result *= 10;
+                result += digit;
+                if((result - digit) / 10 != resultPrevious)// the UTF-8 number is too large to fit in result
+                {
+                    *out_resultIsValid = false;
+                    return KORL_I64_MAX;
+                }
+            }
+            else
+            {
+                if(korl_checkCast_i$_to_u$(byteOffsetNumberStart) == i && utf8.data[i] == '-')
+                    isNegative = true;
+                else// invalid non-numeric codepoint
+                {
+                    *out_resultIsValid = false;
+                    return KORL_I64_MAX;
+                }
+            }
+        }
+    }
+    *out_resultIsValid = true;
+    return result;
+}
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal KORL_FUNCTION_korl_memory_compare(korl_memory_compare)
 {
@@ -410,6 +475,14 @@ korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allo
     va_list args;
     va_start(args, format);
     wchar_t*const result = korl_memory_stringFormatVaList(allocatorHandle, format, args);
+    va_end(args);
+    return result;
+}
+korl_internal char* korl_memory_stringFormatUtf8(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    char*const result = korl_memory_stringFormatVaListUtf8(allocatorHandle, format, args);
     va_end(args);
     return result;
 }

@@ -78,15 +78,19 @@ korl_internal void _korl_windows_window_configurationLoad(void)
     korl_assert(context->configuration.fileDescriptor.handle == NULL);
     if(!korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
     {
-        /* there is no config file here, so we need to make one */
+        /* there is no config file here, so we need to make a blank one */
         if(!korl_file_create(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
             korl_log(ERROR, "failed to create file \"%ws\"", _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME);
+        context->configuration.deferSaveConfiguration;// save configuration ASAP so that it is valid on the next run
         //@TODO: KORL-FEATURE-000-000-019; if no configuration file is present, choose to place the window in the screen where the mouse cursor is
     }
-    const u32 fileBytes = korl_file_getTotalBytes(context->configuration.fileDescriptor);
-    context->configuration.fileDataBuffer.data = korl_reallocate(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
-    context->configuration.asyncIo.handle      = korl_file_readAsync(context->configuration.fileDescriptor, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
-    context->configuration.asyncIo.operation   = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
+    else/* the config file exists; let's read it & apply the settings when it finishes loading */
+    {
+        const u32 fileBytes = korl_file_getTotalBytes(context->configuration.fileDescriptor);
+        context->configuration.fileDataBuffer.data = korl_reallocate(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
+        context->configuration.asyncIo.handle      = korl_file_readAsync(context->configuration.fileDescriptor, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
+        context->configuration.asyncIo.operation   = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
+    }
 }
 korl_internal void _korl_windows_window_configurationStep(void)
 {
@@ -111,6 +115,10 @@ korl_internal void _korl_windows_window_configurationStep(void)
                 KORL_ZERO_STACK(Korl_Codec_Configuration, configCodec);
                 korl_codec_configuration_create(&configCodec, _korl_windows_window_context.allocatorHandle);
                 korl_codec_configuration_fromUtf8(&configCodec, context->configuration.fileDataBuffer);
+                /* it is possible to get an invalid/corrupt config file that 
+                    isn't fully populated with all these keys; in this case, 
+                    let's just save a fresh config if we detect this condition */
+                ///@TODO
                 windowPlacement.flags                 = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("flags"));
                 windowPlacement.showCmd               = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("showCmd"));
                 windowPlacement.ptMinPosition.x       = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.x"));
@@ -772,6 +780,8 @@ korl_internal void korl_windows_window_loop(void)
 #endif
     korl_vulkan_destroySurface();
     string_free(stringGameDll);
+    /* safely close out any pending config file operations */
+    ///@TODO
 }
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
