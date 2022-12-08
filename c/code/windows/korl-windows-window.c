@@ -255,6 +255,14 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
         // const POINTS clientTopLeft = MAKEPOINTS(lParam);// we can't actually use this macro, because I undefined the stupid Microsoft "far" define lol; but who cares?
         const POINTS clientTopLeft = *KORL_C_CAST(POINTS*, &lParam);
         context->configuration.deferSaveConfiguration = true;
+        // KORL-ISSUE-000-000-107: window: when we process a WM_MOVE event with wParam==SIZE_RESTORED, ensure that the window is never completely off-screen
+        //  Currently, this is possible if you:
+        //  - with an extra monitor, move the normalized window to the external monitor
+        //  - maximize the window
+        //  - close the application
+        //  - disconnect the monitor
+        //  - open the application
+        //  - restore the window to its normal state; it will attempt to be moved to the desktop of the disconnected monitor!
         break;}
     case WM_LBUTTONDOWN:
     case WM_MBUTTONDOWN:
