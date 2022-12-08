@@ -25,7 +25,7 @@ korl_internal void korl_codec_configuration_create(Korl_Codec_Configuration* con
 {
     korl_assert(korl_memory_isNull(context, sizeof(*context)));
     context->allocator  = allocator;
-    mcshdefault(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase, KORL_STRUCT_INITIALIZE_ZERO(Korl_Codec_Configuration_MapValue));
+    mcsh_new_arena(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase);
 }
 korl_internal void korl_codec_configuration_destroy(Korl_Codec_Configuration* context)
 {
@@ -68,8 +68,8 @@ korl_internal void korl_codec_configuration_fromUtf8(Korl_Codec_Configuration* c
     /* clear the database context before decoding the file data buffer */
     if(shlenu(context->stbShDatabase))// only reallocate the string hash map if it is actually dirty
     {
-        mcshfree   (KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase);
-        mcshdefault(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase, KORL_STRUCT_INITIALIZE_ZERO(Korl_Codec_Configuration_MapValue));
+        mcshfree      (KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase);
+        mcsh_new_arena(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase);
     }
     /**/
     i$ keyStartOffset          = -1;
@@ -109,11 +109,13 @@ korl_internal void korl_codec_configuration_fromUtf8(Korl_Codec_Configuration* c
                 // add the key/value to the database (if it is valid) //
                 if(value.type != KORL_CODEC_CONFIGURATION_MAP_VALUE_TYPE_INVALID)
                 {
-                    if(keyTempBufferSize < keySize)
+                    if(keyTempBufferSize < keySize + 1/*null-terminator*/)
                     {
-                        keyTempBufferSize = KORL_MATH_MAX(2*keyTempBufferSize, keySize);
+                        keyTempBufferSize = KORL_MATH_MAX(2*keyTempBufferSize, keySize + 1/*null-terminator*/);
                         keyTempBuffer     = korl_reallocate(context->allocator, keyTempBuffer, keyTempBufferSize);
                     }
+                    korl_memory_copy(keyTempBuffer, fileDataBuffer.data + keyStartOffset, keySize);
+                    keyTempBuffer[keySize] = '\0';// null-terminate the temporary key buffer so we can use CRT-like API exposed by stb_ds 🤢
                     mcshput(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase, keyTempBuffer, value);
                 }
                 else
