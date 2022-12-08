@@ -4,6 +4,7 @@
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
 #include "korl-time.h"
+#if 0//@TODO: recycle
 #define SORT_NAME _korl_gui_widget
 #define SORT_TYPE _Korl_Gui_Widget
 #define SORT_CMP(x, y) ((x).orderIndex < (y).orderIndex ? -1 : ((x).orderIndex > (y).orderIndex ? 1 : 0))
@@ -254,11 +255,10 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
         break;}
     }
 }
+#endif
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(64), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
@@ -284,11 +284,16 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.widgetSpacingY                 = 0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        = 4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
+#if 0//@TODO: recycle
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(64), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_free(context->allocatorHandleHeap, context->style.fontWindowText);
     context->style.fontWindowText = NULL;
@@ -300,9 +305,11 @@ korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
         const i$ resultStringCopy = korl_memory_stringCopy(fontAssetName, context->style.fontWindowText, fontAssetNameSize + 1);
         korl_assert(resultStringCopy > 0);
     }
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
     /* assemble the window identifier hash */
@@ -373,43 +380,53 @@ done_currentWindowIndexValid:
     }
     newWindow->specialWidgetFlagsPressed = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
     context->currentWidgetIndex = -1;
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     context->currentWindowIndex = -1;
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -KORL_C_CAST(f32, surfaceSize.y) + positionY + anchorY*window->size.y};
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_windowSetSize(korl_gui_windowSetSize)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
     korl_assert(context->currentWindowIndex >= 0);
     _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
     window->isFirstFrame = false;
     window->size         = (Korl_Math_V2f32){sizeX, sizeY};
+#endif
 }
 korl_internal void korl_gui_frameBegin(void)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 0);
     context->frameSequenceCounter++;
     context->currentWindowIndex = -1;
     context->currentWidgetIndex = -1;
     korl_memory_allocator_empty(context->allocatorHandleStack);
+#endif
 }
 korl_internal void korl_gui_frameEnd(void)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(context->frameSequenceCounter == 1);
     /* Once again, the only time the current window index is allowed to be set 
@@ -795,22 +812,28 @@ korl_internal void korl_gui_frameEnd(void)
     }
     korl_time_probeStop(generate_draw_commands);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     context->loopIndex = loopIndex;
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     if(   context->currentWidgetIndex < 0
        || context->currentWidgetIndex >= korl_checkCast_u$_to_i$(arrlenu(context->stbDaWidgets)))
         return;// silently do nothing if user has not created a widget yet for the current window
     context->stbDaWidgets[context->currentWidgetIndex].realignY = true;
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
@@ -818,9 +841,11 @@ korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
     va_start(vaList, textFormat);
     widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(identifier), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
@@ -847,9 +872,11 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
     const u$ textLines = arrlenu(widget->subType.text.gfxText->stbDaLines);
     if(textLines > maxLineCount)
         korl_gfx_text_fifoRemove(widget->subType.text.gfxText, textLines - maxLineCount);
+#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat)
 {
+#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
@@ -860,19 +887,25 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     const u8 resultActuationCount = widget->subType.button.actuationCount;
     widget->subType.button.actuationCount = 0;
     return resultActuationCount;
+#endif
+    return 0;///@TODO: delete
 }
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
+#if 0//@TODO: recycle
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_gui_context, sizeof(_korl_gui_context));
+#endif
 }
 korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
 {
+#if 0//@TODO: recycle
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
     if(!ReadFile(hFile, &_korl_gui_context, sizeof(_korl_gui_context), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
     }
+#endif
     return true;
 }

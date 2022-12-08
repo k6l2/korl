@@ -8,6 +8,7 @@
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
+#if 0//@TODO: recycle
     /* we can't just assert that the frameSequenceCounter == 0 here because this 
         function will be getting called when the message box of an assert is 
         running & pumping the message loop, which could happen at any time! */
@@ -403,4 +404,5 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         break;}
 #endif
     }
+#endif
 }

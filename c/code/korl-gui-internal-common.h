@@ -9,6 +9,7 @@
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
 korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
+#if 0//@TODO: recycle
 typedef enum _Korl_Gui_SpecialWidgetFlags
 {
     KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE         = 0,
@@ -67,10 +68,9 @@ typedef struct _Korl_Gui_Widget
         } button;
     } subType;
 } _Korl_Gui_Widget;
+#endif
 typedef struct _Korl_Gui_Context
 {
-    Korl_Memory_AllocatorHandle allocatorHandleStack;
-    Korl_Memory_AllocatorHandle allocatorHandleHeap;
     struct
     {
         Korl_Vulkan_Color4u8 colorWindow;
@@ -91,14 +91,17 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color4u8 colorScrollBarPressed;
         Korl_Vulkan_Color4u8 colorText;
         Korl_Vulkan_Color4u8 colorTextOutline;
-        f32 textOutlinePixelSize;
-        wchar_t* fontWindowText;
-        f32 windowTextPixelSizeY;
-        f32 windowTitleBarPixelSizeY;
-        f32 widgetSpacingY;
-        f32 widgetButtonLabelMargin;
-        f32 windowScrollBarPixelWidth;
+        f32                  textOutlinePixelSize;
+        wchar_t*             fontWindowText;
+        f32                  windowTextPixelSizeY;
+        f32                  windowTitleBarPixelSizeY;
+        f32                  widgetSpacingY;
+        f32                  widgetButtonLabelMargin;
+        f32                  windowScrollBarPixelWidth;
     } style;
+#if 0//@TODO: recycle
+    Korl_Memory_AllocatorHandle allocatorHandleStack;
+    Korl_Memory_AllocatorHandle allocatorHandleHeap;
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value < 0, a new window must be started before 
      * calling any widget API.  If the user calls a widget function outside of 
@@ -138,5 +141,6 @@ typedef struct _Korl_Gui_Context
         KORL_GUI_MOUSE_HOVER_FLAG_DOWN  = 1<<3,
     } mouseHoverWindowEdgeFlags;
     Korl_Math_V2f32 mouseHoverPosition;
+#endif
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;
