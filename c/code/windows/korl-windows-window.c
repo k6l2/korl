@@ -83,7 +83,6 @@ korl_internal void _korl_windows_window_configurationLoad(void)
             korl_log(ERROR, "failed to create file \"%ws\"", _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME);
         korl_file_close(&context->configuration.fileDescriptor);
         context->configuration.deferSaveConfiguration = true;// save configuration ASAP so that it is valid on the next run
-        //@TODO: KORL-FEATURE-000-000-019; if no configuration file is present, choose to place the window in the screen where the mouse cursor is
     }
     else/* the config file exists; let's read it & apply the settings when it finishes loading */
     {
@@ -121,7 +120,8 @@ korl_internal void _korl_windows_window_configurationStep(void)
                 /* it is possible to get an invalid/corrupt config file that 
                     isn't fully populated with all these keys; in this case, 
                     let's just save a fresh config if we detect this condition */
-                ///@TODO
+                //KORL-ISSUE-000-000-105: window, configuration: detect invalid/corrupt configuration file, and maybe just save a fresh configuration file in this case
+                /**/
                 windowPlacement.flags                 = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("flags"));
                 windowPlacement.showCmd               = korl_codec_configuration_getU32(&configCodec, KORL_RAW_CONST_UTF8("showCmd"));
                 windowPlacement.ptMinPosition.x       = korl_codec_configuration_getI32(&configCodec, KORL_RAW_CONST_UTF8("ptMinPosition.x"));
@@ -191,17 +191,34 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     /* ignore all window events that don't belong to the windows we are 
         responsible for in this code module */
-    if(hWnd != context->window.handle)
-        return DefWindowProc(hWnd, uMsg, wParam, lParam);
-    LRESULT result;
-    korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
-    if(korl_windows_gamepad_processMessage(hWnd, uMsg, wParam, lParam, &result))
-        return result;
-    if(korl_windows_mouse_processMessage(hWnd, uMsg, wParam, lParam, &result, context->gameApi.korl_game_onMouseEvent))
-        return result;
+    if(context->window.handle)// only do this logic if the context's window handle is set, because the first window message is a WM_CREATE, which we will use to set the context window handle
+    {
+        // korl_log(VERBOSE, "uMsg=%u|0x%X", uMsg, uMsg);
+        if(hWnd != context->window.handle)
+            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+        LRESULT result;
+        korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
+        if(korl_windows_gamepad_processMessage(hWnd, uMsg, wParam, lParam, &result))
+            return result;
+        if(korl_windows_mouse_processMessage(hWnd, uMsg, wParam, lParam, &result, context->gameApi.korl_game_onMouseEvent))
+            return result;
+    }
     switch(uMsg)
     {
     case WM_CREATE:{
+        korl_assert(context->window.handle == NULL);
+        context->window.handle = hWnd;
+        /* before the window actually appears on screen, we attempt to load the 
+            window configuration file from disk storage; if we are able to 
+            obtain the configuration, we can issue a window resize/reposition 
+            event to the last known value before the window actually appears */
+        _korl_windows_window_configurationLoad();
+        /* if we have configuration to load, just spin here until we load the 
+            window configuration; this process is extremely fast in my testing, 
+            so it should be fine to block the application startup to get this 
+            data before the window appears */
+        while(context->configuration.asyncIo.handle)
+            _korl_windows_window_configurationStep();
         break;}
     case WM_DESTROY:{
         PostQuitMessage(KORL_EXIT_SUCCESS);
@@ -455,8 +472,7 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     const DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
     const HMENU hMenu = NULL;
     const BOOL windowHasMenu = hMenu != NULL;
-    const BOOL successAdjustClientRect = 
-        AdjustWindowRect(&rectCenteredClient, windowStyle, windowHasMenu);
+    const BOOL successAdjustClientRect = AdjustWindowRect(&rectCenteredClient, windowStyle, windowHasMenu);
     if(!successAdjustClientRect) korl_logLastError("AdjustWindowRect failed!");
     const HWND hWnd = CreateWindowEx(0/*extended style flags*/, _KORL_WINDOWS_WINDOW_CLASS_NAME
                                     ,KORL_APPLICATION_NAME, windowStyle
@@ -466,13 +482,10 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
                                     ,NULL/*hWndParent*/, hMenu, hInstance
                                     ,NULL/*lpParam; passed to WM_CREATE*/);
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
-    korl_assert(context->window.handle == NULL);
-    context->window.handle  = hWnd;
     context->window.style   = windowStyle;
     context->window.hasMenu = windowHasMenu;
     korl_windows_gamepad_registerWindow(hWnd, context->allocatorHandle);
     korl_windows_mouse_registerWindow(hWnd);
-    _korl_windows_window_configurationLoad();
 }
 korl_internal void _korl_windows_window_gameInitialize(const KorlPlatformApi* korlApi)
 {
@@ -784,7 +797,8 @@ korl_internal void korl_windows_window_loop(void)
     korl_vulkan_destroySurface();
     string_free(stringGameDll);
     /* safely close out any pending config file operations */
-    ///@TODO
+    while(context->configuration.deferSaveConfiguration || context->configuration.asyncIo.handle)
+        _korl_windows_window_configurationStep();
 }
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
