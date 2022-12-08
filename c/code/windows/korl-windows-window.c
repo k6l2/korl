@@ -58,6 +58,7 @@ typedef struct _Korl_Windows_Window_Context
     struct
     {
         bool deferSaveConfiguration;
+        bool deferMaximize;/* extremely stupid hack; we need this because if a window is maximized via ShowWindow during WM_CREATE, the window's WINDOWPLACEMENT will contain the _wrong_ values for rcNormalPosition !!!!!  Without this hack, we would lose the original window size between application runs... */
         Korl_File_Descriptor fileDescriptor;
         struct
         {
@@ -135,6 +136,11 @@ korl_internal void _korl_windows_window_configurationStep(void)
                 korl_codec_configuration_destroy(&configCodec);
                 windowPlacement.rcNormalPosition.right  = windowPlacement.rcNormalPosition.left + rcNormalSizeX;
                 windowPlacement.rcNormalPosition.bottom = windowPlacement.rcNormalPosition.top  + rcNormalSizeY;
+                if(windowPlacement.showCmd == SW_SHOWMAXIMIZED)
+                {
+                    context->configuration.deferMaximize = true;
+                    windowPlacement.showCmd = SW_SHOWNORMAL;
+                }
                 KORL_WINDOWS_CHECK(SetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
                 break;}
             case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE:{
@@ -230,6 +236,12 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
             korl_log(WARNING, "wParam virtual key code is out of range");
             break;
         }
+#if KORL_DEBUG && 0//@TODO: delete; test code
+        if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
+        {
+            KORL_WINDOWS_CHECK(ShowWindow(_korl_windows_window_context.window.handle, SW_SHOWMAXIMIZED));
+        }
+#endif
         if(context->gameApi.korl_game_onKeyboardEvent)
             context->gameApi.korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
 #if 1//KORL-ISSUE-000-000-068: window: maybe expose more general API
@@ -243,6 +255,11 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
         const UINT clientWidth  = LOWORD(lParam);
         const UINT clientHeight = HIWORD(lParam);
         korl_vulkan_deferredResize(clientWidth, clientHeight);
+        context->configuration.deferSaveConfiguration = true;
+        break;}
+    case WM_MOVE:{
+        // const POINTS clientTopLeft = MAKEPOINTS(lParam);// we can't actually use this macro, because I undefined the stupid Microsoft "far" define lol; but who cares?
+        const POINTS clientTopLeft = *KORL_C_CAST(POINTS*, &lParam);
         context->configuration.deferSaveConfiguration = true;
         break;}
     case WM_LBUTTONDOWN:
@@ -347,9 +364,6 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
-    case WM_MOVE:{
-        context->configuration.deferSaveConfiguration = true;
-        break;}
     default: 
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
@@ -484,6 +498,11 @@ korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
     if(!hWnd) korl_logLastError("CreateWindowEx failed!");
     context->window.style   = windowStyle;
     context->window.hasMenu = windowHasMenu;
+    if(context->configuration.deferMaximize)
+    {
+        context->configuration.deferMaximize = false;
+        KORL_WINDOWS_CHECK(ShowWindow(_korl_windows_window_context.window.handle, SW_SHOWMAXIMIZED));
+    }
     korl_windows_gamepad_registerWindow(hWnd, context->allocatorHandle);
     korl_windows_mouse_registerWindow(hWnd);
 }
