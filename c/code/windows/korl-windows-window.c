@@ -176,8 +176,7 @@ korl_internal void _korl_windows_window_configurationStep(void)
         korl_free(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data));
         context->configuration.fileDataBuffer = configUtf8;
         /* open async file handle */
-        ///@TODO: UH OH... we're appending to the same file forever; change korl-file so we can re-write the file contents!
-        if(korl_file_open(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
+        if(korl_file_openClear(KORL_FILE_PATHTYPE_LOCAL_DATA, _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME, &context->configuration.fileDescriptor, true/*async*/))
         {
             /* dispatch asyncIo write command */
             context->configuration.asyncIo.handle    = korl_file_writeAsync(context->configuration.fileDescriptor, context->configuration.fileDataBuffer.data, context->configuration.fileDataBuffer.size);

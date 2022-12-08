@@ -37,23 +37,28 @@ typedef enum Korl_File_ResultRenameReplace
 korl_internal void korl_file_initialize(void);
 /** \return \c NULL if the library failed to load */
 korl_internal HMODULE korl_file_loadDynamicLibrary(Korl_File_PathType pathType, const wchar_t* fileName);
-korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName, 
-                                  Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew, 
-                                  bool replaceFileNameNewIfExists);
+korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName
+                                 ,Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew
+                                 ,bool replaceFileNameNewIfExists);
 /** If \c fileNameNew exists, it is replaced with the contents of \c fileName . */
-korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName, 
-                                                                    Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew);
+korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName
+                                                                   ,Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew);
 /** \return \c true if the file was opened successfully, \c false otherwise.  
  * Upon successful execution, the file descriptor is stored in \c o_fileDescriptor. */
-korl_internal bool korl_file_open(Korl_File_PathType pathType, 
-                                  const wchar_t* fileName, 
-                                  Korl_File_Descriptor* o_fileDescriptor, 
-                                  bool async);
+korl_internal bool korl_file_open(Korl_File_PathType pathType
+                                 ,const wchar_t* fileName
+                                 ,Korl_File_Descriptor* o_fileDescriptor
+                                 ,bool async);
 /** same as \c korl_file_open , except we are creating a file that doesn't exist yet */
-korl_internal bool korl_file_create(Korl_File_PathType pathType, 
-                                    const wchar_t* fileName, 
-                                    Korl_File_Descriptor* o_fileDescriptor, 
-                                    bool async);
+korl_internal bool korl_file_create(Korl_File_PathType pathType
+                                   ,const wchar_t* fileName
+                                   ,Korl_File_Descriptor* o_fileDescriptor
+                                   ,bool async);
+/** same as \c korl_file_open , except the existing file contents are cleared */
+korl_internal bool korl_file_openClear(Korl_File_PathType pathType
+                                      ,const wchar_t* fileName
+                                      ,Korl_File_Descriptor* o_fileDescriptor
+                                      ,bool async);
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor);
 /** The caller is responsible for keeping \c buffer alive until the write 
  * operation is complete. */
@@ -71,10 +76,10 @@ korl_internal KorlPlatformDateStamp korl_file_getDateStampLastWrite(Korl_File_De
 korl_internal bool korl_file_getDateStampLastWriteFileName(Korl_File_PathType pathType, const wchar_t* fileName, KorlPlatformDateStamp* out_dateStampLastWrite);
 /** Read the entire contents of the file.
  * \return \c true if the file was read successfully, \c false otherwise. */
-korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, 
-                                  void* buffer, u32 bufferBytes);
-korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor fileDescriptor, 
-                                                          void* buffer, u32 bufferBytes);
+korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor
+                                 ,void* buffer, u32 bufferBytes);
+korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor fileDescriptor
+                                                         ,void* buffer, u32 bufferBytes);
 korl_internal void korl_file_finishAllAsyncOperations(void);
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount);
 korl_internal void korl_file_saveStateCreate(void);

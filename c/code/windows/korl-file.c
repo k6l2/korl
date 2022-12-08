@@ -68,11 +68,12 @@ korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_String stringFile
         }
     }
 }
-korl_internal bool _korl_file_open(Korl_File_PathType pathType, 
-                                   const wchar_t* fileName, 
-                                   Korl_File_Descriptor_Flags flags, 
-                                   Korl_File_Descriptor* o_fileDescriptor, 
-                                   bool createNew)
+korl_internal bool _korl_file_open(Korl_File_PathType pathType
+                                  ,const wchar_t* fileName
+                                  ,Korl_File_Descriptor_Flags flags
+                                  ,Korl_File_Descriptor* o_fileDescriptor
+                                  ,bool createNew
+                                  ,bool clearFileContents/*only used if createNew is false*/)
 {
     _Korl_File_Context*const context = &_korl_file_context;
     bool result = true;
@@ -90,13 +91,13 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType,
         createFileFlags |= FILE_FLAG_OVERLAPPED;
     if(createFileFlags == 0)
         createFileFlags = FILE_ATTRIBUTE_NORMAL;
-    const HANDLE hFile = CreateFile(string_getRawUtf16(stringFilePath), 
-                                    createDesiredAccess, 
-                                    FILE_SHARE_READ, 
-                                    NULL/*default security*/, 
-                                    createNew ? CREATE_NEW : OPEN_EXISTING, 
-                                    createFileFlags, 
-                                    NULL/*no template file*/);
+    const HANDLE hFile = CreateFile(string_getRawUtf16(stringFilePath)
+                                   ,createDesiredAccess
+                                   ,FILE_SHARE_READ
+                                   ,NULL/*default security*/
+                                   ,createNew ? CREATE_NEW : (clearFileContents ? TRUNCATE_EXISTING : OPEN_EXISTING)
+                                   ,createFileFlags
+                                   ,NULL/*no template file*/);
     if(hFile == INVALID_HANDLE_VALUE)
     {
         korl_log(WARNING, "CreateFile('%ws') failed; GetLastError==0x%X", 
@@ -140,8 +141,8 @@ cleanUp:
 /** The caller is responsible for freeing the string returned via 
  * the \c o_filePathOldest parameter.
  * \return the # of matched files */
-korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_String findFileDirectory, const wchar_t* findFileNamePattern, 
-                                           Korl_StringPool_String* o_filePathOldest)
+korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_String findFileDirectory, const wchar_t* findFileNamePattern
+                                          ,Korl_StringPool_String* o_filePathOldest)
 {
     u$ findFileCount = 0;
     o_filePathOldest->handle = 0;
@@ -420,27 +421,38 @@ korl_internal void korl_file_initialize(void)
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaSaveStateBuffer, korl_math_kilobytes(16));
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaAllocationCounts, 32);
 }
-korl_internal bool korl_file_open(Korl_File_PathType pathType, 
-                                  const wchar_t* fileName, 
-                                  Korl_File_Descriptor* o_fileDescriptor, 
-                                  bool async)
+korl_internal bool korl_file_open(Korl_File_PathType pathType
+                                 ,const wchar_t* fileName
+                                 ,Korl_File_Descriptor* o_fileDescriptor
+                                 ,bool async)
 {
     Korl_File_Descriptor_Flags flags = KORL_FILE_DESCRIPTOR_FLAG_READ 
                                      | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
     if(async)
         flags |= KORL_FILE_DESCRIPTOR_FLAG_ASYNC;
-    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, false/*don't create new file*/);
+    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, false/*don't create new file*/, false/*don't clear the file*/);
 }
-korl_internal bool korl_file_create(Korl_File_PathType pathType, 
-                                    const wchar_t* fileName, 
-                                    Korl_File_Descriptor* o_fileDescriptor, 
-                                    bool async)
+korl_internal bool korl_file_create(Korl_File_PathType pathType
+                                   ,const wchar_t* fileName
+                                   ,Korl_File_Descriptor* o_fileDescriptor
+                                   ,bool async)
 {
     Korl_File_Descriptor_Flags flags = KORL_FILE_DESCRIPTOR_FLAG_READ 
                                      | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
     if(async)
         flags |= KORL_FILE_DESCRIPTOR_FLAG_ASYNC;
-    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, true/*create new*/);
+    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, true/*create new*/, false/*don't clear the file*/);
+}
+korl_internal bool korl_file_openClear(Korl_File_PathType pathType
+                                      ,const wchar_t* fileName
+                                      ,Korl_File_Descriptor* o_fileDescriptor
+                                      ,bool async)
+{
+    Korl_File_Descriptor_Flags flags = KORL_FILE_DESCRIPTOR_FLAG_READ 
+                                     | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
+    if(async)
+        flags |= KORL_FILE_DESCRIPTOR_FLAG_ASYNC;
+    return _korl_file_open(pathType, fileName, flags, o_fileDescriptor, false/*don't create new*/, true/*clear the file*/);
 }
 korl_internal void korl_file_close(Korl_File_Descriptor* fileDescriptor)
 {
