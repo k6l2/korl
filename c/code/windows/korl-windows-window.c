@@ -236,12 +236,6 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
             korl_log(WARNING, "wParam virtual key code is out of range");
             break;
         }
-#if KORL_DEBUG && 0//@TODO: delete; test code
-        if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
-        {
-            KORL_WINDOWS_CHECK(ShowWindow(_korl_windows_window_context.window.handle, SW_SHOWMAXIMIZED));
-        }
-#endif
         if(context->gameApi.korl_game_onKeyboardEvent)
             context->gameApi.korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
 #if 1//KORL-ISSUE-000-000-068: window: maybe expose more general API
