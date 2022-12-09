@@ -380,7 +380,8 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         }
     }
     /* we are forced to allocate a new window in the memory pool */
-    Korl_Math_V2f32 nextWindowPosition   = KORL_MATH_V2F32_ZERO;
+    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
+    Korl_Math_V2f32 nextWindowPosition   = {surfaceSize.x*0.25f, surfaceSize.y*0.5f};
     u16             nextWindowOrderIndex = 0;
     /* if there are other window widgets in play already, the next window 
         position should be offset relative to the window with the highest order 
@@ -516,10 +517,8 @@ korl_internal void korl_gui_frameEnd(void)
     /* prepare the view/projection graphics state */
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(1.f/*clipDepth*/);
-#if 0//@TODO: uncomment when I'm done debugging stuff off-screen
     cameraOrthographic.position.xy = 
     cameraOrthographic.target.xy   = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
-#endif
     korl_gfx_useCamera(cameraOrthographic);
     /* process _all_ sorted in-use widgets for this frame */
     #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
