@@ -14,9 +14,6 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin);
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd);
 korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition);
 korl_internal KORL_FUNCTION_korl_gui_windowSetSize(korl_gui_windowSetSize);
-/** Prepare a new GUI batch for the current application frame.  The user _must_ 
- * call \c korl_gui_frameEnd after each call to \c korl_gui_frameBegin . */
-korl_internal void korl_gui_frameBegin(void);
 korl_internal void korl_gui_frameEnd(void);
 /** Make sure to reset this value back to \c 0 after you are finished looping! */
 korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex);

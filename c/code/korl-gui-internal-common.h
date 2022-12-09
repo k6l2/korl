@@ -20,16 +20,9 @@ typedef enum _Korl_Gui_SpecialWidgetFlags
 } _Korl_Gui_SpecialWidgetFlags;
 typedef struct _Korl_Gui_Window
 {
-    u64 identifierHash;
-    const wchar_t* titleBarText;
-    bool usedThisFrame;
-    bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
-    bool isOpen;
-    bool isContentHidden;
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlags;// flags raised indicate the presence of special widgets
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsPressed;// flags are raised when the corresponding special widget is pressed
     f32 hiddenContentPreviousSizeY;
-    Korl_Math_V2f32 position;// relative to the upper-left corner of the window
     Korl_Math_V2f32 size;
     u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum
     Korl_Math_Aabb2f32 cachedContentAabb;// "content" refers to the accumulation of all widgets contained in this window
@@ -40,35 +33,47 @@ typedef struct _Korl_Gui_Window
     f32 scrollBarPositionY;
     u16 widgets;// related to _Korl_Gui_Widget::orderIndex; the total # of direct widget children
 } _Korl_Gui_Window;
+#endif
 typedef struct _Korl_Gui_Widget
 {
-    u64 parentWindowIdentifierHash;
-    u64 identifierHash;
-    u16 orderIndex;// related to _Korl_Gui_Window::widgets; determines the order in which widgets are processed/displayed in their parent/window
-    bool usedThisFrame;
+    u64 identifierHashParent;// a value of 0 => this Widget has no parent
+    u64 identifierHash;// _all_ widgets _must_ have a non-zero identifierHash
+    u16 orderIndex;// determines the order in which widgets are processed/displayed in their parent, as well as top-level widgets (windows) relative to one another; 0 => the bottom-most widget that is drawn below all other widgets at the same heirarchical depth; in other words, lower values are processed/drawn _first_
+    bool isContentHidden;// disables all child widgets (all logic, including graphics)
+    Korl_Math_V2f32 position;// relative to the top-left corner of the widget, where our coordinate frame origin is the bottom-left corner of the rendering surface, with the +Y axis pointing UP (as the graphics gods intended)
+    Korl_Math_V2f32 size;
+    bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, 
+#if 0//@TODO: recycle
     bool realignY;
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
     bool cachedIsInteractive;
+#endif
     enum
-    {
-        KORL_GUI_WIDGET_TYPE_TEXT,
-        KORL_GUI_WIDGET_TYPE_BUTTON,
+        {KORL_GUI_WIDGET_TYPE_WINDOW
+        ,KORL_GUI_WIDGET_TYPE_TEXT
+        ,KORL_GUI_WIDGET_TYPE_BUTTON
     } type;
     union
     {
         struct
         {
-            const wchar_t* displayText;
+            // const wchar_t* titleBarText;// @TODO: use string pool
+            bool isOpen;
+            bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
+            Korl_Gui_Window_Style_Flags styleFlags;
+        } window;
+        struct
+        {
+            // const wchar_t* displayText;// @TODO: use string pool
             Korl_Gfx_Text* gfxText;
         } text;
         struct
         {
-            const wchar_t* displayText;
+            // const wchar_t* displayText;// @TODO: use string pool
             u8 actuationCount;
         } button;
     } subType;
 } _Korl_Gui_Widget;
-#endif
 typedef struct _Korl_Gui_Context
 {
     struct
@@ -92,30 +97,28 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color4u8 colorText;
         Korl_Vulkan_Color4u8 colorTextOutline;
         f32                  textOutlinePixelSize;
-        wchar_t*             fontWindowText;
+        // au16                 fontWindowText;// @TODO: use string pool
         f32                  windowTextPixelSizeY;
         f32                  windowTitleBarPixelSizeY;
         f32                  widgetSpacingY;
         f32                  widgetButtonLabelMargin;
         f32                  windowScrollBarPixelWidth;
     } style;
-#if 0//@TODO: recycle
-    Korl_Memory_AllocatorHandle allocatorHandleStack;
     Korl_Memory_AllocatorHandle allocatorHandleHeap;
+    Korl_Memory_AllocatorHandle allocatorHandleStack;
+    _Korl_Gui_Widget* stbDaWidgets;// everything is a Widget, including windows!
+    u$ loopIndex;// combined with window/widget identifiers to create the final identifierHash
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value < 0, a new window must be started before 
      * calling any widget API.  If the user calls a widget function outside of 
      * the \c korl_gui_windowBegin/End calls, a default "debug" window will be 
      * automatically selected. */
     i16 currentWindowIndex;
+#if 0//@TODO: recycle
     i16 currentWidgetIndex;
-    /** help ensure the user calls \c korl_gui_frameBegin/End the correct # of 
-     * times */
-    u8 frameSequenceCounter;
     /** Windows are stored from back=>front.  In other words, the window at 
      * index \c 0 will be drawn behind all other windows. */
     _Korl_Gui_Window* stbDaWindows;
-    _Korl_Gui_Widget* stbDaWidgets;
     /** We don't need this to be a member of \c _Korl_Gui_Window because we 
      * already know:  
      * - there will only ever be ONE active window
@@ -131,7 +134,6 @@ typedef struct _Korl_Gui_Context
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
     u64 identifierHashMouseHoveredWidget;
     u64 identifierHashMouseHoveredWindow;
-    u$ loopIndex;// combined with window/widget identifiers to create the final identifierHash
     enum
     {
         KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,

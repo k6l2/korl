@@ -35,21 +35,16 @@ KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
     if(keyCode == KORL_KEY_ESCAPE && isDown && !isRepeat)
         memory->continueRunning = false;
 }
-KORL_GAME_API KORL_GAME_ON_MOUSE_EVENT(korl_game_onMouseEvent)
-{
-}
-KORL_GAME_API KORL_GAME_ON_GAMEPAD_EVENT(korl_game_onGamepadEvent)
-{
-}
 KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 {
+    //@TODO: complete GUI test code
+    // korl_gui_widgetTextFormat(L"orphan widget test");
     korl_gui_windowBegin(L"Test Window", NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
         // korl_gui_widgetTextFormat(L"Greetings!");
     korl_gui_windowEnd();
+    korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
+    korl_gui_windowEnd();
     return memory->continueRunning;
-}
-KORL_GAME_API KORL_GAME_ON_ASSET_RELOADED(korl_game_onAssetReloaded)
-{
 }
 #include "korl-math.c"
 #include "korl-checkCast.c"

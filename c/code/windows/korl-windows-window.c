@@ -729,7 +729,6 @@ korl_internal void korl_windows_window_loop(void)
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             korl_time_probeStop(save_state_load);
         }
-        korl_time_probeStart(gui_frame_begin); korl_gui_frameBegin(); korl_time_probeStop(gui_frame_begin);
 #ifdef _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
         {
             KORL_ZERO_STACK(_Korl_Windows_Window_DebugMemoryEnumContext, debugEnumContext);
@@ -755,9 +754,9 @@ korl_internal void korl_windows_window_loop(void)
         korl_gfx_text_draw(debugText, korl_math_aabb2f32_fromPoints(KORL_F32_MAX,KORL_F32_MAX, -KORL_F32_MAX,-KORL_F32_MAX));
 #endif
         korl_time_probeStop(game_update);
-        korl_time_probeStart(gui_frame_end);          korl_gui_frameEnd();          korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(flush_glyph_pages);      korl_gfx_flushGlyphPages();   korl_time_probeStop(flush_glyph_pages);
         korl_time_probeStart(flush_resource_updates); korl_resource_flushUpdates(); korl_time_probeStop(flush_resource_updates);
+        korl_time_probeStart(gui_frame_end);          korl_gui_frameEnd();          korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(vulkan_frame_end);       korl_vulkan_frameEnd();       korl_time_probeStop(vulkan_frame_end);
         /* regulate frame rate to our game module's target frame rate */
         //KORL-ISSUE-000-000-059: window: find a frame timing solution that works if vulkan API blocks for some reason
