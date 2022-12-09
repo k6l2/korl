@@ -9,6 +9,8 @@ typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
 typedef u16            Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V4u8 Korl_Vulkan_Color4u8;
 typedef u64            Korl_Gfx_DeviceMemoryAllocationHandle;
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_RED   = {255,   0,   0, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_GREEN = {0  , 255,   0, 255};
 typedef enum Korl_Vulkan_PrimitiveType
 {
     KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,

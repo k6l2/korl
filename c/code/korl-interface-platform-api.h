@@ -11,57 +11,64 @@
  * 
  * # How to add a new KORL platform API
  * 
- * 1) Add an API entry to this file with an appropriately named API postfix.  
- *    Note that this postfix will be the string used to identify the API in all 
- *    code modules which use the platform layer!  By convention, I prefix each 
- *    API entry with `korl_` to hopefully prevent the platform layer's symbols 
- *    from colliding with other code symbols, and if the API shouldn't be called 
- *    directly by the user (but still requires to be present in the translation 
- *    unit), I use the `_korl_` prefix to indicate that it is more of a 
- *    "private" API.
- *    Example: 
- *        _KORL_PLATFORM_API_MACRO_OPERATION(korl_newApi)
- * 2) Define a function signature for the API in a macro somewhere, and make 
- *    sure it is included in `korl-interface-platform.h` so that all code that 
- *    uses the platform layer can see it.  Note that it is important to end the 
- *    macro with the API postfix composed in step (1)!
- *    Use the following example as a standard for nomenclature:
- *        #define KORL_FUNCTION_korl_newApi(name) void name(void)
- * 3) Declare & define the function symbol itself in whatever KORL module it 
- *    belongs to.  Make sure to match the function's symbol name to the _same_ 
- *    string as the function signature's macro name postfix!
- *    Examples:
- *    - Declaration:
- *        korl_internal KORL_FUNCTION_korl_newApi(korl_newApi);
- *    - Definition:
- *        korl_internal KORL_FUNCTION_korl_newApi(korl_newApi)
- *        {
- *            // code goes here :)
- *        }
+ *   1) Add an API entry to this file with an appropriately named API postfix.  
+ *      Note that this postfix will be the string used to identify the API in all 
+ *      code modules which use the platform layer!  By convention, I prefix each 
+ *      API entry with `korl_` to hopefully prevent the platform layer's symbols 
+ *      from colliding with other code symbols, and if the API shouldn't be called 
+ *      directly by the user (but still requires to be present in the translation 
+ *      unit), I use the `_korl_` prefix to indicate that it is more of a 
+ *      "private" API.
+ *      Example: 
+ *          _KORL_PLATFORM_API_MACRO_OPERATION(korl_newApi)
+ *   2) Define a function signature for the API in a macro somewhere, and make 
+ *      sure it is included in `korl-interface-platform.h` so that all code that 
+ *      uses the platform layer can see it.  Note that it is important to end the 
+ *      macro with the API postfix composed in step (1)!
+ *      Use the following example as a standard for nomenclature:
+ *          #define KORL_FUNCTION_korl_newApi(name) void name(void)
+ *   3) Declare & define the function symbol itself in whatever KORL module it 
+ *      belongs to.  Make sure to match the function's symbol name to the _same_ 
+ *      string as the function signature's macro name postfix!
+ *      Examples:
+ *      - Declaration:
+ *          korl_internal KORL_FUNCTION_korl_newApi(korl_newApi);
+ *      - Definition:
+ *          korl_internal KORL_FUNCTION_korl_newApi(korl_newApi)
+ *          {
+ *              // code goes here :)
+ *          }
  * 
  * # How to remove a KORL platform API
  * 
- * 1) Delete the API entry from this file.
- * 2) Remove the reference to the API's function signature macro from `korl-interface-platform.h`
- * 3) Delete the actual function declaration & definition.
+ *   1) Delete the API entry from this file.
+ *   2) Remove the reference to the API's function signature macro from `korl-interface-platform.h`
+ *   3) Delete the actual function declaration & definition.
  * 
  * # Code samples
  * 
- * ## Declaration of all KORL platform APIs
- * 
- * #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
- *     #include "korl-interface-platform-api.h"
- *     #define KORL_DEFINED_INTERFACE_PLATFORM_API// prevent certain KORL modules which define symbols that are required by the game module, but whose codes are confined to the platform layer, from re-defining them since we just declared the API
- * #undef _KORL_PLATFORM_API_MACRO_OPERATION
- * 
- * ## Function to get the KORL platform API from the platform layer
- * 
- * korl_internal void _getInterfacePlatformApi(KorlPlatformApi korlApi)
- * {
- *     #define _KORL_PLATFORM_API_MACRO_OPERATION(x) (x) = korlApi.x;
- *     #include "korl-interface-platform-api.h"
+ *   ## Declaration of all KORL platform APIs
+ *   
+ *     ```
+ *     #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
+ *         #include "korl-interface-platform-api.h"
+ *         #define KORL_DEFINED_INTERFACE_PLATFORM_API// prevent certain KORL modules which define symbols that are required by the game module, but whose codes are confined to the platform layer, from re-defining them since we just declared the API
  *     #undef _KORL_PLATFORM_API_MACRO_OPERATION
- * }
+ *     ```
+ *   
+ *   ## Function to get the KORL platform API from the platform layer
+ *   
+ *     This sample assumes you declared the KORL platform API exactly like the above 
+ *     sample.
+ *     
+ *     ```
+ *     korl_internal void _getInterfacePlatformApi(KorlPlatformApi korlApi)
+ *     {
+ *         #define _KORL_PLATFORM_API_MACRO_OPERATION(x) (x) = korlApi.x;
+ *         #include "korl-interface-platform-api.h"
+ *         #undef _KORL_PLATFORM_API_MACRO_OPERATION
+ *     }
+ *     ```
  */
 #ifndef _KORL_PLATFORM_API_MACRO_OPERATION
 #   define _KORL_PLATFORM_API_MACRO_OPERATION(x)
