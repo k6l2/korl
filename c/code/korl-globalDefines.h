@@ -100,7 +100,9 @@ typedef struct acu16
     u$         size;
     const u16* data;
 } acu16;
-#define KORL_RAW_CONST_UTF8(x) KORL_STRUCT_INITIALIZE(acu8){.size=korl_memory_stringSizeUtf8(x), .data=KORL_C_CAST(const u8*,(x))}
+//@TODO: maybe assert that the size of *x == the size of the raw string data type?
+#define KORL_RAW_CONST_UTF8(x)  KORL_STRUCT_INITIALIZE(acu8 ){.size=korl_memory_stringSizeUtf8(x), .data=KORL_C_CAST(const u8* ,(x))}
+#define KORL_RAW_CONST_UTF16(x) KORL_STRUCT_INITIALIZE(acu16){.size=korl_memory_stringSize(x)    , .data=KORL_C_CAST(const u16*,(x))}
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
 #define korl_arraySize(array) (sizeof(array) / sizeof((array)[0]))
