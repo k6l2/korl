@@ -5,6 +5,21 @@
 #include "korl-gui-internal-common.h"
 #include "korl-time.h"
 #include "korl-stb-ds.h"
+typedef struct _Korl_Gui_UsedWidget
+{
+    _Korl_Gui_Widget* widget;
+    // @TODO: add transient DAG meta-data, such as childCount, rootParent, etc...
+} _Korl_Gui_UsedWidget;
+#define SORT_NAME _korl_gui_usedWidget
+#define SORT_TYPE _Korl_Gui_UsedWidget
+#define SORT_CMP(x, y) ((x).widget->orderIndex < (y).widget->orderIndex ? -1 : ((x).widget->orderIndex > (y).widget->orderIndex ? 1 : 0))
+#ifndef SORT_CHECK_CAST_INT_TO_SIZET
+    #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
+#endif
+#ifndef SORT_CHECK_CAST_SIZET_TO_INT
+    #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
+#endif
+#include "sort.h"
 #if KORL_DEBUG
     #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
 #endif
@@ -246,6 +261,7 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
         }
     }
 }
+#endif
 korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -257,9 +273,11 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
         break;}
     case KORL_GUI_WIDGET_TYPE_BUTTON:{
         break;}
+    default:{
+        korl_log(ERROR, "invalid widget type: %i", widget->type);
+        break;}
     }
 }
-#endif
 /** Prepare a new GUI batch for the current application frame.  The user _must_ 
  * call \c korl_gui_frameEnd after each call to \c _korl_gui_frameBegin . */
 korl_internal void _korl_gui_frameBegin(void)
@@ -365,9 +383,9 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
     Korl_Math_V2f32 nextWindowPosition   = KORL_MATH_V2F32_ZERO;
     u16             nextWindowOrderIndex = 0;
     /* if there are other window widgets in play already, the next window 
-        position should be offset relative to the window with the lowest order 
-        index */
-    u$ windowOrderIndexHighest = 0;
+        position should be offset relative to the window with the highest order 
+        index (the current top-level window) */
+    i$ windowOrderIndexHighest = -1;
     for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < widgetsEnd; widget++)
     {
         if(widget->identifierHashParent)
@@ -460,22 +478,26 @@ korl_internal void korl_gui_frameEnd(void)
         korl_assert(context->stbDaWidgets[context->currentWindowIndex].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
         korl_gui_windowEnd();
     }
-#if 0//@TODO: recycle
-    /* nullify widgets which weren't used this frame */
+    /* Initial loop over _all_ widgets to perform the following tasks: 
+        - nullify widgets which weren't used this frame, _excluding_ root/window widgets!
+        - gather a list of all widgets used this frame in preparation to perform transient topological/order sorting */
+    _Korl_Gui_UsedWidget* stbDaUsedWidgets = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgets, arrlen(context->stbDaWidgets));
     {
         u$ widgetsRemaining = 0;
         korl_time_probeStart(nullify_unused_widgets);
-        for(u$ i = 0; i < arrlenu(context->stbDaWidgets); i++)
+        const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
+        for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < widgetsEnd; widget++)
         {
-            _Korl_Gui_Widget*const widget = &context->stbDaWidgets[i];
+            const u$ i = widget - context->stbDaWidgets;
             korl_assert(widget->identifierHash);
-            korl_assert(widget->parentWindowIdentifierHash);
-            if(widget->usedThisFrame)
+            if(widget->usedThisFrame || !widget->identifierHashParent)
             {
-                widget->usedThisFrame = false;
                 if(widgetsRemaining < i)
                     context->stbDaWidgets[widgetsRemaining] = *widget;
-                widgetsRemaining++;
+                KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
+                newUsedWidget.widget = context->stbDaWidgets + widgetsRemaining++;
+                mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgets, newUsedWidget);
             }
             else
             {
@@ -483,12 +505,40 @@ korl_internal void korl_gui_frameEnd(void)
                 continue;
             }
         }
+        korl_assert(widgetsRemaining <= arrlenu(context->stbDaWidgets));//sanity-check to make sure we aren't about to invalidate _Widget pointers we just accumulated
         mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
         korl_time_probeStop(nullify_unused_widgets);
     }
-    /* sort the widgets based on their orderIndex, allowing us to always process 
-        widgets in the same order in which they were defined at run-time */
-    _korl_gui_widget_quick_sort(context->stbDaWidgets, arrlenu(context->stbDaWidgets));
+    /* sort the list of widgets based on their orderIndex, such that widgets 
+        that are to be drawn behind other widgets (drawn first) occupy lower 
+        indices in the list */
+    _korl_gui_usedWidget_quick_sort(stbDaUsedWidgets, arrlenu(stbDaUsedWidgets));
+    /* prepare the view/projection graphics state */
+    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
+    Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(1.f/*clipDepth*/);
+#if 0//@TODO: uncomment when I'm done debugging stuff off-screen
+    cameraOrthographic.position.xy = 
+    cameraOrthographic.target.xy   = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
+#endif
+    korl_gfx_useCamera(cameraOrthographic);
+    /* process _all_ sorted in-use widgets for this frame */
+    #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+        Korl_Gfx_Batch*const batchLinesOrigin2d = korl_gfx_createBatchLines(context->allocatorHandleStack, 2);
+        korl_gfx_batchSetLine(batchLinesOrigin2d, 0, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_X.elements, 2, KORL_COLOR4U8_RED);
+        korl_gfx_batchSetLine(batchLinesOrigin2d, 1, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_Y.elements, 2, KORL_COLOR4U8_GREEN);
+    #endif
+    const _Korl_Gui_UsedWidget*const usedWidgetsEnd = stbDaUsedWidgets + arrlen(stbDaUsedWidgets);
+    for(_Korl_Gui_UsedWidget* usedWidget = stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+    {
+        _Korl_Gui_Widget*const widget = usedWidget->widget;
+        #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+            korl_gfx_batchSetPosition2dV2f32(batchLinesOrigin2d, widget->position);
+            korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){32,32,32});
+            korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        #endif
+        widget->usedThisFrame = false;// reset this value for the next frame; this can be done at any time during this loop
+    }
+#if 0//@TODO: recycle
     /* for each of the windows that we ended up using for this frame, generate 
         the necessary draw commands for them */
     korl_time_probeStart(generate_draw_commands);
@@ -837,16 +887,8 @@ korl_internal void korl_gui_frameEnd(void)
     korl_time_probeStop(generate_draw_commands);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
 #endif
-    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
-    Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(1.f/*clipDepth*/);
-    cameraOrthographic.position.xy = 
-    cameraOrthographic.target.xy   = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
-    korl_gfx_useCamera(cameraOrthographic);
 #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     {
-        Korl_Gfx_Batch*const batchLinesOrigin2d = korl_gfx_createBatchLines(context->allocatorHandleStack, 2);
-        korl_gfx_batchSetLine(batchLinesOrigin2d, 0, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_X.elements, 2, KORL_COLOR4U8_RED);
-        korl_gfx_batchSetLine(batchLinesOrigin2d, 1, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_Y.elements, 2, KORL_COLOR4U8_GREEN);
         korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){100,100,100});
         korl_gfx_batchSetPosition2d(batchLinesOrigin2d, 1.f, 1.f);
         korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
