@@ -4,32 +4,32 @@
 #pragma warning(disable:4755)/* in optimized builds, it is possible for the compiler to find conditions in which one of the paths of these checks will never be executed, and that is fine by me (for now) */
 korl_internal u8 korl_checkCast_u$_to_u8(u$ x)
 {
-    korl_assert(x <= 0xFF);
+    korl_assert(x <= KORL_U8_MAX);
     return KORL_C_CAST(u8, x);
 }
 korl_internal u16 korl_checkCast_u$_to_u16(u$ x)
 {
-    korl_assert(x <= 0xFFFF);
+    korl_assert(x <= KORL_U16_MAX);
     return KORL_C_CAST(u16, x);
 }
 korl_internal u32 korl_checkCast_u$_to_u32(u$ x)
 {
-    korl_assert(x <= 0xFFFFFFFF);
+    korl_assert(x <= KORL_U32_MAX);
     return KORL_C_CAST(u32, x);
 }
 korl_internal i8 korl_checkCast_u$_to_i8(u$ x)
 {
-    korl_assert(x <= 0x7F);
+    korl_assert(x <= KORL_I8_MAX);
     return KORL_C_CAST(i8, x);
 }
 korl_internal i16 korl_checkCast_u$_to_i16(u$ x)
 {
-    korl_assert(x <= 0x7FFF);
+    korl_assert(x <= KORL_I16_MAX);
     return KORL_C_CAST(i16, x);
 }
 korl_internal i32 korl_checkCast_u$_to_i32(u$ x)
 {
-    korl_assert(x <= 0x7FFFFFFF);
+    korl_assert(x <= KORL_I32_MAX);
     return KORL_C_CAST(i32, x);
 }
 korl_internal i$ korl_checkCast_u$_to_i$(u$ x)
@@ -46,20 +46,38 @@ korl_internal u$ korl_checkCast_i$_to_u$(i$ x)
 korl_internal u8 korl_checkCast_i$_to_u8(i$ x)
 {
     korl_assert(x >= 0);
-    korl_assert(x <= 0xFF);
+    korl_assert(x <= KORL_U8_MAX);
     return KORL_C_CAST(u8, x);
 }
 korl_internal u16 korl_checkCast_i$_to_u16(i$ x)
 {
     korl_assert(x >= 0);
-    korl_assert(x <= 0xFFFF);
+    korl_assert(x <= KORL_U16_MAX);
     return KORL_C_CAST(u16, x);
 }
 korl_internal u32 korl_checkCast_i$_to_u32(i$ x)
 {
     korl_assert(x >= 0);
-    korl_assert(x <= 0xFFFFFFFF);
+    korl_assert(x <= KORL_U32_MAX);
     return KORL_C_CAST(u32, x);
+}
+korl_internal i8  korl_checkCast_i$_to_i8(i$ x)
+{
+    korl_assert(x >= KORL_I8_MIN);
+    korl_assert(x <= KORL_I8_MAX);
+    return KORL_C_CAST(i8, x);
+}
+korl_internal i16 korl_checkCast_i$_to_i16(i$ x)
+{
+    korl_assert(x >= KORL_I16_MIN);
+    korl_assert(x <= KORL_I16_MAX);
+    return KORL_C_CAST(i16, x);
+}
+korl_internal i32 korl_checkCast_i$_to_i32(i$ x)
+{
+    korl_assert(x >= KORL_I32_MIN);
+    korl_assert(x <= KORL_I32_MAX);
+    return KORL_C_CAST(i32, x);
 }
 korl_internal f32 korl_checkCast_i$_to_f32(i$ x)
 {
