@@ -403,31 +403,30 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     {
     case _KORL_GUI_MOUSE_EVENT_TYPE_MOVE:{
         break;}
-    case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_PRESS:{
-        context->isTopLevelWindowActive = false;
-        /* iterate over all widgets from front=>back */
-        for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+    case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
+        if(mouseEvent->subType.button.pressed)
         {
-            _Korl_Gui_Widget*const widget = usedWidget->widget;
-            korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
-            const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
-                                                                               ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
-            if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->position))
+            context->isTopLevelWindowActive = false;
+            /* iterate over all widgets from front=>back */
+            for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
-                context->isTopLevelWindowActive = true;
-                widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
-                korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
-                /* because we have changed the order of widgets, we need to re-sort since we are likely to process more events */
-                _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
-                break;
+                _Korl_Gui_Widget*const widget = usedWidget->widget;
+                korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
+                const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
+                                                                                   ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                {
+                    context->isTopLevelWindowActive = true;
+                    widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
+                    korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
+                    /* because we have changed the order of widgets, we need to re-sort since we are likely to process more events */
+                    _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
+                    break;
+                }
             }
         }
         break;}
-    case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_RELEASE:{
-        break;}
-    case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_VERTICAL:{
-        break;}
-    case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_HORIZONTAL:{
+    case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL:{
         break;}
     }
 }

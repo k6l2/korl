@@ -11,25 +11,37 @@
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
 korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
-typedef enum _KORL_GUI_MOUSE_EVENT_TYPE
-    { _KORL_GUI_MOUSE_EVENT_TYPE_MOVE
-    , _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_PRESS
-    , _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_RELEASE
-    , _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_VERTICAL
-    , _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_HORIZONTAL
-} _KORL_GUI_MOUSE_EVENT_TYPE;
-typedef enum _KORL_GUI_MOUSE_EVENT_BUTTON
-    { _KORL_GUI_MOUSE_EVENT_BUTTON_LEFT
-} _KORL_GUI_MOUSE_EVENT_BUTTON;
 typedef struct _Korl_Gui_MouseEvent
 {
-    _KORL_GUI_MOUSE_EVENT_TYPE type;
+    enum
+        { _KORL_GUI_MOUSE_EVENT_TYPE_MOVE
+        , _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON
+        , _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL
+    } type;
     union
     {
-        _KORL_GUI_MOUSE_EVENT_BUTTON button;// only valid if type == _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_*
-        f32                          wheel; // only valid if type == _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_*
+        struct
+        {
+            Korl_Math_V2f32 position;
+        } move;
+        struct
+        {
+            Korl_Math_V2f32 position;
+            enum
+                { _KORL_GUI_MOUSE_EVENT_BUTTON_ID_LEFT
+            } id;
+            bool pressed;
+        } button;
+        struct
+        {
+            Korl_Math_V2f32 position;
+            enum
+                {_KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_X
+                ,_KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y
+            } axis;
+            f32 value;
+        } wheel;
     } subType;
-    Korl_Math_V2f32 position;
 } _Korl_Gui_MouseEvent;
 #if 0//@TODO: recycle
 typedef enum _Korl_Gui_SpecialWidgetFlags

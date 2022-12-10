@@ -24,21 +24,20 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         const Korl_Math_V2i32 mousePositionClient = {GET_X_LPARAM(lParam)
                                                     ,GET_Y_LPARAM(lParam)};
         KORL_ZERO_STACK(_Korl_Gui_MouseEvent, guiMouseEvent);
-        guiMouseEvent.type = isDown 
-                           ? _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_PRESS
-                           : _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_RELEASE;
-        guiMouseEvent.subType.button = _KORL_GUI_MOUSE_EVENT_BUTTON_LEFT;
-        guiMouseEvent.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
-                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        guiMouseEvent.type                    = _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON;
+        guiMouseEvent.subType.button.id       = _KORL_GUI_MOUSE_EVENT_BUTTON_ID_LEFT;
+        guiMouseEvent.subType.button.pressed  = isDown;
+        guiMouseEvent.subType.button.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
+                                                                 ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
         korl_gui_onMouseEvent(&guiMouseEvent);
         break;}
     case WM_MOUSEMOVE:{
         const Korl_Math_V2i32 mousePositionClient = {GET_X_LPARAM(lParam)
                                                     ,GET_Y_LPARAM(lParam)};
         KORL_ZERO_STACK(_Korl_Gui_MouseEvent, guiMouseEvent);
-        guiMouseEvent.type = _KORL_GUI_MOUSE_EVENT_TYPE_MOVE;
-        guiMouseEvent.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
-                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        guiMouseEvent.type                  = _KORL_GUI_MOUSE_EVENT_TYPE_MOVE;
+        guiMouseEvent.subType.move.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
+                                                               ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
         korl_gui_onMouseEvent(&guiMouseEvent);
         break;}
     case WM_MOUSEWHEEL:{
@@ -47,12 +46,13 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         KORL_WINDOWS_CHECK(ScreenToClient(hWnd, &pointMouse));
         const bool keyDownShift = LOWORD(wParam) & MK_SHIFT;
         KORL_ZERO_STACK(_Korl_Gui_MouseEvent, guiMouseEvent);
-        guiMouseEvent.type = keyDownShift 
-                           ? _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_HORIZONTAL
-                           : _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_VERTICAL;
-        guiMouseEvent.subType.wheel = GET_WHEEL_DELTA_WPARAM(wParam) / KORL_C_CAST(f32, WHEEL_DELTA);
-        guiMouseEvent.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(pointMouse.x)
-                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - pointMouse.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        guiMouseEvent.type                   = _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL;
+        guiMouseEvent.subType.wheel.axis     = keyDownShift 
+                                             ? _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_X
+                                             : _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y;
+        guiMouseEvent.subType.wheel.value    = GET_WHEEL_DELTA_WPARAM(wParam) / KORL_C_CAST(f32, WHEEL_DELTA);
+        guiMouseEvent.subType.wheel.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(pointMouse.x)
+                                                                ,korl_checkCast_i$_to_f32(clientRectSize.y - pointMouse.y)/*every KORL module should define the +Y axis as UP on the screen*/};
         korl_gui_onMouseEvent(&guiMouseEvent);
         break;}
 #if 0//@TODO: recycle
