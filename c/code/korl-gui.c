@@ -402,8 +402,24 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     switch(mouseEvent->type)
     {
     case _KORL_GUI_MOUSE_EVENT_TYPE_MOVE:{
+        _Korl_Gui_Widget* draggedWidget = NULL;
+        if(context->identifierHashWidgetDragged)
+        {
+            for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
+                if(usedWidget->widget->identifierHash == context->identifierHashWidgetDragged)
+                {
+                    draggedWidget = usedWidget->widget;
+                    break;
+                }
+            if(!draggedWidget)
+                context->identifierHashWidgetDragged = 0;
+        }
+        if(draggedWidget)
+            draggedWidget->position = korl_math_v2f32_add(mouseEvent->subType.move.position, context->mouseDownWidgetOffset);
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
+        context->identifierHashWidgetMouseDown = 0;
+        context->identifierHashWidgetDragged   = 0;
         if(mouseEvent->subType.button.pressed)
         {
             context->isTopLevelWindowActive = false;
@@ -416,7 +432,10 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                                                                                    ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
-                    context->isTopLevelWindowActive = true;
+                    context->isTopLevelWindowActive        = true;
+                    context->identifierHashWidgetMouseDown = widget->identifierHash;
+                    context->identifierHashWidgetDragged   = widget->identifierHash;
+                    context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
                     widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
                     korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
                     /* because we have changed the order of widgets, we need to re-sort since we are likely to process more events */

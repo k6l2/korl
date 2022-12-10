@@ -156,15 +156,15 @@ typedef struct _Korl_Gui_Context
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */
     bool isTopLevelWindowActive;
+    u64 identifierHashWidgetMouseDown;
+    u64 identifierHashWidgetDragged;
+    Korl_Math_V2f32 mouseDownWidgetOffset;
 #if 0//@TODO: recycle
     i16 currentWidgetIndex;
     /** Windows are stored from back=>front.  In other words, the window at 
      * index \c 0 will be drawn behind all other windows. */
     _Korl_Gui_Window* stbDaWindows;
-    bool isMouseDown;// This flag is raised when we mouse down inside a window
-    bool isWindowDragged;// only raised when we click a window outside of widgets
     bool isWindowResizing;// only raised when we click a window's resize edge
-    Korl_Math_V2f32 mouseDownWindowOffset;
     Korl_Math_V2f32 mouseDownOffsetSpecialWidget;
     u64 identifierHashMouseDownWidget;
     bool isMouseHovering;
