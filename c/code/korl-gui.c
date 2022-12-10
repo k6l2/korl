@@ -21,7 +21,7 @@ typedef struct _Korl_Gui_UsedWidget
 #endif
 #include "sort.h"
 #if KORL_DEBUG
-    #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+    // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
 #endif
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DEBUG";
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
@@ -210,6 +210,69 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             korl_time_probeStop(widget_text);
             break;}
         case KORL_GUI_WIDGET_TYPE_BUTTON:{
+#if 0// @TODO: use special flags to render special built-in button graphics?
+                if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
+                {
+                    korl_time_probeStart(button_close);
+                    const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
+                                                                                        titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
+                    korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
+                    Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
+                    if(    context->identifierHashMouseHoveredWindow == window->identifierHash
+                        && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
+                        if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
+                            colorTitleBarButton = context->style.colorButtonPressed;
+                        else
+                            colorTitleBarButton = context->style.colorButtonWindowCloseActive;
+                    korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
+                    korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
+                    korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = 
+                        korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
+                                                             (Korl_Math_V2f32){0.1f*context->style.windowTitleBarPixelSizeY
+                                                                              ,     context->style.windowTitleBarPixelSizeY}, 
+                                                             (Korl_Math_V2f32){0.5f, 0.5f}, 
+                                                             context->style.colorButtonWindowTitleBarIcons);
+                    korl_gfx_batchSetPosition2d(batchWindowTitleCloseIconPiece, 
+                                                titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY/2.f, 
+                                                titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY/2.f);
+                    korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z,  KORL_PI32*0.25f);
+                    korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z, -KORL_PI32*0.25f);
+                    korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
+                    korl_time_probeStop(button_close);
+                }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE
+                if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
+                {
+                    korl_time_probeStart(button_hide);
+                    const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
+                                                                                        titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
+                    korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
+                    Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
+                    if(    context->identifierHashMouseHoveredWindow == window->identifierHash
+                        && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
+                        if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
+                            colorTitleBarButton = context->style.colorButtonPressed;
+                        else
+                            colorTitleBarButton = context->style.colorTitleBarActive;
+                    korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
+                    korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
+                    korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
+                        korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
+                                                             (Korl_Math_V2f32){     context->style.windowTitleBarPixelSizeY
+                                                                              ,0.1f*context->style.windowTitleBarPixelSizeY}, 
+                                                             (Korl_Math_V2f32){0.5f, 0.5f}, 
+                                                             context->style.colorButtonWindowTitleBarIcons);
+                    korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece, 
+                                                titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY/2.f, 
+                                                titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY/2.f);
+                    korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
+                    korl_time_probeStop(button_hide);
+                }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE
+#endif
             Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.button.displayText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
             const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
             const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
@@ -481,7 +544,9 @@ korl_internal void korl_gui_frameEnd(void)
     }
     /* Initial loop over _all_ widgets to perform the following tasks: 
         - nullify widgets which weren't used this frame, _excluding_ root/window widgets!
-        - gather a list of all widgets used this frame in preparation to perform transient topological/order sorting */
+        - gather a list of all widgets used this frame in preparation to perform transient topological/order sorting
+        - figure out which root widget is "highest"/"top-level" (last to draw) */
+    u$ rootWidgetOrderIndexHighest = 0;
     _Korl_Gui_UsedWidget* stbDaUsedWidgets = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgets, arrlen(context->stbDaWidgets));
     {
@@ -494,6 +559,8 @@ korl_internal void korl_gui_frameEnd(void)
             korl_assert(widget->identifierHash);
             if(widget->usedThisFrame || !widget->identifierHashParent)
             {
+                if(!widget->identifierHashParent && widget->orderIndex > rootWidgetOrderIndexHighest)
+                    rootWidgetOrderIndexHighest = widget->orderIndex;
                 if(widgetsRemaining < i)
                     context->stbDaWidgets[widgetsRemaining] = *widget;
                 KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
@@ -514,6 +581,9 @@ korl_internal void korl_gui_frameEnd(void)
         that are to be drawn behind other widgets (drawn first) occupy lower 
         indices in the list */
     _korl_gui_usedWidget_quick_sort(stbDaUsedWidgets, arrlenu(stbDaUsedWidgets));
+    /* sanity-check the sorted list of used widgets to make sure that for each 
+        widget sub tree, all child orderIndex values are unique */
+    //@TODO
     /* prepare the view/projection graphics state */
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(1.f/*clipDepth*/);
@@ -521,6 +591,7 @@ korl_internal void korl_gui_frameEnd(void)
     cameraOrthographic.target.xy   = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
     korl_gfx_useCamera(cameraOrthographic);
     /* process _all_ sorted in-use widgets for this frame */
+    korl_shared_const Korl_Math_V2f32 ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
     #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
         Korl_Gfx_Batch*const batchLinesOrigin2d = korl_gfx_createBatchLines(context->allocatorHandleStack, 2);
         korl_gfx_batchSetLine(batchLinesOrigin2d, 0, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_X.elements, 2, KORL_COLOR4U8_RED);
@@ -530,21 +601,66 @@ korl_internal void korl_gui_frameEnd(void)
     for(_Korl_Gui_UsedWidget* usedWidget = stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
     {
         _Korl_Gui_Widget*const widget = usedWidget->widget;
-        #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
-            korl_gfx_batchSetPosition2dV2f32(batchLinesOrigin2d, widget->position);
-            korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){32,32,32});
-            korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        #endif
         widget->usedThisFrame = false;// reset this value for the next frame; this can be done at any time during this loop
+        switch(widget->type)
+        {
+        case KORL_GUI_WIDGET_TYPE_WINDOW:{
+            /* draw the window panel */
+            Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
+            Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
+#if 0///@TODO: recycle
+            if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
+            {
+                windowColor   = context->style.colorWindowActive;
+                titleBarColor = context->style.colorTitleBarActive;
+            }
+#endif
+            korl_time_probeStart(draw_window_panel);
+            korl_time_probeStart(setup_camera);
+            /* prepare to draw all the window's contents by cutting out a scissor 
+                region the size of the window, preventing us from accidentally 
+                render any pixels outside the window */
+            korl_gfx_cameraSetScissor(&cameraOrthographic
+                                     ,widget->position.x
+                                     ,surfaceSize.y - widget->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/
+                                     ,widget->size.x
+                                     ,widget->size.y);
+            korl_gfx_useCamera(cameraOrthographic);
+            korl_time_probeStop(setup_camera);
+            Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, windowColor);
+            korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, widget->position);
+            korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+            if(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
+            {
+                korl_time_probeStart(title_bar);
+                /* draw the window title bar */
+                korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){widget->size.x, context->style.windowTitleBarPixelSizeY});
+                korl_gfx_batchRectangleSetColor(batchWindowPanel, titleBarColor);// conditionally highlight the title bar color
+                korl_gfx_batchSetVertexColor(batchWindowPanel, 0, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
+                korl_gfx_batchSetVertexColor(batchWindowPanel, 1, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
+                korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+#if 0//@TODO; recycle
+                /* draw the window title bar text */
+                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->titleBarText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
+                korl_gfx_batchSetPosition2d(batchWindowTitleText, 
+                                            window->position.x, 
+                                            window->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
+                korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+#endif
+                /**/
+                korl_time_probeStop(title_bar);
+            }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
+            korl_time_probeStop(draw_window_panel);
+            break;}
+        default:{
+            korl_log(ERROR, "unhandled widget type: %i", widget->type);
+            break;}
+        }
     }
 #if 0//@TODO: recycle
     /* for each of the windows that we ended up using for this frame, generate 
         the necessary draw commands for them */
-    korl_time_probeStart(generate_draw_commands);
-    Korl_Gfx_Camera guiCamera = korl_gfx_createCameraOrtho(1.f);
-    korl_gfx_cameraOrthoSetOriginAnchor(&guiCamera, 0.f, 1.f);
-    u$ windowsRemaining = 0;
-    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
     {
         _Korl_Gui_Window*const window = &context->stbDaWindows[i];
@@ -563,14 +679,6 @@ korl_internal void korl_gui_frameEnd(void)
         /**/
         if(!window->isOpen)
             continue;
-        korl_shared_const Korl_Math_V2f32 KORL_ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
-        Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
-        Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
-        if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
-        {
-            windowColor   = context->style.colorWindowActive;
-            titleBarColor = context->style.colorTitleBarActive;
-        }
         if(window->isFirstFrame || (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE))
         {
             korl_time_probeStart(calculate_window_AABB);
@@ -616,107 +724,6 @@ korl_internal void korl_gui_frameEnd(void)
         KORL_MATH_ASSIGN_CLAMP(window->position.y, 
                                -KORL_C_CAST(f32, surfaceSize.y) + context->style.windowTitleBarPixelSizeY, 
                                0);
-        /* draw the window panel */
-        korl_time_probeStart(draw_window_panel);
-        korl_time_probeStart(setup_camera);
-        korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
-        korl_gfx_useCamera(guiCamera);
-        Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, window->size, KORL_ORIGIN_RATIO_UPPER_LEFT, windowColor);
-        korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, window->position);
-        korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        /* prepare to draw all the window's contents by cutting out a scissor 
-            region the size of the window, preventing us from accidentally 
-            render any pixels outside the window */
-        korl_gfx_cameraSetScissor(&guiCamera, 
-                                   window->position.x, 
-                                  -window->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/, 
-                                   window->size.x, 
-                                   window->size.y);
-        korl_gfx_useCamera(guiCamera);
-        korl_time_probeStop(setup_camera);
-        if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
-        {
-            korl_time_probeStart(title_bar);
-            /* draw the window title bar */
-            korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){window->size.x, context->style.windowTitleBarPixelSizeY});
-            korl_gfx_batchRectangleSetColor(batchWindowPanel, titleBarColor);
-            korl_gfx_batchSetVertexColor(batchWindowPanel, 0, context->style.colorTitleBar);
-            korl_gfx_batchSetVertexColor(batchWindowPanel, 1, context->style.colorTitleBar);
-            korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-            /* draw the window title bar text */
-            Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->titleBarText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-            const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
-            korl_gfx_batchSetPosition2d(batchWindowTitleText, 
-                                        window->position.x, 
-                                        window->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
-            korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-            /**/
-            korl_time_probeStop(title_bar);
-            Korl_Math_V2f32 titlebarButtonCursor = { window->position.x + window->size.x - context->style.windowTitleBarPixelSizeY
-                                                   , window->position.y };
-            if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
-            {
-                korl_time_probeStart(button_close);
-                const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
-                                                                                    titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
-                korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
-                Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
-                if(    context->identifierHashMouseHoveredWindow == window->identifierHash
-                    && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
-                    if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
-                        colorTitleBarButton = context->style.colorButtonPressed;
-                    else
-                        colorTitleBarButton = context->style.colorButtonWindowCloseActive;
-                korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
-                korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
-                korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = 
-                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
-                                                         (Korl_Math_V2f32){0.1f*context->style.windowTitleBarPixelSizeY
-                                                                          ,     context->style.windowTitleBarPixelSizeY}, 
-                                                         (Korl_Math_V2f32){0.5f, 0.5f}, 
-                                                         context->style.colorButtonWindowTitleBarIcons);
-                korl_gfx_batchSetPosition2d(batchWindowTitleCloseIconPiece, 
-                                            titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY/2.f, 
-                                            titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY/2.f);
-                korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z,  KORL_PI32*0.25f);
-                korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z, -KORL_PI32*0.25f);
-                korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
-                korl_time_probeStop(button_close);
-            }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE
-            if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
-            {
-                korl_time_probeStart(button_hide);
-                const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
-                                                                                    titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
-                korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
-                Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
-                if(    context->identifierHashMouseHoveredWindow == window->identifierHash
-                    && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
-                    if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
-                        colorTitleBarButton = context->style.colorButtonPressed;
-                    else
-                        colorTitleBarButton = context->style.colorTitleBarActive;
-                korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
-                korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
-                korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
-                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
-                                                         (Korl_Math_V2f32){     context->style.windowTitleBarPixelSizeY
-                                                                          ,0.1f*context->style.windowTitleBarPixelSizeY}, 
-                                                         (Korl_Math_V2f32){0.5f, 0.5f}, 
-                                                         context->style.colorButtonWindowTitleBarIcons);
-                korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece, 
-                                            titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY/2.f, 
-                                            titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY/2.f);
-                korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
-                korl_time_probeStop(button_hide);
-            }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE
-        }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
-        korl_time_probeStop(draw_window_panel);
         /* render all this window's widgets within the window panel */
         korl_time_probeStart(draw_widgets);
         // calculate how much area there is for the window's widgets to occupy & 
@@ -888,9 +895,18 @@ korl_internal void korl_gui_frameEnd(void)
 #endif
 #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     {
+        korl_gfx_cameraSetScissorPercent(&cameraOrthographic, 0,0, 1,1);
+        korl_gfx_useCamera(cameraOrthographic);
         korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){100,100,100});
         korl_gfx_batchSetPosition2d(batchLinesOrigin2d, 1.f, 1.f);
         korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        for(_Korl_Gui_UsedWidget* usedWidget = stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+        {
+            _Korl_Gui_Widget*const widget = usedWidget->widget;
+            korl_gfx_batchSetPosition2dV2f32(batchLinesOrigin2d, widget->position);
+            korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){32,32,32});
+            korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        }
     }
 #endif
     /* begin the next frame as soon as this frame has ended */
