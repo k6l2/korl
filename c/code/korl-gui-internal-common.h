@@ -4,6 +4,7 @@
 #include "korl-math.h"
 #include "korl-memory.h"
 #include "korl-vulkan.h"
+#include "korl-stringPool.h"
 /** the edges of the window must have their own individual AABBs to allow mouse 
  * interactions with them (window is hovered, resize windows), and this value 
  * defines how far from the edges of each window AABB this collision region is 
@@ -57,7 +58,7 @@ typedef struct _Korl_Gui_Widget
     {
         struct
         {
-            // const wchar_t* titleBarText;// @TODO: use string pool
+            Korl_StringPool_String titleBarText;
             bool isOpen;
             bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
             Korl_Gui_Window_Style_Flags styleFlags;
@@ -78,34 +79,35 @@ typedef struct _Korl_Gui_Context
 {
     struct
     {
-        Korl_Vulkan_Color4u8 colorWindow;
-        Korl_Vulkan_Color4u8 colorWindowActive;
-        Korl_Vulkan_Color4u8 colorWindowBorder;
-        Korl_Vulkan_Color4u8 colorWindowBorderHovered;
-        Korl_Vulkan_Color4u8 colorWindowBorderResize;
-        Korl_Vulkan_Color4u8 colorWindowBorderActive;
-        Korl_Vulkan_Color4u8 colorTitleBar;
-        Korl_Vulkan_Color4u8 colorTitleBarActive;
-        Korl_Vulkan_Color4u8 colorButtonInactive;
-        Korl_Vulkan_Color4u8 colorButtonActive;
-        Korl_Vulkan_Color4u8 colorButtonPressed;
-        Korl_Vulkan_Color4u8 colorButtonWindowTitleBarIcons;
-        Korl_Vulkan_Color4u8 colorButtonWindowCloseActive;
-        Korl_Vulkan_Color4u8 colorScrollBar;
-        Korl_Vulkan_Color4u8 colorScrollBarActive;
-        Korl_Vulkan_Color4u8 colorScrollBarPressed;
-        Korl_Vulkan_Color4u8 colorText;
-        Korl_Vulkan_Color4u8 colorTextOutline;
-        f32                  textOutlinePixelSize;
-        // au16                 fontWindowText;// @TODO: use string pool
-        f32                  windowTextPixelSizeY;
-        f32                  windowTitleBarPixelSizeY;
-        f32                  widgetSpacingY;
-        f32                  widgetButtonLabelMargin;
-        f32                  windowScrollBarPixelWidth;
+        Korl_Vulkan_Color4u8   colorWindow;
+        Korl_Vulkan_Color4u8   colorWindowActive;
+        Korl_Vulkan_Color4u8   colorWindowBorder;
+        Korl_Vulkan_Color4u8   colorWindowBorderHovered;
+        Korl_Vulkan_Color4u8   colorWindowBorderResize;
+        Korl_Vulkan_Color4u8   colorWindowBorderActive;
+        Korl_Vulkan_Color4u8   colorTitleBar;
+        Korl_Vulkan_Color4u8   colorTitleBarActive;
+        Korl_Vulkan_Color4u8   colorButtonInactive;
+        Korl_Vulkan_Color4u8   colorButtonActive;
+        Korl_Vulkan_Color4u8   colorButtonPressed;
+        Korl_Vulkan_Color4u8   colorButtonWindowTitleBarIcons;
+        Korl_Vulkan_Color4u8   colorButtonWindowCloseActive;
+        Korl_Vulkan_Color4u8   colorScrollBar;
+        Korl_Vulkan_Color4u8   colorScrollBarActive;
+        Korl_Vulkan_Color4u8   colorScrollBarPressed;
+        Korl_Vulkan_Color4u8   colorText;
+        Korl_Vulkan_Color4u8   colorTextOutline;
+        f32                    textOutlinePixelSize;
+        Korl_StringPool_String fontWindowText;
+        f32                    windowTextPixelSizeY;
+        f32                    windowTitleBarPixelSizeY;
+        f32                    widgetSpacingY;
+        f32                    widgetButtonLabelMargin;
+        f32                    windowScrollBarPixelWidth;
     } style;
     Korl_Memory_AllocatorHandle allocatorHandleHeap;
     Korl_Memory_AllocatorHandle allocatorHandleStack;
+    Korl_StringPool stringPool;
     _Korl_Gui_Widget* stbDaWidgets;// everything is a Widget, including windows!
     u$ loopIndex;// combined with window/widget identifiers to create the final identifierHash
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 

@@ -23,6 +23,10 @@ typedef struct _Korl_Gui_UsedWidget
 #if KORL_DEBUG
     // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
 #endif
+#if defined(_LOCAL_STRING_POOL_POINTER)
+    #undef _LOCAL_STRING_POOL_POINTER
+#endif
+#define _LOCAL_STRING_POOL_POINTER (&_korl_gui_context.stringPool)
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DEBUG";
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
 #if 0//@TODO: recycle
@@ -355,6 +359,9 @@ korl_internal void _korl_gui_frameBegin(void)
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1) , L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(64), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.stringPool                           = korl_stringPool_create(_korl_gui_context.allocatorHandleHeap);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
@@ -374,14 +381,12 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.colorText                      = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
     _korl_gui_context.style.colorTextOutline               = (Korl_Vulkan_Color4u8){  0,   5,   0, 255};
     _korl_gui_context.style.textOutlinePixelSize           = 0.f;
-    // _korl_gui_context.style.fontWindowText                 = (au16){.data = NULL, .size = 0};//@TODO: use string pool
+    _korl_gui_context.style.fontWindowText                 = string_newEmptyUtf16(0);
     _korl_gui_context.style.windowTextPixelSizeY           = 24.f;
     _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;
     _korl_gui_context.style.widgetSpacingY                 =  0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        =  4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1) , L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(64), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
 #if 0//@TODO: recycle
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
@@ -391,19 +396,10 @@ korl_internal void korl_gui_initialize(void)
 }
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 {
-#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    korl_free(context->allocatorHandleHeap, context->style.fontWindowText);
-    context->style.fontWindowText = NULL;
+    string_free(context->style.fontWindowText);
     if(fontAssetName)
-    {
-        const u$ fontAssetNameSize = korl_memory_stringSize(fontAssetName);
-        context->style.fontWindowText = korl_allocate(context->allocatorHandleHeap, (fontAssetNameSize + 1/*null terminator*/)*sizeof(*fontAssetName));
-        korl_assert(context->style.fontWindowText);
-        const i$ resultStringCopy = korl_memory_stringCopy(fontAssetName, context->style.fontWindowText, fontAssetNameSize + 1);
-        korl_assert(resultStringCopy > 0);
-    }
-#endif
+        context->style.fontWindowText = string_newUtf16(fontAssetName);
 }
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
@@ -467,12 +463,10 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
     _Korl_Gui_Widget* newWindow = &context->stbDaWidgets[context->currentWindowIndex];
     newWindow->identifierHash              = identifierHash;
-#if 0//@TODO: recycle
-    newWindow->titleBarText                = titleBarText;
-#endif
     newWindow->position                    = nextWindowPosition;
     newWindow->orderIndex                  = nextWindowOrderIndex;
     newWindow->size                        = (Korl_Math_V2f32){ 128.f, 128.f };
+    newWindow->subType.window.titleBarText = string_newUtf16(titleBarText);
     newWindow->subType.window.isFirstFrame = true;
     newWindow->subType.window.isOpen       = true;
 done_currentWindowIndexValid:
@@ -602,6 +596,17 @@ korl_internal void korl_gui_frameEnd(void)
     {
         _Korl_Gui_Widget*const widget = usedWidget->widget;
         widget->usedThisFrame = false;// reset this value for the next frame; this can be done at any time during this loop
+        korl_time_probeStart(setup_camera);
+        /* prepare to draw all the widget's contents by cutting out a scissor 
+            region the size of the widget, preventing us from accidentally 
+            render any pixels outside the widget */
+        korl_gfx_cameraSetScissor(&cameraOrthographic
+                                 ,widget->position.x
+                                 ,surfaceSize.y - widget->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/
+                                 ,widget->size.x
+                                 ,widget->size.y);
+        korl_gfx_useCamera(cameraOrthographic);
+        korl_time_probeStop(setup_camera);
         switch(widget->type)
         {
         case KORL_GUI_WIDGET_TYPE_WINDOW:{
@@ -616,17 +621,6 @@ korl_internal void korl_gui_frameEnd(void)
             }
 #endif
             korl_time_probeStart(draw_window_panel);
-            korl_time_probeStart(setup_camera);
-            /* prepare to draw all the window's contents by cutting out a scissor 
-                region the size of the window, preventing us from accidentally 
-                render any pixels outside the window */
-            korl_gfx_cameraSetScissor(&cameraOrthographic
-                                     ,widget->position.x
-                                     ,surfaceSize.y - widget->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/
-                                     ,widget->size.x
-                                     ,widget->size.y);
-            korl_gfx_useCamera(cameraOrthographic);
-            korl_time_probeStop(setup_camera);
             Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, windowColor);
             korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, widget->position);
             korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
@@ -639,15 +633,19 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchSetVertexColor(batchWindowPanel, 0, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
                 korl_gfx_batchSetVertexColor(batchWindowPanel, 1, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
                 korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-#if 0//@TODO; recycle
                 /* draw the window title bar text */
-                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->titleBarText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack
+                                                                                    ,string_getRawUtf16(context->style.fontWindowText)
+                                                                                    ,string_getRawUtf16(widget->subType.window.titleBarText)
+                                                                                    ,context->style.windowTextPixelSizeY
+                                                                                    ,context->style.colorText
+                                                                                    ,context->style.textOutlinePixelSize
+                                                                                    ,context->style.colorTextOutline);
                 const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
                 korl_gfx_batchSetPosition2d(batchWindowTitleText, 
-                                            window->position.x, 
-                                            window->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
+                                            widget->position.x, 
+                                            widget->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
                 korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-#endif
                 /**/
                 korl_time_probeStop(title_bar);
             }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
