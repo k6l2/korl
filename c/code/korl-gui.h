@@ -5,7 +5,9 @@
 #include "korl-interface-platform-gui.h"
 #include "korl-interface-platform-gfx.h"
 #include "korl-windows-globalDefines.h"
+typedef struct _Korl_Gui_MouseEvent _Korl_Gui_MouseEvent;// internally used by gui modules only
 korl_internal void korl_gui_initialize(void);
+korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent);
 //KORL-FEATURE-000-000-045: gui: add some kind of "style stack" API, and deprecate korl_gui_setFontAsset since it seems too inflexible
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset);
 /** Start batching a new GUI window.  The user _must_ call \c korl_gui_windowEnd 

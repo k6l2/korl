@@ -5,11 +5,32 @@
 #include "korl-memory.h"
 #include "korl-vulkan.h"
 #include "korl-stringPool.h"
+#include "korl-gfx.h"
 /** the edges of the window must have their own individual AABBs to allow mouse 
  * interactions with them (window is hovered, resize windows), and this value 
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
 korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
+typedef enum _KORL_GUI_MOUSE_EVENT_TYPE
+    { _KORL_GUI_MOUSE_EVENT_TYPE_MOVE
+    , _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_PRESS
+    , _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_RELEASE
+    , _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_VERTICAL
+    , _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_HORIZONTAL
+} _KORL_GUI_MOUSE_EVENT_TYPE;
+typedef enum _KORL_GUI_MOUSE_EVENT_BUTTON
+    { _KORL_GUI_MOUSE_EVENT_BUTTON_LEFT
+} _KORL_GUI_MOUSE_EVENT_BUTTON;
+typedef struct _Korl_Gui_MouseEvent
+{
+    _KORL_GUI_MOUSE_EVENT_TYPE type;
+    union
+    {
+        _KORL_GUI_MOUSE_EVENT_BUTTON button;// only valid if type == _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_*
+        f32                          wheel; // only valid if type == _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_*
+    } subType;
+    Korl_Math_V2f32 position;
+} _Korl_Gui_MouseEvent;
 #if 0//@TODO: recycle
 typedef enum _Korl_Gui_SpecialWidgetFlags
 {
@@ -109,6 +130,8 @@ typedef struct _Korl_Gui_Context
     Korl_Memory_AllocatorHandle allocatorHandleStack;
     Korl_StringPool stringPool;
     _Korl_Gui_Widget* stbDaWidgets;// everything is a Widget, including windows!
+    struct _Korl_Gui_UsedWidget* stbDaUsedWidgets;// list of currently in-use widgets, sorted from back-to-front; re-built each call to korl_gui_frameEnd
+    u16 rootWidgetOrderIndexHighest;// like stbDaUsedWidgets, this is updated each call to korl-gui-frameEnd
     u$ loopIndex;// combined with window/widget identifiers to create the final identifierHash
     /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
      * # of times.  When this value < 0, a new window must be started before 
@@ -116,16 +139,16 @@ typedef struct _Korl_Gui_Context
      * the \c korl_gui_windowBegin/End calls, a default "debug" window will be 
      * automatically selected. */
     i16 currentWindowIndex;
-#if 0//@TODO: recycle
-    i16 currentWidgetIndex;
-    /** Windows are stored from back=>front.  In other words, the window at 
-     * index \c 0 will be drawn behind all other windows. */
-    _Korl_Gui_Window* stbDaWindows;
     /** We don't need this to be a member of \c _Korl_Gui_Window because we 
      * already know:  
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */
     bool isTopLevelWindowActive;
+#if 0//@TODO: recycle
+    i16 currentWidgetIndex;
+    /** Windows are stored from back=>front.  In other words, the window at 
+     * index \c 0 will be drawn behind all other windows. */
+    _Korl_Gui_Window* stbDaWindows;
     bool isMouseDown;// This flag is raised when we mouse down inside a window
     bool isWindowDragged;// only raised when we click a window outside of widgets
     bool isWindowResizing;// only raised when we click a window's resize edge

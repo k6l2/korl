@@ -359,8 +359,8 @@ korl_internal void _korl_gui_frameBegin(void)
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1) , L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(64), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(8), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
     _korl_gui_context.stringPool                           = korl_stringPool_create(_korl_gui_context.allocatorHandleHeap);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
@@ -388,11 +388,48 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.widgetButtonLabelMargin        =  4.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaUsedWidgets, 64);
 #if 0//@TODO: recycle
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWindows, 64);
 #endif
     /* kick-start the first GUI frame as soon as initialization of this module is complete */
     _korl_gui_frameBegin();
+}
+korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
+    switch(mouseEvent->type)
+    {
+    case _KORL_GUI_MOUSE_EVENT_TYPE_MOVE:{
+        break;}
+    case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_PRESS:{
+        context->isTopLevelWindowActive = false;
+        /* iterate over all widgets from front=>back */
+        for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+        {
+            _Korl_Gui_Widget*const widget = usedWidget->widget;
+            korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
+            const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
+                                                                               ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+            if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->position))
+            {
+                context->isTopLevelWindowActive = true;
+                widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
+                korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
+                /* because we have changed the order of widgets, we need to re-sort since we are likely to process more events */
+                _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
+                break;
+            }
+        }
+        break;}
+    case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_RELEASE:{
+        break;}
+    case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_VERTICAL:{
+        break;}
+    case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_HORIZONTAL:{
+        break;}
+    }
 }
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 {
@@ -540,41 +577,36 @@ korl_internal void korl_gui_frameEnd(void)
         - nullify widgets which weren't used this frame, _excluding_ root/window widgets!
         - gather a list of all widgets used this frame in preparation to perform transient topological/order sorting
         - figure out which root widget is "highest"/"top-level" (last to draw) */
-    u$ rootWidgetOrderIndexHighest = 0;
-    _Korl_Gui_UsedWidget* stbDaUsedWidgets = NULL;
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgets, arrlen(context->stbDaWidgets));
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, arrlen(context->stbDaWidgets));
+    u$ widgetsRemaining = 0;
+    korl_time_probeStart(nullify_unused_widgets);
+    const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
+    for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < widgetsEnd; widget++)
     {
-        u$ widgetsRemaining = 0;
-        korl_time_probeStart(nullify_unused_widgets);
-        const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
-        for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < widgetsEnd; widget++)
+        const u$ i = widget - context->stbDaWidgets;
+        korl_assert(widget->identifierHash);
+        if(widget->usedThisFrame || !widget->identifierHashParent)
         {
-            const u$ i = widget - context->stbDaWidgets;
-            korl_assert(widget->identifierHash);
-            if(widget->usedThisFrame || !widget->identifierHashParent)
-            {
-                if(!widget->identifierHashParent && widget->orderIndex > rootWidgetOrderIndexHighest)
-                    rootWidgetOrderIndexHighest = widget->orderIndex;
-                if(widgetsRemaining < i)
-                    context->stbDaWidgets[widgetsRemaining] = *widget;
-                KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
-                newUsedWidget.widget = context->stbDaWidgets + widgetsRemaining++;
-                mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgets, newUsedWidget);
-            }
-            else
-            {
-                _korl_gui_widget_destroy(widget);
-                continue;
-            }
+            if(widgetsRemaining < i)
+                context->stbDaWidgets[widgetsRemaining] = *widget;
+            KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
+            newUsedWidget.widget = context->stbDaWidgets + widgetsRemaining++;
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, newUsedWidget);
         }
-        korl_assert(widgetsRemaining <= arrlenu(context->stbDaWidgets));//sanity-check to make sure we aren't about to invalidate _Widget pointers we just accumulated
-        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
-        korl_time_probeStop(nullify_unused_widgets);
+        else
+        {
+            _korl_gui_widget_destroy(widget);
+            continue;
+        }
     }
+    korl_assert(widgetsRemaining <= arrlenu(context->stbDaWidgets));//sanity-check to make sure we aren't about to invalidate _Widget pointers we just accumulated
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
+    korl_time_probeStop(nullify_unused_widgets);
     /* sort the list of widgets based on their orderIndex, such that widgets 
         that are to be drawn behind other widgets (drawn first) occupy lower 
         indices in the list */
-    _korl_gui_usedWidget_quick_sort(stbDaUsedWidgets, arrlenu(stbDaUsedWidgets));
+    _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
     /* sanity-check the sorted list of used widgets to make sure that for each 
         widget sub tree, all child orderIndex values are unique */
     //@TODO
@@ -591,11 +623,11 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_batchSetLine(batchLinesOrigin2d, 0, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_X.elements, 2, KORL_COLOR4U8_RED);
         korl_gfx_batchSetLine(batchLinesOrigin2d, 1, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_Y.elements, 2, KORL_COLOR4U8_GREEN);
     #endif
-    const _Korl_Gui_UsedWidget*const usedWidgetsEnd = stbDaUsedWidgets + arrlen(stbDaUsedWidgets);
-    for(_Korl_Gui_UsedWidget* usedWidget = stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+    u16 rootWidgetCount = 0;// used to normalize root widget orderIndex values, since it is possible to fragment these values at any time
+    const _Korl_Gui_UsedWidget*const usedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
+    for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
     {
         _Korl_Gui_Widget*const widget = usedWidget->widget;
-        widget->usedThisFrame = false;// reset this value for the next frame; this can be done at any time during this loop
         korl_time_probeStart(setup_camera);
         /* prepare to draw all the widget's contents by cutting out a scissor 
             region the size of the widget, preventing us from accidentally 
@@ -613,13 +645,11 @@ korl_internal void korl_gui_frameEnd(void)
             /* draw the window panel */
             Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
             Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
-#if 0///@TODO: recycle
-            if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
+            if(context->isTopLevelWindowActive && !widget->identifierHashParent && widget->orderIndex == context->rootWidgetOrderIndexHighest)
             {
                 windowColor   = context->style.colorWindowActive;
                 titleBarColor = context->style.colorTitleBarActive;
             }
-#endif
             korl_time_probeStart(draw_window_panel);
             Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, windowColor);
             korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, widget->position);
@@ -642,9 +672,9 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                     ,context->style.textOutlinePixelSize
                                                                                     ,context->style.colorTextOutline);
                 const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
-                korl_gfx_batchSetPosition2d(batchWindowTitleText, 
-                                            widget->position.x, 
-                                            widget->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
+                korl_gfx_batchSetPosition2d(batchWindowTitleText
+                                           ,widget->position.x
+                                           ,widget->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f);
                 korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 /**/
                 korl_time_probeStop(title_bar);
@@ -655,7 +685,15 @@ korl_internal void korl_gui_frameEnd(void)
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
             break;}
         }
+        widget->usedThisFrame = false;// reset this value for the next frame; this can be done at any time during this loop
+        /* normalize root widget orderIndex values; _must_ be done _after_ processing widget logic! */
+        if(!widget->identifierHashParent)
+        {
+            widget->orderIndex = rootWidgetCount++;
+            korl_assert(rootWidgetCount);// check integer overflow
+        }
     }
+    context->rootWidgetOrderIndexHighest = rootWidgetCount ? rootWidgetCount - 1 : 0;
 #if 0//@TODO: recycle
     /* for each of the windows that we ended up using for this frame, generate 
         the necessary draw commands for them */

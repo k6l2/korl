@@ -8,21 +8,54 @@
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-#if 0//@TODO: recycle
-    /* we can't just assert that the frameSequenceCounter == 0 here because this 
-        function will be getting called when the message box of an assert is 
-        running & pumping the message loop, which could happen at any time! */
-    if(context->frameSequenceCounter != 0)
-    {
-        //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
-        // korl_log(WARNING, "korl_gui_windows_processMessage called outside of korl_gui_frameBegin/End; message will be ignored");
-        return;
-    }
-    korl_assert(context->frameSequenceCounter == 0);
+    //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
     /* identify & process mouse events 
         https://docs.microsoft.com/en-us/windows/win32/learnwin32/mouse-clicks */
+    RECT clientRect;
+    KORL_WINDOWS_CHECK(GetClientRect(hWnd, &clientRect));
+    // remember, in Windows client-space the +Y axis points _down_ on the screen...
+    const Korl_Math_V2i32 clientRectSize = {clientRect.right  - clientRect.left
+                                           ,clientRect.bottom - clientRect.top};
     switch(message)
     {
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:{
+        const bool isDown = (message % 2 == 1);
+        const Korl_Math_V2i32 mousePositionClient = {GET_X_LPARAM(lParam)
+                                                    ,GET_Y_LPARAM(lParam)};
+        KORL_ZERO_STACK(_Korl_Gui_MouseEvent, guiMouseEvent);
+        guiMouseEvent.type = isDown 
+                           ? _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_PRESS
+                           : _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON_RELEASE;
+        guiMouseEvent.subType.button = _KORL_GUI_MOUSE_EVENT_BUTTON_LEFT;
+        guiMouseEvent.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
+                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        korl_gui_onMouseEvent(&guiMouseEvent);
+        break;}
+    case WM_MOUSEMOVE:{
+        const Korl_Math_V2i32 mousePositionClient = {GET_X_LPARAM(lParam)
+                                                    ,GET_Y_LPARAM(lParam)};
+        KORL_ZERO_STACK(_Korl_Gui_MouseEvent, guiMouseEvent);
+        guiMouseEvent.type = _KORL_GUI_MOUSE_EVENT_TYPE_MOVE;
+        guiMouseEvent.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
+                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        korl_gui_onMouseEvent(&guiMouseEvent);
+        break;}
+    case WM_MOUSEWHEEL:{
+        POINT pointMouse = {.x = GET_X_LPARAM(lParam)
+                           ,.y = GET_Y_LPARAM(lParam)};//screen-space, NOT client-space like the other mouse events!!! >:[
+        KORL_WINDOWS_CHECK(ScreenToClient(hWnd, &pointMouse));
+        const bool keyDownShift = LOWORD(wParam) & MK_SHIFT;
+        KORL_ZERO_STACK(_Korl_Gui_MouseEvent, guiMouseEvent);
+        guiMouseEvent.type = keyDownShift 
+                           ? _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_HORIZONTAL
+                           : _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL_VERTICAL;
+        guiMouseEvent.subType.wheel = GET_WHEEL_DELTA_WPARAM(wParam) / KORL_C_CAST(f32, WHEEL_DELTA);
+        guiMouseEvent.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(pointMouse.x)
+                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - pointMouse.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        korl_gui_onMouseEvent(&guiMouseEvent);
+        break;}
+#if 0//@TODO: recycle
     case WM_LBUTTONDOWN:{
         const i32 mouseX =  GET_X_LPARAM(lParam);
         const i32 mouseY = -GET_Y_LPARAM(lParam);//inverted, since Windows desktop-space uses a y-axis that points down, which is really annoying to me - I will not tolerate bullshit that doesn't make sense anymore
@@ -375,6 +408,7 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
             break;
         }
         break;}
+#endif
 #if 0
     /*case WM_LBUTTONDBLCLK:*/
     case WM_RBUTTONDOWN:
@@ -404,5 +438,4 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         break;}
 #endif
     }
-#endif
 }
