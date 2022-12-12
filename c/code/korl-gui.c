@@ -402,6 +402,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     switch(mouseEvent->type)
     {
     case _KORL_GUI_MOUSE_EVENT_TYPE_MOVE:{
+        ///@TODO: store hover widget data similar to how we store identifierHashWidgetDragged
         _Korl_Gui_Widget* draggedWidget = NULL;
         if(context->identifierHashWidgetDragged)
         {
@@ -412,13 +413,32 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     break;
                 }
             if(!draggedWidget)
+                /* for whatever reason, we can't find the id hash of the dragged 
+                    widget anymore, so let's just invalidate this id hash */
                 context->identifierHashWidgetDragged = 0;
         }
         if(draggedWidget)
             draggedWidget->position = korl_math_v2f32_add(mouseEvent->subType.move.position, context->mouseDownWidgetOffset);
+        else
+        {
+            context->identifierHashWindowHovered = 0;
+            /* iterate all widgets front=>back to detect hover events */
+            for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+            {
+                _Korl_Gui_Widget*const widget = usedWidget->widget;
+                korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
+                const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
+                                                                                   ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                {
+                    context->identifierHashWindowHovered = widget->identifierHash;
+                    break;
+                }
+            }
+        }
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
-        context->identifierHashWidgetMouseDown = 0;
+        // context->identifierHashWidgetMouseDown = 0;///@TODO: use|delete
         context->identifierHashWidgetDragged   = 0;
         if(mouseEvent->subType.button.pressed)
         {
@@ -433,7 +453,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
                     context->isTopLevelWindowActive        = true;
-                    context->identifierHashWidgetMouseDown = widget->identifierHash;
+                    // context->identifierHashWidgetMouseDown = widget->identifierHash;///@TODO: use|delete
                     context->identifierHashWidgetDragged   = widget->identifierHash;
                     context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
                     widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
@@ -646,6 +666,7 @@ korl_internal void korl_gui_frameEnd(void)
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
     {
         _Korl_Gui_Widget*const widget = usedWidget->widget;
+#if 0//@TODO: it doesn't seem like we want to do this for all widgets; it seems like there is going to be more nuance here since we want to be able to clip content to small windows or scroll areas, etc...
         korl_time_probeStart(setup_camera);
         /* prepare to draw all the widget's contents by cutting out a scissor 
             region the size of the widget, preventing us from accidentally 
@@ -657,13 +678,25 @@ korl_internal void korl_gui_frameEnd(void)
                                  ,widget->size.y);
         korl_gfx_useCamera(cameraOrthographic);
         korl_time_probeStop(setup_camera);
+#endif
         switch(widget->type)
         {
         case KORL_GUI_WIDGET_TYPE_WINDOW:{
+            const bool isActiveTopLevelWindow = context->isTopLevelWindowActive 
+                                             && !widget->identifierHashParent 
+                                             &&  widget->orderIndex == context->rootWidgetOrderIndexHighest;
+            /* expand the scissor region to account for the border around the window panel */
+            korl_shared_const f32 PANEL_BORDER_PIXELS = 1;
+            korl_gfx_cameraSetScissor(&cameraOrthographic
+                                     ,widget->position.x - PANEL_BORDER_PIXELS
+                                     ,surfaceSize.y - widget->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/ - PANEL_BORDER_PIXELS
+                                     ,widget->size.x + 2*PANEL_BORDER_PIXELS
+                                     ,widget->size.y + 2*PANEL_BORDER_PIXELS);
+            korl_gfx_useCamera(cameraOrthographic);
             /* draw the window panel */
             Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
             Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
-            if(context->isTopLevelWindowActive && !widget->identifierHashParent && widget->orderIndex == context->rootWidgetOrderIndexHighest)
+            if(isActiveTopLevelWindow)
             {
                 windowColor   = context->style.colorWindowActive;
                 titleBarColor = context->style.colorTitleBarActive;
@@ -697,6 +730,30 @@ korl_internal void korl_gui_frameEnd(void)
                 /**/
                 korl_time_probeStop(title_bar);
             }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
+            /* draw the window border */
+            korl_time_probeStart(draw_window_border);
+            Korl_Vulkan_Color4u8 colorBorder = context->style.colorWindowBorder;
+            if(isActiveTopLevelWindow)
+                if(   context->identifierHashWindowHovered == widget->identifierHash
+                   && context->mouseHoverWindowEdgeFlags == KORL_GUI_EDGE_FLAGS_NONE)
+                    colorBorder = context->style.colorWindowBorderResize;
+                else
+                    colorBorder = context->style.colorWindowBorderActive;
+            else if(context->identifierHashWindowHovered == widget->identifierHash)
+                colorBorder = context->style.colorWindowBorderHovered;
+            const Korl_Vulkan_Color4u8 colorBorderUp    = (context->identifierHashWindowHovered == widget->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
+            const Korl_Vulkan_Color4u8 colorBorderRight = (context->identifierHashWindowHovered == widget->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
+            const Korl_Vulkan_Color4u8 colorBorderDown  = (context->identifierHashWindowHovered == widget->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
+            const Korl_Vulkan_Color4u8 colorBorderLeft  = (context->identifierHashWindowHovered == widget->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
+            const Korl_Math_Aabb2f32 aabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y - widget->size.y
+                                                                         ,widget->position.x + widget->size.x, widget->position.y);
+            Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);
+            korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Math_V3f32){aabb.min.x - 1.f, aabb.max.y      }.elements, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.max.y      }.elements, 2, colorBorderUp);
+            korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.max.y + 1.f}.elements, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.min.y - 1.f}.elements, 2, colorBorderRight);
+            korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.min.y - 1.f}.elements, (Korl_Math_V3f32){aabb.min.x - 1.f, aabb.min.y - 1.f}.elements, 2, colorBorderDown);
+            korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Math_V3f32){aabb.min.x      , aabb.min.y - 1.f}.elements, (Korl_Math_V3f32){aabb.min.x      , aabb.max.y + 1.f}.elements, 2, colorBorderLeft);
+            korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+            korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
             break;}
         default:{
@@ -913,34 +970,6 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchScrollBarY, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
         korl_time_probeStop(batch_scroll_bars);
         korl_time_probeStop(draw_widgets);
-        korl_time_probeStart(draw_window_border);
-        /* batch window border AFTER contents are drawn */
-        Korl_Vulkan_Color4u8 colorBorder = context->style.colorWindowBorder;
-        if(context->isTopLevelWindowActive && i == arrlenu(context->stbDaWindows) - 1)
-            if(context->isMouseHovering 
-                && context->identifierHashMouseHoveredWindow == window->identifierHash
-                && context->mouseHoverWindowEdgeFlags == KORL_GUI_MOUSE_HOVER_FLAGS_NONE)
-                colorBorder = context->style.colorWindowBorderResize;
-            else
-                colorBorder = context->style.colorWindowBorderActive;
-        else if(context->isMouseHovering && context->identifierHashMouseHoveredWindow == window->identifierHash)
-            colorBorder = context->style.colorWindowBorderHovered;
-        const Korl_Vulkan_Color4u8 colorBorderUp    = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_UP   )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color4u8 colorBorderRight = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_RIGHT)) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color4u8 colorBorderDown  = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Vulkan_Color4u8 colorBorderLeft  = (context->identifierHashMouseHoveredWindow == window->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_MOUSE_HOVER_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
-        const Korl_Math_Aabb2f32 windowAabb = korl_math_aabb2f32_fromPoints(window->position.x                 , window->position.y - window->size.y, 
-                                                                            window->position.x + window->size.x, window->position.y                  );
-        Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);
-        //KORL-ISSUE-000-000-009
-        korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Math_V3f32){windowAabb.min.x - 0.5f, windowAabb.max.y}.elements, (Korl_Math_V3f32){windowAabb.max.x, windowAabb.max.y}.elements, 2, colorBorderUp);
-        korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Math_V3f32){windowAabb.max.x       , windowAabb.max.y}.elements, (Korl_Math_V3f32){windowAabb.max.x, windowAabb.min.y}.elements, 2, colorBorderRight);
-        korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Math_V3f32){windowAabb.max.x       , windowAabb.min.y}.elements, (Korl_Math_V3f32){windowAabb.min.x, windowAabb.min.y}.elements, 2, colorBorderDown);
-        korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Math_V3f32){windowAabb.min.x       , windowAabb.min.y}.elements, (Korl_Math_V3f32){windowAabb.min.x, windowAabb.max.y}.elements, 2, colorBorderLeft);
-        korl_gfx_cameraSetScissorPercent(&guiCamera, 0,0, 1,1);
-        korl_gfx_useCamera(guiCamera);
-        korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        korl_time_probeStop(draw_window_border);
         /* reset transient window properties in preparation for the next frame */
         window->widgets = 0;
     }

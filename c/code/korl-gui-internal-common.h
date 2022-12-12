@@ -156,9 +156,18 @@ typedef struct _Korl_Gui_Context
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */
     bool isTopLevelWindowActive;
-    u64 identifierHashWidgetMouseDown;
+    // u64 identifierHashWidgetMouseDown;///@TODO: use|delete
     u64 identifierHashWidgetDragged;
+    u64 identifierHashWindowHovered;
     Korl_Math_V2f32 mouseDownWidgetOffset;
+    enum
+    {
+        KORL_GUI_EDGE_FLAGS_NONE = 0,
+        KORL_GUI_EDGE_FLAG_LEFT  = 1<<0,
+        KORL_GUI_EDGE_FLAG_RIGHT = 1<<1,
+        KORL_GUI_EDGE_FLAG_UP    = 1<<2,
+        KORL_GUI_EDGE_FLAG_DOWN  = 1<<3,
+    } mouseHoverWindowEdgeFlags;
 #if 0//@TODO: recycle
     i16 currentWidgetIndex;
     /** Windows are stored from back=>front.  In other words, the window at 
@@ -171,14 +180,6 @@ typedef struct _Korl_Gui_Context
     _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
     u64 identifierHashMouseHoveredWidget;
     u64 identifierHashMouseHoveredWindow;
-    enum
-    {
-        KORL_GUI_MOUSE_HOVER_FLAGS_NONE = 0,
-        KORL_GUI_MOUSE_HOVER_FLAG_LEFT  = 1<<0,
-        KORL_GUI_MOUSE_HOVER_FLAG_RIGHT = 1<<1,
-        KORL_GUI_MOUSE_HOVER_FLAG_UP    = 1<<2,
-        KORL_GUI_MOUSE_HOVER_FLAG_DOWN  = 1<<3,
-    } mouseHoverWindowEdgeFlags;
     Korl_Math_V2f32 mouseHoverPosition;
 #endif
 } _Korl_Gui_Context;
