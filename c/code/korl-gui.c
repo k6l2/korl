@@ -418,20 +418,65 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 context->identifierHashWidgetDragged = 0;
         }
         if(draggedWidget)
-            draggedWidget->position = korl_math_v2f32_add(mouseEvent->subType.move.position, context->mouseDownWidgetOffset);
+            if(context->mouseHoverWindowEdgeFlags)
+            {
+                korl_assert(draggedWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
+                Korl_Math_Aabb2f32 aabb = {.min = {draggedWidget->position.x                        , draggedWidget->position.y - draggedWidget->size.y}
+                                          ,.max = {draggedWidget->position.x + draggedWidget->size.x, draggedWidget->position.y}};
+                /* adjust the AABB values based on which edge flags we're controlling, 
+                    & ensure that the final AABB is valid (not too small) */
+                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
+                    aabb.min.x = KORL_MATH_MIN(mouseEvent->subType.move.position.x, aabb.max.x - context->style.windowTitleBarPixelSizeY);
+                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
+                    aabb.max.x = KORL_MATH_MAX(mouseEvent->subType.move.position.x, aabb.min.x + context->style.windowTitleBarPixelSizeY);
+                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
+                    aabb.max.y = KORL_MATH_MAX(mouseEvent->subType.move.position.y, aabb.min.y + context->style.windowTitleBarPixelSizeY);
+                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN)
+                    aabb.min.y = KORL_MATH_MIN(mouseEvent->subType.move.position.y, aabb.max.y - context->style.windowTitleBarPixelSizeY);
+                /* set the window position/size based on the new AABB */
+                draggedWidget->position.x = aabb.min.x;
+                draggedWidget->position.y = aabb.max.y;
+                draggedWidget->size.x     = aabb.max.x - aabb.min.x;
+                draggedWidget->size.y     = aabb.max.y - aabb.min.y;
+            }
+            else
+                draggedWidget->position = korl_math_v2f32_add(mouseEvent->subType.move.position, context->mouseDownWidgetOffset);
         else
         {
             context->identifierHashWindowHovered = 0;
+            context->mouseHoverWindowEdgeFlags   = 0;
             /* iterate all widgets front=>back to detect hover events */
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
                 korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
-                const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
-                                                                                   ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
+                                                                             ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                const Korl_Math_Aabb2f32 widgetAabbNormal = widgetAabb;
+                const bool isResizableWindow = widget->type == KORL_GUI_WIDGET_TYPE_WINDOW 
+                                            && widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE;
+                if(isResizableWindow)
+                    korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
                     context->identifierHashWindowHovered = widget->identifierHash;
+                    if(   isResizableWindow 
+                       && !korl_math_aabb2f32_containsV2f32(widgetAabbNormal, mouseEvent->subType.button.position))
+                    {
+                        /* if the mouse isn't contained in the normal AABB (unexpanded) of the window, 
+                            that means we _must_ be in a resize region along the edge of the window */
+                        if(!widget->isContentHidden)// disable top/bottom resizing when window content is hidden
+                        {
+                            if(mouseEvent->subType.button.position.y >= widgetAabbNormal.max.y)
+                                context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_UP;
+                            if(mouseEvent->subType.button.position.y <= widgetAabbNormal.min.y)
+                                context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_DOWN;
+                        }
+                        if(mouseEvent->subType.button.position.x >= widgetAabbNormal.max.x)
+                            context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_RIGHT;
+                        if(mouseEvent->subType.button.position.x <= widgetAabbNormal.min.x)
+                            context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_LEFT;
+                    }
                     break;
                 }
             }
@@ -448,8 +493,10 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
                 korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
-                const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
-                                                                                   ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
+                                                                             ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW && widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
+                    korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
                     context->isTopLevelWindowActive        = true;
