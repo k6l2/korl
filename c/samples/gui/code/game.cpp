@@ -11,8 +11,9 @@ korl_internal void _game_getInterfacePlatformApi(KorlPlatformApi korlApi)
 }
 typedef struct Memory
 {
-    bool continueRunning;
     Korl_Memory_AllocatorHandle allocatorHeap;
+    bool continueRunning;
+    bool testWindowOpen;
 } Memory;
 korl_global_variable Memory* memory;
 KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
@@ -22,6 +23,7 @@ KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
     memory = KORL_C_CAST(Memory*, korl_allocate(allocatorHeap, sizeof(Memory)));
     memory->allocatorHeap   = allocatorHeap;
     memory->continueRunning = true;
+    memory->testWindowOpen  = true;
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     return memory;
 }
@@ -39,8 +41,8 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 {
     //@TODO: complete GUI test code
     // korl_gui_widgetTextFormat(L"orphan widget test");
-    korl_gui_windowBegin(L"Test Window", NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-        // korl_gui_widgetTextFormat(L"Greetings!");
+    korl_gui_windowBegin(L"Test Window", &memory->testWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
+        korl_gui_widgetTextFormat(L"Greetings!");
     korl_gui_windowEnd();
     korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
     korl_gui_windowEnd();

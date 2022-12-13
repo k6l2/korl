@@ -29,6 +29,8 @@ typedef struct _Korl_Gui_UsedWidget
 #define _LOCAL_STRING_POOL_POINTER (&_korl_gui_context.stringPool)
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DEBUG";
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
+korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X";// special internal button string to allow button widget to draw special graphics
+korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE[]       = L"-";// special internal button string to allow button widget to draw special graphics
 #if 0//@TODO: recycle
 #define SORT_NAME _korl_gui_widget
 #define SORT_TYPE _Korl_Gui_Widget
@@ -109,51 +111,6 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
     if(data->pCodepointMetaTagStart || data->trailingMetaTagCodepoints)
         return false;
     return true;
-}
-korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
-{
-    _Korl_Gui_Context*const context = &_korl_gui_context;
-    korl_assert(context->frameSequenceCounter == 1);
-    /* combine the widget-specific identifierHash with the context loop index */
-    u64 identifierHashComponents[2];
-    identifierHashComponents[0] = identifierHash;
-    identifierHashComponents[1] = context->loopIndex;
-    const u64 identifierHashPrime = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
-                                                                                        ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
-    /* if there is no current active window, then we should just default to use 
-        an internal "debug" window to allow the user to just create widgets at 
-        any time without worrying about creating a window first */
-    if(context->currentWindowIndex < 0)
-        korl_gui_windowBegin(_KORL_GUI_ORPHAN_WIDGET_WINDOW_ID, NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-    /* check to see if this widget's identifier set is already registered */
-    u$ widgetIndex = arrcap(context->stbDaWidgets);
-    for(u$ w = 0; w < arrlenu(context->stbDaWidgets); ++w)
-    {
-        if(    context->stbDaWidgets[w].parentWindowIdentifierHash == context->stbDaWindows[context->currentWindowIndex].identifierHash
-            && context->stbDaWidgets[w].identifierHash             == identifierHashPrime)
-        {
-            widgetIndex = w;
-            *out_newAllocation = false;
-            goto widgetIndexValid;
-        }
-    }
-    /* otherwise, allocate a new widget */
-    widgetIndex = arrlenu(context->stbDaWidgets);
-    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
-    _Korl_Gui_Widget* widget = &context->stbDaWidgets[widgetIndex];
-    korl_memory_zero(widget, sizeof(*widget));
-    widget->identifierHash             = identifierHashPrime;
-    widget->parentWindowIdentifierHash = context->stbDaWindows[context->currentWindowIndex].identifierHash;
-    widget->type                       = widgetType;
-    *out_newAllocation = true;
-widgetIndexValid:
-    widget = &context->stbDaWidgets[widgetIndex];
-    korl_assert(widget->type == widgetType);
-    widget->usedThisFrame = true;
-    widget->realignY      = false;
-    widget->orderIndex    = context->stbDaWindows[context->currentWindowIndex].widgets++;
-    context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);
-    return widget;
 }
 /**
  * When execution of this function completes, the AABB of the window's widgets 
@@ -329,16 +286,76 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
     }
 }
 #endif
+korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    /* if there is no current active window, then we should just default to use 
+        an internal "debug" window to allow the user to just create widgets at 
+        any time without worrying about creating a window first */
+    if(arrlen(context->stbDaWidgetParentStack) <= 0)
+        korl_gui_windowBegin(_KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT, NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
+    korl_assert(arrlen(context->stbDaWidgetParentStack) > 0);
+    _Korl_Gui_Widget*const widgetDirectParent = context->stbDaWidgets + arrlast(context->stbDaWidgetParentStack);
+    /* each widget's final id hash is a convolution of the following values: 
+        - the local given identifierHash
+        - all parent widget hashes
+        - the context loopIndex */
+    u64 identifierHashComponents[2];
+    identifierHashComponents[0] = identifierHash;
+    const i16*const stbDaWidgetParentStackEnd = context->stbDaWidgetParentStack + arrlen(context->stbDaWidgetParentStack);
+    for(const i16* parentIndex = context->stbDaWidgetParentStack; parentIndex < stbDaWidgetParentStackEnd; parentIndex++)
+    {
+        identifierHashComponents[1] = context->stbDaWidgets[*parentIndex].identifierHash;
+        identifierHashComponents[0] = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                          ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+    }
+    identifierHashComponents[1] = context->loopIndex;
+    const u64 identifierHashPrime = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                        ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+    /* check to see if this widget's identifier set is already registered */
+    u$ widgetIndex = KORL_U64_MAX;
+    const _Korl_Gui_Widget*const stbDaWidgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
+    for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < stbDaWidgetsEnd; widget++)
+    {
+        const u$ w = widget - context->stbDaWidgets;
+        if(widget->identifierHash == identifierHashPrime)
+        {
+            korl_assert(widget->identifierHashParent == widgetDirectParent->identifierHash);
+            widgetIndex = w;
+            *out_newAllocation = false;
+            goto widgetIndexValid;
+        }
+    }
+    /* otherwise, allocate a new widget */
+    widgetIndex = arrlenu(context->stbDaWidgets);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
+    _Korl_Gui_Widget* widget = &context->stbDaWidgets[widgetIndex];
+    korl_memory_zero(widget, sizeof(*widget));
+    widget->identifierHash       = identifierHashPrime;
+    widget->identifierHashParent = widgetDirectParent->identifierHash;
+    widget->type                 = widgetType;
+    *out_newAllocation = true;
+widgetIndexValid:
+    widget = &context->stbDaWidgets[widgetIndex];
+    korl_assert(widget->type == widgetType);
+    widget->usedThisFrame = true;
+    // widget->realignY      = false;//@TODO: recycle
+    widget->orderIndex    = widgetDirectParent->transientChildCount++;
+    // context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);//@TODO: recycle
+    return widget;
+}
 korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     switch(widget->type)
     {
     case KORL_GUI_WIDGET_TYPE_TEXT:{
+        // raw text is stored in the stack allocator each frame; no need to free it here
         if(widget->subType.text.gfxText)
             korl_gfx_text_destroy(widget->subType.text.gfxText);
         break;}
     case KORL_GUI_WIDGET_TYPE_BUTTON:{
+        // raw text is stored in the stack allocator each frame; no need to free it here
         break;}
     default:{
         korl_log(ERROR, "invalid widget type: %i", widget->type);
@@ -350,11 +367,20 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
 korl_internal void _korl_gui_frameBegin(void)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    context->currentWindowIndex = -1;
     korl_memory_allocator_empty(context->allocatorHandleStack);
+    context->stbDaWidgetParentStack = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 16);
 #if 0//@TODO: recycle
     context->currentWidgetIndex = -1;
 #endif
+}
+korl_internal void _korl_gui_setNextWidgetParentAnchor(Korl_Math_V2f32 anchorRatioRelativeToParentTopLeft)
+{
+    korl_assert(!"@TODO");
+}
+korl_internal void _korl_gui_setNextWidgetPosition(Korl_Math_V2f32 positionRelativeToAnchor)
+{
+    korl_assert(!"@TODO");
 }
 korl_internal void korl_gui_initialize(void)
 {
@@ -441,7 +467,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             }
             else
                 draggedWidget->position = korl_math_v2f32_add(mouseEvent->subType.move.position, context->mouseDownWidgetOffset);
-        else
+        else// mouse hover logic
         {
             context->identifierHashWindowHovered = 0;
             context->mouseHoverWindowEdgeFlags   = 0;
@@ -525,7 +551,9 @@ korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 }
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
+    ///@TODO: there are a lot of similarities here to _getWidget; in an effort to generalize Window/Widget behavior, maybe I should just call _getWidget here???
     _Korl_Gui_Context*const context = &_korl_gui_context;
+    i16 currentWindowIndex = -1;
     /* assemble the window identifier hash; composed of the string hash of the 
         titleBarText, as well as the context loop index */
     u64 identifierHashComponents[2];
@@ -542,8 +570,13 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
     /* The only time that the current window index is allowed to be valid is 
         when the user was spawning orphan widgets, which are sent to a default 
         internal "debug" window.  Otherwise, we are in an invalid state. */
-    if(context->currentWindowIndex >= 0)
-        korl_assert(context->stbDaWidgets[context->currentWindowIndex].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
+    if(arrlen(context->stbDaWidgetParentStack) > 0)
+    {
+        korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);// ASSUMPTION: we can't nest windows inside other windows
+        korl_assert(context->stbDaWidgets[arrlast(context->stbDaWidgetParentStack)].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
+        if(identifierHash != _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH)
+            korl_gui_windowEnd();// end the orphan widget window again, if we are making a different window
+    }
     /* check to see if this identifier is already registered */
     const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
     for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < widgetsEnd; widget++)
@@ -556,7 +589,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
                 widget->subType.window.isFirstFrame = true;
                 widget->isContentHidden             = false;
             }
-            context->currentWindowIndex = korl_checkCast_i$_to_i16(widget - context->stbDaWidgets);
+            currentWindowIndex = korl_checkCast_i$_to_i16(widget - context->stbDaWidgets);
             goto done_currentWindowIndexValid;
         }
     }
@@ -576,25 +609,42 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         if(widget->orderIndex > windowOrderIndexHighest)
         {
             windowOrderIndexHighest = widget->orderIndex;
-            nextWindowPosition   = korl_math_v2f32_add(widget->position, (Korl_Math_V2f32){ 32.f, 32.f });
+            nextWindowPosition   = korl_math_v2f32_add(widget->position, (Korl_Math_V2f32){ 32.f, 32.f });//offset from the current top-level window by this amount
             nextWindowOrderIndex = widget->orderIndex + 1;
             korl_assert(nextWindowOrderIndex);// sanity check integer overflow
         }
     }
-    context->currentWindowIndex = korl_checkCast_u$_to_i16(arrlenu(context->stbDaWidgets));
+    currentWindowIndex = korl_checkCast_u$_to_i16(arrlenu(context->stbDaWidgets));
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
-    _Korl_Gui_Widget* newWindow = &context->stbDaWidgets[context->currentWindowIndex];
+    _Korl_Gui_Widget* newWindow = &context->stbDaWidgets[currentWindowIndex];
     newWindow->identifierHash              = identifierHash;
     newWindow->position                    = nextWindowPosition;
     newWindow->orderIndex                  = nextWindowOrderIndex;
-    newWindow->size                        = (Korl_Math_V2f32){ 128.f, 128.f };
+    newWindow->size                        = (Korl_Math_V2f32){ 128.f, 128.f };// default window size
     newWindow->subType.window.titleBarText = string_newUtf16(titleBarText);
     newWindow->subType.window.isFirstFrame = true;
     newWindow->subType.window.isOpen       = true;
-done_currentWindowIndexValid:
-    newWindow = &context->stbDaWidgets[context->currentWindowIndex];
-    newWindow->usedThisFrame             = true;
-    newWindow->subType.window.styleFlags = styleFlags;
+    done_currentWindowIndexValid:
+        newWindow = &context->stbDaWidgets[currentWindowIndex];
+        if(arrlen(context->stbDaWidgetParentStack) == 0)
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, currentWindowIndex);
+        else// special case; we're getting the internal debug window again
+        {
+            korl_assert(arrlast(context->stbDaWidgetParentStack) == currentWindowIndex);
+            korl_assert(newWindow->identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
+        }
+        newWindow->usedThisFrame             = true;
+        newWindow->subType.window.styleFlags = styleFlags;
+        Korl_Math_V2f32 titleBarButtonCursor = KORL_MATH_V2F32_ZERO;
+        if(out_isOpen)
+        {
+            _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1.f, 0.f});// set title bar buttons relative to the window's upper-right corner
+            _korl_gui_setNextWidgetPosition(titleBarButtonCursor);
+            korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
+            if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE))
+                newWindow->subType.window.isOpen = false;
+            *out_isOpen = newWindow->subType.window.isOpen;
+        }
 #if 0//@TODO: recycle
     newWindow->specialWidgetFlags  = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
     if(out_isOpen)
@@ -623,8 +673,8 @@ done_currentWindowIndexValid:
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    korl_assert(context->currentWindowIndex >= 0);
-    context->currentWindowIndex = -1;
+    korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 0);
 }
 korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition)
 {
@@ -653,9 +703,10 @@ korl_internal void korl_gui_frameEnd(void)
     _Korl_Gui_Context*const context = &_korl_gui_context;
     /* Once again, the only time the current window index is allowed to be set 
         to a valid id at this point is if the user is making orphan widgets. */
-    if(context->currentWindowIndex >= 0)
+    if(arrlen(context->stbDaWidgetParentStack) > 0)
     {
-        korl_assert(context->stbDaWidgets[context->currentWindowIndex].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
+        korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);// ASSUMPTION: we can't nest windows inside other windows
+        korl_assert(context->stbDaWidgets[arrlast(context->stbDaWidgetParentStack)].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
         korl_gui_windowEnd();
     }
     /* Initial loop over _all_ widgets to perform the following tasks: 
@@ -688,6 +739,39 @@ korl_internal void korl_gui_frameEnd(void)
     korl_assert(widgetsRemaining <= arrlenu(context->stbDaWidgets));//sanity-check to make sure we aren't about to invalidate _Widget pointers we just accumulated
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
     korl_time_probeStop(nullify_unused_widgets);
+    /* now that we have a list of widgets that are used this frame, we can 
+        gather the meta data necessary to perform a topological sort of the 
+        entire list, which will allow us to process the entire widget DAG from 
+        back=>front 
+        Example DAG:
+        - {WINDOW, depth=0, order=0, childrenDirect=2, childrenTotal=4}
+            - {BUTTON, depth=1, order=0, childrenDirect=0, childrenTotal=0}
+            - {PANEL, depth=1, order=1, childrenDirect=2, childrenTotal=2}
+                - {TEXT, depth=2, order=0, childrenDirect=0, childrenTotal=0}
+                - {TEXT, depth=2, order=1, childrenDirect=0, childrenTotal=0}
+        - {WINDOW, depth=0, order=1, childrenDirect=1, childrenTotal=1}
+            - {BUTTON, depth=1, order=0, childrenDirect=0, childrenTotal=0}
+        Sort approach:
+        - for each UnusedWidget, recursively find depth,childrenTotal; O(N)
+        - initialize a new UnusedWidget array of the same size with all NULL entries; let's call this unusedSorted
+        - start at depth=0
+        - while arrlenu(stbDaUsedWidgets)
+            - sort by depth (ascending); O(NlogN)
+            - count how many widgets are at depth; O(N)
+            - sort this sub-array by order (ascending); O(NlogN)
+            - iterate over unusedSorted until we find the first NULL entry; O(N)
+            - for each sub-array entry
+                - copy this data into unusedSorted[currentNull]
+                - currentNull += subArray[i].childrenTotal
+            - set the new beginning of stbDaUsedWidgets to be the END iterator of subArray
+            - depth++, repeat
+        */
+    const _Korl_Gui_UsedWidget*const usedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
+    for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+    {
+        _Korl_Gui_Widget*const widget = usedWidget->widget;
+    }
+    korl_assert(!"@TODO");
     /* sort the list of widgets based on their orderIndex, such that widgets 
         that are to be drawn behind other widgets (drawn first) occupy lower 
         indices in the list */
@@ -709,7 +793,6 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_batchSetLine(batchLinesOrigin2d, 1, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_Y.elements, 2, KORL_COLOR4U8_GREEN);
     #endif
     u16 rootWidgetCount = 0;// used to normalize root widget orderIndex values, since it is possible to fragment these values at any time
-    const _Korl_Gui_UsedWidget*const usedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
     {
         _Korl_Gui_Widget*const widget = usedWidget->widget;
@@ -803,11 +886,15 @@ korl_internal void korl_gui_frameEnd(void)
             korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
             break;}
+        case KORL_GUI_WIDGET_TYPE_BUTTON:{
+            korl_assert(!"@TODO");
+            break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
             break;}
         }
-        widget->usedThisFrame = false;// reset this value for the next frame; this can be done at any time during this loop
+        widget->usedThisFrame       = false;// reset this value for the next frame; this can be done at any time during this loop
+        widget->transientChildCount = 0;// reset this value for the next frame
         /* normalize root widget orderIndex values; _must_ be done _after_ processing widget logic! */
         if(!widget->identifierHashParent)
         {
@@ -1104,19 +1191,24 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat)
 {
-#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
-    va_list vaList;
-    va_start(vaList, textFormat);
-    widget->subType.button.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
-    va_end(vaList);
+    if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE)
+        widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE;
+    else
+    {
+        widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT;
+        /* store the formatted display text on the stack */
+        va_list vaList;
+        va_start(vaList, textFormat);
+        const wchar_t*const stackDisplayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
+        va_end(vaList);
+        widget->subType.button.displayText = KORL_RAW_CONST_UTF16(stackDisplayText);
+    }
     const u8 resultActuationCount = widget->subType.button.actuationCount;
     widget->subType.button.actuationCount = 0;
     return resultActuationCount;
-#endif
-    return 0;///@TODO: delete
 }
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

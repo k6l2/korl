@@ -72,6 +72,7 @@ typedef struct _Korl_Gui_Widget
 {
     u64 identifierHashParent;// a value of 0 => this Widget has no parent
     u64 identifierHash;// _all_ widgets _must_ have a non-zero identifierHash
+    u16 transientChildCount;// cleared at the end of each frame; accumulated during the frame each time a direct child widget is added; directly affects the orderIndex of each child widget
     u16 orderIndex;// determines the order in which widgets are processed/displayed in their parent, as well as top-level widgets (windows) relative to one another; 0 => the bottom-most widget that is drawn below all other widgets at the same heirarchical depth; in other words, lower values are processed/drawn _first_
     bool isContentHidden;// disables all child widgets (all logic, including graphics)
     Korl_Math_V2f32 position;// relative to the top-left corner of the widget, where our coordinate frame origin is the bottom-left corner of the rendering surface, with the +Y axis pointing UP (as the graphics gods intended)
@@ -98,13 +99,18 @@ typedef struct _Korl_Gui_Widget
         } window;
         struct
         {
-            // const wchar_t* displayText;// @TODO: use string pool
+            acu16 displayText;
             Korl_Gfx_Text* gfxText;
         } text;
         struct
         {
-            // const wchar_t* displayText;// @TODO: use string pool
+            acu16 displayText;// stored in the context stack allocator each frame
             u8 actuationCount;
+            enum
+                {_KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT
+                ,_KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE
+                ,_KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE
+            } display;
         } button;
     } subType;
 } _Korl_Gui_Widget;
@@ -145,12 +151,12 @@ typedef struct _Korl_Gui_Context
     struct _Korl_Gui_UsedWidget* stbDaUsedWidgets;// list of currently in-use widgets, sorted from back-to-front; re-built each call to korl_gui_frameEnd
     u16 rootWidgetOrderIndexHighest;// like stbDaUsedWidgets, this is updated each call to korl-gui-frameEnd
     u$ loopIndex;// combined with window/widget identifiers to create the final identifierHash
-    /** Helps ensure that the user calls \c korl_gui_windowBegin/End the correct 
-     * # of times.  When this value < 0, a new window must be started before 
-     * calling any widget API.  If the user calls a widget function outside of 
-     * the \c korl_gui_windowBegin/End calls, a default "debug" window will be 
-     * automatically selected. */
-    i16 currentWindowIndex;
+    /** Serves the following purposes:
+     * - determines the parent hierarchy of each widget; when a new widget is 
+     *   created, it becomes the direct child of the last widget in this stack
+     * - help ensure user calls \c korl_gui_windowBegin/End the correct # of 
+     *   times */
+    i16* stbDaWidgetParentStack;// reallocated from the stack allocator each frame; each element represents an index into the stbDaWidgets collection
     /** We don't need this to be a member of \c _Korl_Gui_Window because we 
      * already know:  
      * - there will only ever be ONE active window

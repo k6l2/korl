@@ -42,7 +42,7 @@ typedef enum Korl_StringPool_CompareResult
 typedef struct Korl_StringPool_String
 {
     Korl_StringPool_StringHandle handle;
-    Korl_StringPool* pool;
+    Korl_StringPool*             pool;
 #if defined(__cplusplus)
     bool operator==(const Korl_StringPool_String& other) const
     {
