@@ -13,7 +13,6 @@ typedef struct _Korl_Gui_UsedWidget
         bool visited;// set to true when we have visited this node; this struct is simply a wrapper around _Korl_Gui_Widget so we can sort all widgets from back=>front
         /* all values below here are invalid until the visited flag is set */
         u16 depth;// 0 root node; +1 for each successive depth in the hierarchy
-        // u16 totalChildren;// recursively includes all direct/indirect children (our entire sub-graph, where this node is the root); @TODO: ; we might just not want/need to calculate this
     } dagMetaData;
 } _Korl_Gui_UsedWidget;
 typedef struct _Korl_Gui_WidgetMap
@@ -324,6 +323,13 @@ korl_internal void _korl_gui_findUsedWidgetDepthRecursive(_Korl_Gui_UsedWidget* 
     else
         usedWidget->dagMetaData.depth = 0;
 }
+korl_internal void _korl_gui_resetTransientNextWidgetModifiers(void)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    context->transientNextWidgetModifiers.size         = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+    context->transientNextWidgetModifiers.parentAnchor = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+    context->transientNextWidgetModifiers.parentOffset = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+}
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -380,6 +386,22 @@ widgetIndexValid:
     // widget->realignY      = false;//@TODO: recycle
     widget->orderIndex    = widgetDirectParent->transientChildCount++;
     // context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);//@TODO: recycle
+    if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.size.x)
+       && !korl_math_isNanf32(context->transientNextWidgetModifiers.size.y))
+        widget->size = context->transientNextWidgetModifiers.size;
+    else
+        widget->size = KORL_MATH_V2F32_ZERO;
+    if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.parentAnchor.x)
+       && !korl_math_isNanf32(context->transientNextWidgetModifiers.parentAnchor.y))
+        widget->parentAnchor = context->transientNextWidgetModifiers.parentAnchor;
+    else
+        widget->parentAnchor = KORL_MATH_V2F32_ZERO;
+    if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.parentOffset.x)
+       && !korl_math_isNanf32(context->transientNextWidgetModifiers.parentOffset.y))
+        widget->parentOffset = context->transientNextWidgetModifiers.parentOffset;
+    else
+        widget->parentOffset = KORL_MATH_V2F32_ZERO;
+    _korl_gui_resetTransientNextWidgetModifiers();
     return widget;
 }
 korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
@@ -408,17 +430,22 @@ korl_internal void _korl_gui_frameBegin(void)
     korl_memory_allocator_empty(context->allocatorHandleStack);
     context->stbDaWidgetParentStack = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 16);
+    _korl_gui_resetTransientNextWidgetModifiers();
 #if 0//@TODO: recycle
     context->currentWidgetIndex = -1;
 #endif
 }
+korl_internal void _korl_gui_setNextWidgetSize(Korl_Math_V2f32 size)
+{
+    _korl_gui_context.transientNextWidgetModifiers.size = size;
+}
 korl_internal void _korl_gui_setNextWidgetParentAnchor(Korl_Math_V2f32 anchorRatioRelativeToParentTopLeft)
 {
-    korl_assert(!"@TODO: ");
+    _korl_gui_context.transientNextWidgetModifiers.parentAnchor = anchorRatioRelativeToParentTopLeft;
 }
-korl_internal void _korl_gui_setNextWidgetPosition(Korl_Math_V2f32 positionRelativeToAnchor)
+korl_internal void _korl_gui_setNextWidgetParentOffset(Korl_Math_V2f32 positionRelativeToAnchor)
 {
-    korl_assert(!"@TODO: ");
+    _korl_gui_context.transientNextWidgetModifiers.parentOffset = positionRelativeToAnchor;
 }
 korl_internal void korl_gui_initialize(void)
 {
@@ -466,7 +493,6 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     switch(mouseEvent->type)
     {
     case _KORL_GUI_MOUSE_EVENT_TYPE_MOVE:{
-        ///@TODO: store hover widget data similar to how we store identifierHashWidgetDragged
         _Korl_Gui_Widget* draggedWidget = NULL;
         if(context->identifierHashWidgetDragged)
         {
@@ -509,46 +535,52 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
         {
             context->identifierHashWindowHovered = 0;
             context->mouseHoverWindowEdgeFlags   = 0;
+            /* clear all widget hover flags */
+            for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
+                usedWidget->widget->isHovered = false;
             /* iterate all widgets front=>back to detect hover events */
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
-                korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
-                Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
-                                                                             ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
-                const Korl_Math_Aabb2f32 widgetAabbNormal = widgetAabb;
-                const bool isResizableWindow = widget->type == KORL_GUI_WIDGET_TYPE_WINDOW 
-                                            && widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE;
-                if(isResizableWindow)
-                    korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
-                if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
+                                                                                   ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW)
                 {
-                    context->identifierHashWindowHovered = widget->identifierHash;
-                    if(   isResizableWindow 
-                       && !korl_math_aabb2f32_containsV2f32(widgetAabbNormal, mouseEvent->subType.button.position))
+                    const bool isResizableWindow = widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE;
+                    Korl_Math_Aabb2f32 widgetAabbExpanded = widgetAabb;
+                    if(isResizableWindow)
+                        korl_math_aabb2f32_expand(&widgetAabbExpanded, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
+                    if(korl_math_aabb2f32_containsV2f32(widgetAabbExpanded, mouseEvent->subType.button.position))
                     {
-                        /* if the mouse isn't contained in the normal AABB (unexpanded) of the window, 
-                            that means we _must_ be in a resize region along the edge of the window */
-                        if(!widget->isContentHidden)// disable top/bottom resizing when window content is hidden
+                        context->identifierHashWindowHovered = widget->identifierHash;
+                        widget->isHovered = true;
+                        if(   isResizableWindow 
+                           && !korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                         {
-                            if(mouseEvent->subType.button.position.y >= widgetAabbNormal.max.y)
-                                context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_UP;
-                            if(mouseEvent->subType.button.position.y <= widgetAabbNormal.min.y)
-                                context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_DOWN;
+                            /* if the mouse isn't contained in the normal AABB (unexpanded) of the window, 
+                                that means we _must_ be in a resize region along the edge of the window */
+                            if(!widget->isContentHidden)// disable top/bottom resizing when window content is hidden
+                            {
+                                if(mouseEvent->subType.button.position.y >= widgetAabb.max.y)
+                                    context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_UP;
+                                if(mouseEvent->subType.button.position.y <= widgetAabb.min.y)
+                                    context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_DOWN;
+                            }
+                            if(mouseEvent->subType.button.position.x >= widgetAabb.max.x)
+                                context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_RIGHT;
+                            if(mouseEvent->subType.button.position.x <= widgetAabb.min.x)
+                                context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_LEFT;
                         }
-                        if(mouseEvent->subType.button.position.x >= widgetAabbNormal.max.x)
-                            context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_RIGHT;
-                        if(mouseEvent->subType.button.position.x <= widgetAabbNormal.min.x)
-                            context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_LEFT;
                     }
-                    break;
+                    break;// windows are opaque, ergo we stop the hover ray cast
                 }
+                else
+                    if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                        widget->isHovered = true;
             }
         }
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
-        context->identifierHashWidgetMouseDown = 0;
-        context->identifierHashWidgetDragged   = 0;
         if(mouseEvent->subType.button.pressed)
         {
             context->isTopLevelWindowActive = false;
@@ -556,46 +588,92 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
-                korl_assert(!widget->identifierHashParent);//@TODO: for now, let's just assume there are no child widgets for simplicity
                 Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
                                                                              ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
                 if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW && widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
-                    context->isTopLevelWindowActive        = true;
                     context->identifierHashWidgetMouseDown = widget->identifierHash;
                     context->identifierHashWidgetDragged   = widget->identifierHash;
                     context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
-                    widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
-                    korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
-                    /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
-                        would rather only do once per frame, so instead we can take advantage of a key assumption here: 
-                        - we can safely assume that stbDaUsedWidgets is currently sorted topologically, such that each widget 
-                          sub-tree is contiguous in memory!
-                        With this knowledge, all we have to do to maintain the topological sort for the rest of the frame is 
-                        just move this entire widget sub-tree to the end of stbDaUsedWidgets. */
-                    // iterate over stbDaUsedWidgets (starting at usedWidget) until we encounter another top-level widget _or_ the end iterator;
-                    //  this will give us the total # of UsedWidgets in this widget sub-tree
-                    _Korl_Gui_UsedWidget* subTreeEnd = usedWidget + 1;
-                    for(; subTreeEnd < stbDaUsedWidgetsEnd; subTreeEnd++)
-                        if(subTreeEnd->dagMetaData.depth <= 0)
-                            break;
-                    if(subTreeEnd < stbDaUsedWidgetsEnd)// no need to do any of this logic if this sub-tree is already at the end of UsedWidgets
+                    switch(widget->type)
                     {
-                        const u$ subTreeSize = subTreeEnd - usedWidget;
-                        // copy these UsedWidgets to a temp buffer
-                        _Korl_Gui_UsedWidget* stbDaTempSubTree = NULL;
-                        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTempSubTree, subTreeSize);
-                        korl_memory_copy(stbDaTempSubTree, usedWidget, subTreeSize*sizeof(*usedWidget));
-                        // move all stbDaUsedWidgets that come after this sub-tree in memory down to usedWidget's position
-                        korl_memory_move(usedWidget, subTreeEnd, (stbDaUsedWidgetsEnd - subTreeEnd)*sizeof(*usedWidget));
-                        // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
-                        korl_memory_copy(subTreeEnd, stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
+                    case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                        korl_assert(!widget->identifierHashParent);// simplification; windows are always top-level (no child windows)
+                        context->isTopLevelWindowActive = true;
+                        widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
+                        korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
+                        /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
+                            would rather only do once per frame, so instead we can take advantage of a key assumption here: 
+                            - we can safely assume that stbDaUsedWidgets is currently sorted topologically, such that each widget 
+                              sub-tree is contiguous in memory!
+                            With this knowledge, all we have to do to maintain the topological sort for the rest of the frame is 
+                            just move this entire widget sub-tree to the end of stbDaUsedWidgets. */
+                        // iterate over stbDaUsedWidgets (starting at usedWidget) until we encounter another top-level widget _or_ the end iterator;
+                        //  this will give us the total # of UsedWidgets in this widget sub-tree
+                        _Korl_Gui_UsedWidget* subTreeEnd = usedWidget + 1;
+                        for(; subTreeEnd < stbDaUsedWidgetsEnd; subTreeEnd++)
+                            if(subTreeEnd->dagMetaData.depth <= 0)
+                                break;
+                        if(subTreeEnd < stbDaUsedWidgetsEnd)// no need to do any of this logic if this sub-tree is already at the end of UsedWidgets
+                        {
+                            const u$ subTreeSize = subTreeEnd - usedWidget;
+                            // copy these UsedWidgets to a temp buffer
+                            _Korl_Gui_UsedWidget* stbDaTempSubTree = NULL;
+                            mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTempSubTree, subTreeSize);
+                            korl_memory_copy(stbDaTempSubTree, usedWidget, subTreeSize*sizeof(*usedWidget));
+                            // move all stbDaUsedWidgets that come after this sub-tree in memory down to usedWidget's position
+                            korl_memory_move(usedWidget, subTreeEnd, (stbDaUsedWidgetsEnd - subTreeEnd)*sizeof(*usedWidget));
+                            // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
+                            korl_memory_copy(subTreeEnd, stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
+                        }
+                        break;}
+                    case KORL_GUI_WIDGET_TYPE_TEXT:{
+                        break;}
+                    case KORL_GUI_WIDGET_TYPE_BUTTON:{
+                        break;}
+                    default:{
+                        korl_log(ERROR, "invalid widget type: %i", widget->type);
+                        break;}
                     }
-                    break;
+                    break;// for now, all widgets are opaque to mouse button press events
                 }
             }
+        }
+        else// mouse button released; on-click logic
+        {
+            /* in order to an "on-click" event to actuate, we must have already 
+                have a "mouse-down" registered on the widget, _and_ the mouse 
+                must still be in the bounds of the widget */
+            _Korl_Gui_Widget* clickedWidget = NULL;
+            if(context->identifierHashWidgetMouseDown)
+                for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
+                    if(usedWidget->widget->identifierHash == context->identifierHashWidgetMouseDown)
+                    {
+                        clickedWidget = usedWidget->widget;
+                        break;
+                    }
+            if(clickedWidget)
+            {
+                switch(clickedWidget->type)
+                {
+                case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_TEXT:{
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_BUTTON:{
+                    if(clickedWidget->subType.button.actuationCount < KORL_U8_MAX)// silently discard on-click events if we would integer overflow
+                        clickedWidget->subType.button.actuationCount++;
+                    break;}
+                default:{
+                    korl_log(ERROR, "invalid widget type: %i", clickedWidget->type);
+                    break;}
+                }
+            }
+            /* reset mouse input state */
+            context->identifierHashWidgetMouseDown = 0;
+            context->identifierHashWidgetDragged   = 0;
         }
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL:{
@@ -695,11 +773,12 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         }
         newWindow->usedThisFrame             = true;
         newWindow->subType.window.styleFlags = styleFlags;
-        Korl_Math_V2f32 titleBarButtonCursor = KORL_MATH_V2F32_ZERO;
+        Korl_Math_V2f32 titleBarButtonCursor = (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f};
         if(out_isOpen)
         {
+            _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY,context->style.windowTitleBarPixelSizeY});
             _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1.f, 0.f});// set title bar buttons relative to the window's upper-right corner
-            _korl_gui_setNextWidgetPosition(titleBarButtonCursor);
+            _korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
             korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
             if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE))
                 newWindow->subType.window.isOpen = false;
@@ -832,7 +911,7 @@ korl_internal void korl_gui_frameEnd(void)
                 - currentNull += subArray[i].childrenTotal
             - set the new beginning of stbDaUsedWidgets to be the END iterator of subArray
             - depth++, repeat
-        Sort Approach 2:
+        Sort Approach 2: (currently using this approach)
         - for each UsedWidget, recursively find depth; O(N)
         - sort stbDaUsedWidgets by depth, then by order; O(NlogN)
         - initialize new UsedWidget array (same capacity, but empty); called usedSorted
@@ -872,7 +951,7 @@ korl_internal void korl_gui_frameEnd(void)
         for(_Korl_Gui_UsedWidget* usedWidgetTempCopy2 = usedWidgetTempCopy + 1; usedWidgetTempCopy2 < stbDaUsedWidgetsTempCopyEnd; usedWidgetTempCopy2++)
         {
             if(   usedWidgetTempCopy2->widget->identifierHashParent 
-               && mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHashParent))
+               && mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHashParent) >= 0)
             {
                 mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHash, KORL_U64_MAX);
                 *usedWidgetSortIterator = *usedWidgetTempCopy2;
@@ -897,9 +976,24 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_batchSetLine(batchLinesOrigin2d, 1, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_Y.elements, 2, KORL_COLOR4U8_GREEN);
     #endif
     u16 rootWidgetCount = 0;// used to normalize root widget orderIndex values, since it is possible to fragment these values at any time
+    _Korl_Gui_UsedWidget** stbDaUsedWidgetStack = NULL;// used to perform logic based on each widget's parent; all logic with this is done under the assumption that the list of widgets has been topologically sorted
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, 16);
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
     {
         _Korl_Gui_Widget*const widget = usedWidget->widget;
+        /* pop widgets from the stack until this widget's parent is on the top (or there stack is empty);
+            we can do this because context->stbDaUsedWidgets should have been sorted topologically */
+        while(arrlenu(stbDaUsedWidgetStack) && arrlast(stbDaUsedWidgetStack)->widget->identifierHash != widget->identifierHashParent)
+            arrpop(stbDaUsedWidgetStack);
+        const _Korl_Gui_Widget*const widgetParent = arrlenu(stbDaUsedWidgetStack) ? arrlast(stbDaUsedWidgetStack)->widget : NULL;
+        if(widgetParent)
+        {
+            const Korl_Math_V2f32 parentAnchor = korl_math_v2f32_add(widgetParent->position
+                                                                    ,korl_math_v2f32_multiply(widget->parentAnchor
+                                                                                             ,(Korl_Math_V2f32){ widgetParent->size.x
+                                                                                                               ,-widgetParent->size.y/*inverted, since +Y is UP, & the parent's position is its top-left corner*/}));
+            widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
+        }
 #if 0//@TODO: it doesn't seem like we want to do this for all widgets; it seems like there is going to be more nuance here since we want to be able to clip content to small windows or scroll areas, etc...
         korl_time_probeStart(setup_camera);
         /* prepare to draw all the widget's contents by cutting out a scissor 
@@ -1094,10 +1188,11 @@ korl_internal void korl_gui_frameEnd(void)
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
             break;}
         }
+        /* push this widget onto the parent stack */
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, usedWidget);
         /* reset theses values for the next frame */
         widget->usedThisFrame       = false;// this can actually be done at any time during this loop, but might as well put it here ¯\_(ツ)_/¯
         widget->transientChildCount = 0;
-        widget->isHovered           = false;
         /* normalize root widget orderIndex values; _must_ be done _after_ processing widget logic! */
         if(!widget->identifierHashParent)
         {
@@ -1320,7 +1415,7 @@ korl_internal void korl_gui_frameEnd(void)
         korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){100,100,100});
         korl_gfx_batchSetPosition2d(batchLinesOrigin2d, 1.f, 1.f);
         korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        for(_Korl_Gui_UsedWidget* usedWidget = stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+        for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
         {
             _Korl_Gui_Widget*const widget = usedWidget->widget;
             korl_gfx_batchSetPosition2dV2f32(batchLinesOrigin2d, widget->position);
