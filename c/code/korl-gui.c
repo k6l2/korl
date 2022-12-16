@@ -8,11 +8,32 @@
 typedef struct _Korl_Gui_UsedWidget
 {
     _Korl_Gui_Widget* widget;
-    // @TODO: add transient DAG meta-data, such as childCount, rootParent, etc...
+    struct
+    {
+        bool visited;// set to true when we have visited this node; this struct is simply a wrapper around _Korl_Gui_Widget so we can sort all widgets from back=>front
+        /* all values below here are invalid until the visited flag is set */
+        u16 depth;// 0 root node; +1 for each successive depth in the hierarchy
+        // u16 totalChildren;// recursively includes all direct/indirect children (our entire sub-graph, where this node is the root); @TODO: ; we might just not want/need to calculate this
+    } dagMetaData;
 } _Korl_Gui_UsedWidget;
+typedef struct _Korl_Gui_WidgetMap
+{
+    u64 key;  // the widget's id hash value
+    ///@TODO: should the value actually be the index into the UsedWidget array instead?...
+    u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
+} _Korl_Gui_WidgetMap;
+/* Sort used widgets by depth first, then by orderIndex */
 #define SORT_NAME _korl_gui_usedWidget
 #define SORT_TYPE _Korl_Gui_UsedWidget
-#define SORT_CMP(x, y) ((x).widget->orderIndex < (y).widget->orderIndex ? -1 : ((x).widget->orderIndex > (y).widget->orderIndex ? 1 : 0))
+#define SORT_CMP(x, y) ((x).dagMetaData.depth < (y).dagMetaData.depth \
+                        ? -1 \
+                        : (x).dagMetaData.depth > (y).dagMetaData.depth \
+                          ? 1 \
+                          : (x).widget->orderIndex < (y).widget->orderIndex \
+                            ? -1 \
+                            : ((x).widget->orderIndex > (y).widget->orderIndex \
+                              ? 1 \
+                              : 0))
 #ifndef SORT_CHECK_CAST_INT_TO_SIZET
     #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
 #endif
@@ -286,6 +307,23 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
     }
 }
 #endif
+korl_internal void _korl_gui_findUsedWidgetDepthRecursive(_Korl_Gui_UsedWidget* usedWidget, _Korl_Gui_WidgetMap** stbHmWidgetMap)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    if(usedWidget->dagMetaData.visited)
+        return;
+    usedWidget->dagMetaData.visited = true;
+    if(usedWidget->widget->identifierHashParent)
+    {
+        const i$ hmIndexParent = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), *stbHmWidgetMap, usedWidget->widget->identifierHashParent);
+        korl_assert(hmIndexParent >= 0);
+        _Korl_Gui_UsedWidget*const usedWidgetParent = context->stbDaUsedWidgets + hmIndexParent;
+        _korl_gui_findUsedWidgetDepthRecursive(usedWidgetParent, stbHmWidgetMap);
+        usedWidget->dagMetaData.depth = usedWidgetParent->dagMetaData.depth + 1;
+    }
+    else
+        usedWidget->dagMetaData.depth = 0;
+}
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -376,11 +414,11 @@ korl_internal void _korl_gui_frameBegin(void)
 }
 korl_internal void _korl_gui_setNextWidgetParentAnchor(Korl_Math_V2f32 anchorRatioRelativeToParentTopLeft)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"@TODO: ");
 }
 korl_internal void _korl_gui_setNextWidgetPosition(Korl_Math_V2f32 positionRelativeToAnchor)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"@TODO: ");
 }
 korl_internal void korl_gui_initialize(void)
 {
@@ -509,7 +547,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
         }
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
-        // context->identifierHashWidgetMouseDown = 0;///@TODO: use|delete
+        context->identifierHashWidgetMouseDown = 0;
         context->identifierHashWidgetDragged   = 0;
         if(mouseEvent->subType.button.pressed)
         {
@@ -526,13 +564,35 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
                     context->isTopLevelWindowActive        = true;
-                    // context->identifierHashWidgetMouseDown = widget->identifierHash;///@TODO: use|delete
+                    context->identifierHashWidgetMouseDown = widget->identifierHash;
                     context->identifierHashWidgetDragged   = widget->identifierHash;
                     context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
                     widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
                     korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
-                    /* because we have changed the order of widgets, we need to re-sort since we are likely to process more events */
-                    _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
+                    /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
+                        would rather only do once per frame, so instead we can take advantage of a key assumption here: 
+                        - we can safely assume that stbDaUsedWidgets is currently sorted topologically, such that each widget 
+                          sub-tree is contiguous in memory!
+                        With this knowledge, all we have to do to maintain the topological sort for the rest of the frame is 
+                        just move this entire widget sub-tree to the end of stbDaUsedWidgets. */
+                    // iterate over stbDaUsedWidgets (starting at usedWidget) until we encounter another top-level widget _or_ the end iterator;
+                    //  this will give us the total # of UsedWidgets in this widget sub-tree
+                    _Korl_Gui_UsedWidget* subTreeEnd = usedWidget + 1;
+                    for(; subTreeEnd < stbDaUsedWidgetsEnd; subTreeEnd++)
+                        if(subTreeEnd->dagMetaData.depth <= 0)
+                            break;
+                    if(subTreeEnd < stbDaUsedWidgetsEnd)// no need to do any of this logic if this sub-tree is already at the end of UsedWidgets
+                    {
+                        const u$ subTreeSize = subTreeEnd - usedWidget;
+                        // copy these UsedWidgets to a temp buffer
+                        _Korl_Gui_UsedWidget* stbDaTempSubTree = NULL;
+                        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTempSubTree, subTreeSize);
+                        korl_memory_copy(stbDaTempSubTree, usedWidget, subTreeSize*sizeof(*usedWidget));
+                        // move all stbDaUsedWidgets that come after this sub-tree in memory down to usedWidget's position
+                        korl_memory_move(usedWidget, subTreeEnd, (stbDaUsedWidgetsEnd - subTreeEnd)*sizeof(*usedWidget));
+                        // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
+                        korl_memory_copy(subTreeEnd, stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
+                    }
                     break;
                 }
             }
@@ -712,9 +772,14 @@ korl_internal void korl_gui_frameEnd(void)
     /* Initial loop over _all_ widgets to perform the following tasks: 
         - nullify widgets which weren't used this frame, _excluding_ root/window widgets!
         - gather a list of all widgets used this frame in preparation to perform transient topological/order sorting
-        - figure out which root widget is "highest"/"top-level" (last to draw) */
-    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets);
+        - figure out which root widget is "highest"/"top-level" (last to draw)
+        - build an acceleration structure to map widgetIdHash=>Widget
+            - this can be used to ensure that all id hash values are unique
+            - also useful for iterating quickly through the Widget DAG */
+    mcarrfree  (KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, arrlen(context->stbDaWidgets));
+    _Korl_Gui_WidgetMap* stbHmWidgetMap = NULL;
+    mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, KORL_U64_MAX);
     u$ widgetsRemaining = 0;
     korl_time_probeStart(nullify_unused_widgets);
     const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
@@ -729,6 +794,8 @@ korl_internal void korl_gui_frameEnd(void)
             KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
             newUsedWidget.widget = context->stbDaWidgets + widgetsRemaining++;
             mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, newUsedWidget);
+            korl_assert(mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash) < 0);// ensure that this widget's id hash is unique!
+            mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash, arrlenu(context->stbDaUsedWidgets) - 1);
         }
         else
         {
@@ -744,38 +811,75 @@ korl_internal void korl_gui_frameEnd(void)
         entire list, which will allow us to process the entire widget DAG from 
         back=>front 
         Example DAG:
-        - {WINDOW, depth=0, order=0, childrenDirect=2, childrenTotal=4}
-            - {BUTTON, depth=1, order=0, childrenDirect=0, childrenTotal=0}
-            - {PANEL, depth=1, order=1, childrenDirect=2, childrenTotal=2}
-                - {TEXT, depth=2, order=0, childrenDirect=0, childrenTotal=0}
-                - {TEXT, depth=2, order=1, childrenDirect=0, childrenTotal=0}
-        - {WINDOW, depth=0, order=1, childrenDirect=1, childrenTotal=1}
-            - {BUTTON, depth=1, order=0, childrenDirect=0, childrenTotal=0}
+        - {WINDOW[0], depth=0, order=0, childrenDirect=2, childrenTotal=4}
+            - {BUTTON[0], depth=1, order=0, childrenDirect=0, childrenTotal=0}
+            - {PANEL[0], depth=1, order=1, childrenDirect=2, childrenTotal=2}
+                - {TEXT[0], depth=2, order=0, childrenDirect=0, childrenTotal=0}
+                - {TEXT[1], depth=2, order=1, childrenDirect=0, childrenTotal=0}
+        - {WINDOW[1], depth=0, order=1, childrenDirect=1, childrenTotal=1}
+            - {BUTTON[1], depth=1, order=0, childrenDirect=0, childrenTotal=0}
         Sort approach:
-        - for each UnusedWidget, recursively find depth,childrenTotal; O(N)
-        - initialize a new UnusedWidget array of the same size with all NULL entries; let's call this unusedSorted
+        - for each UsedWidget, recursively find depth,childrenTotal; O(???)
+        - initialize a new UsedWidget array of the same size with all NULL entries; let's call this usedSorted
         - start at depth=0
         - while arrlenu(stbDaUsedWidgets)
             - sort by depth (ascending); O(NlogN)
             - count how many widgets are at depth; O(N)
             - sort this sub-array by order (ascending); O(NlogN)
-            - iterate over unusedSorted until we find the first NULL entry; O(N)
+            - iterate over usedSorted until we find the first NULL entry; O(N)
             - for each sub-array entry
-                - copy this data into unusedSorted[currentNull]
+                - copy this data into usedSorted[currentNull]
                 - currentNull += subArray[i].childrenTotal
             - set the new beginning of stbDaUsedWidgets to be the END iterator of subArray
             - depth++, repeat
+        Sort Approach 2:
+        - for each UsedWidget, recursively find depth; O(N)
+        - sort stbDaUsedWidgets by depth, then by order; O(NlogN)
+        - initialize new UsedWidget array (same capacity, but empty); called usedSorted
+        - for i=0 in stbDaUsedWidgets O(N^2)
+            - if the widget has a parent
+                - break
+            - initialize empty set of widget hash Ids
+            - add this widget's hash Id to the set
+            - add this widget to usedSorted
+            - for j=i+1 in stbDaUsedWidgets
+                - if this widget has a parent & the parent is in the set
+                    - add this widget's hash Id to the set
+                    - add this widget to usedSorted
         */
+    // recursively find the DAG depth of each UsedWidget //
     const _Korl_Gui_UsedWidget*const usedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
-    {
-        _Korl_Gui_Widget*const widget = usedWidget->widget;
-    }
-    korl_assert(!"@TODO");
-    /* sort the list of widgets based on their orderIndex, such that widgets 
-        that are to be drawn behind other widgets (drawn first) occupy lower 
-        indices in the list */
+        _korl_gui_findUsedWidgetDepthRecursive(usedWidget, &stbHmWidgetMap);
+    // sort the UsedWidgets by depth, then by order //
     _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
+    mchmfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap);// the map from hash=>index is now invalid!
+    // topologically sort stbDaUsedWidgets using the above data //
+    _Korl_Gui_UsedWidget* usedWidgetSortIterator = context->stbDaUsedWidgets;
+    _Korl_Gui_UsedWidget* stbDaUsedWidgetsTempCopy = NULL;
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetsTempCopy, arrlenu(context->stbDaUsedWidgets));
+    korl_memory_copy(stbDaUsedWidgetsTempCopy, context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets)*sizeof(*context->stbDaUsedWidgets));
+    const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsTempCopyEnd = stbDaUsedWidgetsTempCopy + arrlen(stbDaUsedWidgetsTempCopy);
+    for(_Korl_Gui_UsedWidget* usedWidgetTempCopy = stbDaUsedWidgetsTempCopy; usedWidgetTempCopy < stbDaUsedWidgetsTempCopyEnd; usedWidgetTempCopy++)
+    {
+        if(usedWidgetTempCopy->widget->identifierHashParent)
+            break;
+        mchmfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap);// we're going to re-use this map to keep track of which widgets are in each root widget sub-tree
+        mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, KORL_U64_MAX);
+        mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy->widget->identifierHash, KORL_U64_MAX);
+        *usedWidgetSortIterator = *usedWidgetTempCopy;
+        usedWidgetSortIterator++;
+        for(_Korl_Gui_UsedWidget* usedWidgetTempCopy2 = usedWidgetTempCopy + 1; usedWidgetTempCopy2 < stbDaUsedWidgetsTempCopyEnd; usedWidgetTempCopy2++)
+        {
+            if(   usedWidgetTempCopy2->widget->identifierHashParent 
+               && mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHashParent))
+            {
+                mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHash, KORL_U64_MAX);
+                *usedWidgetSortIterator = *usedWidgetTempCopy2;
+                usedWidgetSortIterator++;
+            }
+        }
+    }
     /* sanity-check the sorted list of used widgets to make sure that for each 
         widget sub tree, all child orderIndex values are unique */
     //@TODO
@@ -887,14 +991,113 @@ korl_internal void korl_gui_frameEnd(void)
             korl_time_probeStop(draw_window_panel);
             break;}
         case KORL_GUI_WIDGET_TYPE_BUTTON:{
-            korl_assert(!"@TODO");
+            switch(widget->subType.button.display)
+            {
+            case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
+                Korl_Vulkan_Color4u8 colorButton = context->style.colorTitleBar;
+                if(widget->isHovered)
+                    if(widget->identifierHash == context->identifierHashWidgetMouseDown)
+                        colorButton = context->style.colorButtonPressed;
+                    else
+                        colorButton = context->style.colorButtonWindowCloseActive;
+                Korl_Gfx_Batch* batchButtonPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, colorButton);
+                korl_gfx_batchSetPosition2dV2f32(batchButtonPanel, widget->position);
+                korl_gfx_batch(batchButtonPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
+                Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = 
+                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
+                                                        ,(Korl_Math_V2f32){0.1f*smallestSize
+                                                                          ,     smallestSize}
+                                                        ,(Korl_Math_V2f32){0.5f, 0.5f}
+                                                        ,context->style.colorButtonWindowTitleBarIcons);
+                korl_gfx_batchSetPosition2d(batchWindowTitleCloseIconPiece
+                                           ,widget->position.x + smallestSize/2.f
+                                           ,widget->position.y - smallestSize/2.f);
+                korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z,  KORL_PI32*0.25f);
+                korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z, -KORL_PI32*0.25f);
+                korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                break;}
+            default:{
+                korl_log(ERROR, "invalid button display: %i", widget->subType.button.display);
+                break;}
+            }
+#if 0//@TODO: TEXT & WINDOW_MINIMIZE button display types
+#if 0// @TODO: use special flags to render special built-in button graphics?
+                if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
+                {
+                    korl_time_probeStart(button_hide);
+                    const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
+                                                                                        titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
+                    korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
+                    Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
+                    if(    context->identifierHashMouseHoveredWindow == window->identifierHash
+                        && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
+                        if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
+                            colorTitleBarButton = context->style.colorButtonPressed;
+                        else
+                            colorTitleBarButton = context->style.colorTitleBarActive;
+                    korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
+                    korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
+                    korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
+                        korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
+                                                             (Korl_Math_V2f32){     context->style.windowTitleBarPixelSizeY
+                                                                              ,0.1f*context->style.windowTitleBarPixelSizeY}, 
+                                                             (Korl_Math_V2f32){0.5f, 0.5f}, 
+                                                             context->style.colorButtonWindowTitleBarIcons);
+                    korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece, 
+                                                titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY/2.f, 
+                                                titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY/2.f);
+                    korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
+                    korl_time_probeStop(button_hide);
+                }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE
+#endif
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.button.displayText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+            const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
+            const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
+            const f32 buttonAabbSizeX = batchTextAabbSize.x + context->style.widgetButtonLabelMargin * 2.f;
+            const f32 buttonAabbSizeY = batchTextAabbSize.y + context->style.widgetButtonLabelMargin * 2.f;
+            widget->cachedAabb.min = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){            0.f, buttonAabbSizeY});
+            widget->cachedAabb.max = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){buttonAabbSizeX,             0.f});
+            widget->cachedIsInteractive = true;
+            if(batchGraphics)
+            {
+                Korl_Gfx_Batch*const batchButton = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
+                                                                                        (Korl_Math_V2f32){ buttonAabbSizeX
+                                                                                                         , buttonAabbSizeY}, 
+                                                                                        (Korl_Math_V2f32){0.f, 1.f}, 
+                                                                                        context->style.colorButtonInactive);
+                korl_gfx_batchSetPosition2dV2f32(batchButton, widgetCursor);
+                if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, context->mouseHoverPosition))
+                {
+                    if(context->isMouseDown && !context->isWindowDragged && context->identifierHashMouseDownWidget == widget->identifierHash)
+                    {
+                        korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonPressed);
+                    }
+                    else if(context->isMouseHovering && context->identifierHashMouseHoveredWidget == widget->identifierHash)
+                    {
+                        korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonActive);
+                    }
+                }
+                korl_gfx_batch(batchButton, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
+                korl_gfx_batchSetPosition2d(batchText, 
+                                            widgetCursor.x + context->style.widgetButtonLabelMargin, 
+                                            widgetCursor.y - context->style.widgetButtonLabelMargin);
+                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+            }
+#endif
             break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
             break;}
         }
-        widget->usedThisFrame       = false;// reset this value for the next frame; this can be done at any time during this loop
-        widget->transientChildCount = 0;// reset this value for the next frame
+        /* reset theses values for the next frame */
+        widget->usedThisFrame       = false;// this can actually be done at any time during this loop, but might as well put it here ¯\_(ツ)_/¯
+        widget->transientChildCount = 0;
+        widget->isHovered           = false;
         /* normalize root widget orderIndex values; _must_ be done _after_ processing widget logic! */
         if(!widget->identifierHashParent)
         {

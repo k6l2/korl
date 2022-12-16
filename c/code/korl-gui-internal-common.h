@@ -77,7 +77,8 @@ typedef struct _Korl_Gui_Widget
     bool isContentHidden;// disables all child widgets (all logic, including graphics)
     Korl_Math_V2f32 position;// relative to the top-left corner of the widget, where our coordinate frame origin is the bottom-left corner of the rendering surface, with the +Y axis pointing UP (as the graphics gods intended)
     Korl_Math_V2f32 size;
-    bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, 
+    bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
+    bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
 #if 0//@TODO: recycle
     bool realignY;
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
@@ -162,7 +163,7 @@ typedef struct _Korl_Gui_Context
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */
     bool isTopLevelWindowActive;
-    // u64 identifierHashWidgetMouseDown;///@TODO: use|delete
+    u64 identifierHashWidgetMouseDown;
     u64 identifierHashWidgetDragged;
     u64 identifierHashWindowHovered;
     Korl_Math_V2f32 mouseDownWidgetOffset;
