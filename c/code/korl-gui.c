@@ -386,6 +386,14 @@ widgetIndexValid:
     // widget->realignY      = false;//@TODO: recycle
     widget->orderIndex    = widgetDirectParent->transientChildCount++;
     // context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);//@TODO: recycle
+    /* disable this widget if any parent widgets in this hierarchy is unused */
+    for(const i16* parentIndex = context->stbDaWidgetParentStack; parentIndex < stbDaWidgetParentStackEnd; parentIndex++)
+        if(!context->stbDaWidgets[*parentIndex].usedThisFrame)
+        {
+            widget->usedThisFrame = false;
+            break;
+        }
+    /* apply transient next widget modifiers */
     if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.size.x)
        && !korl_math_isNanf32(context->transientNextWidgetModifiers.size.y))
         widget->size = context->transientNextWidgetModifiers.size;
@@ -493,6 +501,10 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     switch(mouseEvent->type)
     {
     case _KORL_GUI_MOUSE_EVENT_TYPE_MOVE:{
+        /* clear all widget hover flags */
+        for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
+            usedWidget->widget->isHovered = false;
+        /**/
         _Korl_Gui_Widget* draggedWidget = NULL;
         if(context->identifierHashWidgetDragged)
         {
@@ -531,15 +543,17 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             }
             else
                 draggedWidget->position = korl_math_v2f32_add(mouseEvent->subType.move.position, context->mouseDownWidgetOffset);
-        else// mouse hover logic
+        else
         {
             context->identifierHashWindowHovered = 0;
             context->mouseHoverWindowEdgeFlags   = 0;
-            /* clear all widget hover flags */
-            for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
-                usedWidget->widget->isHovered = false;
+        }
+        // mouse hover logic //
+        {
             /* iterate all widgets front=>back to detect hover events */
-            for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+            bool continueRayCast = true;
+            for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); 
+                usedWidget >= context->stbDaUsedWidgets && continueRayCast; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
                 const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
@@ -555,6 +569,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                         context->identifierHashWindowHovered = widget->identifierHash;
                         widget->isHovered = true;
                         if(   isResizableWindow 
+                           && !context->identifierHashWidgetMouseDown
                            && !korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                         {
                             /* if the mouse isn't contained in the normal AABB (unexpanded) of the window, 
@@ -571,8 +586,8 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                             if(mouseEvent->subType.button.position.x <= widgetAabb.min.x)
                                 context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_LEFT;
                         }
+                        continueRayCast = false;// windows are opaque, ergo we stop the hover ray cast
                     }
-                    break;// windows are opaque, ergo we stop the hover ray cast
                 }
                 else
                     if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
@@ -594,14 +609,14 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
+                    context->isTopLevelWindowActive        = true;// always activate the top-level window no matter what widget is pressed
                     context->identifierHashWidgetMouseDown = widget->identifierHash;
-                    context->identifierHashWidgetDragged   = widget->identifierHash;
                     context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
                     switch(widget->type)
                     {
                     case KORL_GUI_WIDGET_TYPE_WINDOW:{
                         korl_assert(!widget->identifierHashParent);// simplification; windows are always top-level (no child windows)
-                        context->isTopLevelWindowActive = true;
+                        context->identifierHashWidgetDragged = widget->identifierHash;// right now, _only_ windows can be dragged!
                         widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
                         korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
                         /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
@@ -656,19 +671,24 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     }
             if(clickedWidget)
             {
-                switch(clickedWidget->type)
+                Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(clickedWidget->position.x                        , clickedWidget->position.y
+                                                                             ,clickedWidget->position.x + clickedWidget->size.x, clickedWidget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ clickedWidget->size.y);
+                if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
-                case KORL_GUI_WIDGET_TYPE_WINDOW:{
-                    break;}
-                case KORL_GUI_WIDGET_TYPE_TEXT:{
-                    break;}
-                case KORL_GUI_WIDGET_TYPE_BUTTON:{
-                    if(clickedWidget->subType.button.actuationCount < KORL_U8_MAX)// silently discard on-click events if we would integer overflow
-                        clickedWidget->subType.button.actuationCount++;
-                    break;}
-                default:{
-                    korl_log(ERROR, "invalid widget type: %i", clickedWidget->type);
-                    break;}
+                    switch(clickedWidget->type)
+                    {
+                    case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                        break;}
+                    case KORL_GUI_WIDGET_TYPE_TEXT:{
+                        break;}
+                    case KORL_GUI_WIDGET_TYPE_BUTTON:{
+                        if(clickedWidget->subType.button.actuationCount < KORL_U8_MAX)// silently discard on-click events if we would integer overflow
+                            clickedWidget->subType.button.actuationCount++;
+                        break;}
+                    default:{
+                        korl_log(ERROR, "invalid widget type: %i", clickedWidget->type);
+                        break;}
+                    }
                 }
             }
             /* reset mouse input state */
@@ -771,7 +791,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             korl_assert(arrlast(context->stbDaWidgetParentStack) == currentWindowIndex);
             korl_assert(newWindow->identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
         }
-        newWindow->usedThisFrame             = true;
+        newWindow->usedThisFrame             = newWindow->subType.window.isOpen;// if the window isn't open, this entire widget sub-tree is unused for this frame
         newWindow->subType.window.styleFlags = styleFlags;
         Korl_Math_V2f32 titleBarButtonCursor = (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f};
         if(out_isOpen)
@@ -866,15 +886,19 @@ korl_internal void korl_gui_frameEnd(void)
     {
         const u$ i = widget - context->stbDaWidgets;
         korl_assert(widget->identifierHash);
-        if(widget->usedThisFrame || !widget->identifierHashParent)
+        if(widget->usedThisFrame || !widget->identifierHashParent/*even if they are unused this frame, we still retain all root widgets!*/)
         {
             if(widgetsRemaining < i)
                 context->stbDaWidgets[widgetsRemaining] = *widget;
-            KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
-            newUsedWidget.widget = context->stbDaWidgets + widgetsRemaining++;
-            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, newUsedWidget);
-            korl_assert(mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash) < 0);// ensure that this widget's id hash is unique!
-            mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash, arrlenu(context->stbDaUsedWidgets) - 1);
+            if(widget->usedThisFrame)
+            {
+                KORL_ZERO_STACK(_Korl_Gui_UsedWidget, newUsedWidget);
+                newUsedWidget.widget = context->stbDaWidgets + widgetsRemaining;
+                mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, newUsedWidget);
+                korl_assert(mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash) < 0);// ensure that this widget's id hash is unique!
+                mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash, arrlenu(context->stbDaUsedWidgets) - 1);
+            }
+            widgetsRemaining++;
         }
         else
         {
