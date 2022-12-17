@@ -45,6 +45,8 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
         korl_gui_widgetTextFormat(L"Greetings!");
     korl_gui_windowEnd();
     korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
+        if(!memory->testWindowOpen && korl_gui_widgetButtonFormat(L"show test window"))
+            memory->testWindowOpen = true;
     korl_gui_windowEnd();
     return memory->continueRunning;
 }

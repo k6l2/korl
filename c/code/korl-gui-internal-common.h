@@ -76,7 +76,7 @@ typedef struct _Korl_Gui_Widget
     u16 orderIndex;// determines the order in which widgets are processed/displayed in their parent, as well as top-level widgets (windows) relative to one another; 0 => the bottom-most widget that is drawn below all other widgets at the same heirarchical depth; in other words, lower values are processed/drawn _first_
     bool isContentHidden;// disables all child widgets (all logic, including graphics)
     Korl_Math_V2f32 parentAnchor;// defines where on this widget's parent the coordinate origin is located; the default {0,0} makes the widget position relative to the parent's top-left corner
-    Korl_Math_V2f32 parentOffset;// the position offset to be applied to the final widget's position at the end of the frame from the parent achor position; not applicable to widgets with no parent
+    Korl_Math_V2f32 parentOffset;// the default value {NaN,Nan} makes the widget position be set to the transient widget cursor position of its parent; the position offset to be applied to the final widget's position at the end of the frame from the parent anchor position; not applicable to widgets with no parent
     Korl_Math_V2f32 position;// relative to the top-left corner of the widget, where our coordinate frame origin is either the bottom-left corner of the rendering surface (for root widgets) or the position derived from the parent widget's placement (size & position) & the parentAnchor member, with the +Y axis pointing UP (as the graphics gods intended)
     Korl_Math_V2f32 size;
     bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
@@ -102,7 +102,7 @@ typedef struct _Korl_Gui_Widget
         } window;
         struct
         {
-            acu16 displayText;
+            acu16 displayText;// stored in the context stack allocator each frame
             Korl_Gfx_Text* gfxText;
         } text;
         struct
