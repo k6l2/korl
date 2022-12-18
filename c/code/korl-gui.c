@@ -17,12 +17,12 @@ typedef struct _Korl_Gui_UsedWidget
     struct
     {
         Korl_Math_V2f32 childWidgetCursor;
+        Korl_Math_Aabb2f32 aabb;// used for collision detection at the top of the next frame; we need to do this because the widget's AABB must first be calculated based on its contents, and then it must be clipped to all parent widget AABBs so the user can't click on it "out of bounds"
     } transient;// this data is only used/valid at the end of the frame, when we need to process the list of all UsedWidgets that have been accumulated during the frame
 } _Korl_Gui_UsedWidget;
 typedef struct _Korl_Gui_WidgetMap
 {
     u64 key;  // the widget's id hash value
-    ///@TODO: should the value actually be the index into the UsedWidget array instead?...
     u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
 } _Korl_Gui_WidgetMap;
 /* Sort used widgets by depth first, then by orderIndex */
@@ -559,9 +559,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 usedWidget >= context->stbDaUsedWidgets && continueRayCast; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
-                ///@TODO: use a cached AABB that has been clipped to all of this widget's parents' AABBs
-                const Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
-                                                                                   ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                const Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
                 if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW)
                 {
                     const bool isResizableWindow = widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE;
@@ -607,9 +605,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
-                ///@TODO: use a cached AABB that has been clipped to all of this widget's parents' AABBs
-                Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y
-                                                                             ,widget->position.x + widget->size.x, widget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ widget->size.y);
+                Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
                 if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW && widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
@@ -666,19 +662,19 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             /* in order to an "on-click" event to actuate, we must have already 
                 have a "mouse-down" registered on the widget, _and_ the mouse 
                 must still be in the bounds of the widget */
-            _Korl_Gui_Widget* clickedWidget = NULL;
+            _Korl_Gui_Widget*     clickedWidget     = NULL;///@TODO: cleanup; redundant
+            _Korl_Gui_UsedWidget* clickedUsedWidget = NULL;
             if(context->identifierHashWidgetMouseDown)
                 for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
                     if(usedWidget->widget->identifierHash == context->identifierHashWidgetMouseDown)
                     {
-                        clickedWidget = usedWidget->widget;
+                        clickedWidget     = usedWidget->widget;
+                        clickedUsedWidget = usedWidget;
                         break;
                     }
             if(clickedWidget)
             {
-                ///@TODO: use a cached AABB that has been clipped to all of this widget's parents' AABBs
-                Korl_Math_Aabb2f32 widgetAabb = korl_math_aabb2f32_fromPoints(clickedWidget->position.x                        , clickedWidget->position.y
-                                                                             ,clickedWidget->position.x + clickedWidget->size.x, clickedWidget->position.y -/*- because widget origin is the upper-left corner, & +Y is UP*/ clickedWidget->size.y);
+                const Korl_Math_Aabb2f32 widgetAabb = clickedUsedWidget->transient.aabb;
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
                     switch(clickedWidget->type)
@@ -1033,8 +1029,11 @@ korl_internal void korl_gui_frameEnd(void)
         /* now that we know where the widget will be placed, we can determine the AABB of _most_ widgets; 
             the widget's rendering logic is free to modify this value at any time in order to update the 
             widget's size metrics for future frames */
-        Korl_Math_Aabb2f32 aabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y - widget->size.y
-                                                               ,widget->position.x + widget->size.x, widget->position.y);
+        usedWidget->transient.aabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y - widget->size.y
+                                                                  ,widget->position.x + widget->size.x, widget->position.y);
+        Korl_Math_Aabb2f32*const aabb = &usedWidget->transient.aabb;
+        if(widgetParent)
+            *aabb = korl_math_aabb2f32_intersect(*aabb, arrlast(stbDaUsedWidgetStack)->transient.aabb);
 #if 0//@TODO: create a scissor region for each widget, but it is a composition (union/intersection) of its own AABB with _all_ parent widget AABBs; to do this, we also have to maintain a stack of AABBs; consider storing this data in UsedWidget so we don't have to add a new data structure
         korl_time_probeStart(setup_camera);
         /* prepare to draw all the widget's contents by cutting out a scissor 
@@ -1118,10 +1117,10 @@ korl_internal void korl_gui_frameEnd(void)
             const Korl_Vulkan_Color4u8 colorBorderDown  = (context->identifierHashWindowHovered == widget->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN )) ? context->style.colorWindowBorderResize : colorBorder;
             const Korl_Vulkan_Color4u8 colorBorderLeft  = (context->identifierHashWindowHovered == widget->identifierHash && (context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT )) ? context->style.colorWindowBorderResize : colorBorder;
             Korl_Gfx_Batch*const batchWindowBorder = korl_gfx_createBatchLines(context->allocatorHandleStack, 4);
-            korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Math_V3f32){aabb.min.x - 1.f, aabb.max.y      }.elements, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.max.y      }.elements, 2, colorBorderUp);
-            korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.max.y + 1.f}.elements, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.min.y - 1.f}.elements, 2, colorBorderRight);
-            korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Math_V3f32){aabb.max.x + 1.f, aabb.min.y - 1.f}.elements, (Korl_Math_V3f32){aabb.min.x - 1.f, aabb.min.y - 1.f}.elements, 2, colorBorderDown);
-            korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Math_V3f32){aabb.min.x      , aabb.min.y - 1.f}.elements, (Korl_Math_V3f32){aabb.min.x      , aabb.max.y + 1.f}.elements, 2, colorBorderLeft);
+            korl_gfx_batchSetLine(batchWindowBorder, 0, (Korl_Math_V3f32){aabb->min.x - 1.f, aabb->max.y      }.elements, (Korl_Math_V3f32){aabb->max.x + 1.f, aabb->max.y      }.elements, 2, colorBorderUp);
+            korl_gfx_batchSetLine(batchWindowBorder, 1, (Korl_Math_V3f32){aabb->max.x + 1.f, aabb->max.y + 1.f}.elements, (Korl_Math_V3f32){aabb->max.x + 1.f, aabb->min.y - 1.f}.elements, 2, colorBorderRight);
+            korl_gfx_batchSetLine(batchWindowBorder, 2, (Korl_Math_V3f32){aabb->max.x + 1.f, aabb->min.y - 1.f}.elements, (Korl_Math_V3f32){aabb->min.x - 1.f, aabb->min.y - 1.f}.elements, 2, colorBorderDown);
+            korl_gfx_batchSetLine(batchWindowBorder, 3, (Korl_Math_V3f32){aabb->min.x      , aabb->min.y - 1.f}.elements, (Korl_Math_V3f32){aabb->min.x      , aabb->max.y + 1.f}.elements, 2, colorBorderLeft);
             korl_gfx_batch(batchWindowBorder, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
@@ -1145,11 +1144,11 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 const f32 buttonAabbSizeX = batchTextAabbSize.x + context->style.widgetButtonLabelMargin * 2.f;
                 const f32 buttonAabbSizeY = batchTextAabbSize.y + context->style.widgetButtonLabelMargin * 2.f;
-                aabb = korl_math_aabb2f32_fromPoints(aabb.min.x, aabb.max.y, aabb.min.x + buttonAabbSizeX, aabb.max.y - buttonAabbSizeY);
+                *aabb = korl_math_aabb2f32_fromPoints(aabb->min.x, aabb->max.y, aabb->min.x + buttonAabbSizeX, aabb->max.y - buttonAabbSizeY);
                 //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
                 korl_gfx_batchSetPosition2d(batchText, 
-                                            aabb.min.x + context->style.widgetButtonLabelMargin, 
-                                            aabb.max.y - context->style.widgetButtonLabelMargin);
+                                            aabb->min.x + context->style.widgetButtonLabelMargin, 
+                                            aabb->max.y - context->style.widgetButtonLabelMargin);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
@@ -1245,7 +1244,12 @@ korl_internal void korl_gui_frameEnd(void)
             break;}
         }
         /* use the updated AABB to determine the widget's up-to-date size */
-        widget->size = korl_math_aabb2f32_size(aabb);
+        widget->size = korl_math_aabb2f32_size(*aabb);
+        /* for the sake of collision detection, because the widget's AABB may 
+            have been updated during widget logic, we need to once again clip 
+            the AABB to the bounds of our parent widget (if we have one) */
+        if(widgetParent)
+            *aabb = korl_math_aabb2f32_intersect(*aabb, arrlast(stbDaUsedWidgetStack)->transient.aabb);
         /* adjust the parent widget's cursor to the "next line" */
         if(widgetParent)
         {
