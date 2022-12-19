@@ -1034,35 +1034,35 @@ korl_internal void korl_gui_frameEnd(void)
         Korl_Math_Aabb2f32*const aabb = &usedWidget->transient.aabb;
         if(widgetParent)
             *aabb = korl_math_aabb2f32_intersect(*aabb, arrlast(stbDaUsedWidgetStack)->transient.aabb);
-#if 0//@TODO: create a scissor region for each widget, but it is a composition (union/intersection) of its own AABB with _all_ parent widget AABBs; to do this, we also have to maintain a stack of AABBs; consider storing this data in UsedWidget so we don't have to add a new data structure
-        korl_time_probeStart(setup_camera);
         /* prepare to draw all the widget's contents by cutting out a scissor 
             region the size of the widget, preventing us from accidentally 
-            render any pixels outside the widget */
+            render any pixels outside the widget; note that this AABB is the 
+            intersection of this widget & all of its parents, so that we can't 
+            accidentally draw outside of a parent widget */
+        korl_time_probeStart(setup_camera);
+        Korl_Math_V2f32 scissorPosition = {aabb->min.x, surfaceSize.y - aabb->max.y};
+        Korl_Math_V2f32 scissorSize     = korl_math_aabb2f32_size(*aabb);
+        if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW)
+        {
+            korl_shared_const f32 PANEL_BORDER_PIXELS = 1;
+            scissorPosition.x -=   PANEL_BORDER_PIXELS;
+            scissorPosition.y -=   PANEL_BORDER_PIXELS;
+            scissorSize.x     += 2*PANEL_BORDER_PIXELS;
+            scissorSize.y     += 2*PANEL_BORDER_PIXELS;
+        }
         korl_gfx_cameraSetScissor(&cameraOrthographic
-                                 ,widget->position.x
-                                 ,surfaceSize.y - widget->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/
-                                 ,widget->size.x
-                                 ,widget->size.y);
+                                 ,scissorPosition.x
+                                 ,scissorPosition.y
+                                 ,scissorSize.x
+                                 ,scissorSize.y);
         korl_gfx_useCamera(cameraOrthographic);
         korl_time_probeStop(setup_camera);
-#endif
         switch(widget->type)
         {
         case KORL_GUI_WIDGET_TYPE_WINDOW:{
             const bool isActiveTopLevelWindow = context->isTopLevelWindowActive 
                                              && !widget->identifierHashParent 
                                              &&  widget->orderIndex == context->rootWidgetOrderIndexHighest;
-            /* expand the scissor region to account for the border around the window panel */
-            korl_shared_const f32 PANEL_BORDER_PIXELS = 1;
-#if 1///@TODO: delete this when we have a generic scissor solution as described above
-            korl_gfx_cameraSetScissor(&cameraOrthographic
-                                     ,widget->position.x - PANEL_BORDER_PIXELS
-                                     ,surfaceSize.y - widget->position.y/*inverted, because remember: korl-gui window-space uses _correct_ y-axis direction (+y is UP)*/ - PANEL_BORDER_PIXELS
-                                     ,widget->size.x + 2*PANEL_BORDER_PIXELS
-                                     ,widget->size.y + 2*PANEL_BORDER_PIXELS);
-            korl_gfx_useCamera(cameraOrthographic);
-#endif
             /* draw the window panel */
             Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
             Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
