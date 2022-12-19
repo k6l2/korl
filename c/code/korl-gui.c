@@ -1126,13 +1126,37 @@ korl_internal void korl_gui_frameEnd(void)
             korl_time_probeStop(draw_window_panel);
             break;}
         case KORL_GUI_WIDGET_TYPE_BUTTON:{
-            //@TODO: use different button colors for different display values
-            Korl_Vulkan_Color4u8 colorButton = context->style.colorTitleBar;
-            if(widget->isHovered)
-                if(widget->identifierHash == context->identifierHashWidgetMouseDown)
-                    colorButton = context->style.colorButtonPressed;
+            Korl_Vulkan_Color4u8 colorButton = KORL_COLOR4U8_TRANSPARENT;
+            switch(widget->subType.button.display)
+            {
+            case _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT:{
+                if(widget->isHovered)
+                    if(widget->identifierHash == context->identifierHashWidgetMouseDown)
+                        colorButton = context->style.colorButtonPressed;
+                    else
+                        colorButton = context->style.colorButtonActive;
                 else
-                    colorButton = context->style.colorButtonWindowCloseActive;
+                    colorButton = context->style.colorButtonInactive;
+                break;}
+            case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
+                if(widget->isHovered)
+                    if(widget->identifierHash == context->identifierHashWidgetMouseDown)
+                        colorButton = context->style.colorButtonPressed;
+                    else
+                        colorButton = context->style.colorButtonWindowCloseActive;// special red color just for CLOSE button
+                else
+                    colorButton = context->style.colorTitleBar;
+                break;}
+            case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
+                if(widget->isHovered)
+                    if(widget->identifierHash == context->identifierHashWidgetMouseDown)
+                        colorButton = context->style.colorButtonPressed;
+                    else
+                        colorButton = context->style.colorTitleBarActive;
+                else
+                    colorButton = context->style.colorTitleBar;
+                break;}
+            }
             Korl_Gfx_Batch* batchButtonPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, colorButton);
             korl_gfx_batchSetPosition2dV2f32(batchButtonPanel, widget->position);
             korl_gfx_batch(batchButtonPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
@@ -1203,40 +1227,6 @@ korl_internal void korl_gui_frameEnd(void)
                     korl_time_probeStop(button_hide);
                 }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE
 #endif
-            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, widget->subType.button.displayText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-            const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
-            const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
-            const f32 buttonAabbSizeX = batchTextAabbSize.x + context->style.widgetButtonLabelMargin * 2.f;
-            const f32 buttonAabbSizeY = batchTextAabbSize.y + context->style.widgetButtonLabelMargin * 2.f;
-            widget->cachedAabb.min = korl_math_v2f32_subtract(widgetCursor, (Korl_Math_V2f32){            0.f, buttonAabbSizeY});
-            widget->cachedAabb.max = korl_math_v2f32_add     (widgetCursor, (Korl_Math_V2f32){buttonAabbSizeX,             0.f});
-            widget->cachedIsInteractive = true;
-            if(batchGraphics)
-            {
-                Korl_Gfx_Batch*const batchButton = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
-                                                                                        (Korl_Math_V2f32){ buttonAabbSizeX
-                                                                                                         , buttonAabbSizeY}, 
-                                                                                        (Korl_Math_V2f32){0.f, 1.f}, 
-                                                                                        context->style.colorButtonInactive);
-                korl_gfx_batchSetPosition2dV2f32(batchButton, widgetCursor);
-                if(korl_math_aabb2f32_containsV2f32(widget->cachedAabb, context->mouseHoverPosition))
-                {
-                    if(context->isMouseDown && !context->isWindowDragged && context->identifierHashMouseDownWidget == widget->identifierHash)
-                    {
-                        korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonPressed);
-                    }
-                    else if(context->isMouseHovering && context->identifierHashMouseHoveredWidget == widget->identifierHash)
-                    {
-                        korl_gfx_batchRectangleSetColor(batchButton, context->style.colorButtonActive);
-                    }
-                }
-                korl_gfx_batch(batchButton, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
-                korl_gfx_batchSetPosition2d(batchText, 
-                                            widgetCursor.x + context->style.widgetButtonLabelMargin, 
-                                            widgetCursor.y - context->style.widgetButtonLabelMargin);
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-            }
 #endif
             break;}
         default:{
