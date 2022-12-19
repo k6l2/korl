@@ -48,6 +48,9 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
         if(!memory->testWindowOpen && korl_gui_widgetButtonFormat(L"show test window"))
             memory->testWindowOpen = true;
     korl_gui_windowEnd();
+    bool isNoTitlebarWindowOpen = memory->testWindowOpen;
+    korl_gui_windowBegin(L"Test Window NO-TITLEBAR", &isNoTitlebarWindowOpen, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+    korl_gui_windowEnd();
     return memory->continueRunning;
 }
 #include "korl-math.c"

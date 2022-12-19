@@ -796,39 +796,34 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         }
         newWindow->usedThisFrame             = newWindow->subType.window.isOpen;// if the window isn't open, this entire widget sub-tree is unused for this frame
         newWindow->subType.window.styleFlags = styleFlags;
+        korl_shared_const Korl_Math_V2f32 TITLE_BAR_BUTTON_ANCHOR = {1, 0};// set title bar buttons relative to the window's upper-right corner
         Korl_Math_V2f32 titleBarButtonCursor = (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f};
         if(out_isOpen)
         {
             _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY,context->style.windowTitleBarPixelSizeY});
-            _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1.f, 0.f});// set title bar buttons relative to the window's upper-right corner
+            _korl_gui_setNextWidgetParentAnchor(TITLE_BAR_BUTTON_ANCHOR);
             _korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
             korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
             if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE))
                 newWindow->subType.window.isOpen = false;
             *out_isOpen = newWindow->subType.window.isOpen;
         }
+        if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
+        {
+            _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY,context->style.windowTitleBarPixelSizeY});
+            _korl_gui_setNextWidgetParentAnchor(TITLE_BAR_BUTTON_ANCHOR);
+            _korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
+            korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
+            if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE))
+            {
+                newWindow->isContentHidden = !newWindow->isContentHidden;
+                if(newWindow->isContentHidden)
+                    newWindow->hiddenContentPreviousSizeY = newWindow->size.y;
+                else
+                    newWindow->size.y = newWindow->hiddenContentPreviousSizeY;
+            }
+        }
 #if 0//@TODO: recycle
-    newWindow->specialWidgetFlags  = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
-    if(out_isOpen)
-    {
-        newWindow->specialWidgetFlags |= KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE;
-        newWindow->isOpen = *out_isOpen;
-        if(newWindow->specialWidgetFlagsPressed & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
-            newWindow->isOpen = false;
-        *out_isOpen = newWindow->isOpen;
-    }
-    else
-        newWindow->specialWidgetFlags &= ~KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE;
-    newWindow->specialWidgetFlags |= KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE;
-    if(newWindow->specialWidgetFlagsPressed & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
-    {
-        newWindow->isContentHidden = !newWindow->isContentHidden;
-        if(newWindow->isContentHidden)
-            newWindow->hiddenContentPreviousSizeY = newWindow->size.y;
-        else
-            newWindow->size.y = newWindow->hiddenContentPreviousSizeY;
-    }
-    newWindow->specialWidgetFlagsPressed = KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE;
     context->currentWidgetIndex = -1;
 #endif
 }
@@ -1015,13 +1010,14 @@ korl_internal void korl_gui_frameEnd(void)
             arrpop(stbDaUsedWidgetStack);
         const _Korl_Gui_Widget*const widgetParent = arrlenu(stbDaUsedWidgetStack) ? arrlast(stbDaUsedWidgetStack)->widget : NULL;
         /* determine where the widget's origin will be in world-space */
+        const bool useParentWidgetCursor = korl_math_isNanf32(widget->parentOffset.x) || korl_math_isNanf32(widget->parentOffset.y);
         if(widgetParent)
         {
             const Korl_Math_V2f32 parentAnchor = korl_math_v2f32_add(widgetParent->position
                                                                     ,korl_math_v2f32_multiply(widget->parentAnchor
                                                                                              ,(Korl_Math_V2f32){ widgetParent->size.x
                                                                                                                ,-widgetParent->size.y/*inverted, since +Y is UP, & the parent's position is its top-left corner*/}));
-            if(korl_math_isNanf32(widget->parentOffset.x) || korl_math_isNanf32(widget->parentOffset.y))
+            if(useParentWidgetCursor)
                 widget->position = korl_math_v2f32_add(parentAnchor, arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor);
             else
                 widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
@@ -1029,6 +1025,19 @@ korl_internal void korl_gui_frameEnd(void)
         /* now that we know where the widget will be placed, we can determine the AABB of _most_ widgets; 
             the widget's rendering logic is free to modify this value at any time in order to update the 
             widget's size metrics for future frames */
+        if(widget->isContentHidden)
+        {
+            switch(widget->type)// only certain widgets have the ability to hide their content //
+            {
+            case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                korl_assert(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);// only windows w/ title bars can hide their content!
+                widget->size.y = context->style.windowTitleBarPixelSizeY;
+                break;}
+            default:{
+                korl_log(ERROR, "invalid widget type: %i", widget->type);
+                break;}
+            }
+        }
         usedWidget->transient.aabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y - widget->size.y
                                                                   ,widget->position.x + widget->size.x, widget->position.y);
         Korl_Math_Aabb2f32*const aabb = &usedWidget->transient.aabb;
@@ -1191,43 +1200,22 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z, -KORL_PI32*0.25f);
                 korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
+            case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
+                Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
+                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
+                                                        ,(Korl_Math_V2f32){     widget->size.x
+                                                                          ,0.1f*widget->size.y}
+                                                        ,(Korl_Math_V2f32){0.5f, 0.5f}
+                                                        ,context->style.colorButtonWindowTitleBarIcons);
+                korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece
+                                           ,widget->position.x + widget->size.x/2.f
+                                           ,widget->position.y - widget->size.y/2.f);
+                korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                break;}
             default:{
                 korl_log(ERROR, "invalid button display: %i", widget->subType.button.display);
                 break;}
             }
-#if 0//@TODO: TEXT & WINDOW_MINIMIZE button display types
-#if 0// @TODO: use special flags to render special built-in button graphics?
-                if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
-                {
-                    korl_time_probeStart(button_hide);
-                    const Korl_Math_Aabb2f32 buttonAabb = korl_math_aabb2f32_fromPoints(titlebarButtonCursor.x, titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY, 
-                                                                                        titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY, titlebarButtonCursor.y);
-                    korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
-                    Korl_Vulkan_Color4u8 colorTitleBarButton = context->style.colorTitleBar;
-                    if(    context->identifierHashMouseHoveredWindow == window->identifierHash
-                        && korl_math_aabb2f32_containsV2f32(buttonAabb, context->mouseHoverPosition))
-                        if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
-                            colorTitleBarButton = context->style.colorButtonPressed;
-                        else
-                            colorTitleBarButton = context->style.colorTitleBarActive;
-                    korl_gfx_batchRectangleSetColor(batchWindowPanel, colorTitleBarButton);
-                    korl_gfx_batchSetPosition2dV2f32(batchWindowPanel, titlebarButtonCursor);
-                    korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                    Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
-                        korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
-                                                             (Korl_Math_V2f32){     context->style.windowTitleBarPixelSizeY
-                                                                              ,0.1f*context->style.windowTitleBarPixelSizeY}, 
-                                                             (Korl_Math_V2f32){0.5f, 0.5f}, 
-                                                             context->style.colorButtonWindowTitleBarIcons);
-                    korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece, 
-                                                titlebarButtonCursor.x + context->style.windowTitleBarPixelSizeY/2.f, 
-                                                titlebarButtonCursor.y - context->style.windowTitleBarPixelSizeY/2.f);
-                    korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                    titlebarButtonCursor.x -= context->style.windowTitleBarPixelSizeY;
-                    korl_time_probeStop(button_hide);
-                }//window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE
-#endif
-#endif
             break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
@@ -1241,7 +1229,7 @@ korl_internal void korl_gui_frameEnd(void)
         if(widgetParent)
             *aabb = korl_math_aabb2f32_intersect(*aabb, arrlast(stbDaUsedWidgetStack)->transient.aabb);
         /* adjust the parent widget's cursor to the "next line" */
-        if(widgetParent)
+        if(widgetParent && useParentWidgetCursor)
         {
             arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor.x  = 0;
             arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor.y -= widget->size.y;
@@ -1553,6 +1541,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
     if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE)
         widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE;
+    else if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE)
+        widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE;
     else
     {
         widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT;
