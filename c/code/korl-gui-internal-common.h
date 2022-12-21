@@ -100,6 +100,7 @@ typedef struct _Korl_Gui_Widget
             bool isOpen;
             bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
             Korl_Gui_Window_Style_Flags styleFlags;
+            u8 titleBarButtonCount;// used for resizing the window on the first frame
         } window;
         struct
         {
