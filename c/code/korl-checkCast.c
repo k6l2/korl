@@ -38,6 +38,12 @@ korl_internal i$ korl_checkCast_u$_to_i$(u$ x)
     korl_assert(x <= MAX_I$);
     return KORL_C_CAST(i$, x);
 }
+korl_internal f32 korl_checkCast_u$_to_f32(u$ x)
+{
+    const f32 result = KORL_C_CAST(f32, x);
+    korl_assert(KORL_C_CAST(u$, result) == x);
+    return result;
+}
 korl_internal u$ korl_checkCast_i$_to_u$(i$ x)
 {
     korl_assert(x >= 0);

@@ -7,6 +7,7 @@ korl_internal i8  korl_checkCast_u$_to_i8(u$ x);
 korl_internal i16 korl_checkCast_u$_to_i16(u$ x);
 korl_internal i32 korl_checkCast_u$_to_i32(u$ x);
 korl_internal i$  korl_checkCast_u$_to_i$(u$ x);
+korl_internal f32 korl_checkCast_u$_to_f32(u$ x);
 korl_internal u$  korl_checkCast_i$_to_u$(i$ x);
 korl_internal u8  korl_checkCast_i$_to_u8(i$ x);
 korl_internal u16 korl_checkCast_i$_to_u16(i$ x);

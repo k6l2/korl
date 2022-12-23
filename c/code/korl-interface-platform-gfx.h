@@ -11,7 +11,13 @@ typedef Korl_Math_V4u8 Korl_Vulkan_Color4u8;
 typedef u64            Korl_Gfx_DeviceMemoryAllocationHandle;
 korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_TRANSPARENT = {  0,   0,   0,   0};
 korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_RED         = {255,   0,   0, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_GREEN       = {0  , 255,   0, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_GREEN       = {  0, 255,   0, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_BLUE        = {  0,   0, 255, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_YELLOW      = {255, 255,   0, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_CYAN        = {  0, 255, 255, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_MAGENTA     = {255,   0, 255, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_WHITE       = {255, 255, 255, 255};
+korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   0, 255};
 typedef enum Korl_Vulkan_PrimitiveType
 {
     KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,
