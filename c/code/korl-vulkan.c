@@ -705,7 +705,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     createInfoDepthStencil.depthTestEnable  = 0 != pipeline->features.enableDepthTest ? VK_TRUE : VK_FALSE;
     createInfoDepthStencil.depthWriteEnable = 0 != pipeline->features.enableDepthTest ? VK_TRUE : VK_FALSE;
-    createInfoDepthStencil.depthCompareOp   = VK_COMPARE_OP_LESS;
+    createInfoDepthStencil.depthCompareOp   = VK_COMPARE_OP_GREATER;// a depth of 0 => back of clip-space; we only want to accept fragments that have GREATER depth values, as those should be displayed in front
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     createInfoPipeline.stageCount          = korl_arraySize(createInfoShaderStages);
@@ -1134,7 +1134,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
         clearValues[0].color.float32[1] = surfaceContext->frameBeginClearColor.elements[1];
         clearValues[0].color.float32[2] = surfaceContext->frameBeginClearColor.elements[2];
         clearValues[0].color.float32[3] = 1.f;
-        clearValues[1].depthStencil.depth = 1.f;
+        clearValues[1].depthStencil.depth   = 0.f;// 0 => back of the clip-space, 1 => the front
         clearValues[1].depthStencil.stencil = 0;
         KORL_ZERO_STACK(VkRenderPassBeginInfo, beginInfoRenderPass);
         beginInfoRenderPass.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
