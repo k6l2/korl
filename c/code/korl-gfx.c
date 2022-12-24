@@ -1041,6 +1041,10 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
         currentVisibleGlyphOffset += line->visibleCharacters;
     }
 }
+korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context)
+{
+    return context->_modelAabb;
+}
 korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);

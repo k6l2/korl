@@ -1329,12 +1329,11 @@ korl_internal void korl_gui_frameEnd(void)
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
                 ///@TODO: render a different symbol if a window is minimized
-                Korl_Gfx_Batch*const batchWindowTitleIconPiece = 
-                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
-                                                        ,(Korl_Math_V2f32){     aabbSize.x
-                                                                          ,0.1f*aabbSize.y}
-                                                        ,(Korl_Math_V2f32){0.5f, 0.5f}
-                                                        ,context->style.colorButtonWindowTitleBarIcons);
+                Korl_Gfx_Batch*const batchWindowTitleIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
+                                                                                                     ,(Korl_Math_V2f32){     aabbSize.x
+                                                                                                                       ,0.1f*aabbSize.y}
+                                                                                                     ,(Korl_Math_V2f32){0.5f, 0.5f}
+                                                                                                     ,context->style.colorButtonWindowTitleBarIcons);
                 korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece
                                            ,widget->position.x + aabbSize.x/2.f
                                            ,widget->position.y - aabbSize.y/2.f);
@@ -1347,6 +1346,33 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_log(ERROR, "invalid button display: %i", widget->subType.button.display);
                 break;}
             }
+            break;}
+        case KORL_GUI_WIDGET_TYPE_TEXT:{
+            korl_time_probeStart(widget_text);
+            if(widget->subType.text.gfxText)
+            {
+                korl_assert(!widget->subType.text.displayText.data);
+                widget->subType.text.gfxText->modelTranslate = (Korl_Math_V3f32){widget->position.x, widget->position.y, z};
+                korl_gfx_text_draw(widget->subType.text.gfxText, *aabb);
+                const Korl_Math_Aabb2f32 textModelAabb = korl_gfx_text_getModelAabb(widget->subType.text.gfxText);
+                const Korl_Math_V2f32    textAabbSize  = korl_math_aabb2f32_size(textModelAabb);
+                usedWidget->transient.aabbContent.max.x += textAabbSize.x;
+                usedWidget->transient.aabbContent.min.y -= textAabbSize.y;
+            }
+            else
+            {
+                korl_assert(widget->subType.text.displayText.data);
+                korl_assert(!widget->subType.text.gfxText);
+                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
+                korl_gfx_batchSetPosition(batchText, (Korl_Math_V3f32){widget->position.x, widget->position.y, z}.elements, 3);
+                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
+                const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
+                usedWidget->transient.aabbContent.max.x += batchTextAabbSize.x;
+                usedWidget->transient.aabbContent.min.y -= batchTextAabbSize.y;
+            }
+            korl_time_probeStop(widget_text);
             break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
@@ -1628,15 +1654,14 @@ korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 {
-#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     va_list vaList;
     va_start(vaList, textFormat);
-    widget->subType.text.displayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
+    const wchar_t*const stackDisplayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
-#endif
+    widget->subType.text.displayText = KORL_RAW_CONST_UTF16(stackDisplayText);
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {

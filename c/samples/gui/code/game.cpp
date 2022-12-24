@@ -39,7 +39,9 @@ KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 }
 KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 {
-    //@TODO: complete GUI test code
+    ///@TODO: complete GUI test code
+    ///@TODO: test korl_gui_widgetText
+    // korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
     korl_gui_widgetTextFormat(L"orphan widget test");
     korl_gui_windowBegin(L"Test Window", &memory->testWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
         korl_gui_widgetTextFormat(L"Greetings!");
