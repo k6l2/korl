@@ -608,7 +608,8 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
         if(mouseEvent->subType.button.pressed)
         {
-            context->isTopLevelWindowActive = false;
+            context->isTopLevelWindowActive        = false;
+            context->identifierHashWidgetMouseDown = 0;
             /* iterate over all widgets from front=>back */
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
@@ -618,14 +619,14 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                 {
-                    context->isTopLevelWindowActive        = true;// always activate the top-level window no matter what widget is pressed
-                    context->identifierHashWidgetMouseDown = widget->identifierHash;
-                    context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
+                    bool widgetCanMouseDown = false;
+                    bool eventCaptured      = false;
                     switch(widget->type)
                     {
                     case KORL_GUI_WIDGET_TYPE_WINDOW:{
                         korl_assert(!widget->identifierHashParent);// simplification; windows are always top-level (no child windows)
-                        context->identifierHashWidgetDragged = widget->identifierHash;// right now, _only_ windows can be dragged!
+                        if(!context->identifierHashWidgetMouseDown)
+                            context->identifierHashWidgetDragged = widget->identifierHash;// right now, _only_ windows can be dragged!
                         widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
                         korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
                         /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
@@ -652,16 +653,26 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                             // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
                             korl_memory_copy(subTreeEnd, stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
                         }
+                        context->isTopLevelWindowActive = true;
+                        eventCaptured      = true;
+                        widgetCanMouseDown = true;
                         break;}
                     case KORL_GUI_WIDGET_TYPE_TEXT:{
                         break;}
                     case KORL_GUI_WIDGET_TYPE_BUTTON:{
+                        widgetCanMouseDown = true;
                         break;}
                     default:{
                         korl_log(ERROR, "invalid widget type: %i", widget->type);
                         break;}
                     }
-                    break;// for now, all widgets are opaque to mouse button press events
+                    if(widgetCanMouseDown && !context->identifierHashWidgetMouseDown)// we mouse down on _only_ the first widget
+                    {
+                        context->identifierHashWidgetMouseDown = widget->identifierHash;
+                        context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
+                    }
+                    if(eventCaptured)
+                        break;// stop processing widgets when the event is captured
                 }
             }
         }
@@ -1367,8 +1378,8 @@ korl_internal void korl_gui_frameEnd(void)
                 //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
                 korl_gfx_batchSetPosition(batchText, (Korl_Math_V3f32){widget->position.x, widget->position.y, z}.elements, 3);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                const Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
-                const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
+                const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
+                const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 usedWidget->transient.aabbContent.max.x += batchTextAabbSize.x;
                 usedWidget->transient.aabbContent.min.y -= batchTextAabbSize.y;
             }
