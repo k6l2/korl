@@ -211,7 +211,9 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
     }
     switch(uMsg)
     {
+    //KORL-FEATURE-000-000-024: gui/gfx: add DPI-awareness & support; process WM_DPICHANGED messages
     case WM_CREATE:{
+        //KORL-FEATURE-000-000-024: gui/gfx: add DPI-awareness & support; query the monitor the window was created on to determine DPI scale-factor
         korl_assert(context->window.handle == NULL);
         context->window.handle = hWnd;
         /* before the window actually appears on screen, we attempt to load the 
@@ -466,6 +468,9 @@ korl_internal void korl_windows_window_initialize(void)
     windowClass.lpszClassName = _KORL_WINDOWS_WINDOW_CLASS_NAME;
     const ATOM atomWindowClass = RegisterClassEx(&windowClass);
     if(!atomWindowClass) korl_logLastError("RegisterClassEx failed");
+    /* take control of DPI-awareness from the system before creating any windows */
+    DPI_AWARENESS_CONTEXT dpiContextOld = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2/* DPI awareness per monitor V2 allows the application to automatically scale the non-client region for us (title bar, etc...) */);
+    korl_assert(dpiContextOld != NULL);
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {
