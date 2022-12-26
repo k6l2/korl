@@ -42,17 +42,19 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
     ///@TODO: complete GUI test code
     ///@TODO: test korl_gui_widgetText
     // korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
-    korl_gui_widgetTextFormat(L"orphan widget test");
+    // korl_gui_widgetTextFormat(L"orphan widget test");
     korl_gui_windowBegin(L"Test Window", &memory->testWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
         korl_gui_widgetTextFormat(L"Greetings!");
+        korl_gui_realignY();
+        korl_gui_widgetButtonFormat(L"do nothing");
     korl_gui_windowEnd();
-    korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
-        if(!memory->testWindowOpen && korl_gui_widgetButtonFormat(L"show test window"))
-            memory->testWindowOpen = true;
-    korl_gui_windowEnd();
-    bool isNoTitlebarWindowOpen = memory->testWindowOpen;
-    korl_gui_windowBegin(L"Test Window NO-TITLEBAR", &isNoTitlebarWindowOpen, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
-    korl_gui_windowEnd();
+    // korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
+    //     if(!memory->testWindowOpen && korl_gui_widgetButtonFormat(L"show test window"))
+    //         memory->testWindowOpen = true;
+    // korl_gui_windowEnd();
+    // bool isNoTitlebarWindowOpen = memory->testWindowOpen;
+    // korl_gui_windowBegin(L"Test Window NO-TITLEBAR", &isNoTitlebarWindowOpen, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+    // korl_gui_windowEnd();
     return memory->continueRunning;
 }
 #include "korl-math.c"

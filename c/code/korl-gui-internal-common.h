@@ -14,9 +14,9 @@ korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
 typedef struct _Korl_Gui_MouseEvent
 {
     enum
-        { _KORL_GUI_MOUSE_EVENT_TYPE_MOVE
-        , _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON
-        , _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL
+        {_KORL_GUI_MOUSE_EVENT_TYPE_MOVE
+        ,_KORL_GUI_MOUSE_EVENT_TYPE_BUTTON
+        ,_KORL_GUI_MOUSE_EVENT_TYPE_WHEEL
     } type;
     union
     {
@@ -44,21 +44,8 @@ typedef struct _Korl_Gui_MouseEvent
     } subType;
 } _Korl_Gui_MouseEvent;
 #if 0//@TODO: recycle
-typedef enum _Korl_Gui_SpecialWidgetFlags
-{
-    KORL_GUI_SPECIAL_WIDGET_FLAGS_NONE         = 0,
-    KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE  = 1 << 0,
-    KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE   = 1 << 1,
-    KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X  = 1 << 2,
-    KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y  = 1 << 3,
-} _Korl_Gui_SpecialWidgetFlags;
 typedef struct _Korl_Gui_Window
 {
-    _Korl_Gui_SpecialWidgetFlags specialWidgetFlags;// flags raised indicate the presence of special widgets
-    _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsPressed;// flags are raised when the corresponding special widget is pressed
-    f32 hiddenContentPreviousSizeY;
-    Korl_Math_V2f32 size;
-    u32 styleFlags;// uses the Korl_Gui_Window_Style_Flags enum
     Korl_Math_Aabb2f32 cachedContentAabb;// "content" refers to the accumulation of all widgets contained in this window
     Korl_Math_V2f32 cachedAvailableContentSize;
     f32 cachedScrollBarLengthX;
@@ -82,10 +69,9 @@ typedef struct _Korl_Gui_Widget
     Korl_Math_V2f32 size;
     bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
     bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
-#if 0//@TODO: recycle
     bool realignY;
+#if 0//@TODO: recycle
     Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
-    bool cachedIsInteractive;
 #endif
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
@@ -191,19 +177,9 @@ typedef struct _Korl_Gui_Context
         Korl_Math_V2f32 parentAnchor;
         Korl_Math_V2f32 parentOffset;
     } transientNextWidgetModifiers;
-#if 0//@TODO: recycle
     i16 currentWidgetIndex;
-    /** Windows are stored from back=>front.  In other words, the window at 
-     * index \c 0 will be drawn behind all other windows. */
-    _Korl_Gui_Window* stbDaWindows;
-    bool isWindowResizing;// only raised when we click a window's resize edge
-    Korl_Math_V2f32 mouseDownOffsetSpecialWidget;
+#if 0//@TODO: recycle
     u64 identifierHashMouseDownWidget;
-    bool isMouseHovering;
-    _Korl_Gui_SpecialWidgetFlags specialWidgetFlagsMouseDown;
-    u64 identifierHashMouseHoveredWidget;
-    u64 identifierHashMouseHoveredWindow;
-    Korl_Math_V2f32 mouseHoverPosition;
 #endif
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;

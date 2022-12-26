@@ -468,9 +468,11 @@ korl_internal void korl_windows_window_initialize(void)
     windowClass.lpszClassName = _KORL_WINDOWS_WINDOW_CLASS_NAME;
     const ATOM atomWindowClass = RegisterClassEx(&windowClass);
     if(!atomWindowClass) korl_logLastError("RegisterClassEx failed");
+#if 0// KORL-FEATURE-000-000-024: gui/gfx: add DPI-awareness & support
     /* take control of DPI-awareness from the system before creating any windows */
     DPI_AWARENESS_CONTEXT dpiContextOld = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2/* DPI awareness per monitor V2 allows the application to automatically scale the non-client region for us (title bar, etc...) */);
     korl_assert(dpiContextOld != NULL);
+#endif
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {

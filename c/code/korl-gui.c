@@ -16,7 +16,8 @@ typedef struct _Korl_Gui_UsedWidget
     } dagMetaData;
     struct
     {
-        Korl_Math_V2f32 childWidgetCursor;
+        Korl_Math_V2f32 childWidgetCursor;// used to determine where the next child widget will be placed with respect to this widget's placement
+        f32 currentWidgetRowHeight;
         Korl_Math_Aabb2f32 aabb;// used for collision detection at the top of the next frame; we need to do this because the widget's AABB must first be calculated based on its contents, and then it must be clipped to all parent widget AABBs so the user can't click on it "out of bounds"
         Korl_Math_Aabb2f32 aabbContent;// an accumulation of all content within this widget, including all content that lies outside of `aabb`; this is very important for performing auto-resize logic
         bool isFirstFrame;// storing this value during widget logic at the end of frame allows us to properly resize window widgets recursively without having to do an extra separate loop to clear all the widget flags that hold the same value
@@ -297,18 +298,6 @@ korl_internal void _korl_gui_processWidgetGraphics(_Korl_Gui_Window*const window
             break;}
         }
         window->cachedContentAabb = korl_math_aabb2f32_union(window->cachedContentAabb, widget->cachedAabb);
-        KORL_MATH_ASSIGN_CLAMP_MIN(currentWidgetRowHeight, widget->cachedAabb.max.y - widget->cachedAabb.min.y);
-        if(widget->realignY)
-        {
-            /* do nothing to the widgetCursor Y position, but advance the X position */
-            widgetCursor.x += widget->cachedAabb.max.x - widget->cachedAabb.min.x;
-        }
-        else
-        {
-            widgetCursor.y -= currentWidgetRowHeight;                   // advance to the next Y position below this widget
-            widgetCursor.x  = window->position.x - contentCursorOffsetX;// restore the X position to the value before this loop
-            currentWidgetRowHeight = 0;// we're starting a new horizontal row of widgets; reset the AABB.y size accumulator
-        }
     }
 }
 #endif
@@ -389,9 +378,9 @@ widgetIndexValid:
     widget = &context->stbDaWidgets[widgetIndex];
     korl_assert(widget->type == widgetType);
     widget->usedThisFrame = true;
-    // widget->realignY      = false;//@TODO: recycle
+    widget->realignY      = false;
     widget->orderIndex    = widgetDirectParent->transientChildCount++;
-    // context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);//@TODO: recycle
+    context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);
     /* disable this widget if any parent widgets in this hierarchy is unused */
     for(const i16* parentIndex = context->stbDaWidgetParentStack; parentIndex < stbDaWidgetParentStackEnd; parentIndex++)
         if(!context->stbDaWidgets[*parentIndex].usedThisFrame)
@@ -444,9 +433,7 @@ korl_internal void _korl_gui_frameBegin(void)
     context->stbDaWidgetParentStack = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 16);
     _korl_gui_resetTransientNextWidgetModifiers();
-#if 0//@TODO: recycle
     context->currentWidgetIndex = -1;
-#endif
 }
 korl_internal void _korl_gui_setNextWidgetSize(Korl_Math_V2f32 size)
 {
@@ -845,9 +832,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             }
             newWindow->subType.window.titleBarButtonCount++;
         }
-#if 0//@TODO: recycle
-    context->currentWidgetIndex = -1;
-#endif
+        context->currentWidgetIndex = -1;
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
@@ -1070,6 +1055,7 @@ korl_internal void korl_gui_frameEnd(void)
                 special logic right now on this widget, such as auto-resizing to 
                 fit all the content! */
             _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(arrpop(stbDaUsedWidgetStack));
+        _Korl_Gui_UsedWidget*const usedWidgetParent = arrlenu(stbDaUsedWidgetStack) ? arrlast(stbDaUsedWidgetStack) : NULL;
         const _Korl_Gui_Widget*const widgetParent = arrlenu(stbDaUsedWidgetStack) ? arrlast(stbDaUsedWidgetStack)->widget : NULL;// @TODO: make this the UsedWidget, and remove the `arrlast(stbDaUsedWidgetStack)` code occurances below
         /* determine where the widget's origin will be in world-space */
         const bool useParentWidgetCursor = korl_math_isNanf32(widget->parentOffset.x) || korl_math_isNanf32(widget->parentOffset.y);
@@ -1080,7 +1066,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                              ,(Korl_Math_V2f32){ widgetParent->size.x
                                                                                                                ,-widgetParent->size.y/*inverted, since +Y is UP, & the parent's position is its top-left corner*/}));
             if(useParentWidgetCursor)
-                widget->position = korl_math_v2f32_add(parentAnchor, arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor);
+                widget->position = korl_math_v2f32_add(parentAnchor, usedWidgetParent->transient.childWidgetCursor);
             else
                 widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
             ///@TODO: figure out why the minimize button on windows gets wonky AABB calculation when the window is resized to be small in the X dimension
@@ -1104,7 +1090,7 @@ korl_internal void korl_gui_frameEnd(void)
         usedWidget->transient.aabb = korl_math_aabb2f32_fromPoints(widget->position.x                 , widget->position.y - widget->size.y
                                                                   ,widget->position.x + widget->size.x, widget->position.y);
         if(widgetParent)
-            usedWidget->transient.aabb = korl_math_aabb2f32_intersect(usedWidget->transient.aabb, arrlast(stbDaUsedWidgetStack)->transient.aabb);
+            usedWidget->transient.aabb = korl_math_aabb2f32_intersect(usedWidget->transient.aabb, usedWidgetParent->transient.aabb);
         const Korl_Math_V2f32 aabbSize = korl_math_aabb2f32_size(usedWidget->transient.aabb);
         const Korl_Math_Aabb2f32*const aabb = &usedWidget->transient.aabb;// for convenience accessing this data in widget code below
         usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x, widget->position.y);// initialize the content AABB to be empty in the top-left corner; this will grow as each widget processes its own content & its child widgets recursively
@@ -1314,9 +1300,9 @@ korl_internal void korl_gui_frameEnd(void)
                 batchTextAabb = korl_math_aabb2f32_fromPoints(aabb->min.x, aabb->max.y, aabb->min.x + buttonAabbSizeX, aabb->max.y - buttonAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
                 //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
-                korl_gfx_batchSetPosition2d(batchText, 
-                                            aabb->min.x + context->style.widgetButtonLabelMargin, 
-                                            aabb->max.y - context->style.widgetButtonLabelMargin);
+                korl_gfx_batchSetPosition2d(batchText
+                                           ,aabb->min.x + context->style.widgetButtonLabelMargin
+                                           ,aabb->max.y - context->style.widgetButtonLabelMargin);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
@@ -1398,8 +1384,19 @@ korl_internal void korl_gui_frameEnd(void)
         /* adjust the parent widget's cursor to the "next line" */
         if(widgetParent && useParentWidgetCursor)
         {
-            arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor.x  = 0;
-            arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor.y -= widget->size.y;
+            const Korl_Math_V2f32 contentSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
+            KORL_MATH_ASSIGN_CLAMP_MIN(usedWidgetParent->transient.currentWidgetRowHeight, contentSize.y);
+            if(widget->realignY)
+            {
+                /* do nothing to the widgetCursor Y position, but advance the X position */
+                usedWidgetParent->transient.childWidgetCursor.x += contentSize.x;
+            }
+            else
+            {
+                usedWidgetParent->transient.childWidgetCursor.x    = 0;// restore the X cursor position
+                usedWidgetParent->transient.childWidgetCursor.y   -= usedWidgetParent->transient.currentWidgetRowHeight;// advance to the next Y position below this widget
+                usedWidgetParent->transient.currentWidgetRowHeight = 0;// we're starting a new horizontal row of widgets; reset the AABB.y size accumulator
+            }
         }
         /* push this widget onto the parent stack */
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, usedWidget);
@@ -1655,13 +1652,11 @@ korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex)
 }
 korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 {
-#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     if(   context->currentWidgetIndex < 0
        || context->currentWidgetIndex >= korl_checkCast_u$_to_i$(arrlenu(context->stbDaWidgets)))
         return;// silently do nothing if user has not created a widget yet for the current window
     context->stbDaWidgets[context->currentWidgetIndex].realignY = true;
-#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 {
@@ -1730,20 +1725,16 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
 }
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
-#if 0//@TODO: recycle
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_gui_context, sizeof(_korl_gui_context));
-#endif
 }
 korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
 {
-#if 0//@TODO: recycle
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
     if(!ReadFile(hFile, &_korl_gui_context, sizeof(_korl_gui_context), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
     }
-#endif
     return true;
 }
