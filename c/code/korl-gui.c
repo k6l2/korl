@@ -1387,10 +1387,8 @@ korl_internal void korl_gui_frameEnd(void)
             const Korl_Math_V2f32 contentSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
             KORL_MATH_ASSIGN_CLAMP_MIN(usedWidgetParent->transient.currentWidgetRowHeight, contentSize.y);
             if(widget->realignY)
-            {
                 /* do nothing to the widgetCursor Y position, but advance the X position */
                 usedWidgetParent->transient.childWidgetCursor.x += contentSize.x;
-            }
             else
             {
                 usedWidgetParent->transient.childWidgetCursor.x    = 0;// restore the X cursor position
@@ -1645,10 +1643,8 @@ korl_internal void korl_gui_frameEnd(void)
 }
 korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex)
 {
-#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     context->loopIndex = loopIndex;
-#endif
 }
 korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 {
