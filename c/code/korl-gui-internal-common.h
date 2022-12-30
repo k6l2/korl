@@ -75,6 +75,7 @@ typedef struct _Korl_Gui_Widget
 #endif
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
+        ,KORL_GUI_WIDGET_TYPE_SCROLL_AREA
         ,KORL_GUI_WIDGET_TYPE_TEXT
         ,KORL_GUI_WIDGET_TYPE_BUTTON
     } type;
@@ -148,7 +149,7 @@ typedef struct _Korl_Gui_Context
      * - help ensure user calls \c korl_gui_windowBegin/End the correct # of 
      *   times */
     i16* stbDaWidgetParentStack;// reallocated from the stack allocator each frame; each element represents an index into the stbDaWidgets collection
-    /** We don't need this to be a member of \c _Korl_Gui_Window because we 
+    /** We don't need this to be a member of window widgets because we 
      * already know:  
      * - there will only ever be ONE active window
      * - the active window will ALWAYS be the top level window */

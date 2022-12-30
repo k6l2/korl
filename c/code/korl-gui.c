@@ -833,10 +833,12 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             newWindow->subType.window.titleBarButtonCount++;
         }
         context->currentWidgetIndex = -1;
+        ///@TODO: add a KORL_GUI_WIDGET_TYPE_SCROLL_AREA child widget to stbDaWidgetParentStack
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
+    ///@TODO: pop the SCROLL_AREA child widget from stbDaWidgetParentStack if we need to
     korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 0);
 }
@@ -1045,7 +1047,7 @@ korl_internal void korl_gui_frameEnd(void)
     {
         const u$ w = usedWidget - context->stbDaUsedWidgets;// simple index into the used widget array, so we don't have to keep calculating this value for Z placement of graphics components
         const f32 z = -korl_checkCast_u$_to_f32(arrlen(context->stbDaUsedWidgets) - w);// convert index to depth; remember, the widgets with a lower index appear _behind_ successive widgets
-        _Korl_Gui_Widget*const widget = usedWidget->widget; 
+        _Korl_Gui_Widget*const widget = usedWidget->widget;
         Korl_Math_V2f32 childWidgetCursor = KORL_MATH_V2F32_ZERO;// _not_ used to determine widget's position; this will determine the positions of widget's children in later iterations
         /* pop widgets from the stack until this widget's parent is on the top (or there stack is empty);
             we can do this because context->stbDaUsedWidgets should have been sorted topologically */
