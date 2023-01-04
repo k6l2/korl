@@ -377,6 +377,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widge
 widgetIndexValid:
     widget = &context->stbDaWidgets[widgetIndex];
     korl_assert(widget->type == widgetType);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, korl_checkCast_u$_to_i16(widgetIndex));
     widget->usedThisFrame = true;
     widget->realignY      = false;
     widget->orderIndex    = widgetDirectParent->transientChildCount++;
@@ -644,6 +645,8 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                         eventCaptured      = true;
                         widgetCanMouseDown = true;
                         break;}
+                    case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+                        break;}
                     case KORL_GUI_WIDGET_TYPE_TEXT:{
                         break;}
                     case KORL_GUI_WIDGET_TYPE_BUTTON:{
@@ -686,6 +689,8 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     switch(clickedWidget->type)
                     {
                     case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                        break;}
+                    case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
                         break;}
                     case KORL_GUI_WIDGET_TYPE_TEXT:{
                         break;}
@@ -739,10 +744,12 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         internal "debug" window.  Otherwise, we are in an invalid state. */
     if(arrlen(context->stbDaWidgetParentStack) > 0)
     {
-        korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);// ASSUMPTION: we can't nest windows inside other windows
-        korl_assert(context->stbDaWidgets[arrlast(context->stbDaWidgetParentStack)].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
+        korl_assert(arrlen(context->stbDaWidgetParentStack) > 0);
+        const _Korl_Gui_Widget*const rootWidget = context->stbDaWidgets + context->stbDaWidgetParentStack[0];
+        korl_assert(rootWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
+        korl_assert(rootWidget->identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
         if(identifierHash != _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH)
-            korl_gui_windowEnd();// end the orphan widget window again, if we are making a different window
+            korl_gui_windowEnd();// end the orphan widget window again, if we are making a different window; this is obviously weird, but theoretically the orphan widget window's SCROLL_AREA widget will be obtained & the widget hierarchy will be correctly maintained since we are using the same exact memory location for the SCROLL_AREA's `label` parameter (hopefully)
     }
     /* check to see if this identifier is already registered */
     const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
@@ -833,14 +840,20 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             newWindow->subType.window.titleBarButtonCount++;
         }
         context->currentWidgetIndex = -1;
-        ///@TODO: add a KORL_GUI_WIDGET_TYPE_SCROLL_AREA child widget to stbDaWidgetParentStack
+        /* add scroll area if this window allows it */
+        if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
+            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE"));
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    ///@TODO: pop the SCROLL_AREA child widget from stbDaWidgetParentStack if we need to
+    korl_assert(arrlen(context->stbDaWidgetParentStack) >= 0);
+    _Korl_Gui_Widget*const rootWidget = context->stbDaWidgets + context->stbDaWidgetParentStack[0];
+    korl_assert(rootWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
+    if(rootWidget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
+        korl_gui_widgetScrollAreaEnd();
     korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 0);
+    arrpop(context->stbDaWidgetParentStack);
 }
 korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition)
 {
@@ -990,7 +1003,7 @@ korl_internal void korl_gui_frameEnd(void)
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetsTempCopy, arrlenu(context->stbDaUsedWidgets));
     korl_memory_copy(stbDaUsedWidgetsTempCopy, context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets)*sizeof(*context->stbDaUsedWidgets));
     const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsTempCopyEnd = stbDaUsedWidgetsTempCopy + arrlen(stbDaUsedWidgetsTempCopy);
-    // PERFORMANCE: this can be optimized from O(N^2) to O(N) if we carefully remove visited UsedWidget entries from the temp copy list without invalidating iterators in the parent loop
+    // @TODO: PERFORMANCE; this can be optimized from O(N^2) to O(N) if we carefully remove visited UsedWidget entries from the temp copy list without invalidating iterators in the parent loop
     for(_Korl_Gui_UsedWidget* usedWidgetTempCopy = stbDaUsedWidgetsTempCopy; usedWidgetTempCopy < stbDaUsedWidgetsTempCopyEnd; usedWidgetTempCopy++)
     {
         if(usedWidgetTempCopy->widget->identifierHashParent)
@@ -1028,7 +1041,7 @@ korl_internal void korl_gui_frameEnd(void)
         {
             const f32 position = i*20.f;
             korl_gfx_batchRectangleSetColor(debugBatch, colors[i%korl_arraySize(colors)]);
-            korl_gfx_batchSetPosition(debugBatch, (Korl_Math_V3f32){position, position, -KORL_C_CAST(f32, i)}.elements, 3);
+            korl_gfx_batchSetPosition(debugBatch, (f32[]){position, position, -KORL_C_CAST(f32, i)}, 3);
             korl_gfx_batch(debugBatch, KORL_GFX_BATCH_FLAGS_NONE);
         }
     }
@@ -1045,7 +1058,7 @@ korl_internal void korl_gui_frameEnd(void)
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, 16);
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
     {
-        const u$ w = usedWidget - context->stbDaUsedWidgets;// simple index into the used widget array, so we don't have to keep calculating this value for Z placement of graphics components
+        const u$  w = usedWidget - context->stbDaUsedWidgets;// simple index into the used widget array, so we don't have to keep calculating this value for Z placement of graphics components
         const f32 z = -korl_checkCast_u$_to_f32(arrlen(context->stbDaUsedWidgets) - w);// convert index to depth; remember, the widgets with a lower index appear _behind_ successive widgets
         _Korl_Gui_Widget*const widget = usedWidget->widget;
         Korl_Math_V2f32 childWidgetCursor = KORL_MATH_V2F32_ZERO;// _not_ used to determine widget's position; this will determine the positions of widget's children in later iterations
@@ -1134,14 +1147,14 @@ korl_internal void korl_gui_frameEnd(void)
             }
             korl_time_probeStart(draw_window_panel);
             Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, aabbSize, ORIGIN_RATIO_UPPER_LEFT, windowColor);
-            korl_gfx_batchSetPosition(batchWindowPanel, (Korl_Math_V3f32){widget->position.x, widget->position.y, z}.elements, 3);
+            korl_gfx_batchSetPosition(batchWindowPanel, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAGS_NONE);
             if(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
                 childWidgetCursor = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
                 korl_time_probeStart(title_bar);
                 /* draw the window title bar */
-                korl_gfx_batchSetPosition(batchWindowPanel, (Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.1f}.elements, 3);
+                korl_gfx_batchSetPosition(batchWindowPanel, (f32[]){widget->position.x, widget->position.y, z + 0.1f}, 3);
                 korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY});
                 korl_gfx_batchRectangleSetColor(batchWindowPanel, titleBarColor);// conditionally highlight the title bar color
                 korl_gfx_batchSetVertexColor(batchWindowPanel, 0, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
@@ -1157,9 +1170,9 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                     ,context->style.colorTextOutline);
                 const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
                 korl_gfx_batchSetPosition(batchWindowTitleText
-                                         ,(Korl_Math_V3f32){widget->position.x
-                                                           ,widget->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f
-                                                           ,z + 0.2f}.elements, 3);
+                                         ,(f32[]){widget->position.x
+                                                 ,widget->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f
+                                                 ,z + 0.2f}, 3);
                 korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAGS_NONE);
                 Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchWindowTitleText);// model-space, needs to be transformed to world-space
                 const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
@@ -1219,7 +1232,7 @@ korl_internal void korl_gui_frameEnd(void)
                 batchEdgeHover->_vertexColors[3] = context->style.colorWindowBorderResize;
                 batchEdgeHover->_vertexColors[4] = colorBorder;
                 batchEdgeHover->_vertexColors[5] = context->style.colorWindowBorderResize;
-                korl_gfx_batchSetPosition(batchEdgeHover, (Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}.elements, 3);
+                korl_gfx_batchSetPosition(batchEdgeHover, (f32[]){windowMiddle.x, windowMiddle.y, z}, 3);
                 f32 edgeHoverRadians = 0.f;
                 if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
                 {
@@ -1251,7 +1264,7 @@ korl_internal void korl_gui_frameEnd(void)
                 pixel outside of a rectangle), we simply use the depth buffer to draw a giant rectangle to fill the 
                 scissor rectangle placed behind (greater -Z magnitude) everything that was just drawn */
             Korl_Gfx_Batch*const batchBorder = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, korl_math_v2f32_multiplyScalar(aabbSize, 2), (Korl_Math_V2f32){0.5f, 0.5f}, colorBorder);
-            korl_gfx_batchSetPosition(batchBorder, (Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}.elements, 3);
+            korl_gfx_batchSetPosition(batchBorder, (f32[]){windowMiddle.x, windowMiddle.y, z}, 3);
             korl_gfx_batch(batchBorder, KORL_GFX_BATCH_FLAGS_NONE);
             korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
@@ -1364,14 +1377,30 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_assert(!widget->subType.text.gfxText);
                 Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
                 //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
-                korl_gfx_batchSetPosition(batchText, (Korl_Math_V3f32){widget->position.x, widget->position.y, z}.elements, 3);
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y, z}, 3);
+                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);
                 const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
                 const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 usedWidget->transient.aabbContent.max.x += batchTextAabbSize.x;
                 usedWidget->transient.aabbContent.min.y -= batchTextAabbSize.y;
             }
             korl_time_probeStop(widget_text);
+            break;}
+        case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+            /* to determine the content size of the scroll area, we want to attempt to "fill" the remaining available content area of our parent */
+            korl_assert(usedWidgetParent);
+            usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
+                                                                             ,usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x
+                                                                             ,usedWidgetParent->widget->position.y - usedWidgetParent->widget->size.y);
+            //@TODO: comment out this debug code when we're done with SCROLL_AREA widgets
+            #if KORL_DEBUG// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
+            {
+                Korl_Gfx_Batch*const batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, (Korl_Vulkan_Color4u8){255,0,0,128});
+                batch->_vertexColors[1] = (Korl_Vulkan_Color4u8){0,255,0,128};
+                korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
+                korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+            }
+            #endif
             break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
@@ -1401,7 +1430,7 @@ korl_internal void korl_gui_frameEnd(void)
         /* push this widget onto the parent stack */
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, usedWidget);
         arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor = childWidgetCursor;
-        /* reset theses values for the next frame */
+        /* reset these values for the next frame */
         widget->usedThisFrame       = false;// this can actually be done at any time during this loop, but might as well put it here ¯\_(ツ)_/¯
         widget->transientChildCount = 0;
         /* normalize root widget orderIndex values; _must_ be done _after_ processing widget logic! */
@@ -1666,6 +1695,9 @@ korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
     const wchar_t*const stackDisplayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
     widget->subType.text.displayText = KORL_RAW_CONST_UTF16(stackDisplayText);
+    /* these widgets will not support children, so we must pop widget from the parent stack */
+    const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
+    korl_assert(widgetIndex == widget - context->stbDaWidgets);
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
@@ -1719,7 +1751,25 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     }
     const u8 resultActuationCount = widget->subType.button.actuationCount;
     widget->subType.button.actuationCount = 0;
+    /* these widgets will not support children, so we must pop widget from the parent stack */
+    const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
+    korl_assert(widgetIndex == widget - context->stbDaWidgets);
+    /**/
     return resultActuationCount;
+}
+korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    bool newAllocation = false;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_AREA, &newAllocation);
+}
+korl_internal void korl_gui_widgetScrollAreaEnd(void)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    korl_assert(arrlenu(context->stbDaWidgetParentStack) > 0);
+    const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
+    const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
+    korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
 }
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

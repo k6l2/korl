@@ -178,7 +178,8 @@ typedef struct _Korl_Gui_Context
         Korl_Math_V2f32 parentAnchor;
         Korl_Math_V2f32 parentOffset;
     } transientNextWidgetModifiers;
-    i16 currentWidgetIndex;
+    /// @TODO: could we get rid of currentWidgetIndex in favor of just adding a transient flag to transientNextWidgetModifiers ?  It seems like this would be more robust, considering that widgets should be able to spawn child widgets when they are spawned, so without this we have the potential in the future to accidentally set the realignY flag of one of the last spawned widget's child widgets
+    i16 currentWidgetIndex;// used to modify properties of the last widget created via _korl_gui_getWidget; example: when korl_gui_realignY is called, we set a special flag in the last widget so that 
 #if 0//@TODO: recycle
     u64 identifierHashMouseDownWidget;
 #endif

@@ -8,11 +8,11 @@
 - using the widget DAG, we can make children of the scroll-area widget be affected by the scroll bars, 
   while widgets that are not children of the scroll-area are not accessible if the window is too small
 
-[ ] create a scroll area widget
-[ ] make windows with the KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE style automatically spawn a scroll area
-[ ] ensure that when a window ends, the scroll area widget is also popped off the widget parent stack
-[ ] to determine the content size of the scroll area widget, attempt to fill the full remaining available content AABB of our parent
-[ ] ensure that all widget logic so far is unaffected by this change
+[x] create a scroll area widget
+[x] make windows with the KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE style automatically spawn a scroll area
+[x] ensure that when a window ends, the scroll area widget is also popped off the widget parent stack
+[x] to determine the content size of the scroll area widget, attempt to fill the full remaining available content AABB of our parent
+[x] ensure that all widget logic so far is unaffected by this change
 
 [ ] if the user is hovering over the scroll area, we need to make mouse scroll wheel events modify the scroll area widget's child widget cursor (shift the y component)
 [ ] shift + mouse scroll wheel => horizontal scrolling of the widget's contents (shift the childWidgetCursor x component)

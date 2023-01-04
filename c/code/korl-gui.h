@@ -27,6 +27,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText);
  * since the previous frame.  If the button was actuated more times than the max 
  * value of the return type, those actuations are not counted. */
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat);
+korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label);
+korl_internal void korl_gui_widgetScrollAreaEnd(void);
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 
