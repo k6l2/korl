@@ -17,8 +17,9 @@ typedef struct _Korl_Gui_UsedWidget
     struct
     {
         Korl_Math_V2f32 childWidgetCursor;// used to determine where the next child widget will be placed with respect to this widget's placement
+        Korl_Math_V2f32 childWidgetCursorOrigin;// offset relative to this widget's origin
         f32 currentWidgetRowHeight;
-        Korl_Math_Aabb2f32 aabb;// used for collision detection at the top of the next frame; we need to do this because the widget's AABB must first be calculated based on its contents, and then it must be clipped to all parent widget AABBs so the user can't click on it "out of bounds"
+        Korl_Math_Aabb2f32 aabb;// used for collision detection at the top of the next frame; we need to do this because the widget's AABB must first be calculated based on its contents, and then it must be clipped to all parent widget AABBs so the user can't click on it "out of bounds"; IMPORTANT: do _NOT_ use this value for drawing widget content, as it will not accurately represent where the real widget placement is in world-space (this AABB is only useful for collision-detection purposes); IMPORTANT: do _NOT_ calculate the next frame's widget placement with this value except in very specific scenarios (like WINDOW widgets), as this value is subject to clipping applied by all the widget's parents recursively
         Korl_Math_Aabb2f32 aabbContent;// an accumulation of all content within this widget, including all content that lies outside of `aabb`; this is very important for performing auto-resize logic
         bool isFirstFrame;// storing this value during widget logic at the end of frame allows us to properly resize window widgets recursively without having to do an extra separate loop to clear all the widget flags that hold the same value
     } transient;// this data is only used/valid at the end of the frame, when we need to process the list of all UsedWidgets that have been accumulated during the frame
@@ -47,6 +48,7 @@ typedef struct _Korl_Gui_WidgetMap
     #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
 #endif
 #include "sort.h"
+/**/
 #if KORL_DEBUG
     // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
 #endif
@@ -412,6 +414,8 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
     _Korl_Gui_Context*const context = &_korl_gui_context;
     switch(widget->type)
     {
+    case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+        break;}
     case KORL_GUI_WIDGET_TYPE_TEXT:{
         // raw text is stored in the stack allocator each frame; no need to free it here
         if(widget->subType.text.gfxText)
@@ -710,6 +714,42 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
         }
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL:{
+        /* iterate over all widgets from front=>back */
+        for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+        {
+            _Korl_Gui_Widget*const widget = usedWidget->widget;
+            Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
+            if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+            {
+                bool eventCaptured = false;// when this is set, we stop iterating over widgets & end the input event
+                switch(widget->type)
+                {
+                case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                    eventCaptured = true;
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+                    switch(mouseEvent->subType.wheel.axis)
+                    {
+                    case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_X:{
+                        widget->subType.scrollArea.contentOffset.x += mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
+                        break;}
+                    case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y:{
+                        widget->subType.scrollArea.contentOffset.y += mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
+                        break;}
+                    }
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_TEXT:{
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_BUTTON:{
+                    break;}
+                default:{
+                    korl_log(ERROR, "invalid widget type: %i", widget->type);
+                    break;}
+                }
+                if(eventCaptured)
+                    break;// stop processing widgets when the event is captured
+            }
+        }
         break;}
     }
 }
@@ -888,14 +928,15 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
         /* if a WINDOW widget just finished its first frame, auto-size it to fit all of its contents */
         if(usedWidget->transient.isFirstFrame)
             usedWidget->transient.aabb = usedWidget->transient.aabbContent;
+        usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabb);
         break;}
     default:{
-        /* for all other types of widgets, we just _always_ resize the AABB to fit the content */
-        usedWidget->transient.aabb = usedWidget->transient.aabbContent;
+        /* for all other types of widgets, use the updated content AABB to determine 
+            the widget's up-to-date size; the size we obtain here will be used to 
+            initialize the transient `aabb` at the end of the next frame */
+        usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
         break;}
     }
-    /* use the updated AABB to determine the widget's up-to-date size */
-    usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabb);
 }
 korl_internal void korl_gui_frameEnd(void)
 {
@@ -904,8 +945,10 @@ korl_internal void korl_gui_frameEnd(void)
         to a valid id at this point is if the user is making orphan widgets. */
     if(arrlen(context->stbDaWidgetParentStack) > 0)
     {
-        korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);// ASSUMPTION: we can't nest windows inside other windows
-        korl_assert(context->stbDaWidgets[arrlast(context->stbDaWidgetParentStack)].identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
+        korl_assert(arrlen(context->stbDaWidgetParentStack) > 0);
+        const _Korl_Gui_Widget*const rootWidget = context->stbDaWidgets + context->stbDaWidgetParentStack[0];
+        korl_assert(rootWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
+        korl_assert(rootWidget->identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
         korl_gui_windowEnd();
     }
     /* Initial loop over _all_ widgets to perform the following tasks: 
@@ -1061,7 +1104,7 @@ korl_internal void korl_gui_frameEnd(void)
         const u$  w = usedWidget - context->stbDaUsedWidgets;// simple index into the used widget array, so we don't have to keep calculating this value for Z placement of graphics components
         const f32 z = -korl_checkCast_u$_to_f32(arrlen(context->stbDaUsedWidgets) - w);// convert index to depth; remember, the widgets with a lower index appear _behind_ successive widgets
         _Korl_Gui_Widget*const widget = usedWidget->widget;
-        Korl_Math_V2f32 childWidgetCursor = KORL_MATH_V2F32_ZERO;// _not_ used to determine widget's position; this will determine the positions of widget's children in later iterations
+        Korl_Math_V2f32 childWidgetCursorOffset = KORL_MATH_V2F32_ZERO;// _not_ used to determine widget's position; this will determine the positions of widget's children in later iterations
         /* pop widgets from the stack until this widget's parent is on the top (or there stack is empty);
             we can do this because context->stbDaUsedWidgets should have been sorted topologically */
         while(arrlenu(stbDaUsedWidgetStack) && arrlast(stbDaUsedWidgetStack)->widget->identifierHash != widget->identifierHashParent)
@@ -1081,7 +1124,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                              ,(Korl_Math_V2f32){ widgetParent->size.x
                                                                                                                ,-widgetParent->size.y/*inverted, since +Y is UP, & the parent's position is its top-left corner*/}));
             if(useParentWidgetCursor)
-                widget->position = korl_math_v2f32_add(parentAnchor, usedWidgetParent->transient.childWidgetCursor);
+                widget->position = korl_math_v2f32_add(parentAnchor, korl_math_v2f32_add(usedWidgetParent->transient.childWidgetCursorOrigin, usedWidgetParent->transient.childWidgetCursor));
             else
                 widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
             ///@TODO: figure out why the minimize button on windows gets wonky AABB calculation when the window is resized to be small in the X dimension
@@ -1107,7 +1150,6 @@ korl_internal void korl_gui_frameEnd(void)
         if(widgetParent)
             usedWidget->transient.aabb = korl_math_aabb2f32_intersect(usedWidget->transient.aabb, usedWidgetParent->transient.aabb);
         const Korl_Math_V2f32 aabbSize = korl_math_aabb2f32_size(usedWidget->transient.aabb);
-        const Korl_Math_Aabb2f32*const aabb = &usedWidget->transient.aabb;// for convenience accessing this data in widget code below
         usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x, widget->position.y);// initialize the content AABB to be empty in the top-left corner; this will grow as each widget processes its own content & its child widgets recursively
         /* prepare to draw all the widget's contents by cutting out a scissor 
             region the size of the widget, preventing us from accidentally 
@@ -1115,7 +1157,7 @@ korl_internal void korl_gui_frameEnd(void)
             intersection of this widget & all of its parents, so that we can't 
             accidentally draw outside of a parent widget */
         korl_time_probeStart(setup_camera);
-        Korl_Math_V2f32 scissorPosition = {aabb->min.x, surfaceSize.y - aabb->max.y};
+        Korl_Math_V2f32 scissorPosition = {usedWidget->transient.aabb.min.x, surfaceSize.y - usedWidget->transient.aabb.max.y};
         Korl_Math_V2f32 scissorSize     = aabbSize;
         if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW)
         {
@@ -1151,7 +1193,7 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAGS_NONE);
             if(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
-                childWidgetCursor = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
+                childWidgetCursorOffset = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
                 korl_time_probeStart(title_bar);
                 /* draw the window title bar */
                 korl_gfx_batchSetPosition(batchWindowPanel, (f32[]){widget->position.x, widget->position.y, z + 0.1f}, 3);
@@ -1178,7 +1220,7 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 const f32 titleBarTextAabbSizeX = batchTextAabbSize.x + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
                 const f32 titleBarTextAabbSizeY = context->style.windowTitleBarPixelSizeY;
-                batchTextAabb = korl_math_aabb2f32_fromPoints(aabb->min.x, aabb->max.y, aabb->min.x + titleBarTextAabbSizeX, aabb->max.y - titleBarTextAabbSizeY);
+                batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + titleBarTextAabbSizeX, widget->position.y - titleBarTextAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
                 /**/
                 korl_time_probeStop(title_bar);
@@ -1197,8 +1239,8 @@ korl_internal void korl_gui_frameEnd(void)
             /* before drawing the window border, we conditionally draw a cone 
                 highlighting the side(s) that are being hovered to provide user 
                 feedback that the window can be resized from the highlighted boundary */
-            const Korl_Math_V2f32 windowMiddle = (Korl_Math_V2f32){aabb->min.x + aabbSize.x/2
-                                                                  ,aabb->max.y - aabbSize.y/2};
+            const Korl_Math_V2f32 windowMiddle = (Korl_Math_V2f32){widget->position.x + aabbSize.x/2
+                                                                  ,widget->position.y - aabbSize.y/2};
             if(context->identifierHashWindowHovered == widget->identifierHash && context->mouseHoverWindowEdgeFlags)
             {
                 const f32 longestAabbSide = KORL_MATH_MAX(aabbSize.x, aabbSize.y);
@@ -1238,17 +1280,17 @@ korl_internal void korl_gui_frameEnd(void)
                 {
                     edgeHoverRadians = KORL_PI32/2;
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){aabb->min.x, aabb->max.y}, windowMiddle));
+                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.min.x, usedWidget->transient.aabb.max.y}, windowMiddle));
                     else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){aabb->max.x, aabb->max.y}, windowMiddle));
+                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.max.x, usedWidget->transient.aabb.max.y}, windowMiddle));
                 }
                 else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN)
                 {
                     edgeHoverRadians = -KORL_PI32/2;
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){aabb->min.x, aabb->min.y}, windowMiddle));
+                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.min.x, usedWidget->transient.aabb.min.y}, windowMiddle));
                     else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){aabb->max.x, aabb->min.y}, windowMiddle));
+                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.max.x, usedWidget->transient.aabb.min.y}, windowMiddle));
                 }
                 else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
                     edgeHoverRadians = KORL_PI32;
@@ -1301,7 +1343,7 @@ korl_internal void korl_gui_frameEnd(void)
                     colorButton = context->style.colorTitleBar;
                 break;}
             }
-            Korl_Gfx_Batch* batchButtonPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, aabbSize, ORIGIN_RATIO_UPPER_LEFT, colorButton);
+            Korl_Gfx_Batch* batchButtonPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, colorButton);
             korl_gfx_batchSetPosition2dV2f32(batchButtonPanel, widget->position);
             korl_gfx_batch(batchButtonPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
             switch(widget->subType.button.display)
@@ -1312,12 +1354,12 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 const f32 buttonAabbSizeX = batchTextAabbSize.x + context->style.widgetButtonLabelMargin * 2.f;
                 const f32 buttonAabbSizeY = batchTextAabbSize.y + context->style.widgetButtonLabelMargin * 2.f;
-                batchTextAabb = korl_math_aabb2f32_fromPoints(aabb->min.x, aabb->max.y, aabb->min.x + buttonAabbSizeX, aabb->max.y - buttonAabbSizeY);
+                batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
                 //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
                 korl_gfx_batchSetPosition2d(batchText
-                                           ,aabb->min.x + context->style.widgetButtonLabelMargin
-                                           ,aabb->max.y - context->style.widgetButtonLabelMargin);
+                                           ,widget->position.x + context->style.widgetButtonLabelMargin
+                                           ,widget->position.y - context->style.widgetButtonLabelMargin);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
@@ -1365,7 +1407,7 @@ korl_internal void korl_gui_frameEnd(void)
             {
                 korl_assert(!widget->subType.text.displayText.data);
                 widget->subType.text.gfxText->modelTranslate = (Korl_Math_V3f32){widget->position.x, widget->position.y, z};
-                korl_gfx_text_draw(widget->subType.text.gfxText, *aabb);
+                korl_gfx_text_draw(widget->subType.text.gfxText, usedWidget->transient.aabb);
                 const Korl_Math_Aabb2f32 textModelAabb = korl_gfx_text_getModelAabb(widget->subType.text.gfxText);
                 const Korl_Math_V2f32    textAabbSize  = korl_math_aabb2f32_size(textModelAabb);
                 usedWidget->transient.aabbContent.max.x += textAabbSize.x;
@@ -1387,16 +1429,22 @@ korl_internal void korl_gui_frameEnd(void)
             korl_time_probeStop(widget_text);
             break;}
         case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+            /* we can "scroll" in the scroll area by modifying the transient child widget cursor */
+            childWidgetCursorOffset = (Korl_Math_V2f32){widget->subType.scrollArea.contentOffset.x, -widget->subType.scrollArea.contentOffset.y};
             /* to determine the content size of the scroll area, we want to attempt to "fill" the remaining available content area of our parent */
             korl_assert(usedWidgetParent);
             usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
                                                                              ,usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x
                                                                              ,usedWidgetParent->widget->position.y - usedWidgetParent->widget->size.y);
+            usedWidget->transient.aabb = usedWidget->transient.aabbContent;
             //@TODO: comment out this debug code when we're done with SCROLL_AREA widgets
             #if KORL_DEBUG// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
             {
                 Korl_Gfx_Batch*const batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, (Korl_Vulkan_Color4u8){255,0,0,128});
-                batch->_vertexColors[1] = (Korl_Vulkan_Color4u8){0,255,0,128};
+                if(widget->isHovered)
+                    batch->_vertexColors[1] = (Korl_Vulkan_Color4u8){0,0,255,128};
+                else
+                    batch->_vertexColors[1] = (Korl_Vulkan_Color4u8){0,255,0,128};
                 korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
                 korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
             }
@@ -1429,7 +1477,7 @@ korl_internal void korl_gui_frameEnd(void)
         }
         /* push this widget onto the parent stack */
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, usedWidget);
-        arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursor = childWidgetCursor;
+        arrlast(stbDaUsedWidgetStack)->transient.childWidgetCursorOrigin = childWidgetCursorOffset;
         /* reset these values for the next frame */
         widget->usedThisFrame       = false;// this can actually be done at any time during this loop, but might as well put it here ¯\_(ツ)_/¯
         widget->transientChildCount = 0;

@@ -28,7 +28,7 @@ typedef struct _Korl_Gui_MouseEvent
         {
             Korl_Math_V2f32 position;
             enum
-                { _KORL_GUI_MOUSE_EVENT_BUTTON_ID_LEFT
+                {_KORL_GUI_MOUSE_EVENT_BUTTON_ID_LEFT
             } id;
             bool pressed;
         } button;
@@ -89,6 +89,10 @@ typedef struct _Korl_Gui_Widget
             Korl_Gui_Window_Style_Flags styleFlags;
             u8 titleBarButtonCount;// used for resizing the window on the first frame
         } window;
+        struct
+        {
+            Korl_Math_V2f32 contentOffset;
+        } scrollArea;
         struct
         {
             acu16 displayText;// stored in the context stack allocator each frame
