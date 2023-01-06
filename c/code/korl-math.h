@@ -88,6 +88,8 @@ typedef struct Korl_Math_Aabb2f32
     Korl_Math_V2f32 min;
     Korl_Math_V2f32 max;
 } Korl_Math_Aabb2f32;
+const Korl_Math_Aabb2f32 KORL_MATH_AABB2F32_EMPTY = {.min={ KORL_F32_MAX, KORL_F32_MAX}
+                                                    ,.max={-KORL_F32_MAX,-KORL_F32_MAX}};
 typedef struct Korl_Math_Aabb3f32
 {
     Korl_Math_V3f32 min;

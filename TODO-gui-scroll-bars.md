@@ -16,7 +16,7 @@
 
 [x] if the user is hovering over the scroll area, we need to make mouse scroll wheel events modify the scroll area widget's child widget cursor (shift the y component)
 [x] shift + mouse scroll wheel => horizontal scrolling of the widget's contents (shift the childWidgetCursor x component)
-[ ] clamp the scroll range to the visible widget contents
+[x] clamp the scroll range to the visible widget contents
 
 [ ] create a vertical scroll bar widget
 [ ] to start out, just make the vertical scroll bar widget draw a box where it is

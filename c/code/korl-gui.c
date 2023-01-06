@@ -21,6 +21,7 @@ typedef struct _Korl_Gui_UsedWidget
         f32 currentWidgetRowHeight;
         Korl_Math_Aabb2f32 aabb;// used for collision detection at the top of the next frame; we need to do this because the widget's AABB must first be calculated based on its contents, and then it must be clipped to all parent widget AABBs so the user can't click on it "out of bounds"; IMPORTANT: do _NOT_ use this value for drawing widget content, as it will not accurately represent where the real widget placement is in world-space (this AABB is only useful for collision-detection purposes); IMPORTANT: do _NOT_ calculate the next frame's widget placement with this value except in very specific scenarios (like WINDOW widgets), as this value is subject to clipping applied by all the widget's parents recursively
         Korl_Math_Aabb2f32 aabbContent;// an accumulation of all content within this widget, including all content that lies outside of `aabb`; this is very important for performing auto-resize logic
+        Korl_Math_Aabb2f32 aabbChildren;// an accumulation of all content AABBs _only_ of children of this widget, including all content that lies outside of `aabb`; useful for SCROLL_AREA widgets to clamp the child content AABB to our visible AABB
         bool isFirstFrame;// storing this value during widget logic at the end of frame allows us to properly resize window widgets recursively without having to do an extra separate loop to clear all the widget flags that hold the same value
     } transient;// this data is only used/valid at the end of the frame, when we need to process the list of all UsedWidgets that have been accumulated during the frame
 } _Korl_Gui_UsedWidget;
@@ -734,7 +735,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                         widget->subType.scrollArea.contentOffset.x += mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
                         break;}
                     case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y:{
-                        widget->subType.scrollArea.contentOffset.y += mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
+                        widget->subType.scrollArea.contentOffset.y -= mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
                         break;}
                     }
                     break;}
@@ -930,6 +931,18 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
             usedWidget->transient.aabb = usedWidget->transient.aabbContent;
         usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabb);
         break;}
+    case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+        /* bind the scroll region to the "maximum" planes, which are defined by 
+            the difference between the contentAabb & the transient aabb */
+        const Korl_Math_V2f32 size         = korl_math_aabb2f32_size(usedWidget->transient.aabb);
+        const Korl_Math_V2f32 childrenSize = korl_math_aabb2f32_size(usedWidget->transient.aabbChildren);
+        const Korl_Math_V2f32 clippedSize  = korl_math_v2f32_subtract(childrenSize, size);
+        KORL_MATH_ASSIGN_CLAMP_MIN(usedWidget->widget->subType.scrollArea.contentOffset.x, -clippedSize.x);
+        KORL_MATH_ASSIGN_CLAMP_MAX(usedWidget->widget->subType.scrollArea.contentOffset.y,  clippedSize.y);
+        /* bind the scroll region to the "minimum" planes on each axis */
+        KORL_MATH_ASSIGN_CLAMP_MAX(usedWidget->widget->subType.scrollArea.contentOffset.x, 0);
+        KORL_MATH_ASSIGN_CLAMP_MIN(usedWidget->widget->subType.scrollArea.contentOffset.y, 0);
+        /*fallthrough to default case*/}
     default:{
         /* for all other types of widgets, use the updated content AABB to determine 
             the widget's up-to-date size; the size we obtain here will be used to 
@@ -1103,6 +1116,7 @@ korl_internal void korl_gui_frameEnd(void)
     {
         const u$  w = usedWidget - context->stbDaUsedWidgets;// simple index into the used widget array, so we don't have to keep calculating this value for Z placement of graphics components
         const f32 z = -korl_checkCast_u$_to_f32(arrlen(context->stbDaUsedWidgets) - w);// convert index to depth; remember, the widgets with a lower index appear _behind_ successive widgets
+        usedWidget->transient.aabbChildren = KORL_MATH_AABB2F32_EMPTY;
         _Korl_Gui_Widget*const widget = usedWidget->widget;
         Korl_Math_V2f32 childWidgetCursorOffset = KORL_MATH_V2F32_ZERO;// _not_ used to determine widget's position; this will determine the positions of widget's children in later iterations
         /* pop widgets from the stack until this widget's parent is on the top (or there stack is empty);
@@ -1430,13 +1444,12 @@ korl_internal void korl_gui_frameEnd(void)
             break;}
         case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
             /* we can "scroll" in the scroll area by modifying the transient child widget cursor */
-            childWidgetCursorOffset = (Korl_Math_V2f32){widget->subType.scrollArea.contentOffset.x, -widget->subType.scrollArea.contentOffset.y};
+            childWidgetCursorOffset = widget->subType.scrollArea.contentOffset;
             /* to determine the content size of the scroll area, we want to attempt to "fill" the remaining available content area of our parent */
             korl_assert(usedWidgetParent);
             usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
                                                                              ,usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x
                                                                              ,usedWidgetParent->widget->position.y - usedWidgetParent->widget->size.y);
-            usedWidget->transient.aabb = usedWidget->transient.aabbContent;
             //@TODO: comment out this debug code when we're done with SCROLL_AREA widgets
             #if KORL_DEBUG// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
             {
@@ -1459,7 +1472,10 @@ korl_internal void korl_gui_frameEnd(void)
             be when they are popped off the stack (all children are processed) */
         const _Korl_Gui_UsedWidget*const*const stbDaUsedWidgetStackEnd = stbDaUsedWidgetStack + arrlen(stbDaUsedWidgetStack);
         for(_Korl_Gui_UsedWidget** usedWidgetStack = stbDaUsedWidgetStack; usedWidgetStack < stbDaUsedWidgetStackEnd; usedWidgetStack++)
+        {
             (*usedWidgetStack)->transient.aabbContent = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbContent, usedWidget->transient.aabbContent);
+            (*usedWidgetStack)->transient.aabbChildren = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbChildren, usedWidget->transient.aabbContent);
+        }
         /* adjust the parent widget's cursor to the "next line" */
         if(widgetParent && useParentWidgetCursor)
         {
