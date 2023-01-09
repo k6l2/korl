@@ -24,9 +24,23 @@
 [x] add a korl-gui mechanism to force a new child widget to have a maximum order index (instead of incrementing from the last order index), or maybe just add some API to force a child widget to have a specific order index or something
 [x] force the vertical scroll bar widget spawned by the scroll area to have a maximal order index, and ensure it is now drawing on top of all other widget contents
 
+[ ] keep track of the scroll bar's slider size using the difference between aabbChildren & aabb
+[ ] draw the scroll bar's slider
+[ ] draw the regions on either side of the slider in a subtle way
+  - maybe translucent elements that have a more distant Z position
+[ ] clamp the slider's size to some minimum size (?)
+  - after a minimum scroll bar size is reached, we can:
+    - draw the slider as just a line primitive, instead of a quad
+    - disable scroll bar slider mouse click checks
+    - clicks on the scroll bar will just set the scroll position to be that exact position
+[ ] set the scroll bar slider to the correct position, based on the SCROLL_AREA's contentOffset
+
+
 [ ] augment korl_gui_scrollBar to allow the caller to set the size of the bar
+[ ] modify the mouse drag behavior of SCROLL_BAR widget to allow the user to click+drag on the scroll bar's slider
 [ ] return the "scroll distance" from korl_gui_scrollBar
-[ ] ???
+
+[ ] hold CTRL + click & drag to pan by the exact mouse delta
 
 [ ] create a horizontal scroll bar widget, using similar behavior as the vertical scroll bar widget
 [ ] ensure that there are no negative interactions between the vertical & horizontal scroll bars of a scroll area widget

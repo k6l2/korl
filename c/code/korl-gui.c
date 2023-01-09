@@ -956,9 +956,6 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
             widget needs to decide whether or not it even needs to spawn 
             SCROLL_BAR widgets */
         usedWidget->widget->subType.scrollArea.aabbChildrenSize = childrenSize;
-        /* we need to cache the transient AABB size as well, since widget->size 
-            is determined by the _content_ size */
-        usedWidget->widget->subType.scrollArea.aabbVisibleSize = size;
         break;}// widget->size is determined in frameEnd, when the SCROLL_AREA is sized to fill its parent's remaining content area
     default:{
         /* for all other types of widgets, use the updated content AABB to determine 
@@ -1865,9 +1862,9 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         SCROLL_AREA widget can contain all of its contents (based on cached data 
         from the previous frame stored in the Widget) */
     korl_shared_const f32 SCROLL_BAR_WIDTH = 15;
-    if(widget->subType.scrollArea.aabbChildrenSize.y > widget->subType.scrollArea.aabbVisibleSize.y)
+    if(widget->subType.scrollArea.aabbChildrenSize.y > widget->size.y)
     {
-        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){SCROLL_BAR_WIDTH, widget->subType.scrollArea.aabbVisibleSize.y});
+        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){SCROLL_BAR_WIDTH, widget->size.y});
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1,0});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-SCROLL_BAR_WIDTH, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
