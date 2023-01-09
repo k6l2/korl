@@ -52,6 +52,7 @@ typedef struct _Korl_Gui_WidgetMap
 /**/
 #if KORL_DEBUG
     // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+    // #define _KORL_GUI_DEBUG_DRAW_SCROLL_AREA
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
     #undef _LOCAL_STRING_POOL_POINTER
@@ -327,6 +328,7 @@ korl_internal void _korl_gui_resetTransientNextWidgetModifiers(void)
     context->transientNextWidgetModifiers.size         = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
     context->transientNextWidgetModifiers.parentAnchor = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
     context->transientNextWidgetModifiers.parentOffset = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+    context->transientNextWidgetModifiers.orderIndex   = -1;
 }
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
 {
@@ -407,6 +409,8 @@ widgetIndexValid:
         widget->parentOffset = context->transientNextWidgetModifiers.parentOffset;
     else
         widget->parentOffset = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+    if(context->transientNextWidgetModifiers.orderIndex >= 0)
+        widget->orderIndex = korl_checkCast_i$_to_u16(context->transientNextWidgetModifiers.orderIndex);
     _korl_gui_resetTransientNextWidgetModifiers();
     return widget;
 }
@@ -416,6 +420,8 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
     switch(widget->type)
     {
     case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+        break;}
+    case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
         break;}
     case KORL_GUI_WIDGET_TYPE_TEXT:{
         // raw text is stored in the stack allocator each frame; no need to free it here
@@ -452,6 +458,10 @@ korl_internal void _korl_gui_setNextWidgetParentAnchor(Korl_Math_V2f32 anchorRat
 korl_internal void _korl_gui_setNextWidgetParentOffset(Korl_Math_V2f32 positionRelativeToAnchor)
 {
     _korl_gui_context.transientNextWidgetModifiers.parentOffset = positionRelativeToAnchor;
+}
+korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
+{
+    _korl_gui_context.transientNextWidgetModifiers.orderIndex = orderIndex;
 }
 korl_internal void korl_gui_initialize(void)
 {
@@ -942,7 +952,14 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
         /* bind the scroll region to the "minimum" planes on each axis */
         KORL_MATH_ASSIGN_CLAMP_MAX(usedWidget->widget->subType.scrollArea.contentOffset.x, 0);
         KORL_MATH_ASSIGN_CLAMP_MIN(usedWidget->widget->subType.scrollArea.contentOffset.y, 0);
-        /*fallthrough to default case*/}
+        /* cache the size of aabbChildren for the top of next frame, when the 
+            widget needs to decide whether or not it even needs to spawn 
+            SCROLL_BAR widgets */
+        usedWidget->widget->subType.scrollArea.aabbChildrenSize = childrenSize;
+        /* we need to cache the transient AABB size as well, since widget->size 
+            is determined by the _content_ size */
+        usedWidget->widget->subType.scrollArea.aabbVisibleSize = size;
+        break;}// widget->size is determined in frameEnd, when the SCROLL_AREA is sized to fill its parent's remaining content area
     default:{
         /* for all other types of widgets, use the updated content AABB to determine 
             the widget's up-to-date size; the size we obtain here will be used to 
@@ -1324,6 +1341,14 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchBorder, KORL_GFX_BATCH_FLAGS_NONE);
             korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
+            /* clamp the window content size to some minimum */
+            {
+                Korl_Math_V2f32 contentSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
+                KORL_MATH_ASSIGN_CLAMP_MIN(contentSize.x, (usedWidget->widget->subType.window.titleBarButtonCount + 1) * context->style.windowTitleBarPixelSizeY);
+                KORL_MATH_ASSIGN_CLAMP_MIN(contentSize.y, context->style.windowTitleBarPixelSizeY);
+                usedWidget->transient.aabbContent.max.x = usedWidget->transient.aabbContent.min.x + contentSize.x;
+                usedWidget->transient.aabbContent.min.y = usedWidget->transient.aabbContent.max.y - contentSize.y;
+            }
             break;}
         case KORL_GUI_WIDGET_TYPE_BUTTON:{
             Korl_Vulkan_Color4u8 colorButton = KORL_COLOR4U8_TRANSPARENT;
@@ -1450,8 +1475,8 @@ korl_internal void korl_gui_frameEnd(void)
             usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
                                                                              ,usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x
                                                                              ,usedWidgetParent->widget->position.y - usedWidgetParent->widget->size.y);
-            //@TODO: comment out this debug code when we're done with SCROLL_AREA widgets
-            #if KORL_DEBUG// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
+            usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
+            #ifdef _KORL_GUI_DEBUG_DRAW_SCROLL_AREA// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
             {
                 Korl_Gfx_Batch*const batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, (Korl_Vulkan_Color4u8){255,0,0,128});
                 if(widget->isHovered)
@@ -1463,6 +1488,13 @@ korl_internal void korl_gui_frameEnd(void)
             }
             #endif
             break;}
+        case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+            usedWidget->transient.aabbContent.max.x += widget->size.x;
+            usedWidget->transient.aabbContent.min.y -= widget->size.y;
+            Korl_Gfx_Batch* batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, KORL_COLOR4U8_CYAN);
+            korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
+            korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+            break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
             break;}
@@ -1470,11 +1502,14 @@ korl_internal void korl_gui_frameEnd(void)
         /* union this widget's transient content AABB recursively with all its parents, 
             so that our parents will be able to know what their optimal new AABB should 
             be when they are popped off the stack (all children are processed) */
-        const _Korl_Gui_UsedWidget*const*const stbDaUsedWidgetStackEnd = stbDaUsedWidgetStack + arrlen(stbDaUsedWidgetStack);
-        for(_Korl_Gui_UsedWidget** usedWidgetStack = stbDaUsedWidgetStack; usedWidgetStack < stbDaUsedWidgetStackEnd; usedWidgetStack++)
+        if(useParentWidgetCursor)// only accumulate our content AABB with parents if we're using automatic placement; this allows things like titlebar buttons & scroll bars to be placed anywhere without affecting content AABBs
         {
-            (*usedWidgetStack)->transient.aabbContent = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbContent, usedWidget->transient.aabbContent);
-            (*usedWidgetStack)->transient.aabbChildren = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbChildren, usedWidget->transient.aabbContent);
+            const _Korl_Gui_UsedWidget*const*const stbDaUsedWidgetStackEnd = stbDaUsedWidgetStack + arrlen(stbDaUsedWidgetStack);
+            for(_Korl_Gui_UsedWidget** usedWidgetStack = stbDaUsedWidgetStack; usedWidgetStack < stbDaUsedWidgetStackEnd; usedWidgetStack++)
+            {
+                (*usedWidgetStack)->transient.aabbContent = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbContent, usedWidget->transient.aabbContent);
+                (*usedWidgetStack)->transient.aabbChildren = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbChildren, usedWidget->transient.aabbContent);
+            }
         }
         /* adjust the parent widget's cursor to the "next line" */
         if(widgetParent && useParentWidgetCursor)
@@ -1826,6 +1861,18 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_AREA, &newAllocation);
+    /* conditionally spawn SCROLL_BAR widgets based on whether or not the 
+        SCROLL_AREA widget can contain all of its contents (based on cached data 
+        from the previous frame stored in the Widget) */
+    korl_shared_const f32 SCROLL_BAR_WIDTH = 15;
+    if(widget->subType.scrollArea.aabbChildrenSize.y > widget->subType.scrollArea.aabbVisibleSize.y)
+    {
+        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){SCROLL_BAR_WIDTH, widget->subType.scrollArea.aabbVisibleSize.y});
+        _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1,0});
+        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-SCROLL_BAR_WIDTH, 0});
+        _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y);
+    }
 }
 korl_internal void korl_gui_widgetScrollAreaEnd(void)
 {
@@ -1834,6 +1881,16 @@ korl_internal void korl_gui_widgetScrollAreaEnd(void)
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
+}
+korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    bool newAllocation = false;
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
+    /* these widgets will not support children, so we must pop widget from the parent stack */
+    const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
+    korl_assert(widgetIndex == widget - context->stbDaWidgets);
+    /**/
 }
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

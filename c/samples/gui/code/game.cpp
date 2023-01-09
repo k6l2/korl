@@ -43,7 +43,12 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
     ///@TODO: complete GUI test code
     ///@TODO: test korl_gui_widgetText
     korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
-    korl_gui_widgetTextFormat(L"orphan widget test");
+    for(u$ i = 0; i < 5; i++)
+    {
+        korl_gui_setLoopIndex(i);
+        korl_gui_widgetTextFormat(L"orphan widget test");
+    }
+    korl_gui_setLoopIndex(0);
     korl_gui_windowBegin(L"Test Window", &memory->testWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
         korl_gui_widgetTextFormat(L"add/remove widgets:");
         korl_gui_realignY();

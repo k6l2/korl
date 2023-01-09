@@ -18,11 +18,11 @@
 [x] shift + mouse scroll wheel => horizontal scrolling of the widget's contents (shift the childWidgetCursor x component)
 [x] clamp the scroll range to the visible widget contents
 
-[ ] create a vertical scroll bar widget
-[ ] to start out, just make the vertical scroll bar widget draw a box where it is
-[ ] make the scroll area widget automatically spawn a vertical scroll bar widget
-[ ] add a korl-gui mechanism to force a new child widget to have a maximum order index (instead of incrementing from the last order index), or maybe just add some API to force a child widget to have a specific order index or something
-[ ] force the vertical scroll bar widget spawned by the scroll area to have a maximal order index, and ensure it is now drawing on top of all other widget contents
+[x] create a vertical scroll bar widget
+[x] to start out, just make the vertical scroll bar widget draw a box where it is
+[x] make the scroll area widget automatically spawn a vertical scroll bar widget
+[x] add a korl-gui mechanism to force a new child widget to have a maximum order index (instead of incrementing from the last order index), or maybe just add some API to force a child widget to have a specific order index or something
+[x] force the vertical scroll bar widget spawned by the scroll area to have a maximal order index, and ensure it is now drawing on top of all other widget contents
 
 [ ] augment korl_gui_scrollBar to allow the caller to set the size of the bar
 [ ] return the "scroll distance" from korl_gui_scrollBar

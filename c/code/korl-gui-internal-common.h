@@ -76,6 +76,7 @@ typedef struct _Korl_Gui_Widget
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
         ,KORL_GUI_WIDGET_TYPE_SCROLL_AREA
+        ,KORL_GUI_WIDGET_TYPE_SCROLL_BAR
         ,KORL_GUI_WIDGET_TYPE_TEXT
         ,KORL_GUI_WIDGET_TYPE_BUTTON
     } type;
@@ -92,7 +93,13 @@ typedef struct _Korl_Gui_Widget
         struct
         {
             Korl_Math_V2f32 contentOffset;
+            Korl_Math_V2f32 aabbChildrenSize;
+            Korl_Math_V2f32 aabbVisibleSize;
         } scrollArea;
+        struct
+        {
+            Korl_Gui_ScrollBar_Axis axis;
+        } scrollBar;
         struct
         {
             acu16 displayText;// stored in the context stack allocator each frame
@@ -181,6 +188,7 @@ typedef struct _Korl_Gui_Context
         Korl_Math_V2f32 size;
         Korl_Math_V2f32 parentAnchor;
         Korl_Math_V2f32 parentOffset;
+        i32             orderIndex;
     } transientNextWidgetModifiers;
     /// @TODO: could we get rid of currentWidgetIndex in favor of just adding a transient flag to transientNextWidgetModifiers ?  It seems like this would be more robust, considering that widgets should be able to spawn child widgets when they are spawned, so without this we have the potential in the future to accidentally set the realignY flag of one of the last spawned widget's child widgets
     i16 currentWidgetIndex;// used to modify properties of the last widget created via _korl_gui_getWidget; example: when korl_gui_realignY is called, we set a special flag in the last widget so that 
