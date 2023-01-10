@@ -98,6 +98,7 @@ typedef struct _Korl_Gui_Widget
         struct
         {
             Korl_Gui_ScrollBar_Axis axis;
+            f32 visibleRegionRatio;
         } scrollBar;
         struct
         {
