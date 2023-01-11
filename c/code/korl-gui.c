@@ -493,7 +493,7 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;
     _korl_gui_context.style.widgetSpacingY                 =  0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        =  4.f;
-    _korl_gui_context.style.windowScrollBarPixelWidth      = 12.f;
+    _korl_gui_context.style.windowScrollBarPixelWidth      = 15.f;
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaUsedWidgets, 64);
 #if 0//@TODO: recycle
@@ -933,6 +933,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowSetSize(korl_gui_windowSetSize)
  * have been processed & drawn for the end of this frame. */
 korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_UsedWidget* usedWidget)
 {
+    _Korl_Gui_Context*const context = &_korl_gui_context;
     switch(usedWidget->widget->type)
     {
     case KORL_GUI_WIDGET_TYPE_WINDOW:{
@@ -946,7 +947,12 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
             the difference between the contentAabb & the transient aabb */
         const Korl_Math_V2f32 size         = korl_math_aabb2f32_size(usedWidget->transient.aabb);
         const Korl_Math_V2f32 childrenSize = korl_math_aabb2f32_size(usedWidget->transient.aabbChildren);
-        const Korl_Math_V2f32 clippedSize  = korl_math_v2f32_subtract(childrenSize, size);
+        Korl_Math_V2f32 scrollSize = childrenSize;
+        if(usedWidget->widget->subType.scrollArea.hasScrollBarX)
+            scrollSize.y += context->style.windowScrollBarPixelWidth;
+        if(usedWidget->widget->subType.scrollArea.hasScrollBarY)
+            scrollSize.x += context->style.windowScrollBarPixelWidth;
+        const Korl_Math_V2f32 clippedSize = korl_math_v2f32_subtract(scrollSize, size);
         KORL_MATH_ASSIGN_CLAMP_MIN(usedWidget->widget->subType.scrollArea.contentOffset.x, -clippedSize.x);
         KORL_MATH_ASSIGN_CLAMP_MAX(usedWidget->widget->subType.scrollArea.contentOffset.y,  clippedSize.y);
         /* bind the scroll region to the "minimum" planes on each axis */
@@ -1486,6 +1492,7 @@ korl_internal void korl_gui_frameEnd(void)
             #endif
             break;}
         case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+            /* define the content area bounds */
             usedWidget->transient.aabbContent.max.x += widget->size.x;
             usedWidget->transient.aabbContent.min.y -= widget->size.y;
             /* draw the slider */
@@ -1884,22 +1891,51 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
     /* conditionally spawn SCROLL_BAR widgets based on whether or not the 
         SCROLL_AREA widget can contain all of its contents (based on cached data 
         from the previous frame stored in the Widget) */
-    korl_shared_const f32 SCROLL_BAR_WIDTH = 15;
-    if(widget->subType.scrollArea.aabbChildrenSize.x > widget->size.x)
+    widget->subType.scrollArea.hasScrollBarX = 
+    widget->subType.scrollArea.hasScrollBarY = false;
+    // the presence of a scroll bar in any dimension depends on the size of scrollable region, calculated from the accumulated child widget AABB; 
+    //  this region will change, based on the presence of a scroll bar in a perpendicular axis; this is to allow the user to scroll the visible contents
+    //  such that they are not obscured by a scroll bar
+    Korl_Math_V2f32 aabbChildrenSize = widget->subType.scrollArea.aabbChildrenSize;
+    if(aabbChildrenSize.x > widget->size.x)
     {
-        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){widget->size.x - SCROLL_BAR_WIDTH, SCROLL_BAR_WIDTH});
-        _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
-        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, SCROLL_BAR_WIDTH});
-        _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / widget->subType.scrollArea.aabbChildrenSize.x);
+        aabbChildrenSize.y += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.hasScrollBarX = true;
     }
-    if(widget->subType.scrollArea.aabbChildrenSize.y > widget->size.y)
+    if(aabbChildrenSize.y > widget->size.y)
     {
-        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){SCROLL_BAR_WIDTH, widget->size.y});
+        aabbChildrenSize.x += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.hasScrollBarY = true;
+    }
+    // we have to perform the check again, as a scroll bar in a perpendicular axis may now be required if we now require a scroll bar in any given axis; 
+    //  of course, making sure that we don't account for a scroll bar in any given axis more than once (hence the `hasScrollBar*` flags)
+    if(aabbChildrenSize.x > widget->size.x && !widget->subType.scrollArea.hasScrollBarX)
+    {
+        aabbChildrenSize.y += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.hasScrollBarX = true;
+    }
+    if(aabbChildrenSize.y > widget->size.y && !widget->subType.scrollArea.hasScrollBarY)
+    {
+        aabbChildrenSize.x += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.hasScrollBarY = true;
+    }
+    if(widget->subType.scrollArea.hasScrollBarX)
+    {
+        korl_assert(aabbChildrenSize.x > widget->size.x);
+        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){widget->size.x - (widget->subType.scrollArea.hasScrollBarY ? context->style.windowScrollBarPixelWidth/*prevent overlap w/ y-axis SCROLL_BAR*/ : 0), context->style.windowScrollBarPixelWidth});
+        _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
+        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
+        _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / aabbChildrenSize.x);
+    }
+    if(widget->subType.scrollArea.hasScrollBarY)
+    {
+        korl_assert(aabbChildrenSize.y > widget->size.y);
+        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowScrollBarPixelWidth, widget->size.y});
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1, 0});
-        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-SCROLL_BAR_WIDTH, 0});
+        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / widget->subType.scrollArea.aabbChildrenSize.y);
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / aabbChildrenSize.y);
     }
 }
 korl_internal void korl_gui_widgetScrollAreaEnd(void)

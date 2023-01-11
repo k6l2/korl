@@ -94,6 +94,8 @@ typedef struct _Korl_Gui_Widget
         {
             Korl_Math_V2f32 contentOffset;
             Korl_Math_V2f32 aabbChildrenSize;
+            bool hasScrollBarX;
+            bool hasScrollBarY;
         } scrollArea;
         struct
         {
