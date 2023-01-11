@@ -29,9 +29,11 @@
 [x] draw the regions on either side of the slider in a subtle way
   - maybe translucent elements that have a more distant Z position
 [x] ensure that the appearence of a scroll bar affects the "scrollable region" such that we can scroll the aabbChildren enough to allow the aabbChildren to be unobstructed by the scroll bars themselves
-[ ] set the scroll bar slider to the correct position, based on the SCROLL_AREA's contentOffset
 
-[ ] augment korl_gui_scrollBar to allow the caller to set the size of the bar
+[x] augment korl_gui_scrollBar to allow the caller to set the size of the bar
+
+[x] set the scroll bar slider to the correct position, based on the SCROLL_AREA's contentOffset
+
 [ ] modify the mouse drag behavior of SCROLL_BAR widget to allow the user to click+drag on the scroll bar's slider
 [ ] return the "scroll distance" from korl_gui_scrollBar
 

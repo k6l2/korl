@@ -1504,8 +1504,19 @@ korl_internal void korl_gui_frameEnd(void)
             const Korl_Math_V2f32 sliderSize = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
                                                ? (Korl_Math_V2f32){widget->size.x, widget->size.y*widget->subType.scrollBar.visibleRegionRatio}
                                                : (Korl_Math_V2f32){widget->size.x*widget->subType.scrollBar.visibleRegionRatio, widget->size.y};
+            const f32 sliderOffset = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
+                                     ? (widget->size.y - sliderSize.y)*widget->subType.scrollBar.scrollPositionRatio
+                                     : (widget->size.x - sliderSize.x)*widget->subType.scrollBar.scrollPositionRatio;
             Korl_Gfx_Batch* batchSlider = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, sliderSize, ORIGIN_RATIO_UPPER_LEFT, colorSlider);
-            korl_gfx_batchSetPosition(batchSlider, (f32[]){widget->position.x, widget->position.y, z + 0.5f}, 3);
+            switch(widget->subType.scrollBar.axis)
+            {
+            case KORL_GUI_SCROLL_BAR_AXIS_X:{
+                korl_gfx_batchSetPosition(batchSlider, (f32[]){widget->position.x + sliderOffset, widget->position.y, z + 0.5f}, 3);
+                break;}
+            case KORL_GUI_SCROLL_BAR_AXIS_Y:{
+                korl_gfx_batchSetPosition(batchSlider, (f32[]){widget->position.x, widget->position.y - sliderOffset, z + 0.5f}, 3);
+                break;}
+            }
             korl_gfx_batch(batchSlider, KORL_GFX_BATCH_FLAGS_NONE);
             /* draw the background region */
             const Korl_Vulkan_Color4u8 colorBackground = context->style.colorScrollBar;
@@ -1919,6 +1930,7 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         aabbChildrenSize.x += context->style.windowScrollBarPixelWidth;
         widget->subType.scrollArea.hasScrollBarY = true;
     }
+    const Korl_Math_V2f32 clippedSize = korl_math_v2f32_subtract(aabbChildrenSize, widget->size);
     if(widget->subType.scrollArea.hasScrollBarX)
     {
         korl_assert(aabbChildrenSize.x > widget->size.x);
@@ -1926,7 +1938,7 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / aabbChildrenSize.x);
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / aabbChildrenSize.x, korl_math_abs(widget->subType.scrollArea.contentOffset.x / clippedSize.x));
     }
     if(widget->subType.scrollArea.hasScrollBarY)
     {
@@ -1935,7 +1947,7 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1, 0});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / aabbChildrenSize.y);
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / aabbChildrenSize.y, korl_math_abs(widget->subType.scrollArea.contentOffset.y / clippedSize.y));
     }
 }
 korl_internal void korl_gui_widgetScrollAreaEnd(void)
@@ -1946,14 +1958,15 @@ korl_internal void korl_gui_widgetScrollAreaEnd(void)
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
 }
-korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio)
+korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio, f32 scrollPositionRatio)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
     /**/
-    widget->subType.scrollBar.axis               = axis;
-    widget->subType.scrollBar.visibleRegionRatio = visibleRegionRatio;
+    widget->subType.scrollBar.axis                = axis;
+    widget->subType.scrollBar.visibleRegionRatio  = visibleRegionRatio;
+    widget->subType.scrollBar.scrollPositionRatio = scrollPositionRatio;
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
