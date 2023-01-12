@@ -33,7 +33,7 @@ typedef enum Korl_Gui_ScrollBar_Axis
     { KORL_GUI_SCROLL_BAR_AXIS_X
     , KORL_GUI_SCROLL_BAR_AXIS_Y
 } Korl_Gui_ScrollBar_Axis;
-korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio, f32 scrollPositionRatio);
+korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio, f32* io_scrollPositionRatio);
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 

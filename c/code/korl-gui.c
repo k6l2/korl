@@ -463,6 +463,40 @@ korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
 {
     _korl_gui_context.transientNextWidgetModifiers.orderIndex = orderIndex;
 }
+korl_internal void _korl_gui_widget_scrollBar_identifyMouseRegion(_Korl_Gui_Widget* widget, Korl_Math_V2f32 mousePosition)
+{
+    /* we need to re-calculate the scroll bar slider placement */
+    // includes some copy-pasta from the SCROLL_BAR's frameEnd logic
+    const Korl_Math_V2f32 sliderSize = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
+                                       ? (Korl_Math_V2f32){widget->size.x, widget->size.y*widget->subType.scrollBar.visibleRegionRatio}
+                                       : (Korl_Math_V2f32){widget->size.x*widget->subType.scrollBar.visibleRegionRatio, widget->size.y};
+    const f32 sliderOffset = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
+                             ? (widget->size.y - sliderSize.y)*widget->subType.scrollBar.scrollPositionRatio
+                             : (widget->size.x - sliderSize.x)*widget->subType.scrollBar.scrollPositionRatio;
+    const Korl_Math_V2f32 sliderPosition = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y 
+                                           ? (Korl_Math_V2f32){widget->position.x, widget->position.y - sliderOffset}
+                                           : (Korl_Math_V2f32){widget->position.x + sliderOffset, widget->position.y};
+    const Korl_Math_Aabb2f32 sliderAabb = korl_math_aabb2f32_fromPoints(sliderPosition.x, sliderPosition.y, sliderPosition.x + sliderSize.x, sliderPosition.y - sliderSize.y);
+    /* calculate which region of the scroll bar the mouse clicked on (slider, pre-slider, or post-slider) */
+    if(korl_math_aabb2f32_containsV2f32(sliderAabb, mousePosition))
+        widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_SLIDER;
+    else
+        switch(widget->subType.scrollBar.axis)
+        {
+        case KORL_GUI_SCROLL_BAR_AXIS_X:{
+            if(mousePosition.x < sliderAabb.min.x)
+                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER;
+            else
+                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER;
+            break;}
+        case KORL_GUI_SCROLL_BAR_AXIS_Y:{
+            if(mousePosition.y > sliderAabb.max.y)
+                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER;
+            else
+                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER;
+            break;}
+        }
+}
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
@@ -571,40 +605,47 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
                 const Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
-                if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW)
+                switch(widget->type)
                 {
+                case KORL_GUI_WIDGET_TYPE_WINDOW:{
                     const bool isResizableWindow = widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE;
                     Korl_Math_Aabb2f32 widgetAabbExpanded = widgetAabb;
                     if(isResizableWindow)
                         korl_math_aabb2f32_expand(&widgetAabbExpanded, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
-                    if(korl_math_aabb2f32_containsV2f32(widgetAabbExpanded, mouseEvent->subType.button.position))
+                    if(korl_math_aabb2f32_containsV2f32(widgetAabbExpanded, mouseEvent->subType.move.position))
                     {
                         context->identifierHashWindowHovered = widget->identifierHash;
                         widget->isHovered = true;
                         if(   isResizableWindow 
                            && !context->identifierHashWidgetMouseDown
-                           && !korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                           && !korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.move.position))
                         {
                             /* if the mouse isn't contained in the normal AABB (unexpanded) of the window, 
                                 that means we _must_ be in a resize region along the edge of the window */
                             if(!widget->isContentHidden)// disable top/bottom resizing when window content is hidden
                             {
-                                if(mouseEvent->subType.button.position.y >= widgetAabb.max.y)
+                                if(mouseEvent->subType.move.position.y >= widgetAabb.max.y)
                                     context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_UP;
-                                if(mouseEvent->subType.button.position.y <= widgetAabb.min.y)
+                                if(mouseEvent->subType.move.position.y <= widgetAabb.min.y)
                                     context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_DOWN;
                             }
-                            if(mouseEvent->subType.button.position.x >= widgetAabb.max.x)
+                            if(mouseEvent->subType.move.position.x >= widgetAabb.max.x)
                                 context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_RIGHT;
-                            if(mouseEvent->subType.button.position.x <= widgetAabb.min.x)
+                            if(mouseEvent->subType.move.position.x <= widgetAabb.min.x)
                                 context->mouseHoverWindowEdgeFlags |= KORL_GUI_EDGE_FLAG_LEFT;
                         }
                         continueRayCast = false;// windows are opaque, ergo we stop the hover ray cast
                     }
-                }
-                else
-                    if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+                    if(context->identifierHashWidgetMouseDown != widget->identifierHash)
+                        _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.move.position);
+                    /*fallthrough to default case*/}
+                default:{
+                    if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.move.position))
                         widget->isHovered = true;
+                    break;}
+                }
             }
         }
         break;}
@@ -662,6 +703,10 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                         break;}
                     case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
                         break;}
+                    case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+                        _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.button.position);
+                        widgetCanMouseDown = true;
+                        break;}
                     case KORL_GUI_WIDGET_TYPE_TEXT:{
                         break;}
                     case KORL_GUI_WIDGET_TYPE_BUTTON:{
@@ -707,6 +752,8 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                         break;}
                     case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
                         break;}
+                    case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+                        break;}
                     case KORL_GUI_WIDGET_TYPE_TEXT:{
                         break;}
                     case KORL_GUI_WIDGET_TYPE_BUTTON:{
@@ -725,6 +772,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
         }
         break;}
     case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL:{
+        _Korl_Gui_MouseEvent mouseEventPrime = *mouseEvent;// used for modifications to the mouseEvent based on non-captured widget event logic from previous widgets
         /* iterate over all widgets from front=>back */
         for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
         {
@@ -739,13 +787,24 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     eventCaptured = true;
                     break;}
                 case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
-                    switch(mouseEvent->subType.wheel.axis)
+                    switch(mouseEventPrime.subType.wheel.axis)
                     {
                     case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_X:{
                         widget->subType.scrollArea.contentOffset.x += mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
                         break;}
                     case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y:{
                         widget->subType.scrollArea.contentOffset.y -= mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
+                        break;}
+                    }
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+                    switch(widget->subType.scrollBar.axis)
+                    {
+                    case KORL_GUI_SCROLL_BAR_AXIS_X:{
+                        mouseEventPrime.subType.wheel.axis = _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_X;
+                        break;}
+                    case KORL_GUI_SCROLL_BAR_AXIS_Y:{
+                        mouseEventPrime.subType.wheel.axis = _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y;
                         break;}
                     }
                     break;}
@@ -1496,9 +1555,9 @@ korl_internal void korl_gui_frameEnd(void)
             usedWidget->transient.aabbContent.max.x += widget->size.x;
             usedWidget->transient.aabbContent.min.y -= widget->size.y;
             /* draw the slider */
-            const Korl_Vulkan_Color4u8 colorSlider = context->identifierHashWidgetMouseDown == widget->identifierHash
+            const Korl_Vulkan_Color4u8 colorSlider = context->identifierHashWidgetMouseDown == widget->identifierHash && widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER 
                                                      ? context->style.colorScrollBarPressed
-                                                     : widget->isHovered //@TODO: fix; incomplete condition; we also have to make sure that the slider itself is being hovered
+                                                     : widget->isHovered && widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER 
                                                        ? context->style.colorScrollBarActive
                                                        : context->style.colorScrollBar;
             const Korl_Math_V2f32 sliderSize = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
@@ -1938,7 +1997,8 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / aabbChildrenSize.x, korl_math_abs(widget->subType.scrollArea.contentOffset.x / clippedSize.x));
+        f32 scrollPositionRatio = korl_math_abs(widget->subType.scrollArea.contentOffset.x / clippedSize.x);
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / aabbChildrenSize.x, &scrollPositionRatio);
     }
     if(widget->subType.scrollArea.hasScrollBarY)
     {
@@ -1947,7 +2007,8 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1, 0});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / aabbChildrenSize.y, korl_math_abs(widget->subType.scrollArea.contentOffset.y / clippedSize.y));
+        f32 scrollPositionRatio = korl_math_abs(widget->subType.scrollArea.contentOffset.y / clippedSize.y);
+        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / aabbChildrenSize.y, &scrollPositionRatio);
     }
 }
 korl_internal void korl_gui_widgetScrollAreaEnd(void)
@@ -1958,7 +2019,7 @@ korl_internal void korl_gui_widgetScrollAreaEnd(void)
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
 }
-korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio, f32 scrollPositionRatio)
+korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio, f32* io_scrollPositionRatio)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
@@ -1966,7 +2027,7 @@ korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis
     /**/
     widget->subType.scrollBar.axis                = axis;
     widget->subType.scrollBar.visibleRegionRatio  = visibleRegionRatio;
-    widget->subType.scrollBar.scrollPositionRatio = scrollPositionRatio;
+    widget->subType.scrollBar.scrollPositionRatio = *io_scrollPositionRatio;
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);

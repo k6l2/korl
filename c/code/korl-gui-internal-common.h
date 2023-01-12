@@ -102,6 +102,11 @@ typedef struct _Korl_Gui_Widget
             Korl_Gui_ScrollBar_Axis axis;
             f32 visibleRegionRatio;
             f32 scrollPositionRatio;
+            enum
+                {KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER
+                ,KORL_GUI_SCROLL_BAR_REGION_SLIDER
+                ,KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER
+            } mouseDownRegion;
         } scrollBar;
         struct
         {
