@@ -463,7 +463,7 @@ korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
 {
     _korl_gui_context.transientNextWidgetModifiers.orderIndex = orderIndex;
 }
-korl_internal void _korl_gui_widget_scrollBar_identifyMouseRegion(_Korl_Gui_Widget* widget, Korl_Math_V2f32 mousePosition)
+korl_internal Korl_Gui_ScrollBar_Region _korl_gui_widget_scrollBar_identifyMouseRegion(_Korl_Gui_Widget* widget, Korl_Math_V2f32 mousePosition, Korl_Math_V2f32* o_sliderPosition)
 {
     /* we need to re-calculate the scroll bar slider placement */
     // includes some copy-pasta from the SCROLL_BAR's frameEnd logic
@@ -477,25 +477,29 @@ korl_internal void _korl_gui_widget_scrollBar_identifyMouseRegion(_Korl_Gui_Widg
                                            ? (Korl_Math_V2f32){widget->position.x, widget->position.y - sliderOffset}
                                            : (Korl_Math_V2f32){widget->position.x + sliderOffset, widget->position.y};
     const Korl_Math_Aabb2f32 sliderAabb = korl_math_aabb2f32_fromPoints(sliderPosition.x, sliderPosition.y, sliderPosition.x + sliderSize.x, sliderPosition.y - sliderSize.y);
+    if(o_sliderPosition)
+        *o_sliderPosition = sliderPosition;
     /* calculate which region of the scroll bar the mouse clicked on (slider, pre-slider, or post-slider) */
     if(korl_math_aabb2f32_containsV2f32(sliderAabb, mousePosition))
-        widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_SLIDER;
+        return KORL_GUI_SCROLL_BAR_REGION_SLIDER;
     else
         switch(widget->subType.scrollBar.axis)
         {
         case KORL_GUI_SCROLL_BAR_AXIS_X:{
             if(mousePosition.x < sliderAabb.min.x)
-                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER;
+                return KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER;
             else
-                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER;
+                return KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER;
             break;}
         case KORL_GUI_SCROLL_BAR_AXIS_Y:{
             if(mousePosition.y > sliderAabb.max.y)
-                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER;
+                return KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER;
             else
-                widget->subType.scrollBar.mouseDownRegion = KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER;
+                return KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER;
             break;}
         }
+    korl_assert(!"impossible control path");
+    return KORL_GUI_SCROLL_BAR_REGION_SLIDER;// this should never execute; this is just to satisfy the compiler
 }
 korl_internal void korl_gui_initialize(void)
 {
@@ -548,7 +552,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             usedWidget->widget->isHovered = false;
         /**/
         _Korl_Gui_UsedWidget* draggedUsedWidget = NULL;
-        _Korl_Gui_Widget* draggedWidget = NULL;///@TODO: delete in favor of UsedWidget
+        _Korl_Gui_Widget*     draggedWidget     = NULL;///@TODO: delete in favor of UsedWidget
         if(context->identifierHashWidgetDragged)
         {
             for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
@@ -564,32 +568,56 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 context->identifierHashWidgetDragged = 0;
         }
         if(draggedWidget)
-            if(context->mouseHoverWindowEdgeFlags)
+            switch(draggedWidget->type)
             {
-                korl_assert(draggedWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
-                Korl_Math_Aabb2f32 aabb = draggedUsedWidget->transient.aabb;
-                /* adjust the AABB values based on which edge flags we're controlling, 
-                    & ensure that the final AABB is valid (not too small) */
-                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
-                    aabb.min.x = KORL_MATH_MIN(mouseEvent->subType.move.position.x, aabb.max.x - context->style.windowTitleBarPixelSizeY);
-                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
-                    aabb.max.x = KORL_MATH_MAX(mouseEvent->subType.move.position.x, aabb.min.x + context->style.windowTitleBarPixelSizeY);
-                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
-                    aabb.max.y = KORL_MATH_MAX(mouseEvent->subType.move.position.y, aabb.min.y + context->style.windowTitleBarPixelSizeY);
-                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN)
-                    aabb.min.y = KORL_MATH_MIN(mouseEvent->subType.move.position.y, aabb.max.y - context->style.windowTitleBarPixelSizeY);
-                /* set the window position/size based on the new AABB */
-                draggedWidget->position.x = aabb.min.x;
-                draggedWidget->position.y = aabb.max.y;
-                draggedWidget->size.x     = aabb.max.x - aabb.min.x;
-                draggedWidget->size.y     = aabb.max.y - aabb.min.y;
-                draggedUsedWidget->transient.aabb = aabb;
-            }
-            else
-            {
-                draggedUsedWidget->transient.aabb.min.x = mouseEvent->subType.move.position.x + context->mouseDownWidgetOffset.x;
-                draggedUsedWidget->transient.aabb.max.y = mouseEvent->subType.move.position.y + context->mouseDownWidgetOffset.y;
-                draggedWidget->position = (Korl_Math_V2f32){draggedUsedWidget->transient.aabb.min.x, draggedUsedWidget->transient.aabb.max.y};
+            case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                if(context->mouseHoverWindowEdgeFlags)
+                {
+                    korl_assert(draggedWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
+                    Korl_Math_Aabb2f32 aabb = draggedUsedWidget->transient.aabb;
+                    /* adjust the AABB values based on which edge flags we're controlling, 
+                        & ensure that the final AABB is valid (not too small) */
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
+                        aabb.min.x = KORL_MATH_MIN(mouseEvent->subType.move.position.x, aabb.max.x - context->style.windowTitleBarPixelSizeY);
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
+                        aabb.max.x = KORL_MATH_MAX(mouseEvent->subType.move.position.x, aabb.min.x + context->style.windowTitleBarPixelSizeY);
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
+                        aabb.max.y = KORL_MATH_MAX(mouseEvent->subType.move.position.y, aabb.min.y + context->style.windowTitleBarPixelSizeY);
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN)
+                        aabb.min.y = KORL_MATH_MIN(mouseEvent->subType.move.position.y, aabb.max.y - context->style.windowTitleBarPixelSizeY);
+                    /* set the window position/size based on the new AABB */
+                    draggedWidget->position.x = aabb.min.x;
+                    draggedWidget->position.y = aabb.max.y;
+                    draggedWidget->size.x     = aabb.max.x - aabb.min.x;
+                    draggedWidget->size.y     = aabb.max.y - aabb.min.y;
+                    draggedUsedWidget->transient.aabb = aabb;
+                }
+                else
+                {
+                    draggedUsedWidget->transient.aabb.min.x = mouseEvent->subType.move.position.x + context->mouseDownWidgetOffset.x;
+                    draggedUsedWidget->transient.aabb.max.y = mouseEvent->subType.move.position.y + context->mouseDownWidgetOffset.y;
+                    draggedWidget->position = (Korl_Math_V2f32){draggedUsedWidget->transient.aabb.min.x, draggedUsedWidget->transient.aabb.max.y};
+                }
+                break;}
+            case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+                /* calculate & store the drag distance (depending on the SCROLL_BAR's axis) 
+                    which will be later returned to the user who calls korl_gui_widgetScrollBar */
+                const Korl_Math_V2f32 newTransientSliderPosition = korl_math_v2f32_subtract(mouseEvent->subType.move.position, draggedUsedWidget->widget->subType.scrollBar.mouseDownSliderOffset);
+                KORL_ZERO_STACK(Korl_Math_V2f32, sliderPosition);
+                _korl_gui_widget_scrollBar_identifyMouseRegion(draggedUsedWidget->widget, mouseEvent->subType.move.position, &sliderPosition);
+                const Korl_Math_V2f32 mouseDrag = korl_math_v2f32_subtract(newTransientSliderPosition, sliderPosition);
+                switch(draggedUsedWidget->widget->subType.scrollBar.axis)
+                {
+                case KORL_GUI_SCROLL_BAR_AXIS_X:{
+                    draggedUsedWidget->widget->subType.scrollBar.draggedMagnitude = mouseDrag.x;
+                    break;}
+                case KORL_GUI_SCROLL_BAR_AXIS_Y:{
+                    draggedUsedWidget->widget->subType.scrollBar.draggedMagnitude = mouseDrag.y;
+                    break;}
+                }
+                break;}
+            default:{
+                break;}
             }
         else
         {
@@ -639,7 +667,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     break;}
                 case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
                     if(context->identifierHashWidgetMouseDown != widget->identifierHash)
-                        _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.move.position);
+                        widget->subType.scrollBar.mouseDownRegion = _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.move.position, NULL);
                     /*fallthrough to default case*/}
                 default:{
                     if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.move.position))
@@ -661,69 +689,76 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
                 if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW && widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
-                if(korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                if(!korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
+                    continue;
+                bool widgetCanMouseDrag = false;
+                bool widgetCanMouseDown = false;
+                bool eventCaptured      = false;
+                switch(widget->type)
                 {
-                    bool widgetCanMouseDown = false;
-                    bool eventCaptured      = false;
-                    switch(widget->type)
+                case KORL_GUI_WIDGET_TYPE_WINDOW:{
+                    korl_assert(!widget->identifierHashParent);// simplification; windows are always top-level (no child windows)
+                    widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
+                    korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
+                    /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
+                        would rather only do once per frame, so instead we can take advantage of a key assumption here: 
+                        - we can safely assume that stbDaUsedWidgets is currently sorted topologically, such that each widget 
+                          sub-tree is contiguous in memory!
+                        With this knowledge, all we have to do to maintain the topological sort for the rest of the frame is 
+                        just move this entire widget sub-tree to the end of stbDaUsedWidgets. */
+                    // iterate over stbDaUsedWidgets (starting at usedWidget) until we encounter another top-level widget _or_ the end iterator;
+                    //  this will give us the total # of UsedWidgets in this widget sub-tree
+                    _Korl_Gui_UsedWidget* subTreeEnd = usedWidget + 1;
+                    for(; subTreeEnd < stbDaUsedWidgetsEnd; subTreeEnd++)
+                        if(subTreeEnd->dagMetaData.depth <= 0)
+                            break;
+                    if(subTreeEnd < stbDaUsedWidgetsEnd)// no need to do any of this logic if this sub-tree is already at the end of UsedWidgets
                     {
-                    case KORL_GUI_WIDGET_TYPE_WINDOW:{
-                        korl_assert(!widget->identifierHashParent);// simplification; windows are always top-level (no child windows)
-                        if(!context->identifierHashWidgetMouseDown)
-                            context->identifierHashWidgetDragged = widget->identifierHash;// right now, _only_ windows can be dragged!
-                        widget->orderIndex = ++context->rootWidgetOrderIndexHighest;/* set widget's order to be in front of all other widgets */
-                        korl_assert(context->rootWidgetOrderIndexHighest);// check integer overflow
-                        /* we _could_ just re-sort the entire UsedWidget list, but this is an expensive/complicated process that I 
-                            would rather only do once per frame, so instead we can take advantage of a key assumption here: 
-                            - we can safely assume that stbDaUsedWidgets is currently sorted topologically, such that each widget 
-                              sub-tree is contiguous in memory!
-                            With this knowledge, all we have to do to maintain the topological sort for the rest of the frame is 
-                            just move this entire widget sub-tree to the end of stbDaUsedWidgets. */
-                        // iterate over stbDaUsedWidgets (starting at usedWidget) until we encounter another top-level widget _or_ the end iterator;
-                        //  this will give us the total # of UsedWidgets in this widget sub-tree
-                        _Korl_Gui_UsedWidget* subTreeEnd = usedWidget + 1;
-                        for(; subTreeEnd < stbDaUsedWidgetsEnd; subTreeEnd++)
-                            if(subTreeEnd->dagMetaData.depth <= 0)
-                                break;
-                        if(subTreeEnd < stbDaUsedWidgetsEnd)// no need to do any of this logic if this sub-tree is already at the end of UsedWidgets
-                        {
-                            const u$ subTreeSize = subTreeEnd - usedWidget;
-                            // copy these UsedWidgets to a temp buffer
-                            _Korl_Gui_UsedWidget* stbDaTempSubTree = NULL;
-                            mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTempSubTree, subTreeSize);
-                            korl_memory_copy(stbDaTempSubTree, usedWidget, subTreeSize*sizeof(*usedWidget));
-                            // move all stbDaUsedWidgets that come after this sub-tree in memory down to usedWidget's position
-                            korl_memory_move(usedWidget, subTreeEnd, (stbDaUsedWidgetsEnd - subTreeEnd)*sizeof(*usedWidget));
-                            // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
-                            korl_memory_copy(subTreeEnd, stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
-                        }
-                        context->isTopLevelWindowActive = true;
-                        eventCaptured      = true;
-                        widgetCanMouseDown = true;
-                        break;}
-                    case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
-                        break;}
-                    case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
-                        _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.button.position);
-                        widgetCanMouseDown = true;
-                        break;}
-                    case KORL_GUI_WIDGET_TYPE_TEXT:{
-                        break;}
-                    case KORL_GUI_WIDGET_TYPE_BUTTON:{
-                        widgetCanMouseDown = true;
-                        break;}
-                    default:{
-                        korl_log(ERROR, "invalid widget type: %i", widget->type);
-                        break;}
+                        const u$ subTreeSize = subTreeEnd - usedWidget;
+                        // copy these UsedWidgets to a temp buffer
+                        _Korl_Gui_UsedWidget* stbDaTempSubTree = NULL;
+                        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTempSubTree, subTreeSize);
+                        korl_memory_copy(stbDaTempSubTree, usedWidget, subTreeSize*sizeof(*usedWidget));
+                        // move all stbDaUsedWidgets that come after this sub-tree in memory down to usedWidget's position
+                        korl_memory_move(usedWidget, subTreeEnd, (stbDaUsedWidgetsEnd - subTreeEnd)*sizeof(*usedWidget));
+                        // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
+                        korl_memory_copy(subTreeEnd, stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
                     }
-                    if(widgetCanMouseDown && !context->identifierHashWidgetMouseDown)// we mouse down on _only_ the first widget
+                    context->isTopLevelWindowActive = true;
+                    eventCaptured      = true;
+                    widgetCanMouseDown = true;
+                    widgetCanMouseDrag = true;
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+                    KORL_ZERO_STACK(Korl_Math_V2f32, sliderPosition);
+                    widget->subType.scrollBar.mouseDownRegion = _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.button.position, &sliderPosition);
+                    widgetCanMouseDown = true;
+                    if(widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER)// only allow the mouse to drag the widget if we clicked the scroll bar slider
                     {
-                        context->identifierHashWidgetMouseDown = widget->identifierHash;
-                        context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
+                        widget->subType.scrollBar.mouseDownSliderOffset = korl_math_v2f32_subtract(mouseEvent->subType.button.position, sliderPosition);
+                        widgetCanMouseDrag = true;
                     }
-                    if(eventCaptured)
-                        break;// stop processing widgets when the event is captured
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_TEXT:{
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_BUTTON:{
+                    widgetCanMouseDown = true;
+                    break;}
+                default:{
+                    korl_log(ERROR, "invalid widget type: %i", widget->type);
+                    break;}
                 }
+                if(widgetCanMouseDown && !context->identifierHashWidgetMouseDown)// we mouse down on _only_ the first widget
+                {
+                    context->identifierHashWidgetMouseDown = widget->identifierHash;
+                    context->mouseDownWidgetOffset         = korl_math_v2f32_subtract(widget->position, mouseEvent->subType.button.position);
+                }
+                if(widgetCanMouseDrag && !context->identifierHashWidgetDragged && context->identifierHashWidgetMouseDown == widget->identifierHash)
+                    context->identifierHashWidgetDragged = widget->identifierHash;
+                if(eventCaptured)
+                    break;// stop processing widgets when the event is captured
             }
         }
         else// mouse button released; on-click logic
@@ -1989,7 +2024,7 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         aabbChildrenSize.x += context->style.windowScrollBarPixelWidth;
         widget->subType.scrollArea.hasScrollBarY = true;
     }
-    const Korl_Math_V2f32 clippedSize = korl_math_v2f32_subtract(aabbChildrenSize, widget->size);
+    /* now we can invoke the SCROLL_BAR widgets for this scroll area, if they are required/allowed */
     if(widget->subType.scrollArea.hasScrollBarX)
     {
         korl_assert(aabbChildrenSize.x > widget->size.x);
@@ -1997,8 +2032,8 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
-        f32 scrollPositionRatio = korl_math_abs(widget->subType.scrollArea.contentOffset.x / clippedSize.x);
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x / aabbChildrenSize.x, &scrollPositionRatio);
+        widget->subType.scrollArea.contentOffset.x -= korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x, aabbChildrenSize.x, widget->subType.scrollArea.contentOffset.x);
+        KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.x, -(aabbChildrenSize.x - widget->size.x), 0);
     }
     if(widget->subType.scrollArea.hasScrollBarY)
     {
@@ -2007,8 +2042,8 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1, 0});
         _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
-        f32 scrollPositionRatio = korl_math_abs(widget->subType.scrollArea.contentOffset.y / clippedSize.y);
-        korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y / aabbChildrenSize.y, &scrollPositionRatio);
+        widget->subType.scrollArea.contentOffset.y -= korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y, aabbChildrenSize.y, widget->subType.scrollArea.contentOffset.y);
+        KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.y, 0, aabbChildrenSize.y - widget->size.y);
     }
 }
 korl_internal void korl_gui_widgetScrollAreaEnd(void)
@@ -2019,19 +2054,37 @@ korl_internal void korl_gui_widgetScrollAreaEnd(void)
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
 }
-korl_internal void korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 visibleRegionRatio, f32* io_scrollPositionRatio)
+korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset)
 {
+    if(korl_math_isNearlyZero(scrollRegionVisible) || korl_math_isNearlyZero(scrollRegionContent))
+        return 0;
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
     /**/
+    korl_assert(scrollRegionContent > scrollRegionVisible);
+    const f32 clippedSize = scrollRegionContent - scrollRegionVisible;
+    f32 scrollPositionRatio = (axis == KORL_GUI_SCROLL_BAR_AXIS_X ? -contentOffset : contentOffset) / clippedSize;
+    f32 contentScrollDelta = 0;
+    if(!korl_math_isNearlyZero(widget->subType.scrollBar.draggedMagnitude))
+    {
+        /* if the bar was adjusted by the user, we need to transform this screen-space value into a ratio to return to the caller */
+        const f32 ratioDeltaPerPixel = scrollRegionContent / scrollRegionVisible;
+        contentScrollDelta = widget->subType.scrollBar.draggedMagnitude*ratioDeltaPerPixel;
+        // recalculate scroll position ratio so the slider appears at the updated position for this frame //
+        contentOffset -= contentScrollDelta;
+        scrollPositionRatio = (axis == KORL_GUI_SCROLL_BAR_AXIS_X ? -contentOffset : contentOffset) / clippedSize;
+    }
+    KORL_MATH_ASSIGN_CLAMP(scrollPositionRatio, 0, 1);
     widget->subType.scrollBar.axis                = axis;
-    widget->subType.scrollBar.visibleRegionRatio  = visibleRegionRatio;
-    widget->subType.scrollBar.scrollPositionRatio = *io_scrollPositionRatio;
+    widget->subType.scrollBar.visibleRegionRatio  = scrollRegionVisible / scrollRegionContent;
+    widget->subType.scrollBar.scrollPositionRatio = scrollPositionRatio;
+    widget->subType.scrollBar.draggedMagnitude    = 0;
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
     /**/
+    return contentScrollDelta;
 }
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

@@ -34,8 +34,8 @@
 
 [x] set the scroll bar slider to the correct position, based on the SCROLL_AREA's contentOffset
 
-[ ] modify the mouse drag behavior of SCROLL_BAR widget to allow the user to click+drag on the scroll bar's slider
-[ ] return the "scroll distance" from korl_gui_scrollBar
+[x] modify the mouse drag behavior of SCROLL_BAR widget to allow the user to click+drag on the scroll bar's slider
+[x] return the "scroll distance" from korl_gui_scrollBar
 
 [ ] clamp the slider's size to some minimum size (?)
   - after a minimum scroll bar size is reached, we can:
@@ -45,5 +45,5 @@
 
 [ ] hold CTRL + click & drag to pan by the exact mouse delta
 
-[ ] create a horizontal scroll bar widget, using similar behavior as the vertical scroll bar widget
-[ ] ensure that there are no negative interactions between the vertical & horizontal scroll bars of a scroll area widget
+[x] create a horizontal scroll bar widget, using similar behavior as the vertical scroll bar widget
+[x] ensure that there are no negative interactions between the vertical & horizontal scroll bars of a scroll area widget

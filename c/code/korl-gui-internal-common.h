@@ -55,6 +55,11 @@ typedef struct _Korl_Gui_Window
     u16 widgets;// related to _Korl_Gui_Widget::orderIndex; the total # of direct widget children
 } _Korl_Gui_Window;
 #endif
+typedef enum Korl_Gui_ScrollBar_Region
+    {KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER
+    ,KORL_GUI_SCROLL_BAR_REGION_SLIDER
+    ,KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER
+} Korl_Gui_ScrollBar_Region;
 typedef struct _Korl_Gui_Widget
 {
     u64 identifierHashParent;// a value of 0 => this Widget has no parent
@@ -102,11 +107,9 @@ typedef struct _Korl_Gui_Widget
             Korl_Gui_ScrollBar_Axis axis;
             f32 visibleRegionRatio;
             f32 scrollPositionRatio;
-            enum
-                {KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER
-                ,KORL_GUI_SCROLL_BAR_REGION_SLIDER
-                ,KORL_GUI_SCROLL_BAR_REGION_POST_SLIDER
-            } mouseDownRegion;
+            Korl_Gui_ScrollBar_Region mouseDownRegion;
+            Korl_Math_V2f32 mouseDownSliderOffset;// vector from slider=>mouse
+            f32 draggedMagnitude;// set during processing of mouse input events, used & reset when the widget is invoked
         } scrollBar;
         struct
         {
