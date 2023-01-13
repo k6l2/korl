@@ -10,7 +10,7 @@
  * interactions with them (window is hovered, resize windows), and this value 
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
-korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 8.f;
+korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 10.f;
 typedef struct _Korl_Gui_MouseEvent
 {
     enum

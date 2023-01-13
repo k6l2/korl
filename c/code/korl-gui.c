@@ -339,7 +339,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widge
     if(arrlen(context->stbDaWidgetParentStack) <= 0)
         korl_gui_windowBegin(_KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT, NULL, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
     korl_assert(arrlen(context->stbDaWidgetParentStack) > 0);
-    _Korl_Gui_Widget*const widgetDirectParent = context->stbDaWidgets + arrlast(context->stbDaWidgetParentStack);
+    _Korl_Gui_Widget* widgetDirectParent = context->stbDaWidgets + arrlast(context->stbDaWidgetParentStack);
     /* each widget's final id hash is a convolution of the following values: 
         - the local given identifierHash
         - all parent widget hashes
@@ -374,6 +374,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widge
     widgetIndex = arrlenu(context->stbDaWidgets);
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, (_Korl_Gui_Widget){0});
     _Korl_Gui_Widget* widget = &context->stbDaWidgets[widgetIndex];
+    widgetDirectParent = context->stbDaWidgets + arrlast(context->stbDaWidgetParentStack);// need to re-obtain parent widget, since this pointer is now invalid
     korl_memory_zero(widget, sizeof(*widget));
     widget->identifierHash       = identifierHashPrime;
     widget->identifierHashParent = widgetDirectParent->identifierHash;
