@@ -29,6 +29,10 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         guiMouseEvent.subType.button.pressed  = isDown;
         guiMouseEvent.subType.button.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
                                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
+        if(wParam & MK_SHIFT)
+            guiMouseEvent.subType.button.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT;
+        if(wParam & MK_CONTROL)
+            guiMouseEvent.subType.button.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL;
         korl_gui_onMouseEvent(&guiMouseEvent);
         break;}
     case WM_MOUSEMOVE:{

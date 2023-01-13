@@ -603,10 +603,20 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
                 /* calculate & store the drag distance (depending on the SCROLL_BAR's axis) 
                     which will be later returned to the user who calls korl_gui_widgetScrollBar */
-                const Korl_Math_V2f32 newTransientSliderPosition = korl_math_v2f32_subtract(mouseEvent->subType.move.position, draggedUsedWidget->widget->subType.scrollBar.mouseDownSliderOffset);
-                KORL_ZERO_STACK(Korl_Math_V2f32, sliderPosition);
-                _korl_gui_widget_scrollBar_identifyMouseRegion(draggedUsedWidget->widget, mouseEvent->subType.move.position, &sliderPosition);
-                const Korl_Math_V2f32 mouseDrag = korl_math_v2f32_subtract(newTransientSliderPosition, sliderPosition);
+                Korl_Math_V2f32 mouseDrag = KORL_MATH_V2F32_ZERO;
+                switch(draggedUsedWidget->widget->subType.scrollBar.dragMode)
+                {
+                case _KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_SLIDER:{
+                    const Korl_Math_V2f32 newTransientSliderPosition = korl_math_v2f32_subtract(mouseEvent->subType.move.position, draggedUsedWidget->widget->subType.scrollBar.mouseDownSliderOffset);
+                    KORL_ZERO_STACK(Korl_Math_V2f32, sliderPosition);
+                    _korl_gui_widget_scrollBar_identifyMouseRegion(draggedUsedWidget->widget, mouseEvent->subType.move.position, &sliderPosition);
+                    mouseDrag = korl_math_v2f32_subtract(newTransientSliderPosition, sliderPosition);
+                    break;}
+                case _KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_CONTROL:{
+                    mouseDrag = korl_math_v2f32_subtract(mouseEvent->subType.move.position, draggedUsedWidget->widget->subType.scrollBar.mouseDownSliderOffset);
+                    draggedUsedWidget->widget->subType.scrollBar.mouseDownSliderOffset = mouseEvent->subType.move.position;// set the new mouse offset origin for the next frame
+                    break;}
+                }
                 switch(draggedUsedWidget->widget->subType.scrollBar.axis)
                 {
                 case KORL_GUI_SCROLL_BAR_AXIS_X:{
@@ -736,8 +746,20 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     KORL_ZERO_STACK(Korl_Math_V2f32, sliderPosition);
                     widget->subType.scrollBar.mouseDownRegion = _korl_gui_widget_scrollBar_identifyMouseRegion(widget, mouseEvent->subType.button.position, &sliderPosition);
                     widgetCanMouseDown = true;
-                    if(widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER)// only allow the mouse to drag the widget if we clicked the scroll bar slider
+                    if(mouseEvent->subType.button.keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
                     {
+                        /* if we're holding down the [Ctrl] key, enter a special "absolute scroll" mode, 
+                            so that instead of scrolling the contents based on the % the slider has moved 
+                            within the range of the SCROLL_BAR, we can scroll the content offset based on 
+                            literally the pixel difference of the mouse cursor (same scroll speed no matter 
+                            what the content/view ratio is) */
+                        widget->subType.scrollBar.dragMode              = _KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_CONTROL;
+                        widget->subType.scrollBar.mouseDownSliderOffset = mouseEvent->subType.button.position;
+                        widgetCanMouseDrag = true;
+                    }
+                    else if(widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER)
+                    {
+                        widget->subType.scrollBar.dragMode              = _KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_SLIDER;
                         widget->subType.scrollBar.mouseDownSliderOffset = korl_math_v2f32_subtract(mouseEvent->subType.button.position, sliderPosition);
                         widgetCanMouseDrag = true;
                     }
@@ -2069,9 +2091,17 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
     f32 contentScrollDelta = 0;
     if(!korl_math_isNearlyZero(widget->subType.scrollBar.draggedMagnitude))
     {
-        /* if the bar was adjusted by the user, we need to transform this screen-space value into a ratio to return to the caller */
-        const f32 ratioDeltaPerPixel = scrollRegionContent / scrollRegionVisible;
-        contentScrollDelta = widget->subType.scrollBar.draggedMagnitude*ratioDeltaPerPixel;
+        switch(widget->subType.scrollBar.dragMode)
+        {
+        case _KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_SLIDER:{
+            /* if the bar was adjusted by the user, we need to transform this screen-space value into a ratio to return to the caller */
+            const f32 ratioDeltaPerPixel = scrollRegionContent / scrollRegionVisible;
+            contentScrollDelta = widget->subType.scrollBar.draggedMagnitude*ratioDeltaPerPixel;
+            break;}
+        case _KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_CONTROL:{
+            contentScrollDelta = widget->subType.scrollBar.draggedMagnitude;// directly scroll by absolute mouse delta
+            break;}
+        }
         // recalculate scroll position ratio so the slider appears at the updated position for this frame //
         contentOffset -= contentScrollDelta;
         scrollPositionRatio = (axis == KORL_GUI_SCROLL_BAR_AXIS_X ? -contentOffset : contentOffset) / clippedSize;

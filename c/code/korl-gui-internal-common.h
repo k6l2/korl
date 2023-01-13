@@ -11,6 +11,11 @@
  * defines how far from the edges of each window AABB this collision region is 
  * in both dimensions */
 korl_global_const f32 _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS = 10.f;
+typedef enum _Korl_Gui_Keyboard_ModifierFlags
+    {_KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT     = 1<<0
+    ,_KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL   = 1<<1
+    ,_KORL_GUI_KEYBOARD_MODIFIER_FLAG_ALTERNATE = 1<<2
+} _Korl_Gui_Keyboard_ModifierFlags;
 typedef struct _Korl_Gui_MouseEvent
 {
     enum
@@ -27,6 +32,7 @@ typedef struct _Korl_Gui_MouseEvent
         struct
         {
             Korl_Math_V2f32 position;
+            _Korl_Gui_Keyboard_ModifierFlags keyboardModifierFlags;
             enum
                 {_KORL_GUI_MOUSE_EVENT_BUTTON_ID_LEFT
             } id;
@@ -110,6 +116,10 @@ typedef struct _Korl_Gui_Widget
             Korl_Gui_ScrollBar_Region mouseDownRegion;
             Korl_Math_V2f32 mouseDownSliderOffset;// vector from slider=>mouse
             f32 draggedMagnitude;// set during processing of mouse input events, used & reset when the widget is invoked
+            enum
+                {_KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_SLIDER // we're click+dragging on the slider
+                ,_KORL_GUI_WIDGET_SCROLL_BAR_DRAG_MODE_CONTROL// we held [Ctrl] & click+dragged anywhere
+            } dragMode;
         } scrollBar;
         struct
         {

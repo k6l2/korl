@@ -43,7 +43,7 @@
     - disable scroll bar slider mouse click checks
     - clicks on the scroll bar will just set the scroll position to be that exact position
 
-[ ] hold CTRL + click & drag to pan by the exact mouse delta
+[x] hold CTRL + click & drag to pan by the exact mouse delta
 
 [x] create a horizontal scroll bar widget, using similar behavior as the vertical scroll bar widget
 [x] ensure that there are no negative interactions between the vertical & horizontal scroll bars of a scroll area widget
