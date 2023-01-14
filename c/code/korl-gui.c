@@ -1320,7 +1320,6 @@ korl_internal void korl_gui_frameEnd(void)
                 widget->position = korl_math_v2f32_add(parentAnchor, korl_math_v2f32_add(usedWidgetParent->transient.childWidgetCursorOrigin, usedWidgetParent->transient.childWidgetCursor));
             else
                 widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
-            ///@TODO: figure out why the minimize button on windows gets wonky AABB calculation when the window is resized to be small in the X dimension
         }
         /* now that we know where the widget will be placed, we can determine the AABB of _most_ widgets; 
             the widget's rendering logic is free to modify this value at any time in order to update the 
@@ -1564,7 +1563,7 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
-                const f32 smallestSize = KORL_MATH_MIN(aabbSize.x, aabbSize.y);
+                const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = 
                     korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
                                                         ,(Korl_Math_V2f32){0.1f*smallestSize
@@ -1584,14 +1583,15 @@ korl_internal void korl_gui_frameEnd(void)
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
                 ///@TODO: render a different symbol if a window is minimized
+                const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 Korl_Gfx_Batch*const batchWindowTitleIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
-                                                                                                     ,(Korl_Math_V2f32){     aabbSize.x
-                                                                                                                       ,0.1f*aabbSize.y}
+                                                                                                     ,(Korl_Math_V2f32){     smallestSize
+                                                                                                                       ,0.1f*smallestSize}
                                                                                                      ,(Korl_Math_V2f32){0.5f, 0.5f}
                                                                                                      ,context->style.colorButtonWindowTitleBarIcons);
                 korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece
-                                           ,widget->position.x + aabbSize.x/2.f
-                                           ,widget->position.y - aabbSize.y/2.f);
+                                           ,widget->position.x + smallestSize/2.f
+                                           ,widget->position.y - smallestSize/2.f);
                 korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
@@ -1740,213 +1740,6 @@ korl_internal void korl_gui_frameEnd(void)
         processed */
     while(arrlenu(stbDaUsedWidgetStack))
         _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(arrpop(stbDaUsedWidgetStack));
-#if 0//@TODO: recycle
-    /* for each of the windows that we ended up using for this frame, generate 
-        the necessary draw commands for them */
-    for(u$ i = 0; i < arrlenu(context->stbDaWindows); ++i)
-    {
-        _Korl_Gui_Window*const window = &context->stbDaWindows[i];
-        korl_assert(window->identifierHash);
-        /* if the window wasn't used this frame, skip it and prepare to remove 
-            it from the memory pool */
-        if(window->usedThisFrame)
-        {
-            window->usedThisFrame = false;
-            if(windowsRemaining < i)
-                context->stbDaWindows[windowsRemaining] = *window;
-            windowsRemaining++;
-        }
-        else
-            continue;
-        /**/
-        if(!window->isOpen)
-            continue;
-        if(window->isFirstFrame || (window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE))
-        {
-            korl_time_probeStart(calculate_window_AABB);
-            window->isFirstFrame = false;
-            /* iterate over all this window's widgets, obtaining their AABBs & 
-                accumulating their geometry to determine how big the window 
-                needs to be */
-            //KORL-PERFORMANCE-000-000-040: gui: MEDIUM-MAJOR; attempt to completely remove the necessity to call _korl_gui_processWidgetGraphics two times inside korl_gui_frameEnd, and remove the second parameter for that matter
-            _korl_gui_processWidgetGraphics(window, false, 0.f, 0.f);
-            Korl_Math_Aabb2f32 windowTotalAabb = window->cachedContentAabb;
-            /* take the AABB of the window's title bar into account as well */
-            if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
-            {
-                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack, context->style.fontWindowText, window->titleBarText, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-                const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
-                f32 titleBarOptimalSizeX = batchTextSize.x;
-                if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_CLOSE)
-                    titleBarOptimalSizeX += context->style.windowTitleBarPixelSizeY;
-                if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_BUTTON_HIDE)
-                    titleBarOptimalSizeX += context->style.windowTitleBarPixelSizeY;
-                windowTotalAabb.max.x = KORL_MATH_MAX(windowTotalAabb.max.x, window->position.x + titleBarOptimalSizeX);
-                windowTotalAabb.max.y += context->style.windowTitleBarPixelSizeY;
-            }
-            /* size the window based on the above metrics */
-            window->size = korl_math_aabb2f32_size(windowTotalAabb);
-            /* prevent the window from being too small */
-            KORL_MATH_ASSIGN_CLAMP_MIN(window->size.x, context->style.windowTitleBarPixelSizeY);
-            KORL_MATH_ASSIGN_CLAMP_MIN(window->size.y, context->style.windowTitleBarPixelSizeY);
-            if(window->size.y < context->style.windowTitleBarPixelSizeY)
-                window->size.y = context->style.windowTitleBarPixelSizeY;
-            if(window->size.x < context->style.windowTitleBarPixelSizeY)
-                window->size.x = context->style.windowTitleBarPixelSizeY;
-            korl_time_probeStop(calculate_window_AABB);
-        }
-        if(window->isContentHidden)
-            window->size.y = context->style.windowTitleBarPixelSizeY;
-        /* bind the windows to the bounds of the swapchain, such that there will 
-            always be a square of grabable geometry on the window whose 
-            dimensions equal the height of the window title bar style at minimum */
-        KORL_MATH_ASSIGN_CLAMP(window->position.x, 
-                               -window->size.x + context->style.windowTitleBarPixelSizeY, 
-                               surfaceSize.x - context->style.windowTitleBarPixelSizeY);
-        KORL_MATH_ASSIGN_CLAMP(window->position.y, 
-                               -KORL_C_CAST(f32, surfaceSize.y) + context->style.windowTitleBarPixelSizeY, 
-                               0);
-        /* render all this window's widgets within the window panel */
-        korl_time_probeStart(draw_widgets);
-        // calculate how much area there is for the window's widgets to occupy & 
-        //  how much visible space is available in the window //
-        Korl_Math_V2f32 availableContentArea = window->size;
-        if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
-            availableContentArea.y -= context->style.windowTitleBarPixelSizeY;
-        const Korl_Math_V2f32 contentSize = korl_math_aabb2f32_size(window->cachedContentAabb);
-        // determine which scrollbars we need to use to view all the content //
-        window->specialWidgetFlags &= ~KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X;
-        window->specialWidgetFlags &= ~KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y;
-        if(contentSize.x > availableContentArea.x)
-        {
-            window->specialWidgetFlags |= KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X;
-            availableContentArea.y -= context->style.windowScrollBarPixelWidth;
-        }
-        if(contentSize.y > availableContentArea.y)
-        {
-            window->specialWidgetFlags |= KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y;
-            availableContentArea.x -= context->style.windowScrollBarPixelWidth;
-        }
-        // re-evaluate the presence of each scrollbar, only modifying the 
-        //  available content area if the scrollbar wasn't already taken into 
-        //  account, since the presence of one scrollbar can add the requirement 
-        //  of another //
-        if(contentSize.x > availableContentArea.x)
-        {
-            if(!(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X))
-                availableContentArea.y -= context->style.windowScrollBarPixelWidth;
-            window->specialWidgetFlags |= KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X;
-        }
-        if(contentSize.y > availableContentArea.y)
-        {
-            if(!(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y))
-                availableContentArea.x -= context->style.windowScrollBarPixelWidth;
-            window->specialWidgetFlags |= KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y;
-        }
-        window->cachedAvailableContentSize = availableContentArea;
-        // do scroll bar logic to determine the adjusted widget cursor position //
-        korl_time_probeStart(scroll_bar_logic);
-        korl_shared_const f32 SCROLLBAR_LENGTH_MIN = 8.f;
-        Korl_Gfx_Batch* batchScrollBarX = NULL;
-        Korl_Gfx_Batch* batchScrollBarY = NULL;
-        if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X)
-        {
-            korl_time_probeStart(scroll_bar_x);
-            /* determine scroll bar length */
-            window->cachedScrollBarLengthX = availableContentArea.x * availableContentArea.x / contentSize.x;
-            window->cachedScrollBarLengthX = KORL_MATH_MAX(window->cachedScrollBarLengthX, SCROLLBAR_LENGTH_MIN);
-            /* bind the scroll bar to the current possible range */
-            const f32 scrollBarRangeX = availableContentArea.x - window->cachedScrollBarLengthX;
-            window->scrollBarPositionX = KORL_MATH_CLAMP(window->scrollBarPositionX, 0.f, scrollBarRangeX);
-            const f32 scrollBarPositionX = window->position.x + window->scrollBarPositionX;
-            /* batch scroll bar graphics */
-            batchScrollBarX = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
-                                                                   (Korl_Math_V2f32){window->cachedScrollBarLengthX, context->style.windowScrollBarPixelWidth}, 
-                                                                   (Korl_Math_V2f32){0.f, 0.f}, 
-                                                                   context->style.colorScrollBar);
-            if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X)
-                korl_gfx_batchRectangleSetColor(batchScrollBarX, context->style.colorScrollBarPressed);
-            else if(context->identifierHashMouseHoveredWindow == window->identifierHash)
-            {
-                const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(scrollBarPositionX                                 , window->position.y - window->size.y, 
-                                                                                       scrollBarPositionX + window->cachedScrollBarLengthX, window->position.y - window->size.y + context->style.windowScrollBarPixelWidth);
-                if(korl_math_aabb2f32_containsV2f32(scrollBarAabb, context->mouseHoverPosition))
-                    korl_gfx_batchRectangleSetColor(batchScrollBarX, context->style.colorScrollBarActive);
-            }
-            korl_gfx_batchSetPosition2d(batchScrollBarX, scrollBarPositionX, window->position.y - window->size.y);
-            korl_time_probeStop(scroll_bar_x);
-        }
-        if(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y)
-        {
-            korl_time_probeStart(scroll_bar_y);
-            /* determine scroll bar length */
-            window->cachedScrollBarLengthY = availableContentArea.y * availableContentArea.y / contentSize.y;
-            window->cachedScrollBarLengthY = KORL_MATH_MAX(window->cachedScrollBarLengthY, SCROLLBAR_LENGTH_MIN);
-            /* bind the scroll bar to the current possible range */
-            const f32 scrollBarRangeY = ((window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR) ? window->size.y - context->style.windowTitleBarPixelSizeY : window->size.y)
-                                      - window->cachedScrollBarLengthY;
-            window->scrollBarPositionY = KORL_MATH_CLAMP(window->scrollBarPositionY, 0.f, scrollBarRangeY);
-            f32 scrollBarPositionY = window->position.y - window->scrollBarPositionY;
-            if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
-                scrollBarPositionY -= context->style.windowTitleBarPixelSizeY;
-            /* batch scroll bar graphics */
-            batchScrollBarY = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, 
-                                                                   (Korl_Math_V2f32){context->style.windowScrollBarPixelWidth, window->cachedScrollBarLengthY}, 
-                                                                   (Korl_Math_V2f32){1.f, 1.f}, 
-                                                                   context->style.colorScrollBar);
-            if(context->specialWidgetFlagsMouseDown & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y)
-                korl_gfx_batchRectangleSetColor(batchScrollBarY, context->style.colorScrollBarPressed);
-            else if(context->identifierHashMouseHoveredWindow == window->identifierHash)
-            {
-                const Korl_Math_Aabb2f32 scrollBarAabb = korl_math_aabb2f32_fromPoints(window->position.x + window->size.x                                           , scrollBarPositionY, 
-                                                                                       window->position.x + window->size.x - context->style.windowScrollBarPixelWidth, scrollBarPositionY - window->cachedScrollBarLengthY);
-                if(korl_math_aabb2f32_containsV2f32(scrollBarAabb, context->mouseHoverPosition))
-                    korl_gfx_batchRectangleSetColor(batchScrollBarY, context->style.colorScrollBarActive);
-            }
-            korl_gfx_batchSetPosition2d(batchScrollBarY, window->position.x + window->size.x, scrollBarPositionY);
-            korl_time_probeStop(scroll_bar_y);
-        }
-        if(!(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_X))
-            window->scrollBarPositionX = 0;
-        if(!(window->specialWidgetFlags & KORL_GUI_SPECIAL_WIDGET_FLAG_SCROLL_BAR_Y))
-            window->scrollBarPositionY = 0;
-        // convert scroll bar positions to content cursor offset //
-        const f32 scrollBarRangeX = availableContentArea.x - window->cachedScrollBarLengthX;
-        const f32 scrollBarRangeY = ((window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR) ? window->size.y - context->style.windowTitleBarPixelSizeY : window->size.y)
-                                  - window->cachedScrollBarLengthY;
-        const f32 scrollBarRatioX = korl_math_isNearlyZero(scrollBarRangeX) ? 0 : window->scrollBarPositionX / scrollBarRangeX;
-        const f32 scrollBarRatioY = korl_math_isNearlyZero(scrollBarRangeY) ? 0 : window->scrollBarPositionY / scrollBarRangeY;
-        const f32 contentCursorOffsetX = scrollBarRatioX * (contentSize.x - availableContentArea.x);
-        const f32 contentCursorOffsetY = scrollBarRatioY * (contentSize.y - availableContentArea.y);
-        korl_time_probeStop(scroll_bar_logic);
-        // before drawing the window contents, we need to make sure it will not 
-        //  draw on top of the title bar if there is one present //
-        if(window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
-        {
-            korl_gfx_cameraSetScissor(&guiCamera, 
-                                      window->position.x, 
-                                      /*natural +Y=>UP space => swap chain space conversion*/-window->position.y + context->style.windowTitleBarPixelSizeY, 
-                                      window->size.x, 
-                                      window->size.y - context->style.windowTitleBarPixelSizeY);
-            korl_gfx_useCamera(guiCamera);
-        }
-        korl_time_probeStart(process_widget_gfx);
-        _korl_gui_processWidgetGraphics(window, true, contentCursorOffsetX, contentCursorOffsetY);
-        korl_time_probeStop(process_widget_gfx);
-        /* draw scroll bars, if they are needed */
-        korl_time_probeStart(batch_scroll_bars);
-        if(batchScrollBarX)
-            korl_gfx_batch(batchScrollBarX, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        if(batchScrollBarY)
-            korl_gfx_batch(batchScrollBarY, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        korl_time_probeStop(batch_scroll_bars);
-        korl_time_probeStop(draw_widgets);
-        /* reset transient window properties in preparation for the next frame */
-        window->widgets = 0;
-    }
-    korl_time_probeStop(generate_draw_commands);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWindows, windowsRemaining);
-#endif
 #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     {
         korl_gfx_cameraSetScissorPercent(&cameraOrthographic, 0,0, 1,1);
