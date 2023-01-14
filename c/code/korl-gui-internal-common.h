@@ -49,18 +49,6 @@ typedef struct _Korl_Gui_MouseEvent
         } wheel;
     } subType;
 } _Korl_Gui_MouseEvent;
-#if 0//@TODO: recycle
-typedef struct _Korl_Gui_Window
-{
-    Korl_Math_Aabb2f32 cachedContentAabb;// "content" refers to the accumulation of all widgets contained in this window
-    Korl_Math_V2f32 cachedAvailableContentSize;
-    f32 cachedScrollBarLengthX;
-    f32 cachedScrollBarLengthY;
-    f32 scrollBarPositionX;
-    f32 scrollBarPositionY;
-    u16 widgets;// related to _Korl_Gui_Widget::orderIndex; the total # of direct widget children
-} _Korl_Gui_Window;
-#endif
 typedef enum Korl_Gui_ScrollBar_Region
     {KORL_GUI_SCROLL_BAR_REGION_PRE_SLIDER
     ,KORL_GUI_SCROLL_BAR_REGION_SLIDER
@@ -81,9 +69,6 @@ typedef struct _Korl_Gui_Widget
     bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
     bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
     bool realignY;
-#if 0//@TODO: recycle
-    Korl_Math_Aabb2f32 cachedAabb;// invalid until after the next call to korl_gui_frameEnd
-#endif
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
         ,KORL_GUI_WIDGET_TYPE_SCROLL_AREA
@@ -213,8 +198,5 @@ typedef struct _Korl_Gui_Context
     } transientNextWidgetModifiers;
     /// @TODO: could we get rid of currentWidgetIndex in favor of just adding a transient flag to transientNextWidgetModifiers ?  It seems like this would be more robust, considering that widgets should be able to spawn child widgets when they are spawned, so without this we have the potential in the future to accidentally set the realignY flag of one of the last spawned widget's child widgets
     i16 currentWidgetIndex;// used to modify properties of the last widget created via _korl_gui_getWidget; example: when korl_gui_realignY is called, we set a special flag in the last widget so that 
-#if 0//@TODO: recycle
-    u64 identifierHashMouseDownWidget;
-#endif
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;
