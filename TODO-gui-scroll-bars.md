@@ -1,5 +1,7 @@
 # TODO: korl-gui scroll bars
 
+- @TODO: delete this file when we're all done with this
+
 - our primary objective here is to be able to add scrollbars to windows in arbitrary ways
   - entire window contents
   - sub-region of the window, with widgets that are "outside" of the scrollable region of the window
@@ -37,7 +39,7 @@
 [x] modify the mouse drag behavior of SCROLL_BAR widget to allow the user to click+drag on the scroll bar's slider
 [x] return the "scroll distance" from korl_gui_scrollBar
 
-[ ] clamp the slider's size to some minimum size (?)
+[x] clamp the slider's size to some minimum size (?)
   - after a minimum scroll bar size is reached, we can:
     - draw the slider as just a line primitive, instead of a quad
     - disable scroll bar slider mouse click checks
