@@ -287,6 +287,21 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_
     vA.elements[1] = KORL_MATH_MAX(vA.elements[1], vB.elements[1]);
     return vA;
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+}
+korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
+{
+    for(u8 i = 0; i < korl_arraySize(v.elements); i++)
+        if(korl_math_isNanf32(v.elements[i]))
+            return true;
+    return false;
+}
+korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_checkCast_u$_to_f32(v.x), korl_checkCast_u$_to_f32(v.y)};
+}
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {
     return sqrtf(korl_math_v3f32_magnitudeSquared(v));

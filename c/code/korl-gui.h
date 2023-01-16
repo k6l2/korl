@@ -14,8 +14,8 @@ korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset);
  * after each call to \c korl_gui_windowBegin . */
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin);
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd);
-korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition);
-korl_internal KORL_FUNCTION_korl_gui_windowSetSize(korl_gui_windowSetSize);
+korl_internal KORL_FUNCTION_korl_gui_setNextWidgetSize(korl_gui_setNextWidgetSize);
+korl_internal KORL_FUNCTION_korl_gui_setNextWidgetParentOffset(korl_gui_setNextWidgetParentOffset);
 korl_internal void korl_gui_frameEnd(void);
 /** Make sure to reset this value back to \c 0 after you are finished looping! */
 korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex);

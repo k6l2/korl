@@ -154,9 +154,9 @@ korl_internal void _korl_gui_findUsedWidgetDepthRecursive(_Korl_Gui_UsedWidget* 
 korl_internal void _korl_gui_resetTransientNextWidgetModifiers(void)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    context->transientNextWidgetModifiers.size         = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
-    context->transientNextWidgetModifiers.parentAnchor = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
-    context->transientNextWidgetModifiers.parentOffset = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+    context->transientNextWidgetModifiers.size         = korl_math_v2f32_nan();
+    context->transientNextWidgetModifiers.parentAnchor = korl_math_v2f32_nan();
+    context->transientNextWidgetModifiers.parentOffset = korl_math_v2f32_nan();
     context->transientNextWidgetModifiers.orderIndex   = -1;
 }
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
@@ -225,20 +225,17 @@ widgetIndexValid:
             break;
         }
     /* apply transient next widget modifiers */
-    if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.size.x)
-       && !korl_math_isNanf32(context->transientNextWidgetModifiers.size.y))
+    if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.size))
         widget->size = context->transientNextWidgetModifiers.size;
         // do nothing otherwise, since the widget->size is transient & will potentially change due to widget logic at the end of each frame
-    if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.parentAnchor.x)
-       && !korl_math_isNanf32(context->transientNextWidgetModifiers.parentAnchor.y))
+    if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.parentAnchor))
         widget->parentAnchor = context->transientNextWidgetModifiers.parentAnchor;
     else
         widget->parentAnchor = KORL_MATH_V2F32_ZERO;
-    if(   !korl_math_isNanf32(context->transientNextWidgetModifiers.parentOffset.x)
-       && !korl_math_isNanf32(context->transientNextWidgetModifiers.parentOffset.y))
+    if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.parentOffset))
         widget->parentOffset = context->transientNextWidgetModifiers.parentOffset;
     else
-        widget->parentOffset = (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+        widget->parentOffset = korl_math_v2f32_nan();
     if(context->transientNextWidgetModifiers.orderIndex >= 0)
         widget->orderIndex = korl_checkCast_i$_to_u16(context->transientNextWidgetModifiers.orderIndex);
     _korl_gui_resetTransientNextWidgetModifiers();
@@ -277,17 +274,9 @@ korl_internal void _korl_gui_frameBegin(void)
     _korl_gui_resetTransientNextWidgetModifiers();
     context->currentWidgetIndex = -1;
 }
-korl_internal void _korl_gui_setNextWidgetSize(Korl_Math_V2f32 size)
-{
-    _korl_gui_context.transientNextWidgetModifiers.size = size;
-}
 korl_internal void _korl_gui_setNextWidgetParentAnchor(Korl_Math_V2f32 anchorRatioRelativeToParentTopLeft)
 {
     _korl_gui_context.transientNextWidgetModifiers.parentAnchor = anchorRatioRelativeToParentTopLeft;
-}
-korl_internal void _korl_gui_setNextWidgetParentOffset(Korl_Math_V2f32 positionRelativeToAnchor)
-{
-    _korl_gui_context.transientNextWidgetModifiers.parentOffset = positionRelativeToAnchor;
 }
 korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
 {
@@ -842,13 +831,29 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         }
         newWindow->usedThisFrame             = newWindow->subType.window.isOpen;// if the window isn't open, this entire widget sub-tree is unused for this frame
         newWindow->subType.window.styleFlags = styleFlags;
+        /* apply transient next widget modifiers */
+        if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.size))
+            newWindow->size = context->transientNextWidgetModifiers.size;
+            // do nothing otherwise, since the newWindow->size is transient & will potentially change due to widget logic at the end of each frame
+        if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.parentAnchor))
+            newWindow->parentAnchor = context->transientNextWidgetModifiers.parentAnchor;
+        else
+            newWindow->parentAnchor = KORL_MATH_V2F32_ZERO;
+        if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.parentOffset))
+            newWindow->parentOffset = context->transientNextWidgetModifiers.parentOffset;
+        else
+            newWindow->parentOffset = korl_math_v2f32_nan();
+        if(context->transientNextWidgetModifiers.orderIndex >= 0)
+            newWindow->orderIndex = korl_checkCast_i$_to_u16(context->transientNextWidgetModifiers.orderIndex);
+        _korl_gui_resetTransientNextWidgetModifiers();
+        /* now that transient next widget modifiers have been applied, we can spawn child widgets */
         korl_shared_const Korl_Math_V2f32 TITLE_BAR_BUTTON_ANCHOR = {1, 0};// set title bar buttons relative to the window's upper-right corner
         Korl_Math_V2f32 titleBarButtonCursor = (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f};
         if(out_isOpen)
         {
-            _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
+            korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
             _korl_gui_setNextWidgetParentAnchor(TITLE_BAR_BUTTON_ANCHOR);
-            _korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
+            korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
             korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
             if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE))
                 newWindow->subType.window.isOpen = false;
@@ -857,9 +862,9 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         }
         if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
         {
-            _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
+            korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
             _korl_gui_setNextWidgetParentAnchor(TITLE_BAR_BUTTON_ANCHOR);
-            _korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
+            korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
             korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
             if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE))
             {
@@ -887,27 +892,13 @@ korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
     korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);
     arrpop(context->stbDaWidgetParentStack);
 }
-korl_internal KORL_FUNCTION_korl_gui_windowSetPosition(korl_gui_windowSetPosition)
+korl_internal KORL_FUNCTION_korl_gui_setNextWidgetSize(korl_gui_setNextWidgetSize)
 {
-#if 0//@TODO: recycle
-    _Korl_Gui_Context*const context = &_korl_gui_context;
-    korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex >= 0);
-    _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
-    const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
-    window->position = (Korl_Math_V2f32){positionX - anchorX*window->size.x, -KORL_C_CAST(f32, surfaceSize.y) + positionY + anchorY*window->size.y};
-#endif
+    _korl_gui_context.transientNextWidgetModifiers.size = size;
 }
-korl_internal KORL_FUNCTION_korl_gui_windowSetSize(korl_gui_windowSetSize)
+korl_internal KORL_FUNCTION_korl_gui_setNextWidgetParentOffset(korl_gui_setNextWidgetParentOffset)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
-#if 0//@TODO: recycle
-    korl_assert(context->frameSequenceCounter == 1);
-    korl_assert(context->currentWindowIndex >= 0);
-    _Korl_Gui_Window*const window = &context->stbDaWindows[context->currentWindowIndex];
-    window->isFirstFrame = false;
-    window->size         = (Korl_Math_V2f32){sizeX, sizeY};
-#endif
+    _korl_gui_context.transientNextWidgetModifiers.parentOffset = positionRelativeToAnchor;
 }
 /** This function is called from within \c frameEnd as soon as we are in a 
  * state where we are absolutely sure that all of the children of \c usedWidget 
@@ -1130,7 +1121,7 @@ korl_internal void korl_gui_frameEnd(void)
             _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(arrpop(stbDaUsedWidgetStack));
         _Korl_Gui_UsedWidget*const usedWidgetParent = arrlenu(stbDaUsedWidgetStack) ? arrlast(stbDaUsedWidgetStack) : NULL;
         /* determine where the widget's origin will be in world-space */
-        const bool useParentWidgetCursor = korl_math_isNanf32(widget->parentOffset.x) || korl_math_isNanf32(widget->parentOffset.y);
+        const bool useParentWidgetCursor = korl_math_v2f32_hasNan(widget->parentOffset);
         if(usedWidgetParent)
         {
             const Korl_Math_V2f32 parentAnchor = korl_math_v2f32_add(usedWidgetParent->widget->position
@@ -1140,6 +1131,12 @@ korl_internal void korl_gui_frameEnd(void)
             if(useParentWidgetCursor)
                 widget->position = korl_math_v2f32_add(parentAnchor, korl_math_v2f32_add(usedWidgetParent->transient.childWidgetCursorOrigin, usedWidgetParent->transient.childWidgetCursor));
             else
+                widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
+        }
+        else/* this is a root-level widget; we need to use the rendering surface as our "parent" */
+        {
+            const Korl_Math_V2f32 parentAnchor = korl_math_v2f32_multiply(widget->parentAnchor, korl_math_v2f32_fromV2u32(surfaceSize));
+            if(!useParentWidgetCursor)
                 widget->position = korl_math_v2f32_add(parentAnchor, widget->parentOffset);
         }
         /* now that we know where the widget will be placed, we can determine the AABB of _most_ widgets; 
@@ -1705,9 +1702,9 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
     if(widget->subType.scrollArea.hasScrollBarX)
     {
         korl_assert(aabbChildrenSize.x > widget->size.x);
-        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){widget->size.x - (widget->subType.scrollArea.hasScrollBarY ? context->style.windowScrollBarPixelWidth/*prevent overlap w/ y-axis SCROLL_BAR*/ : 0), context->style.windowScrollBarPixelWidth});
+        korl_gui_setNextWidgetSize((Korl_Math_V2f32){widget->size.x - (widget->subType.scrollArea.hasScrollBarY ? context->style.windowScrollBarPixelWidth/*prevent overlap w/ y-axis SCROLL_BAR*/ : 0), context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
-        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
+        korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
         widget->subType.scrollArea.contentOffset.x -= korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x, aabbChildrenSize.x, widget->subType.scrollArea.contentOffset.x);
         KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.x, -(aabbChildrenSize.x - widget->size.x), 0);
@@ -1715,9 +1712,9 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
     if(widget->subType.scrollArea.hasScrollBarY)
     {
         korl_assert(aabbChildrenSize.y > widget->size.y);
-        _korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowScrollBarPixelWidth, widget->size.y});
+        korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowScrollBarPixelWidth, widget->size.y});
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1, 0});
-        _korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
+        korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
         widget->subType.scrollArea.contentOffset.y -= korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y, aabbChildrenSize.y, widget->subType.scrollArea.contentOffset.y);
         KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.y, 0, aabbChildrenSize.y - widget->size.y);

@@ -15,6 +15,12 @@ typedef struct Memory
     bool continueRunning;
     bool testWindowOpen;
     u$ testTextWidgets;
+    struct Console
+    {
+        bool enable;
+        f32 fadeInRatio;
+        u$ lastLoggedCharacters;
+    } console;
 } Memory;
 korl_global_variable Memory* memory;
 KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
@@ -35,13 +41,40 @@ KORL_GAME_API KORL_GAME_ON_RELOAD(korl_game_onReload)
 }
 KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 {
-    if(keyCode == KORL_KEY_ESCAPE && isDown && !isRepeat)
-        memory->continueRunning = false;
+    if(isDown && !isRepeat)
+        switch(keyCode)
+        {
+        case KORL_KEY_ESCAPE:{
+            memory->continueRunning = false;
+            break;}
+        case KORL_KEY_GRAVE:{
+            memory->console.enable = !memory->console.enable;
+            break;}
+        default: break;
+        }
 }
 KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 {
     ///@TODO: complete GUI test code
-    ///@TODO: test korl_gui_widgetText
+    memory->console.fadeInRatio = korl_math_exDecay(memory->console.fadeInRatio, memory->console.enable ? 1.f : 0.f, 40.f, deltaSeconds);
+    if(memory->console.enable || !korl_math_isNearlyEqualEpsilon(memory->console.fadeInRatio, 0, .01f))
+    {
+        u$       loggedBytes      = 0;
+        acu16    logBuffer        = korl_log_getBuffer(&loggedBytes);
+        const u$ loggedCharacters = loggedBytes/sizeof(*logBuffer.data);
+        const u$ newCharacters    = KORL_MATH_MIN(loggedCharacters - memory->console.lastLoggedCharacters, logBuffer.size);
+        logBuffer.data = logBuffer.data + logBuffer.size - newCharacters;
+        logBuffer.size = newCharacters;
+        korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
+                                   ,KORL_C_CAST(f32, windowSizeY)*0.5f*memory->console.fadeInRatio});
+        korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY)});
+        korl_gui_windowBegin(L"console", NULL, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+            korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
+        korl_gui_windowEnd();
+        memory->console.lastLoggedCharacters = loggedCharacters;
+    }
+    else
+        memory->console.lastLoggedCharacters = 0;
     korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
     for(u$ i = 0; i < 5; i++)
     {

@@ -88,8 +88,8 @@ typedef struct Korl_Math_Aabb2f32
     Korl_Math_V2f32 min;
     Korl_Math_V2f32 max;
 } Korl_Math_Aabb2f32;
-const Korl_Math_Aabb2f32 KORL_MATH_AABB2F32_EMPTY = {.min={ KORL_F32_MAX, KORL_F32_MAX}
-                                                    ,.max={-KORL_F32_MAX,-KORL_F32_MAX}};
+const Korl_Math_Aabb2f32 KORL_MATH_AABB2F32_EMPTY = {{ KORL_F32_MAX, KORL_F32_MAX}
+                                                    ,{-KORL_F32_MAX,-KORL_F32_MAX}};
 typedef struct Korl_Math_Aabb3f32
 {
     Korl_Math_V3f32 min;
@@ -158,6 +158,9 @@ korl_internal void korl_math_v2f32_assignMultiply(Korl_Math_V2f32*const vA, Korl
 korl_internal void korl_math_v2f32_assignMultiplyScalar(Korl_Math_V2f32*const v, f32 scalar);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void);
+korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v);
 /* V3f32 **********************************************************************/
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
