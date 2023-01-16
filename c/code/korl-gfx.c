@@ -923,7 +923,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
                 }
                 korl_resource_update(context->resourceHandleBufferText, currentLineBuffer, currentLine->visibleCharacters * sizeof(*currentLineBuffer), context->totalVisibleGlyphs * sizeof(*currentLineBuffer));
                 /* update the Text object's model AABB with the new line graphics we just added */
-                KORL_MATH_ASSIGN_CLAMP_MAX(context->_modelAabb.max.x, currentLine->modelAabb.max.x);
+                KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabb.max.x, currentLine->modelAabb.max.x);
                 /* update other Text object metrics */
                 context->totalVisibleGlyphs += currentLine->visibleCharacters;
             }

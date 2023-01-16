@@ -62,7 +62,6 @@ korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DE
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X";// special internal button string to allow button widget to draw special graphics
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE[]       = L"-";// special internal button string to allow button widget to draw special graphics
-#if 0//@TODO: recycle
 typedef struct _Korl_Gui_CodepointTestData_Log
 {
     u8 trailingMetaTagCodepoints;
@@ -133,7 +132,6 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
         return false;
     return true;
 }
-#endif
 korl_internal void _korl_gui_findUsedWidgetDepthRecursive(_Korl_Gui_UsedWidget* usedWidget, _Korl_Gui_WidgetMap** stbHmWidgetMap)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -1606,14 +1604,13 @@ korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
-#if 0//@TODO: recycle
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(identifier), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     if(newAllocation)
     {
         korl_assert(korl_memory_isNull(&widget->subType.text, sizeof(widget->subType.text)));
-        widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, (acu16){.data = context->style.fontWindowText, .size = korl_memory_stringSize(context->style.fontWindowText)}, context->style.windowTextPixelSizeY);
+        widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
     }
     /* at this point, we either have a new gfxText on the widget, or we're using 
         an already existing widget's gfxText member; in either case, we need to 
@@ -1633,7 +1630,9 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
     const u$ textLines = arrlenu(widget->subType.text.gfxText->stbDaLines);
     if(textLines > maxLineCount)
         korl_gfx_text_fifoRemove(widget->subType.text.gfxText, textLines - maxLineCount);
-#endif
+    /* these widgets will not support children, so we must pop widget from the parent stack */
+    const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
+    korl_assert(widgetIndex == widget - context->stbDaWidgets);
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat)
 {

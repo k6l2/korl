@@ -55,7 +55,7 @@ KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 }
 KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 {
-    ///@TODO: complete GUI test code
+    ///@TODO: finish log console widget
     memory->console.fadeInRatio = korl_math_exDecay(memory->console.fadeInRatio, memory->console.enable ? 1.f : 0.f, 40.f, deltaSeconds);
     if(memory->console.enable || !korl_math_isNearlyEqualEpsilon(memory->console.fadeInRatio, 0, .01f))
     {
