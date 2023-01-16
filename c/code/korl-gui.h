@@ -27,8 +27,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText);
  * since the previous frame.  If the button was actuated more times than the max 
  * value of the return type, those actuations are not counted. */
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat);
-korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label);
-korl_internal void korl_gui_widgetScrollAreaEnd(void);
+korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScrollAreaBegin);
+korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd);
 typedef enum Korl_Gui_ScrollBar_Axis
     { KORL_GUI_SCROLL_BAR_AXIS_X
     , KORL_GUI_SCROLL_BAR_AXIS_Y

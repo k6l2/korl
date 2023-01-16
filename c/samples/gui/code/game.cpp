@@ -69,7 +69,9 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
                                    ,KORL_C_CAST(f32, windowSizeY)*0.5f*memory->console.fadeInRatio});
         korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY)});
         korl_gui_windowBegin(L"console", NULL, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
-            korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
+            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"));
+                korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
+            korl_gui_widgetScrollAreaEnd();
         korl_gui_windowEnd();
         memory->console.lastLoggedCharacters = loggedCharacters;
     }
@@ -86,7 +88,10 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
         korl_gui_widgetTextFormat(L"add/remove widgets:");
         korl_gui_realignY();
         if(korl_gui_widgetButtonFormat(L"+"))
+        {
+            korl_log(VERBOSE, "testTextWidgets++");
             memory->testTextWidgets++;
+        }
         korl_gui_realignY();
         if(korl_gui_widgetButtonFormat(L"-") && memory->testTextWidgets)
             memory->testTextWidgets--;

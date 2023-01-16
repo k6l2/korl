@@ -22,3 +22,5 @@ typedef enum Korl_Gui_Widget_Text_Flags
 #define KORL_FUNCTION_korl_gui_widgetTextFormat(name)          void name(const wchar_t* textFormat, ...)
 #define KORL_FUNCTION_korl_gui_widgetText(name)                void name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
 #define KORL_FUNCTION_korl_gui_widgetButtonFormat(name)        u8   name(const wchar_t* textFormat, ...)
+#define KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(name)     void name(acu16 label)
+#define KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(name)       void name(void)

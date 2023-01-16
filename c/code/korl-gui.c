@@ -1661,7 +1661,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     /**/
     return resultActuationCount;
 }
-korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
+korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScrollAreaBegin)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
@@ -1719,7 +1719,7 @@ korl_internal void korl_gui_widgetScrollAreaBegin(acu16 label)
         KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.y, 0, aabbChildrenSize.y - widget->size.y);
     }
 }
-korl_internal void korl_gui_widgetScrollAreaEnd(void)
+korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     korl_assert(arrlenu(context->stbDaWidgetParentStack) > 0);
