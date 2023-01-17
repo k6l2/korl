@@ -66,9 +66,15 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
         logBuffer.data = logBuffer.data + logBuffer.size - newCharacters;
         logBuffer.size = newCharacters;
         korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
-                                   ,KORL_C_CAST(f32, windowSizeY)*0.5f*memory->console.fadeInRatio});
-        korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY)});
+                                   ,KORL_C_CAST(f32, windowSizeY)*0.5f});
+        korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY) + KORL_C_CAST(f32, windowSizeY)*0.5f*(1.f - memory->console.fadeInRatio)});
         korl_gui_windowBegin(L"console", NULL, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+            //@TODO; how do we set the scroll area to stick to the bottom of the content region?...🤔
+            // if the scroll region was at the bottom in the previous frame, we want to set it to be the bottom this frame after widget content changes
+            // otherwise, we want to just do normal behavior I guess?
+            // should this behavior be handled within SCROLL_AREA?  maybe via a flag or something?
+            korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
+                                       ,KORL_C_CAST(f32, windowSizeY)*0.5f - 32/*allow room for text input widget*/});
             korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"));
                 korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
             korl_gui_widgetScrollAreaEnd();
@@ -77,38 +83,38 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
     }
     else
         memory->console.lastLoggedCharacters = 0;
-    korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
-    for(u$ i = 0; i < 5; i++)
-    {
-        korl_gui_setLoopIndex(i);
-        korl_gui_widgetTextFormat(L"orphan widget test");
-    }
-    korl_gui_setLoopIndex(0);
-    korl_gui_windowBegin(L"Test Window", &memory->testWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
-        korl_gui_widgetTextFormat(L"add/remove widgets:");
-        korl_gui_realignY();
-        if(korl_gui_widgetButtonFormat(L"+"))
-        {
-            korl_log(VERBOSE, "testTextWidgets++");
-            memory->testTextWidgets++;
-        }
-        korl_gui_realignY();
-        if(korl_gui_widgetButtonFormat(L"-") && memory->testTextWidgets)
-            memory->testTextWidgets--;
-        for(u$ i = 0; i < memory->testTextWidgets; i++)
-        {
-            korl_gui_setLoopIndex(i);
-            korl_gui_widgetTextFormat(L"[%llu] hello :)", i);
-        }
-        korl_gui_setLoopIndex(0);
-    korl_gui_windowEnd();
-    korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
-        if(!memory->testWindowOpen && korl_gui_widgetButtonFormat(L"show test window"))
-            memory->testWindowOpen = true;
-    korl_gui_windowEnd();
-    bool isNoTitlebarWindowOpen = memory->testWindowOpen;
-    korl_gui_windowBegin(L"Test Window NO-TITLEBAR", &isNoTitlebarWindowOpen, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
-    korl_gui_windowEnd();
+    // korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
+    // for(u$ i = 0; i < 5; i++)
+    // {
+    //     korl_gui_setLoopIndex(i);
+    //     korl_gui_widgetTextFormat(L"orphan widget test");
+    // }
+    // korl_gui_setLoopIndex(0);
+    // korl_gui_windowBegin(L"Test Window", &memory->testWindowOpen, KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT);
+    //     korl_gui_widgetTextFormat(L"add/remove widgets:");
+    //     korl_gui_realignY();
+    //     if(korl_gui_widgetButtonFormat(L"+"))
+    //     {
+    //         korl_log(VERBOSE, "testTextWidgets++");
+    //         memory->testTextWidgets++;
+    //     }
+    //     korl_gui_realignY();
+    //     if(korl_gui_widgetButtonFormat(L"-") && memory->testTextWidgets)
+    //         memory->testTextWidgets--;
+    //     for(u$ i = 0; i < memory->testTextWidgets; i++)
+    //     {
+    //         korl_gui_setLoopIndex(i);
+    //         korl_gui_widgetTextFormat(L"[%llu] hello :)", i);
+    //     }
+    //     korl_gui_setLoopIndex(0);
+    // korl_gui_windowEnd();
+    // korl_gui_windowBegin(L"Test Window Auto-Resize", NULL, KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE | KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR);
+    //     if(!memory->testWindowOpen && korl_gui_widgetButtonFormat(L"show test window"))
+    //         memory->testWindowOpen = true;
+    // korl_gui_windowEnd();
+    // bool isNoTitlebarWindowOpen = memory->testWindowOpen;
+    // korl_gui_windowBegin(L"Test Window NO-TITLEBAR", &isNoTitlebarWindowOpen, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+    // korl_gui_windowEnd();
     return memory->continueRunning;
 }
 #include "korl-math.c"

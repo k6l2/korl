@@ -213,6 +213,7 @@ widgetIndexValid:
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, korl_checkCast_u$_to_i16(widgetIndex));
     widget->usedThisFrame = true;
     widget->realignY      = false;
+    widget->isSizeCustom  = false;
     widget->orderIndex    = widgetDirectParent->transientChildCount++;
     context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);
     /* disable this widget if any parent widgets in this hierarchy is unused */
@@ -224,7 +225,10 @@ widgetIndexValid:
         }
     /* apply transient next widget modifiers */
     if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.size))
+    {
         widget->size = context->transientNextWidgetModifiers.size;
+        widget->isSizeCustom = true;
+    }
         // do nothing otherwise, since the widget->size is transient & will potentially change due to widget logic at the end of each frame
     if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.parentAnchor))
         widget->parentAnchor = context->transientNextWidgetModifiers.parentAnchor;
@@ -483,7 +487,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             /* iterate all widgets front=>back to detect hover events */
             bool continueRayCast = true;
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); 
-                usedWidget >= context->stbDaUsedWidgets && continueRayCast; usedWidget--)
+                context->stbDaUsedWidgets && usedWidget >= context->stbDaUsedWidgets && continueRayCast; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
                 const Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
@@ -537,7 +541,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             context->isTopLevelWindowActive        = false;
             context->identifierHashWidgetMouseDown = 0;
             /* iterate over all widgets from front=>back */
-            for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+            for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); context->stbDaUsedWidgets && usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
                 _Korl_Gui_Widget*const widget = usedWidget->widget;
                 Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
@@ -683,7 +687,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     case _KORL_GUI_MOUSE_EVENT_TYPE_WHEEL:{
         _Korl_Gui_MouseEvent mouseEventPrime = *mouseEvent;// used for modifications to the mouseEvent based on non-captured widget event logic from previous widgets
         /* iterate over all widgets from front=>back */
-        for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); usedWidget >= context->stbDaUsedWidgets; usedWidget--)
+        for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); context->stbDaUsedWidgets && usedWidget >= context->stbDaUsedWidgets; usedWidget--)
         {
             _Korl_Gui_Widget*const widget = usedWidget->widget;
             Korl_Math_Aabb2f32 widgetAabb = usedWidget->transient.aabb;
@@ -1453,7 +1457,8 @@ korl_internal void korl_gui_frameEnd(void)
             usedWidget->transient.aabbContent = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y
                                                                              ,usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x
                                                                              ,usedWidgetParent->widget->position.y - usedWidgetParent->widget->size.y);
-            usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
+            if(!widget->isSizeCustom)// we can't set the widget size here automatically if the user specifically set a size via `setNextWidgetSize`
+                usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
             #ifdef _KORL_GUI_DEBUG_DRAW_SCROLL_AREA// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
             {
                 Korl_Gfx_Batch*const batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, (Korl_Vulkan_Color4u8){255,0,0,128});

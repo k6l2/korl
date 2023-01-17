@@ -69,6 +69,7 @@ typedef struct _Korl_Gui_Widget
     bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
     bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
     bool realignY;
+    bool isSizeCustom;// the user has called `korl_gui_setNextWidgetSize` to give this widget a custom size for the current frame
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
         ,KORL_GUI_WIDGET_TYPE_SCROLL_AREA
