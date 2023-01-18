@@ -68,7 +68,7 @@ typedef struct _Korl_Gui_Widget
     Korl_Math_V2f32 size;
     bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
     bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
-    bool realignY;
+    bool realignY;// set when the user calls `korl_gui_realignY` after this widget
     bool isSizeCustom;// the user has called `korl_gui_setNextWidgetSize` to give this widget a custom size for the current frame
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
@@ -89,10 +89,12 @@ typedef struct _Korl_Gui_Widget
         } window;
         struct
         {
-            Korl_Math_V2f32 contentOffset;
-            Korl_Math_V2f32 aabbChildrenSize;
+            Korl_Math_V2f32 contentOffset;// actual scroll values of the SCROLL_AREA widget
+            Korl_Math_V2f32 aabbChildrenSize;// size of the AABB of all child widget content
+            Korl_Math_V2f32 aabbScrollableSize;// a modified version of `aabbChildrenSize` which includes overhead area to allow the user to scroll "past" the scroll bars so the content is not obscured by them
             bool hasScrollBarX;
             bool hasScrollBarY;
+            bool isScrolledToEndY;// set to true if the scroll region is viewing the very bottom of the content region
         } scrollArea;
         struct
         {

@@ -284,6 +284,24 @@ korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
 {
     _korl_gui_context.transientNextWidgetModifiers.orderIndex = orderIndex;
 }
+korl_internal void _korl_gui_widget_scrollArea_scroll(_Korl_Gui_Widget* widget, Korl_Gui_ScrollBar_Axis axis, f32 delta)
+{
+    korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
+    switch(axis)
+    {
+    case KORL_GUI_SCROLL_BAR_AXIS_X:{
+        widget->subType.scrollArea.contentOffset.x += delta;
+        KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.x, -(widget->subType.scrollArea.aabbScrollableSize.x - widget->size.x), 0);
+        break;}
+    case KORL_GUI_SCROLL_BAR_AXIS_Y:{
+        widget->subType.scrollArea.contentOffset.y += delta;
+        const f32 scrollMax = widget->subType.scrollArea.aabbScrollableSize.y - widget->size.y;
+        KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.y, 0, scrollMax);
+        if(!korl_math_isNearlyZero(delta))
+            widget->subType.scrollArea.isScrolledToEndY = widget->subType.scrollArea.contentOffset.y >= scrollMax;
+        break;}
+    }
+}
 korl_internal Korl_Math_V2f32 _korl_gui_widget_scrollBar_sliderSize(_Korl_Gui_Widget* widget)
 {
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_BAR);
@@ -703,10 +721,10 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     switch(mouseEventPrime.subType.wheel.axis)
                     {
                     case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_X:{
-                        widget->subType.scrollArea.contentOffset.x += mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
+                        _korl_gui_widget_scrollArea_scroll(widget, KORL_GUI_SCROLL_BAR_AXIS_X, mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY);
                         break;}
                     case _KORL_GUI_MOUSE_EVENT_WHEEL_AXIS_Y:{
-                        widget->subType.scrollArea.contentOffset.y -= mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY;
+                        _korl_gui_widget_scrollArea_scroll(widget, KORL_GUI_SCROLL_BAR_AXIS_Y, -mouseEvent->subType.wheel.value * context->style.windowTextPixelSizeY);
                         break;}
                     }
                     break;}
@@ -881,7 +899,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         context->currentWidgetIndex = -1;
         /* add scroll area if this window allows it */
         if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
-            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE"));
+            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE"), KORL_GUI_WIDGET_SCROLL_AREA_FLAGS_NONE);
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
@@ -1671,6 +1689,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScroll
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_AREA, &newAllocation);
+    if(newAllocation)
+        widget->subType.scrollArea.isScrolledToEndY = true;
     /* conditionally spawn SCROLL_BAR widgets based on whether or not the 
         SCROLL_AREA widget can contain all of its contents (based on cached data 
         from the previous frame stored in the Widget) */
@@ -1679,50 +1699,53 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScroll
     // the presence of a scroll bar in any dimension depends on the size of scrollable region, calculated from the accumulated child widget AABB; 
     //  this region will change, based on the presence of a scroll bar in a perpendicular axis; this is to allow the user to scroll the visible contents
     //  such that they are not obscured by a scroll bar
-    Korl_Math_V2f32 aabbChildrenSize = widget->subType.scrollArea.aabbChildrenSize;
-    if(aabbChildrenSize.x > widget->size.x)
+    widget->subType.scrollArea.aabbScrollableSize = widget->subType.scrollArea.aabbChildrenSize;
+    if(widget->subType.scrollArea.aabbScrollableSize.x > widget->size.x)
     {
-        aabbChildrenSize.y += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.aabbScrollableSize.y += context->style.windowScrollBarPixelWidth;
         widget->subType.scrollArea.hasScrollBarX = true;
     }
-    if(aabbChildrenSize.y > widget->size.y)
+    if(widget->subType.scrollArea.aabbScrollableSize.y > widget->size.y)
     {
-        aabbChildrenSize.x += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.aabbScrollableSize.x += context->style.windowScrollBarPixelWidth;
         widget->subType.scrollArea.hasScrollBarY = true;
     }
     // we have to perform the check again, as a scroll bar in a perpendicular axis may now be required if we now require a scroll bar in any given axis; 
     //  of course, making sure that we don't account for a scroll bar in any given axis more than once (hence the `hasScrollBar*` flags)
-    if(aabbChildrenSize.x > widget->size.x && !widget->subType.scrollArea.hasScrollBarX)
+    if(widget->subType.scrollArea.aabbScrollableSize.x > widget->size.x && !widget->subType.scrollArea.hasScrollBarX)
     {
-        aabbChildrenSize.y += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.aabbScrollableSize.y += context->style.windowScrollBarPixelWidth;
         widget->subType.scrollArea.hasScrollBarX = true;
     }
-    if(aabbChildrenSize.y > widget->size.y && !widget->subType.scrollArea.hasScrollBarY)
+    if(widget->subType.scrollArea.aabbScrollableSize.y > widget->size.y && !widget->subType.scrollArea.hasScrollBarY)
     {
-        aabbChildrenSize.x += context->style.windowScrollBarPixelWidth;
+        widget->subType.scrollArea.aabbScrollableSize.x += context->style.windowScrollBarPixelWidth;
         widget->subType.scrollArea.hasScrollBarY = true;
     }
     /* now we can invoke the SCROLL_BAR widgets for this scroll area, if they are required/allowed */
     if(widget->subType.scrollArea.hasScrollBarX)
     {
-        korl_assert(aabbChildrenSize.x > widget->size.x);
+        korl_assert(widget->subType.scrollArea.aabbScrollableSize.x > widget->size.x);
         korl_gui_setNextWidgetSize((Korl_Math_V2f32){widget->size.x - (widget->subType.scrollArea.hasScrollBarY ? context->style.windowScrollBarPixelWidth/*prevent overlap w/ y-axis SCROLL_BAR*/ : 0), context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){0, 1});
         korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){0, context->style.windowScrollBarPixelWidth});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -2));
-        widget->subType.scrollArea.contentOffset.x -= korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x, aabbChildrenSize.x, widget->subType.scrollArea.contentOffset.x);
-        KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.x, -(aabbChildrenSize.x - widget->size.x), 0);
+        _korl_gui_widget_scrollArea_scroll(widget, KORL_GUI_SCROLL_BAR_AXIS_X
+                                          ,-korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_X"), KORL_GUI_SCROLL_BAR_AXIS_X, widget->size.x, widget->subType.scrollArea.aabbScrollableSize.x, widget->subType.scrollArea.contentOffset.x));
     }
     if(widget->subType.scrollArea.hasScrollBarY)
     {
-        korl_assert(aabbChildrenSize.y > widget->size.y);
+        korl_assert(widget->subType.scrollArea.aabbScrollableSize.y > widget->size.y);
         korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowScrollBarPixelWidth, widget->size.y});
         _korl_gui_setNextWidgetParentAnchor((Korl_Math_V2f32){1, 0});
         korl_gui_setNextWidgetParentOffset((Korl_Math_V2f32){-context->style.windowScrollBarPixelWidth, 0});
         _korl_gui_setNextWidgetOrderIndex(KORL_C_CAST(u16, -1));
-        widget->subType.scrollArea.contentOffset.y -= korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y, aabbChildrenSize.y, widget->subType.scrollArea.contentOffset.y);
-        KORL_MATH_ASSIGN_CLAMP(widget->subType.scrollArea.contentOffset.y, 0, aabbChildrenSize.y - widget->size.y);
+        _korl_gui_widget_scrollArea_scroll(widget, KORL_GUI_SCROLL_BAR_AXIS_Y
+                                          ,-korl_gui_widgetScrollBar(KORL_RAW_CONST_UTF16(L"_KORL_GUI_SCROLL_AREA_BAR_Y"), KORL_GUI_SCROLL_BAR_AXIS_Y, widget->size.y, widget->subType.scrollArea.aabbScrollableSize.y, widget->subType.scrollArea.contentOffset.y));
     }
+    /**/
+    if((flags & KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL) && widget->subType.scrollArea.isScrolledToEndY)
+        widget->subType.scrollArea.contentOffset.y = widget->subType.scrollArea.aabbScrollableSize.y - widget->size.y;
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd)
 {

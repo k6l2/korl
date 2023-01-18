@@ -29,10 +29,6 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText);
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat);
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScrollAreaBegin);
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd);
-typedef enum Korl_Gui_ScrollBar_Axis
-    { KORL_GUI_SCROLL_BAR_AXIS_X
-    , KORL_GUI_SCROLL_BAR_AXIS_Y
-} Korl_Gui_ScrollBar_Axis;
 /** \return the content scroll region delta (non-zero) if the user interacted with the scroll bar widget */
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset);
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);

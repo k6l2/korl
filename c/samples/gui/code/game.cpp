@@ -65,19 +65,18 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
         const u$ newCharacters    = KORL_MATH_MIN(loggedCharacters - memory->console.lastLoggedCharacters, logBuffer.size);
         logBuffer.data = logBuffer.data + logBuffer.size - newCharacters;
         logBuffer.size = newCharacters;
+        const f32 consoleSizeY = KORL_C_CAST(f32, windowSizeY)*0.5f;
         korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
-                                   ,KORL_C_CAST(f32, windowSizeY)*0.5f});
-        korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY) + KORL_C_CAST(f32, windowSizeY)*0.5f*(1.f - memory->console.fadeInRatio)});
+                                   ,consoleSizeY});
+        korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY) + consoleSizeY*(1.f - memory->console.fadeInRatio)});
         korl_gui_windowBegin(L"console", NULL, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
-            //@TODO; how do we set the scroll area to stick to the bottom of the content region?...🤔
-            // if the scroll region was at the bottom in the previous frame, we want to set it to be the bottom this frame after widget content changes
-            // otherwise, we want to just do normal behavior I guess?
-            // should this behavior be handled within SCROLL_AREA?  maybe via a flag or something?
             korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
-                                       ,KORL_C_CAST(f32, windowSizeY)*0.5f - 32/*allow room for text input widget*/});
-            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"));
+                                       ,consoleSizeY - 32/*allow room for text input widget*/});///@TODO: this sucks; is there a way for us to have korl-gui automatically determine how tall the text scroll area should be under the hood?
+            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"), KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL);
                 korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
             korl_gui_widgetScrollAreaEnd();
+            ///@TODO: figure out why adding a widget after the scroll area breaks everything 😡
+            // korl_gui_widgetTextFormat(L"@TODO: replace this with console text input widget");
         korl_gui_windowEnd();
         memory->console.lastLoggedCharacters = loggedCharacters;
     }
@@ -95,8 +94,8 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
     //     korl_gui_realignY();
     //     if(korl_gui_widgetButtonFormat(L"+"))
     //     {
-    //         korl_log(VERBOSE, "testTextWidgets++");
     //         memory->testTextWidgets++;
+    //         korl_log(VERBOSE, "testTextWidgets++ == %llu", memory->testTextWidgets);
     //     }
     //     korl_gui_realignY();
     //     if(korl_gui_widgetButtonFormat(L"-") && memory->testTextWidgets)

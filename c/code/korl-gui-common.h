@@ -8,4 +8,8 @@ enum
     KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE   = 1 << 2,///@TODO: what is the purpose of having this flag?  should not the absence of the KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE flag mean the same thing?
     KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT    = KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR | KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE,
 };
+typedef enum Korl_Gui_ScrollBar_Axis
+    { KORL_GUI_SCROLL_BAR_AXIS_X
+    , KORL_GUI_SCROLL_BAR_AXIS_Y
+} Korl_Gui_ScrollBar_Axis;
 typedef u32 Korl_Gui_Window_Style_Flags;// separate flag type definition for C++ compatibility reasons (C++ does not easily allow the | operator for enums; cool language, bro)
