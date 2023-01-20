@@ -146,6 +146,7 @@ korl_internal void _korl_gui_frameEnd_recursiveAppend(_Korl_Gui_UsedWidget** io_
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), *io_stbDaResult, *usedWidget);
+    _korl_gui_pUsedWidget_ascendOrderIndex_quick_sort(usedWidget->dagMetaData.stbDaChildren, arrlenu(usedWidget->dagMetaData.stbDaChildren));
     const _Korl_Gui_UsedWidget*const*const stbDaChildrenEnd = usedWidget->dagMetaData.stbDaChildren + arrlen(usedWidget->dagMetaData.stbDaChildren);
     for(_Korl_Gui_UsedWidget** child = usedWidget->dagMetaData.stbDaChildren; child < stbDaChildrenEnd; child++)
         _korl_gui_frameEnd_recursiveAppend(io_stbDaResult, *child);
@@ -1072,26 +1073,34 @@ korl_internal void korl_gui_frameEnd(void)
         usedWidget->dagMetaData.stbDaChildren = NULL;// all these are allocated from context->allocatorStack, so they should be freed automatically
     /* sanity-check the sorted list of used widgets to make sure that for each 
         widget sub tree, all child orderIndex values are unique */
-    ///@TODO
+    {
+        typedef struct SanityCheckStack
+        {
+            i$ currentOrderIndex;
+            _Korl_Gui_UsedWidget* usedWidget;
+        } SanityCheckStack;
+        SanityCheckStack* stbDaSanityCheckStack = NULL;
+        for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+        {
+            /* pop until this widget's parent is at the top, or the stack is empty */
+            while(arrlenu(stbDaSanityCheckStack) && arrlast(stbDaSanityCheckStack).usedWidget->widget->identifierHash != usedWidget->widget->identifierHashParent)
+                arrpop(stbDaSanityCheckStack);
+            if(arrlenu(stbDaSanityCheckStack))
+            {
+                korl_assert(arrlast(stbDaSanityCheckStack).currentOrderIndex < usedWidget->widget->orderIndex);
+                arrlast(stbDaSanityCheckStack).currentOrderIndex = usedWidget->widget->orderIndex;
+            }
+            const SanityCheckStack newStackPancake = {.currentOrderIndex = -1, .usedWidget = usedWidget};
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaSanityCheckStack, newStackPancake);
+        }
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaSanityCheckStack);
+    }
     /* prepare the view/projection graphics state */
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(korl_checkCast_i$_to_f32(arrlen(context->stbDaUsedWidgets) + 1/*+1 so the back widget will still be _above_ the rear clip plane*/)/*clipDepth; each used widget can have its own integral portion of the depth buffer, so if we have 2 widgets, the first can be placed at depth==-2, and the second can be placed at depth==-1; individual graphics components at each depth can safely be placed within this range without having to worry about interfering with other widget graphics, since we have already sorted the widgets from back=>front*/);
     cameraOrthographic.position.xy = 
     cameraOrthographic.target.xy   = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
     korl_gfx_useCamera(cameraOrthographic);
-#if KORL_DEBUG && 0/*@TODO: this is just some code to test out rendering with the depth buffer; should be okay to delete this at any time*/
-    {
-        Korl_Vulkan_Color4u8 colors[] = {KORL_COLOR4U8_RED, KORL_COLOR4U8_GREEN, KORL_COLOR4U8_BLUE, KORL_COLOR4U8_YELLOW, KORL_COLOR4U8_CYAN, KORL_COLOR4U8_MAGENTA};
-        Korl_Gfx_Batch*const debugBatch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, (Korl_Math_V2f32){69,69}, (Korl_Math_V2f32){0,0}, (Korl_Vulkan_Color4u8){255,255,255,255});
-        for(u$ i = 0; i < arrlenu(context->stbDaWidgets); i++)
-        {
-            const f32 position = i*20.f;
-            korl_gfx_batchRectangleSetColor(debugBatch, colors[i%korl_arraySize(colors)]);
-            korl_gfx_batchSetPosition(debugBatch, (f32[]){position, position, -KORL_C_CAST(f32, i)}, 3);
-            korl_gfx_batch(debugBatch, KORL_GFX_BATCH_FLAGS_NONE);
-        }
-    }
-#endif
     /* process _all_ sorted in-use widgets for this frame */
     korl_shared_const Korl_Math_V2f32 ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
     #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
@@ -1742,7 +1751,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAr
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset)
 {
     if(korl_math_isNearlyZero(scrollRegionVisible) || korl_math_isNearlyZero(scrollRegionContent))
-        return 0;
+        return 0;// @TODO: this is causing a leak of transient next widget modifiers!  _korl_gui_getWidget never gets called, which we currently expect to be the only place _korl_gui_resetTransientNextWidgetModifiers is called, ergo the next widget invocation will receive the modifiers intended for _this_ widget!!
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
