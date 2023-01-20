@@ -12,7 +12,7 @@ typedef struct _Korl_Gui_UsedWidget
     {
         bool visited;// set to true when we have visited this node; this struct is simply a wrapper around _Korl_Gui_Widget so we can sort all widgets from back=>front
         /* all values below here are invalid until the visited flag is set */
-        u16 depth;// 0 root node; +1 for each successive depth in the hierarchy
+        struct _Korl_Gui_UsedWidget** stbDaChildren;// this should be nullified as soon as topological sort procedures are finished at the top of korl_gui_frameEnd
     } dagMetaData;
     struct
     {
@@ -30,24 +30,18 @@ typedef struct _Korl_Gui_WidgetMap
     u64 key;  // the widget's id hash value
     u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
 } _Korl_Gui_WidgetMap;
-/* Sort used widgets by depth first, then by orderIndex */
-#define SORT_NAME _korl_gui_usedWidget
-#define SORT_TYPE _Korl_Gui_UsedWidget
-#define SORT_CMP(x, y) ((x).dagMetaData.depth < (y).dagMetaData.depth \
-                        ? -1 \
-                        : (x).dagMetaData.depth > (y).dagMetaData.depth \
-                          ? 1 \
-                          : (x).widget->orderIndex < (y).widget->orderIndex \
-                            ? -1 \
-                            : ((x).widget->orderIndex > (y).widget->orderIndex \
-                              ? 1 \
-                              : 0))
+/* UsedWidget sorting algorithm support */
 #ifndef SORT_CHECK_CAST_INT_TO_SIZET
     #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
 #endif
 #ifndef SORT_CHECK_CAST_SIZET_TO_INT
     #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
 #endif
+#define SORT_NAME _korl_gui_pUsedWidget_ascendOrderIndex
+#define SORT_TYPE _Korl_Gui_UsedWidget*
+#define SORT_CMP(x, y) ((x)->widget->orderIndex < (y)->widget->orderIndex ? -1 \
+                        : ((x)->widget->orderIndex > (y)->widget->orderIndex ? 1 \
+                          : 0))
 #include "sort.h"
 /**/
 #if KORL_DEBUG
@@ -132,7 +126,7 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
         return false;
     return true;
 }
-korl_internal void _korl_gui_findUsedWidgetDepthRecursive(_Korl_Gui_UsedWidget* usedWidget, _Korl_Gui_WidgetMap** stbHmWidgetMap)
+korl_internal void _korl_gui_frameEnd_recursiveAddToParent(_Korl_Gui_UsedWidget* usedWidget, _Korl_Gui_WidgetMap** stbHmWidgetMap)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     if(usedWidget->dagMetaData.visited)
@@ -143,11 +137,18 @@ korl_internal void _korl_gui_findUsedWidgetDepthRecursive(_Korl_Gui_UsedWidget* 
         const i$ hmIndexParent = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), *stbHmWidgetMap, usedWidget->widget->identifierHashParent);
         korl_assert(hmIndexParent >= 0);
         _Korl_Gui_UsedWidget*const usedWidgetParent = context->stbDaUsedWidgets + hmIndexParent;
-        _korl_gui_findUsedWidgetDepthRecursive(usedWidgetParent, stbHmWidgetMap);
-        usedWidget->dagMetaData.depth = usedWidgetParent->dagMetaData.depth + 1;
+        const i$ w = usedWidget - context->stbDaUsedWidgets;
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), usedWidgetParent->dagMetaData.stbDaChildren, &(context->stbDaUsedWidgets[w]));
+        _korl_gui_frameEnd_recursiveAddToParent(usedWidgetParent, stbHmWidgetMap);
     }
-    else
-        usedWidget->dagMetaData.depth = 0;
+}
+korl_internal void _korl_gui_frameEnd_recursiveAppend(_Korl_Gui_UsedWidget** io_stbDaResult, _Korl_Gui_UsedWidget* usedWidget)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), *io_stbDaResult, *usedWidget);
+    const _Korl_Gui_UsedWidget*const*const stbDaChildrenEnd = usedWidget->dagMetaData.stbDaChildren + arrlen(usedWidget->dagMetaData.stbDaChildren);
+    for(_Korl_Gui_UsedWidget** child = usedWidget->dagMetaData.stbDaChildren; child < stbDaChildrenEnd; child++)
+        _korl_gui_frameEnd_recursiveAppend(io_stbDaResult, *child);
 }
 korl_internal void _korl_gui_resetTransientNextWidgetModifiers(void)
 {
@@ -586,7 +587,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     //  this will give us the total # of UsedWidgets in this widget sub-tree
                     _Korl_Gui_UsedWidget* subTreeEnd = usedWidget + 1;
                     for(; subTreeEnd < stbDaUsedWidgetsEnd; subTreeEnd++)
-                        if(subTreeEnd->dagMetaData.depth <= 0)
+                        if(!subTreeEnd->widget->identifierHashParent)
                             break;
                     if(subTreeEnd < stbDaUsedWidgetsEnd)// no need to do any of this logic if this sub-tree is already at the end of UsedWidgets
                     {
@@ -1029,72 +1030,49 @@ korl_internal void korl_gui_frameEnd(void)
                 - {TEXT[1], depth=2, order=1, childrenDirect=0, childrenTotal=0}
         - {WINDOW[1], depth=0, order=1, childrenDirect=1, childrenTotal=1}
             - {BUTTON[1], depth=1, order=0, childrenDirect=0, childrenTotal=0}
-        Sort approach:
-        - for each UsedWidget, recursively find depth,childrenTotal; O(???)
-        - initialize a new UsedWidget array of the same size with all NULL entries; let's call this usedSorted
-        - start at depth=0
-        - while arrlenu(stbDaUsedWidgets)
-            - sort by depth (ascending); O(NlogN)
-            - count how many widgets are at depth; O(N)
-            - sort this sub-array by order (ascending); O(NlogN)
-            - iterate over usedSorted until we find the first NULL entry; O(N)
-            - for each sub-array entry
-                - copy this data into usedSorted[currentNull]
-                - currentNull += subArray[i].childrenTotal
-            - set the new beginning of stbDaUsedWidgets to be the END iterator of subArray
-            - depth++, repeat
-        Sort Approach 2: (currently using this approach)
-        - for each UsedWidget, recursively find depth; O(N)
-        - sort stbDaUsedWidgets by depth, then by order; O(NlogN)
-        - initialize new UsedWidget array (same capacity, but empty); called usedSorted
-        - for i=0 in stbDaUsedWidgets O(N^2)
-            - if the widget has a parent
-                - break
-            - initialize empty set of widget hash Ids
-            - add this widget's hash Id to the set
-            - add this widget to usedSorted
-            - for j=i+1 in stbDaUsedWidgets
-                - if this widget has a parent & the parent is in the set
-                    - add this widget's hash Id to the set
-                    - add this widget to usedSorted
-        */
-    // recursively find the DAG depth of each UsedWidget //
+        Another Example DAG:
+        - {WINDOW[0], depth=0, order=0, childrenDirect=2, childrenTotal=3}
+            - {SCROLL_AREA[0], depth=1, order=0, childrenDirect=1, childrenTotal=1}
+                - {TEXT[0], depth=2, order=0, childrenDirect=0, childrenTotal=0}
+            - {TEXT[1], depth=1, order=1, childrenDirect=0, childrenTotal=0}
+        Topological Sort approach:
+        - for each UsedWidget
+            - recursively add itself to its parent's list of child UsedWidget*s
+            - if the widget has no parent, add the UsedWidget* to a list of rootUsedWidgets
+        - sort rootUsedWidgets by ascending orderIndex
+        - for each rootUsedWidget
+            - recursively add all child UsedWidget*s to a topologicalSortedUsedWidget list
+        - copy `topologicalSortedUsedWidget` to `context->stbDaUsedWidgets` */
+    // identify root UsedWidgets, & recursively find each UsedWidgets' direct children //
     const _Korl_Gui_UsedWidget*const usedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
+    _Korl_Gui_UsedWidget** stbDaRootWidgets = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaRootWidgets, arrlenu(context->stbDaUsedWidgets));
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
-        _korl_gui_findUsedWidgetDepthRecursive(usedWidget, &stbHmWidgetMap);
-    // sort the UsedWidgets by depth, then by order //
-    _korl_gui_usedWidget_quick_sort(context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets));
-    mchmfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap);// the map from hash=>index is now invalid!
-    // topologically sort stbDaUsedWidgets using the above data //
-    _Korl_Gui_UsedWidget* usedWidgetSortIterator = context->stbDaUsedWidgets;
-    _Korl_Gui_UsedWidget* stbDaUsedWidgetsTempCopy = NULL;
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetsTempCopy, arrlenu(context->stbDaUsedWidgets));
-    korl_memory_copy(stbDaUsedWidgetsTempCopy, context->stbDaUsedWidgets, arrlenu(context->stbDaUsedWidgets)*sizeof(*context->stbDaUsedWidgets));
-    const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsTempCopyEnd = stbDaUsedWidgetsTempCopy + arrlen(stbDaUsedWidgetsTempCopy);
-    // @TODO: PERFORMANCE; this can be optimized from O(N^2) to O(N) if we carefully remove visited UsedWidget entries from the temp copy list without invalidating iterators in the parent loop
-    for(_Korl_Gui_UsedWidget* usedWidgetTempCopy = stbDaUsedWidgetsTempCopy; usedWidgetTempCopy < stbDaUsedWidgetsTempCopyEnd; usedWidgetTempCopy++)
     {
-        if(usedWidgetTempCopy->widget->identifierHashParent)
-            break;
-        mchmfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap);// we're going to re-use this map to keep track of which widgets are in each root widget sub-tree
-        mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, KORL_U64_MAX);
-        mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy->widget->identifierHash, KORL_U64_MAX);
-        *usedWidgetSortIterator = *usedWidgetTempCopy;
-        usedWidgetSortIterator++;
-        for(_Korl_Gui_UsedWidget* usedWidgetTempCopy2 = usedWidgetTempCopy + 1; usedWidgetTempCopy2 < stbDaUsedWidgetsTempCopyEnd; usedWidgetTempCopy2++)
-        {
-            if(   usedWidgetTempCopy2->widget->identifierHashParent 
-               && mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHashParent) >= 0)
-            {
-                mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, usedWidgetTempCopy2->widget->identifierHash, KORL_U64_MAX);
-                *usedWidgetSortIterator = *usedWidgetTempCopy2;
-                usedWidgetSortIterator++;
-            }
-        }
+        const i$ w = usedWidget - context->stbDaUsedWidgets;
+        _korl_gui_frameEnd_recursiveAddToParent(usedWidget, &stbHmWidgetMap);
+        if(!usedWidget->widget->identifierHashParent)
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaRootWidgets, &(context->stbDaUsedWidgets[w]));
     }
+    // sort stbDaRootWidgets by ascending orderIndex //
+    _korl_gui_pUsedWidget_ascendOrderIndex_quick_sort(stbDaRootWidgets, arrlenu(stbDaRootWidgets));
+    // create an array to store the topological sort results, and recursively build this //
+    _Korl_Gui_UsedWidget* stbDaTopologicalSortedUsedWidgets = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTopologicalSortedUsedWidgets, arrlenu(context->stbDaUsedWidgets));
+    const _Korl_Gui_UsedWidget*const*const stbDaRootWidgetsEnd = stbDaRootWidgets + arrlen(stbDaRootWidgets);
+    for(_Korl_Gui_UsedWidget** rootWidget = stbDaRootWidgets; rootWidget < stbDaRootWidgetsEnd; rootWidget++)
+        _korl_gui_frameEnd_recursiveAppend(&stbDaTopologicalSortedUsedWidgets, *rootWidget);
+    korl_assert(arrlen(stbDaTopologicalSortedUsedWidgets) == arrlen(context->stbDaUsedWidgets));
+    // finally, we can copy the sorted UsedWidget array to context->stbDaUsedWidgets //
+    korl_memory_copy(context->stbDaUsedWidgets, stbDaTopologicalSortedUsedWidgets, arrlenu(stbDaTopologicalSortedUsedWidgets)*sizeof(*stbDaTopologicalSortedUsedWidgets));
+    /* since the `context->stbDaUsedWidgets` has been modified, we should 
+        invalidate all dangling pointers to the previous contents */
+    mchmfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap);// the map from hash=>index is now invalid! (and we shouldn't need it anymore anyways, since we are now topologically sorted)
+    for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
+        usedWidget->dagMetaData.stbDaChildren = NULL;// all these are allocated from context->allocatorStack, so they should be freed automatically
     /* sanity-check the sorted list of used widgets to make sure that for each 
         widget sub tree, all child orderIndex values are unique */
-    //@TODO
+    ///@TODO
     /* prepare the view/projection graphics state */
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(korl_checkCast_i$_to_f32(arrlen(context->stbDaUsedWidgets) + 1/*+1 so the back widget will still be _above_ the rear clip plane*/)/*clipDepth; each used widget can have its own integral portion of the depth buffer, so if we have 2 widgets, the first can be placed at depth==-2, and the second can be placed at depth==-1; individual graphics components at each depth can safely be placed within this range without having to worry about interfering with other widget graphics, since we have already sorted the widgets from back=>front*/);
@@ -1548,7 +1526,9 @@ korl_internal void korl_gui_frameEnd(void)
         /* adjust the parent widget's cursor to the "next line" */
         if(usedWidgetParent && useParentWidgetCursor)
         {
-            const Korl_Math_V2f32 contentSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
+            const Korl_Math_V2f32 contentSize = widget->isSizeCustom 
+                                                ? widget->size 
+                                                : korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
             KORL_MATH_ASSIGN_CLAMP_MIN(usedWidgetParent->transient.currentWidgetRowHeight, contentSize.y);
             if(widget->realignY)
                 /* do nothing to the widgetCursor Y position, but advance the X position */
