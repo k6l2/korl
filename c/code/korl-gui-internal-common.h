@@ -199,7 +199,6 @@ typedef struct _Korl_Gui_Context
         Korl_Math_V2f32 parentOffset;
         i32             orderIndex;
     } transientNextWidgetModifiers;
-    /// @TODO: could we get rid of currentWidgetIndex in favor of just adding a transient flag to transientNextWidgetModifiers ?  It seems like this would be more robust, considering that widgets should be able to spawn child widgets when they are spawned, so without this we have the potential in the future to accidentally set the realignY flag of one of the last spawned widget's child widgets
-    i16 currentWidgetIndex;// used to modify properties of the last widget created via _korl_gui_getWidget; example: when korl_gui_realignY is called, we set a special flag in the last widget so that 
+    i16 currentUserWidgetIndex;// used to modify properties of the last widget created via _korl_gui_getWidget; example: when korl_gui_realignY is called, we set a special flag in the last widget so that the next widget that gets created in the same sub-tree will have its top aligned to the same y-axis coordinate; we _need_ this to _not_ be a member of `tranientNextWidgetModifiers` because we want the API to look like `widget(); realignY();` instead of `realignY(); widget();`
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;

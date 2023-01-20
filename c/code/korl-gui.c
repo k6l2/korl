@@ -209,6 +209,7 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widge
     widget->type                 = widgetType;
     *out_newAllocation = true;
 widgetIndexValid:
+    context->currentUserWidgetIndex = -1;
     widget = &context->stbDaWidgets[widgetIndex];
     korl_assert(widget->type == widgetType);
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, korl_checkCast_u$_to_i16(widgetIndex));
@@ -216,7 +217,6 @@ widgetIndexValid:
     widget->realignY      = false;
     widget->isSizeCustom  = false;
     widget->orderIndex    = widgetDirectParent->transientChildCount++;
-    context->currentWidgetIndex = korl_checkCast_u$_to_i16(widgetIndex);
     /* disable this widget if any parent widgets in this hierarchy is unused */
     for(const i16* parentIndex = context->stbDaWidgetParentStack; parentIndex < stbDaWidgetParentStackEnd; parentIndex++)
         if(!context->stbDaWidgets[*parentIndex].usedThisFrame)
@@ -275,7 +275,7 @@ korl_internal void _korl_gui_frameBegin(void)
     context->stbDaWidgetParentStack = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 16);
     _korl_gui_resetTransientNextWidgetModifiers();
-    context->currentWidgetIndex = -1;
+    context->currentUserWidgetIndex = -1;
 }
 korl_internal void _korl_gui_setNextWidgetParentAnchor(Korl_Math_V2f32 anchorRatioRelativeToParentTopLeft)
 {
@@ -897,7 +897,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             }
             newWindow->subType.window.titleBarButtonCount++;
         }
-        context->currentWidgetIndex = -1;
+        context->currentUserWidgetIndex = -1;
         /* add scroll area if this window allows it */
         if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
             korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE"), KORL_GUI_WIDGET_SCROLL_AREA_FLAGS_NONE);
@@ -1586,16 +1586,17 @@ korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex)
 korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    if(   context->currentWidgetIndex < 0
-       || context->currentWidgetIndex >= korl_checkCast_u$_to_i$(arrlenu(context->stbDaWidgets)))
+    if(   context->currentUserWidgetIndex < 0
+       || context->currentUserWidgetIndex >= korl_checkCast_u$_to_i$(arrlenu(context->stbDaWidgets)))
         return;// silently do nothing if user has not created a widget yet for the current window
-    context->stbDaWidgets[context->currentWidgetIndex].realignY = true;
+    context->stbDaWidgets[context->currentUserWidgetIndex].realignY = true;
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
+    context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     va_list vaList;
     va_start(vaList, textFormat);
     const wchar_t*const stackDisplayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
@@ -1610,6 +1611,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(identifier), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
+    context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     if(newAllocation)
     {
         korl_assert(korl_memory_isNull(&widget->subType.text, sizeof(widget->subType.text)));
@@ -1642,6 +1644,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
+    context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE)
         widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE;
     else if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE)
@@ -1726,6 +1729,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScroll
     /**/
     if((flags & KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL) && widget->subType.scrollArea.isScrolledToEndY)
         widget->subType.scrollArea.contentOffset.y = widget->subType.scrollArea.aabbScrollableSize.y - widget->size.y;
+    context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd)
 {
@@ -1742,6 +1746,7 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
+    context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     /**/
     korl_assert(scrollRegionContent > scrollRegionVisible);
     const f32 clippedSize = scrollRegionContent - scrollRegionVisible;
