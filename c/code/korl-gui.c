@@ -54,8 +54,9 @@ typedef struct _Korl_Gui_WidgetMap
 #define _LOCAL_STRING_POOL_POINTER (&_korl_gui_context.stringPool)
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DEBUG";
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
-korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X";// special internal button string to allow button widget to draw special graphics
-korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE[]       = L"-";// special internal button string to allow button widget to draw special graphics
+korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X"; // special internal button string to allow button widget to draw special graphics
+korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE[]       = L"-"; // special internal button string to allow button widget to draw special graphics
+korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZED[]      = L"!-";// special internal button string to allow button widget to draw special graphics
 typedef struct _Korl_Gui_CodepointTestData_Log
 {
     u8 trailingMetaTagCodepoints;
@@ -767,7 +768,6 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
     ///@TODO: there are a lot of similarities here to _getWidget; in an effort to generalize Window/Widget behavior, maybe I should just call _getWidget here???
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    const Korl_Math_V2f32 defaultMinimumSize = {2*/*@TODO: kinda hacky to fix auto-sizing issue for title bar buttons*/context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY};// default _and_ minimum window size
     i16 currentWindowIndex = -1;
     /* assemble the window identifier hash; composed of the string hash of the 
         titleBarText, as well as the context loop index */
@@ -837,7 +837,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
     newWindow->identifierHash              = identifierHash;
     newWindow->position                    = nextWindowPosition;
     newWindow->orderIndex                  = nextWindowOrderIndex;
-    newWindow->size                        = defaultMinimumSize;
+    newWindow->size                        = KORL_MATH_V2F32_ZERO;
     newWindow->subType.window.titleBarText = string_newUtf16(titleBarText);
     newWindow->subType.window.isFirstFrame = true;
     newWindow->subType.window.isOpen       = true;
@@ -888,7 +888,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             _korl_gui_setNextWidgetParentAnchor(TITLE_BAR_BUTTON_ANCHOR);
             korl_gui_setNextWidgetParentOffset(titleBarButtonCursor);
             korl_math_v2f32_assignAdd(&titleBarButtonCursor, (Korl_Math_V2f32){-context->style.windowTitleBarPixelSizeY, 0.f});
-            if(korl_gui_widgetButtonFormat(_KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE))
+            if(korl_gui_widgetButtonFormat(newWindow->isContentHidden ? _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZED : _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE))
             {
                 newWindow->isContentHidden = !newWindow->isContentHidden;
                 if(newWindow->isContentHidden)
@@ -1407,7 +1407,6 @@ korl_internal void korl_gui_frameEnd(void)
                 usedWidget->transient.aabbContent.min.y -= widget->size.y;
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
-                ///@TODO: render a different symbol if a window is minimized
                 const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 Korl_Gfx_Batch*const batchWindowTitleIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
                                                                                                      ,(Korl_Math_V2f32){     smallestSize
@@ -1417,6 +1416,8 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece
                                            ,widget->position.x + smallestSize/2.f
                                            ,widget->position.y - smallestSize/2.f);
+                if(widget->subType.button.specialButtonAlternateDisplay)
+                    korl_gfx_batchSetRotation(batchWindowTitleIconPiece, KORL_MATH_V3F32_Z, KORL_PI32/2);
                 korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
@@ -1657,7 +1658,15 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE)
         widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE;
     else if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE)
-        widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE;
+    {
+        widget->subType.button.display                       = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE;
+        widget->subType.button.specialButtonAlternateDisplay = false;
+    }
+    else if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZED)
+    {
+        widget->subType.button.display                       = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE;
+        widget->subType.button.specialButtonAlternateDisplay = true;
+    }
     else
     {
         widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT;

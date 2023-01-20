@@ -123,6 +123,7 @@ typedef struct _Korl_Gui_Widget
                 ,_KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE
                 ,_KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE
             } display;
+            bool specialButtonAlternateDisplay;// example use: for display==MINIMIZE, the minimize button will display a different shape when this is raised
         } button;
     } subType;
 } _Korl_Gui_Widget;
