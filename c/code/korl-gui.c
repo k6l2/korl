@@ -766,7 +766,7 @@ korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 }
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
-    ///@TODO: there are a lot of similarities here to _getWidget; in an effort to generalize Window/Widget behavior, maybe I should just call _getWidget here???
+    //KORL-ISSUE-000-000-109: gui: there are a lot of similarities here to _getWidget; in an effort to generalize Window/Widget behavior, maybe I should just call _getWidget here???
     _Korl_Gui_Context*const context = &_korl_gui_context;
     i16 currentWindowIndex = -1;
     /* assemble the window identifier hash; composed of the string hash of the 
@@ -1760,7 +1760,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAr
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset)
 {
     if(korl_math_isNearlyZero(scrollRegionVisible) || korl_math_isNearlyZero(scrollRegionContent))
-        return 0;// @TODO: this is causing a leak of transient next widget modifiers!  _korl_gui_getWidget never gets called, which we currently expect to be the only place _korl_gui_resetTransientNextWidgetModifiers is called, ergo the next widget invocation will receive the modifiers intended for _this_ widget!!
+        return 0;// KORL-ISSUE-000-000-110: gui: this is causing a leak of transient next widget modifiers!  _korl_gui_getWidget never gets called, which we currently expect to be the only place _korl_gui_resetTransientNextWidgetModifiers is called, ergo the next widget invocation will receive the modifiers intended for _this_ widget!!
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);

@@ -70,11 +70,11 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
         korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY) + consoleSizeY*(1.f - memory->console.fadeInRatio)});
         korl_gui_windowBegin(L"console", NULL, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
             korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
-                                       ,consoleSizeY - 32/*allow room for text input widget*/});///@TODO: this sucks; is there a way for us to have korl-gui automatically determine how tall the text scroll area should be under the hood?
+                                       ,consoleSizeY - 32/*allow room for text input widget*/});//KORL-ISSUE-000-000-111: gui: this sucks; is there a way for us to have korl-gui automatically determine how tall the text scroll area should be under the hood?
             korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"), KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL);
                 korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
             korl_gui_widgetScrollAreaEnd();
-            korl_gui_widgetTextFormat(L"@TODO: replace this with console text input widget");
+            korl_gui_widgetTextFormat(L"replace this with console text input widget");
         korl_gui_windowEnd();
         memory->console.lastLoggedCharacters = loggedCharacters;
     }
