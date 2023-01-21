@@ -5,6 +5,8 @@
 #define KORL_FUNCTION_korl_gui_windowBegin(name)               void name(const wchar_t* titleBarText, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_FUNCTION_korl_gui_windowEnd(name)                 void name(void)
 #define KORL_FUNCTION_korl_gui_setNextWidgetSize(name)         void name(Korl_Math_V2f32 size)
+#define KORL_FUNCTION_korl_gui_setNextWidgetAnchor(name)       void name(Korl_Math_V2f32 localAnchorRatioRelativeToTopLeft)
+#define KORL_FUNCTION_korl_gui_setNextWidgetParentAnchor(name) void name(Korl_Math_V2f32 anchorRatioRelativeToParentTopLeft)
 #define KORL_FUNCTION_korl_gui_setNextWidgetParentOffset(name) void name(Korl_Math_V2f32 positionRelativeToAnchor)
 #define KORL_FUNCTION_korl_gui_setLoopIndex(name)              void name(u$ loopIndex)
 /**

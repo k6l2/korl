@@ -15,6 +15,8 @@ korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset);
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin);
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd);
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetSize(korl_gui_setNextWidgetSize);
+korl_internal KORL_FUNCTION_korl_gui_setNextWidgetAnchor(korl_gui_setNextWidgetAnchor);
+korl_internal KORL_FUNCTION_korl_gui_setNextWidgetParentAnchor(korl_gui_setNextWidgetParentAnchor);
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetParentOffset(korl_gui_setNextWidgetParentOffset);
 korl_internal void korl_gui_frameEnd(void);
 /** Make sure to reset this value back to \c 0 after you are finished looping! */

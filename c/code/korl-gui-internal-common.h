@@ -66,6 +66,7 @@ typedef struct _Korl_Gui_Widget
     Korl_Math_V2f32 parentOffset;// the default value {NaN,Nan} makes the widget position be set to the transient widget cursor position of its parent; the position offset to be applied to the final widget's position at the end of the frame from the parent anchor position; not applicable to widgets with no parent
     Korl_Math_V2f32 position;// relative to the top-left corner of the widget, where our coordinate frame origin is either the bottom-left corner of the rendering surface (for root widgets) or the position derived from the parent widget's placement (size & position) & the parentAnchor member, with the +Y axis pointing UP (as the graphics gods intended)
     Korl_Math_V2f32 size;
+    Korl_Math_V2f32 anchor;// local coordinate space anchor ratio to determine where on this widget should be placed at position
     bool usedThisFrame;// set each frame this widget is used/updated by the user; when this value is cleared, non-root widgets will be destroyed & cleaned up at the end of the frame
     bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
     bool realignY;// set when the user calls `korl_gui_realignY` after this widget
@@ -196,6 +197,7 @@ typedef struct _Korl_Gui_Context
     struct
     {
         Korl_Math_V2f32 size;
+        Korl_Math_V2f32 anchor;
         Korl_Math_V2f32 parentAnchor;
         Korl_Math_V2f32 parentOffset;
         i32             orderIndex;
