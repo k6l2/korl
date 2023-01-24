@@ -429,7 +429,7 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.windowTextPixelSizeY           = 24.f;
     _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;
     _korl_gui_context.style.widgetSpacingY                 =  0.f;
-    _korl_gui_context.style.widgetButtonLabelMargin        =  4.f;
+    _korl_gui_context.style.widgetButtonLabelMargin        =  2.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 15.f;
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaUsedWidgets, 64);
@@ -1389,17 +1389,19 @@ korl_internal void korl_gui_frameEnd(void)
             switch(widget->subType.button.display)
             {
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT:{
+                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+                const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines per button */;
                 Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), widget->subType.button.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
                 Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
                 const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
-                const f32 buttonAabbSizeX = batchTextAabbSize.x + context->style.widgetButtonLabelMargin * 2.f;
-                const f32 buttonAabbSizeY = batchTextAabbSize.y + context->style.widgetButtonLabelMargin * 2.f;
+                const f32 buttonAabbSizeX = batchTextAabbSize.x + (context->style.widgetButtonLabelMargin * 2.f);
+                const f32 buttonAabbSizeY = textLineDeltaY      + (context->style.widgetButtonLabelMargin * 2.f);
                 batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
-                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
+                korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the text origin to be the font's baseline
                 korl_gfx_batchSetPosition2d(batchText
                                            ,widget->position.x + context->style.widgetButtonLabelMargin
-                                           ,widget->position.y - context->style.widgetButtonLabelMargin);
+                                           ,widget->position.y - context->style.widgetButtonLabelMargin - fontMetrics.ascent);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
@@ -1459,14 +1461,16 @@ korl_internal void korl_gui_frameEnd(void)
             {
                 korl_assert(widget->subType.text.displayText.data);
                 korl_assert(!widget->subType.text.gfxText);
+                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+                const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines per button */;
                 Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-                //KORL-ISSUE-000-000-008: instead of using the AABB of this text batch, we should be using the font's metrics!  Probably??  Different text batches of the same font will yield different sizes here, which will cause widget sizes to vary...
-                korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y, z}, 3);
+                korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
+                korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z}, 3);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);
                 const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
                 const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 usedWidget->transient.aabbContent.max.x += batchTextAabbSize.x;
-                usedWidget->transient.aabbContent.min.y -= batchTextAabbSize.y;
+                usedWidget->transient.aabbContent.min.y -= textLineDeltaY;
             }
             korl_time_probeStop(widget_text);
             break;}
@@ -1533,6 +1537,8 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
             break;}
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+            const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
             //@TODO
             break;}
         default:{

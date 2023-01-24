@@ -1045,6 +1045,18 @@ korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text*
 {
     return context->_modelAabb;
 }
+korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics)
+{
+    KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
+    if(!fontCache)
+        return metrics;// silently return empty data if the font is not yet loaded
+    metrics.ascent  = fontCache->fontAscent;
+    metrics.decent  = fontCache->fontDescent;
+    metrics.lineGap = fontCache->fontLineGap;
+    korl_assert(metrics.ascent >= metrics.decent);// no idea if this is a hard requirement, but based on how these #s are used, it seems _very_ unlikely that this will ever be false
+    return metrics;
+}
 korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
@@ -1670,7 +1682,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
     result->_textPixelOutline           = outlinePixelSize;
     result->_textColor                  = color;
     result->_textColorOutline           = colorOutline;
-    result->_textPositionAnchor         = (Korl_Math_V2f32){0,1};
+    result->_textPositionAnchor         = (Korl_Math_V2f32){0,1};// by default, we align the batch position to be the top-left corner of the text's local AABB
     result->_assetNameFont              = KORL_C_CAST(wchar_t*, result + 1);
     result->_text                       = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, result->_assetNameFont) + assetNameFontBytes);
     result->opColor                     = KORL_BLEND_OP_ADD;
