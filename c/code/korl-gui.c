@@ -1537,9 +1537,23 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
             break;}
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            /* prepare the graphics to draw the text buffer to obtain metrics, but defer drawing until later */
             Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
             const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
-            //@TODO
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), string_getRawUtf16(widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+            korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
+            korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.5f}, 3);
+            const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
+            const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
+            usedWidget->transient.aabbContent.min.y -= textLineDeltaY;
+            /* draw a simple box around the input widget itself */
+            korl_assert(usedWidgetParent);// for now, we want to just have the INPUT_TEXT widget fill the remaining X space of our parent
+            usedWidget->transient.aabbContent.max.x = usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x;
+            const Korl_Math_V2f32 contentAabbSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
+            Korl_Gfx_Batch*const batchBox = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, contentAabbSize, ORIGIN_RATIO_UPPER_LEFT, KORL_COLOR4U8_BLACK);
+            korl_gfx_batchSetPosition(batchBox, (f32[]){widget->position.x, widget->position.y, z}, 3);
+            korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
+            korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now
             break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
@@ -1791,11 +1805,11 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     identifierHashComponents[1] = korl_checkCast_cvoidp_to_u64(string.pool);
     identifierHashComponents[0] = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
                                                                                       ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
-    /**/
+    /* invoke the widget */
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(identifierHashComponents[0], KORL_GUI_WIDGET_TYPE_INPUT_TEXT, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
-    /* update the string based on user inputs */
-    //@TODO
+    /* configure subType-specific widget data */
+    widget->subType.inputText.string = string;
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);

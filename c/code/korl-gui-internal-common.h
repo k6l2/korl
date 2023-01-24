@@ -127,6 +127,10 @@ typedef struct _Korl_Gui_Widget
             } display;
             bool specialButtonAlternateDisplay;// example use: for display==MINIMIZE, the minimize button will display a different shape when this is raised
         } button;
+        struct
+        {
+            Korl_StringPool_String string;
+        } inputText;
     } subType;
 } _Korl_Gui_Widget;
 typedef struct _Korl_Gui_Context
