@@ -77,6 +77,7 @@ typedef struct _Korl_Gui_Widget
         ,KORL_GUI_WIDGET_TYPE_SCROLL_BAR
         ,KORL_GUI_WIDGET_TYPE_TEXT
         ,KORL_GUI_WIDGET_TYPE_BUTTON
+        ,KORL_GUI_WIDGET_TYPE_INPUT_TEXT
     } type;
     union
     {

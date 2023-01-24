@@ -1532,6 +1532,9 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
             break;}
+        case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            //@TODO
+            break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
             break;}
@@ -1771,6 +1774,25 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAr
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
+}
+korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    bool newAllocation = false;
+    /* create a widget id hash using string.pool + string.handle */
+    u64 identifierHashComponents[2];
+    identifierHashComponents[0] = string.handle;
+    identifierHashComponents[1] = korl_checkCast_cvoidp_to_u64(string.pool);
+    identifierHashComponents[0] = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                      ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+    /**/
+    _Korl_Gui_Widget*const widget = _korl_gui_getWidget(identifierHashComponents[0], KORL_GUI_WIDGET_TYPE_INPUT_TEXT, &newAllocation);
+    context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
+    /* update the string based on user inputs */
+    //@TODO
+    /* these widgets will not support children, so we must pop widget from the parent stack */
+    const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
+    korl_assert(widgetIndex == widget - context->stbDaWidgets);
 }
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset)
 {

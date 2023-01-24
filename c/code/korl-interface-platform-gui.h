@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-gui-common.h"
 #include "korl-globalDefines.h"
+#include "korl-stringPool.h"
 #define KORL_FUNCTION_korl_gui_setFontAsset(name)              void name(const wchar_t* fontAssetName)
 #define KORL_FUNCTION_korl_gui_windowBegin(name)               void name(const wchar_t* titleBarText, bool* out_isOpen, Korl_Gui_Window_Style_Flags styleFlags)
 #define KORL_FUNCTION_korl_gui_windowEnd(name)                 void name(void)
@@ -30,3 +31,4 @@ typedef enum Korl_Gui_Widget_ScrollArea_Flags
 } Korl_Gui_Widget_ScrollArea_Flags;
 #define KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(name)     void name(acu16 label, Korl_Gui_Widget_ScrollArea_Flags flags)
 #define KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(name)       void name(void)
+#define KORL_FUNCTION_korl_gui_widgetInputText(name)           void name(Korl_StringPool_String string)
