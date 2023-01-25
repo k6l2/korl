@@ -71,6 +71,7 @@ typedef struct _Korl_Gui_Widget
     bool isHovered;// reset at the end of each frame; set if a mouse hover event is propagated to this widget at the top of the frame
     bool realignY;// set when the user calls `korl_gui_realignY` after this widget
     bool isSizeCustom;// the user has called `korl_gui_setNextWidgetSize` to give this widget a custom size for the current frame
+    bool canBeActiveLeaf;// set by the widget's invocation function; if set, this means the context's `identifierHashLeafWidgetActive` member can refer to this widget if the user performs an action to select it, such as clickin on it
     enum
         {KORL_GUI_WIDGET_TYPE_WINDOW
         ,KORL_GUI_WIDGET_TYPE_SCROLL_AREA
@@ -88,6 +89,7 @@ typedef struct _Korl_Gui_Widget
             bool isFirstFrame;// used to auto-size the window on the first frame, since we don't have size values from the previous frame to go off of
             Korl_Gui_Window_Style_Flags styleFlags;
             u8 titleBarButtonCount;// used for resizing the window on the first frame
+            bool isActivatedThisFrame;// used for performing on-activation logic, such as automatic selection of the context's LeafWidgetActive
         } window;
         struct
         {

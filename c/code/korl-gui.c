@@ -23,6 +23,7 @@ typedef struct _Korl_Gui_UsedWidget
         Korl_Math_Aabb2f32 aabbContent;// an accumulation of all content within this widget, including all content that lies outside of `aabb`; this is very important for performing auto-resize logic
         Korl_Math_Aabb2f32 aabbChildren;// an accumulation of all content AABBs _only_ of children of this widget, including all content that lies outside of `aabb`; useful for SCROLL_AREA widgets to clamp the child content AABB to our visible AABB
         bool isFirstFrame;// storing this value during widget logic at the end of frame allows us to properly resize window widgets recursively without having to do an extra separate loop to clear all the widget flags that hold the same value
+        u64 candidateLeafWidgetActive;
     } transient;// this data is only used/valid at the end of the frame, when we need to process the list of all UsedWidgets that have been accumulated during the frame
 } _Korl_Gui_UsedWidget;
 typedef struct _Korl_Gui_WidgetMap
@@ -290,6 +291,17 @@ korl_internal void _korl_gui_frameBegin(void)
 korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
 {
     _korl_gui_context.transientNextWidgetModifiers.orderIndex = orderIndex;
+}
+korl_internal void _korl_gui_widget_window_activate(_Korl_Gui_Widget* widget)
+{
+    korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    //@TODO; don't we only want to do this logic if the activated window has changed?
+    {
+        context->identifierHashLeafWidgetActive = 0;
+        widget->subType.window.isActivatedThisFrame = true;
+    }
+    context->isTopLevelWindowActive = true;
 }
 korl_internal void _korl_gui_widget_scrollArea_scroll(_Korl_Gui_Widget* widget, Korl_Gui_ScrollBar_Axis axis, f32 delta)
 {
@@ -575,10 +587,9 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(!korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                     continue;
-                bool widgetCanMouseDrag    = false;
-                bool widgetCanMouseDown    = false;
-                bool widgetCanBeActiveLeaf = false;
-                bool eventCaptured         = false;
+                bool widgetCanMouseDrag = false;
+                bool widgetCanMouseDown = false;
+                bool eventCaptured      = false;
                 switch(widget->type)
                 {
                 case KORL_GUI_WIDGET_TYPE_WINDOW:{
@@ -609,7 +620,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                         // copy the temp buffer UsedWidgets to the end of stbDaUsedWidgets
                         korl_memory_copy(usedWidget + (stbDaUsedWidgetsEnd - subTreeEnd), stbDaTempSubTree, subTreeSize*sizeof(*usedWidget));
                     }
-                    context->isTopLevelWindowActive = true;
+                    _korl_gui_widget_window_activate(widget);
                     eventCaptured      = true;
                     widgetCanMouseDown = true;
                     widgetCanMouseDrag = true;
@@ -652,16 +663,14 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     break;}
                 case KORL_GUI_WIDGET_TYPE_BUTTON:{
                     widgetCanMouseDown    = true;
-                    widgetCanBeActiveLeaf = true;
                     break;}
                 case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
-                    widgetCanBeActiveLeaf = true;
                     break;}
                 default:{
                     korl_log(ERROR, "invalid widget type: %i", widget->type);
                     break;}
                 }
-                if(!context->identifierHashLeafWidgetActive && widget->transientChildCount == 0 && widgetCanBeActiveLeaf)
+                if(!context->identifierHashLeafWidgetActive && widget->transientChildCount == 0 && widget->canBeActiveLeaf)
                     context->identifierHashLeafWidgetActive = widget->identifierHash;
                 if(widgetCanMouseDown && !context->identifierHashWidgetMouseDown)// we mouse down on _only_ the first widget
                 {
@@ -807,13 +816,15 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             korl_gui_windowEnd();// end the orphan widget window again, if we are making a different window; this is obviously weird, but theoretically the orphan widget window's SCROLL_AREA widget will be obtained & the widget hierarchy will be correctly maintained since we are using the same exact memory location for the SCROLL_AREA's `label` parameter (hopefully)
     }
     /* check to see if this identifier is already registered */
+    bool wasOpen = true;// assume that this window was previously closed, until we find it in the Widget pool
     const _Korl_Gui_Widget*const widgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
     for(_Korl_Gui_Widget* widget = context->stbDaWidgets; widget < widgetsEnd; widget++)
     {
         if(widget->identifierHash == identifierHash)
         {
             korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
-            if(!widget->subType.window.isOpen && out_isOpen && *out_isOpen)
+            wasOpen = widget->subType.window.isOpen;
+            if(!widget->subType.window.isOpen && !(out_isOpen && !*out_isOpen))
             {
                 widget->subType.window.isOpen = true;
                 widget->isContentHidden       = false;
@@ -822,6 +833,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             goto done_currentWindowIndexValid;
         }
     }
+    wasOpen = false;// if we did not find it in the widget pool, it _must_ have not been open
     /* we are forced to allocate a new window in the memory pool */
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
     Korl_Math_V2f32 nextWindowPosition   = {surfaceSize.x*0.25f, surfaceSize.y*0.5f};
@@ -863,8 +875,8 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             korl_assert(arrlast(context->stbDaWidgetParentStack) == currentWindowIndex);
             korl_assert(newWindow->identifierHash == _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH);
         }
-        newWindow->usedThisFrame             = newWindow->subType.window.isOpen;// if the window isn't open, this entire widget sub-tree is unused for this frame
         newWindow->subType.window.styleFlags = styleFlags;
+        newWindow->usedThisFrame             = out_isOpen ? *out_isOpen : newWindow->subType.window.isOpen;// IMPORTANT: we have to calculate this _before_ creating any other child widgets, because whether or not a new child widget will be used this frame is determined by all their parent windows' isOpen values; if the window isn't open, this entire widget sub-tree is unused for this frame
         /* apply transient next widget modifiers */
         if(!korl_math_v2f32_hasNan(context->transientNextWidgetModifiers.size))
             newWindow->size = context->transientNextWidgetModifiers.size;
@@ -898,6 +910,8 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             *out_isOpen = newWindow->subType.window.isOpen;
             newWindow->subType.window.titleBarButtonCount++;
         }
+        else
+            newWindow->subType.window.isOpen = true;
         if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
         {
             korl_gui_setNextWidgetSize((Korl_Math_V2f32){context->style.windowTitleBarPixelSizeY, context->style.windowTitleBarPixelSizeY});
@@ -914,10 +928,14 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
             }
             newWindow->subType.window.titleBarButtonCount++;
         }
+        /**/
         context->currentUserWidgetIndex = -1;
         /* add scroll area if this window allows it */
         if(styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE)
             korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE"), KORL_GUI_WIDGET_SCROLL_AREA_FLAGS_NONE);
+        /* auto-activate the window when it is opened for the first time */
+        if(!wasOpen && newWindow->subType.window.isOpen && (styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_DEFAULT_ACTIVE))
+            _korl_gui_widget_window_activate(newWindow);
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
@@ -956,9 +974,14 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
     {
     case KORL_GUI_WIDGET_TYPE_WINDOW:{
         /* if a WINDOW widget just finished its first frame, auto-size it to fit all of its contents */
-        if(usedWidget->transient.isFirstFrame)
+        if(usedWidget->transient.isFirstFrame || (usedWidget->widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE))
             usedWidget->transient.aabb = usedWidget->transient.aabbContent;
         usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabb);
+        /* if we were activated this frame & no active leaf widget is selected, 
+            we should select the last transient LeafWidgetActive candidate this frame */
+        if(usedWidget->widget->subType.window.isActivatedThisFrame && !context->identifierHashLeafWidgetActive)
+            context->identifierHashLeafWidgetActive = usedWidget->transient.candidateLeafWidgetActive;
+        usedWidget->widget->subType.window.isActivatedThisFrame = false;
         break;}
     case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
         /* bind the scroll region to the "maximum" planes, which are defined by 
@@ -1032,6 +1055,9 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_assert(mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash) < 0);// ensure that this widget's id hash is unique!
                 mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap, newUsedWidget.widget->identifierHash, arrlenu(context->stbDaUsedWidgets) - 1);
             }
+            else
+                if(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW)
+                    widget->subType.window.isOpen = false;// for WINDOW root widgets, we just set them to closed; which allows us to perform one-time logic when they are re-opened
             widgetsRemaining++;
         }
         else
@@ -1217,8 +1243,7 @@ korl_internal void korl_gui_frameEnd(void)
         {
         case KORL_GUI_WIDGET_TYPE_WINDOW:{
             usedWidget->transient.isFirstFrame = widget->subType.window.isFirstFrame;
-            if(!(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_AUTO_RESIZE))// auto-resizing windows just consider _all_ frames to be the first frame
-                widget->subType.window.isFirstFrame = false;
+            widget->subType.window.isFirstFrame = false;
             const bool isActiveTopLevelWindow = context->isTopLevelWindowActive 
                                              && !widget->identifierHashParent 
                                              &&  widget->orderIndex == context->rootWidgetOrderIndexHighest;
@@ -1604,6 +1629,11 @@ korl_internal void korl_gui_frameEnd(void)
                 (*usedWidgetStack)->transient.aabbChildren = korl_math_aabb2f32_union((*usedWidgetStack)->transient.aabbChildren, usedWidget->transient.aabbContent);
             }
         }
+        /* if we have have a root widget, and the current widget is capable of 
+            being the context's LeafWidgetActive, update the root widget's 
+            transient last LeafWidgetActive candidate */
+        if(arrlenu(stbDaUsedWidgetStack) && widget->canBeActiveLeaf)
+            stbDaUsedWidgetStack[0]->transient.candidateLeafWidgetActive = widget->identifierHash;
         /* adjust the parent widget's cursor to the "next line" */
         if(usedWidgetParent && useParentWidgetCursor)
         {
@@ -1726,6 +1756,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
+    widget->canBeActiveLeaf = true;
     if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE)
         widget->subType.button.display = _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE;
     else if(textFormat == _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE)
@@ -1842,6 +1873,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(identifierHashComponents[0], KORL_GUI_WIDGET_TYPE_INPUT_TEXT, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     /* configure subType-specific widget data */
+    widget->canBeActiveLeaf = true;
     widget->subType.inputText.string = string;
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
