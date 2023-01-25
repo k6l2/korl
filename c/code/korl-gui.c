@@ -1604,7 +1604,8 @@ korl_internal void korl_gui_frameEnd(void)
                     //  - calculate the AABB of the subString, which should work because we are under the assumption that the input string is just going to be a single line
                     //  - calculate our cursor position based on this AABB's size, and the position of batchText
                     //  - delete the temporary subString
-                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);//@TODO: find actual position
+                    //@TODO: find actual position
+                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
                     korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
                 }
                 else
@@ -1875,6 +1876,17 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     /* configure subType-specific widget data */
     widget->canBeActiveLeaf = true;
     widget->subType.inputText.string = string;
+    const u32 stringGraphemes = korl_stringPool_getGraphemeSize(string);
+    if(newAllocation)
+    {
+        widget->subType.inputText.stringCursorBegin = 
+        widget->subType.inputText.stringCursorEnd   = stringGraphemes;
+    }
+    else
+    {
+        KORL_MATH_ASSIGN_CLAMP_MAX(widget->subType.inputText.stringCursorBegin, stringGraphemes);
+        KORL_MATH_ASSIGN_CLAMP_MAX(widget->subType.inputText.stringCursorEnd  , stringGraphemes);
+    }
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);

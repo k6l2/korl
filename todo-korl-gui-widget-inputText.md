@@ -4,7 +4,7 @@
 [x] draw the INPUT_TEXT widget
 [x] draw the INPUT_TEXT cursor when the widget becomes active
 [x] default the console's INPUT_TEXT widget to be active when first invoked
-[ ] default the console's INPUT_TEXT cursor to be the end of the string buffer when first invoked
+[x] default the console's INPUT_TEXT cursor to be the end of the string buffer when first invoked
 [ ] draw the cursor at the correct position
 [ ] move cursor with [Ctrl]+{vim cursor move keys: J,L}
 [ ] hold [Shift]+move-cursor to select string buffer codepoints

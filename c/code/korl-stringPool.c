@@ -57,6 +57,11 @@ typedef struct _Korl_StringPool_String
     u32 rawSizeUtf16;// _excluding_ any null-terminator characters
     _Korl_StringPool_StringFlags flags;
 } _Korl_StringPool_String;
+korl_internal bool _korl_stringPool_isBigEndian(void)
+{
+    korl_shared_const i32 I = 1;
+    return KORL_C_CAST(const u8*const, &I)[0] == 0;
+}
 /** \return the byte offset of the new allocation */
 korl_internal u32 _korl_stringPool_allocate(Korl_StringPool* context, u$ bytes, const wchar_t* file, int line)
 {
@@ -362,7 +367,7 @@ korl_internal void _korl_stringPool_setStringFlags(Korl_StringPool* context, _Ko
 }
 korl_internal u$ _korl_stringPool_findIndexMatchingHandle(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     if(string.handle == 0)
         return arrlenu(context->stbDaStrings);
     u$ s = 0;
@@ -538,7 +543,7 @@ korl_internal void korl_stringPool_free(Korl_StringPool_String string)
     /* if the string handle is invalid, we don't have to do anything */
     if(!string.handle)
         return;
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     /* find the matching handle in the string array */
     u$ s = 0;
     for(; s < arrlenu(context->stbDaStrings); s++)
@@ -555,7 +560,7 @@ korl_internal void korl_stringPool_reserveUtf8(Korl_StringPool_String string, u3
 {
     if(!string.handle)
         return;// if the string handle is invalid, we don't have to do anything
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if there are other raw strings representing this string pool entry, we 
@@ -572,7 +577,7 @@ korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool_String string, u
 {
     if(!string.handle)
         return;// if the string handle is invalid, we don't have to do anything
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if there are other raw strings representing this string pool entry, we 
@@ -627,7 +632,7 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringP
 }
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool_String string, const u16* cStringUtf16)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     /* find the matching handle in the string array */
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
@@ -649,7 +654,7 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Kor
 }
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl_StringPool_String string, const char* cStringUtf8)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     /* find the matching handle in the string array */
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
@@ -680,7 +685,7 @@ korl_internal bool korl_stringPool_equalsUtf16(Korl_StringPool_String string, co
 }
 korl_internal const char* korl_stringPool_getRawUtf8(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if the utf8 version of the string hasn't been created, create it */
@@ -689,7 +694,7 @@ korl_internal const char* korl_stringPool_getRawUtf8(Korl_StringPool_String stri
 }
 korl_internal const wchar_t* korl_stringPool_getRawUtf16(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if the utf16 version of the string hasn't been created, create it */
@@ -698,21 +703,21 @@ korl_internal const wchar_t* korl_stringPool_getRawUtf16(Korl_StringPool_String 
 }
 korl_internal u32 korl_stringPool_getRawSizeUtf8(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     return context->stbDaStrings[s].rawSizeUtf8;
 }
 korl_internal u32 korl_stringPool_getRawSizeUtf16(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     return context->stbDaStrings[s].rawSizeUtf16;
 }
 korl_internal char* korl_stringPool_getRawWriteableUtf8(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);
@@ -720,7 +725,7 @@ korl_internal char* korl_stringPool_getRawWriteableUtf8(Korl_StringPool_String s
 }
 korl_internal wchar_t* korl_stringPool_getRawWriteableUtf16(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
@@ -728,7 +733,7 @@ korl_internal wchar_t* korl_stringPool_getRawWriteableUtf16(Korl_StringPool_Stri
 }
 korl_internal acu16 korl_stringPool_getRawAcu16(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if the utf16 version of the string hasn't been created, create it */
@@ -737,6 +742,52 @@ korl_internal acu16 korl_stringPool_getRawAcu16(Korl_StringPool_String string)
     result.data = KORL_C_CAST(const u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16);
     result.size = context->stbDaStrings[s].rawSizeUtf16;
     return result;
+}
+korl_internal u32 korl_stringPool_getGraphemeSize(Korl_StringPool_String string)
+{
+    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+    Korl_StringPool*const context = string.pool;
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    korl_assert(s < arrlenu(context->stbDaStrings));
+    const _Korl_StringPool_String*const _string = context->stbDaStrings + s;
+    u32 codepoints = 0;
+    if(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
+    {
+        const u8*      rawString    = context->characterPool + _string->poolByteOffsetUtf8;
+        const u8*const rawStringEnd = rawString + _string->rawSizeUtf8*sizeof(*rawString);
+        for(const u8* c = rawString; c < rawStringEnd; c++)
+        {
+            if((*c >> 4) == 0b1111)// 4-byte codepoint
+                c += 3;// skip payload
+            else if((*c >> 5) == 0b111)// 3-byte codepoint
+                c += 2;// skip payload
+            else if((*c >> 6) == 0b11)// 2-byte codepoint
+                c++;// skip payload
+            else// 1-byte codepoint
+                korl_assert(!((*c >> 7) & 0b1));// high bit _must_ be 0
+            korl_assert(c < rawStringEnd);// if this fails, the UTF-8 string is invalid
+            codepoints++;
+        }
+    }
+    else if(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
+    {
+        korl_assert(!_korl_stringPool_isBigEndian());// big-endian not supported; I don't want to do byte-swapping nonsense
+        const u16*      rawString    = KORL_C_CAST(u16*, context->characterPool + _string->poolByteOffsetUtf16);
+        const u16*const rawStringEnd = rawString + _string->rawSizeUtf16*sizeof(*rawString);
+        for(const u16* c = rawString; c < rawStringEnd; c++)
+        {
+            if((*c >> 10) == 0b110110)// this is the high-surrogate for a codepoint which spans 2 raw elements
+            {
+                korl_assert(c + 1 < rawStringEnd);      // the next element must exist
+                korl_assert((*(c+1) >> 10) == 0b110111);// the next element must be the low-surrogate
+                c++;// skip low-surrogate
+            }
+            codepoints++;
+        }
+    }
+    else
+        korl_log(ERROR, "string[%llu] in pool:0x%X has no encoding", s, string.pool);
+    return codepoints;
 }
 korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line)
 {
@@ -784,7 +835,7 @@ korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String
 }
 korl_internal void korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s0 = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s0 < arrlenu(context->stbDaStrings));
     const u$ s1 = _korl_stringPool_findIndexMatchingHandle(stringToAppend);
@@ -841,7 +892,7 @@ korl_internal void korl_stringPool_append(Korl_StringPool_String string, Korl_St
 }
 korl_internal void korl_stringPool_appendUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* get UTF-8 encoding if we don't already have it */
@@ -860,7 +911,7 @@ korl_internal void korl_stringPool_appendUtf8(Korl_StringPool_String string, con
 }
 korl_internal void korl_stringPool_appendUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* get UTF-16 encoding if we don't already have it */
@@ -879,7 +930,7 @@ korl_internal void korl_stringPool_appendUtf16(Korl_StringPool_String string, co
 }
 korl_internal void korl_stringPool_appendFormatUtf8(Korl_StringPool_String string, const wchar_t* file, int line, const char* format, ...)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     va_list args;
     va_start(args, format);
     _korl_stringPool_appendFormatVaListUtf8(context, string, file, line, format, args);
@@ -887,7 +938,7 @@ korl_internal void korl_stringPool_appendFormatUtf8(Korl_StringPool_String strin
 }
 korl_internal void korl_stringPool_appendFormatUtf16(Korl_StringPool_String string, const wchar_t* file, int line, const wchar_t* format, ...)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     va_list args;
     va_start(args, format);
     _korl_stringPool_appendFormatVaListUtf16(context, string, file, line, format, args);
@@ -895,7 +946,7 @@ korl_internal void korl_stringPool_appendFormatUtf16(Korl_StringPool_String stri
 }
 korl_internal void korl_stringPool_prependUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
@@ -917,7 +968,7 @@ korl_internal void korl_stringPool_prependUtf8(Korl_StringPool_String string, co
 }
 korl_internal void korl_stringPool_prependUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
@@ -939,7 +990,7 @@ korl_internal void korl_stringPool_prependUtf16(Korl_StringPool_String string, c
 }
 korl_internal void korl_stringPool_toUpper(Korl_StringPool_String string)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
@@ -964,7 +1015,7 @@ korl_internal void korl_stringPool_toUpper(Korl_StringPool_String string)
 }
 korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool_String string, const i8* cStringUtf8, u32 characterOffsetStart)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
@@ -988,7 +1039,7 @@ korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool_String string, const 
 }
 korl_internal u32 korl_stringPool_findUtf16(Korl_StringPool_String string, const u16* cStringUtf16, u32 characterOffsetStart)
 {
-    Korl_StringPool* context = string.pool;
+    Korl_StringPool*const context = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
