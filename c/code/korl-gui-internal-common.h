@@ -130,6 +130,8 @@ typedef struct _Korl_Gui_Widget
         struct
         {
             Korl_StringPool_String string;
+            u$ stringCursorBegin;
+            u$ stringCursorEnd;
         } inputText;
     } subType;
 } _Korl_Gui_Widget;
@@ -184,6 +186,7 @@ typedef struct _Korl_Gui_Context
     u64 identifierHashWidgetMouseDown;
     u64 identifierHashWidgetDragged;
     u64 identifierHashWindowHovered;
+    u64 identifierHashLeafWidgetActive;
     Korl_Math_V2f32 mouseDownWidgetOffset;
     enum
     {

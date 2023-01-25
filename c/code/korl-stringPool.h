@@ -188,10 +188,10 @@ korl_internal u32                           korl_stringPool_findUtf16(Korl_Strin
 /* if we're using C++, we can support function overloads, which should reduce 
     typing & hopefully cognitive load */
 #if defined(__cplusplus)
-korl_internal Korl_StringPool_String korl_stringPool_new(Korl_StringPool* context, const wchar_t* file, int line);
-korl_internal Korl_StringPool_String korl_stringPool_new(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
-korl_internal Korl_StringPool_String korl_stringPool_new(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
-korl_internal Korl_StringPool_String korl_stringPool_new(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line);
 korl_internal void                         korl_stringPool_append(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal void                         korl_stringPool_append(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal void                         korl_stringPool_appendFormat(Korl_StringPool_String string, const wchar_t* file, int line, const char* format, ...);

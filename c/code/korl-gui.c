@@ -268,6 +268,9 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
     case KORL_GUI_WIDGET_TYPE_BUTTON:{
         // raw text is stored in the stack allocator each frame; no need to free it here
         break;}
+    case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+        // the input string buffer memory is stored externally (by the user), so we have no dynamic memory to manage here
+        break;}
     default:{
         korl_log(ERROR, "invalid widget type: %i", widget->type);
         break;}
@@ -560,8 +563,9 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
     case _KORL_GUI_MOUSE_EVENT_TYPE_BUTTON:{
         if(mouseEvent->subType.button.pressed)
         {
-            context->isTopLevelWindowActive        = false;
-            context->identifierHashWidgetMouseDown = 0;
+            context->isTopLevelWindowActive         = false;
+            context->identifierHashWidgetMouseDown  = 0;
+            context->identifierHashLeafWidgetActive = 0;
             /* iterate over all widgets from front=>back */
             for(_Korl_Gui_UsedWidget* usedWidget = KORL_C_CAST(_Korl_Gui_UsedWidget*, stbDaUsedWidgetsEnd - 1); context->stbDaUsedWidgets && usedWidget >= context->stbDaUsedWidgets; usedWidget--)
             {
@@ -571,9 +575,10 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     korl_math_aabb2f32_expand(&widgetAabb, _KORL_GUI_WINDOW_AABB_EDGE_THICKNESS);
                 if(!korl_math_aabb2f32_containsV2f32(widgetAabb, mouseEvent->subType.button.position))
                     continue;
-                bool widgetCanMouseDrag = false;
-                bool widgetCanMouseDown = false;
-                bool eventCaptured      = false;
+                bool widgetCanMouseDrag    = false;
+                bool widgetCanMouseDown    = false;
+                bool widgetCanBeActiveLeaf = false;
+                bool eventCaptured         = false;
                 switch(widget->type)
                 {
                 case KORL_GUI_WIDGET_TYPE_WINDOW:{
@@ -646,12 +651,18 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                 case KORL_GUI_WIDGET_TYPE_TEXT:{
                     break;}
                 case KORL_GUI_WIDGET_TYPE_BUTTON:{
-                    widgetCanMouseDown = true;
+                    widgetCanMouseDown    = true;
+                    widgetCanBeActiveLeaf = true;
+                    break;}
+                case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+                    widgetCanBeActiveLeaf = true;
                     break;}
                 default:{
                     korl_log(ERROR, "invalid widget type: %i", widget->type);
                     break;}
                 }
+                if(!context->identifierHashLeafWidgetActive && widget->transientChildCount == 0 && widgetCanBeActiveLeaf)
+                    context->identifierHashLeafWidgetActive = widget->identifierHash;
                 if(widgetCanMouseDown && !context->identifierHashWidgetMouseDown)// we mouse down on _only_ the first widget
                 {
                     context->identifierHashWidgetMouseDown = widget->identifierHash;
@@ -1539,7 +1550,7 @@ korl_internal void korl_gui_frameEnd(void)
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
             /* prepare the graphics to draw the text buffer to obtain metrics, but defer drawing until later */
             Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
-            const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
+            const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
             Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), string_getRawUtf16(widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
             korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
             korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.5f}, 3);
@@ -1553,7 +1564,29 @@ korl_internal void korl_gui_frameEnd(void)
             Korl_Gfx_Batch*const batchBox = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, contentAabbSize, ORIGIN_RATIO_UPPER_LEFT, KORL_COLOR4U8_BLACK);
             korl_gfx_batchSetPosition(batchBox, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
-            korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now
+            korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
+            if(widget->identifierHash == context->identifierHashLeafWidgetActive)
+            {
+                /* determine where to draw the cursor */
+                if(widget->subType.inputText.stringCursorBegin >= widget->subType.inputText.stringCursorEnd)
+                {
+                    const Korl_Math_V2f32 cursorSize   = {2, textLineDeltaY};
+                    const Korl_Math_V2f32 cursorOrigin = {0, korl_math_abs(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
+                    Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, cursorSize, cursorOrigin, KORL_COLOR4U8_WHITE);
+                    /* in this case, we need to draw a single vertical bar */
+                    // one approach: 
+                    //  - create a temporary subString of the inputText's string, using stringCursorBegin to determine the size of the subString
+                    //  - calculate the AABB of the subString, which should work because we are under the assumption that the input string is just going to be a single line
+                    //  - calculate our cursor position based on this AABB's size, and the position of batchText
+                    //  - delete the temporary subString
+                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);//@TODO: find actual position
+                    korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
+                }
+                else
+                {
+                    /* in this case, we need to draw a "highlight" over the selected range of the string */
+                }
+            }
             break;}
         default:{
             korl_log(ERROR, "unhandled widget type: %i", widget->type);
