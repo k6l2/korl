@@ -127,6 +127,7 @@ typedef struct Korl_StringPool_String
 #define korl_stringAppendFormatUtf16(stringHandle, formatUtf16, ...)                                  korl_stringPool_appendFormatUtf16(stringHandle, __FILEW__, __LINE__, formatUtf16, ##__VA_ARGS__)
 #define korl_stringPrependUtf8(stringHandle, cStringUtf8)                                             korl_stringPool_prependUtf8(stringHandle, cStringUtf8, __FILEW__, __LINE__)
 #define korl_stringPrependUtf16(stringHandle, cStringUtf16)                                           korl_stringPool_prependUtf16(stringHandle, cStringUtf16, __FILEW__, __LINE__)
+#define korl_string_subString(string, graphemeOffset, graphemeSize)                                   korl_stringPool_subString(string, graphemeOffset, graphemeSize, __FILEW__, __LINE__)
 /* string pool API */
 /** Because of the fact that korl-stringPool now deals with string handles that 
  * contain the StringPool pointer itself, we can no longer store StringPools in 
@@ -168,6 +169,7 @@ korl_internal acu16                         korl_stringPool_getRawAcu16(Korl_Str
 korl_internal u32                           korl_stringPool_getGraphemeSize(Korl_StringPool_String string);
 korl_internal Korl_StringPool_String        korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line);
+korl_internal Korl_StringPool_String        korl_stringPool_subString(Korl_StringPool_String string, u$ graphemeOffset, u$ graphemeSize, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);
@@ -249,5 +251,4 @@ korl_internal void                          korl_stringPool_appendUnsignedIntege
 korl_internal u32                           korl_stringPool_getNextCodepointUtf16(Korl_StringPool* context, Korl_StringPool_String stringHandle, i64* io_rawCharacterIterator);
 getCodepointCount
 setCodepoint
-subString(not sure whether to use raw offsets, or codepoint offsets; maybe make some user code first to see what we need?)
 #endif// if 0

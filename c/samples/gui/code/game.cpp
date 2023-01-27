@@ -121,6 +121,7 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 }
 #include "korl-math.c"
 #include "korl-checkCast.c"
+#include "korl-string.c"
 #include "korl-stringPool.c"
 #define STB_DS_IMPLEMENTATION
 #define STBDS_UNIT_TESTS // for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests

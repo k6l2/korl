@@ -107,3 +107,4 @@ shutdownSuccess:
 #include "korl-bluetooth.c"
 #include "korl-resource.c"
 #include "korl-codec-configuration.c"
+#include "korl-string.c"

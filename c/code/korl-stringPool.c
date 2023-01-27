@@ -1,6 +1,7 @@
 #include "korl-stringPool.h"
 #include "korl-checkCast.h"
 #include "korl-stb-ds.h"
+#include "korl-string.h"
 #include <ctype.h>// for toupper
 typedef struct _Korl_StringPool_Allocation
 {
@@ -242,9 +243,9 @@ korl_internal Korl_StringPool_String _korl_stringPool_stringFromRawCommon(Korl_S
     else
         // clear the entire string //
         korl_memory_zero(context->characterPool + *poolByteOffset, (*rawSize)*characterBytes);
-    // apply null termination:
+    // apply null termination
     korl_memory_zero(context->characterPool + *poolByteOffset + (*rawSize)*characterBytes, characterBytes);
-
+    /* return result */
     Korl_StringPool_String result;
     result.pool = context;
     result.handle = newString->handle;
@@ -254,10 +255,38 @@ korl_internal void _korl_stringPool_convert_utf16_to_utf8(Korl_StringPool* conte
 {
     korl_assert(  string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     korl_assert(!(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8));
-    korl_assert(!"not implemented");
+    string->rawSizeUtf8        = string->rawSizeUtf16;// initial estimate; likely to change later
+    string->poolByteOffsetUtf8 = _korl_stringPool_allocate(context, (string->rawSizeUtf8 + 1/*null-terminator*/)*sizeof(u8), file, line);
+    u32 currentUtf8 = 0;
+    for(Korl_String_CodepointIteratorUtf16 u16Iterator = korl_string_codepointIteratorUtf16_initialize(KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16), string->rawSizeUtf16)
+       ;!korl_string_codepointIteratorUtf16_done(&u16Iterator)
+       ; korl_string_codepointIteratorUtf16_next(&u16Iterator))
+    {
+        u8 utf8CodepointBuffer[4];
+        const u8 utf8CodepointSize = korl_string_codepoint_to_utf8(u16Iterator._codepoint, utf8CodepointBuffer);
+        if(currentUtf8 + utf8CodepointSize >= string->rawSizeUtf8)
+        {
+            string->rawSizeUtf8       *= 2;
+            string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf8, (string->rawSizeUtf8 + 1/*null-terminator*/)*sizeof(u8), file, line);
+        }
+        u8*const utf8 = context->characterPool + string->poolByteOffsetUtf8;
+        for(u8 i = 0; i < utf8CodepointSize; i++)
+            utf8[currentUtf8 + i] = utf8CodepointBuffer[i];
+        currentUtf8 += utf8CodepointSize;
+    }
+    /* remove any slack outside of the currentUtf8 + null-terminator */
+    if(currentUtf8 < string->rawSizeUtf8)
+    {
+        string->rawSizeUtf8        = currentUtf8;
+        string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf8, (string->rawSizeUtf8 + 1/*null-terminator*/)*sizeof(u8), file, line);
+    }
+    /* and of course we should null-terminate the raw string */
+    u8*const utf8 = context->characterPool + string->poolByteOffsetUtf8;
+    utf8[currentUtf8] = '\0';
 }
 korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* context, _Korl_StringPool_String* string, const wchar_t* file, int line)
 {
+    ///@TODO: use codepoint iterators & encoders from korl-string, like in _korl_stringPool_convert_utf16_to_utf8
     korl_assert(  string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     korl_assert(!(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16));
     /* prepare some initial memory for the utf16 string */
@@ -391,6 +420,11 @@ korl_internal void _korl_stringPool_deduceUtf8(Korl_StringPool* context, _Korl_S
  * should be considered a fatal error. */
 korl_internal void _korl_stringPool_deduceEncoding(Korl_StringPool* context, _Korl_StringPool_String* string, _Korl_StringPool_StringFlags flags, const wchar_t* file, int line)
 {
+    if(    (flags         & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
+       && !(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8))
+    {
+        korl_assert(!"not implemented");
+    }
     if(    (flags         & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
        && !(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
     {
@@ -753,24 +787,16 @@ korl_internal u32 korl_stringPool_getGraphemeSize(Korl_StringPool_String string)
     u32 codepoints = 0;
     if(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
-        const u8*      rawString    = context->characterPool + _string->poolByteOffsetUtf8;
-        const u8*const rawStringEnd = rawString + _string->rawSizeUtf8*sizeof(*rawString);
-        for(const u8* c = rawString; c < rawStringEnd; c++)
-        {
-            if((*c >> 4) == 0b1111)// 4-byte codepoint
-                c += 3;// skip payload
-            else if((*c >> 5) == 0b111)// 3-byte codepoint
-                c += 2;// skip payload
-            else if((*c >> 6) == 0b11)// 2-byte codepoint
-                c++;// skip payload
-            else// 1-byte codepoint
-                korl_assert(!((*c >> 7) & 0b1));// high bit _must_ be 0
-            korl_assert(c < rawStringEnd);// if this fails, the UTF-8 string is invalid
+        Korl_String_CodepointIteratorUtf8 utf8GraphemeIt;
+        const u8*const rawUtf8 = context->characterPool + _string->poolByteOffsetUtf8;
+        for(utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _string->rawSizeUtf8)
+           ;!korl_string_codepointIteratorUtf8_done(&utf8GraphemeIt)
+           ; korl_string_codepointIteratorUtf8_next(&utf8GraphemeIt))
             codepoints++;
-        }
     }
     else if(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
+        ///@TODO: use codepoint iterator, as with the UTF8 case
         korl_assert(!_korl_stringPool_isBigEndian());// big-endian not supported; I don't want to do byte-swapping nonsense
         const u16*      rawString    = KORL_C_CAST(u16*, context->characterPool + _string->poolByteOffsetUtf16);
         const u16*const rawStringEnd = rawString + _string->rawSizeUtf16*sizeof(*rawString);
@@ -791,9 +817,7 @@ korl_internal u32 korl_stringPool_getGraphemeSize(Korl_StringPool_String string)
 }
 korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line)
 {
-    Korl_StringPool* sourceContext = string.pool;
-    Korl_StringPool_String result;
-
+    Korl_StringPool*const sourceContext = string.pool;
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(sourceContext->stbDaStrings));
     _Korl_StringPool_String*const newString = _korl_stringPool_addNewString(destContext, sourceContext->stbDaStrings[s].flags);
@@ -824,14 +848,45 @@ korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_Strin
     }
     if(flagsAdded != newString->flags)
         korl_log(ERROR, "not all string flags implemented! string flags=0x%X", newString->flags);
-
-    result.handle = newString->handle;
-    result.pool = destContext;
-    return result;
+    return KORL_STRUCT_INITIALIZE(Korl_StringPool_String){newString->handle, destContext};
 }
 korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line)
 {
     return korl_stringPool_copyToStringPool(string.pool, string, file, line);
+}
+korl_internal Korl_StringPool_String korl_stringPool_subString(Korl_StringPool_String string, u$ graphemeOffset, u$ graphemeSize, const wchar_t* file, int line)
+{
+    Korl_StringPool*const poolDestination = string.pool;// for now, we'll just create the new String in the same pool as the source string
+    /* make a copy of the string in the same pool */
+    Korl_StringPool_String subString = korl_stringPool_copyToStringPool(poolDestination, string, file, line);
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(subString);
+    korl_assert(s < arrlenu(poolDestination->stbDaStrings));
+    _Korl_StringPool_String*const _subString = poolDestination->stbDaStrings + s;
+    /* convert the string to UTF-8 */
+    _korl_stringPool_deduceUtf8(poolDestination, _subString, file, line);
+    /* iterate over `graphemeOffset` graphemes to find how much of the string's front needs to be removed */
+    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+    u$ currentGrapheme = 0;
+    Korl_String_CodepointIteratorUtf8 utf8GraphemeIt;
+    u8*const rawUtf8 = poolDestination->characterPool + _subString->poolByteOffsetUtf8;
+    const u8*const rawUtf8End = rawUtf8 + _subString->rawSizeUtf8;
+    for(utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _subString->rawSizeUtf8)
+       ;!korl_string_codepointIteratorUtf8_done(&utf8GraphemeIt) && currentGrapheme < graphemeOffset
+       ; korl_string_codepointIteratorUtf8_next(&utf8GraphemeIt),   currentGrapheme++)
+    {/*do nothing; we just want to advance the iterator `graphemeOffset` times*/}
+    const u$ frontRawCharsToRemove = korl_checkCast_i$_to_u$(utf8GraphemeIt._currentRawUtf8 - rawUtf8);
+    /* move the remaining string after the `graphemeOffset` to the beginning of the string */
+    korl_memory_move(rawUtf8, utf8GraphemeIt._currentRawUtf8, korl_checkCast_i$_to_u$(rawUtf8End - utf8GraphemeIt._currentRawUtf8));
+    /* iterate over `graphemeSize` graphemes to find the final raw size of the string */
+    currentGrapheme = 0;
+    for(utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _subString->rawSizeUtf8)
+       ;!korl_string_codepointIteratorUtf8_done(&utf8GraphemeIt) && currentGrapheme < graphemeSize
+       ; korl_string_codepointIteratorUtf8_next(&utf8GraphemeIt),   currentGrapheme++)
+    {/*do nothing; we just want to advance the iterator `graphemeSize` times*/}
+    const u$ finalRawSize = korl_checkCast_i$_to_u$(utf8GraphemeIt._currentRawUtf8 - rawUtf8);
+    /* resize the final raw string to be the correct size */
+    _subString->poolByteOffsetUtf8 = _korl_stringPool_reallocate(poolDestination, _subString->poolByteOffsetUtf8, (finalRawSize + 1/*null terminator*/)*sizeof(u8),file, line);
+    return subString;
 }
 korl_internal void korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line)
 {

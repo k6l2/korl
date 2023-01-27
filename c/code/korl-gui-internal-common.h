@@ -132,8 +132,8 @@ typedef struct _Korl_Gui_Widget
         struct
         {
             Korl_StringPool_String string;
-            u$ stringCursorBegin;
-            u$ stringCursorEnd;
+            u$ stringCursorBegin;// our cursor units will be in graphemes
+            u$ stringCursorEnd;  // our cursor units will be in graphemes
         } inputText;
     } subType;
 } _Korl_Gui_Widget;

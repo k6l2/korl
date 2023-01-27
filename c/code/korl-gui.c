@@ -1604,8 +1604,11 @@ korl_internal void korl_gui_frameEnd(void)
                     //  - calculate the AABB of the subString, which should work because we are under the assumption that the input string is just going to be a single line
                     //  - calculate our cursor position based on this AABB's size, and the position of batchText
                     //  - delete the temporary subString
-                    //@TODO: find actual position
-                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
+                    Korl_StringPool_String cursorBeginSubString = korl_string_subString(widget->subType.inputText.string, 0, widget->subType.inputText.stringCursorBegin);
+#if 0//@TODO
+                    const Korl_Math_V2f32 cursorBeginSubStringSize = korl_math_aabb2f32_size(korl_gfx_font_getTextAabb(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY, korl_stringPool_getRawAcu16(widget->subType.inputText.string)));
+                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorBeginSubStringSize.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
+#endif
                     korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
                 }
                 else
