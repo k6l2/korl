@@ -1,4 +1,9 @@
 #include "korl-string.h"
+korl_internal bool _korl_string_isBigEndian(void)
+{
+    korl_shared_const i32 I = 1;
+    return KORL_C_CAST(const u8*const, &I)[0] == 0;
+}
 korl_internal void _korl_string_codepointIteratorUtf8_decode(Korl_String_CodepointIteratorUtf8* iterator)
 {
     // this could probably look a lot cleaner by doing some kind of loop over the high bits of the first raw u8, but whatever //
@@ -87,6 +92,7 @@ korl_internal void _korl_string_codepointIteratorUtf16_decode(Korl_String_Codepo
 }
 korl_internal Korl_String_CodepointIteratorUtf16 korl_string_codepointIteratorUtf16_initialize(const u16* rawUtf16, u$ rawUtf16Size)
 {
+    korl_assert(!_korl_string_isBigEndian());// big-endian not supported; I don't want to do byte-swapping nonsense
     KORL_ZERO_STACK(Korl_String_CodepointIteratorUtf16, iterator);
     iterator._currentRawUtf16 = rawUtf16;
     iterator._rawUtf16End     = rawUtf16 + rawUtf16Size;
@@ -105,11 +111,9 @@ korl_internal void korl_string_codepointIteratorUtf16_next(Korl_String_Codepoint
     iterator->_currentRawUtf16 += iterator->_codepointSize;
     _korl_string_codepointIteratorUtf16_decode(iterator);
 }
-/** \return # of \c u8 elements written to \c o_buffer 
- * \param o_buffer caller is expected to have at _least_ \c 4 elements in this array! */
 korl_internal u8 korl_string_codepoint_to_utf8(u32 codepoint, u8* o_buffer)
 {
-    // derived just from wikipedia: https://en.wikipedia.org/wiki/UTF-8 */
+    /* derived just from wikipedia: https://en.wikipedia.org/wiki/UTF-8 */
     u8 bufferSize = 0;
     if(codepoint <= 0x7F)
     {
@@ -138,6 +142,25 @@ korl_internal u8 korl_string_codepoint_to_utf8(u32 codepoint, u8* o_buffer)
         o_buffer[1] = 0b10000000u | ((KORL_C_CAST(u8, codepoint >> 12)) & 0x3F);
         o_buffer[2] = 0b10000000u | ((KORL_C_CAST(u8, codepoint >>  6)) & 0x3F);
         o_buffer[3] = 0b10000000u | ( KORL_C_CAST(u8, codepoint)        & 0x3F);
+    }
+    return bufferSize;
+}
+korl_internal u8 korl_string_codepoint_to_utf16(u32 codepoint, u16* o_buffer)
+{
+    /* derived just from wikipedia: https://en.wikipedia.org/wiki/UTF-16 */
+    u8 bufferSize = 0;
+    if(codepoint < 0x10000)
+    {
+        korl_assert(codepoint < 0xD800 || codepoint >= 0xE000);// ensure that codepoint is a valid Basic Multilingual Plane value
+        bufferSize = 1;
+        o_buffer[0] = KORL_C_CAST(u16, codepoint);
+    }
+    else
+    {
+        korl_assert(codepoint < 0x10FFFF);// RFC 3629 §3 limits UTF-8 encoding to code point U+10FFFF, to match the limits of UTF-16
+        codepoint -= 0x10000;
+        o_buffer[0] = KORL_C_CAST(u16, 0xD800 + (codepoint >> 10));  // high surrogate
+        o_buffer[1] =                  0xDC00 + (codepoint & 0x3FFu);// low  surrogate
     }
     return bufferSize;
 }

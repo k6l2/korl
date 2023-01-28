@@ -1609,6 +1609,7 @@ korl_internal void korl_gui_frameEnd(void)
                     const Korl_Math_V2f32 cursorBeginSubStringSize = korl_math_aabb2f32_size(korl_gfx_font_getTextAabb(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY, korl_stringPool_getRawAcu16(widget->subType.inputText.string)));
                     korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorBeginSubStringSize.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
 #endif
+                    korl_stringPool_free(cursorBeginSubString);
                     korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
                 }
                 else

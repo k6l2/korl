@@ -58,11 +58,6 @@ typedef struct _Korl_StringPool_String
     u32 rawSizeUtf16;// _excluding_ any null-terminator characters
     _Korl_StringPool_StringFlags flags;
 } _Korl_StringPool_String;
-korl_internal bool _korl_stringPool_isBigEndian(void)
-{
-    korl_shared_const i32 I = 1;
-    return KORL_C_CAST(const u8*const, &I)[0] == 0;
-}
 /** \return the byte offset of the new allocation */
 korl_internal u32 _korl_stringPool_allocate(Korl_StringPool* context, u$ bytes, const wchar_t* file, int line)
 {
@@ -286,87 +281,36 @@ korl_internal void _korl_stringPool_convert_utf16_to_utf8(Korl_StringPool* conte
 }
 korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* context, _Korl_StringPool_String* string, const wchar_t* file, int line)
 {
-    ///@TODO: use codepoint iterators & encoders from korl-string, like in _korl_stringPool_convert_utf16_to_utf8
     korl_assert(  string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     korl_assert(!(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16));
     /* prepare some initial memory for the utf16 string */
     string->flags |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
     string->rawSizeUtf16        = string->rawSizeUtf8;// initial estimate; likely to change later
     string->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
-    /* perform the conversion; resources: 
-        https://en.wikipedia.org/wiki/UTF-8
-        https://en.wikipedia.org/wiki/UTF-16 */
     u32 currentUtf16 = 0;
-    for(u32 cU8 = 0; cU8 < string->rawSizeUtf8; cU8++/*we always consume at least one UTF-8 byte (the leading byte)*/)
+    for(Korl_String_CodepointIteratorUtf8 u8Iterator = korl_string_codepointIteratorUtf8_initialize(context->characterPool + string->poolByteOffsetUtf8, string->rawSizeUtf8)
+       ;!korl_string_codepointIteratorUtf8_done(&u8Iterator)
+       ; korl_string_codepointIteratorUtf8_next(&u8Iterator))
     {
-        /* if the utf16 cursor is pointing to the last character in the string 
-            pool (reserved for the null terminator), we know that the utf16 
-            string needs to be expanded */
-        if(currentUtf16 >= string->rawSizeUtf16 - 1/*in case we need to occupy 2 utf16 characters*/)
+        u16 utf16CodepointBuffer[2];
+        const u8 u16CodepointSize = korl_string_codepoint_to_utf16(u8Iterator._codepoint, utf16CodepointBuffer);
+        if(currentUtf16 + u16CodepointSize >= string->rawSizeUtf16)
         {
             string->rawSizeUtf16       *= 2;
             string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf16, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
         }
-        const u8*const utf8  =                   context->characterPool + string->poolByteOffsetUtf8;
-        u16*const      utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
-        if(utf8[cU8] < 0x80)// [0,127]; ASCII range; one byte per codepoint
-            utf16[currentUtf16++] = utf8[cU8];// entire codepoint is contained in the leading UTF-8 byte
-        else if(utf8[cU8] < 0xC0)// [0x80, 0xBF]
-        {
-            // ignored; reserved for UTF-8 encoding
-        }
-        else if(utf8[cU8] < 0xE0)// [128, 2047]; 2 bytes per codepoint
-        {
-            if(cU8 + 1 >= string->rawSizeUtf8)
-                break;// invalid last codepoint (missing utf8 characters); just ignore it
-            utf16[currentUtf16++] = (KORL_C_CAST(u16, utf8[cU8    ] & 0x1Fu) << 6) 
-                                  |                  (utf8[cU8 + 1] & 0x3Fu);
-            cU8++;// consume trailing utf8 character
-        }
-        else if(utf8[cU8] < 0xF0)// [2048, 65535]; 3 bytes per codepoint
-        {
-            if(cU8 + 2 >= string->rawSizeUtf8)
-                break;// invalid last codepoint (missing utf8 characters); just ignore it
-            utf16[currentUtf16] = (KORL_C_CAST(u16, utf8[cU8    ] & 0xFu ) << 12)
-                                | (KORL_C_CAST(u16, utf8[cU8 + 1] & 0x3Fu) << 6)
-                                |                  (utf8[cU8 + 2] & 0x3Fu);
-            if(utf16[currentUtf16] >= 0xD800 && utf16[currentUtf16] <= 0xDFFF)
-            {
-                /* this codepoint range is reserved in UTF-16; we need to ignore 
-                    this value; maybe warn on this condition?... */
-            }
-            else
-                currentUtf16++;// the codepoint is valid
-            cU8 += 2;// consume trailing utf8 characters
-        }
-        else if(utf8[cU8] < 0xF8)// [65536, 0x10FFFF]; 4 bytes per codepoint
-        {
-            if(cU8 + 3 >= string->rawSizeUtf8)
-                break;// invalid last codepoint (missing utf8 characters); just ignore it
-            const u32 codepoint = (KORL_C_CAST(u32, utf8[cU8    ] & 0x7 ) << 18)
-                                | (KORL_C_CAST(u32, utf8[cU8 + 1] & 0x3F) << 12)
-                                | (KORL_C_CAST(u32, utf8[cU8 + 2] & 0x3F) << 6)
-                                |                  (utf8[cU8 + 3] & 0x3F);
-            utf16[currentUtf16    ] = KORL_C_CAST(u16, (codepoint - 0x10000) >> 10);
-            utf16[currentUtf16 + 1] = KORL_C_CAST(u16, (codepoint - 0x10000) & 0x4FF);
-            currentUtf16 += 2;
-            cU8 += 3;// consume trailing utf8 characters
-        }
-        else// invalid codepoint
-        {
-            // ignored; maybe warn on this condition?  Not sure...
-        }
+        u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
+        for(u8 i = 0; i < u16CodepointSize; i++)
+            utf16[currentUtf16 + i] = utf16CodepointBuffer[i];
+        currentUtf16 += u16CodepointSize;
     }
-    /* we now know exactly how many u16 characters are necessary to store the 
-        entire UTF-16 string, but it's highly probable that we overestimated the 
-        buffer required to store it, so we should now correct this to eliminate 
-        any slack at the end of the string */
+    /* remove any slack outside of the currentUtf16 + null-terminator */
     if(currentUtf16 < string->rawSizeUtf16)
     {
         string->rawSizeUtf16        = currentUtf16;
         string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, string->poolByteOffsetUtf16, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
     }
-    /* and of course we should null-terminate the UTF-16 string */
+    /* and of course we should null-terminate the raw string */
     u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
     utf16[currentUtf16] = L'\0';
 }
@@ -787,29 +731,19 @@ korl_internal u32 korl_stringPool_getGraphemeSize(Korl_StringPool_String string)
     u32 codepoints = 0;
     if(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
-        Korl_String_CodepointIteratorUtf8 utf8GraphemeIt;
         const u8*const rawUtf8 = context->characterPool + _string->poolByteOffsetUtf8;
-        for(utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _string->rawSizeUtf8)
+        for(Korl_String_CodepointIteratorUtf8 utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _string->rawSizeUtf8)
            ;!korl_string_codepointIteratorUtf8_done(&utf8GraphemeIt)
            ; korl_string_codepointIteratorUtf8_next(&utf8GraphemeIt))
             codepoints++;
     }
     else if(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
-        ///@TODO: use codepoint iterator, as with the UTF8 case
-        korl_assert(!_korl_stringPool_isBigEndian());// big-endian not supported; I don't want to do byte-swapping nonsense
-        const u16*      rawString    = KORL_C_CAST(u16*, context->characterPool + _string->poolByteOffsetUtf16);
-        const u16*const rawStringEnd = rawString + _string->rawSizeUtf16*sizeof(*rawString);
-        for(const u16* c = rawString; c < rawStringEnd; c++)
-        {
-            if((*c >> 10) == 0b110110)// this is the high-surrogate for a codepoint which spans 2 raw elements
-            {
-                korl_assert(c + 1 < rawStringEnd);      // the next element must exist
-                korl_assert((*(c+1) >> 10) == 0b110111);// the next element must be the low-surrogate
-                c++;// skip low-surrogate
-            }
+        const u16* rawUtf16 = KORL_C_CAST(u16*, context->characterPool + _string->poolByteOffsetUtf16);
+        for(Korl_String_CodepointIteratorUtf16 utf16GraphemeIt = korl_string_codepointIteratorUtf16_initialize(rawUtf16, _string->rawSizeUtf16)
+           ;!korl_string_codepointIteratorUtf16_done(&utf16GraphemeIt)
+           ; korl_string_codepointIteratorUtf16_next(&utf16GraphemeIt))
             codepoints++;
-        }
     }
     else
         korl_log(ERROR, "string[%llu] in pool:0x%X has no encoding", s, string.pool);
