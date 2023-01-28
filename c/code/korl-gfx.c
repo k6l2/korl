@@ -1057,6 +1057,84 @@ korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics)
     korl_assert(metrics.ascent >= metrics.decent);// no idea if this is a hard requirement, but based on how these #s are used, it seems _very_ unlikely that this will ever be false
     return metrics;
 }
+korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 text)
+{
+    Korl_Math_Aabb2f32 result = KORL_MATH_AABB2F32_EMPTY;
+    KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
+    if(!fontCache)
+        goto return_result;// silently return empty AABB if font is not loaded
+    //@TODO; iterate over the text graphemes & accumulate each individual AABB with the result total
+#if 0// @TODO; reduce? reuse? recycle? 🤔
+    for(u$ c = 0; c < utf16Text.size; c++)
+    {
+        if(codepointTest && !codepointTest(codepointTestUserData, utf16Text.data + c, &currentLineColor))
+            continue;
+        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, utf16Text.data[c]);
+        if(textBaselineCursor.x > 0.f)
+        {
+            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
+                                                             ,glyphIndexPrevious
+                                                             ,bakedGlyph->glyphIndex);
+            glyphIndexPrevious = bakedGlyph->glyphIndex;
+            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
+        }
+        const f32 x0 = textBaselineCursor.x + bakedGlyph->bbox.offsetX;
+        const f32 y0 = textBaselineCursor.y + bakedGlyph->bbox.offsetY;
+        const f32 x1 = x0 + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
+        const f32 y1 = y0 + (bakedGlyph->bbox.y1 - bakedGlyph->bbox.y0);
+        const Korl_Math_V2f32 glyphPosition = textBaselineCursor;
+        textBaselineCursor.x += bakedGlyph->advanceX;
+        if(utf16Text.data[c] == L'\n')
+        {
+            textBaselineCursor.x  = 0.f;
+            // textBaselineCursor.y -= lineDeltaY;// no need to do this; each line has an implicit Y size, and when we draw we will move the line's model position appropriately
+            glyphIndexPrevious = -1;
+            if(currentLine)
+            {
+                /* if we had a current working text line, we need to flush the text 
+                    instance data we've accumulated so far into a vertex buffer 
+                    device asset; instead of creating a separate buffer resource 
+                    for each line, we are just going to accumulate a giant 
+                    buffer used by the entire Gfx_Text object */
+                const u$ bufferBytesRequiredMin = (context->totalVisibleGlyphs + currentLine->visibleCharacters) * sizeof(*currentLineBuffer);
+                const u$ currentBufferBytes     = korl_resource_getByteSize(context->resourceHandleBufferText);
+                if(currentBufferBytes < bufferBytesRequiredMin)
+                {
+                    const u$ bufferBytesNew = KORL_MATH_MAX(bufferBytesRequiredMin, 2*currentBufferBytes);
+                    korl_resource_resize(context->resourceHandleBufferText, bufferBytesNew);
+                }
+                korl_resource_update(context->resourceHandleBufferText, currentLineBuffer, currentLine->visibleCharacters * sizeof(*currentLineBuffer), context->totalVisibleGlyphs * sizeof(*currentLineBuffer));
+                /* update the Text object's model AABB with the new line graphics we just added */
+                KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabb.max.x, currentLine->modelAabb.max.x);
+                /* update other Text object metrics */
+                context->totalVisibleGlyphs += currentLine->visibleCharacters;
+            }
+            currentLine      = NULL;
+            currentLineColor = KORL_MATH_V4F32_ONE;// default next line color to white
+            continue;
+        }
+        if(bakedGlyph->isEmpty)
+            continue;
+        /* at this point, we know that this is a valid visible character, which 
+            must be accumulated into a text line; if we don't have a current 
+            working text line at this point, we need to make one */
+        if(!currentLine)
+        {
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
+            currentLine = &arrlast(context->stbDaLines);
+            currentLine->color = currentLineColor;
+        }
+        currentLineBuffer[currentLine->visibleCharacters].position  = glyphPosition;
+        currentLineBuffer[currentLine->visibleCharacters].meshIndex = bakedGlyph->bakeOrder;
+        currentLine->modelAabb.min = korl_math_v2f32_min(currentLine->modelAabb.min, (Korl_Math_V2f32){x0, y0});
+        currentLine->modelAabb.max = korl_math_v2f32_max(currentLine->modelAabb.max, (Korl_Math_V2f32){x1, y1});
+        currentLine->visibleCharacters++;
+    }
+#endif
+    return_result:
+        return result;
+}
 korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);

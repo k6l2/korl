@@ -165,6 +165,7 @@ korl_internal u32                           korl_stringPool_getRawSizeUtf8(Korl_
 korl_internal u32                           korl_stringPool_getRawSizeUtf16(Korl_StringPool_String string);
 korl_internal char*                         korl_stringPool_getRawWriteableUtf8(Korl_StringPool_String string);
 korl_internal wchar_t*                      korl_stringPool_getRawWriteableUtf16(Korl_StringPool_String string);
+korl_internal acu8                          korl_stringPool_getRawAcu8(Korl_StringPool_String string);
 korl_internal acu16                         korl_stringPool_getRawAcu16(Korl_StringPool_String string);
 korl_internal u32                           korl_stringPool_getGraphemeSize(Korl_StringPool_String string);
 korl_internal Korl_StringPool_String        korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line);
