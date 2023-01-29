@@ -36,7 +36,7 @@ KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
     memory->testWindowOpen      = true;
     memory->stringPool          = korl_stringPool_create(allocatorHeap);
     // memory->console.stringInput = korl_stringNewUtf8(&memory->stringPool, "stringInput");
-    memory->console.stringInput = korl_stringNewUtf16(&memory->stringPool, KORL_C_CAST(u16*,L"stringInput"));
+    memory->console.stringInput = korl_stringNewUtf16(&memory->stringPool, KORL_C_CAST(u16*,L"stringInput"));//@TODO: delete later; just testing string transcoding
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     return memory;
 }

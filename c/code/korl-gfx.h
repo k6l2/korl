@@ -26,7 +26,7 @@ korl_internal void               korl_gfx_text_fifoRemove(Korl_Gfx_Text* context
 korl_internal void               korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
 korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context);
 korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics);
-korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 text);
+korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text);
 korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov);
 korl_internal KORL_FUNCTION_korl_gfx_createCameraOrtho(korl_gfx_createCameraOrtho);
 korl_internal KORL_FUNCTION_korl_gfx_createCameraOrthoFixedHeight(korl_gfx_createCameraOrthoFixedHeight);

@@ -520,17 +520,14 @@ korl_internal Korl_StringPool_String korl_stringPool_newFormatUtf16(Korl_StringP
     va_end(args);
     return result;
 }
-korl_internal void korl_stringPool_free(Korl_StringPool_String string)
+korl_internal void korl_stringPool_free(Korl_StringPool_String string)//@TODO: we should pass the String address here so we can invalidate the data for the user
 {
     /* if the string handle is invalid, we don't have to do anything */
     if(!string.handle)
         return;
     Korl_StringPool*const context = string.pool;
     /* find the matching handle in the string array */
-    u$ s = 0;
-    for(; s < arrlenu(context->stbDaStrings); s++)
-        if(context->stbDaStrings[s].handle == string.handle)
-            break;
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* deallocate any raw string allocations */
     if(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
