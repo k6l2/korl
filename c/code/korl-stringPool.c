@@ -368,7 +368,7 @@ korl_internal void _korl_stringPool_deduceEncoding(Korl_StringPool* context, _Ko
     if(    (flags         & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
        && !(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8))
     {
-        if(flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
+        if(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
             _korl_stringPool_convert_utf16_to_utf8(context, string, file, line);
         else
             korl_assert(!"no valid conversion to UTF-8");

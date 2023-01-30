@@ -1595,23 +1595,13 @@ korl_internal void korl_gui_frameEnd(void)
                 /* determine where to draw the cursor */
                 if(widget->subType.inputText.stringCursorBegin >= widget->subType.inputText.stringCursorEnd)
                 {
+                    /* in this case, we need to draw a single vertical bar */
                     const Korl_Math_V2f32 cursorSize   = {2, textLineDeltaY};
                     const Korl_Math_V2f32 cursorOrigin = {0, korl_math_abs(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
                     Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, cursorSize, cursorOrigin, KORL_COLOR4U8_WHITE);
-                    /* in this case, we need to draw a single vertical bar */
-#if 1//@TODO; choose approach
-                    //  - create a temporary subString of the inputText's string, using stringCursorBegin to determine the size of the subString
-                    //  - calculate the AABB of the subString, which should work because we are under the assumption that the input string is just going to be a single line
-                    //  - calculate our cursor position based on this AABB's size, and the position of batchText
-                    //  - delete the temporary subString
-                    Korl_StringPool_String cursorBeginSubString = korl_string_subString(widget->subType.inputText.string, 0, widget->subType.inputText.stringCursorBegin);
-                    const Korl_Math_V2f32 cursorBeginSubStringSize = korl_math_aabb2f32_size(korl_gfx_font_getTextAabb(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY, korl_stringPool_getRawAcu8(cursorBeginSubString)));
-                    korl_stringPool_free(cursorBeginSubString);
-                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorBeginSubStringSize.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
+                    const Korl_Math_V2f32 cursorBeginPosition = korl_gfx_font_textGlyphemePosition(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY, korl_stringPool_getRawAcu8(widget->subType.inputText.string), widget->subType.inputText.stringCursorBegin);
+                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorBeginPosition.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
                     korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
-#else
-                    //  - create a korl_gfx_font_textGlyphemePosition API to find the cursor position without having to make a substring, measure it, then free it... (holy shit am I getting dementia or something?)
-#endif
                 }
                 else
                 {

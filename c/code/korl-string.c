@@ -65,6 +65,7 @@ korl_internal void korl_string_codepointIteratorUtf8_next(Korl_String_CodepointI
 {
     iterator->_currentRawUtf8 += iterator->_codepointBytes;
     _korl_string_codepointIteratorUtf8_decode(iterator);
+    iterator->codepointIndex++;
 }
 korl_internal void _korl_string_codepointIteratorUtf16_decode(Korl_String_CodepointIteratorUtf16* iterator)
 {

@@ -1111,6 +1111,44 @@ korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameF
     }
     return result;
 }
+korl_internal Korl_Math_V2f32 korl_gfx_font_textGlyphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ glyphemeIndex)
+{
+    KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
+    if(!fontCache)
+        return KORL_MATH_V2F32_ZERO;// silently return 0 if font is not loaded
+    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    Korl_Math_V2f32 textBaselineCursor = KORL_MATH_V2F32_ZERO;
+    int glyphIndexPrevious = -1;
+    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+    for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
+       ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
+       ; korl_string_codepointIteratorUtf8_next(&codepointIt))
+    {
+        if(codepointIt.codepointIndex >= glyphemeIndex)
+            break;
+        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
+        if(textBaselineCursor.x > 0.f)
+        {
+            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
+                                                             ,glyphIndexPrevious
+                                                             ,bakedGlyph->glyphIndex);
+            glyphIndexPrevious = bakedGlyph->glyphIndex;
+            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
+        }
+        textBaselineCursor.x += bakedGlyph->advanceX;
+        if(codepointIt._codepoint == L'\n')
+        {
+            textBaselineCursor.x  = 0.f;
+            textBaselineCursor.y -= lineDeltaY;
+            glyphIndexPrevious = -1;
+            continue;
+        }
+        if(bakedGlyph->isEmpty)
+            continue;
+    }
+    return textBaselineCursor;
+}
 korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
