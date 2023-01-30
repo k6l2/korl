@@ -165,3 +165,16 @@ korl_internal u8 korl_string_codepoint_to_utf16(u32 codepoint, u16* o_buffer)
     }
     return bufferSize;
 }
+korl_internal bool korl_string_isUtf16Surrogate(u16 utf16Unit)
+{
+    return korl_string_isUtf16SurrogateHigh(utf16Unit)
+        || korl_string_isUtf16SurrogateLow(utf16Unit);
+}
+korl_internal bool korl_string_isUtf16SurrogateHigh(u16 utf16Unit)
+{
+    return utf16Unit >= 0xD800 && utf16Unit < 0xDC00;
+}
+korl_internal bool korl_string_isUtf16SurrogateLow(u16 utf16Unit)
+{
+    return utf16Unit >= 0xDC00 && utf16Unit < 0xE000;
+}

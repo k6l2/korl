@@ -27,3 +27,6 @@ korl_internal u8 korl_string_codepoint_to_utf8(u32 codepoint, u8* o_buffer);
 /** \return # of \c u16 elements written to \c o_buffer 
  * \param o_buffer caller is expected to have at _least_ \c 2 elements in this array! */
 korl_internal u8 korl_string_codepoint_to_utf16(u32 codepoint, u16* o_buffer);
+korl_internal bool korl_string_isUtf16Surrogate(u16 utf16Unit);
+korl_internal bool korl_string_isUtf16SurrogateHigh(u16 utf16Unit);
+korl_internal bool korl_string_isUtf16SurrogateLow(u16 utf16Unit);

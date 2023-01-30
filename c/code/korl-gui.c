@@ -4,6 +4,7 @@
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
 #include "korl-time.h"
+#include "korl-string.h"
 #include "korl-stb-ds.h"
 typedef struct _Korl_Gui_UsedWidget
 {
@@ -446,6 +447,7 @@ korl_internal void korl_gui_initialize(void)
     _korl_gui_context.style.widgetSpacingY                 =  0.f;
     _korl_gui_context.style.widgetButtonLabelMargin        =  2.f;
     _korl_gui_context.style.windowScrollBarPixelWidth      = 15.f;
+    _korl_gui_context.pendingUnicodeSurrogate              = -1;
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaUsedWidgets, 64);
     /* kick-start the first GUI frame as soon as initialization of this module is complete */
@@ -776,6 +778,71 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
             }
         }
         break;}
+    }
+}
+korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* codepointEvent)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    /* if this codepoint is a surrogate, we need to store the surrogate & wait until we receive its companion */
+    u16 utf16Buffer[2];
+    if(korl_string_isUtf16Surrogate(codepointEvent->utf16Unit))
+    {
+        if(context->pendingUnicodeSurrogate >= 0)
+        {
+            const u16 pendingUtf16Surrogate = korl_checkCast_i$_to_u16(context->pendingUnicodeSurrogate);
+            korl_assert(korl_string_isUtf16Surrogate(pendingUtf16Surrogate));
+            if(korl_string_isUtf16SurrogateHigh(codepointEvent->utf16Unit))
+            {
+                korl_assert(korl_string_isUtf16SurrogateLow(pendingUtf16Surrogate));
+                utf16Buffer[0] = codepointEvent->utf16Unit;
+                utf16Buffer[1] = pendingUtf16Surrogate;
+            }
+            else
+            {
+                korl_assert(korl_string_isUtf16SurrogateHigh(pendingUtf16Surrogate));
+                utf16Buffer[0] = pendingUtf16Surrogate;
+                utf16Buffer[1] = codepointEvent->utf16Unit;
+            }
+            /* now we can clear the pending surrogate, since we can now consume it together with the event's code unit */
+            context->pendingUnicodeSurrogate = -1;
+        }
+        else
+            return;/* there's nothing we can do; we just received a utf16 surrogate, but we can't do any further processing until we receive its pair! */
+    }
+    else/* otherwise, we expect to be able to just use the codepoint unit in isolation */
+    {
+        korl_assert(context->pendingUnicodeSurrogate < 0);// we expect there to _never_ be a codepoint surrogate in isolation!; each surrogate _must_ be accompanied by its companion
+        utf16Buffer[0] = codepointEvent->utf16Unit;
+    }
+    // this will decode the UTF-16 codepoint, and do  all the checks to ensure it is valid data:
+    Korl_String_CodepointIteratorUtf16 utf16It = korl_string_codepointIteratorUtf16_initialize(utf16Buffer, korl_arraySize(utf16Buffer));
+    /* convert the UTF-16 input to UTF-8 */
+    u8 utf8Buffer[4];
+    const u8 utf8BufferSize = korl_string_codepoint_to_utf8(utf16It._codepoint, utf8Buffer);
+    const acu8 utf8 = {.data = utf8Buffer, .size = utf8BufferSize};
+    /* locate the active leaf widget, if it exists */
+    _Korl_Gui_UsedWidget* activeLeafWidget = NULL;
+    const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
+    for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
+        if(usedWidget->widget->identifierHash == context->identifierHashLeafWidgetActive)
+        {
+            activeLeafWidget = usedWidget;
+            break;
+        }
+    if(activeLeafWidget)
+    {
+        switch(activeLeafWidget->widget->type)
+        {
+        case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            /* if the cursor values indicate a selection region, we need to delete this selection from the input string */
+            ///@TODO
+            /* submit this new codepoint to the input text's string at the cursor position(s) */
+            korl_string_insertUtf8(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorBegin, utf8);
+            /* adjust the cursor position(s) */
+            activeLeafWidget->widget->subType.inputText.stringCursorEnd = ++activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+            break;}
+        default: break;
+        }
     }
 }
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)

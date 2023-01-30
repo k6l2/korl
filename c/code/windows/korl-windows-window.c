@@ -195,6 +195,7 @@ korl_internal void _korl_windows_window_configurationStep(void)
 korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
+    LRESULT result = 0;
     /* ignore all window events that don't belong to the windows we are 
         responsible for in this code module */
     if(context->window.handle)// only do this logic if the context's window handle is set, because the first window message is a WM_CREATE, which we will use to set the context window handle
@@ -202,7 +203,6 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
         // korl_log(VERBOSE, "uMsg=%u|0x%X", uMsg, uMsg);
         if(hWnd != context->window.handle)
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
-        LRESULT result;
         korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
         if(korl_windows_gamepad_processMessage(hWnd, uMsg, wParam, lParam, &result))
             return result;
@@ -369,9 +369,9 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
         break;}
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
     default: 
-        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+        result = DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
-    return 0;// the most common user-handled result
+    return result;// the most common user-handled result
 }
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_window_onAssetHotReloaded)
 {

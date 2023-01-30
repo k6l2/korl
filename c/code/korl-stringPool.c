@@ -92,6 +92,10 @@ create_allocation_and_return_currentPoolOffset:
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAllocations, newAllocation);
     return newAllocation.poolByteOffset;
 }
+/** IMPORTANT: this funciton does _not_ modify the \c rawSizeUtf* member of the 
+ * \c _Korl_StringPool_String object associated with \c allocationOffset passed 
+ * to this function!  The caller is responsible for updating this value manually 
+ * after performing this reallocation! */
 korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allocationOffset, u$ bytes, const wchar_t* file, int line)
 {
     korl_assert(bytes > 0);
@@ -246,11 +250,34 @@ korl_internal Korl_StringPool_String _korl_stringPool_stringFromRawCommon(Korl_S
     result.handle = newString->handle;
     return result;
 }
+korl_internal void _korl_stringPool_setStringFlags(Korl_StringPool* context, _Korl_StringPool_String* string, _Korl_StringPool_StringFlags flags)
+{
+    /* if we're removing any given encoding flag, we need to free the raw string 
+        allocation for that encoding */
+    if(    (string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
+       && !(        flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8))
+    {
+        _korl_stringPool_free(context, string->poolByteOffsetUtf8);
+        string->poolByteOffsetUtf8 = 0;
+        string->rawSizeUtf8        = 0;
+        string->flags             &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF8;
+    }
+    if(    (string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
+       && !(        flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
+    {
+        _korl_stringPool_free(context, string->poolByteOffsetUtf16);
+        string->poolByteOffsetUtf16 = 0;
+        string->rawSizeUtf16        = 0;
+        string->flags              &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF16;
+    }
+    if(string->flags & ~flags)// if the string flags still have bits that aren't present in the desired flag set
+        korl_log(ERROR, "not all string encodings are implemented! flags=%i", string->flags);
+    string->flags = flags;
+}
 korl_internal void _korl_stringPool_convert_utf16_to_utf8(Korl_StringPool* context, _Korl_StringPool_String* string, const wchar_t* file, int line)
 {
     korl_assert(  string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     korl_assert(!(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8));
-    string->flags |= _KORL_STRINGPOOL_STRING_FLAG_UTF8;
     string->rawSizeUtf8        = string->rawSizeUtf16;// initial estimate; likely to change later
     string->poolByteOffsetUtf8 = _korl_stringPool_allocate(context, (string->rawSizeUtf8 + 1/*null-terminator*/)*sizeof(u8), file, line);
     u32 currentUtf8 = 0;
@@ -279,13 +306,26 @@ korl_internal void _korl_stringPool_convert_utf16_to_utf8(Korl_StringPool* conte
     /* and of course we should null-terminate the raw string */
     u8*const utf8 = context->characterPool + string->poolByteOffsetUtf8;
     utf8[currentUtf8] = '\0';
+    ///@TODO: backlog this performance task
+    /* aggressively nullify other encodings; due to the fact that we don't 
+        have an internal API that wraps modifications to the raw string data 
+        from everything in this code module, it is difficult/impossible to 
+        lazy-free unused/dirty String encodings; ideally we would have a 
+        mechanism where if we, for example, convert a UTF-8 string to UTF-16, 
+        _both_ raw strings would be valid, eliminating the need for this module 
+        to perform the conversion multiple times if the user requires both 
+        encodings for different reasons, until the user decides to modify one of 
+        the encodings, thus invalidating the other encodings; until such a 
+        mechanism is in place, we have no choice but to invalidate all other 
+        encodings the moment a String is transcoded; we expect this to have poor 
+        performance in the above example, but at least it will be correct! */
+    _korl_stringPool_setStringFlags(context, string, _KORL_STRINGPOOL_STRING_FLAG_UTF8);
 }
 korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* context, _Korl_StringPool_String* string, const wchar_t* file, int line)
 {
     korl_assert(  string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     korl_assert(!(string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16));
     /* prepare some initial memory for the utf16 string */
-    string->flags |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
     string->rawSizeUtf16        = string->rawSizeUtf8;// initial estimate; likely to change later
     string->poolByteOffsetUtf16 = _korl_stringPool_allocate(context, (string->rawSizeUtf16 + 1/*null-terminator*/)*sizeof(u16), file, line);
     u32 currentUtf16 = 0;
@@ -314,30 +354,20 @@ korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* conte
     /* and of course we should null-terminate the raw string */
     u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
     utf16[currentUtf16] = L'\0';
-}
-korl_internal void _korl_stringPool_setStringFlags(Korl_StringPool* context, _Korl_StringPool_String* string, _Korl_StringPool_StringFlags flags)
-{
-    /* if we're removing any given encoding flag, we need to free the raw string 
-        allocation for that encoding */
-    if(    (string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
-       && !(        flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8))
-    {
-        _korl_stringPool_free(context, string->poolByteOffsetUtf8);
-        string->poolByteOffsetUtf8 = 0;
-        string->rawSizeUtf8        = 0;
-        string->flags             &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF8;
-    }
-    if(    (string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
-       && !(        flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
-    {
-        _korl_stringPool_free(context, string->poolByteOffsetUtf16);
-        string->poolByteOffsetUtf16 = 0;
-        string->rawSizeUtf16        = 0;
-        string->flags              &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF16;
-    }
-    if(string->flags & ~flags)// if the string flags still have bits that aren't present in the desired flag set
-        korl_log(ERROR, "not all string encodings are implemented! flags=%i", string->flags);
-    string->flags = flags;
+    ///@TODO: backlog this performance task
+    /* aggressively nullify other encodings; due to the fact that we don't 
+        have an internal API that wraps modifications to the raw string data 
+        from everything in this code module, it is difficult/impossible to 
+        lazy-free unused/dirty String encodings; ideally we would have a 
+        mechanism where if we, for example, convert a UTF-8 string to UTF-16, 
+        _both_ raw strings would be valid, eliminating the need for this module 
+        to perform the conversion multiple times if the user requires both 
+        encodings for different reasons, until the user decides to modify one of 
+        the encodings, thus invalidating the other encodings; until such a 
+        mechanism is in place, we have no choice but to invalidate all other 
+        encodings the moment a String is transcoded; we expect this to have poor 
+        performance in the above example, but at least it will be correct! */
+    _korl_stringPool_setStringFlags(context, string, _KORL_STRINGPOOL_STRING_FLAG_UTF16);
 }
 korl_internal u$ _korl_stringPool_findIndexMatchingHandle(Korl_StringPool_String string)
 {
@@ -832,8 +862,45 @@ korl_internal Korl_StringPool_String korl_stringPool_subString(Korl_StringPool_S
     {/*do nothing; we just want to advance the iterator `graphemeSize` times*/}
     const u$ finalRawSize = korl_checkCast_i$_to_u$(utf8GraphemeIt._currentRawUtf8 - rawUtf8);
     /* resize the final raw string to be the correct size */
-    _subString->poolByteOffsetUtf8 = _korl_stringPool_reallocate(poolDestination, _subString->poolByteOffsetUtf8, (finalRawSize + 1/*null terminator*/)*sizeof(u8),file, line);
+    _subString->poolByteOffsetUtf8 = _korl_stringPool_reallocate(poolDestination, _subString->poolByteOffsetUtf8, (finalRawSize + 1/*null terminator*/)*sizeof(u8), file, line);
+    _subString->rawSizeUtf8        = korl_checkCast_u$_to_u32(finalRawSize);
     return subString;
+}
+korl_internal void korl_stringPool_insertUtf8(Korl_StringPool_String string, u$ graphemeOffset, acu8 utf8, const wchar_t* file, int line)
+{
+    /* get the internal _String */
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    korl_assert(s < arrlenu(string.pool->stbDaStrings));
+    _Korl_StringPool_String*const _string = string.pool->stbDaStrings + s;
+    /* ensure the string is in UTF-8 mode */
+    _korl_stringPool_deduceUtf8(string.pool, _string, file, line);
+    /* find the UTF-8 unit offset that corresponds to graphemeOffset */
+    u$ utf8UnitOffset = 0;
+    {
+        u8*const rawUtf8 = string.pool->characterPool + _string->poolByteOffsetUtf8;
+        u$ currentGrapheme = 0;
+        //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+        Korl_String_CodepointIteratorUtf8 utf8It;
+        for(utf8It = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _string->rawSizeUtf8)
+           ;!korl_string_codepointIteratorUtf8_done(&utf8It) && currentGrapheme < graphemeOffset
+           ; korl_string_codepointIteratorUtf8_next(&utf8It), currentGrapheme++)
+        {/*nothing to do here; we're just iterating until currentGrapheme reaches graphemeOffset*/}
+        utf8UnitOffset = korl_checkCast_i$_to_u$(utf8It._currentRawUtf8 - rawUtf8);
+    }
+    /* reallocate enough UTF-8 units for the insertion */
+    const u$ rawUtf8AfterOffset = _string->rawSizeUtf8 - utf8UnitOffset;
+    _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(string.pool, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + utf8.size + 1/*null terminator*/)*sizeof(u8), file, line);
+    _string->rawSizeUtf8        = korl_checkCast_u$_to_u32(_string->rawSizeUtf8 + utf8.size);
+    /* move all the characters after the UTF-8 unit offset to the end of the string */
+    u8*const rawUtf8            = string.pool->characterPool + _string->poolByteOffsetUtf8;
+    u8*const rawUtf8End         = rawUtf8 + _string->rawSizeUtf8;
+    u8*const rawUtf8Offset      = rawUtf8 + utf8UnitOffset;
+    // Example:
+    //stringInput // size==11
+    //           ^ utf8UnitOffset == 11
+    korl_memory_move(rawUtf8 + utf8UnitOffset + utf8.size, rawUtf8 + utf8UnitOffset, rawUtf8AfterOffset*sizeof(u8));
+    /* inject `utf8` into the UTF-8 unit offset */
+    korl_memory_copy(rawUtf8Offset, utf8.data, utf8.size*sizeof(*utf8.data));
 }
 korl_internal void korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line)
 {

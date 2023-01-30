@@ -128,6 +128,7 @@ typedef struct Korl_StringPool_String
 #define korl_stringPrependUtf8(stringHandle, cStringUtf8)                                             korl_stringPool_prependUtf8(stringHandle, cStringUtf8, __FILEW__, __LINE__)
 #define korl_stringPrependUtf16(stringHandle, cStringUtf16)                                           korl_stringPool_prependUtf16(stringHandle, cStringUtf16, __FILEW__, __LINE__)
 #define korl_string_subString(string, graphemeOffset, graphemeSize)                                   korl_stringPool_subString(string, graphemeOffset, graphemeSize, __FILEW__, __LINE__)
+#define korl_string_insertUtf8(string, graphemeOffset, utf8)                                          korl_stringPool_insertUtf8(string, graphemeOffset, utf8, __FILEW__, __LINE__)
 /* string pool API */
 /** Because of the fact that korl-stringPool now deals with string handles that 
  * contain the StringPool pointer itself, we can no longer store StringPools in 
@@ -171,6 +172,7 @@ korl_internal u32                           korl_stringPool_getGraphemeSize(Korl
 korl_internal Korl_StringPool_String        korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_subString(Korl_StringPool_String string, u$ graphemeOffset, u$ graphemeSize, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_insertUtf8(Korl_StringPool_String string, u$ graphemeOffset, acu8 utf8, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_appendUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);

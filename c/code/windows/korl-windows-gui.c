@@ -29,10 +29,12 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         guiMouseEvent.subType.button.pressed  = isDown;
         guiMouseEvent.subType.button.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(mousePositionClient.x)
                                                                  ,korl_checkCast_i$_to_f32(clientRectSize.y - mousePositionClient.y)/*every KORL module should define the +Y axis as UP on the screen*/};
-        if(wParam & MK_SHIFT)
+        if(GetKeyState(VK_SHIFT) & 0x8000)
             guiMouseEvent.subType.button.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT;
-        if(wParam & MK_CONTROL)
+        if(GetKeyState(VK_CONTROL) & 0x8000)
             guiMouseEvent.subType.button.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL;
+        if(GetKeyState(VK_MENU) & 0x8000)
+            guiMouseEvent.subType.button.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_ALTERNATE;
         korl_gui_onMouseEvent(&guiMouseEvent);
         break;}
     case WM_MOUSEMOVE:{
@@ -58,6 +60,22 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         guiMouseEvent.subType.wheel.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(pointMouse.x)
                                                                 ,korl_checkCast_i$_to_f32(clientRectSize.y - pointMouse.y)/*every KORL module should define the +Y axis as UP on the screen*/};
         korl_gui_onMouseEvent(&guiMouseEvent);
+        break;}
+    case WM_CHAR:{
+        #ifdef UNICODE
+            KORL_ZERO_STACK(_Korl_Gui_CodepointEvent, codepointEvent);
+            codepointEvent.utf16Unit = korl_checkCast_u$_to_u16(wParam);
+            if(GetKeyState(VK_SHIFT) & 0x8000)
+                codepointEvent.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT;
+            if(GetKeyState(VK_CONTROL) & 0x8000)
+                codepointEvent.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL;
+            if(GetKeyState(VK_MENU) & 0x8000)
+                codepointEvent.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_ALTERNATE;
+            korl_gui_onCodepointEvent(&codepointEvent);
+        #else
+            // in order to support non-UNICODE mode, we would probably have to check the application's codepage to see if we're UTF-8 or w/e, and I don't want to have to deal with that garbo ~K6L2
+            #error "only UNICODE (UTF-16) mode is supported"
+        #endif
         break;}
 #if 0
     /*case WM_LBUTTONDBLCLK:*/
