@@ -203,7 +203,7 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
         // korl_log(VERBOSE, "uMsg=%u|0x%X", uMsg, uMsg);
         if(hWnd != context->window.handle)
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
-        korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam);
+        korl_gui_windows_processMessage(hWnd, uMsg, wParam, lParam, _korl_windows_window_virtualKeyMap, korl_arraySize(_korl_windows_window_virtualKeyMap));
         if(korl_windows_gamepad_processMessage(hWnd, uMsg, wParam, lParam, &result))
             return result;
         if(korl_windows_mouse_processMessage(hWnd, uMsg, wParam, lParam, &result, context->gameApi.korl_game_onMouseEvent))

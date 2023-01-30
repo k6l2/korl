@@ -5,7 +5,7 @@
 #include "korl-checkCast.h"
 #include "korl-vulkan.h"
 #include "korl-stb-ds.h"
-korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, Korl_KeyboardCode* virtualKeyMap, u$ virtualKeyMapSize)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
@@ -60,6 +60,22 @@ korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPAR
         guiMouseEvent.subType.wheel.position = (Korl_Math_V2f32){korl_checkCast_i$_to_f32(pointMouse.x)
                                                                 ,korl_checkCast_i$_to_f32(clientRectSize.y - pointMouse.y)/*every KORL module should define the +Y axis as UP on the screen*/};
         korl_gui_onMouseEvent(&guiMouseEvent);
+        break;}
+    case WM_KEYDOWN:
+    case WM_KEYUP:{
+        if(wParam >= virtualKeyMapSize)
+            break;
+        KORL_ZERO_STACK(_Korl_Gui_KeyEvent, keyEvent);
+        keyEvent.virtualKey = virtualKeyMap[wParam];
+        keyEvent.isDown     = message == WM_KEYDOWN;
+        keyEvent.isRepeat   = (HIWORD(lParam) & KF_REPEAT) != 0;
+        if(GetKeyState(VK_SHIFT) & 0x8000)
+            keyEvent.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT;
+        if(GetKeyState(VK_CONTROL) & 0x8000)
+            keyEvent.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL;
+        if(GetKeyState(VK_MENU) & 0x8000)
+            keyEvent.keyboardModifierFlags |= _KORL_GUI_KEYBOARD_MODIFIER_FLAG_ALTERNATE;
+        korl_gui_onKeyEvent(&keyEvent);
         break;}
     case WM_CHAR:{
         #ifdef UNICODE

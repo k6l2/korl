@@ -780,6 +780,56 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
         break;}
     }
 }
+korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
+{
+    _Korl_Gui_Context*const context = &_korl_gui_context;
+    /* locate the active leaf widget, if it exists */
+    _Korl_Gui_UsedWidget* activeLeafWidget = NULL;
+    const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
+    for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < stbDaUsedWidgetsEnd; usedWidget++)
+        if(usedWidget->widget->identifierHash == context->identifierHashLeafWidgetActive)
+        {
+            activeLeafWidget = usedWidget;
+            break;
+        }
+    if(activeLeafWidget)
+    {
+        switch(activeLeafWidget->widget->type)
+        {
+        case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            if(!keyEvent->isDown)
+                break;
+            const u$ oldCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+            const u$ oldCursorEnd   = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
+            if(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
+            {
+                if(keyEvent->virtualKey == KORL_KEY_J)
+                {
+                    if(activeLeafWidget->widget->subType.inputText.stringCursorBegin)
+                        --activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+                    activeLeafWidget->widget->subType.inputText.stringCursorEnd = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+                    context->ignoreNextCodepoint = true;
+                }
+                if(keyEvent->virtualKey == KORL_KEY_L)
+                {
+                    if(activeLeafWidget->widget->subType.inputText.stringCursorEnd < KORL_U$_MAX)
+                        activeLeafWidget->widget->subType.inputText.stringCursorEnd++;
+                    activeLeafWidget->widget->subType.inputText.stringCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
+                    context->ignoreNextCodepoint = true;
+                }
+            }
+            if(   oldCursorBegin != activeLeafWidget->widget->subType.inputText.stringCursorBegin
+               || oldCursorEnd   != activeLeafWidget->widget->subType.inputText.stringCursorEnd)
+            {
+                const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                KORL_MATH_ASSIGN_CLAMP_MAX(activeLeafWidget->widget->subType.inputText.stringCursorBegin, stringGraphemes);
+                KORL_MATH_ASSIGN_CLAMP_MAX(activeLeafWidget->widget->subType.inputText.stringCursorEnd  , stringGraphemes);
+            }
+            break;}
+        default: break;
+        }
+    }
+}
 korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* codepointEvent)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
@@ -813,6 +863,11 @@ korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* cod
     {
         korl_assert(context->pendingUnicodeSurrogate < 0);// we expect there to _never_ be a codepoint surrogate in isolation!; each surrogate _must_ be accompanied by its companion
         utf16Buffer[0] = codepointEvent->utf16Unit;
+    }
+    if(context->ignoreNextCodepoint)
+    {
+        context->ignoreNextCodepoint = false;
+        return;
     }
     // this will decode the UTF-16 codepoint, and do  all the checks to ensure it is valid data:
     Korl_String_CodepointIteratorUtf16 utf16It = korl_string_codepointIteratorUtf16_initialize(utf16Buffer, korl_arraySize(utf16Buffer));

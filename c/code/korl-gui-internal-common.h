@@ -49,6 +49,13 @@ typedef struct _Korl_Gui_MouseEvent
         } wheel;
     } subType;
 } _Korl_Gui_MouseEvent;
+typedef struct _Korl_Gui_KeyEvent
+{
+    Korl_KeyboardCode virtualKey;
+    bool isDown;
+    bool isRepeat;
+    _Korl_Gui_Keyboard_ModifierFlags keyboardModifierFlags;
+} _Korl_Gui_KeyEvent;
 typedef struct _Korl_Gui_CodepointEvent
 {
     u16 utf16Unit;// this is a code unit, _not_ a codepoint! it could just be a high-surrogate, which we expect to be followed by a low-surrogate
@@ -219,5 +226,6 @@ typedef struct _Korl_Gui_Context
     } transientNextWidgetModifiers;
     i16 currentUserWidgetIndex;// used to modify properties of the last widget created via _korl_gui_getWidget; example: when korl_gui_realignY is called, we set a special flag in the last widget so that the next widget that gets created in the same sub-tree will have its top aligned to the same y-axis coordinate; we _need_ this to _not_ be a member of `tranientNextWidgetModifiers` because we want the API to look like `widget(); realignY();` instead of `realignY(); widget();`
     i32 pendingUnicodeSurrogate;// used by `korl_gui_onCodepointEvent` to determine if the codepoint unit we received forms a complete codepoint; if this value is < 0, that means the previous codepoint unit formed a complete codepoint
+    bool ignoreNextCodepoint;// set when we process a virtual key to perform a special action, which we know will also result in a codepoint event that we no longer want (we want to override the behavior of the key press)
 } _Korl_Gui_Context;
 korl_global_variable _Korl_Gui_Context _korl_gui_context;
