@@ -801,22 +801,35 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                 break;
             const u$ oldCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
             const u$ oldCursorEnd   = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
+            i8 cursorDelta = 0;
             if(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
             {
                 if(keyEvent->virtualKey == KORL_KEY_J)
                 {
-                    if(activeLeafWidget->widget->subType.inputText.stringCursorBegin)
-                        --activeLeafWidget->widget->subType.inputText.stringCursorBegin;
-                    activeLeafWidget->widget->subType.inputText.stringCursorEnd = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+                    cursorDelta = -1;
                     context->ignoreNextCodepoint = true;
                 }
                 if(keyEvent->virtualKey == KORL_KEY_L)
                 {
-                    if(activeLeafWidget->widget->subType.inputText.stringCursorEnd < KORL_U$_MAX)
-                        activeLeafWidget->widget->subType.inputText.stringCursorEnd++;
-                    activeLeafWidget->widget->subType.inputText.stringCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
+                    cursorDelta = 1;
                     context->ignoreNextCodepoint = true;
                 }
+            }
+            if(keyEvent->virtualKey == KORL_KEY_ARROW_LEFT)
+                cursorDelta = -1;
+            if(keyEvent->virtualKey == KORL_KEY_ARROW_RIGHT)
+                cursorDelta = 1;
+            if(cursorDelta < 0)
+            {
+                if(activeLeafWidget->widget->subType.inputText.stringCursorBegin)
+                    --activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+                activeLeafWidget->widget->subType.inputText.stringCursorEnd = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+            }
+            if(cursorDelta > 0)
+            {
+                if(activeLeafWidget->widget->subType.inputText.stringCursorEnd < KORL_U$_MAX)
+                    activeLeafWidget->widget->subType.inputText.stringCursorEnd++;
+                activeLeafWidget->widget->subType.inputText.stringCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
             }
             if(   oldCursorBegin != activeLeafWidget->widget->subType.inputText.stringCursorBegin
                || oldCursorEnd   != activeLeafWidget->widget->subType.inputText.stringCursorEnd)
