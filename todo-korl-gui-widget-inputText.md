@@ -7,9 +7,9 @@
 [x] default the console's INPUT_TEXT cursor to be the end of the string buffer when first invoked
 [x] draw the cursor at the correct position
 [x] move cursor with [Ctrl]+{vim cursor move keys: J,L}
-[ ] hold [Shift]+move-cursor to select string buffer glyphemes
-[ ] draw a highlighted region behind selected string buffer glyphemes
-[ ] [BackSpace] or [Del] to delete selection
+[x] hold [Shift]+move-cursor to select string buffer graphemes
+[x] draw a highlighted region behind selected string buffer graphemes
+[x] [BackSpace] or [Del] to delete selection
 [x] [BackSpace] to delete cursor previous codepoint
 [x] [Del] to delete cursor next codepoint
 [x] [any-non-whitespace-key] to append codepoint to string buffer

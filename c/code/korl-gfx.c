@@ -1111,7 +1111,7 @@ korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameF
     }
     return result;
 }
-korl_internal Korl_Math_V2f32 korl_gfx_font_textGlyphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ glyphemeIndex)
+korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
 {
     KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
@@ -1125,7 +1125,7 @@ korl_internal Korl_Math_V2f32 korl_gfx_font_textGlyphemePosition(acu16 utf16Asse
        ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
        ; korl_string_codepointIteratorUtf8_next(&codepointIt))
     {
-        if(codepointIt.codepointIndex >= glyphemeIndex)
+        if(codepointIt.codepointIndex >= graphemeIndex)
             break;
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
         if(textBaselineCursor.x > 0.f)

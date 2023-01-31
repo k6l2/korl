@@ -799,9 +799,14 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
             if(!keyEvent->isDown)
                 break;
-            const u$ oldCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
-            const u$ oldCursorEnd   = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
+            const u$ oldCursor          = activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex;
+            const i$ oldCursorSelection = activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection;
+            const u$ cursorBegin = KORL_MATH_MIN(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
+                                                ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
+            const u$ cursorEnd   = KORL_MATH_MAX(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
+                                                ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
             i8 cursorDelta = 0;
+            bool cursorDeltaSelect = true;
             if(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
             {
                 switch(keyEvent->virtualKey)
@@ -826,37 +831,55 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                 cursorDelta = 1;
                 break;}
             case KORL_KEY_BACKSPACE:{
-                if(activeLeafWidget->widget->subType.inputText.stringCursorBegin > 0)
+                if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
                 {
-                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorBegin - 1, 1);
+                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
+                }
+                else if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex > 0)
+                {
+                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex - 1, 1);
                     cursorDelta = -1;
+                    cursorDeltaSelect = false;
                 }
                 context->ignoreNextCodepoint = true;
                 break;}
             case KORL_KEY_DELETE:{
-                korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorEnd, 1);
-                context->ignoreNextCodepoint = true;
+                if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
+                {
+                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
+                }
+                else
+                {
+                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, 1);
+                }
+                //NOTE: [Del] does _not_ seem to generate a codepoint...
                 break;}
             default: break;
             }
-            if(cursorDelta < 0)
+            if(cursorDelta && !(cursorDelta < 0 && cursorBegin <= 0))
             {
-                if(activeLeafWidget->widget->subType.inputText.stringCursorBegin)
-                    --activeLeafWidget->widget->subType.inputText.stringCursorBegin;
-                activeLeafWidget->widget->subType.inputText.stringCursorEnd = activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+                if(cursorDeltaSelect && keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT)
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection += cursorDelta;
+                else
+                {
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex += cursorDelta;
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
+                }
             }
-            if(cursorDelta > 0)
-            {
-                if(activeLeafWidget->widget->subType.inputText.stringCursorEnd < KORL_U$_MAX)
-                    activeLeafWidget->widget->subType.inputText.stringCursorEnd++;
-                activeLeafWidget->widget->subType.inputText.stringCursorBegin = activeLeafWidget->widget->subType.inputText.stringCursorEnd;
-            }
-            if(   oldCursorBegin != activeLeafWidget->widget->subType.inputText.stringCursorBegin
-               || oldCursorEnd   != activeLeafWidget->widget->subType.inputText.stringCursorEnd)
+            /* keep the cursor components in the grapheme range of the string buffer */
+            if(   oldCursor          != activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
+               || oldCursorSelection != activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
             {
                 const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
-                KORL_MATH_ASSIGN_CLAMP_MAX(activeLeafWidget->widget->subType.inputText.stringCursorBegin, stringGraphemes);
-                KORL_MATH_ASSIGN_CLAMP_MAX(activeLeafWidget->widget->subType.inputText.stringCursorEnd  , stringGraphemes);
+                KORL_MATH_ASSIGN_CLAMP_MAX(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, stringGraphemes);
+                if(korl_checkCast_u$_to_i$(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex) + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection < 0)
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = -korl_checkCast_u$_to_i$(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex);
+                if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection > stringGraphemes)
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = stringGraphemes - activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex;
             }
             break;}
         default: break;
@@ -923,11 +946,20 @@ korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* cod
         {
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
             /* if the cursor values indicate a selection region, we need to delete this selection from the input string */
-            ///@TODO
+            if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection != 0)
+            {
+                const u$ cursorBegin = KORL_MATH_MIN(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
+                                                    ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
+                const u$ cursorEnd   = KORL_MATH_MAX(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
+                                                    ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
+                korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
+                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
+            }
             /* submit this new codepoint to the input text's string at the cursor position(s) */
-            korl_string_insertUtf8(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorBegin, utf8);
+            korl_string_insertUtf8(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, utf8);
             /* adjust the cursor position(s) */
-            activeLeafWidget->widget->subType.inputText.stringCursorEnd = ++activeLeafWidget->widget->subType.inputText.stringCursorBegin;
+            ++activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex;
             break;}
         default: break;
         }
@@ -1732,6 +1764,7 @@ korl_internal void korl_gui_frameEnd(void)
             Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
             const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
             Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), string_getRawUtf16(widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+            //@TODO: this does _not_ actually place the text position at the baseline!  This places the local origin at the bottom-left of the shrink-wrapped AABB; this causes the position of text to get jacked up when a glyph below the baseline is drawn (such as 'g' or 'j')
             korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
             korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.5f}, 3);
             const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
@@ -1744,26 +1777,39 @@ korl_internal void korl_gui_frameEnd(void)
             Korl_Gfx_Batch*const batchBox = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, contentAabbSize, ORIGIN_RATIO_UPPER_LEFT, KORL_COLOR4U8_BLACK);
             korl_gfx_batchSetPosition(batchBox, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
+            /* draw the selection region _behind_ the text, if our cursor defines a selection */
+            const Korl_Math_V2f32      cursorSize   = {2, textLineDeltaY};
+            const Korl_Math_V2f32      cursorOrigin = {0, korl_math_abs(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
+            const Korl_Vulkan_Color4u8 cursorColor  = {0, 255, 0, 100};
+            const u$                   cursorBegin  = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
+                                                                   ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
+            const u$                   cursorEnd    = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
+                                                                   ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
+            const Korl_Math_V2f32 cursorPositionBegin = korl_gfx_font_textGraphemePosition(string_getRawAcu16(context->style.fontWindowText)
+                                                                                          ,context->style.windowTextPixelSizeY
+                                                                                          ,korl_stringPool_getRawAcu8(widget->subType.inputText.string)
+                                                                                          ,cursorBegin);
+            if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin < cursorEnd)
+            {
+                const Korl_Math_V2f32 cursorPositionEnd = korl_gfx_font_textGraphemePosition(string_getRawAcu16(context->style.fontWindowText)
+                                                                                            ,context->style.windowTextPixelSizeY
+                                                                                            ,korl_stringPool_getRawAcu8(widget->subType.inputText.string)
+                                                                                            ,cursorEnd);
+                /* in this case, we need to draw a highlight region for the entire selected grapheme range */
+                const Korl_Math_V2f32 lineSelectionSize = {cursorPositionEnd.x - cursorPositionBegin.x, textLineDeltaY};
+                Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, lineSelectionSize, cursorOrigin, cursorColor);
+                korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, 3);
+                korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
+            }
             if(batchText->_instanceCount)//@TODO: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
-            if(widget->identifierHash == context->identifierHashLeafWidgetActive)
+            /* draw a cursor _above_ the text, if the cursor defines a single grapheme index */
+            if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin >= cursorEnd)
             {
-                /* determine where to draw the cursor */
-                if(widget->subType.inputText.stringCursorBegin >= widget->subType.inputText.stringCursorEnd)
-                {
-                    /* in this case, we need to draw a single vertical bar */
-                    const Korl_Math_V2f32 cursorSize   = {2, textLineDeltaY};
-                    const Korl_Math_V2f32 cursorOrigin = {0, korl_math_abs(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
-                    Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, cursorSize, cursorOrigin, KORL_COLOR4U8_WHITE);
-                    const Korl_Math_V2f32 cursorBeginPosition = korl_gfx_font_textGlyphemePosition(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY, korl_stringPool_getRawAcu8(widget->subType.inputText.string), widget->subType.inputText.stringCursorBegin);
-                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorBeginPosition.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
-                    korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
-                }
-                else
-                {
-                    /* in this case, we need to draw a "highlight" over the selected range of the string */
-                    //@TODO: figure out cursor begin/end positions & draw selection highlight
-                }
+                /* in this case, we need to draw a single vertical bar */
+                Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, cursorSize, cursorOrigin, cursorColor);
+                korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
+                korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
             }
             break;}
         default:{
@@ -2031,13 +2077,16 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     const u32 stringGraphemes = korl_stringPool_getGraphemeSize(string);
     if(newAllocation)
     {
-        widget->subType.inputText.stringCursorBegin = 
-        widget->subType.inputText.stringCursorEnd   = stringGraphemes;
+        widget->subType.inputText.stringCursorGraphemeIndex     = stringGraphemes;
+        widget->subType.inputText.stringCursorGraphemeSelection = 0;
     }
     else
     {
-        KORL_MATH_ASSIGN_CLAMP_MAX(widget->subType.inputText.stringCursorBegin, stringGraphemes);
-        KORL_MATH_ASSIGN_CLAMP_MAX(widget->subType.inputText.stringCursorEnd  , stringGraphemes);
+        KORL_MATH_ASSIGN_CLAMP_MAX(widget->subType.inputText.stringCursorGraphemeIndex, stringGraphemes);
+        if(korl_checkCast_u$_to_i$(widget->subType.inputText.stringCursorGraphemeIndex) + widget->subType.inputText.stringCursorGraphemeSelection < 0)
+            widget->subType.inputText.stringCursorGraphemeSelection = -korl_checkCast_u$_to_i$(widget->subType.inputText.stringCursorGraphemeIndex);
+        if(widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection > stringGraphemes)
+            widget->subType.inputText.stringCursorGraphemeSelection = stringGraphemes - widget->subType.inputText.stringCursorGraphemeIndex;
     }
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);

@@ -144,8 +144,8 @@ typedef struct _Korl_Gui_Widget
         struct
         {
             Korl_StringPool_String string;
-            u$ stringCursorBegin;// our cursor units will be in graphemes
-            u$ stringCursorEnd;  // our cursor units will be in graphemes
+            u$ stringCursorGraphemeIndex;
+            i$ stringCursorGraphemeSelection;// 0 => no selection; single cursor index, < 0 => selection of graphemes before the cursor, > 0 => selection of graphemes after the cursor
         } inputText;
     } subType;
 } _Korl_Gui_Widget;
