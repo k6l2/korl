@@ -2,6 +2,7 @@
 #include "korl-checkCast.h"
 #include "korl-stb-ds.h"
 #include "korl-string.h"
+#include "korl-interface-platform-memory.h"
 #include <ctype.h>// for toupper
 typedef struct _Korl_StringPool_Allocation
 {
@@ -901,6 +902,41 @@ korl_internal void korl_stringPool_insertUtf8(Korl_StringPool_String string, u$ 
     korl_memory_move(rawUtf8 + utf8UnitOffset + utf8.size, rawUtf8 + utf8UnitOffset, rawUtf8AfterOffset*sizeof(u8));
     /* inject `utf8` into the UTF-8 unit offset */
     korl_memory_copy(rawUtf8Offset, utf8.data, utf8.size*sizeof(*utf8.data));
+}
+korl_internal void korl_stringPool_erase(Korl_StringPool_String string, u$ graphemeOffset, u$ graphemeCount, const wchar_t* file, int line)
+{
+    /* get the internal _String */
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    korl_assert(s < arrlenu(string.pool->stbDaStrings));
+    _Korl_StringPool_String*const _string = string.pool->stbDaStrings + s;
+    /* ensure the string is in UTF-8 mode */
+    _korl_stringPool_deduceUtf8(string.pool, _string, file, line);
+    /* find the UTF-8 unit offset that corresponds to graphemeOffset */
+    u8*const rawUtf8                  = string.pool->characterPool + _string->poolByteOffsetUtf8;
+    // u8*const rawUtf8End               = string.pool->characterPool + _string->poolByteOffsetUtf8 + _string->rawSizeUtf8;
+    u$ currentGrapheme = 0;
+    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+    Korl_String_CodepointIteratorUtf8 utf8It;
+    for(utf8It = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _string->rawSizeUtf8)
+       ;!korl_string_codepointIteratorUtf8_done(&utf8It) && currentGrapheme < graphemeOffset
+       ; korl_string_codepointIteratorUtf8_next(&utf8It), currentGrapheme++)
+    {/*nothing to do here; we're just iterating until currentGrapheme reaches graphemeOffset*/}
+    const u$ utf8UnitOffsetEraseBegin = korl_checkCast_i$_to_u$(utf8It._currentRawUtf8 - rawUtf8);
+    /* we can early out if the requested graphemeOffset is out-of-bounds */
+    if(utf8UnitOffsetEraseBegin >= _string->rawSizeUtf8)
+        return;// just silently do nothing
+    /* continue iterating graphemes until we reach graphemeCount */
+    for(;!korl_string_codepointIteratorUtf8_done(&utf8It) && currentGrapheme < graphemeOffset + graphemeCount
+        ; korl_string_codepointIteratorUtf8_next(&utf8It), currentGrapheme++)
+    {/*nothing to do here*/}
+    const u$ utf8UnitOffsetEraseEnd = korl_checkCast_i$_to_u$(utf8It._currentRawUtf8 - rawUtf8);
+    /* move the rest of the string past eraseEnd to eraseBegin */
+    if(utf8UnitOffsetEraseEnd < _string->rawSizeUtf8)
+        korl_memory_move(rawUtf8 + utf8UnitOffsetEraseBegin, rawUtf8 + utf8UnitOffsetEraseEnd, _string->rawSizeUtf8 - utf8UnitOffsetEraseEnd);
+    /* reallocate the raw string to match the new size */
+    const u$ erasedUnits = utf8UnitOffsetEraseEnd - utf8UnitOffsetEraseBegin;
+    _string->rawSizeUtf8       -= korl_checkCast_u$_to_u32(erasedUnits);
+    _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(string.pool, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
 }
 korl_internal void korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line)
 {

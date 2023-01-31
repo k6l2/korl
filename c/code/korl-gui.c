@@ -804,21 +804,41 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             i8 cursorDelta = 0;
             if(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
             {
-                if(keyEvent->virtualKey == KORL_KEY_J)
+                switch(keyEvent->virtualKey)
                 {
+                case KORL_KEY_J:{
                     cursorDelta = -1;
                     context->ignoreNextCodepoint = true;
-                }
-                if(keyEvent->virtualKey == KORL_KEY_L)
-                {
+                    break;}
+                case KORL_KEY_L:{
                     cursorDelta = 1;
                     context->ignoreNextCodepoint = true;
+                    break;}
+                default: break;
                 }
             }
-            if(keyEvent->virtualKey == KORL_KEY_ARROW_LEFT)
+            switch(keyEvent->virtualKey)
+            {
+            case KORL_KEY_ARROW_LEFT:{
                 cursorDelta = -1;
-            if(keyEvent->virtualKey == KORL_KEY_ARROW_RIGHT)
+                break;}
+            case KORL_KEY_ARROW_RIGHT:{
                 cursorDelta = 1;
+                break;}
+            case KORL_KEY_BACKSPACE:{
+                if(activeLeafWidget->widget->subType.inputText.stringCursorBegin > 0)
+                {
+                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorBegin - 1, 1);
+                    cursorDelta = -1;
+                }
+                context->ignoreNextCodepoint = true;
+                break;}
+            case KORL_KEY_DELETE:{
+                korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorEnd, 1);
+                context->ignoreNextCodepoint = true;
+                break;}
+            default: break;
+            }
             if(cursorDelta < 0)
             {
                 if(activeLeafWidget->widget->subType.inputText.stringCursorBegin)
@@ -1724,7 +1744,8 @@ korl_internal void korl_gui_frameEnd(void)
             Korl_Gfx_Batch*const batchBox = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, contentAabbSize, ORIGIN_RATIO_UPPER_LEFT, KORL_COLOR4U8_BLACK);
             korl_gfx_batchSetPosition(batchBox, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
-            korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
+            if(batchText->_instanceCount)//@TODO: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
+                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
             if(widget->identifierHash == context->identifierHashLeafWidgetActive)
             {
                 /* determine where to draw the cursor */

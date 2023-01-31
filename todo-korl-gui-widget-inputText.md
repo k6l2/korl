@@ -10,8 +10,8 @@
 [ ] hold [Shift]+move-cursor to select string buffer glyphemes
 [ ] draw a highlighted region behind selected string buffer glyphemes
 [ ] [BackSpace] or [Del] to delete selection
-[ ] [BackSpace] to delete cursor previous codepoint
-[ ] [Del] to delete cursor next codepoint
+[x] [BackSpace] to delete cursor previous codepoint
+[x] [Del] to delete cursor next codepoint
 [x] [any-non-whitespace-key] to append codepoint to string buffer
 [ ] allow the korl-gui user to specify when the INPUT_TEXT widget is allowed to modify the string buffer (to prevent any interaction when the console is in the process of closing)
 [ ] [Ctrl]+[C] or [Ctrl]+[Y] to copy/yank selection to clipboard
