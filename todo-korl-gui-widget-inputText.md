@@ -13,7 +13,7 @@
 [x] [BackSpace] to delete cursor previous codepoint
 [x] [Del] to delete cursor next codepoint
 [x] [any-non-whitespace-key] to append codepoint to string buffer
-[ ] allow the korl-gui user to specify when the INPUT_TEXT widget is allowed to modify the string buffer (to prevent any interaction when the console is in the process of closing)
+[x] allow the korl-gui user to specify when the INPUT_TEXT widget is allowed to modify the string buffer (to prevent any interaction when the console is in the process of closing)
 [ ] [Ctrl]+[C] or [Ctrl]+[Y] to copy/yank selection to clipboard
 [ ] [Ctrl]+[V] or [Ctrl]+[P] to paste clipboard contents to string buffer
 [ ] [Ctrl]+[Shift]+[6] to move cursor to start of string buffer

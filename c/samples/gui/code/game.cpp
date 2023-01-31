@@ -10,6 +10,7 @@ korl_internal void _game_getInterfacePlatformApi(KorlPlatformApi korlApi)
     #undef _KORL_PLATFORM_API_MACRO_OPERATION
 }
 #include "korl-stringPool.h"
+#include "korl-logConsole.h"
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
@@ -17,13 +18,7 @@ typedef struct Memory
     bool testWindowOpen;
     u$ testTextWidgets;
     Korl_StringPool stringPool;
-    struct Console
-    {
-        bool enable;
-        f32 fadeInRatio;
-        u$ lastLoggedCharacters;
-        Korl_StringPool_String stringInput;
-    } console;
+    Korl_LogConsole logConsole;
 } Memory;
 korl_global_variable Memory* memory;
 KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
@@ -35,8 +30,7 @@ KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
     memory->continueRunning     = true;
     memory->testWindowOpen      = true;
     memory->stringPool          = korl_stringPool_create(allocatorHeap);
-    memory->console.stringInput = korl_stringNewEmptyUtf8(&memory->stringPool, 0);
-    // memory->console.stringInput = korl_stringNewUtf16(&memory->stringPool, KORL_C_CAST(u16*,L"stringInput"));//@TODO: delete later; just testing string transcoding
+    memory->logConsole          = korl_logConsole_create(&memory->stringPool);
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     return memory;
 }
@@ -54,38 +48,14 @@ KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
             memory->continueRunning = false;
             break;}
         case KORL_KEY_GRAVE:{
-            memory->console.enable = !memory->console.enable;
+            korl_logConsole_toggle(&memory->logConsole);
             break;}
         default: break;
         }
 }
 KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 {
-    memory->console.fadeInRatio = korl_math_exDecay(memory->console.fadeInRatio, memory->console.enable ? 1.f : 0.f, 40.f, deltaSeconds);
-    if(memory->console.enable || !korl_math_isNearlyEqualEpsilon(memory->console.fadeInRatio, 0, .01f))
-    {
-        u$       loggedBytes      = 0;
-        acu16    logBuffer        = korl_log_getBuffer(&loggedBytes);
-        const u$ loggedCharacters = loggedBytes/sizeof(*logBuffer.data);
-        const u$ newCharacters    = KORL_MATH_MIN(loggedCharacters - memory->console.lastLoggedCharacters, logBuffer.size);
-        logBuffer.data = logBuffer.data + logBuffer.size - newCharacters;
-        logBuffer.size = newCharacters;
-        const f32 consoleSizeY = KORL_C_CAST(f32, windowSizeY)*0.5f;
-        korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
-                                   ,consoleSizeY});
-        korl_gui_setNextWidgetParentOffset({0, KORL_C_CAST(f32, windowSizeY) + consoleSizeY*(1.f - memory->console.fadeInRatio)});
-        korl_gui_windowBegin(L"console", NULL, KORL_GUI_WINDOW_STYLE_FLAG_DEFAULT_ACTIVE);
-            korl_gui_setNextWidgetSize({KORL_C_CAST(f32, windowSizeX)
-                                       ,consoleSizeY - 32/*allow room for text input widget*/});//KORL-ISSUE-000-000-111: gui: this sucks; is there a way for us to have korl-gui automatically determine how tall the text scroll area should be under the hood?
-            korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"), KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL);
-                korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
-            korl_gui_widgetScrollAreaEnd();
-            korl_gui_widgetInputText(memory->console.stringInput);
-        korl_gui_windowEnd();
-        memory->console.lastLoggedCharacters = loggedCharacters;
-    }
-    else
-        memory->console.lastLoggedCharacters = 0;
+    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY});
     korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
     for(u$ i = 0; i < 5; i++)
     {
@@ -124,6 +94,7 @@ KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
 #include "korl-checkCast.c"
 #include "korl-string.c"
 #include "korl-stringPool.c"
+#include "korl-logConsole.c"
 #define STB_DS_IMPLEMENTATION
 #define STBDS_UNIT_TESTS // for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests
 #define STBDS_ASSERT(x) korl_assert(x)

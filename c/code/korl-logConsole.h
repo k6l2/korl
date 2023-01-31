@@ -1,0 +1,14 @@
+#pragma once
+#include "korl-stringPool.h"
+#include "korl-interface-platform.h"
+typedef struct Korl_LogConsole
+{
+    bool enable;
+    f32 fadeInRatio;
+    u$ lastLoggedCharacters;
+    Korl_StringPool_String stringInput;
+    Korl_StringPool_String stringInputLastEnabled;// allows us to retroactively undo string buffer inputs caused by whatever key was used to disable the console
+} Korl_LogConsole;
+korl_internal Korl_LogConsole korl_logConsole_create(Korl_StringPool* stringPool);
+korl_internal void            korl_logConsole_toggle(Korl_LogConsole* context);
+korl_internal void            korl_logConsole_update(Korl_LogConsole* context, f32 deltaSeconds, fnSig_korl_log_getBuffer* _korl_log_getBuffer, Korl_Math_V2u32 windowSize);

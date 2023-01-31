@@ -55,6 +55,7 @@ typedef struct Korl_StringPool_String
     }
 #endif
 } Korl_StringPool_String;
+const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {0};
 #if defined(__cplusplus)
 /* if we're using C++, we can have convenience macros for function overloads, 
     which are defined later in this header file */

@@ -31,4 +31,4 @@ typedef enum Korl_Gui_Widget_ScrollArea_Flags
 } Korl_Gui_Widget_ScrollArea_Flags;
 #define KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(name)     void name(acu16 label, Korl_Gui_Widget_ScrollArea_Flags flags)
 #define KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(name)       void name(void)
-#define KORL_FUNCTION_korl_gui_widgetInputText(name)           void name(Korl_StringPool_String string)
+#define KORL_FUNCTION_korl_gui_widgetInputText(name)           void name(Korl_StringPool_String string, bool inputEnabled)

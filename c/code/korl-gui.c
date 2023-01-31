@@ -271,7 +271,7 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
         // raw text is stored in the stack allocator each frame; no need to free it here
         break;}
     case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
-        // the input string buffer memory is stored externally (by the user), so we have no dynamic memory to manage here
+        // the input string buffer memory is stored externally (by the user)
         break;}
     default:{
         korl_log(ERROR, "invalid widget type: %i", widget->type);
@@ -862,7 +862,8 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             }
             if(cursorDelta && !(cursorDelta < 0 && cursorBegin <= 0))
             {
-                if(cursorDeltaSelect && keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT)
+                if(cursorDeltaSelect && 
+                keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT)
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection += cursorDelta;
                 else
                 {
@@ -945,6 +946,8 @@ korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* cod
         switch(activeLeafWidget->widget->type)
         {
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            if(!activeLeafWidget->widget->subType.inputText.isInputEnabled)
+                break;
             /* if the cursor values indicate a selection region, we need to delete this selection from the input string */
             if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection != 0)
             {
@@ -2088,6 +2091,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
         if(widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection > stringGraphemes)
             widget->subType.inputText.stringCursorGraphemeSelection = stringGraphemes - widget->subType.inputText.stringCursorGraphemeIndex;
     }
+    widget->subType.inputText.isInputEnabled = inputEnabled;
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
