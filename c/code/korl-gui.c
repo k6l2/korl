@@ -809,6 +809,24 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             bool cursorDeltaSelect = true;
             switch(keyEvent->virtualKey)
             {
+            case KORL_KEY_Y:{
+                if(activeLeafWidget->widget->subType.inputText.inputMode)
+                    break;
+                context->ignoreNextCodepoint = true;
+                /*fallthrough*/}
+            case KORL_KEY_C:{
+                if(   keyEvent->virtualKey == KORL_KEY_C // since we also have fallthrough key cases above us
+                   && !(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL))
+                    break;
+                context->ignoreNextCodepoint = true;
+                if(cursorEnd > cursorBegin)
+                {
+                    Korl_StringPool_String stringSelection = korl_string_subString(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    acu8 rawUtf8 = string_getRawAcu8(stringSelection);
+                    korl_clipboard_set(KORL_CLIPBOARD_DATA_FORMAT_UTF8, rawUtf8);
+                    string_free(stringSelection);
+                }
+                break;}
             case KORL_KEY_TENKEYLESS_6:{
                 if(   activeLeafWidget->widget->subType.inputText.inputMode
                    || !(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT))

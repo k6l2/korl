@@ -27,11 +27,16 @@ typedef enum KorlEnumLogLevel
                                                          ,const wchar_t* cStringFileName, const wchar_t* cStringFunctionName\
                                                          ,int lineNumber, const wchar_t* format, ...)
 #define KORL_FUNCTION_korl_log_getBuffer(name) acu16 name(u$* out_loggedBytes)
-/* korl-command interface *******************************************************/
+/* korl-command interface *****************************************************/
 #define KORL_FUNCTION_korl_command_callback(name) void name(void)
 typedef KORL_FUNCTION_korl_command_callback(fnSig_korl_command_callback);
 #define KORL_FUNCTION_korl_command_register(name) void name(acu8 utf8CommandName, fnSig_korl_command_callback* callback)
 #define KORL_FUNCTION_korl_command_invoke(name)   void name(acu8 rawUtf8)
+/* korl-clipboard interface ***************************************************/
+typedef enum Korl_Clipboard_DataFormat
+    { KORL_CLIPBOARD_DATA_FORMAT_UTF8
+} Korl_Clipboard_DataFormat;
+#define KORL_FUNCTION_korl_clipboard_set(name) void name(Korl_Clipboard_DataFormat dataFormat, acu8 data)
 /* korl-crash interface *******************************************************/
 /** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_FUNCTION__korl_crash_assertConditionFailed(name) void name(const wchar_t* conditionString, const wchar_t* cStringFileName\

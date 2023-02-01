@@ -19,6 +19,7 @@
 #include "korl-resource.h"
 #include "korl-codec-configuration.h"
 #include "korl-command.h"
+#include "korl-clipboard.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
@@ -74,6 +75,41 @@ typedef struct _Korl_Windows_Window_Context
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
+/** In windows, the clipboard functionality is closely tied to window handles, 
+ * ergo I'm just going to define these APIs in korl-windows-window for now... */
+korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
+{
+    if(!OpenClipboard(_korl_windows_window_context.window.handle))
+        return;
+    KORL_WINDOWS_CHECK(EmptyClipboard());
+    HGLOBAL clipboardMemory     = 0;
+    UINT    clipboardDataFormat = 0;
+    switch(dataFormat)
+    {
+    case KORL_CLIPBOARD_DATA_FORMAT_UTF8:{
+        clipboardDataFormat = CF_UNICODETEXT;
+        Korl_StringPool_String stringTemp = korl_stringNewAcu8(&_korl_windows_window_context.stringPool, data);
+        acu16 rawU16 = korl_stringPool_getRawAcu16(stringTemp);
+        u16* clipboardMemoryLocked = NULL;
+        clipboardMemory = GlobalAlloc(GMEM_MOVEABLE, (rawU16.size + 1/*null-terminator*/) * sizeof(*rawU16.data));
+        if(!clipboardMemory)
+            goto data_format_utf8_cleanup;
+        clipboardMemoryLocked = GlobalLock(clipboardMemory);
+        korl_memory_copy(clipboardMemoryLocked, rawU16.data, rawU16.size*sizeof(*rawU16.data));
+        clipboardMemoryLocked[rawU16.size] = 0;//null-terminate the clipboard string
+        data_format_utf8_cleanup:
+            string_free(stringTemp);
+            if(clipboardMemoryLocked)
+                KORL_WINDOWS_CHECK(GlobalUnlock(clipboardMemoryLocked));
+            if(!clipboardMemory)
+                goto close_clipboard;
+        break;}
+    }
+    if(SetClipboardData(clipboardDataFormat, clipboardMemory) == NULL)
+        korl_logLastError("SetClipboardData failed");
+    close_clipboard:
+        KORL_WINDOWS_CHECK(CloseClipboard());
+}
 korl_internal void _korl_windows_window_configurationLoad(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;

@@ -15,7 +15,7 @@
 [x] [any-non-whitespace-key] to append codepoint to string buffer
 [x] allow the korl-gui user to specify when the INPUT_TEXT widget is allowed to modify the string buffer (to prevent any interaction when the console is in the process of closing)
 [x] [Ctrl]+[I] to toggle vim-like "insert mode" feature
-[ ] [Ctrl]+[C] or [Ctrl]+[Y] to copy/yank selection to clipboard
+[x] [Ctrl]+[C] or [Ctrl]+[Y] to copy/yank selection to clipboard
 [ ] [Ctrl]+[V] or [Ctrl]+[P] to paste clipboard contents to string buffer
 [x] [Ctrl]+[Shift]+[6]|[Home] to move cursor to start of string buffer
 [x] [Ctrl]+[Shift]+[A]|[End]  to move cursor to the end of string buffer
