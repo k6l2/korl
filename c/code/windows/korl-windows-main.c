@@ -17,6 +17,7 @@
 #include "korl-windows-gamepad.h"
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
+#include "korl-command.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -55,6 +56,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         korl_commandLine_logUsage(descriptors, korl_arraySize(descriptors));
         goto shutdownSuccess;
     }
+    korl_time_probeStart(init_module_command);      korl_command_initialize();              korl_time_probeStop(init_module_command);
     korl_time_probeStart(init_module_resource);     korl_resource_initialize();             korl_time_probeStop(init_module_resource);
     korl_time_probeStart(init_module_bluetooth);    korl_bluetooth_initialize();            korl_time_probeStop(init_module_bluetooth);
     korl_time_probeStart(init_module_gamepad);      korl_windows_gamepad_initialize();      korl_time_probeStop(init_module_gamepad);
@@ -108,3 +110,4 @@ shutdownSuccess:
 #include "korl-resource.c"
 #include "korl-codec-configuration.c"
 #include "korl-string.c"
+#include "korl-command.c"

@@ -20,4 +20,4 @@
 [x] [Ctrl]+[Shift]+[6]|[Home] to move cursor to start of string buffer
 [x] [Ctrl]+[Shift]+[A]|[End]  to move cursor to the end of string buffer
 [x] [Ctrl]+[A] to select all
-[ ] [Enter] to propogate a signal back to the user who invoked the INPUT_TEXT widget
+[x] [Enter] to propogate a signal back to the user who invoked the INPUT_TEXT widget

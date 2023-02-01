@@ -67,6 +67,33 @@ korl_internal void korl_string_codepointIteratorUtf8_next(Korl_String_CodepointI
     _korl_string_codepointIteratorUtf8_decode(iterator);
     iterator->codepointIndex++;
 }
+korl_internal Korl_String_CodepointTokenizerUtf8 korl_string_codepointTokenizerUtf8_initialize(const u8* rawUtf8, u$ rawUtf8Size, u32 codepointToken)
+{
+    KORL_ZERO_STACK(Korl_String_CodepointTokenizerUtf8, tokenizer);
+    tokenizer._iterator      = korl_string_codepointIteratorUtf8_initialize(rawUtf8, rawUtf8Size);
+    tokenizer.codepointToken = codepointToken;
+    // tokenizer.tokenStart     = 
+    // tokenizer.tokenEnd       = tokenizer._iterator._currentRawUtf8;
+    korl_string_codepointTokenizerUtf8_next(&tokenizer);
+    return tokenizer;
+}
+korl_internal bool korl_string_codepointTokenizerUtf8_done(const Korl_String_CodepointTokenizerUtf8* tokenizer)
+{
+    return tokenizer->tokenStart >= tokenizer->tokenEnd;
+}
+korl_internal void korl_string_codepointTokenizerUtf8_next(Korl_String_CodepointTokenizerUtf8* tokenizer)
+{
+    for(;!korl_string_codepointIteratorUtf8_done(&tokenizer->_iterator)
+        ; korl_string_codepointIteratorUtf8_next(&tokenizer->_iterator))
+        if(tokenizer->_iterator._codepoint != tokenizer->codepointToken)
+            break;
+    tokenizer->tokenStart = tokenizer->_iterator._currentRawUtf8;
+    for(;!korl_string_codepointIteratorUtf8_done(&tokenizer->_iterator)
+        ; korl_string_codepointIteratorUtf8_next(&tokenizer->_iterator))
+        if(tokenizer->_iterator._codepoint == tokenizer->codepointToken)
+            break;
+    tokenizer->tokenEnd = tokenizer->_iterator._currentRawUtf8;
+}
 korl_internal void _korl_string_codepointIteratorUtf16_decode(Korl_String_CodepointIteratorUtf16* iterator)
 {
     if(iterator->_currentRawUtf16 >= iterator->_rawUtf16End)

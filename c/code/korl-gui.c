@@ -896,6 +896,11 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                 }
                 //NOTE: [Del] does _not_ seem to generate a codepoint...
                 break;}
+            case KORL_KEY_ENTER:{
+                context->ignoreNextCodepoint = true;
+                if(activeLeafWidget->widget->subType.inputText.enterKeyEventsReceived < KORL_U8_MAX)
+                    activeLeafWidget->widget->subType.inputText.enterKeyEventsReceived++;
+                break;}
             default: break;
             }
             if(cursorDelta)
@@ -2154,6 +2159,10 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
+    /**/
+    const u8 enterKeyEventsReceived = widget->subType.inputText.enterKeyEventsReceived;
+    widget->subType.inputText.enterKeyEventsReceived = 0;
+    return enterKeyEventsReceived;
 }
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset)
 {

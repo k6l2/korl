@@ -18,6 +18,7 @@
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
 #include "korl-codec-configuration.h"
+#include "korl-command.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
@@ -240,12 +241,6 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
         }
         if(context->gameApi.korl_game_onKeyboardEvent)
             context->gameApi.korl_game_onKeyboardEvent(_korl_windows_window_virtualKeyMap[wParam], uMsg == WM_KEYDOWN, HIWORD(lParam) & KF_REPEAT);
-#if 1//KORL-ISSUE-000-000-068: window: maybe expose more general API
-        if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F1 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
-            context->deferSaveStateSave = true;
-        if(_korl_windows_window_virtualKeyMap[wParam] == KORL_KEY_F2 && uMsg == WM_KEYDOWN && !(HIWORD(lParam) & KF_REPEAT))
-            context->deferSaveStateLoad = true;
-#endif
         break;}
     case WM_SIZE:{
         const UINT clientWidth  = LOWORD(lParam);
@@ -391,6 +386,14 @@ korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
     context->gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModule, "korl_game_update"));
     context->gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModule, "korl_game_onAssetReloaded"));
 }
+korl_internal KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandSave)
+{
+    _korl_windows_window_context.deferSaveStateSave = true;
+}
+korl_internal KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandLoad)
+{
+    _korl_windows_window_context.deferSaveStateLoad = true;
+}
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
@@ -473,6 +476,9 @@ korl_internal void korl_windows_window_initialize(void)
     DPI_AWARENESS_CONTEXT dpiContextOld = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2/* DPI awareness per monitor V2 allows the application to automatically scale the non-client region for us (title bar, etc...) */);
     korl_assert(dpiContextOld != NULL);
 #endif
+    /* register some internal KORL commands */
+    korl_command_register(KORL_RAW_CONST_UTF8("save"), _korl_windows_window_commandSave);
+    korl_command_register(KORL_RAW_CONST_UTF8("load"), _korl_windows_window_commandLoad);
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {

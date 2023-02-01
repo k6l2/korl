@@ -3,7 +3,6 @@ korl_internal Korl_LogConsole korl_logConsole_create(Korl_StringPool* stringPool
 {
     KORL_ZERO_STACK(Korl_LogConsole, logConsole);
     logConsole.stringInput = korl_stringNewEmptyUtf8(stringPool, 0);
-    // logConsole.stringInput = korl_stringNewUtf16(stringPool, KORL_C_CAST(u16*,L"stringInput"));//@TODO: delete later; just testing string transcoding
     return logConsole;
 }
 korl_internal void korl_logConsole_toggle(Korl_LogConsole* context)
@@ -21,8 +20,13 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
             stringInput until we know for certain that input events are 
             finished, which is one of the preconditions of the update function */
         string_free(context->stringInput);
-        context->stringInput            = string_copy(context->stringInputLastEnabled);
+        context->stringInput            = context->stringInputLastEnabled;
         context->stringInputLastEnabled = KORL_STRINGPOOL_STRING_NULL;
+    }
+    if(context->commandInvoked)
+    {
+        string_reserveUtf8(context->stringInput, 0);
+        context->commandInvoked = false;
     }
     if(context->enable || !korl_math_isNearlyEqualEpsilon(context->fadeInRatio, 0, .01f))
     {
@@ -47,7 +51,12 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
                 context->stringInputLastEnabled = string_copy(context->stringInput);
             else
                 context->stringInputLastEnabled = KORL_STRINGPOOL_STRING_NULL;
-            korl_gui_widgetInputText(context->stringInput, context->enable);
+            if(korl_gui_widgetInputText(context->stringInput, context->enable))
+            {
+                /* the user pressed [Enter]; submit stringInput to the platform layer */
+                korl_command_invoke(string_getRawAcu8(context->stringInput));
+                context->commandInvoked = true;
+            }
         korl_gui_windowEnd();
         context->lastLoggedCharacters = loggedCharacters;
     }

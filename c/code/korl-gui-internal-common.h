@@ -148,6 +148,7 @@ typedef struct _Korl_Gui_Widget
             i$ stringCursorGraphemeSelection;// 0 => no selection; single cursor index, < 0 => selection of graphemes before the cursor, > 0 => selection of graphemes after the cursor
             bool isInputEnabled;
             bool inputMode;
+            u8 enterKeyEventsReceived;
         } inputText;
     } subType;
 } _Korl_Gui_Widget;
