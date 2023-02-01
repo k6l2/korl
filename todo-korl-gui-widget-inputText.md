@@ -17,7 +17,7 @@
 [x] [Ctrl]+[I] to toggle vim-like "insert mode" feature
 [ ] [Ctrl]+[C] or [Ctrl]+[Y] to copy/yank selection to clipboard
 [ ] [Ctrl]+[V] or [Ctrl]+[P] to paste clipboard contents to string buffer
-[ ] [Ctrl]+[Shift]+[6] to move cursor to start of string buffer
-[ ] [Ctrl]+[Shift]+[A] to move cursor to the end of string buffer
+[x] [Ctrl]+[Shift]+[6]|[Home] to move cursor to start of string buffer
+[x] [Ctrl]+[Shift]+[A]|[End]  to move cursor to the end of string buffer
 [x] [Ctrl]+[A] to select all
 [ ] [Enter] to propogate a signal back to the user who invoked the INPUT_TEXT widget

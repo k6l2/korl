@@ -805,17 +805,39 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                                                 ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
             const u$ cursorEnd   = KORL_MATH_MAX(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
                                                 ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
-            i8 cursorDelta = 0;
+            i$ cursorDelta = 0;
             bool cursorDeltaSelect = true;
             switch(keyEvent->virtualKey)
             {
-            case KORL_KEY_A:{
-                if(!(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL))
+            case KORL_KEY_TENKEYLESS_6:{
+                if(   activeLeafWidget->widget->subType.inputText.inputMode
+                   || !(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT))
                     break;
-                const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
-                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = 0;
-                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = stringGraphemes;
                 context->ignoreNextCodepoint = true;
+                cursorDeltaSelect = false;
+                /*fallthrough*/}
+            case KORL_KEY_HOME:{
+                const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                cursorDelta = -korl_checkCast_u$_to_i$(stringGraphemes);
+                break;}
+            case KORL_KEY_A:{
+                if(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
+                {
+                    const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = 0;
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = stringGraphemes;
+                    context->ignoreNextCodepoint = true;
+                    break;
+                }
+                if(   activeLeafWidget->widget->subType.inputText.inputMode
+                   || !(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT))
+                    break;
+                context->ignoreNextCodepoint = true;
+                cursorDeltaSelect = false;
+                /*fallthrough*/}
+            case KORL_KEY_END:{
+                const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                cursorDelta = stringGraphemes;
                 break;}
             case KORL_KEY_I:{
                 if(   (keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
@@ -878,7 +900,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             }
             if(cursorDelta)
             {
-                if(cursorDeltaSelect && keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT && !(cursorDelta < 0 && cursorBegin <= 0))
+                if(cursorDeltaSelect && keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT)
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection += cursorDelta;
                 else
                 {
@@ -888,7 +910,10 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                         else
                             activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex = cursorBegin;
                     else
+                    {
+                        KORL_MATH_ASSIGN_CLAMP_MIN(cursorDelta, -korl_checkCast_u$_to_i$(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex));
                         activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex += cursorDelta;
+                    }
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
                 }
             }
