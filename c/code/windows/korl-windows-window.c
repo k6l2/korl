@@ -75,9 +75,7 @@ typedef struct _Korl_Windows_Window_Context
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
-///@TODO: backlog this as a _small_ issue
-/** In windows, the clipboard functionality is closely tied to window handles, 
- * ergo I'm just going to define these APIs in korl-windows-window for now... */
+//KORL-ISSUE-000-000-113: windows-window: (minor) korl_clipboard_* API is being placed inside the korl-windows-window module due to the fact that we require a HWND to use these API on Windows; not sure if there is a better way to organize this...
 korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
 {
     if(!OpenClipboard(_korl_windows_window_context.window.handle))
@@ -116,9 +114,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
     close_clipboard:
         KORL_WINDOWS_CHECK(CloseClipboard());
 }
-///@TODO: backlog this as a _small_ issue
-/** In windows, the clipboard functionality is closely tied to window handles, 
- * ergo I'm just going to define these APIs in korl-windows-window for now... */
+//KORL-ISSUE-000-000-113: windows-window: (minor) korl_clipboard_* API is being placed inside the korl-windows-window module due to the fact that we require a HWND to use these API on Windows; not sure if there is a better way to organize this...
 korl_internal KORL_FUNCTION_korl_clipboard_get(korl_clipboard_get)
 {
     KORL_ZERO_STACK(acu8, result);

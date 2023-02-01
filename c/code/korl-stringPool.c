@@ -307,19 +307,7 @@ korl_internal void _korl_stringPool_convert_utf16_to_utf8(Korl_StringPool* conte
     /* and of course we should null-terminate the raw string */
     u8*const utf8 = context->characterPool + string->poolByteOffsetUtf8;
     utf8[currentUtf8] = '\0';
-    ///@TODO: backlog this performance task
-    /* aggressively nullify other encodings; due to the fact that we don't 
-        have an internal API that wraps modifications to the raw string data 
-        from everything in this code module, it is difficult/impossible to 
-        lazy-free unused/dirty String encodings; ideally we would have a 
-        mechanism where if we, for example, convert a UTF-8 string to UTF-16, 
-        _both_ raw strings would be valid, eliminating the need for this module 
-        to perform the conversion multiple times if the user requires both 
-        encodings for different reasons, until the user decides to modify one of 
-        the encodings, thus invalidating the other encodings; until such a 
-        mechanism is in place, we have no choice but to invalidate all other 
-        encodings the moment a String is transcoded; we expect this to have poor 
-        performance in the above example, but at least it will be correct! */
+    //KORL-PERFORMANCE-000-000-042: stringPool: aggressively nullifying other encodings
     _korl_stringPool_setStringFlags(context, string, _KORL_STRINGPOOL_STRING_FLAG_UTF8);
 }
 korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* context, _Korl_StringPool_String* string, const wchar_t* file, int line)
@@ -355,19 +343,7 @@ korl_internal void _korl_stringPool_convert_utf8_to_utf16(Korl_StringPool* conte
     /* and of course we should null-terminate the raw string */
     u16*const utf16 = KORL_C_CAST(u16*, context->characterPool + string->poolByteOffsetUtf16);
     utf16[currentUtf16] = L'\0';
-    ///@TODO: backlog this performance task
-    /* aggressively nullify other encodings; due to the fact that we don't 
-        have an internal API that wraps modifications to the raw string data 
-        from everything in this code module, it is difficult/impossible to 
-        lazy-free unused/dirty String encodings; ideally we would have a 
-        mechanism where if we, for example, convert a UTF-8 string to UTF-16, 
-        _both_ raw strings would be valid, eliminating the need for this module 
-        to perform the conversion multiple times if the user requires both 
-        encodings for different reasons, until the user decides to modify one of 
-        the encodings, thus invalidating the other encodings; until such a 
-        mechanism is in place, we have no choice but to invalidate all other 
-        encodings the moment a String is transcoded; we expect this to have poor 
-        performance in the above example, but at least it will be correct! */
+    //KORL-PERFORMANCE-000-000-042: stringPool: aggressively nullifying other encodings
     _korl_stringPool_setStringFlags(context, string, _KORL_STRINGPOOL_STRING_FLAG_UTF16);
 }
 korl_internal u$ _korl_stringPool_findIndexMatchingHandle(Korl_StringPool_String string)
@@ -559,7 +535,7 @@ korl_internal Korl_StringPool_String korl_stringPool_newFormatUtf16(Korl_StringP
     va_end(args);
     return result;
 }
-korl_internal void korl_stringPool_free(Korl_StringPool_String string)//@TODO: we should pass the String address here so we can invalidate the data for the user
+korl_internal void korl_stringPool_free(Korl_StringPool_String string)//KORL-ISSUE-000-000-114: stringPool: we should pass the String address here so we can invalidate the data for the user
 {
     /* if the string handle is invalid, we don't have to do anything */
     if(!string.handle)

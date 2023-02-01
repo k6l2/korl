@@ -1864,7 +1864,7 @@ korl_internal void korl_gui_frameEnd(void)
             Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
             const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
             Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), string_getRawUtf16(widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-            //@TODO: this does _not_ actually place the text position at the baseline!  This places the local origin at the bottom-left of the shrink-wrapped AABB; this causes the position of text to get jacked up when a glyph below the baseline is drawn (such as 'g' or 'j')
+            //KORL-ISSUE-000-000-116: gui: this does _not_ actually place the text position at the baseline!  This places the local origin at the bottom-left of the shrink-wrapped AABB; this causes the position of text to get jacked up when a glyph below the baseline is drawn (such as 'g' or 'j')
             korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
             korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.5f}, 3);
             const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
