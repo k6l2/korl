@@ -809,6 +809,14 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             bool cursorDeltaSelect = true;
             switch(keyEvent->virtualKey)
             {
+            case KORL_KEY_A:{
+                if(!(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL))
+                    break;
+                const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = 0;
+                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = stringGraphemes;
+                context->ignoreNextCodepoint = true;
+                break;}
             case KORL_KEY_I:{
                 if(   (keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL)
                    || !activeLeafWidget->widget->subType.inputText.inputMode)
@@ -868,20 +876,17 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                 break;}
             default: break;
             }
-            if(cursorDelta && !(cursorDelta < 0 && cursorBegin <= 0))
+            if(cursorDelta)
             {
-                if(cursorDeltaSelect && 
-                keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT)
+                if(cursorDeltaSelect && keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT && !(cursorDelta < 0 && cursorBegin <= 0))
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection += cursorDelta;
                 else
                 {
                     if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
-                    {
                         if(cursorDelta > 0)
                             activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex = cursorEnd;
                         else
                             activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex = cursorBegin;
-                    }
                     else
                         activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex += cursorDelta;
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
