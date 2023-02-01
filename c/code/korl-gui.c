@@ -827,6 +827,32 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                     string_free(stringSelection);
                 }
                 break;}
+            case KORL_KEY_P:{
+                if(activeLeafWidget->widget->subType.inputText.inputMode)
+                    break;
+                context->ignoreNextCodepoint = true;
+                /*fallthrough*/}
+            case KORL_KEY_V:{
+                if(   keyEvent->virtualKey == KORL_KEY_V // since we also have fallthrough key cases above us
+                   && !(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_CONTROL))
+                    break;
+                context->ignoreNextCodepoint = true;
+                if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
+                {
+                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
+                    activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
+                }
+                acu8 clipboardUtf8 = korl_clipboard_get(KORL_CLIPBOARD_DATA_FORMAT_UTF8, context->allocatorHandleStack);
+                if(clipboardUtf8.size)
+                    clipboardUtf8.size--;// ignore the null-terminator
+                /* submit this new codepoint to the input text's string at the cursor position(s) */
+                const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                korl_string_insertUtf8(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, clipboardUtf8);
+                const u32 stringGraphemesAfter = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
+                /* adjust the cursor position(s) */
+                activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex += stringGraphemesAfter - stringGraphemes;
+                break;}
             case KORL_KEY_TENKEYLESS_6:{
                 if(   activeLeafWidget->widget->subType.inputText.inputMode
                    || !(keyEvent->keyboardModifierFlags & _KORL_GUI_KEYBOARD_MODIFIER_FLAG_SHIFT))
@@ -852,6 +878,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                     break;
                 context->ignoreNextCodepoint = true;
                 cursorDeltaSelect = false;
+                activeLeafWidget->widget->subType.inputText.inputMode = true;
                 /*fallthrough*/}
             case KORL_KEY_END:{
                 const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);

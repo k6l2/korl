@@ -75,6 +75,7 @@ typedef struct _Korl_Windows_Window_Context
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
 korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
+///@TODO: backlog this as a _small_ issue
 /** In windows, the clipboard functionality is closely tied to window handles, 
  * ergo I'm just going to define these APIs in korl-windows-window for now... */
 korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
@@ -95,6 +96,11 @@ korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
         if(!clipboardMemory)
             goto data_format_utf8_cleanup;
         clipboardMemoryLocked = GlobalLock(clipboardMemory);
+        if(!clipboardMemoryLocked)
+        {
+            korl_logLastError("GlobalLock failed");
+            goto data_format_utf8_cleanup;
+        }
         korl_memory_copy(clipboardMemoryLocked, rawU16.data, rawU16.size*sizeof(*rawU16.data));
         clipboardMemoryLocked[rawU16.size] = 0;//null-terminate the clipboard string
         data_format_utf8_cleanup:
@@ -109,6 +115,46 @@ korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
         korl_logLastError("SetClipboardData failed");
     close_clipboard:
         KORL_WINDOWS_CHECK(CloseClipboard());
+}
+///@TODO: backlog this as a _small_ issue
+/** In windows, the clipboard functionality is closely tied to window handles, 
+ * ergo I'm just going to define these APIs in korl-windows-window for now... */
+korl_internal KORL_FUNCTION_korl_clipboard_get(korl_clipboard_get)
+{
+    KORL_ZERO_STACK(acu8, result);
+    if(!OpenClipboard(_korl_windows_window_context.window.handle))
+        return result;
+    switch(dataFormat)
+    {
+    case KORL_CLIPBOARD_DATA_FORMAT_UTF8:{
+        if(!IsClipboardFormatAvailable(CF_UNICODETEXT))
+            goto close_clipboard_return_result;
+        const HANDLE clipboardData = GetClipboardData(CF_UNICODETEXT);
+        if(!clipboardData)
+        {
+            korl_log(WARNING, "GetClipboardData(CF_UNICODETEXT) failed, GetLastError=0x%X", GetLastError());
+            goto close_clipboard_return_result;
+        }
+        const u16* clipboardUtf16 = GlobalLock(clipboardData);
+        if(!clipboardUtf16)
+        {
+            korl_logLastError("GlobalLock failed");
+            goto close_clipboard_return_result;
+        }
+        Korl_StringPool_String stringTemp = korl_stringNewUtf16(&_korl_windows_window_context.stringPool, clipboardUtf16);
+        acu8 stringTempUtf8 = string_getRawAcu8(stringTemp);
+        result.size = stringTempUtf8.size + 1/*null-terminator*/;
+        u8* resultData = korl_allocate(allocator, result.size);
+        result.data = resultData;
+        korl_memory_copy(resultData, stringTempUtf8.data, stringTempUtf8.size);
+        resultData[stringTempUtf8.size] = 0;
+        string_free(stringTemp);
+        KORL_WINDOWS_CHECK(GlobalUnlock(clipboardData));
+        break;}
+    }
+    close_clipboard_return_result:
+        KORL_WINDOWS_CHECK(CloseClipboard());
+        return result;
 }
 korl_internal void _korl_windows_window_configurationLoad(void)
 {

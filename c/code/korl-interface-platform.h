@@ -34,9 +34,10 @@ typedef KORL_FUNCTION_korl_command_callback(fnSig_korl_command_callback);
 #define KORL_FUNCTION_korl_command_invoke(name)   void name(acu8 rawUtf8)
 /* korl-clipboard interface ***************************************************/
 typedef enum Korl_Clipboard_DataFormat
-    { KORL_CLIPBOARD_DATA_FORMAT_UTF8
+    { KORL_CLIPBOARD_DATA_FORMAT_UTF8// the size of the string returned from korl_clipboard_get _includes_ a null-terminator character
 } Korl_Clipboard_DataFormat;
 #define KORL_FUNCTION_korl_clipboard_set(name) void name(Korl_Clipboard_DataFormat dataFormat, acu8 data)
+#define KORL_FUNCTION_korl_clipboard_get(name) acu8 name(Korl_Clipboard_DataFormat dataFormat, Korl_Memory_AllocatorHandle allocator)
 /* korl-crash interface *******************************************************/
 /** Do not call this function directly; use the \c korl_assert macro instead! */
 #define KORL_FUNCTION__korl_crash_assertConditionFailed(name) void name(const wchar_t* conditionString, const wchar_t* cStringFileName\
