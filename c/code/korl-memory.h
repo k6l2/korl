@@ -39,7 +39,6 @@ korl_internal KORL_FUNCTION_korl_memory_stringCompareUtf8(korl_memory_stringComp
 korl_internal KORL_FUNCTION_korl_memory_stringSize(korl_memory_stringSize);
 korl_internal KORL_FUNCTION_korl_memory_stringSizeUtf8(korl_memory_stringSizeUtf8);
 korl_internal KORL_FUNCTION_korl_memory_stringCopy(korl_memory_stringCopy);
-// korl_internal KORL_FUNCTION_korl_memory_fill(korl_memory_fill);
 korl_internal KORL_FUNCTION_korl_memory_zero(korl_memory_zero);
 korl_internal KORL_FUNCTION_korl_memory_copy(korl_memory_copy);
 korl_internal KORL_FUNCTION_korl_memory_move(korl_memory_move);
@@ -63,8 +62,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_free      (korl_memory_allocat
 korl_internal KORL_FUNCTION_korl_memory_allocator_empty     (korl_memory_allocator_empty);
 korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_emptyStackAllocators(void);
-/** \param allocatorHandle the allocator to use to allocate memory to store the report 
- * \return the address of the allocated memory report */
+/** \return the address of the allocated memory report */
 korl_internal void* korl_memory_reportGenerate(void);
 /** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */
 korl_internal void korl_memory_reportLog(void* reportAddress);
