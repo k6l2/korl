@@ -210,3 +210,13 @@ typedef struct acu16
 #define CONCAT(x,y)     CONCAT_(x,y)
 #define FORCE_SYMBOL_EXPORT \
     CONCAT(_hack_force_symbol_export_DO_NOT_USE_, __COUNTER__)
+/* Function symbol export in code modules */
+#if defined(_MSC_VER)
+    #if defined(__cplusplus)
+        #define KORL_EXPORT extern "C" __declspec(dllexport)
+    #else
+        #define KORL_EXPORT __declspec(dllexport)
+    #endif
+#else
+    #error "compiler not supported"
+#endif

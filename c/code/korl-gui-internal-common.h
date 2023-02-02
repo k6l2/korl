@@ -184,7 +184,7 @@ typedef struct _Korl_Gui_Context
     } style;
     Korl_Memory_AllocatorHandle allocatorHandleHeap;
     Korl_Memory_AllocatorHandle allocatorHandleStack;
-    Korl_StringPool stringPool;
+    Korl_StringPool* stringPool;// this is a pointer because we _must_ store this pool in a serialized heap allocator, due to the fact that we have Strings in the code segment which refer to this pool!
     _Korl_Gui_Widget* stbDaWidgets;// everything is a Widget, including windows!
     struct _Korl_Gui_UsedWidget* stbDaUsedWidgets;// list of currently in-use widgets, sorted from back-to-front; re-built each call to korl_gui_frameEnd
     u16 rootWidgetOrderIndexHighest;// like stbDaUsedWidgets, this is updated each call to korl-gui-frameEnd

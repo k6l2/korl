@@ -28,10 +28,12 @@ typedef enum KorlEnumLogLevel
                                                          ,int lineNumber, const wchar_t* format, ...)
 #define KORL_FUNCTION_korl_log_getBuffer(name) acu16 name(u$* out_loggedBytes)
 /* korl-command interface *****************************************************/
-#define KORL_FUNCTION_korl_command_callback(name) void name(void)
+#define KORL_FUNCTION_korl_command_callback(name)  void name(void)
 typedef KORL_FUNCTION_korl_command_callback(fnSig_korl_command_callback);
-#define KORL_FUNCTION_korl_command_register(name) void name(acu8 utf8CommandName, fnSig_korl_command_callback* callback)
-#define KORL_FUNCTION_korl_command_invoke(name)   void name(acu8 rawUtf8)
+#define korl_command_register(utf8CommandName, callback) _korl_command_register(utf8CommandName, callback, KORL_RAW_CONST_UTF8(#callback))
+/** use the \c korl_command_register convenience macro instead of this API directly! */
+#define KORL_FUNCTION__korl_command_register(name) void name(acu8 utf8CommandName, fnSig_korl_command_callback* callback, acu8 utf8Callback)
+#define KORL_FUNCTION_korl_command_invoke(name)    void name(acu8 rawUtf8)
 /* korl-clipboard interface ***************************************************/
 typedef enum Korl_Clipboard_DataFormat
     { KORL_CLIPBOARD_DATA_FORMAT_UTF8// the size of the string returned from korl_clipboard_get _includes_ a null-terminator character

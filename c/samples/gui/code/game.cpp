@@ -21,7 +21,11 @@ typedef struct Memory
     Korl_LogConsole logConsole;
 } Memory;
 korl_global_variable Memory* memory;
-KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
+KORL_EXPORT KORL_FUNCTION_korl_command_callback(korl_game_commandTest)
+{
+    korl_log(VERBOSE, "shoop DA WOOP");
+}
+KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
 {
     _game_getInterfacePlatformApi(korlApi);
     const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"game-heap", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
@@ -32,14 +36,15 @@ KORL_GAME_API KORL_GAME_INITIALIZE(korl_game_initialize)
     memory->stringPool          = korl_stringPool_create(allocatorHeap);
     memory->logConsole          = korl_logConsole_create(&memory->stringPool);
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
+    korl_command_register(KORL_RAW_CONST_UTF8("test"), korl_game_commandTest);
     return memory;
 }
-KORL_GAME_API KORL_GAME_ON_RELOAD(korl_game_onReload)
+KORL_EXPORT KORL_GAME_ON_RELOAD(korl_game_onReload)
 {
     _game_getInterfacePlatformApi(korlApi);
     memory = KORL_C_CAST(Memory*, context);
 }
-KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
+KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 {
     if(isDown && !isRepeat)
         switch(keyCode)
@@ -53,7 +58,7 @@ KORL_GAME_API KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
         default: break;
         }
 }
-KORL_GAME_API KORL_GAME_UPDATE(korl_game_update)
+KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY});
     korl_gui_widgetButtonFormat(L"just a test button that does nothing!");

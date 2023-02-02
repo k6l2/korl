@@ -30,7 +30,7 @@
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_windows_window_context.stringPool))
-korl_global_const TCHAR _KORL_WINDOWS_WINDOW_CLASS_NAME[] = _T("KorlWindowClass");
+korl_global_const TCHAR    _KORL_WINDOWS_WINDOW_CLASS_NAME[]     = _T("KorlWindowClass");
 korl_shared_const wchar_t* _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME = L"korl-windows-window.ini";
 typedef struct _Korl_Windows_Window_Context
 {
@@ -464,11 +464,11 @@ korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
     context->gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModule, "korl_game_update"));
     context->gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModule, "korl_game_onAssetReloaded"));
 }
-korl_internal KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandSave)
+KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandSave)
 {
     _korl_windows_window_context.deferSaveStateSave = true;
 }
-korl_internal KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandLoad)
+KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandLoad)
 {
     _korl_windows_window_context.deferSaveStateLoad = true;
 }
@@ -636,6 +636,7 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
                 context->gameDll = korl_file_loadDynamicLibrary(KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
                 korl_assert(context->gameDll);
                 korl_assert(korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, &context->gameDllLastWriteDateStamp));
+                korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
             }
             string_free(stringGameDllTemp);
             if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
@@ -815,7 +816,9 @@ korl_internal void korl_windows_window_loop(void)
             korl_assetCache_clearAllFileHandles();
             korl_vulkan_clearAllDeviceAllocations();
             korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
-            korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
+            // korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
+            if(context->gameDll)
+                korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
             if(context->gameApi.korl_game_onReload)
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             korl_time_probeStop(save_state_load);

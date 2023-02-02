@@ -70,7 +70,8 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {0};
     to be whatever string pool context they want. */
 #define string_newUtf8(cStringUtf8)                                            korl_stringPool_newFromUtf8(_LOCAL_STRING_POOL_POINTER, cStringUtf8, __FILEW__, __LINE__)
 #define string_newUtf16(cStringUtf16)                                          korl_stringPool_newFromUtf16(_LOCAL_STRING_POOL_POINTER, cStringUtf16, __FILEW__, __LINE__)
-#define string_newAci8(constArrayCi8)                                          korl_stringPool_newFromAci8(_LOCAL_STRING_POOL_POINTER, constArrayCi8, __FILEW__, __LINE__)
+#define string_newAci8(arrayConsti8)                                           korl_stringPool_newFromAci8(_LOCAL_STRING_POOL_POINTER, arrayConsti8, __FILEW__, __LINE__)
+#define string_newAcu8(rawUtf8)                                                korl_stringPool_newFromAcu8(_LOCAL_STRING_POOL_POINTER, rawUtf8, __FILEW__, __LINE__)
 #define string_newAcu16(constArrayCu16)                                        korl_stringPool_newFromAcu16(_LOCAL_STRING_POOL_POINTER, constArrayCu16, __FILEW__, __LINE__)
 #define string_newEmptyUtf8(reservedSizeExcludingNullTerminator)               korl_stringPool_newEmptyUtf8(_LOCAL_STRING_POOL_POINTER, reservedSizeExcludingNullTerminator, __FILEW__, __LINE__)
 #define string_newEmptyUtf16(reservedSizeExcludingNullTerminator)              korl_stringPool_newEmptyUtf16(_LOCAL_STRING_POOL_POINTER, reservedSizeExcludingNullTerminator, __FILEW__, __LINE__)

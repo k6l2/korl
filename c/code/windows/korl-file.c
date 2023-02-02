@@ -11,6 +11,7 @@
 #include "korl-checkCast.h"
 #include "korl-stb-ds.h"
 #include "korl-resource.h"
+#include "korl-command.h"
 #include <minidumpapiset.h>
 #ifdef _LOCAL_STRING_POOL_POINTER
 #undef _LOCAL_STRING_POOL_POINTER
@@ -1145,6 +1146,8 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_gui_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
     const u64 descriptorByteStartGfx = arrlenu(enumContext->stbDaSaveStateBuffer);
     korl_gfx_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
+    const u64 descriptorByteStartCommand = arrlenu(enumContext->stbDaSaveStateBuffer);
+    korl_command_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
     /* begin iteration over memory allocators, copying allocations to the save 
         state buffer, as well as count how many allocations there are per 
         allocator */
@@ -1171,6 +1174,7 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartResource   , sizeof(descriptorByteStartResource));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartGui        , sizeof(descriptorByteStartGui));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartGfx        , sizeof(descriptorByteStartGfx));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartCommand    , sizeof(descriptorByteStartCommand));
 }
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
 {
@@ -1253,6 +1257,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     u64 descriptorByteStartResource;
     u64 descriptorByteStartGui;
     u64 descriptorByteStartGfx;
+    u64 descriptorByteStartCommand;
     const u$ manifestBytesRequired = (sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1/*don't care about the '\0'*/) 
                                    + sizeof(_KORL_SAVESTATE_VERSION) 
                                    + sizeof(allocatorCount) 
@@ -1262,7 +1267,8 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                                    + sizeof(descriptorByteStartAssetCache)
                                    + sizeof(descriptorByteStartResource)
                                    + sizeof(descriptorByteStartGui)
-                                   + sizeof(descriptorByteStartGfx);
+                                   + sizeof(descriptorByteStartGfx)
+                                   + sizeof(descriptorByteStartCommand);
     LARGE_INTEGER filePointerDistanceToMove;
     filePointerDistanceToMove.QuadPart = -korl_checkCast_u$_to_i$(manifestBytesRequired);
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_END))
@@ -1320,6 +1326,11 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     if(!ReadFile(hFile, &descriptorByteStartGfx, sizeof(descriptorByteStartGfx), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    if(!ReadFile(hFile, &descriptorByteStartCommand, sizeof(descriptorByteStartCommand), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
@@ -1489,6 +1500,19 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         korl_logLastError("korl_gfx_saveStateRead failed");
         goto cleanUp;
     }
+    /* load the command module state */
+    filePointerDistanceToMove.QuadPart = descriptorByteStartCommand;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    if(!korl_command_saveStateRead(hFile))
+    {
+        korl_logLastError("korl_command_saveStateRead failed");
+        goto cleanUp;
+    }
+    /**/
     korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));
 cleanUp:
     string_free(pathFile);

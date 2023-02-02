@@ -53,7 +53,7 @@ typedef struct _Korl_Gui_WidgetMap
 #if defined(_LOCAL_STRING_POOL_POINTER)
     #undef _LOCAL_STRING_POOL_POINTER
 #endif
-#define _LOCAL_STRING_POOL_POINTER (&_korl_gui_context.stringPool)
+#define _LOCAL_STRING_POOL_POINTER (_korl_gui_context.stringPool)
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DEBUG";
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X"; // special internal button string to allow button widget to draw special graphics
@@ -297,7 +297,7 @@ korl_internal void _korl_gui_widget_window_activate(_Korl_Gui_Widget* widget)
 {
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    //@TODO; don't we only want to do this logic if the activated window has changed?
+    //KORL-ISSUE-000-000-117: gui: don't we only want to do this logic if the activated window has changed?  not doing so is going to likely cause really annoying behavior such as the last window's leaf widget candidate always getting activated even when the window was already active :|
     {
         context->identifierHashLeafWidgetActive = 0;
         widget->subType.window.isActivatedThisFrame = true;
@@ -421,7 +421,8 @@ korl_internal void korl_gui_initialize(void)
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
     _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
     _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(8), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
-    _korl_gui_context.stringPool                           = korl_stringPool_create(_korl_gui_context.allocatorHandleHeap);
+    _korl_gui_context.stringPool                           = korl_allocate(_korl_gui_context.allocatorHandleHeap, sizeof(*_korl_gui_context.stringPool));
+    *_korl_gui_context.stringPool                          = korl_stringPool_create(_korl_gui_context.allocatorHandleHeap);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
     _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
     _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
@@ -1901,7 +1902,7 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, 3);
                 korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
             }
-            if(batchText->_instanceCount)//@TODO: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
+            if(batchText->_instanceCount)//KORL-ISSUE-000-000-118: gui: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
             /* draw a cursor _above_ the text, if the cursor defines a single grapheme index */
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin >= cursorEnd)
@@ -2263,5 +2264,6 @@ korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
         korl_logLastError("ReadFile failed");
         return false;
     }
+    _korl_gui_frameBegin();// begin a new frame, since it is entirely possible that we saved state with dirty transient data!
     return true;
 }
