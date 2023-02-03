@@ -80,6 +80,7 @@ korl_internal u$  korl_string_sizeUtf8(const char* s);
  * \return the size of string \c s _excluding_ the null terminator
  */
 korl_internal u$  korl_string_sizeUtf16(const wchar_t* s);
+//KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
 #if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)// these API defined in the platform layer because they contain platform-specific code
     korl_internal KORL_FUNCTION_korl_string_formatVaListUtf8(korl_string_formatVaListUtf8);
     korl_internal KORL_FUNCTION_korl_string_formatVaListUtf16(korl_string_formatVaListUtf16);

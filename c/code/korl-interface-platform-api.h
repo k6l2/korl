@@ -52,6 +52,7 @@
  *     ```
  *     #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
  *         #include "korl-interface-platform-api.h"
+ * KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
  *         #define KORL_DEFINED_INTERFACE_PLATFORM_API// prevent certain KORL modules which define symbols that are required by the game module, but whose codes are confined to the platform layer, from re-defining them since we just declared the API
  *     #undef _KORL_PLATFORM_API_MACRO_OPERATION
  *     ```
