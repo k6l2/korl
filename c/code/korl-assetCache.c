@@ -51,7 +51,7 @@ korl_internal void korl_assetCache_initialize(void)
 korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
 {
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    const u$ assetNameSize = korl_memory_stringSize(assetName);
+    const u$ assetNameSize = korl_string_sizeUtf16(assetName);
     const bool asyncLoad = flags & KORL_ASSETCACHE_GET_FLAG_LAZY;
     _Korl_AssetCache_Asset* asset = NULL;
     /* see if the asset is already loaded, and if so select it */

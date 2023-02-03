@@ -27,9 +27,9 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
     {
         _korl_crash_hasReceivedException = true;
         wchar_t messageBuffer[256];
-        korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                       L"Exception code: 0x%X\n", 
-                                       pExceptionPointers->ExceptionRecord->ExceptionCode);
+        korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
+                                     ,L"Exception code: 0x%X\n"
+                                     ,pExceptionPointers->ExceptionRecord->ExceptionCode);
         //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, cStrOrigin, 
@@ -179,21 +179,19 @@ korl_internal KORL_FUNCTION__korl_crash_assertConditionFailed(_korl_crash_assert
     if(isFirstAssert)
     {
         wchar_t messageBuffer[512];
-        i$ charactersCopied = 
-            korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                           L"Condition: %ws\n", 
-                                           conditionString);
+        i$ charactersCopied = korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
+                                                           ,L"Condition: %ws\n"
+                                                           ,conditionString);
         /* if the entire assert conditionString doesn't fit in our local assert 
             message stack buffer, then let's just truncate the message and 
             display as much as possible */
         if(charactersCopied <= 0)
         {
             wchar_t conditionBuffer[512 - 16/*size of the rest of the assert message box text*/];
-            korl_memory_stringCopy(conditionString, conditionBuffer, korl_arraySize(conditionBuffer));
-            charactersCopied = 
-                korl_memory_stringFormatBuffer(messageBuffer, sizeof(messageBuffer), 
-                                               L"Condition: %ws\n", 
-                                               conditionBuffer);
+            korl_string_copyUtf16(conditionString, (au16){korl_arraySize(conditionBuffer), conditionBuffer});
+            charactersCopied = korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
+                                                            ,L"Condition: %ws\n"
+                                                            ,conditionBuffer);
         }
         //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 

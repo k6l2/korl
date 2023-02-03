@@ -18,6 +18,7 @@
 #include "korl-bluetooth.h"
 #include "korl-resource.h"
 #include "korl-command.h"
+#include "korl-string.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -89,6 +90,7 @@ shutdownSuccess:
 #include "korl-windows-utilities.c"
 #include "korl-math.c"
 #include "korl-memory.c"
+#include "korl-heap.c"
 #include "korl-windows-window.c"
 #include "korl-vulkan.c"
 #include "korl-vulkan-memory.c"

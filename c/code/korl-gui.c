@@ -2021,7 +2021,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     va_list vaList;
     va_start(vaList, textFormat);
-    const wchar_t*const stackDisplayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
+    const wchar_t*const stackDisplayText = korl_string_formatVaListUtf16(context->allocatorHandleStack, textFormat, vaList);
     va_end(vaList);
     widget->subType.text.displayText = KORL_RAW_CONST_UTF16(stackDisplayText);
     /* these widgets will not support children, so we must pop widget from the parent stack */
@@ -2086,7 +2086,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
         /* store the formatted display text on the stack */
         va_list vaList;
         va_start(vaList, textFormat);
-        const wchar_t*const stackDisplayText = korl_memory_stringFormatVaList(context->allocatorHandleStack, textFormat, vaList);
+        const wchar_t*const stackDisplayText = korl_string_formatVaListUtf16(context->allocatorHandleStack, textFormat, vaList);
         va_end(vaList);
         widget->subType.button.displayText = KORL_RAW_CONST_UTF16(stackDisplayText);
     }

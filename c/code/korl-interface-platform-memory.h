@@ -18,41 +18,6 @@
  */
 #define KORL_FUNCTION_korl_memory_arrayU16Compare(name) int name(const u16* dataA, u$ sizeA, const u16* dataB, u$ sizeB)
 #define KORL_FUNCTION_korl_memory_acu16_hash(name) u$ name(acu16 arrayCU16)
-/**
- * \return \c 0 if the two strings are equal
- */
-#define KORL_FUNCTION_korl_memory_stringCompare(name)              int name(const wchar_t* a, const wchar_t* b)
-/**
- * \return \c 0 if the two strings are equal
- */
-#define KORL_FUNCTION_korl_memory_stringCompareUtf8(name)         int name(const char* a, const char* b)
-/**
- * \return the size of string \c s _excluding_ the null terminator
- */
-#define KORL_FUNCTION_korl_memory_stringSize(name)                 u$ name(const wchar_t* s)
-/**
- * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
- * defined as the total number of characters; _not_ the total number of 
- * codepoints!
- */
-#define KORL_FUNCTION_korl_memory_stringSizeUtf8(name)            u$ name(const char* s)
-/**
- * \return the number of characters copied from \c source into \c destination , 
- * INCLUDING the null terminator.  If the \c source cannot be copied into the 
- * \c destination then the size of \c source INCLUDING the null terminator and 
- * multiplied by -1 is returned, and \c destination is filled with the maximum 
- * number of characters that can be copied, including a null-terminator.
- */
-#define KORL_FUNCTION_korl_memory_stringCopy(name)                 i$ name(const wchar_t* source, wchar_t* destination, u$ destinationSize)
-#define KORL_FUNCTION_korl_memory_stringFormatVaList(name)        wchar_t* name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
-#define KORL_FUNCTION_korl_memory_stringFormatVaListUtf8(name)   char* name(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, va_list vaList)
-/**
- * \return the number of characters copied from \c format into \c buffer , 
- * INCLUDING the null terminator.  If the \c format cannot be copied into the 
- * \c buffer then the size of \c format , INCLUDING the null terminator, 
- * multiplied by -1, is returned.
- */
-#define KORL_FUNCTION_korl_memory_stringFormatBuffer(name)        i$ name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...)
 typedef u16 Korl_Memory_AllocatorHandle;
 typedef enum Korl_Memory_AllocatorType
     { KORL_MEMORY_ALLOCATOR_TYPE_LINEAR

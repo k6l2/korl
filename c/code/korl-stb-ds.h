@@ -9,6 +9,6 @@
 korl_internal void korl_stb_ds_initialize(void);
 korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes);
 #if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)
-korl_internal KORL_FUNCTION__korl_stb_ds_reallocate(_korl_stb_ds_reallocate);
-korl_internal KORL_FUNCTION__korl_stb_ds_free(_korl_stb_ds_free);
+    korl_internal KORL_FUNCTION__korl_stb_ds_reallocate(_korl_stb_ds_reallocate);
+    korl_internal KORL_FUNCTION__korl_stb_ds_free(_korl_stb_ds_free);
 #endif// !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)

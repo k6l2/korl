@@ -171,9 +171,9 @@ korl_internal i$ korl_time_countsFormatBuffer(Korl_Time_Counts counts, wchar_t* 
     u8 timeDiffSeconds;
     u16 timeDiffMilliseconds, timeDiffMicroseconds;
     _korl_time_timeStampExtractDifferenceCounts(counts, &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
-    return korl_memory_stringFormatBuffer(buffer, bufferBytes, 
-                                          L"% 2llu:% 2hhu'% 3hu\"% 3hu", 
-                                          timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds);
+    return korl_string_formatBufferUtf16(buffer, bufferBytes
+                                        ,L"% 2llu:% 2hhu'% 3hu\"% 3hu"
+                                        ,timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds);
 }
 korl_internal Korl_Time_DateStamp_Compare_Result korl_time_dateStampCompare(KorlPlatformDateStamp dsA, KorlPlatformDateStamp dsB)
 {
@@ -235,7 +235,7 @@ korl_internal Korl_Time_Counts korl_time_probeEnd(Korl_Time_ProbeHandle timeProb
 korl_internal void korl_time_probeDataU32(const wchar_t* label, u32 data)
 {
     korl_assert(arrlenu(_korl_time_context.stbDaTimeProbeStack) > 0);
-    const u$ labelSize  = korl_memory_stringSize(label);
+    const u$ labelSize  = korl_string_sizeUtf16(label);
     const u$ labelBytes = (labelSize + 1/*null-terminator*/) * sizeof(*label);
     const u32 bufferOffsetLabel = korl_checkCast_u$_to_u32(arrlenu(_korl_time_context.stbDaTimeProbeDataRaw));
     const u32 bufferOffsetData  = korl_checkCast_u$_to_u32(arrlenu(_korl_time_context.stbDaTimeProbeDataRaw) + labelBytes);
@@ -289,8 +289,8 @@ korl_internal void korl_time_probeLogReport(void)
             timeProbeCoverageCounts[timeProbe->parent - 1] += korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd);
         }
         if(timeProbe->label)
-            longestProbeLabel = KORL_MATH_MAX(longestProbeLabel, korl_memory_stringSize(timeProbe->label));
-        longestProbeFunction = KORL_MATH_MAX(longestProbeFunction, korl_memory_stringSize(timeProbe->function));
+            longestProbeLabel = KORL_MATH_MAX(longestProbeLabel, korl_string_sizeUtf16(timeProbe->label));
+        longestProbeFunction = KORL_MATH_MAX(longestProbeFunction, korl_string_sizeUtf16(timeProbe->function));
         while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
             arrpop(stbDaTimeProbeStack);
         deepestProbeDepth = KORL_MATH_MAX(deepestProbeDepth, arrlenu(stbDaTimeProbeStack));
@@ -329,11 +329,11 @@ korl_internal void korl_time_probeLogReport(void)
         while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
             arrpop(stbDaTimeProbeStack);
         const i$ durationBufferSize = 
-            korl_memory_stringFormatBuffer(bufferDuration, bufferDurationSize*sizeof(*bufferDuration), 
-                                           L"%*ws% 2llu:% 2hhu'% 3hu\"% 3hu%*ws", 
-                                           2*arrlenu(stbDaTimeProbeStack), L"", 
-                                           timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds, 
-                                           2*(deepestProbeDepth - arrlenu(stbDaTimeProbeStack)), L"");
+            korl_string_formatBufferUtf16(bufferDuration, bufferDurationSize*sizeof(*bufferDuration)
+                                         ,L"%*ws% 2llu:% 2hhu'% 3hu\"% 3hu%*ws"
+                                         ,2*arrlenu(stbDaTimeProbeStack), L""
+                                         ,timeDiffMinutes, timeDiffSeconds, timeDiffMilliseconds, timeDiffMicroseconds
+                                         ,2*(deepestProbeDepth - arrlenu(stbDaTimeProbeStack)), L"");
         korl_assert(durationBufferSize > 0);
         /* now we can look at the contents of timeProbeDirectChildren for each 
             of the handles in the stack to see if we need to print a tabbing 
@@ -382,8 +382,8 @@ korl_internal void korl_time_probeLogReport(void)
                                      / KORL_C_CAST(f64, korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd));
         wchar_t bufferCoverageRatio[] = L"   ∞";
         if(timeProbeDirectChildren[tpi])
-            korl_assert(0 < korl_memory_stringFormatBuffer(bufferCoverageRatio, sizeof(bufferCoverageRatio), 
-                                                           L"%3hhu%%", KORL_C_CAST(u8, probeCoverageRatio * 100)));
+            korl_assert(0 < korl_string_formatBufferUtf16(bufferCoverageRatio, sizeof(bufferCoverageRatio)
+                                                         ,L"%3hhu%%", KORL_C_CAST(u8, probeCoverageRatio * 100)));
         korl_log_noMeta(INFO, "║ %ws %ws [%-*ws] %-*ws; %ws:%i %ws",
                         bufferDuration, bufferCoverageRatio, 
                         longestProbeLabel, timeProbe->label ? timeProbe->label : L"", 

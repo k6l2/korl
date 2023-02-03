@@ -271,11 +271,11 @@ korl_internal void korl_log_initialize(void)
     /* test the rawLog file mapped allocation */
     const wchar_t testString0[] = L"Persistent Log Buffer Region";
     const wchar_t testString1[] = L"Ring Log Buffer Region";
-    korl_memory_stringCopy(testString0, _korl_log_context.rawLog, korl_arraySize(testString0));
-    korl_memory_stringCopy(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + _korl_log_context.rawLogChunkBytes), korl_arraySize(testString0));
-    korl_assert(0 == korl_memory_stringCompare(testString0, _korl_log_context.rawLog));
-    korl_assert(0 == korl_memory_stringCompare(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
-    korl_assert(0 == korl_memory_stringCompare(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
+    korl_string_copyUtf16(testString0, (au16){korl_arraySize(testString0), _korl_log_context.rawLog});
+    korl_string_copyUtf16(testString1, (au16){korl_arraySize(testString0), KORL_C_CAST(u16*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + _korl_log_context.rawLogChunkBytes)});
+    korl_assert(0 == korl_string_compareUtf16(testString0, _korl_log_context.rawLog));
+    korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
+    korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
     korl_memory_zero(_korl_log_context.rawLog, 2*_korl_log_context.rawLogChunkBytes);
 #endif
 }
@@ -331,17 +331,17 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     if(!logFileEnabled)
         return;
     wchar_t logFileName[256];
-    korl_assert(0 < korl_memory_stringFormatBuffer(logFileName, sizeof(logFileName), L"%ws.log", KORL_APPLICATION_NAME));
+    korl_assert(0 < korl_string_formatBufferUtf16(logFileName, sizeof(logFileName), L"%ws.log", KORL_APPLICATION_NAME));
     /* perform log file rotation */
     for(i$ f = _KORL_LOG_FILE_ROTATION_MAX - 2; f >= 0; f--)
     {
         wchar_t logFileNameCurrent[256];
         if(f == 0)
-            korl_assert(0 < korl_memory_stringFormatBuffer(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log", KORL_APPLICATION_NAME));
+            korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log", KORL_APPLICATION_NAME));
         else
-            korl_assert(0 < korl_memory_stringFormatBuffer(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log.%lli", KORL_APPLICATION_NAME, f));
+            korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log.%lli", KORL_APPLICATION_NAME, f));
         wchar_t logFileNameNext[256];
-        korl_assert(0 < korl_memory_stringFormatBuffer(logFileNameNext, sizeof(logFileNameNext), L"%ws.log.%lli", KORL_APPLICATION_NAME, f + 1));
+        korl_assert(0 < korl_string_formatBufferUtf16(logFileNameNext, sizeof(logFileNameNext), L"%ws.log.%lli", KORL_APPLICATION_NAME, f + 1));
         const Korl_File_ResultRenameReplace resultRenameReplace = 
             korl_file_renameReplace(KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameCurrent, KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameNext);
         korl_assert(   resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS 

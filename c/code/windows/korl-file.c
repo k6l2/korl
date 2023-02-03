@@ -235,7 +235,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_sa
     _Korl_File_Context*const context                       = &_korl_file_context;
     _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
     /* copy the allocation meta data & memory to the save state buffer */
-    const u16 fileCharacterCount = korl_checkCast_u$_to_u16(korl_memory_stringSize(meta->file));
+    const u16 fileCharacterCount = korl_checkCast_u$_to_u16(korl_string_sizeUtf16(meta->file));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &fileCharacterCount, sizeof(fileCharacterCount));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, meta->file, fileCharacterCount*sizeof(*meta->file));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &meta->line, sizeof(meta->line));
@@ -266,7 +266,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
         return true;//true => continue iterating over allocators
     /* now we can write the allocator descriptors to the save state buffer */
-    const u16 nameCharacterCount = korl_checkCast_u$_to_u16(korl_memory_stringSize(allocatorName));
+    const u16 nameCharacterCount = korl_checkCast_u$_to_u16(korl_string_sizeUtf16(allocatorName));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &nameCharacterCount                                                 , sizeof(nameCharacterCount));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, allocatorName                                                       , nameCharacterCount*sizeof(*allocatorName));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &(enumContext->stbDaAllocationCounts[enumContext->currentAllocator]), sizeof(enumContext->stbDaAllocationCounts[enumContext->currentAllocator]));

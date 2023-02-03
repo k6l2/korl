@@ -40,3 +40,48 @@ korl_internal u8 korl_string_codepoint_to_utf16(u32 codepoint, u16* o_buffer);
 korl_internal bool korl_string_isUtf16Surrogate(u16 utf16Unit);
 korl_internal bool korl_string_isUtf16SurrogateHigh(u16 utf16Unit);
 korl_internal bool korl_string_isUtf16SurrogateLow(u16 utf16Unit);
+korl_internal bool korl_string_isWhitespace(u$ codePoint);
+korl_internal bool korl_string_isNumeric(u$ codePoint);
+korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid);
+/**
+ * \return the number of characters copied from \c source into \c destination , 
+ * INCLUDING the null terminator.  If the \c source cannot be copied into the 
+ * \c destination then the size of \c source INCLUDING the null terminator and 
+ * multiplied by -1 is returned, and \c destination is filled with the maximum 
+ * number of characters that can be copied, including a null-terminator.
+ */
+korl_internal i$ korl_string_copyUtf16(const wchar_t* source, au16 destination);
+korl_internal char* korl_string_formatUtf8(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, ...);
+/**
+ * \return the number of characters copied from \c format into \c buffer , 
+ * INCLUDING the null terminator.  If the \c format cannot be copied into the 
+ * \c buffer then the size of \c format , INCLUDING the null terminator, 
+ * multiplied by -1, is returned.
+ */
+korl_internal i$ korl_string_formatBufferUtf16(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...);
+#if 0//currently unused, but I'll keep it around for now...
+korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
+#endif
+/**
+ * \return \c 0 if the two strings are equal
+ */
+korl_internal int korl_string_compareUtf8(const char* a, const char* b);
+/**
+ * \return \c 0 if the two strings are equal
+ */
+korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b);
+/**
+ * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
+ * defined as the total number of characters; _not_ the total number of 
+ * codepoints!
+ */
+korl_internal u$  korl_string_sizeUtf8(const char* s);
+/**
+ * \return the size of string \c s _excluding_ the null terminator
+ */
+korl_internal u$  korl_string_sizeUtf16(const wchar_t* s);
+#if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)// these API defined in the platform layer because they contain platform-specific code
+    korl_internal KORL_FUNCTION_korl_string_formatVaListUtf8(korl_string_formatVaListUtf8);
+    korl_internal KORL_FUNCTION_korl_string_formatVaListUtf16(korl_string_formatVaListUtf16);
+    korl_internal KORL_FUNCTION_korl_string_formatBufferVaListUtf16(korl_string_formatBufferVaListUtf16);
+#endif

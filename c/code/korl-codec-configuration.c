@@ -2,6 +2,7 @@
 #include "korl-stb-ds.h"
 #include "korl-checkCast.h"
 #include "korl-log.h"
+#include "korl-string.h"
 typedef struct _Korl_Codec_Configuration_Map
 {
     char* key;
@@ -44,14 +45,14 @@ korl_internal acu8 korl_codec_configuration_toUtf8(Korl_Codec_Configuration* con
         switch(m->value.type)
         {
         case KORL_CODEC_CONFIGURATION_MAP_VALUE_TYPE_U32:{
-            char*const newLine   = korl_memory_stringFormatUtf8(allocatorResult, "%hs = %u\n", m->key, m->value.subType._u32);
-            const u$ newLineSize = korl_memory_stringSizeUtf8(newLine);
+            char*const newLine   = korl_string_formatUtf8(allocatorResult, "%hs = %u\n", m->key, m->value.subType._u32);
+            const u$ newLineSize = korl_string_sizeUtf8(newLine);
             _korl_codec_configuration_appendLine(newLine, newLineSize, allocatorResult, &buffer, &bufferBytes, &bufferBytesUsed);
             korl_free(allocatorResult, newLine);
             break;}
         case KORL_CODEC_CONFIGURATION_MAP_VALUE_TYPE_I32:{
-            char*const newLine   = korl_memory_stringFormatUtf8(allocatorResult, "%hs = %i\n", m->key, m->value.subType._i32);
-            const u$ newLineSize = korl_memory_stringSizeUtf8(newLine);
+            char*const newLine   = korl_string_formatUtf8(allocatorResult, "%hs = %i\n", m->key, m->value.subType._i32);
+            const u$ newLineSize = korl_string_sizeUtf8(newLine);
             _korl_codec_configuration_appendLine(newLine, newLineSize, allocatorResult, &buffer, &bufferBytes, &bufferBytesUsed);
             korl_free(allocatorResult, newLine);
             break;}
@@ -72,13 +73,14 @@ korl_internal void korl_codec_configuration_fromUtf8(Korl_Codec_Configuration* c
         mcsh_new_arena(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase);
     }
     /**/
+    //KORL-ISSUE-000-000-119: codec-configuration: rewrite UTF-8 decoder to use Utf8 iterators from korl-string
     i$ keyStartOffset          = -1;
     u$ keySize                 =  0;
     i$ keyValueDelimiterOffset = -1;
     i$ valueStartOffset        = -1;
     for(u$ i = 0; i < fileDataBuffer.size; i++)
     {
-        const bool isWhiteSpace = korl_memory_isWhitespace(fileDataBuffer.data[i]);
+        const bool isWhiteSpace = korl_string_isWhitespace(fileDataBuffer.data[i]);
         if(fileDataBuffer.data[i] == '\n')
         {
             if(keyStartOffset >= 0 && valueStartOffset >= 0)
@@ -90,9 +92,9 @@ korl_internal void korl_codec_configuration_fromUtf8(Korl_Codec_Configuration* c
                 // determine what data type the value is & decode as necessary //
                 Korl_Codec_Configuration_MapValue value = {.type = KORL_CODEC_CONFIGURATION_MAP_VALUE_TYPE_INVALID};
                 bool isValidI64 = false;
-                const i64 valueI64 = korl_memory_utf8_to_i64((acu8){.data = fileDataBuffer.data + valueStartOffset
+                const i64 valueI64 = korl_string_utf8_to_i64((acu8){.data = fileDataBuffer.data + valueStartOffset
                                                                    ,.size = i - valueStartOffset}
-                                                            ,NULL, &isValidI64);
+                                                            ,&isValidI64);
                 if(isValidI64)
                 {
                     if(valueI64 >= 0 && valueI64 <= KORL_U32_MAX)

@@ -31,14 +31,6 @@ typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_al
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
 korl_internal bool korl_memory_isLittleEndian(void);
-korl_internal bool korl_memory_isWhitespace(u$ codePoint);
-korl_internal bool korl_memory_isNumeric(u$ codePoint);
-korl_internal i64 korl_memory_utf8_to_i64(acu8 utf8, u$* out_parsedBytes, bool* out_resultIsValid);
-korl_internal KORL_FUNCTION_korl_memory_stringCompare(korl_memory_stringCompare);
-korl_internal KORL_FUNCTION_korl_memory_stringCompareUtf8(korl_memory_stringCompareUtf8);
-korl_internal KORL_FUNCTION_korl_memory_stringSize(korl_memory_stringSize);
-korl_internal KORL_FUNCTION_korl_memory_stringSizeUtf8(korl_memory_stringSizeUtf8);
-korl_internal KORL_FUNCTION_korl_memory_stringCopy(korl_memory_stringCopy);
 korl_internal KORL_FUNCTION_korl_memory_zero(korl_memory_zero);
 korl_internal KORL_FUNCTION_korl_memory_copy(korl_memory_copy);
 korl_internal KORL_FUNCTION_korl_memory_move(korl_memory_move);
@@ -47,12 +39,6 @@ korl_internal KORL_FUNCTION_korl_memory_arrayU8Compare(korl_memory_arrayU8Compar
 korl_internal KORL_FUNCTION_korl_memory_arrayU16Compare(korl_memory_arrayU16Compare);
 korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
-korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
-korl_internal char* korl_memory_stringFormatUtf8(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, ...);
-korl_internal KORL_FUNCTION_korl_memory_stringFormatVaList(korl_memory_stringFormatVaList);
-korl_internal KORL_FUNCTION_korl_memory_stringFormatVaListUtf8(korl_memory_stringFormatVaListUtf8);
-korl_internal KORL_FUNCTION_korl_memory_stringFormatBuffer(korl_memory_stringFormatBuffer);
-korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList);
 korl_internal KORL_FUNCTION_korl_memory_allocator_create    (korl_memory_allocator_create);
 korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, void* newAddress);

@@ -218,11 +218,11 @@ korl_internal void korl_memory_initialize(void)
     korl_assert(sizeof(wchar_t) == sizeof(*context->stbDaFileNameCharacterPool));// we are storing __FILEW__ characters in the Windows platform
     /* add the file name string of this file to the beginning of the file name character pool */
     {
-        const u$ rawWideStringSize = korl_memory_stringSize(__FILEW__) + 1/*null-terminator*/;
+        const u$ rawWideStringSize = korl_string_sizeUtf16(__FILEW__) + 1/*null-terminator*/;
         const u$ persistDataStartOffset = arrlenu(context->stbDaFileNameCharacterPool);
         mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
         wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + persistDataStartOffset;
-        korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(__FILEW__, persistDataStart, rawWideStringSize));
+        korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_string_copyUtf16(__FILEW__, (au16){rawWideStringSize, persistDataStart}));
     }
 #if KORL_DEBUG/* testing out bitwise operations */
     {
@@ -253,71 +253,6 @@ korl_internal u$ korl_memory_pageBytes(void)
 korl_internal bool korl_memory_isLittleEndian(void)
 {
     return !_korl_memory_isBigEndian();
-}
-korl_internal bool korl_memory_isWhitespace(u$ codePoint)
-{
-    korl_shared_const unsigned char WHITESPACE_CHARS[] = {' ', '\t', '\n', '\v', '\f', '\r'};
-    for(u$ w = 0; w < korl_arraySize(WHITESPACE_CHARS); w++)
-        if(codePoint == WHITESPACE_CHARS[w])
-            return true;
-    return false;
-}
-korl_internal bool korl_memory_isNumeric(u$ codePoint)
-{
-    return codePoint >= '0' && codePoint <= '9';
-}
-korl_internal i64 korl_memory_utf8_to_i64(acu8 utf8, u$* out_parsedBytes, bool* out_resultIsValid)
-{
-    korl_assert(out_resultIsValid != NULL);
-    i$   byteOffsetNumberStart = -1;
-    bool isNegative            = false;
-    i64  result                = 0;
-    //KORL-ISSUE-000-000-104: unicode, UTF-8, UTF-16: likely related to KORL-ISSUE-000-000-076; UTF-8 string codepoints can _not_ be randomly accessed via an array index (and for that matter, I think UTF-16 also has this issue?); the only way to properly access UTF-8 string characters is to use an iterator; I have been doing this incorrectly in many places, so my only hope is probably to just search for "utf8" in the code and meticulously fix everything...  Sorry, future me! 😶
-    for(u$ i = 0; i < utf8.size; i++)
-    {
-        const bool isWhiteSpace = korl_memory_isWhitespace(utf8.data[i]);
-        if(isWhiteSpace)
-        {
-            if(byteOffsetNumberStart >= 0)
-            {
-                if(out_parsedBytes)
-                    *out_parsedBytes = i + 1;
-                break;
-            }
-        }
-        else// if(!isWhiteSpace)
-        {
-            const bool isNumeric = korl_memory_isNumeric(utf8.data[i]);
-            if(byteOffsetNumberStart < 0)
-                byteOffsetNumberStart = i;
-            if(isNumeric)
-            {
-                const i64 digit = isNegative
-                                ? -(utf8.data[i] - '0')
-                                :   utf8.data[i] - '0';
-                const i64 resultPrevious = result;
-                result *= 10;
-                result += digit;
-                if((result - digit) / 10 != resultPrevious)// the UTF-8 number is too large to fit in result
-                {
-                    *out_resultIsValid = false;
-                    return KORL_I64_MAX;
-                }
-            }
-            else
-            {
-                if(korl_checkCast_i$_to_u$(byteOffsetNumberStart) == i && utf8.data[i] == '-')
-                    isNegative = true;
-                else// invalid non-numeric codepoint
-                {
-                    *out_resultIsValid = false;
-                    return KORL_I64_MAX;
-                }
-            }
-        }
-    }
-    *out_resultIsValid = true;
-    return result;
 }
 //KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal KORL_FUNCTION_korl_memory_compare(korl_memory_compare)
@@ -378,71 +313,6 @@ korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash)
     hash ^= _KORL_MEMORY_ROTATE_RIGHT(hash,22);
     return hash + _KORL_MEMORY_STRING_HASH_SEED;
 }
-korl_internal KORL_FUNCTION_korl_memory_stringCompare(korl_memory_stringCompare)
-{
-    for(; *a && *b; ++a, ++b)
-    {
-        if(*a < *b)
-            return -1;
-        else if(*a > *b)
-            return 1;
-    }
-    if(*a)
-        return 1;
-    else if(*b)
-        return -1;
-    return 0;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringCompareUtf8(korl_memory_stringCompareUtf8)
-{
-    for(; *a && *b; ++a, ++b)
-    {
-        if(*a < *b)
-            return -1;
-        else if(*a > *b)
-            return 1;
-    }
-    if(*a)
-        return 1;
-    else if(*b)
-        return -1;
-    return 0;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringSize(korl_memory_stringSize)
-{
-    if(!s)
-        return 0;
-    /*  [ t][ e][ s][ t][\0]
-        [ 0][ 1][ 2][ 3][ 4]
-        [sB]            [s ] */
-    const wchar_t* sBegin = s;
-    for(; *s; ++s) {}
-    return s - sBegin;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringSizeUtf8(korl_memory_stringSizeUtf8)
-{
-    if(!s)
-        return 0;
-    /*  [ t][ e][ s][ t][\0]
-        [ 0][ 1][ 2][ 3][ 4]
-        [sB]            [s ] */
-    const char* sBegin = s;
-    for(; *s; ++s) {}
-    return s - sBegin;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringCopy(korl_memory_stringCopy)
-{
-    const wchar_t*const destinationEnd = destination + destinationSize;
-    i$ charsCopied = 0;
-    for(; *source; ++source, ++destination, ++charsCopied)
-        if(destination < destinationEnd - 1)
-            *destination = *source;
-    *destination = L'\0';
-    ++charsCopied;// +1 for the null terminator
-    if(korl_checkCast_i$_to_u$(charsCopied) > destinationSize)
-        charsCopied *= -1;
-    return charsCopied;
-}
 #if 0// still not quite sure if this is needed for anything really...
 korl_internal KORL_FUNCTION_korl_memory_fill(korl_memory_fill)
 {
@@ -469,60 +339,6 @@ korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
         if(*KORL_C_CAST(const u8*, p))
             return false;
     return true;
-}
-korl_internal wchar_t* korl_memory_stringFormat(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    wchar_t*const result = korl_memory_stringFormatVaList(allocatorHandle, format, args);
-    va_end(args);
-    return result;
-}
-korl_internal char* korl_memory_stringFormatUtf8(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    char*const result = korl_memory_stringFormatVaListUtf8(allocatorHandle, format, args);
-    va_end(args);
-    return result;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringFormatVaList(korl_memory_stringFormatVaList)
-{
-    const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
-    korl_assert(bufferSize > 0);
-    wchar_t*const result = (wchar_t*)korl_allocate(allocatorHandle, bufferSize * sizeof(*result));
-    korl_assert(result);
-    const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
-    korl_assert(charactersWritten == bufferSize - 1);
-    return result;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringFormatVaListUtf8(korl_memory_stringFormatVaListUtf8)
-{
-    const int bufferSize = _vscprintf(format, vaList) + 1/*for the null terminator*/;
-    korl_assert(bufferSize > 0);
-    char*const result = (char*)korl_allocate(allocatorHandle, bufferSize * sizeof(*result));
-    korl_assert(result);
-    const int charactersWritten = vsprintf_s(result, bufferSize, format, vaList);
-    korl_assert(charactersWritten == bufferSize - 1);
-    return result;
-}
-korl_internal KORL_FUNCTION_korl_memory_stringFormatBuffer(korl_memory_stringFormatBuffer)
-{
-    va_list args;
-    va_start(args, format);
-    i$ result = korl_memory_stringFormatBufferVaList(buffer, bufferBytes, format, args);
-    va_end(args);
-    return result;
-}
-korl_internal i$ korl_memory_stringFormatBufferVaList(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
-{
-    const int bufferSize = _vscwprintf(format, vaList);// excludes null terminator
-    korl_assert(bufferSize >= 0);
-    if(korl_checkCast_i$_to_u$(bufferSize + 1/*for null terminator*/) > bufferBytes / sizeof(*buffer))
-        return -(bufferSize + 1/*for null terminator*/);
-    const int charactersWritten = vswprintf_s(buffer, bufferBytes/sizeof(*buffer), format, vaList);// excludes null terminator
-    korl_assert(charactersWritten == bufferSize);
-    return charactersWritten + 1/*for null terminator*/;
 }
 korl_internal void _korl_memory_allocator_linear_allocatorPageGuard(_Korl_Memory_AllocatorLinear* allocator)
 {
@@ -1780,7 +1596,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_c
     korl_assert(newHandle);
     /* ensure that allocatorName has not been used in any other allocator */
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
-        if(0 == korl_memory_stringCompare(context->allocators[a].name, allocatorName))
+        if(0 == korl_string_compareUtf16(context->allocators[a].name, allocatorName))
         {
             korl_log(ERROR, "allocator name %s already in use", allocatorName);
             return 0;// return an invalid handle
@@ -1804,7 +1620,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_c
         korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", type);
         break;}
     }
-    korl_memory_stringCopy(allocatorName, newAllocator->name, korl_arraySize(newAllocator->name));
+    korl_string_copyUtf16(allocatorName, (au16){korl_arraySize(newAllocator->name), newAllocator->name});
     /**/
     return newAllocator->handle;
 }
@@ -1872,11 +1688,11 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
             return context->stbDaFileNameStrings[i].data.data;
     /* otherwise, we need to add the string to the character pool & create a new 
         string entry to use */
-    const u$ rawWideStringSize = korl_memory_stringSize(rawWideString) + 1/*null-terminator*/;
+    const u$ rawWideStringSize = korl_string_sizeUtf16(rawWideString) + 1/*null-terminator*/;
     const u$ fileNameCharacterPoolSizePrevious = arrlenu(context->stbDaFileNameCharacterPool);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
     wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + fileNameCharacterPoolSizePrevious;
-    korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_memory_stringCopy(rawWideString, persistDataStart, rawWideStringSize));
+    korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_string_copyUtf16(rawWideString, (au16){rawWideStringSize, persistDataStart}));
     const _Korl_Memory_RawString newRawString = { .data = { .data = persistDataStart
                                                           , .size = rawWideStringSize - 1/*ignore the null-terminator*/}
                                                 , .hash = rawWideStringHash};
@@ -2058,7 +1874,7 @@ korl_internal void* korl_memory_reportGenerate(void)
                 - address_end */
         _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[report->allocatorCount++];
         korl_memory_zero(enumContext, sizeof(*enumContext));
-        korl_memory_stringCopy(allocator->name, enumContext->name, korl_arraySize(enumContext->name));
+        korl_string_copyUtf16(allocator->name, (au16){korl_arraySize(enumContext->name), enumContext->name});
         enumContext->allocatorType       = allocator->type;
         enumContext->virtualAddressStart = allocator->userData;
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocationMeta, 16);
@@ -2138,7 +1954,7 @@ korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Me
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
-        if(korl_memory_stringCompare(context->allocators[a].name, name) == 0)
+        if(korl_string_compareUtf16(context->allocators[a].name, name) == 0)
         {
             *out_allocatorHandle = context->allocators[a].handle;
             return true;

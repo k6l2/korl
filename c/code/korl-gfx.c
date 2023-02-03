@@ -543,7 +543,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
     for(; existingFontCacheIndex < arrlenu(context->stbDaFontCaches); existingFontCacheIndex++)
         // find the font cache with a matching font asset name AND render 
         //  parameters such as font pixel height, etc... //
-        if(   0 == korl_memory_stringCompare(utf16AssetNameFont.data, context->stbDaFontCaches[existingFontCacheIndex]->fontAssetName) 
+        if(   0 == korl_string_compareUtf16(utf16AssetNameFont.data, context->stbDaFontCaches[existingFontCacheIndex]->fontAssetName) 
            && context->stbDaFontCaches[existingFontCacheIndex]->pixelHeight == textPixelHeight 
            && (   context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
                || context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == textPixelOutline))
@@ -561,7 +561,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         /* calculate how much memory we need */
         korl_shared_const u16 GLYPH_PAGE_SQUARE_SIZE = 512;
         korl_shared_const u16 PACK_ROWS_CAPACITY     = 64;
-        const u$ assetNameFontBufferSize = korl_memory_stringSize(utf16AssetNameFont.data) + 1/*null terminator*/;
+        const u$ assetNameFontBufferSize = korl_string_sizeUtf16(utf16AssetNameFont.data) + 1/*null terminator*/;
         const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*utf16AssetNameFont.data);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
                                         + sizeof(_Korl_Gfx_FontGlyphPage)
@@ -587,7 +587,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1/*pointer arithmetic trick to skip to the address following the glyphPage*/);
         glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
-        korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_memory_stringCopy(utf16AssetNameFont.data, fontCache->fontAssetName, assetNameFontBufferSize));
+        korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_string_copyUtf16(utf16AssetNameFont.data, (au16){assetNameFontBufferSize, fontCache->fontAssetName}));
         /* initialize the font info using the raw font asset data */
         korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
         fontCache->fontScale = stbtt_ScaleForPixelHeight(&(fontCache->fontInfo), fontCache->pixelHeight);
@@ -623,7 +623,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     if(!batch->_assetNameFont || batch->_fontTextureHandle)
         return;
     _Korl_Gfx_FontCache* fontCache = _korl_gfx_matchFontCache((acu16){.data = batch->_assetNameFont
-                                                                     ,.size = korl_memory_stringSize(batch->_assetNameFont)}
+                                                                     ,.size = korl_string_sizeUtf16(batch->_assetNameFont)}
                                                              ,batch->_textPixelHeight
                                                              ,batch->_textPixelOutline);
     if(!fontCache)
@@ -1741,7 +1741,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
         assetNameFont = L"test-assets/source-sans/SourceSans3-Semibold.otf";//KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     /* calculate required amount of memory for the batch */
     korl_time_probeStart(measure_font);
-    const u$ assetNameFontBufferSize = korl_memory_stringSize(assetNameFont) + 1;
+    const u$ assetNameFontBufferSize = korl_string_sizeUtf16(assetNameFont) + 1;
     korl_time_probeStop(measure_font);
     const u$ assetNameFontBytes = assetNameFontBufferSize * sizeof(*assetNameFont);
     /** This value directly affects how much memory will be allocated for vertex 
@@ -1751,7 +1751,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
      * doing a sort of lazy-loading system here where the user is allowed to 
      * create & manipulate text batches even in the absence of a font asset. */
     korl_time_probeStart(measure_text);
-    const u$ textSize = korl_memory_stringSize(text);
+    const u$ textSize = korl_string_sizeUtf16(text);
     korl_time_probeStop(measure_text);
     const u$ textBufferSize = textSize + 1;
     const u$ textBytes = textBufferSize * sizeof(*text);
@@ -1788,12 +1788,12 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
     result->_instanceU32s               = KORL_C_CAST(u32*, KORL_C_CAST(u8*, result->_instancePositions) + maxVisibleGlyphCount*result->_instancePositionDimensions*sizeof(*result->_instancePositions));
     /* initialize the batch's dynamic data */
     korl_time_probeStart(copy_font);
-    if(    korl_memory_stringCopy(assetNameFont, result->_assetNameFont, assetNameFontBufferSize) 
+    if(    korl_string_copyUtf16(assetNameFont, (au16){assetNameFontBufferSize, result->_assetNameFont}) 
         != korl_checkCast_u$_to_i$(assetNameFontBufferSize))
         korl_log(ERROR, "failed to copy asset name \"%ls\" to batch", assetNameFont);
     korl_time_probeStop(copy_font);
     korl_time_probeStart(copy_text);
-    if(    korl_memory_stringCopy(text, result->_text, textBufferSize) 
+    if(    korl_string_copyUtf16(text, (au16){textBufferSize, result->_text}) 
         != korl_checkCast_u$_to_i$(textBufferSize))
         korl_log(ERROR, "failed to copy text \"%ls\" to batch", text);
     korl_time_probeStop(copy_text);

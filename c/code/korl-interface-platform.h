@@ -47,6 +47,10 @@ typedef enum Korl_Clipboard_DataFormat
 /* korl-stb-ds interface ******************************************************/
 #define KORL_FUNCTION__korl_stb_ds_reallocate(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 #define KORL_FUNCTION__korl_stb_ds_free(name)       void  name(void* context, void* allocation)
+/* korl-string interface ******************************************************/
+#define KORL_FUNCTION_korl_string_formatVaListUtf8(name)        char*    name(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, va_list vaList)
+#define KORL_FUNCTION_korl_string_formatVaListUtf16(name)       wchar_t* name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
+#define KORL_FUNCTION_korl_string_formatBufferVaListUtf16(name) i$       name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
 /* FUNCTION TYPEDEFS **********************************************************/
 #define _KORL_PLATFORM_API_MACRO_OPERATION(x) typedef KORL_FUNCTION_##x (fnSig_##x);
 #include "korl-interface-platform-api.h"

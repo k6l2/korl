@@ -745,7 +745,7 @@ korl_internal void korl_windows_window_loop(void)
     {
         const wchar_t* text = L"test line 0\n"
                               L"line 1\n";
-        korl_gfx_text_fifoAdd(debugText, (acu16){.data = text, .size = korl_memory_stringSize(text)}, context->allocatorHandle, NULL, NULL);
+        korl_gfx_text_fifoAdd(debugText, (acu16){.data = text, .size = korl_string_sizeUtf16(text)}, context->allocatorHandle, NULL, NULL);
     }
 #endif
     while(!quit)

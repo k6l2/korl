@@ -86,7 +86,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
     _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
     {
-        const u$ extensionSize = korl_memory_stringSize(IMAGE_EXTENSIONS[i]);
+        const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i]);
         if(fileName.size < extensionSize)
             continue;
         if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, IMAGE_EXTENSIONS[i], extensionSize))

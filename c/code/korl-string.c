@@ -205,3 +205,191 @@ korl_internal bool korl_string_isUtf16SurrogateLow(u16 utf16Unit)
 {
     return utf16Unit >= 0xDC00 && utf16Unit < 0xE000;
 }
+korl_internal bool korl_string_isWhitespace(u$ codePoint)
+{
+    korl_shared_const unsigned char WHITESPACE_CHARS[] = {' ', '\t', '\n', '\v', '\f', '\r'};
+    for(u$ w = 0; w < korl_arraySize(WHITESPACE_CHARS); w++)
+        if(codePoint == WHITESPACE_CHARS[w])
+            return true;
+    return false;
+}
+korl_internal bool korl_string_isNumeric(u$ codePoint)
+{
+    return codePoint >= '0' && codePoint <= '9';
+}
+korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid)
+{
+    korl_assert(out_resultIsValid != NULL);
+    i$   byteOffsetNumberStart = -1;
+    bool isNegative            = false;
+    i64  result                = 0;
+    //KORL-ISSUE-000-000-104: unicode, UTF-8, UTF-16: likely related to KORL-ISSUE-000-000-076; UTF-8 string codepoints can _not_ be randomly accessed via an array index (and for that matter, I think UTF-16 also has this issue?); the only way to properly access UTF-8 string characters is to use an iterator; I have been doing this incorrectly in many places, so my only hope is probably to just search for "utf8" in the code and meticulously fix everything...  Sorry, future me! 😶
+    for(u$ i = 0; i < utf8.size; i++)
+    {
+        const bool isWhiteSpace = korl_string_isWhitespace(utf8.data[i]);
+        if(isWhiteSpace)
+        {
+            if(byteOffsetNumberStart >= 0)
+            {
+                // if(out_parsedBytes)
+                //     *out_parsedBytes = i + 1;
+                break;
+            }
+        }
+        else// if(!isWhiteSpace)
+        {
+            const bool isNumeric = korl_string_isNumeric(utf8.data[i]);
+            if(byteOffsetNumberStart < 0)
+                byteOffsetNumberStart = korl_checkCast_u$_to_i$(i);
+            if(isNumeric)
+            {
+                const i64 digit = isNegative
+                                ? -(utf8.data[i] - '0')
+                                :   utf8.data[i] - '0';
+                const i64 resultPrevious = result;
+                result *= 10;
+                result += digit;
+                if((result - digit) / 10 != resultPrevious)// the UTF-8 number is too large to fit in result
+                {
+                    *out_resultIsValid = false;
+                    return KORL_I64_MAX;
+                }
+            }
+            else
+            {
+                if(korl_checkCast_i$_to_u$(byteOffsetNumberStart) == i && utf8.data[i] == '-')
+                    isNegative = true;
+                else// invalid non-numeric codepoint
+                {
+                    *out_resultIsValid = false;
+                    return KORL_I64_MAX;
+                }
+            }
+        }
+    }
+    *out_resultIsValid = true;
+    return result;
+}
+korl_internal i$ korl_string_copyUtf16(const wchar_t* source, au16 destination)
+{
+    const u16*const destinationEnd = destination.data + destination.size;
+    i$ charsCopied = 0;
+    for(; *source; ++source, ++(destination.data), ++charsCopied)
+        if((destination.data) < destinationEnd - 1)
+            *(destination.data) = *source;
+    *(destination.data) = L'\0';
+    ++charsCopied;// +1 for the null terminator
+    if(korl_checkCast_i$_to_u$(charsCopied) > destination.size)
+        charsCopied *= -1;
+    return charsCopied;
+}
+korl_internal char* korl_string_formatUtf8(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    char*const result = korl_string_formatVaListUtf8(allocatorHandle, format, args);
+    va_end(args);
+    return result;
+}
+korl_internal i$ korl_string_formatBufferUtf16(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    i$ result = korl_string_formatBufferVaListUtf16(buffer, bufferBytes, format, args);
+    va_end(args);
+    return result;
+}
+#if 0//currently unused, but I'll keep it around for now...
+korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    wchar_t*const result = korl_string_formatVaListUtf16(allocatorHandle, format, args);
+    va_end(args);
+    return result;
+}
+#endif
+korl_internal int korl_string_compareUtf8(const char* a, const char* b)
+{
+    for(; *a && *b; ++a, ++b)
+    {
+        if(*a < *b)
+            return -1;
+        else if(*a > *b)
+            return 1;
+    }
+    if(*a)
+        return 1;
+    else if(*b)
+        return -1;
+    return 0;
+}
+korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b)
+{
+    for(; *a && *b; ++a, ++b)
+    {
+        if(*a < *b)
+            return -1;
+        else if(*a > *b)
+            return 1;
+    }
+    if(*a)
+        return 1;
+    else if(*b)
+        return -1;
+    return 0;
+}
+korl_internal u$  korl_string_sizeUtf8(const char* s)
+{
+    if(!s)
+        return 0;
+    /*  [ t][ e][ s][ t][\0]
+        [ 0][ 1][ 2][ 3][ 4]
+        [sB]            [s ] */
+    const char* sBegin = s;
+    for(; *s; ++s) {}
+    return korl_checkCast_i$_to_u$(s - sBegin);
+}
+korl_internal u$  korl_string_sizeUtf16(const wchar_t* s)
+{
+    if(!s)
+        return 0;
+    /*  [ t][ e][ s][ t][\0]
+        [ 0][ 1][ 2][ 3][ 4]
+        [sB]            [s ] */
+    const wchar_t* sBegin = s;
+    for(; *s; ++s) {}
+    return korl_checkCast_i$_to_u$(s - sBegin);
+}
+#if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)
+korl_internal KORL_FUNCTION_korl_string_formatVaListUtf8(korl_string_formatVaListUtf8)
+{
+    const int bufferSize = _vscprintf(format, vaList) + 1/*for the null terminator*/;
+    korl_assert(bufferSize > 0);
+    char*const result = (char*)korl_allocate(allocatorHandle, bufferSize * sizeof(*result));
+    korl_assert(result);
+    const int charactersWritten = vsprintf_s(result, bufferSize, format, vaList);
+    korl_assert(charactersWritten == bufferSize - 1);
+    return result;
+}
+korl_internal KORL_FUNCTION_korl_string_formatVaListUtf16(korl_string_formatVaListUtf16)
+{
+    const int bufferSize = _vscwprintf(format, vaList) + 1/*for the null terminator*/;
+    korl_assert(bufferSize > 0);
+    wchar_t*const result = (wchar_t*)korl_allocate(allocatorHandle, bufferSize * sizeof(*result));
+    korl_assert(result);
+    const int charactersWritten = vswprintf_s(result, bufferSize, format, vaList);
+    korl_assert(charactersWritten == bufferSize - 1);
+    return result;
+}
+korl_internal KORL_FUNCTION_korl_string_formatBufferVaListUtf16(korl_string_formatBufferVaListUtf16)
+{
+    const int bufferSize = _vscwprintf(format, vaList);// excludes null terminator
+    korl_assert(bufferSize >= 0);
+    if(korl_checkCast_i$_to_u$(bufferSize + 1/*for null terminator*/) > bufferBytes / sizeof(*buffer))
+        return -(bufferSize + 1/*for null terminator*/);
+    const int charactersWritten = vswprintf_s(buffer, bufferBytes/sizeof(*buffer), format, vaList);// excludes null terminator
+    korl_assert(charactersWritten == bufferSize);
+    return charactersWritten + 1/*for null terminator*/;
+}
+#endif
