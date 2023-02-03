@@ -30,6 +30,7 @@ typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_a
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
+korl_internal u$   korl_memory_virtualAlignBytes(void);
 korl_internal bool korl_memory_isLittleEndian(void);
 korl_internal KORL_FUNCTION_korl_memory_zero(korl_memory_zero);
 korl_internal KORL_FUNCTION_korl_memory_copy(korl_memory_copy);
