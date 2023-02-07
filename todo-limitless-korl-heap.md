@@ -18,5 +18,7 @@
 
 [x] modify `_Korl_Heap_Linear` to support an internal linked list
 [ ] modify `_Korl_Heap_General` to support an internal linked list
+[ ] make expanded heaps occupy 2x the space of their parent
+[ ] allow allocators to create an expanded heap if the requested allocation exceeds the capacity of the heap
 [ ] ensure that save/load memory state functionality still works
 [ ] ensure that memory report functionality still works

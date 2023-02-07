@@ -5,6 +5,10 @@
 #include "korl-log.h"
 #include "korl-stb-ds.h"
 #include "korl-heap.h"
+#if KORL_DEBUG
+    //@TODO: comment this out
+    #define _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
+#endif
 typedef struct _Korl_Memory_Allocator
 {
     void* userData;// points to the start address of the actual specialized allocator virtual memory arena (linear, general, etc...)
@@ -127,7 +131,7 @@ korl_internal void korl_memory_initialize(void)
         wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + persistDataStartOffset;
         korl_assert(korl_checkCast_u$_to_i$(rawWideStringSize) == korl_string_copyUtf16(__FILEW__, (au16){rawWideStringSize, persistDataStart}));
     }
-#if KORL_DEBUG/* testing out bitwise operations */
+    #if KORL_DEBUG/* testing out bitwise operations */
     {
         u64 ui = (~(~0ULL << 4)) << (64 - 4);
         ui >>= 1;
@@ -135,8 +139,8 @@ korl_internal void korl_memory_initialize(void)
         si >>= 1;
         si >>= 1;
     }
-#endif
-#if KORL_DEBUG/* testing out windows memory management functionality */
+    #endif
+    #if KORL_DEBUG/* testing out windows memory management functionality */
     {
         u8* data = VirtualAlloc(NULL, context->systemInfo.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
         korl_memory_copy(data, "testing", 7);
@@ -146,7 +150,43 @@ korl_internal void korl_memory_initialize(void)
         korl_memory_copy(data + 7, "testing", 7);
         VirtualFree(data, context->systemInfo.dwPageSize, MEM_RELEASE);
     }
-#endif
+    #endif
+    #ifdef _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
+    {
+        u8* testAllocs[3];
+        Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, context->systemInfo.dwPageSize*4, L"_korl-memory-test-general", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+        // expected allocator page occupied flags: 0b00
+        testAllocs[0] = korl_allocate(allocator, 32);
+        // expected allocator page occupied flags: 0b01
+        testAllocs[1] = korl_allocate(allocator, context->systemInfo.dwPageSize);
+        // expected allocator page occupied flags: 0b01 0b01
+        testAllocs[2] = korl_allocate(allocator, context->systemInfo.dwPageSize + 1);
+        // expected allocator page occupied flags: 0b01 0b01 0b01
+        korl_free(allocator, testAllocs[0]); testAllocs[0] = NULL;
+        // expected allocator page occupied flags: 0b00 0b01 0b01
+        korl_reallocate(allocator, testAllocs[1], context->systemInfo.dwPageSize*3);// test realloc (move)
+        // expected allocator page occupied flags: 
+        korl_reallocate(allocator, testAllocs[1], 32);// test realloc (shrink)
+        // expected allocator page occupied flags: 
+        korl_memory_allocator_empty(allocator); korl_memory_zero(testAllocs, sizeof(testAllocs));
+        korl_memory_allocator_destroy(allocator);
+        allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, context->systemInfo.dwPageSize*4, L"_korl-memory-test-linear", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+        // expected allocator page occupied flags: 0b0000
+        testAllocs[0] = korl_allocate(allocator, 32);
+        // expected allocator page occupied flags: 
+        testAllocs[1] = korl_allocate(allocator, 32);
+        // expected allocator page occupied flags: 
+        testAllocs[0] = korl_reallocate(allocator, testAllocs[0], context->systemInfo.dwPageSize*2);
+        // expected allocator page occupied flags: 
+        korl_free(allocator, testAllocs[0]); testAllocs[0] = NULL;
+        // expected allocator page occupied flags: 
+        // test heap expansion
+        testAllocs[0] = korl_allocate(allocator, context->systemInfo.dwPageSize*3);
+        // expected allocator page occupied flags: 
+        korl_memory_allocator_empty(allocator); korl_memory_zero(testAllocs, sizeof(testAllocs));
+        korl_memory_allocator_destroy(allocator);
+    }
+    #endif
 }
 korl_internal u$ korl_memory_pageBytes(void)
 {
