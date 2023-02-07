@@ -159,30 +159,30 @@ korl_internal void korl_memory_initialize(void)
         testAllocs[0] = korl_allocate(allocator, 32);
         // expected allocator page occupied flags: 0b010
         testAllocs[1] = korl_allocate(allocator, context->systemInfo.dwPageSize);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b010 0b011000
         testAllocs[2] = korl_allocate(allocator, context->systemInfo.dwPageSize + 1);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b010 0b011011
         korl_free(allocator, testAllocs[0]); testAllocs[0] = NULL;
-        // expected allocator page occupied flags: 
-        korl_reallocate(allocator, testAllocs[1], context->systemInfo.dwPageSize*3);// test realloc (move)
-        // expected allocator page occupied flags: 
-        korl_reallocate(allocator, testAllocs[1], 32);// test realloc (shrink)
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b000 0b011011
+        testAllocs[1] = korl_reallocate(allocator, testAllocs[1], context->systemInfo.dwPageSize*3);// test realloc (move)
+        // expected allocator page occupied flags: 0b000 0b000011 0b011110000000
+        testAllocs[1] = korl_reallocate(allocator, testAllocs[1], 32);// test realloc (shrink)
+        // expected allocator page occupied flags: 0b000 0b000011 0b010000000000
         korl_memory_allocator_empty(allocator); korl_memory_zero(testAllocs, sizeof(testAllocs));
+        // expected allocator page occupied flags: 0b000 0b000000 0b000000000000
         korl_memory_allocator_destroy(allocator);
         allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, context->systemInfo.dwPageSize*4, L"_korl-memory-test-linear", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b000
         testAllocs[0] = korl_allocate(allocator, 32);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b010
         testAllocs[1] = korl_allocate(allocator, 32);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b010 0b0100000
         testAllocs[0] = korl_reallocate(allocator, testAllocs[0], context->systemInfo.dwPageSize*2);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b000 0b0101110
         korl_free(allocator, testAllocs[0]); testAllocs[0] = NULL;
-        // expected allocator page occupied flags: 
-        // test heap expansion
+        // expected allocator page occupied flags: 0b000 0b0100000
         testAllocs[0] = korl_allocate(allocator, context->systemInfo.dwPageSize*3);
-        // expected allocator page occupied flags: 
+        // expected allocator page occupied flags: 0b000 0b0101111
         korl_memory_allocator_empty(allocator); korl_memory_zero(testAllocs, sizeof(testAllocs));
         korl_memory_allocator_destroy(allocator);
     }
