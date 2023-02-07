@@ -587,7 +587,9 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
     _korl_heap_general_allocatorPagesUnguard(allocator);
     const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
     //@TODO: detect whether or not the allocation will even fit in an empty allocator
-    // if(allocationPages + 1/*trailing guard page*/)
+    if(allocationPages + 1/*trailing guard page*/)
+    {
+    }
     u$ availablePageIndex = allocator->allocationPages;
     if(requestedAddress)
     {
@@ -620,10 +622,10 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
     else
         availablePageIndex = _korl_heap_general_occupyAvailablePages(allocator, allocationPages);
     if(   availablePageIndex                   >= allocator->allocationPages 
-       || availablePageIndex + allocationPages >= allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
+       || availablePageIndex + allocationPages >  allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
     {
         korl_log(WARNING, "occupyAvailablePages failed; allocator may require defragmentation, or may have run out of space");
-        if(availablePageIndex + allocationPages >= allocator->allocationPages)
+        if(availablePageIndex + allocationPages > allocator->allocationPages)
             _korl_heap_general_setPageFlags(allocator, availablePageIndex, allocationPages, false);//required only because of KORL-ISSUE-000-000-088
         if(!allocator->next)
             allocator->next = korl_heap_general_create((allocator->allocationPages + allocatorPages)*pageBytes, NULL);
@@ -782,13 +784,13 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
     /* occupy new page flags that satisfy newAllocationPages */
     const u$ newAllocationPage = _korl_heap_general_occupyAvailablePages(allocator, newAllocationPages);
     if(   newAllocationPage                      >= allocator->allocationPages
-       || newAllocationPage + newAllocationPages >= allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
+       || newAllocationPage + newAllocationPages >  allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
     {
         /* if we failed to occupy newAllocationPages, that means the allocator 
             is full; we need to create a new allocation in another heap, copy 
             the data of this allocation to the new one, and zero/guard this memory */
         korl_log(WARNING, "occupyAvailablePages failed; allocator may require defragmentation, or may have run out of space");
-        if(newAllocationPage + newAllocationPages >= allocator->allocationPages)
+        if(newAllocationPage + newAllocationPages > allocator->allocationPages)
             _korl_heap_general_setPageFlags(allocator, allocationPage, newAllocationPages, false);//required only because of KORL-ISSUE-000-000-088
         // create a new allocation in another heap in the heap linked list //
         if(!allocator->next)
