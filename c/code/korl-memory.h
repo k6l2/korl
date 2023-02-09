@@ -24,7 +24,7 @@ typedef struct Korl_Memory_FileMapAllocation_CreateInfo
 } Korl_Memory_FileMapAllocation_CreateInfo;
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData, const void** out_allocatorVirtualAddressEnd)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData)
 /** \return \c true to continue enumeration, \c false to stop enumerating allocators */
 #define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) bool name(void* userData, void* opaqueAllocator, void* allocatorUserData, Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);

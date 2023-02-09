@@ -255,7 +255,7 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocationCounts, 0);
     /* enumarate over all allocations & write those to the save state buffer */
     korl_time_probeStart(enumerateAllocations);
-    korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext, NULL/*don't care about allocatorVirtualAddressEnd*/);
+    korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext);
     korl_time_probeStop(enumerateAllocations);
     return true;//true => continue iterating over allocators
 }

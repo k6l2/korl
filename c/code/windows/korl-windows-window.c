@@ -57,6 +57,7 @@ typedef struct _Korl_Windows_Window_Context
     KorlPlatformDateStamp gameDllLastWriteDateStamp;
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
+    bool deferMemoryReport; // defer until the beginning of the next frame
     struct
     {
         bool deferSaveConfiguration;
@@ -472,6 +473,10 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandLoad
 {
     _korl_windows_window_context.deferSaveStateLoad = true;
 }
+KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandMemoryReport)
+{
+    _korl_windows_window_context.deferMemoryReport = true;
+}
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
@@ -555,8 +560,9 @@ korl_internal void korl_windows_window_initialize(void)
     korl_assert(dpiContextOld != NULL);
 #endif
     /* register some internal KORL commands */
-    korl_command_register(KORL_RAW_CONST_UTF8("save"), _korl_windows_window_commandSave);
-    korl_command_register(KORL_RAW_CONST_UTF8("load"), _korl_windows_window_commandLoad);
+    korl_command_register(KORL_RAW_CONST_UTF8("save")  , _korl_windows_window_commandSave);
+    korl_command_register(KORL_RAW_CONST_UTF8("load")  , _korl_windows_window_commandLoad);
+    korl_command_register(KORL_RAW_CONST_UTF8("memory"), _korl_windows_window_commandMemoryReport);
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {
@@ -764,6 +770,11 @@ korl_internal void korl_windows_window_loop(void)
             deferProbeReport = false;
         }
 #endif
+        if(context->deferMemoryReport)
+        {
+            korl_memory_reportLog(korl_memory_reportGenerate());
+            context->deferMemoryReport = false;
+        }
         korl_time_probeReset();
         korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);

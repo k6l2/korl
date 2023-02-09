@@ -9,6 +9,7 @@
     //@TODO: comment this out
     #define _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
 #endif
+#define _KORL_MEMORY_MAX_ALLOCATORS 64
 typedef struct _Korl_Memory_Allocator
 {
     void* userData;// points to the start address of the actual specialized allocator virtual memory arena (linear, general, etc...)
@@ -29,8 +30,8 @@ typedef struct _Korl_Memory_Context
     DWORD mainThreadId;
     Korl_Memory_AllocatorHandle allocatorHandle;                 // used for storing memory reports
     Korl_Memory_AllocatorHandle allocatorHandlePersistentStrings;// used for cold storage of __FILEW__ strings; we use a separate allocator here to guarantee that the addresses of strings added to the pool remain _constant_ in the event that the character pool allocation changes page size during reallocation
-    struct _Korl_Memory_Report* report;// the last generated memory report
-    KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, 64);
+    u8* stbDaReportData;// the last generated memory report
+    KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, _KORL_MEMORY_MAX_ALLOCATORS);
     /* Although it would be more convenient to do so, it is not practical to 
         just store __FILEW__ pointers directly in allocation meta data for the 
         following reasons:
@@ -44,25 +45,35 @@ typedef struct _Korl_Memory_Context
     _Korl_Memory_RawString* stbDaFileNameStrings;// Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
     u$ stringHashKorlMemory;
 } _Korl_Memory_Context;
-typedef struct _Korl_Memory_ReportAllocationMetaData
+typedef struct _Korl_Memory_ReportMeta_Heap
+{
+    const void* virtualAddressStart;
+    const void* virtualAddressEnd;
+} _Korl_Memory_ReportMeta_Heap;
+typedef struct _Korl_Memory_ReportMeta_Allocation
 {
     const void* allocationAddress;
     Korl_Memory_AllocationMeta meta;
-} _Korl_Memory_ReportAllocationMetaData;
-typedef struct _Korl_Memory_ReportEnumerateContext
+} _Korl_Memory_ReportMeta_Allocation;
+typedef struct _Korl_Memory_ReportMeta_Allocator
 {
-    _Korl_Memory_ReportAllocationMetaData* stbDaAllocationMeta;
-    u$ totalUsedBytes;
-    const void* virtualAddressStart;
-    const void* virtualAddressEnd;
     Korl_Memory_AllocatorType allocatorType;
     wchar_t name[32];
-} _Korl_Memory_ReportEnumerateContext;
-typedef struct _Korl_Memory_Report
+    struct
+    {
+        u$ byteOffset;// relative to the first byte of the entire report
+        u$ size;
+    } heaps;
+    struct
+    {
+        u$ byteOffset;// relative to the first byte of the entire report
+        u$ size;
+    } allocations;// raw report data containing an array of `_Korl_Memory_ReportMeta_Allocation`
+} _Korl_Memory_ReportMeta_Allocator;
+typedef struct _Korl_Memory_ReportMeta
 {
-    u$ allocatorCount;
-    _Korl_Memory_ReportEnumerateContext allocatorData[1];
-} _Korl_Memory_Report;
+    KORL_MEMORY_POOL_DECLARE(_Korl_Memory_ReportMeta_Allocator, allocatorMeta, _KORL_MEMORY_MAX_ALLOCATORS);
+} _Korl_Memory_ReportMeta;
 korl_global_variable _Korl_Memory_Context _korl_memory_context;
 korl_internal bool _korl_memory_isBigEndian(void)
 {
@@ -305,16 +316,6 @@ korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Me
     korl_log(WARNING, "no allocator found for handle %u", handle);
     return NULL;
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_logReport_enumerateCallback)
-{
-    _Korl_Memory_ReportEnumerateContext*const context = KORL_C_CAST(_Korl_Memory_ReportEnumerateContext*, userData);
-    mcarrpush(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), context->stbDaAllocationMeta, (_Korl_Memory_ReportAllocationMetaData){0});
-    _Korl_Memory_ReportAllocationMetaData*const newAllocMeta = &arrlast(context->stbDaAllocationMeta);
-    newAllocMeta->allocationAddress = allocation;
-    newAllocMeta->meta              = *meta;
-    context->totalUsedBytes += meta->bytes;
-    return true;// true => continue enumerating
-}
 korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_create)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -555,10 +556,10 @@ korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle han
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         //KORL-ISSUE-000-000-080: memory: korl_heap_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
-        korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty, NULL/*we don't care about the virtual address range end*/);
+        korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
         return resultIsEmpty;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty, NULL/*we don't care about the virtual address range end*/);
+        korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
         return resultIsEmpty;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -585,6 +586,97 @@ korl_internal void korl_memory_allocator_emptyStackAllocators(void)
         korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     }
 }
+#if 1
+typedef struct _Korl_Memory_ReportGenerate_EnumContext
+{
+    u8**                               stbDaReportData;
+    _Korl_Memory_ReportMeta_Allocator* allocatorMeta;
+} _Korl_Memory_ReportGenerate_EnumContext;
+korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_memory_reportGenerate_enumerateHeapsCallback)
+{
+    _Korl_Memory_ReportGenerate_EnumContext*const enumContext = KORL_C_CAST(_Korl_Memory_ReportGenerate_EnumContext*, userData);
+    const _Korl_Memory_ReportMeta_Heap heapMeta = {.virtualAddressStart = virtualAddressStart
+                                                  ,.virtualAddressEnd   = virtualAddressEnd};
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), enumContext->stbDaReportData, &heapMeta, sizeof(heapMeta));
+    enumContext->allocatorMeta->heaps.size++;
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_reportGenerate_enumerateAllocationsCallback)
+{
+    _Korl_Memory_ReportGenerate_EnumContext*const enumContext = KORL_C_CAST(_Korl_Memory_ReportGenerate_EnumContext*, userData);
+    const _Korl_Memory_ReportMeta_Allocation allocationMeta = {.allocationAddress = allocation
+                                                              ,.meta              = *meta};
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), enumContext->stbDaReportData, &allocationMeta, sizeof(allocationMeta));
+    enumContext->allocatorMeta->allocations.size++;
+    return true;// true => continue enumerating
+}
+korl_internal void* korl_memory_reportGenerate(void)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    u8* stbDaReportData = NULL;
+    /* free the previous report if it exists */
+    if(context->stbDaReportData)
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaReportData);
+    /* because _Korl_Heap data structures can now contain a linked list of 
+        heaps, we don't know ahead of time how many heaps each allocator will 
+        have; ergo, we will have to enumerate over each allocator & accumulate 
+        the following data on the fly in a raw u8 buffer:
+        - metadata of each Korl_Heap (virtual memory range)
+        - metadata of each allocation (address, file, line, bytes)
+        then, at the end of the report, we can place the following data for all 
+        allocators in a fixed-size data structure:
+        - byte offset of Korl_Heap metadata, & the heap count
+        - byte offset of the allocation metadata, & the allocation count
+        - remaining allocator data (type, name, etc.) */
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), stbDaReportData, 1024);
+    KORL_ZERO_STACK(_Korl_Memory_ReportMeta, reportMeta);
+    KORL_MEMORY_POOL_RESIZE(reportMeta.allocatorMeta, KORL_MEMORY_POOL_SIZE(context->allocators));
+    for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
+    {
+        _Korl_Memory_Allocator*const allocator = &context->allocators[a];
+        reportMeta.allocatorMeta[a].allocatorType = allocator->type;
+        korl_string_copyUtf16(allocator->name, (au16){korl_arraySize(reportMeta.allocatorMeta[a].name), reportMeta.allocatorMeta[a].name});
+        KORL_ZERO_STACK(_Korl_Memory_ReportGenerate_EnumContext, enumContext);
+        enumContext.stbDaReportData = &stbDaReportData;
+        enumContext.allocatorMeta   = &reportMeta.allocatorMeta[a];
+        switch(allocator->type)
+        {
+        case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+            enumContext.allocatorMeta->heaps.byteOffset = arrlenu(stbDaReportData);
+            korl_heap_linear_enumerate(_korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext, allocator->userData);
+            enumContext.allocatorMeta->allocations.byteOffset = arrlenu(stbDaReportData);
+            korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
+            break;}
+        case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
+            enumContext.allocatorMeta->heaps.byteOffset = arrlenu(stbDaReportData);
+            korl_heap_general_enumerate(_korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext, allocator->userData);
+            enumContext.allocatorMeta->allocations.byteOffset = arrlenu(stbDaReportData);
+            korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
+            break;}
+        default:{
+            korl_log(ERROR, "unknown allocator type '%i' not implemented", allocator->type);
+            break;}
+        }
+        //KORL-ISSUE-000-000-066: memory: sort report allocations by ascending address
+    }
+    context->stbDaReportData = stbDaReportData;// for now, we just set the singleton report in the context to be this report
+    return stbDaReportData;
+}
+korl_internal void korl_memory_reportLog(void* reportAddress)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+}
+#else//@TODO: recycle
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_reportGenerate_enumerateAllocationsCallback)
+{
+    _Korl_Memory_Report_EnumerateContext*const context = KORL_C_CAST(_Korl_Memory_Report_EnumerateContext*, userData);
+    mcarrpush(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), context->stbDaAllocationMeta, (_Korl_Memory_Report_EnumerateContext_Allocation){0});
+    _Korl_Memory_Report_EnumerateContext_Allocation*const newAllocMeta = &arrlast(context->stbDaAllocationMeta);
+    newAllocMeta->allocationAddress = allocation;
+    newAllocMeta->meta              = *meta;
+    context->totalUsedBytes += meta->bytes;
+    return true;// true => continue enumerating
+}
 korl_internal void* korl_memory_reportGenerate(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -596,8 +688,8 @@ korl_internal void* korl_memory_reportGenerate(void)
             mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->report->allocatorData[i].stbDaAllocationMeta);
         korl_free(context->allocatorHandle, context->report);
     }
-    _Korl_Memory_Report*const report = korl_allocate(context->allocatorHandle, 
-                                                     sizeof(*report) - sizeof(report->allocatorData) + KORL_MEMORY_POOL_SIZE(context->allocators)*sizeof(report->allocatorData));
+    _Korl_Memory_Report*const report = korl_allocate(context->allocatorHandle
+                                                    ,sizeof(*report) - sizeof(report->allocatorData) + KORL_MEMORY_POOL_SIZE(context->allocators)*sizeof(report->allocatorData));
     context->report = report;
     korl_memory_zero(report, sizeof(*report));
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
@@ -613,7 +705,7 @@ korl_internal void* korl_memory_reportGenerate(void)
                 - metadata: function, file, line
                 - address_start
                 - address_end */
-        _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[report->allocatorCount++];
+        _Korl_Memory_Report_EnumerateContext*const enumContext = &report->allocatorData[report->allocatorCount++];
         korl_memory_zero(enumContext, sizeof(*enumContext));
         korl_string_copyUtf16(allocator->name, (au16){korl_arraySize(enumContext->name), enumContext->name});
         enumContext->allocatorType       = allocator->type;
@@ -622,10 +714,10 @@ korl_internal void* korl_memory_reportGenerate(void)
         switch(allocator->type)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-            korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_logReport_enumerateCallback, enumContext, &enumContext->virtualAddressEnd);
+            korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, enumContext, &enumContext->virtualAddressEnd);
             break;}
         case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-            korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_logReport_enumerateCallback, enumContext, &enumContext->virtualAddressEnd);
+            korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, enumContext, &enumContext->virtualAddressEnd);
             break;}
         default:{
             korl_log(ERROR, "unknown allocator type '%i' not implemented", allocator->type);
@@ -641,7 +733,7 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
     korl_log_noMeta(INFO, "╔════ 🧠 Memory Report ════════════════════════════════╗");
     for(u$ ec = 0; ec < report->allocatorCount; ec++)
     {
-        _Korl_Memory_ReportEnumerateContext*const enumContext = &report->allocatorData[ec];
+        _Korl_Memory_Report_EnumerateContext*const enumContext = &report->allocatorData[ec];
         const char* allocatorType = NULL;
         switch(enumContext->allocatorType)
         {
@@ -652,7 +744,7 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
                         allocatorType, enumContext->name, enumContext->virtualAddressStart, enumContext->virtualAddressEnd, enumContext->totalUsedBytes);
         for(u$ a = 0; a < arrlenu(enumContext->stbDaAllocationMeta); a++)
         {
-            _Korl_Memory_ReportAllocationMetaData*const allocMeta = &enumContext->stbDaAllocationMeta[a];
+            _Korl_Memory_Report_EnumerateContext_Allocation*const allocMeta = &enumContext->stbDaAllocationMeta[a];
             const void*const allocAddressEnd = KORL_C_CAST(u8*, allocMeta->allocationAddress) + allocMeta->meta.bytes;
             korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i", 
                             a == arrlenu(enumContext->stbDaAllocationMeta) - 1 ? L"└" : L"├", 
@@ -663,6 +755,7 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ════════════════════════════╝");
 }
+#endif
 korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -682,10 +775,10 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        korl_heap_linear_enumerateAllocations(opaqueAllocator, allocator->userData, callback, callbackUserData, out_allocatorVirtualAddressEnd);
+        korl_heap_linear_enumerateAllocations(opaqueAllocator, allocator->userData, callback, callbackUserData);
         return;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_enumerateAllocations(opaqueAllocator, allocator->userData, callback, callbackUserData, out_allocatorVirtualAddressEnd);
+        korl_heap_general_enumerateAllocations(opaqueAllocator, allocator->userData, callback, callbackUserData);
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);

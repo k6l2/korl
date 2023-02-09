@@ -978,6 +978,18 @@ korl_internal void korl_heap_general_free(_Korl_Heap_General* allocator, void* a
             korl_assert(occupiedPageCountEnd == occupiedPageCountBegin - allocationPages);
         #endif
 }
+korl_internal KORL_HEAP_ENUMERATE(korl_heap_general_enumerate)
+{
+    _Korl_Heap_General*const allocator = heap;
+    const u$                 pageBytes = korl_memory_pageBytes();
+    _korl_heap_general_allocatorPagesUnguard(allocator);
+    const u$         allocatorPages    = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
+    const void*const virtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes + allocator->allocationPages*pageBytes;
+    callback(callbackUserData, allocator, virtualAddressEnd);
+    if(allocator->next)
+        korl_heap_general_enumerate(callback, callbackUserData, allocator->next);
+    _korl_heap_general_allocatorPagesGuard(allocator);
+}
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocations)
 {
     _Korl_Heap_General* allocator = KORL_C_CAST(_Korl_Heap_General*, allocatorUserData);
@@ -987,11 +999,9 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_general_enum
         /* sanity checks */
         _korl_heap_general_allocatorPagesUnguard(allocator);
         korl_assert(0 == KORL_C_CAST(u$, allocator) % korl_memory_virtualAlignBytes());
-        /* calculate virtual address range */
-        const u$ pageBytes      = korl_memory_pageBytes();
-        const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
-        if(out_allocatorVirtualAddressEnd)
-            *out_allocatorVirtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes + allocator->allocationPages*pageBytes;
+        /**/
+        const u$ pageBytes             = korl_memory_pageBytes();
+        const u$ allocatorPages        = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
         const u$ bitsPerFlagRegister   = 8*sizeof(*(allocator->availablePageFlags));
         const u$ usedPageFlagRegisters = korl_math_nextHighestDivision(allocator->allocationPages, bitsPerFlagRegister);
         u$ pageFlagsRemainder = 0;
@@ -1450,6 +1460,16 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
     guard_allocator:
         _korl_heap_linear_allocatorPageGuard(allocator);
 }
+korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
+{
+    _Korl_Heap_Linear*const allocator = heap;
+    _korl_heap_linear_allocatorPageUnguard(allocator);
+    const void*const virtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
+    callback(callbackUserData, allocator, virtualAddressEnd);
+    if(allocator->next)
+        korl_heap_linear_enumerate(callback, callbackUserData, allocator->next);
+    _korl_heap_linear_allocatorPageGuard(allocator);
+}
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations)
 {
     _Korl_Heap_Linear* allocator = KORL_C_CAST(_Korl_Heap_Linear*, allocatorUserData);
@@ -1461,8 +1481,6 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_linear_enume
         korl_assert(0 == KORL_C_CAST(u$, allocator) % korl_memory_virtualAlignBytes());
         korl_assert(0 == allocator->bytes           % pageBytes);
         /**/
-        if(out_allocatorVirtualAddressEnd)
-            *out_allocatorVirtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
         _korl_heap_linear_enumerateAllocationsRecurse(allocator, allocator->lastAllocation, callback, callbackUserData);
         _Korl_Heap_Linear*const nextAllocator = allocator->next;// we need to do this nonsense because we cannot access `allocator->next` once the allocator page(s) are guarded!
         _korl_heap_linear_allocatorPageGuard(allocator);
