@@ -1051,7 +1051,7 @@ korl_internal KORL_HEAP_ENUMERATE(korl_heap_general_enumerate)
     const void*const virtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes + allocator->allocationPages*pageBytes;
     callback(callbackUserData, allocator, virtualAddressEnd);
     if(allocator->next)
-        korl_heap_general_enumerate(callback, callbackUserData, allocator->next);
+        korl_heap_general_enumerate(allocator->next, callback, callbackUserData);
     _korl_heap_general_allocatorPagesGuard(allocator);
 }
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocations)
@@ -1526,7 +1526,7 @@ korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
     const void*const virtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocator->bytes;
     callback(callbackUserData, allocator, virtualAddressEnd);
     if(allocator->next)
-        korl_heap_linear_enumerate(callback, callbackUserData, allocator->next);
+        korl_heap_linear_enumerate(allocator->next, callback, callbackUserData);
     _korl_heap_linear_allocatorPageGuard(allocator);
 }
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations)

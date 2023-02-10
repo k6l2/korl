@@ -648,13 +648,13 @@ korl_internal void* korl_memory_reportGenerate(void)
         {
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
             enumContext.allocatorMeta->heaps.byteOffset = arrlenu(stbDaReportData);
-            korl_heap_linear_enumerate(_korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext, allocator->userData);
+            korl_heap_linear_enumerate(allocator->userData, _korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext);
             enumContext.allocatorMeta->allocations.byteOffset = arrlenu(stbDaReportData);
             korl_heap_linear_enumerateAllocations(allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
             break;}
         case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
             enumContext.allocatorMeta->heaps.byteOffset = arrlenu(stbDaReportData);
-            korl_heap_general_enumerate(_korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext, allocator->userData);
+            korl_heap_general_enumerate(allocator->userData, _korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext);
             enumContext.allocatorMeta->allocations.byteOffset = arrlenu(stbDaReportData);
             korl_heap_general_enumerateAllocations(allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
             break;}
@@ -747,10 +747,10 @@ korl_internal void korl_memory_allocator_enumerateHeaps(void* opaqueAllocator, f
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        korl_heap_linear_enumerate(callback, callbackUserData, allocator->userData);
+        korl_heap_linear_enumerate(allocator->userData, callback, callbackUserData);
         return;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_enumerate(callback, callbackUserData, allocator->userData);
+        korl_heap_general_enumerate(allocator->userData, callback, callbackUserData);
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -787,10 +787,10 @@ korl_internal bool korl_memory_allocator_containsAllocation(void* opaqueAllocato
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        korl_heap_linear_enumerate(_korl_memory_allocator_containsAllocation_enumHeapCallback, &enumContext, allocator->userData);
+        korl_heap_linear_enumerate(allocator->userData, _korl_memory_allocator_containsAllocation_enumHeapCallback, &enumContext);
         return enumContext.containsAllocation;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_enumerate(_korl_memory_allocator_containsAllocation_enumHeapCallback, &enumContext, allocator->userData);
+        korl_heap_general_enumerate(allocator->userData, _korl_memory_allocator_containsAllocation_enumHeapCallback, &enumContext);
         return enumContext.containsAllocation;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
