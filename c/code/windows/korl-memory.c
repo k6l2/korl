@@ -6,8 +6,7 @@
 #include "korl-stb-ds.h"
 #include "korl-heap.h"
 #if KORL_DEBUG
-    //@TODO: comment this out
-    #define _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
+    // #define _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
 #endif
 #define _KORL_MEMORY_MAX_ALLOCATORS 64
 typedef struct _Korl_Memory_Allocator

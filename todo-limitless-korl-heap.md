@@ -21,4 +21,4 @@
 [x] make expanded heaps occupy 2x the space of their parent
 [x] allow allocators to create an expanded heap if the requested allocation exceeds the capacity of the heap
 [x] ensure that memory report functionality still works
-[ ] ensure that save/load memory state functionality still works
+[x] ensure that save/load memory state functionality still works

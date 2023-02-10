@@ -659,7 +659,11 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
             /* if the user requested an address, and that address is outside of this 
                 heap's virtual memory range, we need to check the next heap in the 
                 linked list to see if it can contain the address */
-            korl_assert(!"@TODO");
+            if(!allocator->next)
+                korl_log(ERROR, "allocation not found");
+            result = korl_heap_general_allocate(allocator->next, bytes, file, line, requestedAddress);
+            korl_assert(result);
+            goto guardAllocator_returnResult;
         }
         korl_assert(requestedAddress >= allocationRegionBegin);// we must be inside the allocation region
         korl_assert(requestedAddress <  allocationRegionEnd);  // we must be inside the allocation region
@@ -680,11 +684,11 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
     if(   availablePageIndex                   >= allocator->allocationPages 
        || availablePageIndex + allocationPages >  allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
     {
-        korl_log(WARNING, "occupyAvailablePages failed; allocator may require defragmentation, or may have run out of space");
         if(availablePageIndex + allocationPages > allocator->allocationPages)
             _korl_heap_general_setPageFlags(allocator, availablePageIndex, allocationPages, false);//required only because of KORL-ISSUE-000-000-088
         if(!allocator->next)
         {
+            korl_log(WARNING, "general allocator out of memory");
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
@@ -851,12 +855,12 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
         /* if we failed to occupy newAllocationPages, that means the allocator 
             is full; we need to create a new allocation in another heap, copy 
             the data of this allocation to the new one, and zero/guard this memory */
-        korl_log(WARNING, "occupyAvailablePages failed; allocator may require defragmentation, or may have run out of space");
         if(newAllocationPage + newAllocationPages > allocator->allocationPages)
             _korl_heap_general_setPageFlags(allocator, newAllocationPage, newAllocationPages, false);//required only because of KORL-ISSUE-000-000-088
         // create a new allocation in another heap in the heap linked list //
         if(!allocator->next)
         {
+            korl_log(WARNING, "general allocator out of memory");
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
@@ -1202,7 +1206,11 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
         if(   KORL_C_CAST(u8*, requestedAddress) <  KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes)
            || KORL_C_CAST(u8*, requestedAddress) >= KORL_C_CAST(u8*, allocator) + allocator->bytes)
         {
-            korl_assert(!"@TODO");
+            if(!allocator->next)
+                korl_log(ERROR, "allocation not found");
+            allocationAddress = korl_heap_linear_allocate(allocator->next, bytes, file, line, requestedAddress);
+            korl_assert(allocationAddress);
+            goto guardAllocator_return_allocationAddress;
         }
         /* _huge_ simplification here: let's try just requiring the caller to 
             inject allocations at specific addresses in a strictly increasing 
@@ -1221,9 +1229,9 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
         [nextAllocationAddress, lastReservedAddress] */
     if(KORL_C_CAST(u8*, metaAddress) + totalAllocationBytes > allocatorEnd)
     {
-        korl_log(WARNING, "linear allocator out of memory");//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
         if(!allocator->next)
         {
+            korl_log(WARNING, "linear allocator out of memory");//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
@@ -1339,6 +1347,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             /* create a new allocation in a later part of the korl-heap list */
             if(!allocator->next)
             {
+                korl_log(WARNING, "linear allocator out of memory");
                 /* we want to either (depending on which results in more pages): 
                     - double the amount of allocationPages of the next allocator
                     - have at _least_ the # of allocationPages required to satisfy `bytes` */
