@@ -975,7 +975,7 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
             continue;
         }
         const _Korl_Gfx_Text_Line*const line = &(context->stbDaLines[l]);
-        KORL_MATH_ASSIGN_CLAMP_MAX(context->_modelAabb.max.x, line->modelAabb.max.x);
+        KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabb.max.x, line->modelAabb.max.x);
     }
     arrdeln(context->stbDaLines, 0, linesToRemove);
     context->totalVisibleGlyphs -= korl_checkCast_u$_to_u32(glyphsToRemove);

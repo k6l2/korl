@@ -1904,7 +1904,7 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, 3);
                 korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
             }
-            if(batchText->_instanceCount)//KORL-ISSUE-000-000-118: gui: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
+            if(batchText->_instanceCount)
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
             /* draw a cursor _above_ the text, if the cursor defines a single grapheme index */
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin >= cursorEnd)
