@@ -545,6 +545,8 @@ korl_internal void korl_stringPool_free(Korl_StringPool_String string)//KORL-ISS
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* deallocate any raw string allocations */
+    if(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
+        _korl_stringPool_free(context, context->stbDaStrings[s].poolByteOffsetUtf8);
     if(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
         _korl_stringPool_free(context, context->stbDaStrings[s].poolByteOffsetUtf16);
     /* remove the string from the string array */
