@@ -419,8 +419,10 @@ korl_internal void _korl_gui_widget_scrollBar_onMouseDrag(_Korl_Gui_Widget* widg
 korl_internal void korl_gui_initialize(void)
 {
     korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(8), L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
+    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
+    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     _korl_gui_context.stringPool                           = korl_allocate(_korl_gui_context.allocatorHandleHeap, sizeof(*_korl_gui_context.stringPool));
     *_korl_gui_context.stringPool                          = korl_stringPool_create(_korl_gui_context.allocatorHandleHeap);
     _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};

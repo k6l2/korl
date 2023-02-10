@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-memory.h"
+#include "korl-heap.h"
 typedef struct Korl_Memory_AllocationMeta
 {
     const wchar_t* file;
@@ -22,11 +23,8 @@ typedef struct Korl_Memory_FileMapAllocation_CreateInfo
     u16        virtualRegionCount;
     const u16* virtualRegionMap;
 } Korl_Memory_FileMapAllocation_CreateInfo;
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
-typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocationsCallback);
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(name) void name(void* opaqueAllocator, void* allocatorUserData, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData)
 /** \return \c true to continue enumeration, \c false to stop enumerating allocators */
-#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) bool name(void* userData, void* opaqueAllocator, void* allocatorUserData, Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags)
+#define KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(name) bool name(void* userData, void* opaqueAllocator, Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags allocatorFlags)
 typedef KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(fnSig_korl_memory_allocator_enumerateAllocatorsCallback);
 korl_internal void korl_memory_initialize(void);
 korl_internal u$   korl_memory_pageBytes(void);
@@ -42,7 +40,7 @@ korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal KORL_FUNCTION_korl_memory_allocator_create    (korl_memory_allocator_create);
 korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle handle);
-korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, void* newAddress);
+korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, u$ heapDescriptorCount, void* heapDescriptors, u$ heapDescriptorStride, u32 heapDescriptorOffset_addressStart, u32 heapDescriptorOffset_addressEnd);
 korl_internal KORL_FUNCTION_korl_memory_allocator_allocate  (korl_memory_allocator_allocate);
 korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocator_reallocate);
 korl_internal KORL_FUNCTION_korl_memory_allocator_free      (korl_memory_allocator_free);
@@ -53,8 +51,9 @@ korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 korl_internal void* korl_memory_reportGenerate(void);
 /** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */
 korl_internal void korl_memory_reportLog(void* reportAddress);
-korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData);
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations);
+korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback* callback, void* callbackUserData);
+korl_internal void korl_memory_allocator_enumerateAllocations(void* opaqueAllocator, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData);
+korl_internal void korl_memory_allocator_enumerateHeaps(void* opaqueAllocator, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData);
 /** \param out_allocatorIndex if the return value is \c true , then the memory 
  * at this address is populated with the internal index of the found allocator.
  * \return \c true if the allocator with the given \c name exists */

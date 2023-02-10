@@ -741,10 +741,12 @@ korl_internal void korl_gfx_initialize(void)
 {
     _Korl_Gfx_Context*const context = &_korl_gfx_context;
     korl_memory_zero(context, sizeof(*context));
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(8);
     context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL
-                                                           ,korl_math_megabytes(8), L"korl-gfx"
+                                                           ,L"korl-gfx"
                                                            ,KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE
-                                                           ,NULL/*let platform choose address*/);
+                                                           ,&heapCreateInfo);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFontCaches, 16);
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
 }

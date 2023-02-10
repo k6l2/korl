@@ -29,6 +29,15 @@ typedef enum Korl_Memory_AllocatorFlags
     , KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME            = 1 << 1
     , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE         = 1 << 2
 } Korl_Memory_AllocatorFlags;
+typedef struct Korl_Heap_CreateInfo
+{
+    u$          initialHeapBytes;// ignored if heapDescriptorCount is non-zero
+    u32         heapDescriptorCount;// if non-zero, all fields below _must_ be populated with valid data
+    const void* heapDescriptors;
+    u32         heapDescriptorStride;
+    u32         heapDescriptorOffset_addressStart;
+    u32         heapDescriptorOffset_addressEnd;
+} Korl_Heap_CreateInfo;
 /** As of right now, the smallest possible value for \c maxBytes for a linear 
  * allocator is 16 kilobytes (4 pages), since two pages are required for the 
  * allocator struct, and a minimum of two pages are required for each allocation 
@@ -37,7 +46,7 @@ typedef enum Korl_Memory_AllocatorFlags
  * \param address [OPTIONAL] the allocator itself will attempt to be placed at 
  * the specified virtual address.  If this value is \c NULL , the operating 
  * system will choose this address for us. */
-#define KORL_FUNCTION_korl_memory_allocator_create(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, u$ maxBytes, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags, void* address)
+#define KORL_FUNCTION_korl_memory_allocator_create(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags, const Korl_Heap_CreateInfo* heapCreateInfo)
 /** \param address [OPTIONAL] the allocation will be placed at this exact 
  * address in the allocator.  Safety checks are performed to ensure that the 
  * specified address is valid (within allocator address range, not overlapping 

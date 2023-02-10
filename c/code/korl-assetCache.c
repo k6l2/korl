@@ -43,7 +43,9 @@ korl_internal void korl_assetCache_initialize(void)
     _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
     korl_memory_zero(context, sizeof(*context));
     //KORL-PERFORMANCE-000-000-026: savestate/assetCache: there is no need to save/load every asset; we only need assets that have been flagged as "operation critical"
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_gigabytes(1), L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*let platform choose address*/);
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_gigabytes(1);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     context->stringPool      = korl_allocate(context->allocatorHandle, sizeof(*context->stringPool));
     *context->stringPool     = korl_stringPool_create(context->allocatorHandle);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size

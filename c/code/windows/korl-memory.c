@@ -13,7 +13,6 @@
 typedef struct _Korl_Memory_Allocator
 {
     void* userData;// points to the start address of the actual specialized allocator virtual memory arena (linear, general, etc...)
-    u$ maxBytes;// redundant; conveniently get this number from the allocator pool without having to call allocator-type-specific API
     Korl_Memory_AllocatorHandle handle;
     Korl_Memory_AllocatorType type;
     Korl_Memory_AllocatorFlags flags;
@@ -127,9 +126,11 @@ korl_internal void korl_memory_initialize(void)
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_memory_zero(context, sizeof(*context));
     GetSystemInfo(&context->systemInfo);// _VERY_ important; must be run before almost everything in the KORL platform layer
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
     context->mainThreadId                     = GetCurrentThreadId();
-    context->allocatorHandle                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-memory"            , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
-    context->allocatorHandlePersistentStrings = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , korl_math_megabytes(1), L"korl-memory-fileStrings", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    context->allocatorHandle                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-memory"            , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    context->allocatorHandlePersistentStrings = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , L"korl-memory-fileStrings", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     context->stringHashKorlMemory             = _korl_memory_hashString(__FILEW__);// _must_ be run before making any dynamic allocations in the korl-memory module
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, 1024);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle)                 , context->stbDaFileNameStrings      , 128);
@@ -164,8 +165,9 @@ korl_internal void korl_memory_initialize(void)
     #endif
     #ifdef _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
     {
+        heapCreateInfo.initialHeapBytes = context->systemInfo.dwPageSize*4;
         u8* testAllocs[3];
-        Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, context->systemInfo.dwPageSize*4, L"_korl-memory-test-general", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+        Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"_korl-memory-test-general", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
         // expected allocator page occupied flags: 0b000
         testAllocs[0] = korl_allocate(allocator, 32);
         // expected allocator page occupied flags: 0b010
@@ -182,7 +184,7 @@ korl_internal void korl_memory_initialize(void)
         korl_memory_allocator_empty(allocator); korl_memory_zero(testAllocs, sizeof(testAllocs));
         // expected allocator page occupied flags: 0b000 0b000000 0b000000000000
         korl_memory_allocator_destroy(allocator);
-        allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, context->systemInfo.dwPageSize*4, L"_korl-memory-test-linear", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+        allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"_korl-memory-test-linear", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
         // expected allocator page occupied flags: 0b000
         testAllocs[0] = korl_allocate(allocator, 32);
         // expected allocator page occupied flags: 0b010
@@ -349,14 +351,13 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_c
     newAllocator->type     = type;
     newAllocator->handle   = newHandle;
     newAllocator->flags    = flags;
-    newAllocator->maxBytes = maxBytes;
     switch(type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        newAllocator->userData = korl_heap_linear_create(maxBytes, address);
+        newAllocator->userData = korl_heap_linear_create(heapCreateInfo);
         break;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        newAllocator->userData = korl_heap_general_create(maxBytes, address);
+        newAllocator->userData = korl_heap_general_create(heapCreateInfo);
         break;}
     default:{
         korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", type);
@@ -390,7 +391,7 @@ korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle han
     }
     KORL_MEMORY_POOL_REMOVE(context->allocators, a);
 }
-korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, void* newAddress)
+korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, u$ heapDescriptorCount, void* heapDescriptors, u$ heapDescriptorStride, u32 heapDescriptorOffset_addressStart, u32 heapDescriptorOffset_addressEnd)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(GetCurrentThreadId() == context->mainThreadId);
@@ -400,15 +401,21 @@ korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle ha
             break;
     korl_assert(a < KORL_MEMORY_POOL_SIZE(context->allocators));
     _Korl_Memory_Allocator*const allocator = &context->allocators[a];
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.heapDescriptorCount               = korl_checkCast_u$_to_u32(heapDescriptorCount);
+    heapCreateInfo.heapDescriptors                   = heapDescriptors;
+    heapCreateInfo.heapDescriptorStride              = korl_checkCast_u$_to_u32(heapDescriptorStride);
+    heapCreateInfo.heapDescriptorOffset_addressStart = heapDescriptorOffset_addressStart;
+    heapCreateInfo.heapDescriptorOffset_addressEnd   = heapDescriptorOffset_addressEnd;
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         korl_heap_linear_destroy(allocator->userData);
-        allocator->userData = korl_heap_linear_create(allocator->maxBytes, newAddress);
+        allocator->userData = korl_heap_linear_create(&heapCreateInfo);
         break;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
         korl_heap_general_destroy(allocator->userData);
-        allocator->userData = korl_heap_general_create(allocator->maxBytes, newAddress);
+        allocator->userData = korl_heap_general_create(&heapCreateInfo);
         break;}
     default:{
         korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -535,7 +542,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_empty(korl_memory_allocator_em
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_allocator_isEmpty_enumAllocationsCallback)
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_allocator_isEmpty_enumAllocationsCallback)
 {
     bool*const resultIsEmpty = KORL_C_CAST(bool*, userData);
     *resultIsEmpty = false;
@@ -556,10 +563,10 @@ korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle han
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         //KORL-ISSUE-000-000-080: memory: korl_heap_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
-        korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
+        korl_heap_linear_enumerateAllocations(allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
         return resultIsEmpty;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
+        korl_heap_general_enumerateAllocations(allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
         return resultIsEmpty;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -599,7 +606,7 @@ korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_memory_reportGenerate_enumerate
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), enumContext->stbDaReportData, &heapMeta, sizeof(heapMeta));
     enumContext->allocatorMeta->heaps.size++;
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_reportGenerate_enumerateAllocationsCallback)
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_reportGenerate_enumerateAllocationsCallback)
 {
     _Korl_Memory_ReportGenerate_EnumContext*const enumContext = KORL_C_CAST(_Korl_Memory_ReportGenerate_EnumContext*, userData);
     const _Korl_Memory_ReportMeta_Allocation allocationMeta = {.allocationAddress = allocation
@@ -644,13 +651,13 @@ korl_internal void* korl_memory_reportGenerate(void)
             enumContext.allocatorMeta->heaps.byteOffset = arrlenu(stbDaReportData);
             korl_heap_linear_enumerate(_korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext, allocator->userData);
             enumContext.allocatorMeta->allocations.byteOffset = arrlenu(stbDaReportData);
-            korl_heap_linear_enumerateAllocations(allocator, allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
+            korl_heap_linear_enumerateAllocations(allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
             break;}
         case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
             enumContext.allocatorMeta->heaps.byteOffset = arrlenu(stbDaReportData);
             korl_heap_general_enumerate(_korl_memory_reportGenerate_enumerateHeapsCallback, &enumContext, allocator->userData);
             enumContext.allocatorMeta->allocations.byteOffset = arrlenu(stbDaReportData);
-            korl_heap_general_enumerateAllocations(allocator, allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
+            korl_heap_general_enumerateAllocations(allocator->userData, _korl_memory_reportGenerate_enumerateAllocationsCallback, &enumContext);
             break;}
         default:{
             korl_log(ERROR, "unknown allocator type '%i' not implemented", allocator->type);
@@ -713,11 +720,11 @@ korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_a
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
-        if(!callback(callbackUserData, allocator, allocator->userData, allocator->handle, allocator->name, allocator->flags))
+        if(!callback(callbackUserData, allocator, allocator->handle, allocator->name, allocator->flags))
             break;
     }
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_enumerateAllocations)
+korl_internal void korl_memory_allocator_enumerateAllocations(void* opaqueAllocator, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
@@ -725,10 +732,26 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_memory_allocator_
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        korl_heap_linear_enumerateAllocations(opaqueAllocator, allocator->userData, callback, callbackUserData);
+        korl_heap_linear_enumerateAllocations(allocator->userData, callback, callbackUserData);
         return;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_enumerateAllocations(opaqueAllocator, allocator->userData, callback, callbackUserData);
+        korl_heap_general_enumerateAllocations(allocator->userData, callback, callbackUserData);
+        return;}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+}
+korl_internal void korl_memory_allocator_enumerateHeaps(void* opaqueAllocator, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    korl_assert(context->mainThreadId == GetCurrentThreadId());
+    _Korl_Memory_Allocator*const allocator = opaqueAllocator;
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        korl_heap_linear_enumerate(callback, callbackUserData, allocator->userData);
+        return;}
+    case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
+        korl_heap_general_enumerate(callback, callbackUserData, allocator->userData);
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -745,13 +768,34 @@ korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Me
         }
     return false;
 }
+typedef struct _Korl_Memory_ContainsAllocation_EnumContext
+{
+    bool        containsAllocation;
+    const void* allocation;
+} _Korl_Memory_ContainsAllocation_EnumContext;
+korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_memory_allocator_containsAllocation_enumHeapCallback)
+{
+    _Korl_Memory_ContainsAllocation_EnumContext*const enumContext = KORL_C_CAST(_Korl_Memory_ContainsAllocation_EnumContext*, userData);
+    if(enumContext->allocation >= virtualAddressStart && enumContext->allocation < virtualAddressEnd)
+        enumContext->containsAllocation = true;
+}
 korl_internal bool korl_memory_allocator_containsAllocation(void* opaqueAllocator, const void* allocation)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
     _Korl_Memory_Allocator*const allocator = opaqueAllocator;
-    return allocation >= allocator->userData 
-        && KORL_C_CAST(const u8*, allocation) < KORL_C_CAST(const u8*, allocator->userData) + allocator->maxBytes;
+    KORL_ZERO_STACK(_Korl_Memory_ContainsAllocation_EnumContext, enumContext);
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        korl_heap_linear_enumerate(_korl_memory_allocator_containsAllocation_enumHeapCallback, &enumContext, allocator->userData);
+        return enumContext.containsAllocation;}
+    case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
+        korl_heap_general_enumerate(_korl_memory_allocator_containsAllocation_enumHeapCallback, &enumContext, allocator->userData);
+        return enumContext.containsAllocation;}
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+    return false;
 }
 korl_internal void* korl_memory_fileMapAllocation_create(const Korl_Memory_FileMapAllocation_CreateInfo* createInfo, u$* out_physicalMemoryChunkBytes)
 {

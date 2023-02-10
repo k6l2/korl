@@ -39,7 +39,9 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_command_commandHelp)
 }
 korl_internal void korl_command_initialize(acu8 utf8PlatformModuleName)
 {
-    _korl_command_context.allocator                = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(1), L"korl-command", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL);
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
+    _korl_command_context.allocator                = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-command", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     _korl_command_context.stringPool               = korl_allocate(_korl_command_context.allocator, sizeof(*_korl_command_context.stringPool));
     *_korl_command_context.stringPool              = korl_stringPool_create(_korl_command_context.allocator);
     _korl_command_context.stringPlatformModuleName = korl_stringNewAcu8(_korl_command_context.stringPool, utf8PlatformModuleName);

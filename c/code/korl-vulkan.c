@@ -1177,7 +1177,9 @@ korl_internal void korl_vulkan_construct(void)
     /* sanity check - ensure that the memory is nullified */
     korl_assert(korl_memory_isNull(context, sizeof(*context)));
     /**/
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-vulkan", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*auto-choose start address*/);
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(8);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-vulkan", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     /* get a list of VkLayerProperties so we can check of validation layer 
         support if needed */
     KORL_ZERO_STACK(u32, layerCount);

@@ -1,6 +1,7 @@
 #include "korl-heap.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"// for KorlEnumLogLevel
+#include "korl-memory.h"
 #define _KORL_HEAP_INVALID_BYTE_PATTERN 0xFE
 #define _KORL_HEAP_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES 1
 #define _KORL_HEAP_GENERAL_GUARD_ALLOCATOR 1
@@ -411,58 +412,12 @@ korl_internal void _korl_heap_general_growCommitPages(_Korl_Heap_General* alloca
     }
 }
 #endif
-korl_internal void _korl_heap_linear_allocatorPageGuard(_Korl_Heap_Linear* allocator)
+korl_internal _Korl_Heap_General* _korl_heap_general_create(u$ bytes, void* address)
 {
-    DWORD oldProtect;
-    if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE | PAGE_GUARD, &oldProtect))
-        korl_logLastError("VirtualProtect failed!");
-    korl_assert(oldProtect == PAGE_READWRITE);
-}
-korl_internal void _korl_heap_linear_allocatorPageUnguard(_Korl_Heap_Linear* allocator)
-{
-    DWORD oldProtect;
-    if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
-        korl_logLastError("VirtualProtect failed!");
-    korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
-}
-
-/** iterate over allocations recursively on the stack so that we can iterate in 
- * monotonically-increasing memory addresses */
-korl_internal bool _korl_heap_linear_enumerateAllocationsRecurse(_Korl_Heap_Linear*const allocator, void* allocation, fnSig_korl_memory_allocator_enumerateAllocationsCallback* callback, void* callbackUserData)
-{
-    /* halt recursion when we reach a NULL allocation */
-    if(!allocation)
-        return false;
-    /* sanity checks */
-    const u$ pageBytes = korl_memory_pageBytes();
-    /* ensure that this address is actually within the allocator's range */
-    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator), pageBytes);
-    korl_assert(KORL_C_CAST(u8*, allocation) >= KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes)
-             && KORL_C_CAST(u8*, allocation) <  KORL_C_CAST(u8*, allocator) + allocator->bytes);
-    /* ensure that the allocation meta address is divisible by the page size, 
-        because this is currently a constraint of this allocator */
-    const u$ metaBytesRequired = sizeof(_Korl_Heap_Linear_AllocationMeta) 
-                               + sizeof(_KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*exclude null terminator*/;
-    korl_assert((KORL_C_CAST(u$, allocation) - metaBytesRequired) % pageBytes == 0);
-    /* ensure that the memory just before the allocation is the constant meta 
-        separator string */
-    korl_assert(0 == korl_memory_compare(KORL_C_CAST(u8*, allocation) - (sizeof(_KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*exclude null terminator*/), 
-                                         _KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR, 
-                                         sizeof(_KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*exclude null terminator*/));
-    /* recurse into the previous allocation */
-    _Korl_Heap_Linear_AllocationMeta*const allocationMeta = 
-        KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - metaBytesRequired);
-    const bool resultRecurse = _korl_heap_linear_enumerateAllocationsRecurse(allocator, allocationMeta->previousAllocation, callback, callbackUserData);
-    /* perform the enumeration callback after the stack is drained */
-    //KORL-ISSUE-000-000-080: memory: korl_heap_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
-    return callback(callbackUserData, allocation, &(allocationMeta->allocationMeta)) | resultRecurse;
-}
-korl_internal _Korl_Heap_General* korl_heap_general_create(u$ maxBytes, void* address)
-{
-    korl_assert(maxBytes > 0);
+    korl_assert(bytes > 0);
     _Korl_Heap_General* result = NULL;
     const u$ pageBytes                     = korl_memory_pageBytes();
-    const u$ pagesRequired                 = korl_math_nextHighestDivision(maxBytes, pageBytes);
+    const u$ pagesRequired                 = korl_math_nextHighestDivision(bytes, pageBytes);
     const u$ allocatorBytesRequiredMinimum = sizeof(*result);
     /* we need to figure out the minimum # of allocator pages we need in order 
         to be able to store an array of flags used to keep track of all the 
@@ -514,6 +469,111 @@ korl_internal _Korl_Heap_General* korl_heap_general_create(u$ maxBytes, void* ad
     allocator->availablePageFlagsSize = availablePageFlagsSizeMax;
     /* guard the allocator pages */
     _korl_heap_general_allocatorPagesGuard(allocator);
+    return result;
+}
+korl_internal void _korl_heap_linear_allocatorPageGuard(_Korl_Heap_Linear* allocator)
+{
+    DWORD oldProtect;
+    if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE | PAGE_GUARD, &oldProtect))
+        korl_logLastError("VirtualProtect failed!");
+    korl_assert(oldProtect == PAGE_READWRITE);
+}
+korl_internal void _korl_heap_linear_allocatorPageUnguard(_Korl_Heap_Linear* allocator)
+{
+    DWORD oldProtect;
+    if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
+        korl_logLastError("VirtualProtect failed!");
+    korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+}
+/** iterate over allocations recursively on the stack so that we can iterate in 
+ * monotonically-increasing memory addresses */
+korl_internal bool _korl_heap_linear_enumerateAllocationsRecurse(_Korl_Heap_Linear*const allocator, void* allocation, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)
+{
+    /* halt recursion when we reach a NULL allocation */
+    if(!allocation)
+        return false;
+    /* sanity checks */
+    const u$ pageBytes = korl_memory_pageBytes();
+    /* ensure that this address is actually within the allocator's range */
+    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*allocator), pageBytes);
+    korl_assert(KORL_C_CAST(u8*, allocation) >= KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes)
+             && KORL_C_CAST(u8*, allocation) <  KORL_C_CAST(u8*, allocator) + allocator->bytes);
+    /* ensure that the allocation meta address is divisible by the page size, 
+        because this is currently a constraint of this allocator */
+    const u$ metaBytesRequired = sizeof(_Korl_Heap_Linear_AllocationMeta) 
+                               + sizeof(_KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*exclude null terminator*/;
+    korl_assert((KORL_C_CAST(u$, allocation) - metaBytesRequired) % pageBytes == 0);
+    /* ensure that the memory just before the allocation is the constant meta 
+        separator string */
+    korl_assert(0 == korl_memory_compare(KORL_C_CAST(u8*, allocation) - (sizeof(_KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*exclude null terminator*/), 
+                                         _KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR, 
+                                         sizeof(_KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR) - 1/*exclude null terminator*/));
+    /* recurse into the previous allocation */
+    _Korl_Heap_Linear_AllocationMeta*const allocationMeta = 
+        KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - metaBytesRequired);
+    const bool resultRecurse = _korl_heap_linear_enumerateAllocationsRecurse(allocator, allocationMeta->previousAllocation, callback, callbackUserData);
+    /* perform the enumeration callback after the stack is drained */
+    //KORL-ISSUE-000-000-080: memory: korl_heap_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
+    return callback(callbackUserData, allocation, &(allocationMeta->allocationMeta)) | resultRecurse;
+}
+korl_internal _Korl_Heap_Linear* _korl_heap_linear_create(u$ bytes, void* address)
+{
+    _Korl_Heap_Linear* result = NULL;
+    korl_assert(bytes > 0);
+    korl_assert(bytes >= sizeof(*result));
+    const u$ pagesRequired      = korl_math_nextHighestDivision(bytes, korl_memory_pageBytes());
+    const u$ totalBytesRequired = pagesRequired * korl_memory_pageBytes();
+    /* reserve all these pages */
+    LPVOID resultVirtualAlloc = VirtualAlloc(address, totalBytesRequired, MEM_RESERVE, PAGE_NOACCESS);
+    if(resultVirtualAlloc == NULL)
+        korl_logLastError("VirtualAlloc failed!");
+    result = resultVirtualAlloc;
+    /* commit the first pages for the allocator itself */
+    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*result), korl_memory_pageBytes());
+    const u$ allocatorBytes = allocatorPages * korl_memory_pageBytes();
+    resultVirtualAlloc = VirtualAlloc(result, allocatorBytes, MEM_COMMIT, PAGE_READWRITE);
+    if(resultVirtualAlloc == NULL)
+        korl_logLastError("VirtualAlloc failed!");
+    /* initialize the memory of the allocator userData */
+    korl_shared_const i8 ALLOCATOR_PAGE_MEMORY_PATTERN[] = "KORL-LinearAllocator-Page|";
+    _Korl_Heap_Linear*const allocator = KORL_C_CAST(_Korl_Heap_Linear*, resultVirtualAlloc);
+    // fill the allocator page with a readable pattern for easier debugging //
+    for(u$ currFillByte = 0; currFillByte < allocatorBytes; )
+    {
+        const u$ remainingBytes = allocatorBytes - currFillByte;
+        const u$ availableFillBytes = KORL_MATH_MIN(remainingBytes, sizeof(ALLOCATOR_PAGE_MEMORY_PATTERN) - 1/*do not copy NULL-terminator*/);
+        korl_memory_copy(KORL_C_CAST(u8*, allocator) + currFillByte, ALLOCATOR_PAGE_MEMORY_PATTERN, availableFillBytes);
+        currFillByte += availableFillBytes;
+    }
+    korl_memory_zero(allocator, sizeof(*allocator));
+    allocator->bytes = totalBytesRequired;
+    /* guard the allocator page */
+    _korl_heap_linear_allocatorPageGuard(allocator);
+    return result;
+}
+korl_internal _Korl_Heap_General* korl_heap_general_create(const Korl_Heap_CreateInfo* createInfo)
+{
+    if(createInfo->heapDescriptorCount <= 0)
+        return _korl_heap_general_create(createInfo->initialHeapBytes, NULL);
+    _Korl_Heap_General* result = NULL;
+    _Korl_Heap_General** currentHeapList = &result;
+    for(u32 h = 0; h < createInfo->heapDescriptorCount; h++)
+    {
+        u$*const       heapAddressStart = KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressStart);
+        const u$*const heapAddressEnd   = KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressEnd);
+        korl_assert(*heapAddressEnd > *heapAddressStart);
+        const u$ heapBytes = *heapAddressEnd - *heapAddressStart;
+        *currentHeapList = _korl_heap_general_create(heapBytes, KORL_C_CAST(void*, *heapAddressStart));
+        _korl_heap_general_allocatorPagesUnguard(*currentHeapList);// unguard the heap so that we can modify its next pointer if we need to
+        currentHeapList = &((*currentHeapList)->next);
+    }
+    /* guard all the heaps now that the linked list is complete */
+    for(_Korl_Heap_General* heap = result; heap;)
+    {
+        _Korl_Heap_General*const heapNext = heap->next;
+        _korl_heap_general_allocatorPagesGuard(heap);
+        heap = heapNext;
+    }
     return result;
 }
 korl_internal void korl_heap_general_destroy(_Korl_Heap_General* allocator)
@@ -629,7 +689,7 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
             const u$ nextHeapPages = KORL_MATH_MAX(2*allocator->allocationPages, 1/*include preceding guard page*/+allocationPages);
-            allocator->next = korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
+            allocator->next = _korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
         }
         result = korl_heap_general_allocate(allocator->next, bytes, file, line, requestedAddress);
         if(!result)
@@ -801,7 +861,7 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
             const u$ nextHeapPages = KORL_MATH_MAX(2*allocator->allocationPages, 1/*include preceding guard page*/+newAllocationPages);
-            allocator->next = korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
+            allocator->next = _korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
         }
         void*const newAllocation = korl_heap_general_allocate(allocator->next, bytes, file, line, NULL);
         if(!newAllocation)
@@ -990,7 +1050,7 @@ korl_internal KORL_HEAP_ENUMERATE(korl_heap_general_enumerate)
         korl_heap_general_enumerate(callback, callbackUserData, allocator->next);
     _korl_heap_general_allocatorPagesGuard(allocator);
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocations)
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocations)
 {
     _Korl_Heap_General* allocator = KORL_C_CAST(_Korl_Heap_General*, allocatorUserData);
     bool abortEnumeration = false;
@@ -1044,39 +1104,29 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_general_enum
             allocator = nextAllocator;
     }
 }
-korl_internal _Korl_Heap_Linear* korl_heap_linear_create(u$ maxBytes, void* address)
+korl_internal _Korl_Heap_Linear* korl_heap_linear_create(const Korl_Heap_CreateInfo* createInfo)
 {
+    if(createInfo->heapDescriptorCount <= 0)
+        return _korl_heap_linear_create(createInfo->initialHeapBytes, NULL);
     _Korl_Heap_Linear* result = NULL;
-    korl_assert(maxBytes > 0);
-    korl_assert(maxBytes >= sizeof(*result));
-    const u$ pagesRequired      = korl_math_nextHighestDivision(maxBytes, korl_memory_pageBytes());
-    const u$ totalBytesRequired = pagesRequired * korl_memory_pageBytes();
-    /* reserve all these pages */
-    LPVOID resultVirtualAlloc = VirtualAlloc(address, totalBytesRequired, MEM_RESERVE, PAGE_NOACCESS);
-    if(resultVirtualAlloc == NULL)
-        korl_logLastError("VirtualAlloc failed!");
-    result = resultVirtualAlloc;
-    /* commit the first pages for the allocator itself */
-    const u$ allocatorPages = korl_math_nextHighestDivision(sizeof(*result), korl_memory_pageBytes());
-    const u$ allocatorBytes = allocatorPages * korl_memory_pageBytes();
-    resultVirtualAlloc = VirtualAlloc(result, allocatorBytes, MEM_COMMIT, PAGE_READWRITE);
-    if(resultVirtualAlloc == NULL)
-        korl_logLastError("VirtualAlloc failed!");
-    /* initialize the memory of the allocator userData */
-    korl_shared_const i8 ALLOCATOR_PAGE_MEMORY_PATTERN[] = "KORL-LinearAllocator-Page|";
-    _Korl_Heap_Linear*const allocator = KORL_C_CAST(_Korl_Heap_Linear*, resultVirtualAlloc);
-    // fill the allocator page with a readable pattern for easier debugging //
-    for(u$ currFillByte = 0; currFillByte < allocatorBytes; )
+    _Korl_Heap_Linear** currentHeapList = &result;
+    for(u32 h = 0; h < createInfo->heapDescriptorCount; h++)
     {
-        const u$ remainingBytes = allocatorBytes - currFillByte;
-        const u$ availableFillBytes = KORL_MATH_MIN(remainingBytes, sizeof(ALLOCATOR_PAGE_MEMORY_PATTERN) - 1/*do not copy NULL-terminator*/);
-        korl_memory_copy(KORL_C_CAST(u8*, allocator) + currFillByte, ALLOCATOR_PAGE_MEMORY_PATTERN, availableFillBytes);
-        currFillByte += availableFillBytes;
+        u$*const       heapAddressStart = KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressStart);
+        const u$*const heapAddressEnd   = KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressEnd);
+        korl_assert(*heapAddressEnd > *heapAddressStart);
+        const u$ heapBytes = *heapAddressEnd - *heapAddressStart;
+        *currentHeapList = _korl_heap_linear_create(heapBytes, KORL_C_CAST(void*, *heapAddressStart));
+        _korl_heap_linear_allocatorPageUnguard(*currentHeapList);// unguard the heap so that we can modify its next pointer if we need to
+        currentHeapList = &((*currentHeapList)->next);
     }
-    korl_memory_zero(allocator, sizeof(*allocator));
-    allocator->bytes = totalBytesRequired;
-    /* guard the allocator page */
-    _korl_heap_linear_allocatorPageGuard(allocator);
+    /* guard all the heaps now that the linked list is complete */
+    for(_Korl_Heap_Linear* heap = result; heap;)
+    {
+        _Korl_Heap_Linear*const heapNext = heap->next;
+        _korl_heap_linear_allocatorPageGuard(heap);
+        heap = heapNext;
+    }
     return result;
 }
 korl_internal void korl_heap_linear_destroy(_Korl_Heap_Linear*const allocator)
@@ -1178,7 +1228,7 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
             const u$ newMaxBytes = KORL_MATH_MAX(2*allocator->bytes, allocatorBytes + totalAllocationBytes);
-            allocator->next = korl_heap_linear_create(newMaxBytes, NULL);
+            allocator->next = _korl_heap_linear_create(newMaxBytes, NULL);
         }
         allocationAddress = korl_heap_linear_allocate(allocator->next, bytes, file, line, requestedAddress);
         if(!allocationAddress)
@@ -1294,7 +1344,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
                     - have at _least_ the # of allocationPages required to satisfy `bytes` */
                 const u$ allocatorBytes = allocatorPages * pageBytes;
                 const u$ newMaxBytes    = KORL_MATH_MAX(2*allocator->bytes, allocatorBytes + totalAllocationBytes);
-                allocator->next = korl_heap_linear_create(newMaxBytes, NULL);
+                allocator->next = _korl_heap_linear_create(newMaxBytes, NULL);
             }
             void*const newAllocation = korl_heap_linear_allocate(allocator->next, bytes, file, line, NULL);
             if(!newAllocation)
@@ -1470,7 +1520,7 @@ korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
         korl_heap_linear_enumerate(callback, callbackUserData, allocator->next);
     _korl_heap_linear_allocatorPageGuard(allocator);
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations)
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations)
 {
     _Korl_Heap_Linear* allocator = KORL_C_CAST(_Korl_Heap_Linear*, allocatorUserData);
     while(allocator)

@@ -15,8 +15,7 @@ typedef struct _Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator
 } _Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator;
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_stb_ds_enumAllocatorCallback_findContainingAllocator)
 {
-    _Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator*const callbackData = 
-        KORL_C_CAST(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator*, userData);
+    _Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator*const callbackData = KORL_C_CAST(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator*, userData);
     if(korl_memory_allocator_containsAllocation(opaqueAllocator, callbackData->in_allocation))
     {
         callbackData->out_allocatorHandle = allocatorHandle;
@@ -67,12 +66,15 @@ korl_internal void korl_stb_ds_initialize(void)
 {
     /* although this allocator is only utilized in KORL_DEBUG mode, we should 
         create it in all builds to maintain allocator handle order */
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
 #if defined(STBDS_UNIT_TESTS)
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(448), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(448);
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     stbds_unit_tests();
     korl_assert(korl_memory_allocator_isEmpty(_korl_stb_ds_allocatorHandle));
 #else
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL);
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
 #endif
 }
 korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes)

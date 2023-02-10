@@ -19,12 +19,16 @@
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_file_context.stringPool))
 korl_global_const i8 _KORL_SAVESTATE_UNIQUE_FILE_ID[] = "KORL-SAVESTATE";
 korl_global_const u32 _KORL_SAVESTATE_VERSION = 0;
+typedef struct _Korl_File_SaveStateEnumerateContext_Allocator
+{
+    u32 heaps;
+    u32 allocations;
+} _Korl_File_SaveStateEnumerateContext_Allocator;
 typedef struct _Korl_File_SaveStateEnumerateContext
 {
-    u8* stbDaSaveStateBuffer;
-    u8 allocatorCount;
-    u32* stbDaAllocationCounts;
-    u8 currentAllocator;
+    u8*                                             stbDaSaveStateBuffer;
+    _Korl_File_SaveStateEnumerateContext_Allocator* stbDaAllocatorData;
+    u8                                              currentAllocator;
 } _Korl_File_SaveStateEnumerateContext;
 typedef struct _Korl_File_AsyncOpertion
 {
@@ -230,19 +234,19 @@ korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, 
 cleanUp:
     string_free(findFilePattern);
 }
-korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_saveStateCreate_allocationEnumCallback)
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_saveStateCreate_allocationEnumCallback)
 {
-    _Korl_File_Context*const context                       = &_korl_file_context;
+    _Korl_File_Context*const                   context     = &_korl_file_context;
     _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
     /* copy the allocation meta data & memory to the save state buffer */
     const u16 fileCharacterCount = korl_checkCast_u$_to_u16(korl_string_sizeUtf16(meta->file));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &fileCharacterCount, sizeof(fileCharacterCount));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, meta->file, fileCharacterCount*sizeof(*meta->file));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &meta->line, sizeof(meta->line));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocation, sizeof(allocation));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &meta->bytes, sizeof(meta->bytes));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, allocation, meta->bytes);
-    enumContext->stbDaAllocationCounts[enumContext->allocatorCount - 1]++;// accumulate the total # of allocations per allocator
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, meta->file         , fileCharacterCount*sizeof(*meta->file));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &meta->line        , sizeof(meta->line));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocation        , sizeof(allocation));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &meta->bytes       , sizeof(meta->bytes));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, allocation         , meta->bytes);
+    enumContext->stbDaAllocatorData[enumContext->currentAllocator].allocations++;// accumulate the total # of allocations per allocator
     return true;// true => continue enumerating
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback_allocationPass)
@@ -251,12 +255,30 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
     _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
     if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
         return true;//true => continue iterating over allocators
-    enumContext->allocatorCount++;
-    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocationCounts, 0);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocatorData, KORL_STRUCT_INITIALIZE_ZERO(_Korl_File_SaveStateEnumerateContext_Allocator));
     /* enumarate over all allocations & write those to the save state buffer */
     korl_time_probeStart(enumerateAllocations);
-    korl_memory_allocator_enumerateAllocations(opaqueAllocator, allocatorUserData, _korl_file_saveStateCreate_allocationEnumCallback, enumContext);
+    korl_memory_allocator_enumerateAllocations(opaqueAllocator, _korl_file_saveStateCreate_allocationEnumCallback, enumContext);
     korl_time_probeStop(enumerateAllocations);
+    enumContext->currentAllocator++;
+    return true;//true => continue iterating over allocators
+}
+korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_file_saveStateCreate_heapEnumCallback)
+{
+    _Korl_File_Context*const                   context     = &_korl_file_context;
+    _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &virtualAddressStart, sizeof(virtualAddressStart));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &virtualAddressEnd  , sizeof(virtualAddressEnd));
+    enumContext->stbDaAllocatorData[enumContext->currentAllocator].heaps++;
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback_heapsPass)
+{
+    _Korl_File_Context*const context                       = &_korl_file_context;
+    _Korl_File_SaveStateEnumerateContext*const enumContext = KORL_C_CAST(_Korl_File_SaveStateEnumerateContext*, userData);
+    if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
+        return true;//true => continue iterating over allocators
+    korl_memory_allocator_enumerateHeaps(opaqueAllocator, _korl_file_saveStateCreate_heapEnumCallback, enumContext);
+    enumContext->currentAllocator++;
     return true;//true => continue iterating over allocators
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass)
@@ -267,10 +289,11 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_file_sav
         return true;//true => continue iterating over allocators
     /* now we can write the allocator descriptors to the save state buffer */
     const u16 nameCharacterCount = korl_checkCast_u$_to_u16(korl_string_sizeUtf16(allocatorName));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &nameCharacterCount                                                 , sizeof(nameCharacterCount));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, allocatorName                                                       , nameCharacterCount*sizeof(*allocatorName));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &(enumContext->stbDaAllocationCounts[enumContext->currentAllocator]), sizeof(enumContext->stbDaAllocationCounts[enumContext->currentAllocator]));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocatorUserData                                                  , sizeof(allocatorUserData));
+    const _Korl_File_SaveStateEnumerateContext_Allocator*const allocator = enumContext->stbDaAllocatorData + enumContext->currentAllocator;
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &nameCharacterCount      , sizeof(nameCharacterCount));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, allocatorName            , nameCharacterCount*sizeof(*allocatorName));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &(allocator->heaps)      , sizeof(allocator->heaps));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &(allocator->allocations), sizeof(allocator->allocations));
     enumContext->currentAllocator++;
     return true;//true => continue iterating over allocators
 }
@@ -308,7 +331,9 @@ korl_internal void korl_file_initialize(void)
     //KORL-ISSUE-000-000-057: file: initialization occurs before korl_crash_initialize, despite calling korl_assert & korl_log(ERROR)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
-    context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(64), L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, NULL/*let platform choose address*/);
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(64);
+    context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     context->stringPool             = korl_stringPool_create(context->allocatorHandle);
     context->nextAsyncIoHandle      = 1;
     context->handleIoCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0/*use default; # of processors in the system*/);
@@ -420,7 +445,7 @@ korl_internal void korl_file_initialize(void)
         string_prependUtf16(context->directoryStrings[pt], L"\\\\\?\\");
     /* persistent storage of a save-state memory buffer */
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaSaveStateBuffer, korl_math_kilobytes(16));
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaAllocationCounts, 32);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaAllocatorData, 32);
 }
 korl_internal bool korl_file_open(Korl_File_PathType pathType
                                  ,const wchar_t* fileName
@@ -1132,9 +1157,8 @@ korl_internal void korl_file_saveStateCreate(void)
     _Korl_File_Context*const context = &_korl_file_context;
     /* recycle the context's persistent save-state enum context */
     _Korl_File_SaveStateEnumerateContext*const enumContext = &context->saveStateEnumContext;
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocationCounts, 0);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaSaveStateBuffer , 0);
-    enumContext->allocatorCount = 0;
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaAllocatorData  , 0);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), enumContext->stbDaSaveStateBuffer, 0);
     /* code module specific data */
     const u64 descriptorByteStartWindow = arrlenu(enumContext->stbDaSaveStateBuffer);
     korl_windows_window_saveStateWrite(KORL_C_CAST(void*, context->allocatorHandle), &enumContext->stbDaSaveStateBuffer);
@@ -1156,6 +1180,13 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_time_probeStart(enum_allocations);
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocationPass, enumContext);
     korl_time_probeStop(enum_allocations);
+    /* iterate over the allocators a second time, only this time we record the 
+        data necessary to recreate all heaps associated with the allocator */
+    const u64 descriptorByteStartHeaps = arrlenu(enumContext->stbDaSaveStateBuffer);
+    enumContext->currentAllocator = 0;
+    korl_time_probeStart(enum_heaps);
+    korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_heapsPass, enumContext);
+    korl_time_probeStop(enum_heaps);
     /* now that we have copied all the allocation descriptors, we can copy the 
         allocator descriptors */
     const u$ descriptorByteStartAllocators = arrlenu(enumContext->stbDaSaveStateBuffer);
@@ -1164,11 +1195,13 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_memory_allocator_enumerateAllocators(_korl_file_saveStateCreate_allocatorEnumCallback_allocatorPass, enumContext);
     korl_time_probeStop(enum_allocators);
     /* finally, we can write the save state manifest to the end of the save state buffer */
+    const u8 allocatorCount = korl_checkCast_u$_to_u8(arrlenu(enumContext->stbDaAllocatorData));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, _KORL_SAVESTATE_UNIQUE_FILE_ID , sizeof(_KORL_SAVESTATE_UNIQUE_FILE_ID) - 1);
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &_KORL_SAVESTATE_VERSION       , sizeof(_KORL_SAVESTATE_VERSION));
-    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &enumContext->allocatorCount   , sizeof(enumContext->allocatorCount));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &allocatorCount                , sizeof(allocatorCount));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAllocators , sizeof(descriptorByteStartAllocators));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAllocations, sizeof(descriptorByteStartAllocations));
+    korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartHeaps      , sizeof(descriptorByteStartHeaps));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartWindow     , sizeof(descriptorByteStartWindow));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartAssetCache , sizeof(descriptorByteStartAssetCache));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartResource   , sizeof(descriptorByteStartResource));
@@ -1228,10 +1261,17 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     Korl_StringPool_String allocationFileBuffer = {0};
     typedef struct _AllocatorDescriptor
     {
-        u32 allocationCount;
+        _Korl_File_SaveStateEnumerateContext_Allocator savedData;
         Korl_Memory_AllocatorHandle handle;
     } _AllocatorDescriptor;
     _AllocatorDescriptor* allocatorDescriptors = NULL;
+    typedef struct _HeapDescriptor
+    {
+        u64 addressStart;
+        u64 addressEnd;
+    } _HeapDescriptor;
+    _HeapDescriptor* stbDaHeapDescriptors = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), stbDaHeapDescriptors, 8);
     Korl_StringPool_String pathFile = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(pathFile, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(pathFile);
@@ -1252,6 +1292,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     u8  allocatorCount;
     u$  descriptorByteStartAllocators;
     u64 descriptorByteStartAllocations;
+    u64 descriptorByteStartHeaps;
     u64 descriptorByteStartWindow;
     u64 descriptorByteStartAssetCache;
     u64 descriptorByteStartResource;
@@ -1263,6 +1304,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                                    + sizeof(allocatorCount) 
                                    + sizeof(descriptorByteStartAllocators) 
                                    + sizeof(descriptorByteStartAllocations) 
+                                   + sizeof(descriptorByteStartHeaps) 
                                    + sizeof(descriptorByteStartWindow) 
                                    + sizeof(descriptorByteStartAssetCache)
                                    + sizeof(descriptorByteStartResource)
@@ -1301,6 +1343,11 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     if(!ReadFile(hFile, &descriptorByteStartAllocations, sizeof(descriptorByteStartAllocations), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        goto cleanUp;
+    }
+    if(!ReadFile(hFile, &descriptorByteStartHeaps, sizeof(descriptorByteStartHeaps), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         goto cleanUp;
@@ -1360,13 +1407,12 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
             korl_logLastError("ReadFile failed");
             goto cleanUp;
         }
-        if(!ReadFile(hFile, &(allocatorDescriptors[a].allocationCount), sizeof(allocatorDescriptors[a].allocationCount), NULL/*bytes read*/, NULL/*no overlapped*/))
+        if(!ReadFile(hFile, &(allocatorDescriptors[a].savedData.heaps), sizeof(allocatorDescriptors[a].savedData.heaps), NULL/*bytes read*/, NULL/*no overlapped*/))
         {
             korl_logLastError("ReadFile failed");
             goto cleanUp;
         }
-        u64 allocatorAddress;
-        if(!ReadFile(hFile, &allocatorAddress, sizeof(allocatorAddress), NULL/*bytes read*/, NULL/*no overlapped*/))
+        if(!ReadFile(hFile, &(allocatorDescriptors[a].savedData.allocations), sizeof(allocatorDescriptors[a].savedData.allocations), NULL/*bytes read*/, NULL/*no overlapped*/))
         {
             korl_logLastError("ReadFile failed");
             goto cleanUp;
@@ -1376,12 +1422,36 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
             korl_log(ERROR, "allocator \"%ws\" not found", bufferAllocatorName);
             goto cleanUp;
         }
-        /* This allocation has been identified as being serialized in a 
-            savestate, so we must completely empty it before populating it with 
-            the saved data.  In addition, we need to recreate it such that the 
-            starting virtual address of the allocator matches exactly with what 
-            is contained in the save state! */
-        korl_memory_allocator_recreate(allocatorDescriptors[a].handle, KORL_C_CAST(void*, allocatorAddress));
+    }
+    /* now that we know how many heaps there are per allocator, we need to load 
+        the heap data from the memory state & rebuild the full allocator; to do 
+        this, we recreate the entire allocator, which destroys all the allocator's 
+        heaps, and then creates a new linked list of heaps using the heap 
+        descriptors contained in the memory state */
+    filePointerDistanceToMove.QuadPart = descriptorByteStartHeaps;
+    if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
+    {
+        korl_logLastError("SetFilePointerEx failed");
+        goto cleanUp;
+    }
+    for(u8 a = 0; a < allocatorCount; a++)
+    {
+        korl_assert(allocatorDescriptors[a].savedData.heaps > 0);
+        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), stbDaHeapDescriptors, allocatorDescriptors[a].savedData.heaps);
+        for(u32 h = 0; h < allocatorDescriptors[a].savedData.heaps; h++)
+        {
+            if(!ReadFile(hFile, &(stbDaHeapDescriptors[h].addressStart), sizeof(stbDaHeapDescriptors[h].addressStart), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+            if(!ReadFile(hFile, &(stbDaHeapDescriptors[h].addressEnd), sizeof(stbDaHeapDescriptors[h].addressEnd), NULL/*bytes read*/, NULL/*no overlapped*/))
+            {
+                korl_logLastError("ReadFile failed");
+                goto cleanUp;
+            }
+        }
+        korl_memory_allocator_recreate(allocatorDescriptors[a].handle, arrlenu(stbDaHeapDescriptors), stbDaHeapDescriptors, sizeof(*stbDaHeapDescriptors), offsetof(_HeapDescriptor, addressStart), offsetof(_HeapDescriptor, addressEnd));
     }
     /* cool! so now we have all the information about which allocators need to 
         be repopulated, and how many allocations each one has in the save state; 
@@ -1400,8 +1470,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     u$ allocationBytes;
     allocationFileBuffer = string_newEmptyUtf16(MAX_PATH/*just a suggestion; likely will change later*/);
     for(u8 a = 0; a < allocatorCount; a++)
-    {
-        for(u32 aa = 0; aa < allocatorDescriptors[a].allocationCount; aa++)
+        for(u32 aa = 0; aa < allocatorDescriptors[a].savedData.allocations; aa++)
         {
             if(!ReadFile(hFile, &allocationFileCharacterCount, sizeof(allocationFileCharacterCount), NULL/*bytes read*/, NULL/*no overlapped*/))
             {
@@ -1439,7 +1508,6 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                 goto cleanUp;
             }
         }
-    }
     /* load the window module state */
     filePointerDistanceToMove.QuadPart = descriptorByteStartWindow;
     if(!SetFilePointerEx(hFile, filePointerDistanceToMove, NULL/*new file pointer*/, FILE_BEGIN))
@@ -1515,6 +1583,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     /**/
     korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));
 cleanUp:
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), stbDaHeapDescriptors);
     string_free(pathFile);
     string_free(allocationFileBuffer);
     if(allocatorDescriptors)
