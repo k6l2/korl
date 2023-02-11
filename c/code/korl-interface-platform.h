@@ -28,7 +28,7 @@ typedef enum KorlEnumLogLevel
                                                          ,int lineNumber, const wchar_t* format, ...)
 #define KORL_FUNCTION_korl_log_getBuffer(name) acu16 name(u$* out_loggedBytes)
 /* korl-command interface *****************************************************/
-#define KORL_FUNCTION_korl_command_callback(name)  void name(void)
+#define KORL_FUNCTION_korl_command_callback(name)  void name(u$ parametersSize, acu8* parameters)
 typedef KORL_FUNCTION_korl_command_callback(fnSig_korl_command_callback);
 #define korl_command_register(utf8CommandName, callback) _korl_command_register(utf8CommandName, callback, KORL_RAW_CONST_UTF8(#callback))
 /** use the \c korl_command_register convenience macro instead of this API directly! */

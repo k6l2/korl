@@ -20,6 +20,7 @@
 #include "korl-codec-configuration.h"
 #include "korl-command.h"
 #include "korl-clipboard.h"
+#include "korl-string.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
@@ -477,6 +478,26 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandMemo
 {
     _korl_windows_window_context.deferMemoryReport = true;
 }
+korl_internal void _korl_windows_window_commandCrash_stackOverflow(bool recurse)
+{
+    if(recurse)
+        _korl_windows_window_commandCrash_stackOverflow(recurse);
+}
+KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandCrash)
+{
+    if(parametersSize != 2)
+        korl_log(INFO, "crash command usage: `crash <type>`, where <type> == {\"write-zero\", \"assert\", \"stack-overflow\", \"log-error\"}");
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "write-zero"))
+        *(int*)0 = 0;
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "assert"))
+        korl_assert(false);
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "stack-overflow"))
+        _korl_windows_window_commandCrash_stackOverflow(true);
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "log-error"))
+        korl_log(ERROR, "rest in pepperonis");
+    else
+        korl_log(WARNING, "invalid parameter \"%hs\"", parameters[1].data);
+}
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
@@ -565,6 +586,7 @@ korl_internal void korl_windows_window_initialize(void)
     korl_command_register(KORL_RAW_CONST_UTF8("save")  , _korl_windows_window_commandSave);
     korl_command_register(KORL_RAW_CONST_UTF8("load")  , _korl_windows_window_commandLoad);
     korl_command_register(KORL_RAW_CONST_UTF8("memory"), _korl_windows_window_commandMemoryReport);
+    korl_command_register(KORL_RAW_CONST_UTF8("crash") , _korl_windows_window_commandCrash);
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
 {

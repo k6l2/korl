@@ -99,7 +99,7 @@ korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke)
                 break;
         /* if we found a command, let's invoke it! */
         if(command < commandsEnd)
-            command->callback();
+            command->callback(arrlenu(stbDaTokens), stbDaTokens);
         else
             korl_log(WARNING, "command \"%.*hs\" not found", stbDaTokens[0].size, stbDaTokens[0].data);
     }
