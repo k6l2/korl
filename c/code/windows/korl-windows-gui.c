@@ -8,7 +8,6 @@
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, Korl_KeyboardCode* virtualKeyMap, u$ virtualKeyMapSize)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
     /* identify & process mouse events 
         https://docs.microsoft.com/en-us/windows/win32/learnwin32/mouse-clicks */
     RECT clientRect;

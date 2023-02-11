@@ -21,6 +21,7 @@
 #include "korl-command.h"
 #include "korl-clipboard.h"
 #include "korl-string.h"
+#include "korl-crash.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
@@ -275,6 +276,12 @@ korl_internal void _korl_windows_window_configurationStep(void)
 }
 korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+    if(korl_crash_pending())
+        /* do not process any window messages during a crash; we _must_ do this, 
+            because during a crash the user _may_ be presented with a modal 
+            dialog on the same thread, and that will cause window messages to 
+            be pumped into here, which we definitely want to ignore */
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
     LRESULT result = 0;
     /* ignore all window events that don't belong to the windows we are 

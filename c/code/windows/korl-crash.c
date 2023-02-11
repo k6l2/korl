@@ -5,8 +5,13 @@ korl_global_const u32 _KORL_CRASH_MAX_DUMP_COUNT = 8;
 korl_global_variable bool _korl_crash_firstAssertLogged;
 korl_global_variable bool _korl_crash_hasReceivedException;
 korl_global_variable bool _korl_crash_hasWrittenCrashDump;
+korl_global_variable bool _korl_crash_pendingFatalException;
+korl_global_variable bool _korl_crash_pendingAssert;
 korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPointers, const wchar_t* cStrOrigin)
 {
+    if(_korl_crash_pendingFatalException)
+        return EXCEPTION_CONTINUE_SEARCH;
+    _korl_crash_pendingFatalException = true;
     /* when we're debugging, it's annoying having to wait a few seconds for the 
         minidump to write to disk, so let's just break right away */
     if(IsDebuggerPresent())
@@ -30,7 +35,6 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
         korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
                                      ,L"Exception code: 0x%X\n"
                                      ,pExceptionPointers->ExceptionRecord->ExceptionCode);
-        //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
         const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
                                                 messageBuffer, cStrOrigin, 
                                                 MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
@@ -45,8 +49,9 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
             }
     }
     korl_log_shutDown();
+    _korl_crash_pendingFatalException = false;
     ExitProcess(KORL_EXIT_FAIL_EXCEPTION);
-    //return EXCEPTION_CONTINUE_SEARCH;// unreachable code
+    // return EXCEPTION_CONTINUE_SEARCH;// unreachable code
 }
 korl_internal LONG _korl_crash_vectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionPointers)
 {
@@ -102,9 +107,11 @@ korl_internal LONG _korl_crash_unhandledExceptionFilter(PEXCEPTION_POINTERS pExc
 }
 korl_internal void korl_crash_initialize(void)
 {
-    _korl_crash_firstAssertLogged    = false;
-    _korl_crash_hasReceivedException = false;
-    _korl_crash_hasWrittenCrashDump  = false;
+    _korl_crash_firstAssertLogged     = false;
+    _korl_crash_hasReceivedException  = false;
+    _korl_crash_hasWrittenCrashDump   = false;
+    _korl_crash_pendingFatalException = false;
+    _korl_crash_pendingAssert         = false;
     /* set up the unhandled exception filter */
     const LPTOP_LEVEL_EXCEPTION_FILTER exceptionFilterPrevious = 
         SetUnhandledExceptionFilter(_korl_crash_unhandledExceptionFilter);
@@ -128,8 +135,15 @@ korl_internal void korl_crash_initialize(void)
                           "The system probably won't be able to log stack "
                           "overflow exceptions.");
 }
+korl_internal bool korl_crash_pending(void)
+{
+    return _korl_crash_pendingFatalException || _korl_crash_pendingAssert;
+}
 korl_internal KORL_FUNCTION__korl_crash_assertConditionFailed(_korl_crash_assertConditionFailed)
 {
+    if(_korl_crash_pendingAssert)
+        return;
+    _korl_crash_pendingAssert = true;
     const bool isFirstAssert = !_korl_crash_firstAssertLogged;
     /* when we're debugging, it's annoying having to wait a few seconds for the 
         minidump to write to disk, so let's just break right away */
@@ -178,25 +192,25 @@ korl_internal KORL_FUNCTION__korl_crash_assertConditionFailed(_korl_crash_assert
                        L"ASSERT FAILED: \"%ws\"", conditionString);
     if(isFirstAssert)
     {
+        const wchar_t BASE_MESSAGE[] = L"Condition: %ws\n";
         wchar_t messageBuffer[512];
         i$ charactersCopied = korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
-                                                           ,L"Condition: %ws\n"
+                                                           ,BASE_MESSAGE
                                                            ,conditionString);
         /* if the entire assert conditionString doesn't fit in our local assert 
             message stack buffer, then let's just truncate the message and 
             display as much as possible */
         if(charactersCopied <= 0)
         {
-            wchar_t conditionBuffer[512 - 16/*size of the rest of the assert message box text*/];
+            wchar_t conditionBuffer[512 - korl_arraySize(BASE_MESSAGE)];
             korl_string_copyUtf16(conditionString, (au16){korl_arraySize(conditionBuffer), conditionBuffer});
             charactersCopied = korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
-                                                            ,L"Condition: %ws\n"
+                                                            ,BASE_MESSAGE
                                                             ,conditionBuffer);
         }
-        //KORL-ISSUE-000-000-063: crash: running MessageBox on the same thread as the the game window still allows window messages to be processed
-        const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
-                                                messageBuffer, L"Assertion Failed!", 
-                                                MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+        const int resultMessageBox = MessageBox(NULL/*no owner window*/
+                                               ,messageBuffer, L"Assertion Failed!"
+                                               ,MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
         if(resultMessageBox == 0)
             korl_logLastError("MessageBox failed!");
         else
@@ -208,5 +222,6 @@ korl_internal KORL_FUNCTION__korl_crash_assertConditionFailed(_korl_crash_assert
             }
     }
     korl_log_shutDown();
+    _korl_crash_pendingAssert = false;
     ExitProcess(KORL_EXIT_FAIL_ASSERT);
 }
