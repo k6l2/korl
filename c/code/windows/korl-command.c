@@ -25,17 +25,26 @@ typedef struct _Korl_Command_Context
     _Korl_Command* stbDaCommands;
 } _Korl_Command_Context;
 korl_global_variable _Korl_Command_Context _korl_command_context;
+korl_internal void _korl_command_destroy(_Korl_Command* context)
+{
+    string_free(context->stringCommand);
+    string_free(context->stringCallback);
+    string_free(context->stringModule);
+    korl_memory_zero(context, sizeof(*context));
+}
 korl_internal void _korl_command_findCallbackAddress(_Korl_Command* command, HMODULE moduleHandle)
 {
     command->callback = KORL_C_CAST(fnSig_korl_command_callback*, GetProcAddress(moduleHandle, string_getRawUtf8(command->stringCallback)));
-    korl_assert(command->callback);
+    if(!command->callback)
+        korl_log(WARNING, "command \"%hs\" callback \"%hs\" not found!", string_getRawUtf8(command->stringCommand), string_getRawUtf8(command->stringCallback));
 }
 KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_command_commandHelp)
 {
     korl_log(INFO, "KORL command list:");
     const _Korl_Command*const commandsEnd = _korl_command_context.stbDaCommands + arrlen(_korl_command_context.stbDaCommands);
     for(const _Korl_Command* c = _korl_command_context.stbDaCommands; c < commandsEnd; c++)
-        korl_log(INFO, "\t%hs", string_getRawUtf8(c->stringCommand));
+        if(c->callback)// ignore commands that have an invalid callback
+            korl_log(INFO, "\t%hs", string_getRawUtf8(c->stringCommand));
 }
 korl_internal void korl_command_initialize(acu8 utf8PlatformModuleName)
 {
@@ -99,7 +108,10 @@ korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke)
                 break;
         /* if we found a command, let's invoke it! */
         if(command < commandsEnd)
-            command->callback(arrlenu(stbDaTokens), stbDaTokens);
+            if(command->callback)
+                command->callback(arrlenu(stbDaTokens), stbDaTokens);
+            else/* if the command doesn't have a valid callback, there's nothing we can do but to warn the user; this scenario is likely caused by re-registration of a module that no longer contains the callback code */
+                korl_log(WARNING, "command \"%.*hs\" callback invalid", stbDaTokens[0].size, stbDaTokens[0].data);
         else
             korl_log(WARNING, "command \"%.*hs\" not found", stbDaTokens[0].size, stbDaTokens[0].data);
     }

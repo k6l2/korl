@@ -450,7 +450,7 @@ korl_internal LRESULT CALLBACK _korl_windows_window_windowProcedure(_In_ HWND hW
             context->gameApi.korl_game_onMouseEvent(mouseEvent);
         break;}
     //KORL-ISSUE-000-000-034: investigate: do we need WM_PAINT+ValidateRect?
-    default: 
+    default:
         result = DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
     return result;// the most common user-handled result
@@ -963,6 +963,7 @@ korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** 
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameContext, sizeof(_korl_windows_window_context.gameContext));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &windowPlacement, sizeof(windowPlacement));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.configuration.fileDataBuffer, sizeof(_korl_windows_window_context.configuration.fileDataBuffer));
 }
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {
@@ -981,6 +982,11 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
     _korl_windows_window_context.gameContext = KORL_C_CAST(void*, gameContext);
     WINDOWPLACEMENT windowPlacement;
     if(!ReadFile(hFile, &windowPlacement, sizeof(windowPlacement), NULL/*bytes read*/, NULL/*no overlapped*/))
+    {
+        korl_logLastError("ReadFile failed");
+        return false;
+    }
+    if(!ReadFile(hFile, &_korl_windows_window_context.configuration.fileDataBuffer, sizeof(_korl_windows_window_context.configuration.fileDataBuffer), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;
