@@ -69,7 +69,6 @@
 [ ] KORL-ISSUE-000-000-117: gui: don't we only want to do this logic if the activated window has changed?  not doing so is going to likely cause really annoying behavior such as the last window's leaf widget candidate always getting activated even when the window was already active :|
 [ ] KORL-ISSUE-000-000-119: codec-configuration: rewrite UTF-8 decoder to use Utf8 iterators from korl-string
 [ ] KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
-[ ] KORL-ISSUE-000-000-122: logConsole: fix '\t' character rendering
 [ ] KORL-ISSUE-000-000-123: logConsole: fix box character rendering
 [ ] KORL-ISSUE-000-000-124: logConsole: fix emoji rendering
 [ ] KORL-PERFORMANCE-000-000-000: (minor) these pointers all reference contiguous memory regions which immediately follow this struct itself, ergo can be converted to offsets, saving us space but making the code less readable
@@ -186,6 +185,7 @@
 [x] KORL-ISSUE-000-000-115: platform-api: remove all these string functions from platform API; move them all to korl-string (except maybe platform-specific implementations, like C string formatting)
 [x] KORL-ISSUE-000-000-118: gui: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
 [x] KORL-ISSUE-000-000-121: command/memory-state: loading a memory state that contains registered command(s) that no longer exist will cause assert to fire
+[x] KORL-ISSUE-000-000-122: logConsole: fix '\t' character rendering
 [x] KORL-PERFORMANCE-000-000-008: even if we do end up needing to store the asset strings, it would likely be better if we store the strings in a separate string pool, and store a handle to that string here for faster iteration over device assets - we're wasting like an entire cache line per device asset lol
 [x] KORL-PERFORMANCE-000-000-009: pass model as push constant instead?  Timings required.
 [x] KORL-PERFORMANCE-000-000-012: Vulkan; bandwidth: (MAJOR!) this is very heavy handed!  It would be better if this process could happen in the background while we wait on a fence or something so that the graphicsQueue can keep going unimpeded and program execution can continue batching more vertices.

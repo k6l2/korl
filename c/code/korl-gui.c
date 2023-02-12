@@ -63,46 +63,47 @@ typedef struct _Korl_Gui_CodepointTestData_Log
 {
     u8 trailingMetaTagCodepoints;
     u8 metaTagComponent;// 0=>log level, 1=>time stamp, 2=>line, 3=>file, 4=>function
-    const u16* pCodepointMetaTagStart;
+    u8 metaTagComponentCodepointIndex;
+    const u8* pCodeUnitMetaTagStart;
 } _Korl_Gui_CodepointTestData_Log;
 korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
 {
     // log meta data example:
     //╟INFO   ┆11:48'00"525┆   58┆korl-vulkan.c┆_korl_vulkan_debugUtilsMessengerCallback╢ 
     _Korl_Gui_CodepointTestData_Log*const data = KORL_C_CAST(_Korl_Gui_CodepointTestData_Log*, userData);
-    if(data->pCodepointMetaTagStart)
+    if(data->pCodeUnitMetaTagStart)
     {
         bool endOfMetaTagComponent = false;
-        if(*pCodepoint == L'╢')
+        if(codepoint == L'╢')
         {
             data->trailingMetaTagCodepoints = 2;
-            data->pCodepointMetaTagStart    = NULL;
+            data->pCodeUnitMetaTagStart     = NULL;
             endOfMetaTagComponent = true;
         }
-        else if(*pCodepoint == L'┆')
+        else if(codepoint == L'┆')
             endOfMetaTagComponent = true;
         if(endOfMetaTagComponent)
         {
             switch(data->metaTagComponent)
             {
             case 0:{// log level
-                korl_assert(currentLineColor);
-                switch(*data->pCodepointMetaTagStart)
+                korl_assert(o_currentLineColor);
+                switch(*data->pCodeUnitMetaTagStart)
                 {
                 case L'A':{// ASSERT
-                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 0, 0};// red
+                    o_currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 0, 0};// red
                     break;}
                 case L'E':{// ERROR
-                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 0, 0};// red
+                    o_currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 0, 0};// red
                     break;}
                 case L'W':{// WARNING
-                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 1, 0};// yellow
+                    o_currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){1, 1, 0};// yellow
                     break;}
                 case L'I':{// INFO
                     // do nothing; the line color defaults to white!
                     break;}
                 case L'V':{// VERBOSE
-                    currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){0, 1, 1};// cyan
+                    o_currentLineColor->xyz = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){0, 1, 1};// cyan
                     break;}
                 }
                 break;}
@@ -118,14 +119,14 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
             data->metaTagComponent++;
         }
     }
-    else if(*pCodepoint == L'╟')
+    else if(codepoint == L'╟')
     {
-        data->pCodepointMetaTagStart = pCodepoint + 1;
-        data->metaTagComponent       = 0;
+        data->pCodeUnitMetaTagStart = currentCodeUnit + bytesPerCodeUnit*codepointCodeUnits;
+        data->metaTagComponent      = 0;
     }
     if(data->trailingMetaTagCodepoints)
         data->trailingMetaTagCodepoints--;
-    if(data->pCodepointMetaTagStart || data->trailingMetaTagCodepoints)
+    if(data->pCodeUnitMetaTagStart || data->trailingMetaTagCodepoints)
         return false;
     return true;
 }

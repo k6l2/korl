@@ -3,7 +3,7 @@
 #include "korl-math.h"
 #include "korl-interface-platform-memory.h"
 /** \return \c true if the codepoint should be drawn, \c false otherwise */
-#define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, const u16* pCodepoint, Korl_Math_V4f32* currentLineColor)
+#define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, u32 codepoint, u8 codepointCodeUnits, const u8* currentCodeUnit, u8 bytesPerCodeUnit, Korl_Math_V4f32* o_currentLineColor)
 typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
 //KORL-ISSUE-000-000-096: interface-platform, gfx: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
 typedef u16            Korl_Vulkan_VertexIndex;

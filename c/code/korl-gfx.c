@@ -886,11 +886,25 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
     int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
     Korl_Math_V4f32 currentLineColor = KORL_MATH_V4F32_ONE;// default all line colors to white
-    for(u$ c = 0; c < utf16Text.size; c++)
+    for(Korl_String_CodepointIteratorUtf16 utf16It = korl_string_codepointIteratorUtf16_initialize(utf16Text.data, utf16Text.size)
+       ;!korl_string_codepointIteratorUtf16_done(&utf16It)
+       ; korl_string_codepointIteratorUtf16_next(&utf16It))
     {
-        if(codepointTest && !codepointTest(codepointTestUserData, utf16Text.data + c, &currentLineColor))
+        if(    codepointTest 
+           && !codepointTest(codepointTestUserData
+                            ,utf16It._codepoint, utf16It._codepointSize
+                            ,KORL_C_CAST(const u8*, utf16It._currentRawUtf16)
+                            ,sizeof(*utf16It._currentRawUtf16)
+                            ,&currentLineColor))
             continue;
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, utf16Text.data[c]);
+        u32 glyphCodepoint     = utf16It._codepoint;
+        f32 advanceXMultiplier = 1;
+        if(utf16It._codepoint == '\t')
+        {
+            glyphCodepoint     = ' ';
+            advanceXMultiplier = 4;
+        }
+        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, glyphCodepoint);
         if(textBaselineCursor.x > 0.f)
         {
             const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
@@ -904,8 +918,8 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         const f32 x1 = x0 + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
         const f32 y1 = y0 + (bakedGlyph->bbox.y1 - bakedGlyph->bbox.y0);
         const Korl_Math_V2f32 glyphPosition = textBaselineCursor;
-        textBaselineCursor.x += bakedGlyph->advanceX;
-        if(utf16Text.data[c] == L'\n')
+        textBaselineCursor.x += advanceXMultiplier*bakedGlyph->advanceX;
+        if(utf16It._codepoint == '\n')
         {
             textBaselineCursor.x  = 0.f;
             // textBaselineCursor.y -= lineDeltaY;// no need to do this; each line has an implicit Y size, and when we draw we will move the line's model position appropriately
