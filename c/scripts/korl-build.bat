@@ -241,11 +241,11 @@ set "buildCommand=%buildCommand% Ole32.lib"
 rem     for CreateSolidBrush, & other GDI API
 set "buildCommand=%buildCommand% Gdi32.lib"
 rem     for MiniDumpWriteDump
-set "buildCommand=%buildCommand% Dbghelp.lib"
+@REM set "buildCommand=%buildCommand% Dbghelp.lib"
 rem     for timeDevGetCaps, timeDevGetTime, etc...
 set "buildCommand=%buildCommand% Winmm.lib"
 rem     for gamepad module stuff
-set "buildCommand=%buildCommand% setupapi.lib"
+@REM set "buildCommand=%buildCommand% setupapi.lib"
 set "buildCommand=%buildCommand% vulkan-1.lib"
 rem     for bluetooth module
 set "buildCommand=%buildCommand% ws2_32.lib"
