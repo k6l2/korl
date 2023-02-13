@@ -60,3 +60,14 @@
 
 While XAudio certainly has a tempting set of features, I want to shy away from C++ compilation for as long as possible, as the minimization of build times & maximization of debugging experience are prime directives of KORL which would very likely be violated with the introduction of C++, from my own experience.  Needless to say, DirectSound is _not_ on the the table of consideration, and neither is MME for similar reasons, but mostly because it just seems like abandonware from what I've read so far.
 
+[x] initialize COM
+[ ] enumerate over audio devices; print friendly names
+[ ] select/activate the default multimedia audio device
+[ ] when the audio device is disconnected, attempt to connect to the next default audio device
+    - how do we detect when this audio device is disconnected?
+[ ] obtain audio output buffer
+[ ] write sine wave output to the audio buffer
+[ ] add `korl_audio_play` API
+    [ ] add korl-resource WAV decoder
+    [ ] add korl-audioMixer; potentially reuse/recycle `kgtAudioMixer` code
+    [ ] play WAV asset audio

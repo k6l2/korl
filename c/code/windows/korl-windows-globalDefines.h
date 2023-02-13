@@ -37,6 +37,12 @@
 /* Convenience macros for Windows API */
 /** \return \c true if operation \c x succeeds */
 #define KORL_WINDOWS_CHECK(x) (!(x) ? (korl_logLastError(#x" failed"), false) : true)
+#define KORL_WINDOWS_COM_SAFE_RELEASE(pUnknown) \
+    if(pUnknown)\
+    {\
+        (pUnknown)->Release();\
+        (pUnknown) = NULL;\
+    }
 /* Windows application-wide constants */
 korl_global_const TCHAR KORL_APPLICATION_NAME[]         = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
 korl_global_const TCHAR KORL_APPLICATION_VERSION[]      = L""KORL_DEFINE_TO_CSTR(KORL_APP_VERSION);

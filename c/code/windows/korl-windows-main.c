@@ -19,6 +19,7 @@
 #include "korl-resource.h"
 #include "korl-command.h"
 #include "korl-string.h"
+#include "korl-audio.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -59,6 +60,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
     const acu8 platformModuleName = KORL_RAW_CONST_UTF8("korl-platform");
     korl_time_probeStart(init_module_command);      korl_command_initialize(platformModuleName); korl_time_probeStop(init_module_command);
+    korl_time_probeStart(init_module_audio);        korl_audio_initialize();                     korl_time_probeStop(init_module_audio);
     korl_time_probeStart(init_module_resource);     korl_resource_initialize();                  korl_time_probeStop(init_module_resource);
     korl_time_probeStart(init_module_bluetooth);    korl_bluetooth_initialize();                 korl_time_probeStop(init_module_bluetooth);
     korl_time_probeStart(init_module_gamepad);      korl_windows_gamepad_initialize();           korl_time_probeStop(init_module_gamepad);
@@ -77,6 +79,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_vulkan_destroy();
     korl_log(INFO, "korl_windows_main END ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄🏁");
 shutdownSuccess:
+    korl_audio_shutDown();
     korl_time_shutDown();
     korl_log_shutDown();
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
@@ -114,3 +117,4 @@ shutdownSuccess:
 #include "korl-codec-configuration.c"
 #include "korl-string.c"
 #include "korl-command.c"
+#include "korl-audio.c"
