@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #define KORL_PI32 3.14159f
+#define KORL_TAU32 2*KORL_PI32
 #define KORL_MATH_CLAMP(x, min, max)        ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
 #define KORL_MATH_ASSIGN_CLAMP(x, min, max) ((x) = KORL_MATH_CLAMP((x), (min), (max)))
 #define KORL_MATH_ASSIGN_CLAMP_MIN(x, min)  ((x) = (x) <= (min) ? (min) : (x))
@@ -114,6 +115,7 @@ korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 eps
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);
 korl_internal inline f32 korl_math_abs(f32 x);
 korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator);
+korl_internal inline f32 korl_math_sin(f32 x);
 korl_internal inline f32 korl_math_cos(f32 x);
 korl_internal inline f32 korl_math_acos(f32 x);
 korl_internal inline f32 korl_math_atan2(f32 numerator, f32 denominator);

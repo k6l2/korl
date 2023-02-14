@@ -62,11 +62,11 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
 
 [x] initialize COM
 [x] enumerate over audio devices; print friendly names
-[ ] select/activate the default multimedia audio device
+[x] select/activate the default multimedia audio device
+[x] obtain audio output buffer
+[x] write sine wave output to the audio buffer
 [ ] when the audio device is disconnected, attempt to connect to the next default audio device
     - how do we detect when this audio device is disconnected?
-[ ] obtain audio output buffer
-[ ] write sine wave output to the audio buffer
 [ ] add `korl_audio_play` API
     [ ] add korl-resource WAV decoder
     [ ] add korl-audioMixer; potentially reuse/recycle `kgtAudioMixer` code

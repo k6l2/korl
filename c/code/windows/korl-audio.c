@@ -12,23 +12,62 @@
     Microsoft straight up just doesn't support WASAPI in C anymore.  After doing 
     a bunch of searching, all I found was this stackoverflow question which 
     seems to indicate that this is the only solution: https://stackoverflow.com/q/43717147/4526664 */
-const CLSID CLSID_MMDeviceEnumerator = {0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};// obtained from <mmdeviceapi.h>
-const IID   IID_IMMDeviceEnumerator  = {0xA95664D2, 0x9614, 0x4F35, {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};// obtained from <mmdeviceapi.h>
-const IID   IID_IAudioClient         = {0x1CB9AD4C, 0xDBFA, 0x4c32, {0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2}};// obtained from <Audioclient.h>
+const CLSID CLSID_MMDeviceEnumerator        = {0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};// obtained from <mmdeviceapi.h>
+const IID   IID_IMMDeviceEnumerator         = {0xA95664D2, 0x9614, 0x4F35, {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};// obtained from <mmdeviceapi.h>
+const IID   IID_IAudioClient                = {0x1CB9AD4C, 0xDBFA, 0x4c32, {0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2}};// obtained from <Audioclient.h>
+const IID   IID_IAudioRenderClient          = {0xF294ACFC, 0x3146, 0x4483, {0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2}};// obtained from <Audioclient.h>
+const GUID  KSDATAFORMAT_SUBTYPE_PCM        = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};// obtained from <mmreg.h>
+const GUID  KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};// obtained from <mmreg.h>
+typedef enum _Korl_Audio_SampleFormat
+    {_KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN
+    ,_KORL_AUDIO_SAMPLE_FORMAT_PCM
+    ,_KORL_AUDIO_SAMPLE_FORMAT_FLOAT
+} _Korl_Audio_SampleFormat;
 typedef struct _Korl_Audio_Context
 {
     IMMDeviceEnumerator* mmDeviceEnumerator;// my assumption here is that we only ever have to create one device enumerator for the entire duration of the application, as nothing in the WinMM API seems to indicate otherwise from what I've seen
     struct
     {
-        bool            isOpen;
-        IMMDevice*      mmDevice;
-        IPropertyStore* propertyStore;
-        PROPVARIANT     propertyVariantName;
-        IAudioClient*   audioClient;
-        WAVEFORMATEX*   waveFormat;
+        bool                     isOpen;
+        IMMDevice*               mmDevice;
+        IPropertyStore*          propertyStore;
+        PROPVARIANT              propertyVariantName;
+        IAudioClient*            audioClient;
+        WAVEFORMATEX*            waveFormat;
+        _Korl_Audio_SampleFormat sampleFormat;
+        UINT32                   bufferFramesSize;// bytes/frame == waveFormat->nChannels * waveFormat->wBitsPerSample/8
+        IAudioRenderClient*      audioRenderClient;
     } output;
 } _Korl_Audio_Context;
 korl_global_variable _Korl_Audio_Context _korl_audio_context;
+#define _KORL_AUDIO_CHECK_COM(pUnknown,api,...) _korl_audio_check((pUnknown)->lpVtbl->api(pUnknown, ## __VA_ARGS__), #api)
+korl_internal bool _korl_audio_check(HRESULT hResult, const char* cStringApi)
+{
+    switch(hResult)
+    {
+    case S_OK:{
+        break;}
+    case AUDCLNT_E_DEVICE_INVALIDATED:{
+        korl_log(WARNING, "%hs failed; HRESULT==AUDCLNT_E_DEVICE_INVALIDATED; audio endpoint or adapter device disconnected", cStringApi);
+        break;}
+    case AUDCLNT_E_DEVICE_IN_USE:{
+        korl_log(WARNING, "%hs failed; HRESULT==AUDCLNT_E_DEVICE_IN_USE; share mode mismatch", cStringApi);
+        break;}
+    case AUDCLNT_E_ENDPOINT_CREATE_FAILED:{
+        korl_log(WARNING, "%hs failed; HRESULT==AUDCLNT_E_ENDPOINT_CREATE_FAILED; audio endpoint is unplugged/reconfigured/unavailable", cStringApi);
+        break;}
+    case AUDCLNT_E_SERVICE_NOT_RUNNING:{
+        korl_log(WARNING, "%hs failed; HRESULT==AUDCLNT_E_SERVICE_NOT_RUNNING; Windows audio service not running", cStringApi);
+        break;}
+    case ERROR_NOT_FOUND:{
+        korl_log(WARNING, "%hs failed; HRESULT==ERROR_NOT_FOUND; no audio endpoints found", cStringApi);
+        break;}
+    default:{
+        korl_log(ERROR, "%hs failed; HRESULT==0x%X", cStringApi, hResult);
+        break;}
+    }
+    return hResult == S_OK;
+}
 korl_internal void _korl_audio_output_close(void)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
@@ -40,86 +79,71 @@ korl_internal void _korl_audio_output_close(void)
 korl_internal void _korl_audio_output_openDefault(void)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
+    korl_assert(!context->output.isOpen);
     /* select & activate the default audio endpoint device */
-    HRESULT hResult = S_OK;
-    hResult = KORL_WINDOWS_COM(context->mmDeviceEnumerator, GetDefaultAudioEndpoint, eRender, eMultimedia, &context->output.mmDevice);
-    switch(hResult)
-    {
-    case S_OK:{/* we have an audio endpoint; we can get its information now */
-        KORL_WINDOWS_CHECKED_COM(context->output.mmDevice, OpenPropertyStore, STGM_READ, &context->output.propertyStore);
-        KORL_WINDOWS_CHECKED_COM(context->output.propertyStore, GetValue, &PKEY_Device_FriendlyName, &context->output.propertyVariantName);
-        break;}
-    case ERROR_NOT_FOUND:{
-        korl_log(WARNING, "GetDefaultAudioEndpoint failed; HRESULT==ERROR_NOT_FOUND; no audio endpoints found");
-        break;}
-    default:{
-        korl_log(ERROR, "GetDefaultAudioEndpoint failed; HRESULT==0x%X", hResult);
-        break;}
-    }
-    if(hResult != S_OK)
+    if(!_KORL_AUDIO_CHECK_COM(context->mmDeviceEnumerator, GetDefaultAudioEndpoint, eRender, eMultimedia, &context->output.mmDevice))
         goto cleanUp;
-    hResult = KORL_WINDOWS_COM(context->output.mmDevice, Activate, &IID_IAudioClient, CLSCTX_ALL, NULL/*activationParams; IAudioClient=>NULL*/, &context->output.audioClient);
-    switch(hResult)
-    {
-    case S_OK:{
-        korl_log(INFO, "activated audio endpoint device: \"%ws\"", context->output.propertyVariantName.pwszVal);
-        break;}
-    case AUDCLNT_E_DEVICE_INVALIDATED:{
-        korl_log(WARNING, "Activate failed; device: \"%ws\" HRESULT==AUDCLNT_E_DEVICE_INVALIDATED; audio endpoint or adapter device disconnected", context->output.propertyVariantName.pwszVal);
-        break;}
-    default:{
-        korl_log(ERROR, "Activate failed; device: \"%ws\" HRESULT==0x%X", context->output.propertyVariantName.pwszVal, hResult);
-        break;}
-    }
-    if(hResult != S_OK)
+    /* we have an audio endpoint; we can get its information now */
+    KORL_WINDOWS_CHECKED_COM(context->output.mmDevice, OpenPropertyStore, STGM_READ, &context->output.propertyStore);
+    KORL_WINDOWS_CHECKED_COM(context->output.propertyStore, GetValue, &PKEY_Device_FriendlyName, &context->output.propertyVariantName);
+    korl_log(INFO, "opening audio endpoint device: \"%ws\"...", context->output.propertyVariantName.pwszVal);
+    if(!_KORL_AUDIO_CHECK_COM(context->output.mmDevice, Activate, &IID_IAudioClient, CLSCTX_ALL, NULL/*activationParams; IAudioClient=>NULL*/, &context->output.audioClient))
         goto cleanUp;
-    hResult = KORL_WINDOWS_COM(context->output.audioClient, GetMixFormat, &context->output.waveFormat);
-    switch(hResult)
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetMixFormat, &context->output.waveFormat))
+        goto cleanUp;
+    korl_log(INFO, "AudioClient wave format: channels=%hu hz=%u bitsPerSample=%hu", context->output.waveFormat->nChannels, context->output.waveFormat->nSamplesPerSec, context->output.waveFormat->wBitsPerSample);
+    context->output.sampleFormat = _KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN;
+    if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
     {
-    case S_OK:{
-        korl_log(INFO, "WASAPI AudioClient wave format: channels=%hu hz=%u bitsPerSample=%hu", context->output.waveFormat->nChannels, context->output.waveFormat->nSamplesPerSec, context->output.waveFormat->wBitsPerSample);
-        if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
+        const WAVEFORMATEXTENSIBLE*const waveFormatExtensible = KORL_C_CAST(WAVEFORMATEXTENSIBLE*, context->output.waveFormat);
+        if     (IsEqualGUID(&waveFormatExtensible->SubFormat, &KSDATAFORMAT_SUBTYPE_PCM))
+            context->output.sampleFormat = _KORL_AUDIO_SAMPLE_FORMAT_PCM;
+        else if(IsEqualGUID(&waveFormatExtensible->SubFormat, &KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
+            context->output.sampleFormat = _KORL_AUDIO_SAMPLE_FORMAT_FLOAT;
+        const char* sampleFormatCString = NULL;
+        switch(context->output.sampleFormat)
         {
-            const WAVEFORMATEXTENSIBLE*const waveFormatExtensible = KORL_C_CAST(WAVEFORMATEXTENSIBLE*, context->output.waveFormat);
-            korl_log(INFO, "\textensible wave format: validBits/sample=%hu channelMask=0x%X", waveFormatExtensible->Samples.wValidBitsPerSample, waveFormatExtensible->dwChannelMask);
+        case _KORL_AUDIO_SAMPLE_FORMAT_PCM:  {sampleFormatCString = "PCM";   break;}
+        case _KORL_AUDIO_SAMPLE_FORMAT_FLOAT:{sampleFormatCString = "Float"; break;}
+        default:                             {sampleFormatCString = "Unknown"; break;}
         }
-        break;}
-    case AUDCLNT_E_DEVICE_INVALIDATED:{
-        korl_log(WARNING, "GetMixFormat failed; device: \"%ws\" HRESULT==AUDCLNT_E_DEVICE_INVALIDATED; audio endpoint or adapter device disconnected", context->output.propertyVariantName.pwszVal);
-        break;}
-    case AUDCLNT_E_SERVICE_NOT_RUNNING:{
-        korl_log(WARNING, "GetMixFormat failed; device: \"%ws\" HRESULT==AUDCLNT_E_SERVICE_NOT_RUNNING; Windows audio service not running", context->output.propertyVariantName.pwszVal);
-        break;}
-    default:{
-        korl_log(ERROR, "GetMixFormat failed; device: \"%ws\" HRESULT==0x%X", context->output.propertyVariantName.pwszVal, hResult);
-        break;}
+        korl_log(INFO, "\textensible wave format: subFormat=%hs validBits/sample=%hu channelMask=0x%X", sampleFormatCString, waveFormatExtensible->Samples.wValidBitsPerSample, waveFormatExtensible->dwChannelMask);
     }
-    if(hResult != S_OK)
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, Initialize, AUDCLNT_SHAREMODE_SHARED, 0/*streamFlags*/, _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS, 0/*devicePeriod; _must_ == 0 in SHARED mode*/, context->output.waveFormat, NULL/*AudioSessionGuid; NULL=>create new session*/))
         goto cleanUp;
-    hResult = KORL_WINDOWS_COM(context->output.audioClient, Initialize, AUDCLNT_SHAREMODE_SHARED, 0/*streamFlags*/, _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS, 0/*devicePeriod; _must_ == 0 in SHARED mode*/, context->output.waveFormat, NULL/*AudioSessionGuid; NULL=>create new session*/);
-    switch(hResult)
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetBufferSize, &context->output.bufferFramesSize))
+        goto cleanUp;
+    korl_log(INFO, "AudioClient bufferFramesSize=%u", context->output.bufferFramesSize);
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetService, &IID_IAudioRenderClient, &context->output.audioRenderClient))
+        goto cleanUp;
+    BYTE* audioBuffer = NULL;
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, GetBuffer, context->output.bufferFramesSize, &audioBuffer))
+        goto cleanUp;
+    // @TODO: remove this code after testing is done
     {
-    case S_OK:{
-        break;}
-    case AUDCLNT_E_DEVICE_INVALIDATED:{
-        korl_log(WARNING, "Initialize failed; device: \"%ws\" HRESULT==AUDCLNT_E_DEVICE_INVALIDATED; audio endpoint or adapter device disconnected", context->output.propertyVariantName.pwszVal);
-        break;}
-    case AUDCLNT_E_DEVICE_IN_USE:{
-        korl_log(WARNING, "Initialize failed; device: \"%ws\" HRESULT==AUDCLNT_E_DEVICE_IN_USE; share mode mismatch", context->output.propertyVariantName.pwszVal);
-        break;}
-    case AUDCLNT_E_ENDPOINT_CREATE_FAILED:{
-        korl_log(WARNING, "Initialize failed; device: \"%ws\" HRESULT==AUDCLNT_E_ENDPOINT_CREATE_FAILED; audio endpoint is unplugged/reconfigured/unavailable", context->output.propertyVariantName.pwszVal);
-        break;}
-    case AUDCLNT_E_SERVICE_NOT_RUNNING:{
-        korl_log(WARNING, "Initialize failed; device: \"%ws\" HRESULT==AUDCLNT_E_SERVICE_NOT_RUNNING; Windows audio service not running", context->output.propertyVariantName.pwszVal);
-        break;}
-    default:{
-        korl_log(ERROR, "Initialize failed; device: \"%ws\" HRESULT==0x%X", context->output.propertyVariantName.pwszVal, hResult);
-        break;}
+        korl_assert(context->output.sampleFormat == _KORL_AUDIO_SAMPLE_FORMAT_FLOAT);
+        korl_assert(context->output.waveFormat->wBitsPerSample == 32);
+        f32* sampleBuffer = KORL_C_CAST(f32*, audioBuffer);
+        const f32 sineHz = 493.883f;// middle-B (B4)
+        const f32 samplesPerSine = KORL_C_CAST(f32, context->output.waveFormat->nSamplesPerSec) / sineHz;
+        for(u32 f = 0; f < context->output.bufferFramesSize; f++)
+        {
+            const f32 currentSineSample = korl_math_fmod(KORL_C_CAST(f32, f), samplesPerSine);
+            const f32 currentSineRatio  = currentSineSample / samplesPerSine;
+            for(u16 c = 0; c < context->output.waveFormat->nChannels; c++)
+            {
+                // (sampleBuffer + f*context->output.waveFormat->nChannels)[c] = 0.f;
+                (sampleBuffer + f*context->output.waveFormat->nChannels)[c] = korl_math_sin(currentSineRatio*KORL_TAU32);
+            }
+        }
     }
-    if(hResult != S_OK)
+    // @TODO: pass the AUDCLNT_BUFFERFLAGS_SILENT flag to ReleaseBuffer after the above code is removed
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, ReleaseBuffer, context->output.bufferFramesSize, 0/*flags*/))
         goto cleanUp;
-    //@TODO: fill the initial audio buffer with data, & start rendering audio
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, Start))
+        goto cleanUp;
+    context->output.isOpen = true;
+    korl_log(INFO, "...audio stream open!");
     cleanUp:
         if(!context->output.isOpen)
             /* finish releasing the context's output dynamic resources if we did not complete the opening process */

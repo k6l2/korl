@@ -69,6 +69,10 @@ korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator)
 {
     return fmodf(numerator, denominator);
 }
+korl_internal inline f32 korl_math_sin(f32 x)
+{
+    return sinf(x);
+}
 korl_internal inline f32 korl_math_cos(f32 x)
 {
     return cosf(x);
