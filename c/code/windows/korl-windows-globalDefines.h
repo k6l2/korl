@@ -26,6 +26,7 @@
 #include <devioctl.h>/* needed in order to use the CTL_CODE macro */
 #include <WinSock2.h>/* for bluetooth module */
 #include <ws2bth.h>/* for bluetooth module; specifically the SOCKADDR_BTH struct */
+#include <Audioclient.h>/* for WASAPI; this needs to be here since it _requires_ the near/far macros*/
 #ifdef near// defined from somewhere inside Windows.h
     #undef near // fuck you too, Microsoft!
 #endif
@@ -42,9 +43,9 @@
 #define KORL_WINDOWS_CHECK_HRESULT(x) \
     do\
     {\
-        const HRESULT hResult = (x);\
-        if(FAILED(hResult))\
-            korl_log(ERROR, #x" failed; HRESULT==0x%X", hResult);\
+        const HRESULT _korl_windows_check_hResult = (x);\
+        if(FAILED(_korl_windows_check_hResult))\
+            korl_log(ERROR, #x" failed; HRESULT==0x%X", _korl_windows_check_hResult);\
     } while(0);
 #define KORL_WINDOWS_COM(pUnknown, api, ...) (pUnknown)->lpVtbl->api(pUnknown, ##__VA_ARGS__)
 #define KORL_WINDOWS_CHECKED_COM(pUnknown, api, ...) KORL_WINDOWS_CHECK_HRESULT(KORL_WINDOWS_COM(pUnknown, api, ##__VA_ARGS__))
