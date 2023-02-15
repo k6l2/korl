@@ -1,11 +1,14 @@
 /**
  * Here, we will utilize the WinMM & WASAPI APIs to perform software audio 
  * rendering specifically for the Windows platform.
+ * I'm getting a lot of good tips on how to do this in C from this resource: https://www.codeproject.com/Articles/13601/COM-in-plain-C
+ * Other than that, nearly all this code is derived from MSDN: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
  */
 #include "korl-audio.h"
 #include "korl-memory.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"
+#include "korl-checkCast.h"
 #include <Functiondiscoverykeys_devpkey.h>// for PKEY_Device_FriendlyName
 #define _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS 10'000'000 // 10'000'000 => 1 second
 /* Why are these Microsoft constants defined here?  Because as far as I can tell, 
@@ -14,29 +17,31 @@
     seems to indicate that this is the only solution: https://stackoverflow.com/q/43717147/4526664 */
 const CLSID CLSID_MMDeviceEnumerator        = {0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};// obtained from <mmdeviceapi.h>
 const IID   IID_IMMDeviceEnumerator         = {0xA95664D2, 0x9614, 0x4F35, {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};// obtained from <mmdeviceapi.h>
+const IID   IID_IMMNotificationClient       = {0x7991EEC9, 0x7E89, 0x4D85, {0x83, 0x90, 0x6C, 0x70, 0x3C, 0xEC, 0x60, 0xC0}};// obtained from <mmdeviceapi.h>
 const IID   IID_IAudioClient                = {0x1CB9AD4C, 0xDBFA, 0x4c32, {0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2}};// obtained from <Audioclient.h>
 const IID   IID_IAudioRenderClient          = {0xF294ACFC, 0x3146, 0x4483, {0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2}};// obtained from <Audioclient.h>
 const GUID  KSDATAFORMAT_SUBTYPE_PCM        = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};// obtained from <mmreg.h>
 const GUID  KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};// obtained from <mmreg.h>
-typedef enum _Korl_Audio_SampleFormat
-    {_KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN
-    ,_KORL_AUDIO_SAMPLE_FORMAT_PCM
-    ,_KORL_AUDIO_SAMPLE_FORMAT_FLOAT
-} _Korl_Audio_SampleFormat;
+typedef struct _Korl_Audio_MmNotificationClient
+{
+    IMMNotificationClientVtbl* lpVtbl;
+} _Korl_Audio_MmNotificationClient;
 typedef struct _Korl_Audio_Context
 {
-    IMMDeviceEnumerator* mmDeviceEnumerator;// my assumption here is that we only ever have to create one device enumerator for the entire duration of the application, as nothing in the WinMM API seems to indicate otherwise from what I've seen
+    IMMDeviceEnumerator*      mmDeviceEnumerator;// my assumption here is that we only ever have to create one device enumerator for the entire duration of the application, as nothing in the WinMM API seems to indicate otherwise from what I've seen
+    IMMNotificationClient     mmNotificationClient;
+    IMMNotificationClientVtbl mmNotificationClientVtbl;
     struct
     {
-        bool                     isOpen;
-        IMMDevice*               mmDevice;
-        IPropertyStore*          propertyStore;
-        PROPVARIANT              propertyVariantName;
-        IAudioClient*            audioClient;
-        WAVEFORMATEX*            waveFormat;
-        _Korl_Audio_SampleFormat sampleFormat;
-        UINT32                   bufferFramesSize;// bytes/frame == waveFormat->nChannels * waveFormat->wBitsPerSample/8
-        IAudioRenderClient*      audioRenderClient;
+        bool                    isOpen;
+        IMMDevice*              mmDevice;
+        IPropertyStore*         propertyStore;
+        PROPVARIANT             propertyVariantName;
+        IAudioClient*           audioClient;
+        WAVEFORMATEX*           waveFormat;
+        Korl_Audio_SampleFormat sampleFormat;
+        UINT32                  bufferFramesSize;// bytes/frame == waveFormat->nChannels * waveFormat->wBitsPerSample/8
+        IAudioRenderClient*     audioRenderClient;
     } output;
 } _Korl_Audio_Context;
 korl_global_variable _Korl_Audio_Context _korl_audio_context;
@@ -75,6 +80,8 @@ korl_internal void _korl_audio_output_close(void)
     KORL_WINDOWS_CHECK_HRESULT(PropVariantClear(&context->output.propertyVariantName));
     KORL_WINDOWS_COM_SAFE_RELEASE(context->output.propertyStore);
     KORL_WINDOWS_COM_SAFE_RELEASE(context->output.mmDevice);
+    context->output.isOpen = false;
+    korl_log(INFO, "audio output closed");
 }
 korl_internal void _korl_audio_output_openDefault(void)
 {
@@ -92,20 +99,20 @@ korl_internal void _korl_audio_output_openDefault(void)
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetMixFormat, &context->output.waveFormat))
         goto cleanUp;
     korl_log(INFO, "AudioClient wave format: channels=%hu hz=%u bitsPerSample=%hu", context->output.waveFormat->nChannels, context->output.waveFormat->nSamplesPerSec, context->output.waveFormat->wBitsPerSample);
-    context->output.sampleFormat = _KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN;
+    context->output.sampleFormat = KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN;
     if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
     {
         const WAVEFORMATEXTENSIBLE*const waveFormatExtensible = KORL_C_CAST(WAVEFORMATEXTENSIBLE*, context->output.waveFormat);
         if     (IsEqualGUID(&waveFormatExtensible->SubFormat, &KSDATAFORMAT_SUBTYPE_PCM))
-            context->output.sampleFormat = _KORL_AUDIO_SAMPLE_FORMAT_PCM;
+            context->output.sampleFormat = KORL_AUDIO_SAMPLE_FORMAT_PCM_SIGNED;
         else if(IsEqualGUID(&waveFormatExtensible->SubFormat, &KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
-            context->output.sampleFormat = _KORL_AUDIO_SAMPLE_FORMAT_FLOAT;
+            context->output.sampleFormat = KORL_AUDIO_SAMPLE_FORMAT_FLOAT;
         const char* sampleFormatCString = NULL;
         switch(context->output.sampleFormat)
         {
-        case _KORL_AUDIO_SAMPLE_FORMAT_PCM:  {sampleFormatCString = "PCM";   break;}
-        case _KORL_AUDIO_SAMPLE_FORMAT_FLOAT:{sampleFormatCString = "Float"; break;}
-        default:                             {sampleFormatCString = "Unknown"; break;}
+        case KORL_AUDIO_SAMPLE_FORMAT_PCM_SIGNED: {sampleFormatCString = "PCM Signed"; break;}
+        case KORL_AUDIO_SAMPLE_FORMAT_FLOAT:      {sampleFormatCString = "Float";      break;}
+        default:                                   {sampleFormatCString = "Unknown";    break;}
         }
         korl_log(INFO, "\textensible wave format: subFormat=%hs validBits/sample=%hu channelMask=0x%X", sampleFormatCString, waveFormatExtensible->Samples.wValidBitsPerSample, waveFormatExtensible->dwChannelMask);
     }
@@ -119,12 +126,13 @@ korl_internal void _korl_audio_output_openDefault(void)
     BYTE* audioBuffer = NULL;
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, GetBuffer, context->output.bufferFramesSize, &audioBuffer))
         goto cleanUp;
-    // @TODO: remove this code after testing is done
+#if 0
+    /* debug test code; initialize the buffer with a sine wave */
     {
         korl_assert(context->output.sampleFormat == _KORL_AUDIO_SAMPLE_FORMAT_FLOAT);
         korl_assert(context->output.waveFormat->wBitsPerSample == 32);
-        f32* sampleBuffer = KORL_C_CAST(f32*, audioBuffer);
-        const f32 sineHz = 493.883f;// middle-B (B4)
+        f32*      sampleBuffer   = KORL_C_CAST(f32*, audioBuffer);
+        const f32 sineHz         = 493.883f;// middle-B (B4)
         const f32 samplesPerSine = KORL_C_CAST(f32, context->output.waveFormat->nSamplesPerSec) / sineHz;
         for(u32 f = 0; f < context->output.bufferFramesSize; f++)
         {
@@ -132,13 +140,14 @@ korl_internal void _korl_audio_output_openDefault(void)
             const f32 currentSineRatio  = currentSineSample / samplesPerSine;
             for(u16 c = 0; c < context->output.waveFormat->nChannels; c++)
             {
-                // (sampleBuffer + f*context->output.waveFormat->nChannels)[c] = 0.f;
                 (sampleBuffer + f*context->output.waveFormat->nChannels)[c] = korl_math_sin(currentSineRatio*KORL_TAU32);
             }
         }
     }
-    // @TODO: pass the AUDCLNT_BUFFERFLAGS_SILENT flag to ReleaseBuffer after the above code is removed
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, ReleaseBuffer, context->output.bufferFramesSize, 0/*flags*/))
+#else
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, ReleaseBuffer, context->output.bufferFramesSize, AUDCLNT_BUFFERFLAGS_SILENT/*flags*/))
+#endif
         goto cleanUp;
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, Start))
         goto cleanUp;
@@ -149,11 +158,38 @@ korl_internal void _korl_audio_output_openDefault(void)
             /* finish releasing the context's output dynamic resources if we did not complete the opening process */
             _korl_audio_output_close();
 }
+korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDeviceStateChanged(IMMNotificationClient* This, _In_ LPCWSTR pwstrDeviceId, _In_ DWORD dwNewState)
+{
+    return S_OK;
+}
+korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDeviceAdded(IMMNotificationClient* This, _In_ LPCWSTR pwstrDeviceId)
+{
+    return S_OK;
+}
+korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDeviceRemoved(IMMNotificationClient* This, _In_ LPCWSTR pwstrDeviceId)
+{
+    return S_OK;
+}
+korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDefaultDeviceChanged(IMMNotificationClient* This, _In_ EDataFlow flow, _In_ ERole role, _In_ LPCWSTR pwstrDefaultDeviceId)
+{
+    korl_log(INFO, "default audio device changed");
+    return S_OK;
+}
+korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onPropertyValueChanged(IMMNotificationClient* This, _In_ LPCWSTR pwstrDeviceId, _In_ const PROPERTYKEY key)
+{
+    return S_OK;
+}
 korl_internal void korl_audio_initialize(void)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
     korl_memory_zero(context, sizeof(*context));
     PropVariantInit(&context->output.propertyVariantName);
+    context->mmNotificationClientVtbl = (IMMNotificationClientVtbl){.OnDeviceStateChanged   = _korl_audio_mmNotificationClient_onDeviceStateChanged
+                                                                   ,.OnDeviceAdded          = _korl_audio_mmNotificationClient_onDeviceAdded
+                                                                   ,.OnDeviceRemoved        = _korl_audio_mmNotificationClient_onDeviceRemoved
+                                                                   ,.OnDefaultDeviceChanged = _korl_audio_mmNotificationClient_onDefaultDeviceChanged
+                                                                   ,.OnPropertyValueChanged = _korl_audio_mmNotificationClient_onPropertyValueChanged};
+    context->mmNotificationClient.lpVtbl = &context->mmNotificationClientVtbl;
     /* we're using WinMM/WASAPI; we need to make sure COM is initialized */
     const HRESULT hResultCoInitialize = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_SPEED_OVER_MEMORY);
     switch(hResultCoInitialize)
@@ -201,6 +237,8 @@ korl_internal void korl_audio_initialize(void)
     KORL_WINDOWS_COM_SAFE_RELEASE(mmDeviceCollection);
     /**/
     _korl_audio_output_openDefault();// when korl-audio is initialized, start by attempting to open the default audio rendering device
+    /* register audio endpoint notification callbacks, so we can know when important device changes occur */
+    _KORL_AUDIO_CHECK_COM(context->mmDeviceEnumerator, RegisterEndpointNotificationCallback, &context->mmNotificationClient);
 }
 korl_internal void korl_audio_shutDown(void)
 {
@@ -208,4 +246,50 @@ korl_internal void korl_audio_shutDown(void)
     _korl_audio_output_close();
     KORL_WINDOWS_COM_SAFE_RELEASE(context->mmDeviceEnumerator);
     CoUninitialize();// according to MSDN, this _must_ be called, even if the call to CoInitializeEx failed due to COM already being initialized
+}
+korl_internal Korl_Audio_Format korl_audio_format(void)
+{
+    _Korl_Audio_Context*const context = &_korl_audio_context;
+    if(!context->output.isOpen)
+        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Audio_Format);
+    Korl_Audio_Format result = {0};
+    result.frameHz        = context->output.waveFormat->nSamplesPerSec;
+    result.sampleFormat   = context->output.sampleFormat;
+    result.channels       = korl_checkCast_u$_to_u8(context->output.waveFormat->nChannels);
+    result.bytesPerSample = korl_checkCast_u$_to_u8(context->output.waveFormat->wBitsPerSample/8);
+    return result;
+}
+korl_internal au8  korl_audio_writeBufferGet(void)
+{
+    _Korl_Audio_Context*const context = &_korl_audio_context;
+    if(!context->output.isOpen)
+        return KORL_STRUCT_INITIALIZE_ZERO(au8);
+    context->output.isOpen = false;// clear the flag indicating we still have an open audio endpoint, and only raise it again if we successfully execute everything
+    au8    result          = {0};
+    UINT32 framesPadding   =  0;
+    UINT32 framesAvailable =  0;
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetCurrentPadding, &framesPadding))
+        goto cleanUp;
+    framesAvailable = context->output.bufferFramesSize - framesPadding;
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, GetBuffer, framesAvailable, &result.data))
+        goto cleanUp;
+    result.size            = framesAvailable;
+    context->output.isOpen = true;
+    cleanUp:
+        if(!context->output.isOpen)
+            _korl_audio_output_close();
+        return result;
+}
+korl_internal void korl_audio_writeBufferRelease(u$ framesWritten)
+{
+    _Korl_Audio_Context*const context = &_korl_audio_context;
+    if(!context->output.isOpen)
+        return;
+    context->output.isOpen = false;// clear the flag indicating we still have an open audio endpoint, and only raise it again if we successfully execute everything
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, ReleaseBuffer, korl_checkCast_u$_to_u32(framesWritten), 0/*flags*/))
+        goto cleanUp;
+    context->output.isOpen = true;
+    cleanUp:
+        if(!context->output.isOpen)
+            _korl_audio_output_close();
 }
