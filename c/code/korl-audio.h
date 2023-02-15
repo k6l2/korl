@@ -12,8 +12,13 @@ typedef struct Korl_Audio_Format
     u8                      channels;
     u8                      bytesPerSample;
 } Korl_Audio_Format;
-korl_internal void              korl_audio_initialize(void);
-korl_internal void              korl_audio_shutDown(void);
-korl_internal Korl_Audio_Format korl_audio_format(void);
-korl_internal au8               korl_audio_writeBufferGet(void);
-korl_internal void              korl_audio_writeBufferRelease(u$ framesWritten);
+typedef struct Korl_Audio_WriteBuffer
+{
+    void* frames;
+    u32   framesSize;// NOTE: user must use data obtained from `korl_audio_format` to calculate how many bytes are contained in each frame
+} Korl_Audio_WriteBuffer;
+korl_internal void                   korl_audio_initialize(void);
+korl_internal void                   korl_audio_shutDown(void);
+korl_internal Korl_Audio_Format      korl_audio_format(void);
+korl_internal Korl_Audio_WriteBuffer korl_audio_writeBufferGet(void);
+korl_internal void                   korl_audio_writeBufferRelease(u32 framesWritten);

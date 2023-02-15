@@ -65,11 +65,11 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
 [x] select/activate the default multimedia audio device
 [x] obtain audio output buffer
 [x] write sine wave output to the audio buffer
-[ ] when the audio device is disconnected, attempt to connect to the next default audio device
+[x] when the audio device is disconnected, attempt to connect to the next default audio device
     - how do we detect when this audio device is disconnected?
     - maybe we just program the rest of the renderer under the assumption that we can handle this reconnection process without an "event callback" mechanism, such as IMMNotificationClient
     - nevermind; I figured out how to implement the IMMNotificationClient thing, so this should be possible now
-[ ] add `korl_audio_play` API
+[ ] add `korl_sfx_play` API
     [ ] add korl-resource WAV decoder
         - I am currently thinking that we perform the conversion from source sample rate => renderer sample rate in here, and just cache this raw audio in korl-resource
             - the main reason for this would be to prevent the need for us to have to do this processing (if necessary) at runtime

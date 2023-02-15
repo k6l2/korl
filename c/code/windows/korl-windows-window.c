@@ -891,11 +891,12 @@ korl_internal void korl_windows_window_loop(void)
         korl_gfx_text_draw(debugText, korl_math_aabb2f32_fromPoints(KORL_F32_MAX,KORL_F32_MAX, -KORL_F32_MAX,-KORL_F32_MAX));
 #endif
         korl_time_probeStop(game_update);
-        {
-            au8 audioBuffer = korl_audio_writeBufferGet();
-            //@TODO: put audio mixer logic here instead
+        {//@TODO: encapsulate this code into korl-sfx?
+            const Korl_Audio_Format audioFormat = korl_audio_format();
+            Korl_Audio_WriteBuffer audioBuffer = korl_audio_writeBufferGet();
+            //@TODO: write audio to buffer
             // korl_log(VERBOSE, "audioBuffer.size=%llu", audioBuffer.size);//@TODO: delete
-            korl_audio_writeBufferRelease(0);
+            korl_audio_writeBufferRelease(audioBuffer.framesSize);
         }
         korl_time_probeStart(gui_frame_end);          korl_gui_frameEnd();          korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(flush_glyph_pages);      korl_gfx_flushGlyphPages();   korl_time_probeStop(flush_glyph_pages);

@@ -9,6 +9,7 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"
 #include "korl-checkCast.h"
+#include "korl-string.h"
 #include <Functiondiscoverykeys_devpkey.h>// for PKEY_Device_FriendlyName
 #define _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS 10'000'000 // 10'000'000 => 1 second
 /* Why are these Microsoft constants defined here?  Because as far as I can tell, 
@@ -31,10 +32,12 @@ typedef struct _Korl_Audio_Context
     IMMDeviceEnumerator*      mmDeviceEnumerator;// my assumption here is that we only ever have to create one device enumerator for the entire duration of the application, as nothing in the WinMM API seems to indicate otherwise from what I've seen
     IMMNotificationClient     mmNotificationClient;
     IMMNotificationClientVtbl mmNotificationClientVtbl;
+    LPWSTR                    pwstrChangedDefaultDeviceId;// the presence of a non-NULL value here should trigger the user-facing korl-audio APIs to attempt to reconnect to this device, if it does not match output->deviceId
     struct
     {
         bool                    isOpen;
         IMMDevice*              mmDevice;
+        LPWSTR                  pwstrDeviceId;
         IPropertyStore*         propertyStore;
         PROPVARIANT             propertyVariantName;
         IAudioClient*           audioClient;
@@ -76,6 +79,7 @@ korl_internal bool _korl_audio_check(HRESULT hResult, const char* cStringApi)
 korl_internal void _korl_audio_output_close(void)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
+    KORL_WINDOWS_COM_SAFE_TASKMEM_FREE(context->output.pwstrDeviceId);
     KORL_WINDOWS_COM_SAFE_TASKMEM_FREE(context->output.waveFormat);
     KORL_WINDOWS_CHECK_HRESULT(PropVariantClear(&context->output.propertyVariantName));
     KORL_WINDOWS_COM_SAFE_RELEASE(context->output.propertyStore);
@@ -83,14 +87,13 @@ korl_internal void _korl_audio_output_close(void)
     context->output.isOpen = false;
     korl_log(INFO, "audio output closed");
 }
-korl_internal void _korl_audio_output_openDefault(void)
+korl_internal void _korl_audio_output_open(IMMDevice* mmDevice)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
     korl_assert(!context->output.isOpen);
-    /* select & activate the default audio endpoint device */
-    if(!_KORL_AUDIO_CHECK_COM(context->mmDeviceEnumerator, GetDefaultAudioEndpoint, eRender, eMultimedia, &context->output.mmDevice))
-        goto cleanUp;
+    context->output.mmDevice = mmDevice;
     /* we have an audio endpoint; we can get its information now */
+    KORL_WINDOWS_CHECKED_COM(context->output.mmDevice, GetId, &context->output.pwstrDeviceId);
     KORL_WINDOWS_CHECKED_COM(context->output.mmDevice, OpenPropertyStore, STGM_READ, &context->output.propertyStore);
     KORL_WINDOWS_CHECKED_COM(context->output.propertyStore, GetValue, &PKEY_Device_FriendlyName, &context->output.propertyVariantName);
     korl_log(INFO, "opening audio endpoint device: \"%ws\"...", context->output.propertyVariantName.pwszVal);
@@ -152,7 +155,7 @@ korl_internal void _korl_audio_output_openDefault(void)
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, Start))
         goto cleanUp;
     context->output.isOpen = true;
-    korl_log(INFO, "...audio stream open!");
+    korl_log(INFO, "...audio output open!");
     cleanUp:
         if(!context->output.isOpen)
             /* finish releasing the context's output dynamic resources if we did not complete the opening process */
@@ -172,12 +175,61 @@ korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDevic
 }
 korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDefaultDeviceChanged(IMMNotificationClient* This, _In_ EDataFlow flow, _In_ ERole role, _In_ LPCWSTR pwstrDefaultDeviceId)
 {
-    korl_log(INFO, "default audio device changed");
+    _Korl_Audio_Context*const context = &_korl_audio_context;
+    if(flow == eRender && role == eMultimedia)
+    {
+        /* clone the new default device Id so that we can compare the current open device Id with it later */
+        LPWSTR pwstrDefaultDeviceIdCopy = NULL;
+        if(pwstrDefaultDeviceId)/* it is possible that there is no default device available, in which case this string pointer is just NULL */
+        {
+            korl_log(INFO, "default multimedia|render audio device changed; id=\"%ws\"", pwstrDefaultDeviceId);
+            const u$ pwstrDefaultDeviceIdSize = korl_string_sizeUtf16(pwstrDefaultDeviceId);
+            pwstrDefaultDeviceIdCopy = CoTaskMemAlloc((pwstrDefaultDeviceIdSize + 1/*null terminator*/)*sizeof(*pwstrDefaultDeviceId));
+            korl_memory_copy(pwstrDefaultDeviceIdCopy, pwstrDefaultDeviceId, (pwstrDefaultDeviceIdSize + 1/*null terminator*/)*sizeof(*pwstrDefaultDeviceId));
+        }
+        else
+            korl_log(INFO, "default multimedia|render audio device NULL");
+        /* interlock exchange this clone string with the context's last known string */
+        PVOID previousChangedDeviceId = InterlockedExchangePointer(&context->pwstrChangedDefaultDeviceId, pwstrDefaultDeviceIdCopy);
+        /* if there was a previously stored changed device Id string, we must free it */
+        if(previousChangedDeviceId)
+            KORL_WINDOWS_COM_SAFE_TASKMEM_FREE(previousChangedDeviceId);
+    }
     return S_OK;
 }
 korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onPropertyValueChanged(IMMNotificationClient* This, _In_ LPCWSTR pwstrDeviceId, _In_ const PROPERTYKEY key)
 {
     return S_OK;
+}
+korl_internal void _korl_audio_logDeviceList(void)
+{
+    _Korl_Audio_Context*const context = &_korl_audio_context;
+    IMMDeviceCollection* mmDeviceCollection = NULL;
+    UINT                 deviceCount        = 0;
+    KORL_WINDOWS_CHECKED_COM(context->mmDeviceEnumerator, EnumAudioEndpoints, eRender, DEVICE_STATE_ACTIVE, &mmDeviceCollection);
+    KORL_WINDOWS_CHECKED_COM(mmDeviceCollection, GetCount, &deviceCount);
+    korl_log(INFO, "found %u audio endpoint devices:", deviceCount);
+    for(UINT d = 0; d < deviceCount; d++)
+    {
+        IMMDevice*      mmDevice            = NULL;
+        IPropertyStore* devicePropertyStore = NULL;
+        LPWSTR          pwszDeviceId        = NULL;
+        KORL_ZERO_STACK(PROPVARIANT, devicePropertyVariantName);
+        /* obtain metadata of the device */
+        KORL_WINDOWS_CHECKED_COM(mmDeviceCollection, Item, d, &mmDevice);
+        KORL_WINDOWS_CHECKED_COM(mmDevice, GetId, &pwszDeviceId);
+        KORL_WINDOWS_CHECKED_COM(mmDevice, OpenPropertyStore, STGM_READ, &devicePropertyStore);
+        PropVariantInit(&devicePropertyVariantName);
+        KORL_WINDOWS_CHECKED_COM(devicePropertyStore, GetValue, &PKEY_Device_FriendlyName, &devicePropertyVariantName);
+        /**/
+        korl_log(INFO, "\tdevice[%u]: name=\"%ws\" id=\"%ws\"", d, devicePropertyVariantName.pwszVal, pwszDeviceId);
+        /* clean up dynamic memory */
+        KORL_WINDOWS_CHECK_HRESULT(PropVariantClear(&devicePropertyVariantName));
+        KORL_WINDOWS_COM_SAFE_TASKMEM_FREE(pwszDeviceId);
+        KORL_WINDOWS_COM_SAFE_RELEASE(devicePropertyStore);
+        KORL_WINDOWS_COM_SAFE_RELEASE(mmDevice);
+    }
+    KORL_WINDOWS_COM_SAFE_RELEASE(mmDeviceCollection);
 }
 korl_internal void korl_audio_initialize(void)
 {
@@ -208,37 +260,25 @@ korl_internal void korl_audio_initialize(void)
         break;}
     }
     KORL_WINDOWS_CHECK_HRESULT(CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, &context->mmDeviceEnumerator));
-    /* enumerate audio endpoint devices */
-    IMMDeviceCollection* mmDeviceCollection = NULL;
-    UINT                 deviceCount        = 0;
-    KORL_WINDOWS_CHECKED_COM(context->mmDeviceEnumerator, EnumAudioEndpoints, eRender, DEVICE_STATE_ACTIVE, &mmDeviceCollection);
-    KORL_WINDOWS_CHECKED_COM(mmDeviceCollection, GetCount, &deviceCount);
-    korl_log(INFO, "found %u audio endpoint devices:", deviceCount);
-    for(UINT d = 0; d < deviceCount; d++)
-    {
-        IMMDevice*      mmDevice            = NULL;
-        IPropertyStore* devicePropertyStore = NULL;
-        LPWSTR          pwszDeviceId        = NULL;
-        KORL_ZERO_STACK(PROPVARIANT, devicePropertyVariantName);
-        /* obtain metadata of the device */
-        KORL_WINDOWS_CHECKED_COM(mmDeviceCollection, Item, d, &mmDevice);
-        KORL_WINDOWS_CHECKED_COM(mmDevice, GetId, &pwszDeviceId);
-        KORL_WINDOWS_CHECKED_COM(mmDevice, OpenPropertyStore, STGM_READ, &devicePropertyStore);
-        PropVariantInit(&devicePropertyVariantName);
-        KORL_WINDOWS_CHECKED_COM(devicePropertyStore, GetValue, &PKEY_Device_FriendlyName, &devicePropertyVariantName);
-        /**/
-        korl_log(INFO, "\tdevice[%u]: name=\"%ws\" id=\"%ws\"", d, devicePropertyVariantName.pwszVal, pwszDeviceId);
-        /* clean up dynamic memory */
-        KORL_WINDOWS_CHECK_HRESULT(PropVariantClear(&devicePropertyVariantName));
-        KORL_WINDOWS_COM_SAFE_TASKMEM_FREE(pwszDeviceId);
-        KORL_WINDOWS_COM_SAFE_RELEASE(devicePropertyStore);
-        KORL_WINDOWS_COM_SAFE_RELEASE(mmDevice);
-    }
-    KORL_WINDOWS_COM_SAFE_RELEASE(mmDeviceCollection);
-    /**/
-    _korl_audio_output_openDefault();// when korl-audio is initialized, start by attempting to open the default audio rendering device
+    /* enumerate audio endpoint devices; this is just for diagnostic purposes */
+    _korl_audio_logDeviceList();
     /* register audio endpoint notification callbacks, so we can know when important device changes occur */
     _KORL_AUDIO_CHECK_COM(context->mmDeviceEnumerator, RegisterEndpointNotificationCallback, &context->mmNotificationClient);
+    /* when korl-audio is initialized, start by attempting to open the default audio rendering device */
+    IMMDevice* mmDeviceDefaultRender = NULL;
+    const HRESULT hResultGetDefaultRender = KORL_WINDOWS_COM(context->mmDeviceEnumerator, GetDefaultAudioEndpoint, eRender, eMultimedia, &mmDeviceDefaultRender);
+    switch(hResultGetDefaultRender)
+    {
+    case S_OK:{
+        _korl_audio_output_open(mmDeviceDefaultRender);
+        break;}
+    case ERROR_NOT_FOUND:{
+        korl_log(WARNING, "no default audio device found; rendering unavailable");
+        break;}
+    default:{
+        korl_log(ERROR, "GetDefaultAudioEndpoint failed; HRESULT==0x%X", hResultGetDefaultRender);
+        break;}
+    }
 }
 korl_internal void korl_audio_shutDown(void)
 {
@@ -250,6 +290,36 @@ korl_internal void korl_audio_shutDown(void)
 korl_internal Korl_Audio_Format korl_audio_format(void)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
+    /* take ownership of the last known changed default device Id; we need to 
+        re-open the audio rendering device if this Id differs from context->output */
+    LPWSTR previousChangedDeviceId = InterlockedExchangePointer(&context->pwstrChangedDefaultDeviceId, NULL);
+    if(previousChangedDeviceId)
+    {
+        korl_log(INFO, "new default device Id: \"%ws\"", previousChangedDeviceId);
+        if(context->output.isOpen && 0 != korl_string_compareUtf16(previousChangedDeviceId, context->output.pwstrDeviceId))
+            _korl_audio_output_close();
+        if(!context->output.isOpen)
+        {
+            /* enumerate devices for diagnostic purposes */
+            _korl_audio_logDeviceList();
+            /* because of the volatile nature of audio endpoint device connectivity, 
+                we can only _attempt_ to open the new device, as it is entirely possible
+                that the device has already disconnected since we received the 
+                onDefaultDeviceChanged event */
+            IMMDevice* newDefaultDevice = NULL;
+            const HRESULT hResultGetNewDefaultDevice = KORL_WINDOWS_COM(context->mmDeviceEnumerator, GetDevice, previousChangedDeviceId, &newDefaultDevice);
+            /* NOTE: we cannot use a switch statement here, because E_NOTFOUND 
+                     is _not_ a constant value, which is a requirement for 
+                     switch case expressions */
+            if(     hResultGetNewDefaultDevice == S_OK)
+                _korl_audio_output_open(newDefaultDevice);
+            else if(hResultGetNewDefaultDevice == E_NOTFOUND)
+                korl_log(WARNING, "new default audio device not found");
+            else
+                korl_log(ERROR, "GetDevice failed; HRESULT=0x%X", hResultGetNewDefaultDevice);
+        }
+        KORL_WINDOWS_COM_SAFE_TASKMEM_FREE(previousChangedDeviceId);
+    }
     if(!context->output.isOpen)
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Audio_Format);
     Korl_Audio_Format result = {0};
@@ -259,34 +329,34 @@ korl_internal Korl_Audio_Format korl_audio_format(void)
     result.bytesPerSample = korl_checkCast_u$_to_u8(context->output.waveFormat->wBitsPerSample/8);
     return result;
 }
-korl_internal au8  korl_audio_writeBufferGet(void)
+korl_internal Korl_Audio_WriteBuffer korl_audio_writeBufferGet(void)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
     if(!context->output.isOpen)
-        return KORL_STRUCT_INITIALIZE_ZERO(au8);
+        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Audio_WriteBuffer);
     context->output.isOpen = false;// clear the flag indicating we still have an open audio endpoint, and only raise it again if we successfully execute everything
-    au8    result          = {0};
-    UINT32 framesPadding   =  0;
-    UINT32 framesAvailable =  0;
+    Korl_Audio_WriteBuffer result          = {0};
+    UINT32                 framesPadding   =  0;
+    UINT32                 framesAvailable =  0;
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetCurrentPadding, &framesPadding))
         goto cleanUp;
     framesAvailable = context->output.bufferFramesSize - framesPadding;
-    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, GetBuffer, framesAvailable, &result.data))
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, GetBuffer, framesAvailable, KORL_C_CAST(BYTE**, &result.frames)))
         goto cleanUp;
-    result.size            = framesAvailable;
+    result.framesSize      = framesAvailable;
     context->output.isOpen = true;
     cleanUp:
         if(!context->output.isOpen)
             _korl_audio_output_close();
         return result;
 }
-korl_internal void korl_audio_writeBufferRelease(u$ framesWritten)
+korl_internal void korl_audio_writeBufferRelease(u32 framesWritten)
 {
     _Korl_Audio_Context*const context = &_korl_audio_context;
     if(!context->output.isOpen)
         return;
     context->output.isOpen = false;// clear the flag indicating we still have an open audio endpoint, and only raise it again if we successfully execute everything
-    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, ReleaseBuffer, korl_checkCast_u$_to_u32(framesWritten), 0/*flags*/))
+    if(!_KORL_AUDIO_CHECK_COM(context->output.audioRenderClient, ReleaseBuffer, framesWritten, 0/*flags*/))
         goto cleanUp;
     context->output.isOpen = true;
     cleanUp:
