@@ -66,21 +66,21 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-resource.h"
 #include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
-korl_internal void korl_resource_initialize(void);
-korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile);
-korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
-korl_internal Korl_Resource_Handle korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
-korl_internal void korl_resource_destroy(Korl_Resource_Handle handle);
-korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset);
-korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle);
-korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize);
-korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount);
-korl_internal void korl_resource_flushUpdates(void);
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
-korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
+korl_internal void                                           korl_resource_initialize(void);
+korl_internal KORL_FUNCTION_korl_resource_fromFile          (korl_resource_fromFile);
+korl_internal Korl_Resource_Handle                           korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
+korl_internal Korl_Resource_Handle                           korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
+korl_internal void                                           korl_resource_destroy(Korl_Resource_Handle handle);
+korl_internal void                                           korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset);
+korl_internal u$                                             korl_resource_getByteSize(Korl_Resource_Handle handle);
+korl_internal void                                           korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize);
+korl_internal void                                           korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount);
+korl_internal void                                           korl_resource_flushUpdates(void);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
+korl_internal void                                           korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 
  * Win32 API?
  * KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file? */
-korl_internal bool korl_resource_saveStateRead(HANDLE hFile);
+korl_internal bool                                           korl_resource_saveStateRead(HANDLE hFile);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload);

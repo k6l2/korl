@@ -2,6 +2,8 @@
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
 #include "korl-stringPool.h"
+#include "korl-audio.h"
+#include "korl-codec-audio.h"
 #define _LOCAL_STRING_POOL_POINTER _korl_resource_context.stringPool
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
@@ -11,6 +13,7 @@ typedef enum _Korl_Resource_Type
 } _Korl_Resource_Type;
 typedef enum _Korl_Resource_MultimediaType
     {_KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS// this resource maps to a vulkan device-local allocation, or similar type of data
+    ,_KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO
 } _Korl_Resource_MultimediaType;
 typedef struct _Korl_Resource_Handle_Unpacked
 {
@@ -42,6 +45,10 @@ typedef struct _Korl_Resource
                 } vertexBuffer;
             } createInfo;
         } graphics;
+        struct
+        {
+            Korl_Audio_Format format;
+        } audio;
     } subType;
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType; example: an image resource data will point to an RGBA bitmap
     u$    dataBytes;
@@ -57,10 +64,10 @@ typedef struct _Korl_Resource_Map
 typedef struct _Korl_Resource_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
-    _Korl_Resource_Map* stbHmResources;
-    Korl_Resource_Handle* stbDsDirtyResourceHandles;
-    u$ nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
-    Korl_StringPool* stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
+    _Korl_Resource_Map*         stbHmResources;
+    Korl_Resource_Handle*       stbDsDirtyResourceHandles;
+    u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
+    Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
 } _Korl_Resource_Context;
 korl_global_variable _Korl_Resource_Context _korl_resource_context;
 korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_handle_unpack(Korl_Resource_Handle handle)
@@ -82,19 +89,38 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
     /* automatically determine the type of multimedia this resource is based on the file extension */
     bool multimediaTypeFound = false;
-    korl_shared_const u16* IMAGE_EXTENSIONS[] = {L".png", L".jpg", L".jpeg"};
     _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
-    for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
+    if(!multimediaTypeFound)
     {
-        const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i]);
-        if(fileName.size < extensionSize)
-            continue;
-        if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, IMAGE_EXTENSIONS[i], extensionSize))
+        korl_shared_const u16* IMAGE_EXTENSIONS[] = {L".png", L".jpg", L".jpeg"};
+        for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
         {
-            unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
-            graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
-            multimediaTypeFound           = true;
-            break;
+            const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i]);
+            if(fileName.size < extensionSize)
+                continue;
+            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, IMAGE_EXTENSIONS[i], extensionSize))
+            {
+                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
+                graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
+                multimediaTypeFound           = true;
+                break;
+            }
+        }
+    }
+    if(!multimediaTypeFound)
+    {
+        korl_shared_const u16* AUDIO_EXTENSIONS[] = {L".wav"};
+        for(u32 i = 0; i < korl_arraySize(AUDIO_EXTENSIONS); i++)
+        {
+            const u$ extensionSize = korl_string_sizeUtf16(AUDIO_EXTENSIONS[i]);
+            if(fileName.size < extensionSize)
+                continue;
+            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, AUDIO_EXTENSIONS[i], extensionSize))
+            {
+                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO;
+                multimediaTypeFound           = true;
+                break;
+            }
         }
     }
     if(!multimediaTypeFound)
@@ -123,7 +149,7 @@ korl_internal void korl_resource_initialize(void)
 }
 korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
 {
-    _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
+    _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
@@ -177,6 +203,10 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
                     korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
                     break;
                 }
+                break;}
+            case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
+                resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, _korl_resource_context.allocatorHandle, &resource->dataBytes, &resource->subType.audio.format);
+                korl_assert(resource->data);
                 break;}
             default:{
                 korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);

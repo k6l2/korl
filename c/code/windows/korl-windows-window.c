@@ -22,7 +22,7 @@
 #include "korl-clipboard.h"
 #include "korl-string.h"
 #include "korl-crash.h"
-#include "korl-audio.h"
+#include "korl-sfx.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
@@ -891,13 +891,7 @@ korl_internal void korl_windows_window_loop(void)
         korl_gfx_text_draw(debugText, korl_math_aabb2f32_fromPoints(KORL_F32_MAX,KORL_F32_MAX, -KORL_F32_MAX,-KORL_F32_MAX));
 #endif
         korl_time_probeStop(game_update);
-        {//@TODO: encapsulate this code into korl-sfx?
-            const Korl_Audio_Format audioFormat = korl_audio_format();
-            Korl_Audio_WriteBuffer audioBuffer = korl_audio_writeBufferGet();
-            //@TODO: write audio to buffer
-            // korl_log(VERBOSE, "audioBuffer.size=%llu", audioBuffer.size);//@TODO: delete
-            korl_audio_writeBufferRelease(audioBuffer.framesSize);
-        }
+        korl_time_probeStart(render_sound);           korl_sfx_mix();               korl_time_probeStop(render_sound);
         korl_time_probeStart(gui_frame_end);          korl_gui_frameEnd();          korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(flush_glyph_pages);      korl_gfx_flushGlyphPages();   korl_time_probeStop(flush_glyph_pages);
         korl_time_probeStart(flush_resource_updates); korl_resource_flushUpdates(); korl_time_probeStop(flush_resource_updates);

@@ -23,10 +23,6 @@ const IID   IID_IAudioClient                = {0x1CB9AD4C, 0xDBFA, 0x4c32, {0xB1
 const IID   IID_IAudioRenderClient          = {0xF294ACFC, 0x3146, 0x4483, {0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2}};// obtained from <Audioclient.h>
 const GUID  KSDATAFORMAT_SUBTYPE_PCM        = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};// obtained from <mmreg.h>
 const GUID  KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};// obtained from <mmreg.h>
-typedef struct _Korl_Audio_MmNotificationClient
-{
-    IMMNotificationClientVtbl* lpVtbl;
-} _Korl_Audio_MmNotificationClient;
 typedef struct _Korl_Audio_Context
 {
     IMMDeviceEnumerator*      mmDeviceEnumerator;// my assumption here is that we only ever have to create one device enumerator for the entire duration of the application, as nothing in the WinMM API seems to indicate otherwise from what I've seen

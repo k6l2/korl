@@ -92,3 +92,4 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
     [ ] play WAV asset audio
 [ ] add the ability for the user to configure an audio tape to repeat
 [ ] add ogg/vorbis decoder support
+[ ] add any other immediately useful `korl_sfx_*` APIs
