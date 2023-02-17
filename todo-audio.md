@@ -91,6 +91,18 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
         - I really like the "Tape" & "TapeDeck"/"Track" metaphores
         - I also like how the user only has to worry about a handle, and only if they really need to for DJ purposes
     [x] play WAV asset audio
-[ ] add the ability for the user to configure an audio tape to repeat
+[ ] add master volume
+[ ] add tape volume
+[ ] add concept of "tape categories"
+    [ ] add tape category volume
+[ ] add per-channel tape volume (panning)
+[ ] add 3D spatial audio processing
+    - simple amplitude attenuation equation for audio waves: https://www.nde-ed.org/Physics/Waves/Impedance.xhtml
+    [ ] input listener position & world-up v3f32s
+    [ ] input tape position & attenuation coefficient
+    [ ] automatically calculate tapeVolume & tapeChannelVolumes for tapes set to this mode
 [ ] add ogg/vorbis decoder support
-[ ] add any other immediately useful `korl_sfx_*` APIs
+[ ] add the ability for the user to configure an audio tape to repeat
+[ ] add tape category override option for `korl_sfx_playResource`
+    - we want the ability for a request to play a `BGM` sound category tape to override `SFX` tapes, so that BGMs don't get blocked
+    - it makes sense to at least log a WARNING if the request to play a Tape with non-zero override categories fails to find a free Deck

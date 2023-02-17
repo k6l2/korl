@@ -1629,7 +1629,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircle)
 {
-    return korl_gfx_createBatchCircleSector(allocatorHandle, radius, pointCount, color, 2*KORL_PI32);
+    return korl_gfx_createBatchCircleSector(allocatorHandle, radius, pointCount, color, KORL_TAU32);
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatchCircleSector)
 {
@@ -1644,8 +1644,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
         + vertices * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
         + vertices * sizeof(Korl_Vulkan_Color4u8);
     /* allocate the memory */
-    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_allocate(allocatorHandle, totalBytes));
+    Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
@@ -1666,7 +1665,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
     /* initialize the batch's dynamic data */
     // vertex[0] is always the center point of the circle //
     KORL_C_CAST(Korl_Math_V3f32*, result->_vertexPositions)[0] = KORL_MATH_V3F32_ZERO;
-    const f32 deltaRadians = 2*KORL_PI32 / pointCount;
+    const f32 deltaRadians = KORL_TAU32 / pointCount;
     for(u32 p = 0; p < pointCount; p++)
     {
         const f32 spokeRadians = KORL_MATH_MIN(p*deltaRadians, sectorRadians);
@@ -1680,7 +1679,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
         result->_vertexIndices[3*p + 0] = 0;
         result->_vertexIndices[3*p + 1] = korl_vulkan_safeCast_u$_to_vertexIndex(p + 1);
         result->_vertexIndices[3*p + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(((p + 1) % pointCount) + 1);
-        if(p == pointCount - 1 && sectorRadians < 2*KORL_PI32)
+        if(p == pointCount - 1 && sectorRadians < KORL_TAU32)
             /* if the circle sector radians does not fill the whole circle, 
                 don't connect the last triangle with the first vertex */
             result->_vertexIndices[3*p + 2] = korl_vulkan_safeCast_u$_to_vertexIndex(p + 1);

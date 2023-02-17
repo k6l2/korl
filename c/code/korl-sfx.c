@@ -82,6 +82,9 @@ korl_internal void korl_sfx_mix(void)
         acu8 tapeAudio = korl_resource_getAudio(tapeDeck->resource, &tapeAudioFormat);
         if(!tapeAudio.data)
             continue;
+        korl_assert(tapeAudioFormat.bytesPerSample == audioFormat.bytesPerSample);
+        korl_assert(tapeAudioFormat.sampleFormat   == audioFormat.sampleFormat);
+        korl_assert(tapeAudioFormat.frameHz        == audioFormat.frameHz);
         const u32 tapeBytesPerFrame   = tapeAudioFormat.channels * tapeAudioFormat.bytesPerSample;
         const u32 tapeFrames          = korl_checkCast_u$_to_u32(tapeAudio.size) / tapeBytesPerFrame;
         const u32 tapeFramesRemaining = tapeDeck->frame < tapeFrames ? tapeFrames - korl_checkCast_u$_to_u32(tapeDeck->frame) : 0;
@@ -96,7 +99,7 @@ korl_internal void korl_sfx_mix(void)
             for(u8 channel = 0; channel < audioFormat.channels; channel++)// no matter what, we want to mix audio from this tape into all the channels of audioBuffer
             {
                 const u8 tapeChannel = (channel % tapeAudioFormat.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
-                mix(audioBufferFrame + (channel     * audioFormat.bytesPerSample)
+                mix(audioBufferFrame + (channel     *     audioFormat.bytesPerSample)
                    ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample));
             }
         }

@@ -691,6 +691,7 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
             _korl_heap_general_setPageFlags(allocator, availablePageIndex, allocator->allocationPages - allocationPages, false);//required only because of KORL-ISSUE-000-000-088
         if(!allocator->next)
         {
+            //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
             korl_log(WARNING, "general allocator out of memory");
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
@@ -864,6 +865,7 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
         // create a new allocation in another heap in the heap linked list //
         if(!allocator->next)
         {
+            //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
             korl_log(WARNING, "general allocator out of memory");
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
@@ -1237,6 +1239,7 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
     {
         if(!allocator->next)
         {
+            //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
             korl_log(WARNING, "linear allocator out of memory");//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
@@ -1353,6 +1356,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             /* create a new allocation in a later part of the korl-heap list */
             if(!allocator->next)
             {
+                //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
                 korl_log(WARNING, "linear allocator out of memory");
                 /* we want to either (depending on which results in more pages): 
                     - double the amount of allocationPages of the next allocator

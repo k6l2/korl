@@ -1,7 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
-#define KORL_PI32 3.14159f
-#define KORL_TAU32 2*KORL_PI32
+#define KORL_PI32  3.14159f
+#define KORL_TAU32 6.28318f // 2*PI
 #define KORL_MATH_CLAMP(x, min, max)        ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
 #define KORL_MATH_ASSIGN_CLAMP(x, min, max) ((x) = KORL_MATH_CLAMP((x), (min), (max)))
 #define KORL_MATH_ASSIGN_CLAMP_MIN(x, min)  ((x) = (x) <= (min) ? (min) : (x))
