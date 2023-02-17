@@ -92,7 +92,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
         - I also like how the user only has to worry about a handle, and only if they really need to for DJ purposes
     [x] play WAV asset audio
 [x] add master volume
-[ ] add tape volume
+[x] add tape volume
 [ ] add concept of "tape categories"
     [ ] add tape category volume
 [ ] add per-channel tape volume (panning)

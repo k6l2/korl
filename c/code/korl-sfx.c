@@ -3,18 +3,21 @@
 #include "korl-resource.h"
 #include "korl-memoryPool.h"
 #include "korl-interface-platform.h"
-#define _KORL_SFX_MIX(name) void name(void* resultSample, const void* sourceSample)
+#define _KORL_SFX_APPLY_MASTER_FILTER 0
+#define _KORL_SFX_MIX(name) void name(void* resultSample, const void* sourceSample, f64 sourceFactor)
 typedef _KORL_SFX_MIX(_fnSig_korl_sfx_mix);
-#define _KORL_SFX_SAMPLE_DECODE(name) f64 name(const void* sample)
-typedef _KORL_SFX_SAMPLE_DECODE(_fnSig_korl_sfx_sampleDecode);
-#define _KORL_SFX_SAMPLE_ENCODE(name) void name(void* o_sample, f64 sampleRatio)
-typedef _KORL_SFX_SAMPLE_ENCODE(_fnSig_korl_sfx_sampleEncode);
+#if _KORL_SFX_APPLY_MASTER_FILTER
+    #define _KORL_SFX_SAMPLE_DECODE(name) f64 name(const void* sample)
+    typedef _KORL_SFX_SAMPLE_DECODE(_fnSig_korl_sfx_sampleDecode);
+    #define _KORL_SFX_SAMPLE_ENCODE(name) void name(void* o_sample, f64 sampleRatio)
+    typedef _KORL_SFX_SAMPLE_ENCODE(_fnSig_korl_sfx_sampleEncode);
+#endif
 typedef struct _Korl_Sfx_TapeDeck
 {
-    Korl_Resource_Handle resource;
-    u$                   frame;// the next frame of `resource` which will be written to the audio renderer
-    u16                  salt;
-    bool                 loop;
+    Korl_Resource_Handle     resource;
+    u$                       frame;// the next frame of `resource` which will be written to the audio renderer
+    u16                      salt;
+    Korl_Sfx_TapeDeckControl control;
 } _Korl_Sfx_TapeDeck;
 typedef struct _Korl_Sfx_Context
 {
@@ -24,24 +27,25 @@ typedef struct _Korl_Sfx_Context
 korl_global_variable _Korl_Sfx_Context _korl_sfx_context;
 korl_internal _KORL_SFX_MIX(_korl_sfx_mix_i8)
 {
-    *KORL_C_CAST(i8*, resultSample) += *KORL_C_CAST(const i8*, sourceSample);
+    *KORL_C_CAST(i8*, resultSample) += KORL_C_CAST(i8, korl_math_round_f64_to_i64(sourceFactor * *KORL_C_CAST(const i8*, sourceSample)));
 }
 korl_internal _KORL_SFX_MIX(_korl_sfx_mix_i16)
 {
-    *KORL_C_CAST(i16*, resultSample) += *KORL_C_CAST(const i16*, sourceSample);
+    *KORL_C_CAST(i16*, resultSample) += KORL_C_CAST(i16, korl_math_round_f64_to_i64(sourceFactor * *KORL_C_CAST(const i16*, sourceSample)));
 }
 korl_internal _KORL_SFX_MIX(_korl_sfx_mix_i32)
 {
-    *KORL_C_CAST(i32*, resultSample) += *KORL_C_CAST(const i32*, sourceSample);
+    *KORL_C_CAST(i32*, resultSample) += KORL_C_CAST(i32, korl_math_round_f64_to_i64(sourceFactor * *KORL_C_CAST(const i32*, sourceSample)));
 }
 korl_internal _KORL_SFX_MIX(_korl_sfx_mix_f32)
 {
-    *KORL_C_CAST(f32*, resultSample) += *KORL_C_CAST(const f32*, sourceSample);
+    *KORL_C_CAST(f32*, resultSample) += KORL_C_CAST(f32, sourceFactor * *KORL_C_CAST(const f32*, sourceSample));
 }
 korl_internal _KORL_SFX_MIX(_korl_sfx_mix_f64)
 {
-    *KORL_C_CAST(f64*, resultSample) += *KORL_C_CAST(const f64*, sourceSample);
+    *KORL_C_CAST(f64*, resultSample) += sourceFactor * *KORL_C_CAST(const f64*, sourceSample);
 }
+#if _KORL_SFX_APPLY_MASTER_FILTER
 korl_internal _KORL_SFX_SAMPLE_DECODE(_korl_sfx_sampleDecode_i8)
 {
     return KORL_C_CAST(f64, *KORL_C_CAST(i8*, sample)) / KORL_C_CAST(f64, KORL_I8_MAX);
@@ -82,6 +86,7 @@ korl_internal _KORL_SFX_SAMPLE_ENCODE(_korl_sfx_sampleEncode_f64)
 {
     *KORL_C_CAST(f64*, o_sample) = sampleRatio;
 }
+#endif
 korl_internal void korl_sfx_initialize(void)
 {
     korl_memory_zero(&_korl_sfx_context, sizeof(_korl_sfx_context));
@@ -93,24 +98,37 @@ korl_internal void korl_sfx_mix(void)
     const Korl_Audio_Format       audioFormat        = korl_audio_format();
     const u32                     audioBytesPerFrame = audioFormat.channels * audioFormat.bytesPerSample;
     _fnSig_korl_sfx_mix*          mix                = NULL;
+#if _KORL_SFX_APPLY_MASTER_FILTER
     _fnSig_korl_sfx_sampleDecode* sampleDecode       = NULL;
     _fnSig_korl_sfx_sampleEncode* sampleEncode       = NULL;
+#endif
     switch(audioFormat.sampleFormat)
     {
     case KORL_AUDIO_SAMPLE_FORMAT_PCM_SIGNED:{
         switch(audioFormat.bytesPerSample)
         {
+#if _KORL_SFX_APPLY_MASTER_FILTER
         case 1: mix = _korl_sfx_mix_i8;  sampleDecode = _korl_sfx_sampleDecode_i8;  sampleEncode = _korl_sfx_sampleEncode_i8;  break;
         case 2: mix = _korl_sfx_mix_i16; sampleDecode = _korl_sfx_sampleDecode_i16; sampleEncode = _korl_sfx_sampleEncode_i16; break;
         case 4: mix = _korl_sfx_mix_i32; sampleDecode = _korl_sfx_sampleDecode_i32; sampleEncode = _korl_sfx_sampleEncode_i32; break;
+#else
+        case 1: mix = _korl_sfx_mix_i8;  break;
+        case 2: mix = _korl_sfx_mix_i16; break;
+        case 4: mix = _korl_sfx_mix_i32; break;
+#endif
         default: break;
         }
         break;}
     case KORL_AUDIO_SAMPLE_FORMAT_FLOAT:{
         switch(audioFormat.bytesPerSample)
         {
+#if _KORL_SFX_APPLY_MASTER_FILTER
         case 4: mix = _korl_sfx_mix_f32; sampleDecode = _korl_sfx_sampleDecode_f32; sampleEncode = _korl_sfx_sampleEncode_f32; break;
         case 8: mix = _korl_sfx_mix_f64; sampleDecode = _korl_sfx_sampleDecode_f64; sampleEncode = _korl_sfx_sampleEncode_f64; break;
+#else
+        case 4: mix = _korl_sfx_mix_f32; break;
+        case 8: mix = _korl_sfx_mix_f64; break;
+#endif
         default: break;
         }
         break;}
@@ -149,7 +167,8 @@ korl_internal void korl_sfx_mix(void)
             {
                 const u8 tapeChannel = (channel % tapeAudioFormat.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
                 mix(audioBufferFrame + (channel     *     audioFormat.bytesPerSample)
-                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample));
+                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample), _korl_sfx_context.masterVolumeRatio 
+                                                                                       * tapeDeck->control.volumeRatio);
             }
         }
         KORL_MATH_ASSIGN_CLAMP_MIN(framesWritten, framesToMix);
@@ -157,6 +176,7 @@ korl_internal void korl_sfx_mix(void)
         if(tapeDeck->frame >= tapeFrames)
             tapeDeck->resource = 0;
     }
+#if _KORL_SFX_APPLY_MASTER_FILTER
     /* apply master filters over all Tape outputs */
     for(u32 frame = 0; frame < framesWritten; frame++)
     {
@@ -170,6 +190,7 @@ korl_internal void korl_sfx_mix(void)
             sampleEncode(audioBufferSample, sampleRatio);
         }
     }
+#endif
     korl_audio_writeBufferRelease(framesWritten);
 }
 korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource)
@@ -183,7 +204,7 @@ korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource)
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Sfx_TapeHandle);
     _korl_sfx_context.tapeDecks[d].resource = resourceHandleAudio;
     _korl_sfx_context.tapeDecks[d].frame    = 0;
-    _korl_sfx_context.tapeDecks[d].loop     = repeat;
+    _korl_sfx_context.tapeDecks[d].control  = tapeDeckControl;
     _korl_sfx_context.tapeDecks[d].salt++;
     KORL_ZERO_STACK(Korl_Sfx_TapeHandle, tapeHandle);
     tapeHandle.deckIndex = d;
