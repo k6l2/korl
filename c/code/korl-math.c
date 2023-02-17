@@ -29,6 +29,10 @@ korl_internal inline u32 korl_math_round_f32_to_u32(f32 x)
     KORL_MATH_ASSERT(x <= (f32)0xFFFFFFFF);
     return KORL_C_CAST(u32, x);
 }
+korl_internal inline i64 korl_math_round_f64_to_i64(f64 x)
+{
+    return KORL_C_CAST(i64, round(x));
+}
 korl_internal inline u$ korl_math_nextHighestDivision(u$ value, u$ division)
 {
     KORL_MATH_ASSERT(division);// it doesn't make sense to divide by 0

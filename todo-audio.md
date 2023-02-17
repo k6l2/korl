@@ -91,7 +91,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
         - I really like the "Tape" & "TapeDeck"/"Track" metaphores
         - I also like how the user only has to worry about a handle, and only if they really need to for DJ purposes
     [x] play WAV asset audio
-[ ] add master volume
+[x] add master volume
 [ ] add tape volume
 [ ] add concept of "tape categories"
     [ ] add tape category volume
