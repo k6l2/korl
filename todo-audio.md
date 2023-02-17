@@ -69,7 +69,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
     - how do we detect when this audio device is disconnected?
     - maybe we just program the rest of the renderer under the assumption that we can handle this reconnection process without an "event callback" mechanism, such as IMMNotificationClient
     - nevermind; I figured out how to implement the IMMNotificationClient thing, so this should be possible now
-[ ] add `korl_sfx_play` API
+[x] add `korl_sfx_play` API
     [x] add korl-resource WAV decoder
         - I am currently thinking that we perform the conversion from source sample rate => renderer sample rate in here, and just cache this raw audio in korl-resource
             - the main reason for this would be to prevent the need for us to have to do this processing (if necessary) at runtime
@@ -87,10 +87,10 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
                     - 2-clause BSD license, _very_ simple/clean looking C library for resampling!  honestly, I might just utilize this
                     - slightly lame that the source isn't distributed via git, but I don't have too much of an issue just dumping it into the `/code` folder
     [x] add korl-resource-audio resampler, described above
-    [ ] add korl-audioMixer; potentially reuse/recycle `kgtAudioMixer` code
+    [x] add korl-audioMixer; potentially reuse/recycle `kgtAudioMixer` code
         - I really like the "Tape" & "TapeDeck"/"Track" metaphores
         - I also like how the user only has to worry about a handle, and only if they really need to for DJ purposes
-    [ ] play WAV asset audio
+    [x] play WAV asset audio
 [ ] add the ability for the user to configure an audio tape to repeat
 [ ] add ogg/vorbis decoder support
 [ ] add any other immediately useful `korl_sfx_*` APIs

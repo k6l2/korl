@@ -516,12 +516,25 @@ korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFo
     for(_Korl_Resource_Map* resourceMapIt = _korl_resource_context.stbHmResources; resourceMapIt < resourcesEnd; resourceMapIt++)
     {
         const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapIt->key);
-        if(unpackedHandle.type != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+        if(unpackedHandle.multimediaType != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
             continue;
         _Korl_Resource*const resource = &resourceMapIt->value;
         korl_free(_korl_resource_context.allocatorHandle, resource->subType.audio.resampledData);
         resource->subType.audio.resampledData = NULL;
     }
+}
+korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat)
+{
+    if(!handle)
+        return KORL_STRUCT_INITIALIZE_ZERO(acu8);// silently return a NULL device memory allocation handle if the resource handle is NULL
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
+    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
+    korl_assert(hashMapIndex >= 0);
+    const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+    *o_resourceAudioFormat = _korl_resource_context.audioRendererFormat;
+    o_resourceAudioFormat->channels = resource->subType.audio.format.channels;
+    return (acu8){.data=resource->subType.audio.resampledData, .size=resource->subType.audio.resampledDataBytes};
 }
 korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

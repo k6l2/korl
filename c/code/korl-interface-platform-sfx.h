@@ -1,6 +1,12 @@
 #pragma once
 #include "korl-globalDefines.h"
-typedef u64 Korl_Sfx_TapeHandle;
+#include "korl-interface-platform-resource.h"
+typedef struct Korl_Sfx_TapeHandle
+{
+    Korl_Resource_Handle resource;
+    u16                  salt;
+    u8                   deckIndex;
+} Korl_Sfx_TapeHandle;
 /** the # of Decks allocated inside korl-audio determines the # of Tapes that 
  * can be played simultaneously; if the user attempts to call \c korl_sfx_play* 
  * when all Decks are currently playing audio, a \c NULL TapeHandle will be 

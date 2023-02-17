@@ -11,7 +11,7 @@
 #include <stddef.h>// note that this pulls in <corecrt.h>!!!
 /* support for stdalign.h, since MSVC just doesn't have this I guess */
 #if defined(_MSC_VER) && !defined(__cplusplus)
-    #define alignof _Alignof
+    #define alignof            _Alignof
     #define alignas(byteCount) __declspec(align(byteCount))
 #endif// defined(_MSC_VER)
 /** disambiguations of the \c static key word to improve project 
@@ -85,7 +85,7 @@ typedef struct au8
 } au8;
 typedef struct au16
 {
-    u$   size;
+    u$   size;// @TODO: remove ambiguity!  Is this _bytes_ or _arraySize_?!  also may as well unify this decision with all the other `a*` datatypes in this file while I'm at it...
     u16* data;
 } au16;
 typedef struct aci8
@@ -100,7 +100,7 @@ typedef struct acu8
 } acu8;
 typedef struct acu16
 {
-    u$         size;
+    u$         size;// @TODO: remove ambiguity!  Is this _bytes_ or _arraySize_?!  also may as well unify this decision with all the other `a*` datatypes in this file while I'm at it...
     const u16* data;
 } acu16;
 #define KORL_RAW_CONST_UTF8(x)  (korl_assert(sizeof(*x) == sizeof(u8 )), KORL_STRUCT_INITIALIZE(acu8 ){korl_string_sizeUtf8(x) , KORL_C_CAST(const u8* ,(x))})
@@ -206,10 +206,10 @@ typedef struct acu16
         {
             // ... some data declared in here
         } FORCE_SYMBOL_EXPORT; */
-#define CONCAT_(x,y)    x##y
-#define CONCAT(x,y)     CONCAT_(x,y)
+#define KORL_CONCAT_(x,y)    x##y
+#define KORL_CONCAT(x,y)     KORL_CONCAT_(x,y)
 #define FORCE_SYMBOL_EXPORT \
-    CONCAT(_hack_force_symbol_export_DO_NOT_USE_, __COUNTER__)
+    KORL_CONCAT(_hack_force_symbol_export_DO_NOT_USE_, __COUNTER__)
 /* Function symbol export in code modules */
 #if defined(_MSC_VER)
     #if defined(__cplusplus)

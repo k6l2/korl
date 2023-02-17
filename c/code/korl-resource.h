@@ -79,6 +79,7 @@ korl_internal void                                           korl_resource_shift
 korl_internal void                                           korl_resource_flushUpdates(void);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat);
+korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
 korl_internal void                                           korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
 /** I don't like how this API requires us to do file I/O in modules outside of 
  * korl-file; maybe improve this in the future to use korl-file API instea of 
