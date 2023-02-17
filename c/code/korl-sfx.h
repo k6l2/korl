@@ -17,3 +17,4 @@ korl_internal void korl_sfx_initialize(void);
 korl_internal void korl_sfx_mix(void);
 korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource);
 korl_internal KORL_FUNCTION_korl_sfx_setVolume(korl_sfx_setVolume);
+korl_internal KORL_FUNCTION_korl_sfx_category_set(korl_sfx_category_set);

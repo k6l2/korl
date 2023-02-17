@@ -93,8 +93,8 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
     [x] play WAV asset audio
 [x] add master volume
 [x] add tape volume
-[ ] add concept of "tape categories"
-    [ ] add tape category volume
+[x] add concept of "tape categories"
+    [x] add tape category volume
 [ ] add per-channel tape volume (panning)
 [ ] add 3D spatial audio processing
     - simple amplitude attenuation equation for audio waves: https://www.nde-ed.org/Physics/Waves/Impedance.xhtml
