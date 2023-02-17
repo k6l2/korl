@@ -70,7 +70,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
     - maybe we just program the rest of the renderer under the assumption that we can handle this reconnection process without an "event callback" mechanism, such as IMMNotificationClient
     - nevermind; I figured out how to implement the IMMNotificationClient thing, so this should be possible now
 [ ] add `korl_sfx_play` API
-    [ ] add korl-resource WAV decoder
+    [x] add korl-resource WAV decoder
         - I am currently thinking that we perform the conversion from source sample rate => renderer sample rate in here, and just cache this raw audio in korl-resource
             - the main reason for this would be to prevent the need for us to have to do this processing (if necessary) at runtime
             - this will obviously incur a large spike in CPU in the form of re-caching resources if korl-audio sample rate changes, such as if the user unplugs their headphones to switch to desktop speaker audio, but emphirically this doesn't seem like a huge issue when we consider the fact that, during actual use, the user's audio configuration is almost always going to be _static_; the user should not expect the application to behave "smoothly" when they are hot-swapping their multimedia hardware configuration
@@ -86,6 +86,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
                 - http://www.mega-nerd.com/SRC/index.html
                     - 2-clause BSD license, _very_ simple/clean looking C library for resampling!  honestly, I might just utilize this
                     - slightly lame that the source isn't distributed via git, but I don't have too much of an issue just dumping it into the `/code` folder
+    [x] add korl-resource-audio resampler, described above
     [ ] add korl-audioMixer; potentially reuse/recycle `kgtAudioMixer` code
         - I really like the "Tape" & "TapeDeck"/"Track" metaphores
         - I also like how the user only has to worry about a handle, and only if they really need to for DJ purposes

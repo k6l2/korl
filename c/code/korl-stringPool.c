@@ -247,8 +247,9 @@ korl_internal Korl_StringPool_String _korl_stringPool_stringFromRawCommon(Korl_S
     korl_memory_zero(context->characterPool + *poolByteOffset + (*rawSize)*characterBytes, characterBytes);
     /* return result */
     Korl_StringPool_String result;
-    result.pool = context;
+    result.pool   = context;
     result.handle = newString->handle;
+    result._DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(char*, context->characterPool + *poolByteOffset);
     return result;
 }
 korl_internal void _korl_stringPool_setStringFlags(Korl_StringPool* context, _Korl_StringPool_String* string, _Korl_StringPool_StringFlags flags)
@@ -455,26 +456,26 @@ korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
 {
-    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, cStringUtf8, 
-                                                korl_checkCast_u$_to_u32(korl_string_sizeUtf8(cStringUtf8)), 
-                                                _KORL_STRINGPOOL_STRING_FLAG_UTF8, 
-                                                file, line);
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, cStringUtf8
+                                                                        ,korl_checkCast_u$_to_u32(korl_string_sizeUtf8(cStringUtf8))
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF8
+                                                                        ,file, line);
     return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line)
 {
-    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, cStringUtf16, 
-                                                korl_checkCast_u$_to_u32(korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16))), 
-                                                _KORL_STRINGPOOL_STRING_FLAG_UTF16, 
-                                                file, line);
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, cStringUtf16
+                                                                        ,korl_checkCast_u$_to_u32(korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16)))
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF16
+                                                                        ,file, line);
     return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromAci8(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line)
 {
-    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, constArrayCi8.data, 
-                                                korl_checkCast_u$_to_u32(constArrayCi8.size), 
-                                                _KORL_STRINGPOOL_STRING_FLAG_UTF8, 
-                                                file, line);
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, constArrayCi8.data
+                                                                        ,korl_checkCast_u$_to_u32(constArrayCi8.size)
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF8
+                                                                        ,file, line);
     return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromAcu8(Korl_StringPool* context, acu8 rawUtf8, const wchar_t* file, int line)
@@ -495,27 +496,26 @@ korl_internal Korl_StringPool_String korl_stringPool_newFromAcu16(Korl_StringPoo
 }
 korl_internal Korl_StringPool_String korl_stringPool_newEmptyUtf8(Korl_StringPool* context, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
-    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/, 
-                                                reservedSizeExcludingNullTerminator, 
-                                                _KORL_STRINGPOOL_STRING_FLAG_UTF8, 
-                                                file, line);
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/
+                                                                        ,reservedSizeExcludingNullTerminator
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF8
+                                                                        ,file, line);
     return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_newEmptyUtf16(Korl_StringPool* context, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
-    Korl_StringPool_String result =_korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/, 
-                                                reservedSizeExcludingNullTerminator, 
-                                                _KORL_STRINGPOOL_STRING_FLAG_UTF16, 
-                                                file, line);
+    Korl_StringPool_String result =_korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/
+                                                                       ,reservedSizeExcludingNullTerminator
+                                                                       ,_KORL_STRINGPOOL_STRING_FLAG_UTF16
+                                                                       ,file, line);
     return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFormatUtf8(Korl_StringPool* context, const wchar_t* file, int line, const char* formatUtf8, ...)
 {
-    Korl_StringPool_String result = 
-        _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/, 
-                                             0/*0 size, since we don't know how much to reserve yet*/, 
-                                             _KORL_STRINGPOOL_STRING_FLAG_UTF8, 
-                                             file, line);
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/
+                                                                        ,0/*0 size, since we don't know how much to reserve yet*/
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF8
+                                                                        ,file, line);
     va_list args;
     va_start(args, formatUtf8);
     _korl_stringPool_appendFormatVaListUtf8(context, result, file, line, formatUtf8, args);
@@ -524,11 +524,10 @@ korl_internal Korl_StringPool_String korl_stringPool_newFormatUtf8(Korl_StringPo
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFormatUtf16(Korl_StringPool* context, const wchar_t* file, int line, const wchar_t* formatUtf16, ...)
 {
-    Korl_StringPool_String result = 
-        _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/, 
-                                             0/*0 size, since we don't know how much to reserve yet*/, 
-                                             _KORL_STRINGPOOL_STRING_FLAG_UTF16, 
-                                             file, line);
+    Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, NULL/*just leave the string empty*/
+                                                                        ,0/*0 size, since we don't know how much to reserve yet*/
+                                                                        ,_KORL_STRINGPOOL_STRING_FLAG_UTF16
+                                                                        ,file, line);
     va_list args;
     va_start(args, formatUtf16);
     _korl_stringPool_appendFormatVaListUtf16(context, result, file, line, formatUtf16, args);
@@ -838,7 +837,10 @@ korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_Strin
     }
     if(flagsAdded != newString->flags)
         korl_log(ERROR, "not all string flags implemented! string flags=0x%X", newString->flags);
-    return KORL_STRUCT_INITIALIZE(Korl_StringPool_String){newString->handle, destContext};
+    KORL_ZERO_STACK(Korl_StringPool_String, result);
+    result.handle = newString->handle;
+    result.pool   = destContext;
+    return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line)
 {

@@ -48,9 +48,11 @@ typedef struct _Korl_Resource
         struct
         {
             Korl_Audio_Format format;
+            void*             resampledData;// this should be the same audio data as in the `data` member, but resampled to be compatible with the `audioRendererFormat` member of the korl-resource context; NOTE: the # of channels will remain the same as in the `format` member, all other aspects of `format` will be modified to match `audioRendererFormat`; if the aforementioned condition is already met (this audio resource just so happens to have the same format as the context, excluding `channels`), then this member is expected to be NULL, as we can just feed `data` directly to the audio mixer
+            u$                resampledDataBytes;
         } audio;
     } subType;
-    void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType; example: an image resource data will point to an RGBA bitmap
+    void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType _unless_ that multimedia type requires further processing to prepare it for the rendering process, such as is the case with audio, as we must resample all audio data to match the format of the audio renderer; examples: an image resource data will point to an RGBA bitmap, an audio resource will point to raw PCM waveform data, in some sample format defined by the `audio.format` member
     u$    dataBytes;
     bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
     Korl_StringPool_String stringFileName;
@@ -68,6 +70,8 @@ typedef struct _Korl_Resource_Context
     Korl_Resource_Handle*       stbDsDirtyResourceHandles;
     u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
     Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
+    Korl_Audio_Format           audioRendererFormat;// the currently configured audio renderer format, likely to be set by korl-sfx; when this is changed via `korl_resource_setAudioFormat`, all audio resources will be resampled to match this format, and that resampled audio data is what will be mixed into korl-audio; we do this to sacrifice memory for speed, as it should be much better performance to not have to worry about audio resampling algorithms at runtime
+    bool                        audioResamplesPending;// set when `audioRendererFormat` changes, or we lazy-load a file resource via `korl_resource_fromFile`; once set, each call to `korl_resource_flushUpdates` will incur iteration over all audio resources to ensure that they are all resampled to `audioRendererFormat`'s specifications; only cleared when `korl_resource_flushUpdates` finds that all audio resources are loaded & resampled
 } _Korl_Resource_Context;
 korl_global_variable _Korl_Resource_Context _korl_resource_context;
 korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_handle_unpack(Korl_Resource_Handle handle)
@@ -135,6 +139,27 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
     }
     returnUnpackedHandle:
     return unpackedHandle;
+}
+korl_internal void _korl_resource_resampleAudio(_Korl_Resource* resource)
+{
+    korl_assert(!resource->subType.audio.resampledData);
+    if(   resource->subType.audio.format.bytesPerSample == _korl_resource_context.audioRendererFormat.bytesPerSample
+       && resource->subType.audio.format.sampleFormat   == _korl_resource_context.audioRendererFormat.sampleFormat
+       && resource->subType.audio.format.frameHz        == _korl_resource_context.audioRendererFormat.frameHz)
+       return;
+    Korl_Audio_Format resampledFormat = _korl_resource_context.audioRendererFormat;
+    resampledFormat.channels = resource->subType.audio.format.channels;
+    const u$  bytesPerFrame    = resource->subType.audio.format.bytesPerSample * resource->subType.audio.format.channels;
+    const u$  frames           = resource->dataBytes / bytesPerFrame;
+    const f64 seconds          = KORL_C_CAST(f64, frames) / KORL_C_CAST(f64, resource->subType.audio.format.frameHz);
+    const u$  newFrames        = resource->subType.audio.format.frameHz == resampledFormat.frameHz
+                                 ? frames
+                                 : KORL_C_CAST(u$, seconds * resampledFormat.frameHz);
+    const u$  newBytesPerFrame = resampledFormat.bytesPerSample * resampledFormat.channels;
+    resource->subType.audio.resampledDataBytes = newFrames * newBytesPerFrame;
+    resource->subType.audio.resampledData      = korl_allocate(_korl_resource_context.allocatorHandle, resource->subType.audio.resampledDataBytes);
+    korl_codec_audio_resample(&resource->subType.audio.format, resource->data, resource->dataBytes
+                             ,&resampledFormat, resource->subType.audio.resampledData, resource->subType.audio.resampledDataBytes);
 }
 korl_internal void korl_resource_initialize(void)
 {
@@ -213,6 +238,8 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
                 break;}
             }
         }
+        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+            _korl_resource_context.audioResamplesPending = true;
     }
     /**/
     return handle;
@@ -286,6 +313,9 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     {
     case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
         korl_vulkan_deviceAsset_destroy(resource->subType.graphics.deviceMemoryAllocationHandle);
+        break;}
+    case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
+        korl_free(_korl_resource_context.allocatorHandle, resource->subType.audio.resampledData);
         break;}
     default:{
         korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
@@ -424,6 +454,45 @@ korl_internal void korl_resource_flushUpdates(void)
         resource->dirty = false;
     }
     mcarrsetlen(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, 0);
+    /* once per frame, if we have any audio resources that are pending generation 
+        of cached resampled audio data to match the audio renderer's format, we 
+        attempt to resample as many of these as possible; once all audio 
+        resources have been resampled, there is no need to do this each frame 
+        anymore, so the flag is cleared */
+    if(   !korl_memory_isNull(&_korl_resource_context.audioRendererFormat, sizeof(_korl_resource_context.audioRendererFormat))
+       && _korl_resource_context.audioResamplesPending)
+    {
+        u$ resampledResources    = 0;
+        u$ pendingAudioResamples = 0;
+        const _Korl_Resource_Map*const resourcesEnd = _korl_resource_context.stbHmResources + hmlen(_korl_resource_context.stbHmResources);
+        for(_Korl_Resource_Map* resourceMapIt = _korl_resource_context.stbHmResources; resourceMapIt < resourcesEnd; resourceMapIt++)
+        {
+            const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapIt->key);
+            if(unpackedHandle.type != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+                continue;
+            _Korl_Resource*const resource = &resourceMapIt->value;
+            if(!resource->data)
+            {
+                if(resource->stringFileName.handle)
+                    /* if this is a file-backed resource, attempt to get the lazy-loaded file one more time: */
+                    korl_resource_fromFile(string_getRawAcu16(resource->stringFileName), KORL_ASSETCACHE_GET_FLAG_LAZY);
+                /* if we _still_ have no resource data, we have no choice but to consider this audio resource as "pending" */
+                if(!resource->data)
+                {
+                    pendingAudioResamples++;
+                    continue;// we can't resample the audio resource if the data has not yet been loaded!
+                }
+            }
+            if(resource->subType.audio.resampledData)
+                continue;// we're already resampled
+            _korl_resource_resampleAudio(resource);
+            resampledResources++;
+        }
+        _korl_resource_context.audioResamplesPending = pendingAudioResamples > 0;
+        if(pendingAudioResamples)
+            korl_log(VERBOSE, "pendingAudioResamples=%llu", pendingAudioResamples);
+        korl_log(VERBOSE, "resampledResources=%llu", resampledResources);
+    }
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle)
 {
@@ -435,6 +504,24 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanD
     korl_assert(hashMapIndex >= 0);
     const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     return resource->subType.graphics.deviceMemoryAllocationHandle;
+}
+korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat)
+{
+    if(0 == korl_memory_compare(&_korl_resource_context.audioRendererFormat, audioFormat, sizeof(*audioFormat)))
+        return;
+    _korl_resource_context.audioRendererFormat   = *audioFormat;
+    _korl_resource_context.audioResamplesPending = true;
+    /* invalidate all resampled audio from previous audio formats */
+    const _Korl_Resource_Map*const resourcesEnd = _korl_resource_context.stbHmResources + hmlen(_korl_resource_context.stbHmResources);
+    for(_Korl_Resource_Map* resourceMapIt = _korl_resource_context.stbHmResources; resourceMapIt < resourcesEnd; resourceMapIt++)
+    {
+        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapIt->key);
+        if(unpackedHandle.type != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+            continue;
+        _Korl_Resource*const resource = &resourceMapIt->value;
+        korl_free(_korl_resource_context.allocatorHandle, resource->subType.audio.resampledData);
+        resource->subType.audio.resampledData = NULL;
+    }
 }
 korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {

@@ -8,6 +8,7 @@
  *   - concatenations
  *   - copying
  *   - find (substrings)
+ * - importantly, we want the above APIs to be able to handle graphemes, _not_ raw code units, _not_ codepoints, but actual "user-perceived glyphs"
  */
 #pragma once
 #include "korl-globalDefines.h"
@@ -42,8 +43,15 @@ typedef enum Korl_StringPool_CompareResult
 } Korl_StringPool_CompareResult;
 typedef struct Korl_StringPool_String
 {
-    Korl_StringPool_StringHandle handle;
+    union
+    {
+        /** Experimental debug help values: */
+        //@TODO: refactor Korl_StringPool APIs to require Korl_StringPool_String pointers, so that we can automatically inject new raw string pointers when the internal raw string gets reallocated
+        const char*    lastRawUtf8;
+        const wchar_t* lastRawUtf16;
+    } _DEBUGGER_ONLY_DO_NOT_USE;// FOR DEBUGGING ONLY!; please for the love of jebus don't actually write any code accessing/writing from/to this member; this exists _only_ for improved debugging experience!
     Korl_StringPool*             pool;
+    Korl_StringPool_StringHandle handle;
 #if defined(__cplusplus)
     bool operator==(const Korl_StringPool_String& other) const
     {
@@ -55,7 +63,7 @@ typedef struct Korl_StringPool_String
     }
 #endif
 } Korl_StringPool_String;
-const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {0};
+const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
 #if defined(__cplusplus)
 /* if we're using C++, we can have convenience macros for function overloads, 
     which are defined later in this header file */
