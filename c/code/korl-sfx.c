@@ -159,10 +159,17 @@ korl_internal void korl_sfx_mix(void)
             continue;
         korl_assert(korl_arraySize(tapeDeck->control.channelVolumeRatios) <= audioFormat.channels);// if this ever gets hit, we just have to do an extra modulus inside the channel mix loop below I guess, or something...
         korl_assert(tapeDeck->control.category < korl_arraySize(_korl_sfx_context.tapeDeckControls));
+        if(tapeDeck->control.spatialization.enabled)
+        {
+            const Korl_Math_V3f32 listenerToDeck         = korl_math_v3f32_subtract(tapeDeck->control.spatialization.worldPosition, _korl_sfx_context.listener.worldPosition);
+            const f32             listenerToDeckDistance = korl_math_v3f32_magnitude(&listenerToDeck);
+            const f32             attenuationFactor      = korl_math_exponential(-tapeDeck->control.spatialization.attenuation * listenerToDeckDistance);
+            tapeDeck->control.channelVolumeRatios[0] = attenuationFactor;
+            tapeDeck->control.channelVolumeRatios[1] = attenuationFactor;
+        }
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio * tapeDeck->control.volumeRatio;
-        korl_assert(uniformVolumeRatio <= 1.f);
-        korl_assert(uniformVolumeRatio >= 0.f);
+        korl_assert(uniformVolumeRatio >= 0.f && uniformVolumeRatio <= 1.f);
         KORL_ZERO_STACK(Korl_Audio_Format, tapeAudioFormat);
         acu8 tapeAudio = korl_resource_getAudio(tapeDeck->resource, &tapeAudioFormat);
         if(!tapeAudio.data)

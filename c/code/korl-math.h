@@ -122,6 +122,8 @@ korl_internal inline f32 korl_math_acos(f32 x);
 korl_internal inline f32 korl_math_atan2(f32 numerator, f32 denominator);
 korl_internal inline f32 korl_math_ceil(f32 x);
 korl_internal inline f32 korl_math_sqrt(f32 x);
+korl_internal inline f32 korl_math_exponential(f32 x);
+korl_internal inline f64 korl_math_exponentialF64(f64 x);
 korl_internal inline f32 korl_math_nanf32(void);
 korl_internal inline bool korl_math_isNanf32(f32 x);
 korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor);
