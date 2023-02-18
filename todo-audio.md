@@ -102,7 +102,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
     [x] input tape position & attenuation coefficient
     [ ] automatically calculate tapeVolume & tapeChannelVolumes for tapes set to this mode
         [x] attenuate sound as distance to the listener increases
-        [ ] attenuate sound per-channel as the angle between `listenerToTape` & `channelDirection` vectors increases
+        [x] attenuate sound per-channel as the angle between `listenerToTape` & `channelDirection` vectors increases
         [ ] use less per-channel attenuation as `listenerToTapeDistance` approaches 0
 [ ] add ogg/vorbis decoder support
 [ ] add the ability for the user to configure an audio tape to repeat

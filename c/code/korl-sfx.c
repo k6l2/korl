@@ -107,6 +107,8 @@ korl_internal void korl_sfx_initialize(void)
 }
 korl_internal void korl_sfx_mix(void)
 {
+    const Korl_Math_V3f32         listenerLeft       = korl_math_v3f32_cross(&_korl_sfx_context.listener.worldNormalUp     , &_korl_sfx_context.listener.worldNormalForward);
+    const Korl_Math_V3f32         listenerRight      = korl_math_v3f32_cross(&_korl_sfx_context.listener.worldNormalForward, &_korl_sfx_context.listener.worldNormalUp);
     const Korl_Audio_Format       audioFormat        = korl_audio_format();
     const u32                     audioBytesPerFrame = audioFormat.channels * audioFormat.bytesPerSample;
     _fnSig_korl_sfx_mix*          mix                = NULL;
@@ -164,8 +166,13 @@ korl_internal void korl_sfx_mix(void)
             const Korl_Math_V3f32 listenerToDeck         = korl_math_v3f32_subtract(tapeDeck->control.spatialization.worldPosition, _korl_sfx_context.listener.worldPosition);
             const f32             listenerToDeckDistance = korl_math_v3f32_magnitude(&listenerToDeck);
             const f32             attenuationFactor      = korl_math_exponential(-tapeDeck->control.spatialization.attenuation * listenerToDeckDistance);
-            tapeDeck->control.channelVolumeRatios[0] = attenuationFactor;
-            tapeDeck->control.channelVolumeRatios[1] = attenuationFactor;
+            const Korl_Math_V3f32 listenerToDeckNormal   = korl_math_v3f32_normalKnownMagnitude(listenerToDeck, listenerToDeckDistance);
+            const f32             orientationDots[2]     = {korl_math_v3f32_dot(listenerLeft , listenerToDeckNormal)
+                                                           ,korl_math_v3f32_dot(listenerRight, listenerToDeckNormal)};
+            const f32             orientationFactors[2]  = {-korl_math_power(0.4f*(orientationDots[0] - 1.f), 2.f) + 1.f// map dot products [-1,1] => the range [0.36-ish, 1], with more higher magnitudes when dot products are closer to 1
+                                                           ,-korl_math_power(0.4f*(orientationDots[1] - 1.f), 2.f) + 1.f};
+            tapeDeck->control.channelVolumeRatios[0] = attenuationFactor * orientationFactors[0];
+            tapeDeck->control.channelVolumeRatios[1] = attenuationFactor * orientationFactors[1];
         }
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio * tapeDeck->control.volumeRatio;

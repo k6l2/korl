@@ -110,6 +110,10 @@ korl_internal inline f64 korl_math_exponentialF64(f64 x)
 {
     return exp(x);
 }
+korl_internal inline f32 korl_math_power(f32 x, f32 exponent)
+{
+    return powf(x, exponent);
+}
 korl_internal inline f32 korl_math_nanf32(void)
 {
     korl_shared_const u32 MAX_U32 = KORL_U32_MAX;
