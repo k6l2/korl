@@ -24,6 +24,12 @@ typedef struct _Korl_Sfx_Context
     KORL_MEMORY_POOL_DECLARE(_Korl_Sfx_TapeDeck, tapeDecks, 32);
     Korl_Sfx_TapeCategoryControl tapeDeckControls[32];
     f32 masterVolumeRatio;
+    struct
+    {
+        Korl_Math_V3f32 worldPosition;
+        Korl_Math_V3f32 worldNormalUp;
+        Korl_Math_V3f32 worldNormalForward;
+    } listener;// these values only affect TapeDecks which are configured to 
 } _Korl_Sfx_Context;
 korl_global_variable _Korl_Sfx_Context _korl_sfx_context;
 korl_internal _KORL_SFX_MIX(_korl_sfx_mix_i8)
@@ -151,9 +157,12 @@ korl_internal void korl_sfx_mix(void)
         _Korl_Sfx_TapeDeck*const tapeDeck = &_korl_sfx_context.tapeDecks[d];
         if(!tapeDeck->resource)
             continue;
+        korl_assert(korl_arraySize(tapeDeck->control.channelVolumeRatios) <= audioFormat.channels);// if this ever gets hit, we just have to do an extra modulus inside the channel mix loop below I guess, or something...
         korl_assert(tapeDeck->control.category < korl_arraySize(_korl_sfx_context.tapeDeckControls));
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio * tapeDeck->control.volumeRatio;
+        korl_assert(uniformVolumeRatio <= 1.f);
+        korl_assert(uniformVolumeRatio >= 0.f);
         KORL_ZERO_STACK(Korl_Audio_Format, tapeAudioFormat);
         acu8 tapeAudio = korl_resource_getAudio(tapeDeck->resource, &tapeAudioFormat);
         if(!tapeAudio.data)
@@ -176,7 +185,7 @@ korl_internal void korl_sfx_mix(void)
             {
                 const u8 tapeChannel = (channel % tapeAudioFormat.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
                 mix(audioBufferFrame + (channel     *     audioFormat.bytesPerSample)
-                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample), uniformVolumeRatio);
+                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample), uniformVolumeRatio * tapeDeck->control.channelVolumeRatios[channel]);
             }
         }
         KORL_MATH_ASSIGN_CLAMP_MIN(framesWritten, framesToMix);
@@ -228,4 +237,10 @@ korl_internal KORL_FUNCTION_korl_sfx_category_set(korl_sfx_category_set)
 {
     korl_assert(category < korl_arraySize(_korl_sfx_context.tapeDeckControls));
     _korl_sfx_context.tapeDeckControls[category] = tapeCategoryControl;
+}
+korl_internal KORL_FUNCTION_korl_sfx_setListener(korl_sfx_setListener)
+{
+    _korl_sfx_context.listener.worldPosition      = worldPosition;
+    _korl_sfx_context.listener.worldNormalUp      = worldNormalUp;
+    _korl_sfx_context.listener.worldNormalForward = worldNormalForward;
 }

@@ -95,11 +95,11 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
 [x] add tape volume
 [x] add concept of "tape categories"
     [x] add tape category volume
-[ ] add per-channel tape volume (panning)
+[x] add per-channel tape volume (panning)
 [ ] add 3D spatial audio processing
-    - simple amplitude attenuation equation for audio waves: https://www.nde-ed.org/Physics/Waves/Impedance.xhtml
-    [ ] input listener position & world-up v3f32s
-    [ ] input tape position & attenuation coefficient
+    - simple amplitude attenuation equation for audio waves: https://www.nde-ed.org/Physics/Waves/attenuation.xhtml
+    [x] input listener position & world-up v3f32s
+    [x] input tape position & attenuation coefficient
     [ ] automatically calculate tapeVolume & tapeChannelVolumes for tapes set to this mode
 [ ] add ogg/vorbis decoder support
 [ ] add the ability for the user to configure an audio tape to repeat

@@ -915,6 +915,14 @@ korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 v
     vA.y -= vB.y;
     return vA;
 }
+korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
+{
+    return korl_math_v3f32_add(vA, vB);
+}
+korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
+{
+    return korl_math_v3f32_subtract(vA, vB);
+}
 korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 v, f32 scalar)
 {
     return korl_math_v3f32_multiplyScalar(v, scalar);
