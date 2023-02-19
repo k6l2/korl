@@ -169,10 +169,17 @@ korl_internal void korl_sfx_mix(void)
             const Korl_Math_V3f32 listenerToDeckNormal   = korl_math_v3f32_normalKnownMagnitude(listenerToDeck, listenerToDeckDistance);
             const f32             orientationDots[2]     = {korl_math_v3f32_dot(listenerLeft , listenerToDeckNormal)
                                                            ,korl_math_v3f32_dot(listenerRight, listenerToDeckNormal)};
-            const f32             orientationFactors[2]  = {-korl_math_power(0.4f*(orientationDots[0] - 1.f), 2.f) + 1.f// map dot products [-1,1] => the range [0.36-ish, 1], with more higher magnitudes when dot products are closer to 1
+            const f32             orientationFactors[2]  = {-korl_math_power(0.4f*(orientationDots[0] - 1.f), 2.f) + 1.f// map dot products [-1,1] => the range [0.36-ish, 1], with more higher magnitudes when dot products are closer to 1; the first constant in this equation is potentially tunable by the user, maybe via a TapeDeckControl
                                                            ,-korl_math_power(0.4f*(orientationDots[1] - 1.f), 2.f) + 1.f};
-            tapeDeck->control.channelVolumeRatios[0] = attenuationFactor * orientationFactors[0];
-            tapeDeck->control.channelVolumeRatios[1] = attenuationFactor * orientationFactors[1];
+            korl_assert(korl_arraySize(tapeDeck->control.channelVolumeRatios) == korl_arraySize(orientationFactors));
+            for(u8 channel = 0; channel < korl_arraySize(tapeDeck->control.channelVolumeRatios); channel++)
+                /* this equation allows us to achieve the following effect: 
+                    the closer a Deck is to the listener, the less of an affect the relative orientation of the sound 
+                    has on the final volume modifier; in other words, sounds that are closer to the listener will be 
+                    rendered more evenly across channels, and sounds further away will be more likely to favor the 
+                    most relevant listener channel; this prevents a lot of harsh volume panning from occurring when 
+                    Decks are extremely close to the listener */
+                tapeDeck->control.channelVolumeRatios[channel] = korl_math_lerp(attenuationFactor * orientationFactors[channel], attenuationFactor, attenuationFactor);
         }
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio * tapeDeck->control.volumeRatio;

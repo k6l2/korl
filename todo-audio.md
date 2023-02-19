@@ -96,16 +96,17 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
 [x] add concept of "tape categories"
     [x] add tape category volume
 [x] add per-channel tape volume (panning)
-[ ] add 3D spatial audio processing
+[x] add 3D spatial audio processing
     - simple amplitude attenuation equation for audio waves: https://www.nde-ed.org/Physics/Waves/attenuation.xhtml
     [x] input listener position & world-up v3f32s
     [x] input tape position & attenuation coefficient
-    [ ] automatically calculate tapeVolume & tapeChannelVolumes for tapes set to this mode
+    [x] automatically calculate tapeVolume & tapeChannelVolumes for tapes set to this mode
         [x] attenuate sound as distance to the listener increases
         [x] attenuate sound per-channel as the angle between `listenerToTape` & `channelDirection` vectors increases
-        [ ] use less per-channel attenuation as `listenerToTapeDistance` approaches 0
+        [x] use less per-channel attenuation as `listenerToTapeDistance` approaches 0
 [ ] add ogg/vorbis decoder support
 [ ] add the ability for the user to configure an audio tape to repeat
 [ ] add tape category override option for `korl_sfx_playResource`
     - we want the ability for a request to play a `BGM` sound category tape to override `SFX` tapes, so that BGMs don't get blocked
     - it makes sense to at least log a WARNING if the request to play a Tape with non-zero override categories fails to find a free Deck
+    - or perhaps we just add the concept of `priority` to `korl_sfx_playResource`?
