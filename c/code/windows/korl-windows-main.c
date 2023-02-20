@@ -10,6 +10,7 @@
 #include "korl-stb-image.h"
 #include "korl-stb-truetype.h"
 #include "korl-stb-ds.h"
+#include "korl-stb-vorbis.h"
 #include "korl-gfx.h"
 #include "korl-gui.h"
 #include "korl-time.h"
@@ -72,6 +73,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_time_probeStart(init_module_stb_image);    korl_stb_image_initialize();                 korl_time_probeStop(init_module_stb_image);
     korl_time_probeStart(init_module_stb_truetype); korl_stb_truetype_initialize();              korl_time_probeStop(init_module_stb_truetype);
     korl_time_probeStart(init_module_stb_ds);       korl_stb_ds_initialize();                    korl_time_probeStop(init_module_stb_ds);
+    korl_time_probeStart(init_module_stb_vorbis);   korl_stb_vorbis_initialize();                korl_time_probeStop(init_module_stb_vorbis);
     korl_time_probeStart(init_module_assetCache);   korl_assetCache_initialize();                korl_time_probeStop(init_module_assetCache);
     korl_time_probeStart(init_module_vulkan);       korl_vulkan_construct();                     korl_time_probeStop(init_module_vulkan);
     korl_time_probeStart(init_module_gfx);          korl_gfx_initialize();                       korl_time_probeStop(init_module_gfx);
@@ -122,3 +124,4 @@ shutdownSuccess:
 #include "korl-audio.c"
 #include "korl-sfx.c"
 #include "korl-codec-audio.c"
+#include "korl-stb-vorbis.c"

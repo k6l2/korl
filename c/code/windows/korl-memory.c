@@ -277,6 +277,11 @@ korl_internal KORL_FUNCTION_korl_memory_fill(korl_memory_fill)
     FillMemory(memory, bytes, pattern);
 }
 #endif
+korl_internal void* korl_memory_set(void* target, u8 value, u$ bytes)
+{
+    FillMemory(target, bytes, value);
+    return target;
+}
 korl_internal KORL_FUNCTION_korl_memory_zero(korl_memory_zero)
 {
     SecureZeroMemory(memory, bytes);

@@ -94,6 +94,14 @@ korl_internal inline f32 korl_math_atan2(f32 numerator, f32 denominator)
 {
     return atan2f(numerator, denominator);
 }
+korl_internal inline f32 korl_math_floor(f32 x)
+{
+    return floorf(x);
+}
+korl_internal inline f64 korl_math_floorF64(f64 x)
+{
+    return floor(x);
+}
 korl_internal inline f32 korl_math_ceil(f32 x)
 {
     return ceilf(x);
@@ -113,6 +121,14 @@ korl_internal inline f64 korl_math_exponentialF64(f64 x)
 korl_internal inline f32 korl_math_power(f32 x, f32 exponent)
 {
     return powf(x, exponent);
+}
+korl_internal inline f64 korl_math_powerF64(f64 x, f64 exponent)
+{
+    return pow(x, exponent);
+}
+korl_internal inline f32 korl_math_loadExponent(f32 x, i32 exponent)
+{
+    return ldexpf(x, exponent);
 }
 korl_internal inline f32 korl_math_nanf32(void)
 {
