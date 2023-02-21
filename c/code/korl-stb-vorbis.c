@@ -16,7 +16,7 @@ korl_internal void _korl_stb_vorbis_free(void* pointer)
 korl_internal void korl_stb_vorbis_initialize(void)
 {
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
-    heapCreateInfo.initialHeapBytes = korl_math_kilobytes(512);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(16);
     _korl_stb_vorbis_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-vorbis", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
 }
 #define stb_vorbis_assert(x)                                                korl_assert(x)
