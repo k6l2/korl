@@ -9,10 +9,11 @@ typedef struct Korl_Sfx_TapeHandle
 } Korl_Sfx_TapeHandle;
 typedef struct Korl_Sfx_TapeDeckControl
 {
-    f32 volumeRatio;
-    f32 channelVolumeRatios[2];// only valid if spatialization is _off_; @TODO: long-term goal: support more surround-sound configurations; for now, it's more than fine to just support 2-channel stereo
-    u8  category;// index into lookup table for user-defined properties that apply to all tapes with a matching category value
-    // bool loop;// @TODO
+    f32  volumeRatio;
+    f32  channelVolumeRatios[2];// only valid if spatialization is _off_; @TODO: long-term goal: support more surround-sound configurations; for now, it's more than fine to just support 2-channel stereo
+    u8   category;// index into lookup table for user-defined properties that apply to all tapes with a matching category value
+    bool loop;
+    f32  loopStartSeconds;
     struct
     {
         bool            enabled;// if set, this will configure the Tape such that channelVolumeRatios are automatically calculated based on the remaining members

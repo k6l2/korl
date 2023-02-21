@@ -193,15 +193,26 @@ korl_internal void korl_sfx_mix(void)
         korl_assert(tapeAudioFormat.frameHz        == audioFormat.frameHz);
         const u32 tapeBytesPerFrame   = tapeAudioFormat.channels * tapeAudioFormat.bytesPerSample;
         const u32 tapeFrames          = korl_checkCast_u$_to_u32(tapeAudio.size) / tapeBytesPerFrame;
-        const u32 tapeFramesRemaining = tapeDeck->frame < tapeFrames ? tapeFrames - korl_checkCast_u$_to_u32(tapeDeck->frame) : 0;
+        const u32 tapeLoopFrameStart  = KORL_C_CAST(u32, tapeDeck->control.loopStartSeconds * tapeAudioFormat.frameHz); korl_assert(tapeLoopFrameStart < tapeFrames);
+        const u32 tapeLoopFrames      = tapeFrames - tapeLoopFrameStart;
+        const u32 tapeFramesRemaining = tapeDeck->control.loop 
+                                        ? audioBuffer.framesSize// if we're configured to loop, we'll just write as many frames as we can to the buffer
+                                        : tapeDeck->frame < tapeFrames 
+                                          ? tapeFrames - korl_checkCast_u$_to_u32(tapeDeck->frame) 
+                                          : 0;
         const u32 framesToMix         = KORL_MATH_MIN(tapeFramesRemaining, audioBuffer.framesSize);
         if(framesToMix > framesWritten)
             korl_memory_zero(KORL_C_CAST(u8*, audioBuffer.frames) + (framesWritten * audioBytesPerFrame)
-                            ,(framesToMix - framesWritten) * audioBytesPerFrame);
+                            ,(framesToMix - framesWritten) * audioBytesPerFrame);// @TODO: do we need to do this?...
         for(u32 frame = 0; frame < framesToMix; frame++)
         {
-            u8*const       audioBufferFrame = KORL_C_CAST(u8*, audioBuffer.frames) + (frame * audioBytesPerFrame);
-            const u8*const tapeAudioFrame   = tapeAudio.data + ((tapeDeck->frame + frame) * tapeBytesPerFrame);
+            u8*const       audioBufferFrame    = KORL_C_CAST(u8*, audioBuffer.frames) + (frame * audioBytesPerFrame);
+            const u$       tapeAudioFrameIndex = (tapeDeck->control.loop && (tapeDeck->frame + frame) >= tapeLoopFrameStart) // only do loop logic if we're past the loop's start frame
+                                                 /* we loop only within the frame region _after_ the loop's start frame */
+                                                 ? tapeLoopFrameStart + (((tapeDeck->frame + frame) - tapeLoopFrameStart) % tapeLoopFrames)
+                                                 /* otherwise (for non-looping TapeDecks), we can just take the current frame */
+                                                 : tapeDeck->frame + frame;
+            const u8*const tapeAudioFrame      = tapeAudio.data + (tapeAudioFrameIndex * tapeBytesPerFrame);
             for(u8 channel = 0; channel < audioFormat.channels; channel++)// no matter what, we want to mix audio from this tape into all the channels of audioBuffer
             {
                 const u8 tapeChannel = (channel % tapeAudioFormat.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
@@ -212,7 +223,15 @@ korl_internal void korl_sfx_mix(void)
         KORL_MATH_ASSIGN_CLAMP_MIN(framesWritten, framesToMix);
         tapeDeck->frame += framesToMix;
         if(tapeDeck->frame >= tapeFrames)
-            tapeDeck->resource = 0;
+        {
+            if(tapeDeck->control.loop)
+            {
+                if(tapeDeck->frame >= tapeLoopFrameStart)
+                    tapeDeck->frame = tapeLoopFrameStart + ((tapeDeck->frame - tapeLoopFrameStart) % tapeLoopFrames);
+            }
+            else
+                tapeDeck->resource = 0;// this effectively "destroys" the Tape, freeing the Deck to play new Tapes
+        }
     }
 #if _KORL_SFX_APPLY_MASTER_FILTER
     /* apply master filters over all Tape outputs */
