@@ -2,6 +2,7 @@
 #include "korl-string.h"
 #include "korl-checkCast.h"
 #include "korl-interface-platform.h"
+#include "korl-stb-vorbis.h"
 typedef struct _Korl_Codec_Audio_WaveMeta
 {
     u32       riffChunkSize;
@@ -92,12 +93,56 @@ korl_internal void* _korl_codec_audio_decodeWave(const _Korl_Codec_Audio_WaveMet
     o_resultFormat->bytesPerSample = korl_checkCast_u$_to_u8(waveMeta->riffFmtBitsPerSample/8u);
     return result;
 }
+korl_internal void* _korl_codec_audio_decodeVorbis(const void* rawFileData, u32 rawFileDataBytes, Korl_Memory_AllocatorHandle resultAllocator, u$* o_resultBytes, Korl_Audio_Format* o_resultFormat)
+{
+    void* result = NULL;
+    int vorbisError = VORBIS__no_error;
+    stb_vorbis*const vorbis = stb_vorbis_open_memory(rawFileData, rawFileDataBytes, &vorbisError, NULL/*alloc_buffer; NULL=>use malloc/free; custom memory arena to perform all allocations from*/);
+    if(vorbisError != VORBIS__no_error)
+    {
+        korl_log(WARNING, "stb_vorbis_open_memory failed; error=%i", vorbisError);
+        goto cleanUp_returnResult;
+    }
+    const stb_vorbis_info vorbisInfo = stb_vorbis_get_info(vorbis);
+    const i32 vorbisFrames  = stb_vorbis_stream_length_in_samples(vorbis);
+    const u$  vorbisSamples = vorbisFrames * vorbisInfo.channels;
+    *o_resultBytes = vorbisSamples * sizeof(f32);
+    result = korl_allocate(resultAllocator, *o_resultBytes);
+    if(!result)
+    {
+        korl_log(ERROR, "vorbis sample buffer allocate failed");
+        goto cleanUp_returnResult;
+    }
+    const int framesDecoded = stb_vorbis_get_samples_float_interleaved(vorbis, vorbisInfo.channels, result, korl_checkCast_u$_to_i32(vorbisSamples));
+    if(framesDecoded != vorbisFrames)
+    {
+        korl_log(ERROR, "stb_vorbis_get_samples_float_interleaved failed; framesDecoded==%i", framesDecoded);
+        vorbisError = VORBIS_outofmem;
+        goto cleanUp_returnResult;
+    }
+    o_resultFormat->sampleFormat   = KORL_AUDIO_SAMPLE_FORMAT_FLOAT;
+    o_resultFormat->bytesPerSample = sizeof(f32);
+    o_resultFormat->channels       = korl_checkCast_i$_to_u8(vorbisInfo.channels);
+    o_resultFormat->frameHz        = vorbisInfo.sample_rate;
+    cleanUp_returnResult:
+        if(vorbisError != VORBIS__no_error)
+        {
+            korl_free(resultAllocator, result);
+            result = NULL;
+        }
+        stb_vorbis_close(vorbis);
+        return result;
+}
 korl_internal void* korl_codec_audio_decode(const void* rawFileData, u32 rawFileDataBytes, Korl_Memory_AllocatorHandle resultAllocator, u$* o_resultBytes, Korl_Audio_Format* o_resultFormat)
 {
+    void* resultData = NULL;
     KORL_ZERO_STACK(_Korl_Codec_Audio_WaveMeta, waveMeta);
     if(_korl_codec_audio_isWave(rawFileData, rawFileDataBytes, &waveMeta))
         return _korl_codec_audio_decodeWave(&waveMeta, resultAllocator, o_resultBytes, o_resultFormat);
-    return NULL;// if we could not find a decoder, we just return nothing
+    else if(resultData = _korl_codec_audio_decodeVorbis(rawFileData, rawFileDataBytes, resultAllocator, o_resultBytes, o_resultFormat))
+        return resultData;
+    korl_log(ERROR, "failed to decode audio file");
+    return resultData;// if we could not find a decoder, we just return nothing
 }
 /** used to extract the highest possible resolution normalized float 
  * representing a single audio sample at a given format */

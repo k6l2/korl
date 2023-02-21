@@ -113,7 +113,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
     }
     if(!multimediaTypeFound)
     {
-        korl_shared_const u16* AUDIO_EXTENSIONS[] = {L".wav"};
+        korl_shared_const u16* AUDIO_EXTENSIONS[] = {L".wav", L".ogg"};
         for(u32 i = 0; i < korl_arraySize(AUDIO_EXTENSIONS); i++)
         {
             const u$ extensionSize = korl_string_sizeUtf16(AUDIO_EXTENSIONS[i]);
@@ -526,8 +526,8 @@ korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFo
 }
 korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat)
 {
-    if(!handle)
-        return KORL_STRUCT_INITIALIZE_ZERO(acu8);// silently return a NULL device memory allocation handle if the resource handle is NULL
+    if(!handle || _korl_resource_context.audioResamplesPending)
+        return KORL_STRUCT_INITIALIZE_ZERO(acu8);// silently return a NULL device memory allocation handle if the resource handle is NULL _or_ if korl-resource has a pending resampling operation
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
@@ -535,7 +535,11 @@ korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audi
     const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     *o_resourceAudioFormat = _korl_resource_context.audioRendererFormat;
     o_resourceAudioFormat->channels = resource->subType.audio.format.channels;
-    return (acu8){.data=resource->subType.audio.resampledData, .size=resource->subType.audio.resampledDataBytes};
+    if(resource->subType.audio.resampledData)
+        /* if this audio had to be resampled, we need to use its resampled data */
+        return (acu8){.data=resource->subType.audio.resampledData, .size=resource->subType.audio.resampledDataBytes};
+    /* otherwise, we can just directly use the audio data */
+    return (acu8){.data=resource->data, .size=resource->dataBytes};
 }
 korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
