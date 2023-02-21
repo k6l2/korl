@@ -1090,6 +1090,8 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
             while(_BitScanReverse64(&mostSignificantSetBitIndex, pageFlagRegister))
             {
                 const u$ allocationPageIndex = pfr*bitsPerFlagRegister + (bitsPerFlagRegister - 1 - mostSignificantSetBitIndex);
+                if(allocationPageIndex >= allocator->allocationPages)
+                    break;// TODO: it's possible that our pageFlagRegisters contain more bits than we have actual allocation pages, and it's also currently possible that our shitty allocator is raising these flags; we need to ignore these page flags, as they are outside the bounds of the allocator & therefore cannot possibly be valid
                 const _Korl_Heap_General_AllocationMeta*const metaAddress = KORL_C_CAST(_Korl_Heap_General_AllocationMeta*, 
                     KORL_C_CAST(u8*, allocator) + (allocatorPages + allocationPageIndex)*pageBytes);
                 const u$ metaBytesRequired = sizeof(*metaAddress) + sizeof(_KORL_HEAP_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
