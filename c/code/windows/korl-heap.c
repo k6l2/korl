@@ -221,6 +221,8 @@ korl_internal u$ _korl_heap_general_lowestOccupiedPageOffset(_Korl_Heap_General*
 }
 korl_internal void _korl_heap_general_setPageFlags(_Korl_Heap_General* allocator, u$ pageRangeStartIndex, u$ pageCount, bool pageFlagState)
 {
+    korl_assert(pageRangeStartIndex < allocator->allocationPages);
+    korl_assert(pageRangeStartIndex + pageCount <= allocator->allocationPages);
     /* find the page flag register index & the flag index within the register */
     const u$ bitsPerFlagRegister = 8*sizeof(*(allocator->availablePageFlags));
     for(u$ p = pageRangeStartIndex; p < pageRangeStartIndex + pageCount; p++)
@@ -684,8 +686,9 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
     if(   availablePageIndex                   >= allocator->allocationPages 
        || availablePageIndex + allocationPages >  allocator->allocationPages/*required only because of KORL-ISSUE-000-000-088*/)
     {
-        if(availablePageIndex + allocationPages > allocator->allocationPages)
-            _korl_heap_general_setPageFlags(allocator, availablePageIndex, allocationPages, false);//required only because of KORL-ISSUE-000-000-088
+        if(   availablePageIndex                   < allocator->allocationPages
+           && availablePageIndex + allocationPages > allocator->allocationPages)
+            _korl_heap_general_setPageFlags(allocator, availablePageIndex, allocator->allocationPages - allocationPages, false);//required only because of KORL-ISSUE-000-000-088
         if(!allocator->next)
         {
             korl_log(WARNING, "general allocator out of memory");
@@ -855,8 +858,9 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
         /* if we failed to occupy newAllocationPages, that means the allocator 
             is full; we need to create a new allocation in another heap, copy 
             the data of this allocation to the new one, and zero/guard this memory */
-        if(newAllocationPage + newAllocationPages > allocator->allocationPages)
-            _korl_heap_general_setPageFlags(allocator, newAllocationPage, newAllocationPages, false);//required only because of KORL-ISSUE-000-000-088
+        if(   newAllocationPage                      < allocator->allocationPages
+           && newAllocationPage + newAllocationPages > allocator->allocationPages)
+            _korl_heap_general_setPageFlags(allocator, newAllocationPage, allocator->allocationPages - newAllocationPages, false);//required only because of KORL-ISSUE-000-000-088
         // create a new allocation in another heap in the heap linked list //
         if(!allocator->next)
         {
@@ -1095,7 +1099,9 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
                 const u$ maxFlagsInRegister        = mostSignificantSetBitIndex + 1;
                 const u$ allocationFlagsInRegister = KORL_MATH_MIN(maxFlagsInRegister, metaAddress->pagesCommitted);
                 /* remove the flags that this allocation occupies */
-                const u$ allocationFlagsInRegisterMask = ~((~0LLU) << allocationFlagsInRegister);
+                const u$ allocationFlagsInRegisterMask = allocationFlagsInRegister >= bitsPerFlagRegister
+                                                         ? ~0LLU// @TODO: investigate; why do we need to do this? the below equation fails when allocationFlagsInRegister==64 (we just get a NULL mask, ugh...)
+                                                         : ~((~0LLU) << allocationFlagsInRegister);
                 pageFlagRegister &= ~(allocationFlagsInRegisterMask << (mostSignificantSetBitIndex - (allocationFlagsInRegister - 1)));
                 /* carry over any remaining flags that will occupy future register(s) */
                 pageFlagsRemainder += metaAddress->pagesCommitted - allocationFlagsInRegister;
