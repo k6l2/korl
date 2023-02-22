@@ -19,3 +19,4 @@ korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource);
 korl_internal KORL_FUNCTION_korl_sfx_setVolume(korl_sfx_setVolume);
 korl_internal KORL_FUNCTION_korl_sfx_category_set(korl_sfx_category_set);
 korl_internal KORL_FUNCTION_korl_sfx_setListener(korl_sfx_setListener);
+korl_internal KORL_FUNCTION_korl_sfx_tape_stop(korl_sfx_tape_stop);

@@ -182,28 +182,37 @@ korl_internal void korl_sfx_mix(void)
                 tapeDeck->control.channelVolumeRatios[channel] = korl_math_lerp(attenuationFactor * orientationFactors[channel], attenuationFactor, attenuationFactor);
         }
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
-        const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio * tapeDeck->control.volumeRatio;
+        const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio;
         korl_assert(uniformVolumeRatio >= 0.f && uniformVolumeRatio <= 1.f);
         KORL_ZERO_STACK(Korl_Audio_Format, tapeAudioFormat);
         acu8 tapeAudio = korl_resource_getAudio(tapeDeck->resource, &tapeAudioFormat);
         if(!tapeAudio.data)
             continue;
+        korl_assert(tapeAudioFormat.frameHz        >  0);
         korl_assert(tapeAudioFormat.bytesPerSample == audioFormat.bytesPerSample);
         korl_assert(tapeAudioFormat.sampleFormat   == audioFormat.sampleFormat);
         korl_assert(tapeAudioFormat.frameHz        == audioFormat.frameHz);
-        const u32 tapeBytesPerFrame   = tapeAudioFormat.channels * tapeAudioFormat.bytesPerSample;
-        const u32 tapeFrames          = korl_checkCast_u$_to_u32(tapeAudio.size) / tapeBytesPerFrame;
-        const u32 tapeLoopFrameStart  = KORL_C_CAST(u32, tapeDeck->control.loopStartSeconds * tapeAudioFormat.frameHz); korl_assert(tapeLoopFrameStart < tapeFrames);
-        const u32 tapeLoopFrames      = tapeFrames - tapeLoopFrameStart;
-        const u32 tapeFramesRemaining = tapeDeck->control.loop 
-                                        ? audioBuffer.framesSize// if we're configured to loop, we'll just write as many frames as we can to the buffer
-                                        : tapeDeck->frame < tapeFrames 
-                                          ? tapeFrames - korl_checkCast_u$_to_u32(tapeDeck->frame) 
-                                          : 0;
-        const u32 framesToMix         = KORL_MATH_MIN(tapeFramesRemaining, audioBuffer.framesSize);
+        const u32 tapeBytesPerFrame            = tapeAudioFormat.channels * tapeAudioFormat.bytesPerSample;
+        const u32 tapeFrames                   = korl_checkCast_u$_to_u32(tapeAudio.size) / tapeBytesPerFrame;
+        const u32 tapeLoopFrameStart           = KORL_C_CAST(u32, tapeDeck->control.loopStartSeconds * tapeAudioFormat.frameHz); korl_assert(tapeLoopFrameStart < tapeFrames);
+        const u32 tapeLoopFrames               = tapeFrames - tapeLoopFrameStart;
+        const u32 tapeFramesRemaining          = tapeDeck->control.loop 
+                                                 ? audioBuffer.framesSize// if we're configured to loop, we'll just write as many frames as we can to the buffer
+                                                 : tapeDeck->frame < tapeFrames 
+                                                   ? tapeFrames - korl_checkCast_u$_to_u32(tapeDeck->frame) 
+                                                   : 0;
+        const u32 framesToMix                  = KORL_MATH_MIN(tapeFramesRemaining, audioBuffer.framesSize);
+        const f32 tapeVolumeRatioTarget        = tapeDeck->control.volumeFade.enabled ? tapeDeck->control.volumeFade.volumeRatioTarget : tapeDeck->control.volumeRatio;
+        const f32 tapeVolumeFadeDeltaPerSecond = !tapeDeck->control.volumeFade.enabled || korl_math_isNearlyZero(tapeDeck->control.volumeFade.seconds) 
+                                                 ? (tapeVolumeRatioTarget - tapeDeck->control.volumeRatio) / tapeAudioFormat.frameHz 
+                                                 : (tapeVolumeRatioTarget - tapeDeck->control.volumeFade.volumeRatioStart) / tapeDeck->control.volumeFade.seconds;
+        const f32 tapeVolumeDeltaPerFrame      = tapeVolumeFadeDeltaPerSecond / tapeAudioFormat.frameHz;
+        const f32 tapeVolumeRangeMin           = KORL_MATH_MIN(tapeDeck->control.volumeRatio, tapeVolumeRatioTarget);
+        const f32 tapeVolumeRangeMax           = KORL_MATH_MAX(tapeDeck->control.volumeRatio, tapeVolumeRatioTarget);
         if(framesToMix > framesWritten)
+            /* yes, we _must_ zero out the audio buffer memory before mixing to it! */
             korl_memory_zero(KORL_C_CAST(u8*, audioBuffer.frames) + (framesWritten * audioBytesPerFrame)
-                            ,(framesToMix - framesWritten) * audioBytesPerFrame);// @TODO: do we need to do this?...
+                            ,(framesToMix - framesWritten) * audioBytesPerFrame);
         for(u32 frame = 0; frame < framesToMix; frame++)
         {
             u8*const       audioBufferFrame    = KORL_C_CAST(u8*, audioBuffer.frames) + (frame * audioBytesPerFrame);
@@ -213,11 +222,12 @@ korl_internal void korl_sfx_mix(void)
                                                  /* otherwise (for non-looping TapeDecks), we can just take the current frame */
                                                  : tapeDeck->frame + frame;
             const u8*const tapeAudioFrame      = tapeAudio.data + (tapeAudioFrameIndex * tapeBytesPerFrame);
+            const f32      tapeVolumeRatio     = KORL_MATH_CLAMP(tapeDeck->control.volumeRatio + frame * tapeVolumeDeltaPerFrame, tapeVolumeRangeMin, tapeVolumeRangeMax);
             for(u8 channel = 0; channel < audioFormat.channels; channel++)// no matter what, we want to mix audio from this tape into all the channels of audioBuffer
             {
                 const u8 tapeChannel = (channel % tapeAudioFormat.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
                 mix(audioBufferFrame + (channel     *     audioFormat.bytesPerSample)
-                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample), uniformVolumeRatio * tapeDeck->control.channelVolumeRatios[channel]);
+                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample), uniformVolumeRatio * tapeVolumeRatio * tapeDeck->control.channelVolumeRatios[channel]);
             }
         }
         KORL_MATH_ASSIGN_CLAMP_MIN(framesWritten, framesToMix);
@@ -230,7 +240,21 @@ korl_internal void korl_sfx_mix(void)
                     tapeDeck->frame = tapeLoopFrameStart + ((tapeDeck->frame - tapeLoopFrameStart) % tapeLoopFrames);
             }
             else
-                tapeDeck->resource = 0;// this effectively "destroys" the Tape, freeing the Deck to play new Tapes
+            {
+                korl_memory_zero(tapeDeck, sizeof(*tapeDeck));// although we only need to zero the `resource` member, might as well just wipe the whole thing
+                continue;// don't do anymore logic on this TapeDeck, as the Tape has been destroyed
+            }
+        }
+        tapeDeck->control.volumeRatio += framesToMix * tapeVolumeDeltaPerFrame;
+        KORL_MATH_ASSIGN_CLAMP(tapeDeck->control.volumeRatio, tapeVolumeRangeMin, tapeVolumeRangeMax);
+        if(tapeDeck->control.volumeFade.enabled && korl_math_isNearlyEqual(tapeDeck->control.volumeRatio, tapeDeck->control.volumeFade.volumeRatioTarget))
+        {
+            tapeDeck->control.volumeFade.enabled = false;
+            if(tapeDeck->control.volumeFade.stopWhenEqual)
+            {
+                korl_memory_zero(tapeDeck, sizeof(*tapeDeck));// although we only need to zero the `resource` member, might as well just wipe the whole thing
+                continue;// don't do anymore logic on this TapeDeck, as the Tape has been destroyed
+            }
         }
     }
 #if _KORL_SFX_APPLY_MASTER_FILTER
@@ -259,14 +283,16 @@ korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource)
     if(d >= KORL_MEMORY_POOL_SIZE(_korl_sfx_context.tapeDecks))
         /* all tape decks are playing a tape; silently do nothing & return an invalid handle */
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Sfx_TapeHandle);
-    _korl_sfx_context.tapeDecks[d].resource = resourceHandleAudio;
-    _korl_sfx_context.tapeDecks[d].frame    = 0;
-    _korl_sfx_context.tapeDecks[d].control  = tapeDeckControl;
-    _korl_sfx_context.tapeDecks[d].salt++;
+    _Korl_Sfx_TapeDeck*const tapeDeck = &(_korl_sfx_context.tapeDecks[d]);
+    const u16 salt = tapeDeck->salt + 1;
+    korl_memory_zero(tapeDeck, sizeof(*tapeDeck));
+    tapeDeck->resource = resourceHandleAudio;
+    tapeDeck->control  = tapeDeckControl;
+    tapeDeck->salt     = salt;
     KORL_ZERO_STACK(Korl_Sfx_TapeHandle, tapeHandle);
     tapeHandle.deckIndex = d;
     tapeHandle.resource  = resourceHandleAudio;
-    tapeHandle.salt      = _korl_sfx_context.tapeDecks[d].salt;
+    tapeHandle.salt      = salt;
     return tapeHandle;
 }
 korl_internal KORL_FUNCTION_korl_sfx_setVolume(korl_sfx_setVolume)
@@ -283,4 +309,30 @@ korl_internal KORL_FUNCTION_korl_sfx_setListener(korl_sfx_setListener)
     _korl_sfx_context.listener.worldPosition      = worldPosition;
     _korl_sfx_context.listener.worldNormalUp      = worldNormalUp;
     _korl_sfx_context.listener.worldNormalForward = worldNormalForward;
+}
+korl_internal KORL_FUNCTION_korl_sfx_tape_stop(korl_sfx_tape_stop)
+{
+    if(!tapeHandle->resource)
+        return;// silently do nothing if the user provides an invalid TapeHandle
+    korl_assert(tapeHandle->deckIndex < korl_arraySize(_korl_sfx_context.tapeDecks));
+    _Korl_Sfx_TapeDeck*const tapeDeck = &(_korl_sfx_context.tapeDecks[tapeHandle->deckIndex]);
+    if(   tapeHandle->resource != tapeDeck->resource
+       || tapeHandle->salt     != tapeDeck->salt)
+        goto invalidateHandle;// the TapeHandle was already invalid
+    if(   korl_math_isNearlyZero(fadeOutSeconds) 
+       || korl_math_isNearlyZero(tapeDeck->control.volumeRatio))
+    {
+        /* if the stop command is immediate, we can just destroy the tape right away */
+        korl_memory_zero(tapeDeck, sizeof(*tapeDeck));
+        goto invalidateHandle;
+    }
+    /* otherwise, we configure the TapeDeck to fade out the volume & destroy the 
+        Tape once volume reaches 0 */
+    tapeDeck->control.volumeFade.enabled           = true;
+    tapeDeck->control.volumeFade.stopWhenEqual     = true;
+    tapeDeck->control.volumeFade.seconds           = fadeOutSeconds;
+    tapeDeck->control.volumeFade.volumeRatioStart  = tapeDeck->control.volumeRatio;
+    tapeDeck->control.volumeFade.volumeRatioTarget = 0;
+    invalidateHandle:
+        korl_memory_zero(tapeHandle, sizeof(*tapeHandle));
 }

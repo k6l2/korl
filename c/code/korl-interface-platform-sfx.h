@@ -20,6 +20,14 @@ typedef struct Korl_Sfx_TapeDeckControl
         Korl_Math_V3f32 worldPosition;
         f32             attenuation;
     } spatialization;
+    struct
+    {
+        f32  volumeRatioStart;
+        f32  volumeRatioTarget;
+        f32  seconds;// the desired time to fade from `volumeRatioStart`=>`volumeRatioTarget`
+        bool enabled;// true => `volumeRatio` will be gradually adjusted to `volumeRatioTarget` over the course of `seconds`
+        bool stopWhenEqual;// true => the TapeDeck will automatically eject the tape when volumeRatio reaches `volumeRatioTarget`
+    } volumeFade;
 } Korl_Sfx_TapeDeckControl;
 typedef struct Korl_Sfx_TapeCategoryControl
 {
@@ -35,7 +43,7 @@ korl_global_const Korl_Sfx_TapeDeckControl KORL_SFX_TAPE_DECK_CONTROL_DEFAULT = 
 #define KORL_FUNCTION_korl_sfx_setVolume(name)    void                name(f32 volumeRatio)
 #define KORL_FUNCTION_korl_sfx_category_set(name) void                name(u8 category, Korl_Sfx_TapeCategoryControl tapeCategoryControl)
 #define KORL_FUNCTION_korl_sfx_setListener(name)  void                name(Korl_Math_V3f32 worldPosition, Korl_Math_V3f32 worldNormalUp, Korl_Math_V3f32 worldNormalForward)
-// #define KORL_FUNCTION_korl_sfx_tape_stop(name)      void                name(Korl_Sfx_TapeHandle* tapeHandle)
+#define KORL_FUNCTION_korl_sfx_tape_stop(name)    void                name(Korl_Sfx_TapeHandle* tapeHandle, f32 fadeOutSeconds)
 // #define KORL_FUNCTION_korl_sfx_tape_setPause(name)  void                name(Korl_Sfx_TapeHandle* tapeHandle, bool paused)
 // #define KORL_FUNCTION_korl_sfx_tape_setVolume(name) void                name(Korl_Sfx_TapeHandle* tapeHandle, f32 volumeRatio)
 // #define KORL_FUNCTION_korl_sfx_tape_isValid(name)   bool                name(Korl_Sfx_TapeHandle* tapeHandle)
