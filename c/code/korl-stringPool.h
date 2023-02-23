@@ -47,6 +47,7 @@ typedef struct Korl_StringPool_String
     {
         /** Experimental debug help values: */
         //@TODO: refactor Korl_StringPool APIs to require Korl_StringPool_String pointers, so that we can automatically inject new raw string pointers when the internal raw string gets reallocated
+        //       closely related to KORL-ISSUE-000-000-114
         const char*    lastRawUtf8;
         const wchar_t* lastRawUtf16;
     } _DEBUGGER_ONLY_DO_NOT_USE;// FOR DEBUGGING ONLY!; please for the love of jebus don't actually write any code accessing/writing from/to this member; this exists _only_ for improved debugging experience!
