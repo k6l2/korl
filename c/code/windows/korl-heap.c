@@ -54,7 +54,7 @@ typedef struct _Korl_Heap_General
     u$ allocationPages;// this is the # which determines how many flags are actually relevant in the availablePageFlags member
     u$ allocationPagesCommitted;// in an attempt to reduce sys calls necessary for allocations; instead of decommitting & re-committing pages each time we allocate & free, using this variable we will just keep a full range of pages committed which we will "free" by zeroing the memory & guarding the page for later reallocation use
     u$ availablePageFlagsSize;// just used to determine the total size of the general allocator data structure
-    u$ availablePageFlags[];// see comments about this data structure for details of how this is used; the size of this array is determined by `bytes`, which should be calculated as `nextHighestDivision(nextHighestDivision(bytes, pageBytes), bitCount(u$))`
+    u$ availablePageFlags[1];// see comments about this data structure for details of how this is used; the size of this array is determined by `bytes`, which should be calculated as `nextHighestDivision(nextHighestDivision(bytes, pageBytes), bitCount(u$))`
 } _Korl_Heap_General;
 typedef struct _Korl_Heap_General_AllocationMeta
 {
