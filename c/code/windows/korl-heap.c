@@ -313,7 +313,7 @@ korl_internal u$ _korl_heap_general_occupyAvailablePages(_Korl_Heap_General* all
             u$ remainingFlagsToOccupy = pageCount;
             if(precedingBits)
             {
-                const u$ mask = precedingBits < bitsPerRegister // overflow left shift is undefined behavior in C, as I just learned!
+                const u$ mask = precedingBits < bitsPerRegister // C99 standard §6.5.7.4; overflow left shift is undefined behavior
                     ? ~((~0ULL) << precedingBits)
                     : (korl_assert(precedingBits == bitsPerRegister), ~0ULL);
                 korl_assert(fullRegistersToBeTakenStart > 0);
@@ -326,7 +326,7 @@ korl_internal u$ _korl_heap_general_occupyAvailablePages(_Korl_Heap_General* all
             while(remainingFlagsToOccupy)
             {
                 const u$ flags = KORL_MATH_MIN(remainingFlagsToOccupy, bitsPerRegister);
-                const u$ mask  = flags < bitsPerRegister // overflow left shift is undefined behavior in C, as I just learned!
+                const u$ mask  = flags < bitsPerRegister // C99 standard §6.5.7.4; overflow left shift is undefined behavior
                     ? (~(~0ULL << flags)) << (bitsPerRegister - flags)
                     : (korl_assert(flags == bitsPerRegister), ~0ULL);
                 remainingFlagsToOccupy -= flags;
@@ -1080,9 +1080,9 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
             u$ pageFlagRegister = allocator->availablePageFlags[pfr];
             /* remove page flag bits that are remaining from previous register(s) */
             const u$ pageFlagsRemainderInRegister     = KORL_MATH_MIN(bitsPerFlagRegister, pageFlagsRemainder);
-            const u$ pageFlagsRemainderInRegisterMask = pageFlagsRemainderInRegister < bitsPerFlagRegister // overflow left shift is undefined behavior
-                ? ~((~0LLU) << pageFlagsRemainderInRegister) 
-                : ~0LLU;
+            const u$ pageFlagsRemainderInRegisterMask = pageFlagsRemainderInRegister < bitsPerFlagRegister // C99 standard §6.5.7.4; overflow left shift is undefined behavior
+                                                        ? ~((~0LLU) << pageFlagsRemainderInRegister) 
+                                                        : ~0LLU;
             pageFlagRegister &= ~(pageFlagsRemainderInRegisterMask << (bitsPerFlagRegister - pageFlagsRemainderInRegister));
             pageFlagsRemainder -= pageFlagsRemainderInRegister;
             /**/
@@ -1103,9 +1103,9 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
                 const u$ maxFlagsInRegister        = mostSignificantSetBitIndex + 1;
                 const u$ allocationFlagsInRegister = KORL_MATH_MIN(maxFlagsInRegister, metaAddress->pagesCommitted);
                 /* remove the flags that this allocation occupies */
-                const u$ allocationFlagsInRegisterMask = allocationFlagsInRegister >= bitsPerFlagRegister
-                                                         ? ~0LLU// @TODO: investigate; why do we need to do this? the below equation fails when allocationFlagsInRegister==64 (we just get a NULL mask, ugh...)
-                                                         : ~((~0LLU) << allocationFlagsInRegister);
+                const u$ allocationFlagsInRegisterMask = allocationFlagsInRegister < bitsPerFlagRegister
+                                                         ? ~((~0LLU) << allocationFlagsInRegister) // C99 standard §6.5.7.4; overflow left shift is undefined behavior
+                                                         : ~0LLU;
                 pageFlagRegister &= ~(allocationFlagsInRegisterMask << (mostSignificantSetBitIndex - (allocationFlagsInRegister - 1)));
                 /* carry over any remaining flags that will occupy future register(s) */
                 pageFlagsRemainder += metaAddress->pagesCommitted - allocationFlagsInRegister;
