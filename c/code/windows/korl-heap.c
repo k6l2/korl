@@ -634,7 +634,7 @@ korl_internal void korl_heap_general_empty(_Korl_Heap_General* allocator)
     /**/
     _korl_heap_general_allocatorPagesGuard(allocator);
 }
-korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
+korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
 #if _KORL_HEAP_GENERAL_DEBUG
     u$ allocationCountBegin, occupiedPageCountBegin;
@@ -663,7 +663,7 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
                 linked list to see if it can contain the address */
             if(!allocator->next)
                 korl_log(ERROR, "allocation not found");
-            result = korl_heap_general_allocate(allocator->next, bytes, file, line, requestedAddress);
+            result = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, requestedAddress);
             korl_assert(result);
             goto guardAllocator_returnResult;
         }
@@ -691,15 +691,14 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
             _korl_heap_general_setPageFlags(allocator, availablePageIndex, allocator->allocationPages - allocationPages, false);//required only because of KORL-ISSUE-000-000-088
         if(!allocator->next)
         {
-            //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
-            korl_log(WARNING, "general allocator out of memory");
+            korl_log(WARNING, "general allocator \"%ws\" out of memory", allocatorName);
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
             const u$ nextHeapPages = KORL_MATH_MAX(2*allocator->allocationPages, 1/*include preceding guard page*/+allocationPages);
             allocator->next = _korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
         }
-        result = korl_heap_general_allocate(allocator->next, bytes, file, line, requestedAddress);
+        result = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, requestedAddress);
         if(!result)
             korl_log(ERROR, "system out of memory");
         goto guardAllocator_returnResult;
@@ -746,7 +745,7 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, u$
         #endif
         return result;
 }
-korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, void* allocation, u$ bytes, const wchar_t* file, int line)
+korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
     #if _KORL_HEAP_GENERAL_DEBUG
         u$ allocationCountBegin, occupiedPageCountBegin;
@@ -763,7 +762,7 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
     {
         if(!allocator->next)
             korl_log(ERROR, "allocation not found");
-        allocation = korl_heap_general_reallocate(allocator->next, allocation, bytes, file, line);
+        allocation = korl_heap_general_reallocate(allocator->next, allocatorName, allocation, bytes, file, line);
         goto guardAllocator_returnAllocation;
     }
     korl_assert(allocation >= allocationRegionBegin);// we must be inside the allocation region
@@ -865,15 +864,14 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
         // create a new allocation in another heap in the heap linked list //
         if(!allocator->next)
         {
-            //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
-            korl_log(WARNING, "general allocator out of memory");
+            korl_log(WARNING, "general allocator \"%ws\" out of memory", allocatorName);
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
             const u$ nextHeapPages = KORL_MATH_MAX(2*allocator->allocationPages, 1/*include preceding guard page*/+newAllocationPages);
             allocator->next = _korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
         }
-        void*const newAllocation = korl_heap_general_allocate(allocator->next, bytes, file, line, NULL);
+        void*const newAllocation = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, NULL);
         if(!newAllocation)
             korl_log(ERROR, "system out of memory");
         // copy data to newAllocation //
@@ -1178,7 +1176,7 @@ korl_internal void korl_heap_linear_empty(_Korl_Heap_Linear*const allocator)
     allocator->lastAllocation = NULL;
     _korl_heap_linear_allocatorPageGuard(allocator);
 }
-korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
+korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
     void* allocationAddress = NULL;
     _korl_heap_linear_allocatorPageUnguard(allocator);
@@ -1218,7 +1216,7 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
         {
             if(!allocator->next)
                 korl_log(ERROR, "allocation not found");
-            allocationAddress = korl_heap_linear_allocate(allocator->next, bytes, file, line, requestedAddress);
+            allocationAddress = korl_heap_linear_allocate(allocator->next, allocatorName, bytes, file, line, requestedAddress);
             korl_assert(allocationAddress);
             goto guardAllocator_return_allocationAddress;
         }
@@ -1241,15 +1239,14 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
     {
         if(!allocator->next)
         {
-            //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
-            korl_log(WARNING, "linear allocator out of memory");//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
+            korl_log(WARNING, "linear allocator \"%ws\" out of memory", allocatorName);//KORL-ISSUE-000-000-049: memory: logging an error when allocation fails in log module results in poor error logging
             /* we want to either (depending on which results in more pages): 
                 - double the amount of allocationPages of the next allocator
                 - have at _least_ the # of allocationPages required to satisfy `bytes` */
             const u$ newMaxBytes = KORL_MATH_MAX(2*allocator->bytes, allocatorBytes + totalAllocationBytes);
             allocator->next = _korl_heap_linear_create(newMaxBytes, NULL);
         }
-        allocationAddress = korl_heap_linear_allocate(allocator->next, bytes, file, line, requestedAddress);
+        allocationAddress = korl_heap_linear_allocate(allocator->next, allocatorName, bytes, file, line, requestedAddress);
         if(!allocationAddress)
             korl_log(ERROR, "system out of memory");
         goto guardAllocator_return_allocationAddress;
@@ -1292,7 +1289,7 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
         _korl_heap_linear_allocatorPageGuard(allocator);
         return allocationAddress;
 }
-korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocator, void* allocation, u$ bytes, const wchar_t* file, int line)
+korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
     /* sanity checks */
     _korl_heap_linear_allocatorPageUnguard(allocator);
@@ -1306,7 +1303,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     {
         if(!allocator->next)
             korl_log(ERROR, "allocation not found");
-        allocation = korl_heap_linear_reallocate(allocator->next, allocation, bytes, file, line);
+        allocation = korl_heap_linear_reallocate(allocator->next, allocatorName, allocation, bytes, file, line);
         goto guard_allocator_return_allocation;
     }
     korl_assert(   KORL_C_CAST(u8*, allocation) >= KORL_C_CAST(u8*, allocator) + (allocatorPages * pageBytes)
@@ -1358,8 +1355,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             /* create a new allocation in a later part of the korl-heap list */
             if(!allocator->next)
             {
-                //@TODO: log better allocator meta data; preferably the string name of the korl-memory-allocator
-                korl_log(WARNING, "linear allocator out of memory");
+                korl_log(WARNING, "linear allocator \"%ws\" out of memory", allocatorName);
                 /* we want to either (depending on which results in more pages): 
                     - double the amount of allocationPages of the next allocator
                     - have at _least_ the # of allocationPages required to satisfy `bytes` */
@@ -1367,7 +1363,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
                 const u$ newMaxBytes    = KORL_MATH_MAX(2*allocator->bytes, allocatorBytes + totalAllocationBytes);
                 allocator->next = _korl_heap_linear_create(newMaxBytes, NULL);
             }
-            void*const newAllocation = korl_heap_linear_allocate(allocator->next, bytes, file, line, NULL);
+            void*const newAllocation = korl_heap_linear_allocate(allocator->next, allocatorName, bytes, file, line, NULL);
             if(!newAllocation)
                 korl_log(ERROR, "system out of memory");
             /* copy data from old allocation to new allocation */
@@ -1398,7 +1394,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     else
     {
         _korl_heap_linear_allocatorPageGuard(allocator);
-        void*const newAllocation = korl_heap_linear_allocate(allocator, bytes, file, line, NULL/*auto-select address*/);
+        void*const newAllocation = korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, NULL/*auto-select address*/);
         if(newAllocation)
         {
             korl_memory_copy(newAllocation, allocation, allocationMeta->allocationMeta.bytes);

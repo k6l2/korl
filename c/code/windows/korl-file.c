@@ -332,7 +332,7 @@ korl_internal void korl_file_initialize(void)
     _Korl_File_Context*const context = &_korl_file_context;
     korl_memory_zero(context, sizeof(*context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
-    heapCreateInfo.initialHeapBytes = korl_math_megabytes(64);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(128);
     context->allocatorHandle        = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-file", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     context->stringPool             = korl_stringPool_create(context->allocatorHandle);
     context->nextAsyncIoHandle      = 1;
