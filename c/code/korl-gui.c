@@ -2035,6 +2035,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
     bool newAllocation = false;
+    //KORL-ISSUE-000-000-128: gui: (minor) WARNING logged on memory state load due to frivolous resource destruction
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(identifier), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
     if(newAllocation)

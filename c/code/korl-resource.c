@@ -424,7 +424,7 @@ korl_internal void korl_resource_flushUpdates(void)
         const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, *dirtyHandle);
         if(hashMapIndex < 0)
         {
-            // @TODO: investigate why this is happening when we load a memory state
+            //KORL-ISSUE-000-000-128: gui: (minor) WARNING logged on memory state load due to frivolous resource destruction
             korl_log(WARNING, "updated resource handle invalid (update + delete in same frame, etc.): 0x%X", *dirtyHandle);
             continue;
         }

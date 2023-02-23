@@ -73,6 +73,7 @@ _STATIC_ASSERT(sizeof(f64) == 8);
  * possess an implicit size (defined by the null-terminator character) just for 
  * the safety benefits alone.  Perhaps if I ever decide to remove the CRT 
  * completely, we can just use these everywhere instead of char & wchar. */
+//KORL-ISSUE-000-000-127: (minor) array primitive data types should probably have `data` as the first member, and `size` as the second member... (not sure why I did it the other way around)
 typedef struct ai8
 {
     u$  size;
@@ -85,7 +86,7 @@ typedef struct au8
 } au8;
 typedef struct au16
 {
-    u$   size;// @TODO: remove ambiguity!  Is this _bytes_ or _arraySize_?!  also may as well unify this decision with all the other `a*` datatypes in this file while I'm at it...
+    u$   size;// array size; _not_ size in bytes!
     u16* data;
 } au16;
 typedef struct aci8
@@ -100,7 +101,7 @@ typedef struct acu8
 } acu8;
 typedef struct acu16
 {
-    u$         size;// @TODO: remove ambiguity!  Is this _bytes_ or _arraySize_?!  also may as well unify this decision with all the other `a*` datatypes in this file while I'm at it...
+    u$         size;// array size; _not_ size in bytes!
     const u16* data;
 } acu16;
 #define KORL_RAW_CONST_UTF8(x)  (korl_assert(sizeof(*x) == sizeof(u8 )), KORL_STRUCT_INITIALIZE(acu8 ){korl_string_sizeUtf8(x) , KORL_C_CAST(const u8* ,(x))})
