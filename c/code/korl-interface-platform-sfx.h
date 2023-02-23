@@ -12,6 +12,7 @@ typedef struct Korl_Sfx_TapeDeckControl
     f32  volumeRatio;
     f32  channelVolumeRatios[2];// only valid if spatialization is _off_; @TODO: long-term goal: support more surround-sound configurations; for now, it's more than fine to just support 2-channel stereo
     u8   category;// index into lookup table for user-defined properties that apply to all tapes with a matching category value
+    u8   priority;// korl-sfx has a max # of TapeDecks which can play a Tape; if the user requests to play a Tape, and all TapeDecks are occupied, either: (1) a TapeDeck is playing a lower-priority Tape, in which case we destroy the Tape & occupy the Deck with this Tape, or (2) all TapeDecks are playing higher priority Tapes, in which case the request to play a Tape using this struct fails silently
     bool loop;
     f32  loopStartSeconds;
     struct

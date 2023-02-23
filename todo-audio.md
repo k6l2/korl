@@ -107,7 +107,7 @@ While XAudio certainly has a tempting set of features, I want to shy away from C
 [x] add ogg/vorbis decoder support
 [x] add the ability for the user to configure an audio tape to repeat
 [x] add `korl_sfx_stop` API, with a fade-out seconds parameter, so the user can stop looping audio easily
-[ ] add tape category override option for `korl_sfx_playResource`
+[x] add tape category override option for `korl_sfx_playResource`
     - we want the ability for a request to play a `BGM` sound category tape to override `SFX` tapes, so that BGMs don't get blocked
     - it makes sense to at least log a WARNING if the request to play a Tape with non-zero override categories fails to find a free Deck
     - or perhaps we just add the concept of `priority` to `korl_sfx_playResource`?

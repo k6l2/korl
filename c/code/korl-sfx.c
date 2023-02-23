@@ -276,13 +276,27 @@ korl_internal void korl_sfx_mix(void)
 }
 korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource)
 {
-    u8 d = 0;
+    u8 d                       = 0;
+    u8 lowestTapePriority      = KORL_U8_MAX;
+    u8 lowestTapePriorityIndex = korl_checkCast_u$_to_u8(KORL_MEMORY_POOL_SIZE(_korl_sfx_context.tapeDecks));
     for(; d < KORL_MEMORY_POOL_SIZE(_korl_sfx_context.tapeDecks); d++)
+    {
+        if(_korl_sfx_context.tapeDecks[d].control.priority <= lowestTapePriority)
+        {
+            lowestTapePriority      = _korl_sfx_context.tapeDecks[d].control.priority;
+            lowestTapePriorityIndex = d;
+        }
         if(!_korl_sfx_context.tapeDecks[d].resource)
             break;
+    }
     if(d >= KORL_MEMORY_POOL_SIZE(_korl_sfx_context.tapeDecks))
-        /* all tape decks are playing a tape; silently do nothing & return an invalid handle */
-        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Sfx_TapeHandle);
+        if(   lowestTapePriorityIndex >= KORL_MEMORY_POOL_SIZE(_korl_sfx_context.tapeDecks)
+           || lowestTapePriority      >= tapeDeckControl.priority)
+            /* all tape decks are playing a tape & no lower priority Tapes are present; silently do nothing & return an invalid handle */
+            return KORL_STRUCT_INITIALIZE_ZERO(Korl_Sfx_TapeHandle);
+        else
+            /* we will overwrite the Tape with the lowest prioity */
+            d = lowestTapePriorityIndex;
     _Korl_Sfx_TapeDeck*const tapeDeck = &(_korl_sfx_context.tapeDecks[d]);
     const u16 salt = tapeDeck->salt + 1;
     korl_memory_zero(tapeDeck, sizeof(*tapeDeck));
