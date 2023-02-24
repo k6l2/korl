@@ -92,7 +92,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
     case KORL_CLIPBOARD_DATA_FORMAT_UTF8:{
         clipboardDataFormat = CF_UNICODETEXT;
         Korl_StringPool_String stringTemp = korl_stringNewAcu8(&_korl_windows_window_context.stringPool, data);
-        acu16 rawU16 = korl_stringPool_getRawAcu16(stringTemp);
+        acu16 rawU16 = korl_stringPool_getRawAcu16(&stringTemp);
         u16* clipboardMemoryLocked = NULL;
         clipboardMemory = GlobalAlloc(GMEM_MOVEABLE, (rawU16.size + 1/*null-terminator*/) * sizeof(*rawU16.data));
         if(!clipboardMemory)
@@ -142,7 +142,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_get(korl_clipboard_get)
             goto close_clipboard_return_result;
         }
         Korl_StringPool_String stringTemp = korl_stringNewUtf16(&_korl_windows_window_context.stringPool, clipboardUtf16);
-        acu8 stringTempUtf8 = string_getRawAcu8(stringTemp);
+        acu8 stringTempUtf8 = string_getRawAcu8(&stringTemp);
         result.size = stringTempUtf8.size + 1/*null-terminator*/;
         u8* resultData = korl_allocate(allocator, result.size);
         result.data = resultData;
@@ -665,13 +665,13 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
             Korl_StringPool_String stringGameDllTemp = string_newFormatUtf16(L"%ws_%u.dll", KORL_DYNAMIC_APPLICATION_NAME, i);
             resultRenameReplace = 
                 korl_file_renameReplace(KORL_FILE_PATHTYPE_TEMPORARY_DATA, utf16GameDllFileName, 
-                                        KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
+                                        KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(&stringGameDllTemp));
             korl_assert(resultRenameReplace != KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST);
             if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
             {
                 if(context->gameDll)
                     FreeLibrary(context->gameDll);
-                context->gameDll = korl_file_loadDynamicLibrary(KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(stringGameDllTemp));
+                context->gameDll = korl_file_loadDynamicLibrary(KORL_FILE_PATHTYPE_TEMPORARY_DATA, string_getRawUtf16(&stringGameDllTemp));
                 korl_assert(context->gameDll);
                 korl_assert(korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, &context->gameDllLastWriteDateStamp));
                 korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
@@ -752,7 +752,7 @@ korl_internal void korl_windows_window_loop(void)
     korl_time_probeStart(game_initialization);
     /* attempt to copy the game DLL to the application temp directory */
     Korl_StringPool_String stringGameDll = string_newFormatUtf16(L"%ws.dll", KORL_DYNAMIC_APPLICATION_NAME);
-    _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
+    _korl_windows_window_dynamicGameLoad(string_getRawUtf16(&stringGameDll));
     _korl_windows_window_gameInitialize(&korlApi);
     korl_time_probeStop(game_initialization);
 #ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
@@ -830,10 +830,10 @@ korl_internal void korl_windows_window_loop(void)
         {
             KorlPlatformDateStamp dateStampLatestFileWrite;
             if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, 
-                                                          string_getRawUtf16(stringGameDll), &dateStampLatestFileWrite)
+                                                          string_getRawUtf16(&stringGameDll), &dateStampLatestFileWrite)
                && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(context->gameDllLastWriteDateStamp, dateStampLatestFileWrite))
             {
-                _korl_windows_window_dynamicGameLoad(string_getRawUtf16(stringGameDll));
+                _korl_windows_window_dynamicGameLoad(string_getRawUtf16(&stringGameDll));
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             }
         }

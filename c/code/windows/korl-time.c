@@ -363,7 +363,7 @@ korl_internal void korl_time_probeLogReport(void)
               && _korl_time_context.stbDaTimeProbeData[currentProbeData].probeHandle == tpi + 1)
         {
             const u16*const dataLabel = KORL_C_CAST(u16*, _korl_time_context.stbDaTimeProbeDataRaw + _korl_time_context.stbDaTimeProbeData[currentProbeData].bufferOffsetLabel);
-            if(string_getRawSizeUtf16(stringData) == 0)
+            if(string_getRawSizeUtf16(&stringData) == 0)
                 string_appendUtf16(stringData, L"(");
             else
                 string_appendUtf16(stringData, L", ");
@@ -377,7 +377,7 @@ korl_internal void korl_time_probeLogReport(void)
             }
             currentProbeData++;
         }
-        if(string_getRawSizeUtf16(stringData))
+        if(string_getRawSizeUtf16(&stringData))
             string_appendUtf16(stringData, L")");
         /**/
         const f64 probeCoverageRatio = KORL_C_CAST(f64, timeProbeCoverageCounts[tpi]) 
@@ -390,7 +390,7 @@ korl_internal void korl_time_probeLogReport(void)
                         bufferDuration, bufferCoverageRatio, 
                         longestProbeLabel, timeProbe->label ? timeProbe->label : L"", 
                         longestProbeFunction, timeProbe->function, file, timeProbe->line, 
-                        string_getRawUtf16(stringData));
+                        string_getRawUtf16(&stringData));
         mcarrpush(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), stbDaTimeProbeStack, tpi + 1);
         string_reserveUtf16(&stringData, 0);// clear the data string buffer for re-use in future probes
     }

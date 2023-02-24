@@ -476,7 +476,7 @@ korl_internal void korl_resource_flushUpdates(void)
             {
                 if(resource->stringFileName.handle)
                     /* if this is a file-backed resource, attempt to get the lazy-loaded file one more time: */
-                    korl_resource_fromFile(string_getRawAcu16(resource->stringFileName), KORL_ASSETCACHE_GET_FLAG_LAZY);
+                    korl_resource_fromFile(string_getRawAcu16(&resource->stringFileName), KORL_ASSETCACHE_GET_FLAG_LAZY);
                 /* if we _still_ have no resource data, we have no choice but to consider this audio resource as "pending" */
                 if(!resource->data)
                 {

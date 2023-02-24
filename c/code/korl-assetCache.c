@@ -78,7 +78,7 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
     case _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED:{
         korl_assert(asset->fileDescriptor.flags == 0);
         const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
-                                                   string_getRawUtf16(asset->name), 
+                                                   string_getRawUtf16(&asset->name), 
                                                    &(asset->fileDescriptor), 
                                                    asyncLoad);
         if(resultFileOpen)
@@ -164,7 +164,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                 korl_file_close(&asset->fileDescriptor);
                 asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
                 asset->flags = KORL_ASSETCACHE_GET_FLAGS_NONE;
-                const acu16 rawUtf16AssetName = string_getRawAcu16(asset->name);
+                const acu16 rawUtf16AssetName = string_getRawAcu16(&asset->name);
                 korl_log(INFO, "Asset \"%ws\" has been hot-reloaded!  Running callbacks...", rawUtf16AssetName.data);
                 callbackOnAssetHotReloaded(rawUtf16AssetName, asset->data);
                 break;}
@@ -182,7 +182,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
         }
         else if(asset->state != _KORL_ASSET_CACHE_ASSET_STATE_LOADED)
             continue;
-        const wchar_t*const rawUtf16AssetName = string_getRawUtf16(asset->name);
+        const wchar_t*const rawUtf16AssetName = string_getRawUtf16(&asset->name);
         KorlPlatformDateStamp dateStampLatestFileWrite;
         if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
                                                       rawUtf16AssetName, &dateStampLatestFileWrite)
@@ -190,7 +190,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
         {
             korl_assert(asset->fileDescriptor.flags == 0);
             const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
-                                                       string_getRawUtf16(asset->name), 
+                                                       string_getRawUtf16(&asset->name), 
                                                        &(asset->fileDescriptor), 
                                                        true/*async*/);
             if(resultFileOpen)
@@ -212,7 +212,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                         a future time.  */
                     if(!(asset->flags & _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED))
                     {
-                        korl_log(WARNING, "asset \"%ws\" opened with 0 bytes; closing, then re-trying later...", string_getRawUtf16(asset->name));
+                        korl_log(WARNING, "asset \"%ws\" opened with 0 bytes; closing, then re-trying later...", string_getRawUtf16(&asset->name));
                         asset->flags |= _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED;
                     }
                     korl_file_close(&(asset->fileDescriptor));
@@ -232,7 +232,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                     writing operations on it yet. */
                 if(!(asset->flags & _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED))
                 {
-                    korl_log(INFO, "asset \"%ws\" failed to open; re-trying later...", string_getRawUtf16(asset->name));
+                    korl_log(INFO, "asset \"%ws\" failed to open; re-trying later...", string_getRawUtf16(&asset->name));
                     asset->flags |= _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED;
                 }
         }

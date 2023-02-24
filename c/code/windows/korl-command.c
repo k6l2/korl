@@ -34,17 +34,17 @@ korl_internal void _korl_command_destroy(_Korl_Command* context)
 }
 korl_internal void _korl_command_findCallbackAddress(_Korl_Command* command, HMODULE moduleHandle)
 {
-    command->callback = KORL_C_CAST(fnSig_korl_command_callback*, GetProcAddress(moduleHandle, string_getRawUtf8(command->stringCallback)));
+    command->callback = KORL_C_CAST(fnSig_korl_command_callback*, GetProcAddress(moduleHandle, string_getRawUtf8(&command->stringCallback)));
     if(!command->callback)
-        korl_log(WARNING, "command \"%hs\" callback \"%hs\" not found!", string_getRawUtf8(command->stringCommand), string_getRawUtf8(command->stringCallback));
+        korl_log(WARNING, "command \"%hs\" callback \"%hs\" not found!", string_getRawUtf8(&command->stringCommand), string_getRawUtf8(&command->stringCallback));
 }
 KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_command_commandHelp)
 {
     korl_log(INFO, "KORL command list:");
     const _Korl_Command*const commandsEnd = _korl_command_context.stbDaCommands + arrlen(_korl_command_context.stbDaCommands);
-    for(const _Korl_Command* c = _korl_command_context.stbDaCommands; c < commandsEnd; c++)
+    for(_Korl_Command* c = _korl_command_context.stbDaCommands; c < commandsEnd; c++)
         if(c->callback)// ignore commands that have an invalid callback
-            korl_log(INFO, "\t%hs", string_getRawUtf8(c->stringCommand));
+            korl_log(INFO, "\t%hs", string_getRawUtf8(&c->stringCommand));
 }
 korl_internal void korl_command_initialize(acu8 utf8PlatformModuleName)
 {
@@ -174,6 +174,6 @@ korl_internal bool korl_command_saveStateRead(HANDLE hFile)
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
     if(!KORL_WINDOWS_CHECK(ReadFile(hFile, &_korl_command_context, sizeof(_korl_command_context), NULL/*bytes read*/, NULL/*no overlapped*/)))
         return false;
-    korl_command_registerModule(GetModuleHandle(NULL), string_getRawAcu8(_korl_command_context.stringPlatformModuleName));
+    korl_command_registerModule(GetModuleHandle(NULL), string_getRawAcu8(&_korl_command_context.stringPlatformModuleName));
     return true;
 }

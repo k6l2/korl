@@ -54,7 +54,7 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
             if(korl_gui_widgetInputText(context->stringInput, context->enable))
             {
                 /* the user pressed [Enter]; submit stringInput to the platform layer */
-                korl_command_invoke(string_getRawAcu8(context->stringInput));
+                korl_command_invoke(string_getRawAcu8(&context->stringInput));
                 context->commandInvoked = true;
             }
         korl_gui_windowEnd();

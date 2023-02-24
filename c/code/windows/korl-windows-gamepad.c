@@ -100,13 +100,13 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), 
               context->stbDaDevices, 
               newDevice);
-    korl_log(INFO, "xbox gamepad connected: \"%ws\"", string_getRawUtf16(stringDevicePath));
+    korl_log(INFO, "xbox gamepad connected: \"%ws\"", string_getRawUtf16(&stringDevicePath));
 }
 korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     korl_assert(devicesIndex < arrlenu(context->stbDaDevices));
-    korl_log(INFO, "disconnecting gamepad \"%ws\"", string_getRawUtf16(context->stbDaDevices[devicesIndex].path));
+    korl_log(INFO, "disconnecting gamepad \"%ws\"", string_getRawUtf16(&context->stbDaDevices[devicesIndex].path));
     string_free(&context->stbDaDevices[devicesIndex].path);
     if(!CloseHandle(context->stbDaDevices[devicesIndex].handle))
         korl_logLastError("CloseHandle failed");
@@ -124,7 +124,7 @@ korl_internal void _korl_windows_gamepad_disconnectPath(LPTSTR devicePath)
             _korl_windows_gamepad_disconnectIndex(d);
             goto cleanUp;
         }
-    korl_log(INFO, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(stringDevicePath));
+    korl_log(INFO, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(&stringDevicePath));
     cleanUp:
     string_free(&stringDevicePath);
 }

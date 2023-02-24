@@ -67,9 +67,9 @@ korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_String stringFile
         for(u32 i = 0;;)
         {
             i = string_findUtf16(stringFilePath, L"/", i);
-            if(i >= string_getRawSizeUtf16(stringFilePath))
+            if(i >= string_getRawSizeUtf16(&stringFilePath))
                 break;
-            string_getRawWriteableUtf16(stringFilePath)[i] = L'\\';
+            string_getRawWriteableUtf16(&stringFilePath)[i] = L'\\';
         }
     }
 }
@@ -96,7 +96,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType
         createFileFlags |= FILE_FLAG_OVERLAPPED;
     if(createFileFlags == 0)
         createFileFlags = FILE_ATTRIBUTE_NORMAL;
-    const HANDLE hFile = CreateFile(string_getRawUtf16(stringFilePath)
+    const HANDLE hFile = CreateFile(string_getRawUtf16(&stringFilePath)
                                    ,createDesiredAccess
                                    ,FILE_SHARE_READ
                                    ,NULL/*default security*/
@@ -106,7 +106,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType
     if(hFile == INVALID_HANDLE_VALUE)
     {
         korl_log(WARNING, "CreateFile('%ws') failed; GetLastError==0x%X", 
-                 string_getRawUtf16(stringFilePath), GetLastError());
+                 string_getRawUtf16(&stringFilePath), GetLastError());
         result = false;
         goto cleanUp;
     }
@@ -157,11 +157,11 @@ korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_String findFileDirect
     string_appendUtf16(findFilePattern, L"\\");
     string_appendUtf16(findFilePattern, findFileNamePattern);
     WIN32_FIND_DATA findFileData;
-    HANDLE findHandle = FindFirstFile(string_getRawUtf16(findFilePattern), &findFileData);
+    HANDLE findHandle = FindFirstFile(string_getRawUtf16(&findFilePattern), &findFileData);
     if(findHandle == INVALID_HANDLE_VALUE)
     {
         if(GetLastError() != ERROR_FILE_NOT_FOUND)
-            korl_logLastError("FindFirstFile(%ws) failed", string_getRawUtf16(findFilePattern));
+            korl_logLastError("FindFirstFile(%ws) failed", string_getRawUtf16(&findFilePattern));
         goto cleanUp;
     }
     findFileCount = 1;
@@ -199,11 +199,11 @@ korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, 
     string_appendUtf16(findFilePattern, L"\\");
     string_appendUtf16(findFilePattern, sourcePattern);
     WIN32_FIND_DATA findFileData;
-    HANDLE findHandle = FindFirstFile(string_getRawUtf16(findFilePattern), &findFileData);
+    HANDLE findHandle = FindFirstFile(string_getRawUtf16(&findFilePattern), &findFileData);
     if(findHandle == INVALID_HANDLE_VALUE)
     {
         if(GetLastError() != ERROR_FILE_NOT_FOUND)
-            korl_logLastError("FindFirstFile(%ws) failed", string_getRawUtf16(findFilePattern));
+            korl_logLastError("FindFirstFile(%ws) failed", string_getRawUtf16(&findFilePattern));
         goto cleanUp;
     }
     for(;;)
@@ -214,12 +214,12 @@ korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, 
         Korl_StringPool_String pathDestination = string_copy(destinationDirectory);
         string_appendUtf16(pathDestination, L"\\");
         string_appendUtf16(pathDestination, findFileData.cFileName);
-        if(!CopyFile(string_getRawUtf16(pathSource), string_getRawUtf16(pathDestination), FALSE))
+        if(!CopyFile(string_getRawUtf16(&pathSource), string_getRawUtf16(&pathDestination), FALSE))
             korl_log(WARNING, "CopyFile(%ws, %ws) failed!  GetLastError=0x%X", 
-                     string_getRawUtf16(pathSource), string_getRawUtf16(pathDestination), GetLastError());
+                     string_getRawUtf16(&pathSource), string_getRawUtf16(&pathDestination), GetLastError());
         else
             korl_log(INFO, "copied file \"%ws\" to \"%ws\"", 
-                     string_getRawUtf16(pathSource), string_getRawUtf16(pathDestination));
+                     string_getRawUtf16(&pathSource), string_getRawUtf16(&pathDestination));
         string_free(&pathSource);
         string_free(&pathDestination);
         const BOOL resultFindNextFile = FindNextFile(findHandle, &findFileData);
@@ -301,8 +301,8 @@ korl_internal void _korl_file_createParentDirectoriesRecursive(Korl_StringPool_S
 {
     _Korl_File_Context*const context = &_korl_file_context;
     Korl_StringPool_String filePathLocalCopy = string_copy(filePath);
-    const u32 filePathSize     = string_getRawSizeUtf16(filePathLocalCopy);
-    u16*const filePathRawUtf16 = string_getRawWriteableUtf16(filePathLocalCopy);//KORL-ISSUE-000-000-076: file: replace working with raw writable UTF-16 pointers, we need codepoint iteration/get/set API
+    const u32 filePathSize     = string_getRawSizeUtf16(&filePathLocalCopy);
+    u16*const filePathRawUtf16 = string_getRawWriteableUtf16(&filePathLocalCopy);//KORL-ISSUE-000-000-076: file: replace working with raw writable UTF-16 pointers, we need codepoint iteration/get/set API
     u32 c = 0;
     if(0 == string_findUtf16(filePathLocalCopy, L"\\\\\?\\", 0))
         c += 4;
@@ -347,11 +347,11 @@ korl_internal void korl_file_initialize(void)
     context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY] = string_newEmptyUtf16(currentDirectoryCharacters - 1/*ignore the null-terminator; string pool will add one internally*/);
     const DWORD currentDirectoryCharacters2 = 
         GetCurrentDirectory(currentDirectoryCharacters, 
-                            string_getRawWriteableUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY]));
+                            string_getRawWriteableUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY]));
     if(currentDirectoryCharacters2 == 0)
         korl_logLastError("GetCurrentDirectory failed!");
     korl_log(INFO, "Current working directory: %ws", 
-             string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY]));
+             string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY]));
     /* determine where the application's local storage is in Windows */
     {
         wchar_t* pathLocalAppData;
@@ -364,20 +364,20 @@ korl_internal void korl_file_initialize(void)
         string_appendUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA], L"\\");
         string_appendUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA], KORL_APPLICATION_NAME);
         CoTaskMemFree(pathLocalAppData);
-        korl_log(INFO, "directoryLocalData=%ws", string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]));
+        korl_log(INFO, "directoryLocalData=%ws", string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]));
     }
-    if(!CreateDirectory(string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]), NULL))
+    if(!CreateDirectory(string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]), NULL))
     {
         const int errorCode = GetLastError();
         switch(errorCode)
         {
         case ERROR_ALREADY_EXISTS:{
             korl_log(INFO, "directory '%ws' already exists", 
-                     string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]));
+                     string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]));
             break;}
         default:{
             korl_logLastError("CreateDirectory('%ws') failed", 
-                              string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]));
+                              string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_LOCAL_DATA]));
             break;}
         }
     }
@@ -392,51 +392,51 @@ korl_internal void korl_file_initialize(void)
         string_appendUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA], KORL_APPLICATION_NAME);
     }
     korl_log(INFO, "directoryTemporaryData=%ws", 
-             string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]));
-    if(!CreateDirectory(string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]), NULL))
+             string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]));
+    if(!CreateDirectory(string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]), NULL))
     {
         const int errorCode = GetLastError();
         switch(errorCode)
         {
         case ERROR_ALREADY_EXISTS:{
             korl_log(INFO, "directory '%ws' already exists", 
-                     string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]));
+                     string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]));
             break;}
         default:{
             korl_logLastError("CreateDirectory('%ws') failed", 
-                              string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]));
+                              string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_TEMPORARY_DATA]));
             break;}
         }
     }
     /* executable file directory */
     context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY] = string_newEmptyUtf16(MAX_PATH);// just an initial guess; you'll see why shortly...
-    DWORD resultGetModuleFileName = string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]);
+    DWORD resultGetModuleFileName = string_getRawSizeUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]);
     // That's right, in order to properly use this shitty API, Microsoft forces 
     //  us to pull this reallocate loop bullshit... 🤡 //
     for(;;)
     {
         resultGetModuleFileName = GetModuleFileName(NULL/*executable file of current process*/, 
-                                                    string_getRawWriteableUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]), 
-                                                    string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
+                                                    string_getRawWriteableUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]), 
+                                                    string_getRawSizeUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
         if(resultGetModuleFileName == 0)
             korl_logLastError("GetModuleFileName failed!");
-        if(resultGetModuleFileName >= string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]))
+        if(resultGetModuleFileName >= string_getRawSizeUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]))
             string_reserveUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], 
-                                2*string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
+                                2*string_getRawSizeUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
         else
             break;
     }
     // null-terminate the module file path at the last backslash, so we 
     //  effectively get the parent directory of the exe file //
-    const wchar_t* lastBackslash = string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]);
-    for(const wchar_t* c = string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]); *c; c++)
+    const wchar_t* lastBackslash = string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]);
+    for(const wchar_t* c = string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]); *c; c++)
         if(*c == '\\')
             lastBackslash = c;
     string_reserveUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], 
-                        korl_checkCast_i$_to_u32(lastBackslash - string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY])));
+                        korl_checkCast_i$_to_u32(lastBackslash - string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY])));
     //  //
     korl_log(INFO, "directoryExecutable=%ws", 
-             string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
+             string_getRawUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
     /* prepend special string of characters to directory strings, which will 
         allow the Windows API that consumes these paths (CreateDirectory, 
         CreateFile, etc...) to extend the file path string size limit from 
@@ -494,9 +494,9 @@ korl_internal HMODULE korl_file_loadDynamicLibrary(Korl_File_PathType pathType, 
     Korl_StringPool_String filePath = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(filePath, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(filePath);
-    hModule = LoadLibrary(string_getRawUtf16(filePath));
+    hModule = LoadLibrary(string_getRawUtf16(&filePath));
     if(!hModule)
-        korl_logLastError("LoadLibrary(\"%ws\") failed", string_getRawUtf16(filePath));
+        korl_logLastError("LoadLibrary(\"%ws\") failed", string_getRawUtf16(&filePath));
     cleanUp_returnHModule:
         string_free(&filePath);
         return hModule;
@@ -513,7 +513,7 @@ korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const 
     Korl_StringPool_String filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
     string_appendFormatUtf16(filePath   , L"\\%ws", fileName);
     string_appendFormatUtf16(filePathNew, L"\\%ws", fileNameNew);
-    if(!CopyFile(string_getRawUtf16(filePath), string_getRawUtf16(filePathNew), replaceFileNameNewIfExists))
+    if(!CopyFile(string_getRawUtf16(&filePath), string_getRawUtf16(&filePathNew), replaceFileNameNewIfExists))
     {
         switch(GetLastError())
         {
@@ -539,7 +539,7 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
     Korl_StringPool_String filePath = string_copy(context->directoryStrings[pathTypeFileName]);
     string_appendUtf16(filePath, L"\\");
     string_appendUtf16(filePath, fileName);
-    if(GetFileAttributes(string_getRawUtf16(filePath)) == INVALID_FILE_ATTRIBUTES)
+    if(GetFileAttributes(string_getRawUtf16(&filePath)) == INVALID_FILE_ATTRIBUTES)
     {
         result = KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST;
         goto cleanUp;
@@ -547,16 +547,16 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
     filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
     string_appendUtf16(filePathNew, L"\\");
     string_appendUtf16(filePathNew, fileNameNew);
-    if(GetFileAttributes(string_getRawUtf16(filePathNew)) != INVALID_FILE_ATTRIBUTES)
-        if(DeleteFile(string_getRawUtf16(filePathNew)))
-            korl_log(INFO, "file '%ws' deleted", string_getRawUtf16(filePathNew));
+    if(GetFileAttributes(string_getRawUtf16(&filePathNew)) != INVALID_FILE_ATTRIBUTES)
+        if(DeleteFile(string_getRawUtf16(&filePathNew)))
+            korl_log(INFO, "file '%ws' deleted", string_getRawUtf16(&filePathNew));
         else
         {
             result = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_DELETE_FILE_TO_REPLACE;
             goto cleanUp;
         }
-    if(!MoveFile(string_getRawUtf16(filePath), 
-                 string_getRawUtf16(filePathNew)))
+    if(!MoveFile(string_getRawUtf16(&filePath), 
+                 string_getRawUtf16(&filePathNew)))
     {
         result = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE;
         goto cleanUp;
@@ -770,7 +770,7 @@ korl_internal bool korl_file_getDateStampLastWriteFileName(Korl_File_PathType pa
     string_appendFormatUtf16(stringFilePath, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(stringFilePath);
     WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
-    if(!GetFileAttributesEx(string_getRawUtf16(stringFilePath), GetFileExInfoStandard, &fileAttributeData))
+    if(!GetFileAttributesEx(string_getRawUtf16(&stringFilePath), GetFileExInfoStandard, &fileAttributeData))
     {
         if(GetLastError() != ERROR_FILE_NOT_FOUND)
             korl_logLastError("GetFileAttributesEx failed!");
@@ -925,13 +925,13 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     /* create a memory dump directory in the temporary data directory */
     dumpDirectory = string_copy(context->directoryStrings[type]);
     string_appendFormatUtf16(dumpDirectory, L"\\%ws", DUMP_SUBDIRECTORY);
-    if(!CreateDirectory(string_getRawUtf16(dumpDirectory), NULL/*default security*/))
+    if(!CreateDirectory(string_getRawUtf16(&dumpDirectory), NULL/*default security*/))
         switch(GetLastError())
         {
         case ERROR_ALREADY_EXISTS:
             break;
         case ERROR_PATH_NOT_FOUND:
-            korl_log(ERROR, "CreateDirectory(%ws) failed: path not found", string_getRawUtf16(dumpDirectory));
+            korl_log(ERROR, "CreateDirectory(%ws) failed: path not found", string_getRawUtf16(&dumpDirectory));
             goto cleanUp;
         }
     /* delete the oldest dump folder after we reach some maximum dump count */
@@ -941,11 +941,11 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         while(maxDumpCount <= _korl_file_findOldestFile(dumpDirectory, L"*-*-*-*-*", &filePathOldest))
         {
             /* apparently pFrom needs to be double null-terminated */
-            const u32 filePathOldestSize = string_getRawSizeUtf16(filePathOldest);
+            const u32 filePathOldestSize = string_getRawSizeUtf16(&filePathOldest);
             string_reserveUtf16(&filePathOldest, filePathOldestSize + 1);
-            string_getRawWriteableUtf16(filePathOldest)[filePathOldestSize] = L'\0';
+            string_getRawWriteableUtf16(&filePathOldest)[filePathOldestSize] = L'\0';
             /**/
-            const WCHAR* rawUtf16FilePathOldest = string_getRawUtf16(filePathOldest);
+            const WCHAR* rawUtf16FilePathOldest = string_getRawUtf16(&filePathOldest);
             /* the special L"\\\\\?\\" file path prefix shit doesn't work on 
                 this API, as it turns out... */
             if(0 == string_findUtf16(filePathOldest, L"\\\\\?\\", 0))
@@ -973,15 +973,15 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
                              GetCurrentProcessId(), GetCurrentThreadId());
     pathMemoryDump = string_copy(dumpDirectory);
     string_append(pathMemoryDump, subDirectoryMemoryDump);
-    if(!CreateDirectory(string_getRawUtf16(pathMemoryDump), NULL))
+    if(!CreateDirectory(string_getRawUtf16(&pathMemoryDump), NULL))
     {
         korl_logLastError("CreateDirectory(%ws) failed!", 
-                          string_getRawUtf16(pathMemoryDump));
+                          string_getRawUtf16(&pathMemoryDump));
         goto cleanUp;
     }
     else
         korl_log(INFO, "created MiniDump directory: %ws", 
-                 string_getRawUtf16(pathMemoryDump));
+                 string_getRawUtf16(&pathMemoryDump));
     // Create the mini dump! //
     pathFileWrite = string_copy(pathMemoryDump);
     string_appendFormatUtf16(pathFileWrite, L"\\%ws-%04d%02d%02d-%02d%02d%02d-0x%X-0x%X.dmp", 
@@ -989,13 +989,13 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
                              localTime.wYear, localTime.wMonth, localTime.wDay,
                              localTime.wHour, localTime.wMinute, localTime.wSecond,
                              GetCurrentProcessId(), GetCurrentThreadId());
-    const HANDLE hDumpFile = CreateFile(string_getRawUtf16(pathFileWrite), 
+    const HANDLE hDumpFile = CreateFile(string_getRawUtf16(&pathFileWrite), 
                                         GENERIC_READ|GENERIC_WRITE, 
                                         FILE_SHARE_WRITE|FILE_SHARE_READ, 
                                         0, CREATE_ALWAYS, 0, 0);
     if(INVALID_HANDLE_VALUE == hDumpFile)
     {
-        korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(pathFileWrite));
+        korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(&pathFileWrite));
         goto cleanUp;
     }
     PEXCEPTION_POINTERS pExceptionPointers = KORL_C_CAST(PEXCEPTION_POINTERS, exceptionData);
@@ -1016,12 +1016,12 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
                  GetLastError(), /*derived by reverse engineering HRESULT_FROM_WIN32:*/GetLastError()&0xFFFF);
         goto cleanUp;
     }
-    korl_log(INFO, "MiniDump written to: %ws", string_getRawUtf16(pathFileWrite));
+    korl_log(INFO, "MiniDump written to: %ws", string_getRawUtf16(&pathFileWrite));
     /* let's also save the state of the top of this frame in the dump folder */
     subPathSaveState = string_newUtf16(DUMP_SUBDIRECTORY);
     string_append(subPathSaveState, subDirectoryMemoryDump);
     string_appendUtf16(subPathSaveState, L"\\savestate");
-    korl_file_saveStateSave(type, string_getRawUtf16(subPathSaveState));
+    korl_file_saveStateSave(type, string_getRawUtf16(&subPathSaveState));
     /* Attempt to copy the win32 application's symbol files to the dump 
         location.  This will allow us to at LEAST view the call stack properly 
         during development for all of our minidumps even after making source 
@@ -1036,11 +1036,11 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     string_appendUtf16(pathFileWrite, L"\\");
     string_appendUtf16(pathFileWrite, KORL_APPLICATION_NAME);
     string_appendUtf16(pathFileWrite, L".exe");
-    if(!CopyFile(string_getRawUtf16(pathFileRead), string_getRawUtf16(pathFileWrite), FALSE))
+    if(!CopyFile(string_getRawUtf16(&pathFileRead), string_getRawUtf16(&pathFileWrite), FALSE))
         korl_log(WARNING, "CopyFile(%ws, %ws) failed!  GetLastError=0x%X", 
-                 string_getRawUtf16(pathFileRead), string_getRawUtf16(pathFileWrite), GetLastError());
+                 string_getRawUtf16(&pathFileRead), string_getRawUtf16(&pathFileWrite), GetLastError());
     else
-        korl_log(INFO, "copied file \"%ws\" to \"%ws\"", string_getRawUtf16(pathFileRead), string_getRawUtf16(pathFileWrite));
+        korl_log(INFO, "copied file \"%ws\" to \"%ws\"", string_getRawUtf16(&pathFileRead), string_getRawUtf16(&pathFileWrite));
     // Copy all PDB files //
     _korl_file_copyFiles(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], L"*.pdb", pathMemoryDump);
 #if 0/* In the future, we will have to do something a little more sophisticated 
@@ -1223,12 +1223,12 @@ korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wc
     /* we can just use fileName directly; maybe in the future we can do rolling 
         save state files or something */
     /* open the save state file for writing */
-    hFile = CreateFile(string_getRawUtf16(filePath), GENERIC_WRITE, 
+    hFile = CreateFile(string_getRawUtf16(&filePath), GENERIC_WRITE, 
                        FILE_SHARE_WRITE|FILE_SHARE_READ, 
                        0, CREATE_ALWAYS, 0, 0);
     if(hFile == INVALID_HANDLE_VALUE)
     {
-        korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(filePath));
+        korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(&filePath));
         goto cleanUp;
     }
     /* write the save state to a file */
@@ -1240,7 +1240,7 @@ korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wc
         korl_logLastError("WriteFile failed!");
         goto cleanUp;
     }
-    korl_log(INFO, "Wrote save state file: %ws", string_getRawUtf16(filePath));
+    korl_log(INFO, "Wrote save state file: %ws", string_getRawUtf16(&filePath));
     korl_time_probeStop(write_buffer);
     cleanUp:
         korl_time_probeStart(clean_up);
@@ -1275,15 +1275,15 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     Korl_StringPool_String pathFile = string_copy(context->directoryStrings[pathType]);
     string_appendFormatUtf16(pathFile, L"\\%ws", fileName);
     _korl_file_sanitizeFilePath(pathFile);
-    hFile = CreateFile(string_getRawUtf16(pathFile), GENERIC_READ, FILE_SHARE_READ, 
+    hFile = CreateFile(string_getRawUtf16(&pathFile), GENERIC_READ, FILE_SHARE_READ, 
                        0/*default security*/, OPEN_EXISTING, 
                        0/*flags|attributes*/, 0/*no template*/);
     if(hFile == INVALID_HANDLE_VALUE)
     {
         if(GetLastError() == ERROR_FILE_NOT_FOUND)
-            korl_log(WARNING, "Save state file not found: %ws", string_getRawUtf16(pathFile));
+            korl_log(WARNING, "Save state file not found: %ws", string_getRawUtf16(&pathFile));
         else
-            korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(pathFile));
+            korl_logLastError("CreateFile(%ws) failed!", string_getRawUtf16(&pathFile));
         goto cleanUp;
     }
     /* read & parse & process the save state file */
@@ -1477,11 +1477,11 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                 korl_logLastError("ReadFile failed");
                 goto cleanUp;
             }
-            if(string_getRawSizeUtf16(allocationFileBuffer) <= allocationFileCharacterCount)
+            if(string_getRawSizeUtf16(&allocationFileBuffer) <= allocationFileCharacterCount)
                 string_reserveUtf16(&allocationFileBuffer, allocationFileCharacterCount);
             else
-                string_getRawWriteableUtf16(allocationFileBuffer)[allocationFileCharacterCount] = L'\0';
-            if(!ReadFile(hFile, string_getRawWriteableUtf16(allocationFileBuffer), allocationFileCharacterCount*sizeof(u16), NULL/*bytes read*/, NULL/*no overlapped*/))
+                string_getRawWriteableUtf16(&allocationFileBuffer)[allocationFileCharacterCount] = L'\0';
+            if(!ReadFile(hFile, string_getRawWriteableUtf16(&allocationFileBuffer), allocationFileCharacterCount*sizeof(u16), NULL/*bytes read*/, NULL/*no overlapped*/))
             {
                 korl_logLastError("ReadFile failed");
                 goto cleanUp;
@@ -1501,7 +1501,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                 korl_logLastError("ReadFile failed");
                 goto cleanUp;
             }
-            void*const allocation = korl_memory_allocator_allocate(allocatorDescriptors[a].handle, allocationBytes, string_getRawWriteableUtf16(allocationFileBuffer), allocationLine, KORL_C_CAST(void*, allocationAddress));
+            void*const allocation = korl_memory_allocator_allocate(allocatorDescriptors[a].handle, allocationBytes, string_getRawWriteableUtf16(&allocationFileBuffer), allocationLine, KORL_C_CAST(void*, allocationAddress));
             if(!ReadFile(hFile, allocation, korl_checkCast_u$_to_u32(allocationBytes), NULL/*bytes read*/, NULL/*no overlapped*/))
             {
                 korl_logLastError("ReadFile failed");
@@ -1581,7 +1581,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
         goto cleanUp;
     }
     /**/
-    korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));
+    korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(&pathFile));
 cleanUp:
     mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), stbDaHeapDescriptors);
     string_free(&pathFile);

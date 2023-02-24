@@ -826,7 +826,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                 if(cursorEnd > cursorBegin)
                 {
                     Korl_StringPool_String stringSelection = korl_string_subString(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
-                    acu8 rawUtf8 = string_getRawAcu8(stringSelection);
+                    acu8 rawUtf8 = string_getRawAcu8(&stringSelection);
                     korl_clipboard_set(KORL_CLIPBOARD_DATA_FORMAT_UTF8, rawUtf8);
                     string_free(&stringSelection);
                 }
@@ -1563,8 +1563,8 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAGS_NONE);
                 /* draw the window title bar text */
                 Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack
-                                                                                    ,string_getRawUtf16(context->style.fontWindowText)
-                                                                                    ,string_getRawUtf16(widget->subType.window.titleBarText)
+                                                                                    ,string_getRawUtf16(&context->style.fontWindowText)
+                                                                                    ,string_getRawUtf16(&widget->subType.window.titleBarText)
                                                                                     ,context->style.windowTextPixelSizeY
                                                                                     ,context->style.colorText
                                                                                     ,context->style.textOutlinePixelSize
@@ -1716,9 +1716,9 @@ korl_internal void korl_gui_frameEnd(void)
             switch(widget->subType.button.display)
             {
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT:{
-                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
                 const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines per button */;
-                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), widget->subType.button.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), widget->subType.button.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
                 Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
                 const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 const f32 buttonAabbSizeX = batchTextAabbSize.x + (context->style.widgetButtonLabelMargin * 2.f);
@@ -1788,9 +1788,9 @@ korl_internal void korl_gui_frameEnd(void)
             {
                 korl_assert(widget->subType.text.displayText.data);
                 korl_assert(!widget->subType.text.gfxText);
-                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
                 const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines per button */;
-                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
                 korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
                 korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z}, 3);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);
@@ -1865,9 +1865,9 @@ korl_internal void korl_gui_frameEnd(void)
             break;}
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
             /* prepare the graphics to draw the text buffer to obtain metrics, but defer drawing until later */
-            Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+            Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
             const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
-            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(context->style.fontWindowText), string_getRawUtf16(widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
+            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), string_getRawUtf16(&widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
             //KORL-ISSUE-000-000-116: gui: this does _not_ actually place the text position at the baseline!  This places the local origin at the bottom-left of the shrink-wrapped AABB; this causes the position of text to get jacked up when a glyph below the baseline is drawn (such as 'g' or 'j')
             korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
             korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.5f}, 3);
@@ -1889,15 +1889,15 @@ korl_internal void korl_gui_frameEnd(void)
                                                                    ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
             const u$                   cursorEnd    = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
                                                                    ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
-            const Korl_Math_V2f32 cursorPositionBegin = korl_gfx_font_textGraphemePosition(string_getRawAcu16(context->style.fontWindowText)
+            const Korl_Math_V2f32 cursorPositionBegin = korl_gfx_font_textGraphemePosition(string_getRawAcu16(&context->style.fontWindowText)
                                                                                           ,context->style.windowTextPixelSizeY
-                                                                                          ,korl_stringPool_getRawAcu8(widget->subType.inputText.string)
+                                                                                          ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
                                                                                           ,cursorBegin);
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin < cursorEnd)
             {
-                const Korl_Math_V2f32 cursorPositionEnd = korl_gfx_font_textGraphemePosition(string_getRawAcu16(context->style.fontWindowText)
+                const Korl_Math_V2f32 cursorPositionEnd = korl_gfx_font_textGraphemePosition(string_getRawAcu16(&context->style.fontWindowText)
                                                                                             ,context->style.windowTextPixelSizeY
-                                                                                            ,korl_stringPool_getRawAcu8(widget->subType.inputText.string)
+                                                                                            ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
                                                                                             ,cursorEnd);
                 /* in this case, we need to draw a highlight region for the entire selected grapheme range */
                 const Korl_Math_V2f32 lineSelectionSize = {cursorPositionEnd.x - cursorPositionBegin.x, textLineDeltaY};
@@ -2041,7 +2041,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
     if(newAllocation)
     {
         korl_assert(korl_memory_isNull(&widget->subType.text, sizeof(widget->subType.text)));
-        widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, string_getRawAcu16(context->style.fontWindowText), context->style.windowTextPixelSizeY);
+        widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
     }
     /* at this point, we either have a new gfxText on the widget, or we're using 
         an already existing widget's gfxText member; in either case, we need to 
