@@ -19,7 +19,7 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
             console; we have to do this here because it's not safe to free 
             stringInput until we know for certain that input events are 
             finished, which is one of the preconditions of the update function */
-        string_free(context->stringInput);
+        string_free(&context->stringInput);
         context->stringInput            = context->stringInputLastEnabled;
         context->stringInputLastEnabled = KORL_STRINGPOOL_STRING_NULL;
     }
@@ -46,7 +46,7 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
             korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"), KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL);
                 korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
             korl_gui_widgetScrollAreaEnd();
-            string_free(context->stringInputLastEnabled);
+            string_free(&context->stringInputLastEnabled);
             if(context->enable)
                 context->stringInputLastEnabled = string_copy(context->stringInput);
             else

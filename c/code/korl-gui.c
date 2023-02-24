@@ -828,7 +828,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                     Korl_StringPool_String stringSelection = korl_string_subString(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
                     acu8 rawUtf8 = string_getRawAcu8(stringSelection);
                     korl_clipboard_set(KORL_CLIPBOARD_DATA_FORMAT_UTF8, rawUtf8);
-                    string_free(stringSelection);
+                    string_free(&stringSelection);
                 }
                 break;}
             case KORL_KEY_P:{
@@ -1072,7 +1072,7 @@ korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* cod
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 {
     _Korl_Gui_Context*const context = &_korl_gui_context;
-    string_free(context->style.fontWindowText);
+    string_free(&context->style.fontWindowText);
     if(fontAssetName)
         context->style.fontWindowText = string_newUtf16(fontAssetName);
 }

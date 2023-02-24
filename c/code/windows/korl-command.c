@@ -27,9 +27,9 @@ typedef struct _Korl_Command_Context
 korl_global_variable _Korl_Command_Context _korl_command_context;
 korl_internal void _korl_command_destroy(_Korl_Command* context)
 {
-    string_free(context->stringCommand);
-    string_free(context->stringCallback);
-    string_free(context->stringModule);
+    string_free(&context->stringCommand);
+    string_free(&context->stringCallback);
+    string_free(&context->stringModule);
     korl_memory_zero(context, sizeof(*context));
 }
 korl_internal void _korl_command_findCallbackAddress(_Korl_Command* command, HMODULE moduleHandle)

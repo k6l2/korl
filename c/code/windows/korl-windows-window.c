@@ -106,7 +106,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
         korl_memory_copy(clipboardMemoryLocked, rawU16.data, rawU16.size*sizeof(*rawU16.data));
         clipboardMemoryLocked[rawU16.size] = 0;//null-terminate the clipboard string
         data_format_utf8_cleanup:
-            string_free(stringTemp);
+            string_free(&stringTemp);
             if(clipboardMemoryLocked)
                 KORL_WINDOWS_CHECK(GlobalUnlock(clipboardMemoryLocked));
             if(!clipboardMemory)
@@ -148,7 +148,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_get(korl_clipboard_get)
         result.data = resultData;
         korl_memory_copy(resultData, stringTempUtf8.data, stringTempUtf8.size);
         resultData[stringTempUtf8.size] = 0;
-        string_free(stringTemp);
+        string_free(&stringTemp);
         KORL_WINDOWS_CHECK(GlobalUnlock(clipboardData));
         break;}
     }
@@ -676,7 +676,7 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
                 korl_assert(korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, &context->gameDllLastWriteDateStamp));
                 korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
             }
-            string_free(stringGameDllTemp);
+            string_free(&stringGameDllTemp);
             if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
                 break;
         }
@@ -953,7 +953,7 @@ korl_internal void korl_windows_window_loop(void)
     /**/
 #endif
     korl_vulkan_destroySurface();
-    string_free(stringGameDll);
+    string_free(&stringGameDll);
     /* safely close out any pending config file operations */
     while(context->configuration.deferSaveConfiguration || context->configuration.asyncIo.handle)
         _korl_windows_window_configurationStep();

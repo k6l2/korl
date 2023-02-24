@@ -534,14 +534,14 @@ korl_internal Korl_StringPool_String korl_stringPool_newFormatUtf16(Korl_StringP
     va_end(args);
     return result;
 }
-korl_internal void korl_stringPool_free(Korl_StringPool_String string)//KORL-ISSUE-000-000-114: stringPool: we should pass the String address here so we can invalidate the data for the user
+korl_internal void korl_stringPool_free(Korl_StringPool_String* string)
 {
     /* if the string handle is invalid, we don't have to do anything */
-    if(!string.handle)
+    if(!string->handle)
         return;
-    Korl_StringPool*const context = string.pool;
+    Korl_StringPool*const context = string->pool;
     /* find the matching handle in the string array */
-    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(*string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* deallocate any raw string allocations */
     if(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
@@ -550,6 +550,8 @@ korl_internal void korl_stringPool_free(Korl_StringPool_String string)//KORL-ISS
         _korl_stringPool_free(context, context->stbDaStrings[s].poolByteOffsetUtf16);
     /* remove the string from the string array */
     arrdelswap(context->stbDaStrings, s);
+    /* invalidate the user's String */
+    *string = KORL_STRINGPOOL_STRING_NULL;
 }
 korl_internal void korl_stringPool_reserveUtf8(Korl_StringPool_String string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {

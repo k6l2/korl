@@ -306,7 +306,7 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
         return;// silently do nothing for NULL handles
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
-    const _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
+    _Korl_Resource*const resource = &(_korl_resource_context.stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     /* destroy the transcoded multimedia asset */
     switch(unpackedHandle.multimediaType)
@@ -322,7 +322,7 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
         break;}
     }
     /* if the resource backed by a file, we should destroy the cached file name string */
-    string_free(resource->stringFileName);
+    string_free(&resource->stringFileName);
     /* destroy the cached decoded raw asset data */
     korl_free(_korl_resource_context.allocatorHandle, resource->data);
     /* remove the resource from the database */

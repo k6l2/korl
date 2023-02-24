@@ -140,7 +140,7 @@ korl_internal bool _korl_file_open(Korl_File_PathType pathType
         o_fileDescriptor->asyncKey = newKey;
     }
 cleanUp:
-    string_free(stringFilePath);
+    string_free(&stringFilePath);
     return result;
 }
 /** The caller is responsible for freeing the string returned via 
@@ -181,7 +181,7 @@ korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_String findFileDirect
         if(CompareFileTime(&findFileData.ftCreationTime, &creationTimeOldest) < 0)
         {
             creationTimeOldest = findFileData.ftCreationTime;
-            string_free(*o_filePathOldest);
+            string_free(o_filePathOldest);
             *o_filePathOldest = string_copy(findFileDirectory);
             string_appendUtf16(*o_filePathOldest, L"\\");
             string_appendUtf16(*o_filePathOldest, findFileData.cFileName);
@@ -190,7 +190,7 @@ korl_internal u$ _korl_file_findOldestFile(Korl_StringPool_String findFileDirect
     if(!FindClose(findHandle))
         korl_logLastError("FindClose failed");
 cleanUp:
-    string_free(findFilePattern);
+    string_free(&findFilePattern);
     return findFileCount;
 }
 korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, const wchar_t* sourcePattern, Korl_StringPool_String destinationDirectory)
@@ -220,8 +220,8 @@ korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, 
         else
             korl_log(INFO, "copied file \"%ws\" to \"%ws\"", 
                      string_getRawUtf16(pathSource), string_getRawUtf16(pathDestination));
-        string_free(pathSource);
-        string_free(pathDestination);
+        string_free(&pathSource);
+        string_free(&pathDestination);
         const BOOL resultFindNextFile = FindNextFile(findHandle, &findFileData);
         if(!resultFindNextFile)
         {
@@ -232,7 +232,7 @@ korl_internal void _korl_file_copyFiles(Korl_StringPool_String sourceDirectory, 
     if(!FindClose(findHandle))
         korl_logLastError("FindClose failed");
 cleanUp:
-    string_free(findFilePattern);
+    string_free(&findFilePattern);
 }
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_file_saveStateCreate_allocationEnumCallback)
 {
@@ -324,7 +324,7 @@ korl_internal void _korl_file_createParentDirectoriesRecursive(Korl_StringPool_S
         }
     }
 cleanUp:
-    string_free(filePathLocalCopy);
+    string_free(&filePathLocalCopy);
 }
 korl_internal void korl_file_initialize(void)
 {
@@ -498,8 +498,8 @@ korl_internal HMODULE korl_file_loadDynamicLibrary(Korl_File_PathType pathType, 
     if(!hModule)
         korl_logLastError("LoadLibrary(\"%ws\") failed", string_getRawUtf16(filePath));
     cleanUp_returnHModule:
-    string_free(filePath);
-    return hModule;
+        string_free(&filePath);
+        return hModule;
 }
 korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName, 
                                   Korl_File_PathType pathTypeFileNameNew, const wchar_t* fileNameNew, 
@@ -524,8 +524,8 @@ korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const 
         goto cleanUp;
     }
     cleanUp:
-    string_free(filePath);
-    string_free(filePathNew);
+    string_free(&filePath);
+    string_free(&filePathNew);
     return result;
 }
 korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_PathType pathTypeFileName,    const wchar_t* fileName, 
@@ -561,10 +561,10 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
         result = KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE;
         goto cleanUp;
     }
-cleanUp:
-    string_free(filePath);
-    string_free(filePathNew);
-    return result;
+    cleanUp:
+        string_free(&filePath);
+        string_free(&filePathNew);
+        return result;
 }
 korl_internal Korl_File_AsyncIoHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes)
 {
@@ -779,7 +779,7 @@ korl_internal bool korl_file_getDateStampLastWriteFileName(Korl_File_PathType pa
     }
     dateStampUnionFile.fileTime = fileAttributeData.ftLastWriteTime;
     cleanUp_returnResult:
-    string_free(stringFilePath);
+    string_free(&stringFilePath);
     if(success)
         *out_dateStampLastWrite = dateStampUnionFile.dateStamp;
     return success;
@@ -960,9 +960,9 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
             if(resultFileOpDeleteRecursive != 0)
                 korl_log(WARNING, "recursive delete of \"%ws\" failed; result=%i", 
                          rawUtf16FilePathOldest, resultFileOpDeleteRecursive);
-            string_free(filePathOldest);
+            string_free(&filePathOldest);
         }
-        string_free(filePathOldest);
+        string_free(&filePathOldest);
     }
     // Create a companion folder to store PDB files specifically for this dump! //
     subDirectoryMemoryDump = string_newUtf16(L"");
@@ -1031,7 +1031,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     string_appendUtf16(pathFileRead, L"\\");
     string_appendUtf16(pathFileRead, KORL_APPLICATION_NAME);
     string_appendUtf16(pathFileRead, L".exe");
-    string_free(pathFileWrite);
+    string_free(&pathFileWrite);
     pathFileWrite = string_copy(pathMemoryDump);
     string_appendUtf16(pathFileWrite, L"\\");
     string_appendUtf16(pathFileWrite, KORL_APPLICATION_NAME);
@@ -1108,12 +1108,12 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     }
 #endif// ^ either recycle this code at some point, or just delete it
 cleanUp:
-    string_free(pathFileRead);
-    string_free(pathFileWrite);
-    string_free(dumpDirectory);
-    string_free(pathMemoryDump);
-    string_free(subDirectoryMemoryDump);
-    string_free(subPathSaveState);
+    string_free(&pathFileRead);
+    string_free(&pathFileWrite);
+    string_free(&dumpDirectory);
+    string_free(&pathMemoryDump);
+    string_free(&subDirectoryMemoryDump);
+    string_free(&subPathSaveState);
 }
 /** In this function, we just write out each allocator to the file.  Instead of 
  * enumerating over each memory allocator and writing the contents to the file 
@@ -1242,16 +1242,16 @@ korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wc
     }
     korl_log(INFO, "Wrote save state file: %ws", string_getRawUtf16(filePath));
     korl_time_probeStop(write_buffer);
-cleanUp:
-    korl_time_probeStart(clean_up);
-    string_free(filePath);
-    if(hFile != INVALID_HANDLE_VALUE)
-    {
-        korl_time_probeStart(close_file_handle);
-        korl_assert(CloseHandle(hFile));
-        korl_time_probeStop(close_file_handle);
-    }
-    korl_time_probeStop(clean_up);
+    cleanUp:
+        korl_time_probeStart(clean_up);
+        string_free(&filePath);
+        if(hFile != INVALID_HANDLE_VALUE)
+        {
+            korl_time_probeStart(close_file_handle);
+            korl_assert(CloseHandle(hFile));
+            korl_time_probeStop(close_file_handle);
+        }
+        korl_time_probeStop(clean_up);
 }
 korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wchar_t* fileName)
 {
@@ -1584,8 +1584,8 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
     korl_log(INFO, "save state \"%ws\" loaded successfully!", string_getRawUtf16(pathFile));
 cleanUp:
     mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), stbDaHeapDescriptors);
-    string_free(pathFile);
-    string_free(allocationFileBuffer);
+    string_free(&pathFile);
+    string_free(&allocationFileBuffer);
     if(allocatorDescriptors)
         korl_free(context->allocatorHandle, allocatorDescriptors);
     if(hFile != INVALID_HANDLE_VALUE)
