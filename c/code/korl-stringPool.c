@@ -3,6 +3,7 @@
 #include "korl-stb-ds.h"
 #include "korl-string.h"
 #include "korl-interface-platform-memory.h"
+#include "korl-interface-platform.h"
 #include <ctype.h>// for toupper
 typedef struct _Korl_StringPool_Allocation
 {
@@ -591,16 +592,15 @@ korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool_String* string, 
     /* update debugger-only raw C string */
     string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf16 = KORL_C_CAST(const wchar_t*, rawUtf16);
 }
-korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringPool_String stringA, Korl_StringPool_String stringB)
+korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringPool_String* stringA, Korl_StringPool_String* stringB)
 {
     // For now, limited to comparing two strings from the same pool.
-    korl_assert(stringA.pool == stringB.pool);
-    Korl_StringPool* context = stringA.pool;
-    
+    korl_assert(stringA->pool == stringB->pool);
+    Korl_StringPool* context = stringA->pool;
     /* find the matching handles in the string array */
-    const u$ sA = _korl_stringPool_findIndexMatchingHandle(stringA);
+    const u$ sA = _korl_stringPool_findIndexMatchingHandle(*stringA);
     korl_assert(sA < arrlenu(context->stbDaStrings));
-    const u$ sB = _korl_stringPool_findIndexMatchingHandle(stringB);
+    const u$ sB = _korl_stringPool_findIndexMatchingHandle(*stringB);
     korl_assert(sB < arrlenu(context->stbDaStrings));
     /* if both strings have a common encoding, we will be able to compare the 
         raw data of each in that encoding; otherwise, we need to decude a common 
@@ -611,6 +611,8 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringP
     {
         _korl_stringPool_deduceUtf8(context, strA, __FILEW__, __LINE__);
         _korl_stringPool_deduceUtf8(context, strB, __FILEW__, __LINE__);
+        stringA->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, stringA->pool->characterPool + strA->poolByteOffsetUtf8);
+        stringB->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, stringB->pool->characterPool + strB->poolByteOffsetUtf8);
     }
     /* do the raw string comparison */
     int resultCompare = -1;
@@ -631,20 +633,21 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringP
     else
         return KORL_STRINGPOOL_COMPARE_RESULT_GREATER;
 }
-korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool_String string, const u16* cStringUtf16)
+korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool_String* string, const u16* cStringUtf16)
 {
-    Korl_StringPool*const context = string.pool;
+    Korl_StringPool*const context = string->pool;
     /* find the matching handle in the string array */
-    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(*string);
     korl_assert(s < arrlenu(context->stbDaStrings));
+    _Korl_StringPool_String*const _string = context->stbDaStrings + s;
     /* if the utf16 version of the string hasn't been created, create it */
-    if(!(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
+    if(!(_string->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
     {
-        korl_assert(context->stbDaStrings[s].flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8);// we need to convert from _something_; might as well ensure that UTF8 already exists
-        _korl_stringPool_convert_utf8_to_utf16(context, &context->stbDaStrings[s], __FILEW__, __LINE__);
+        _korl_stringPool_convert_utf8_to_utf16(context, _string, __FILEW__, __LINE__);
+        string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf16 = KORL_C_CAST(const wchar_t*, context->characterPool + _string->poolByteOffsetUtf16);
     }
     /* do the raw string comparison */
-    const int resultCompare = korl_string_compareUtf16(korl_checkCast_cpu16_to_cpwchar(KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16))
+    const int resultCompare = korl_string_compareUtf16(korl_checkCast_cpu16_to_cpwchar(KORL_C_CAST(u16*, context->characterPool + _string->poolByteOffsetUtf16))
                                                       ,korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
@@ -653,14 +656,15 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Kor
     else
         return KORL_STRINGPOOL_COMPARE_RESULT_GREATER;
 }
-korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithAcu8(Korl_StringPool_String string, acu8 utf8)
+korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithAcu8(Korl_StringPool_String* string, acu8 utf8)
 {
-    Korl_StringPool*const context = string.pool;
+    Korl_StringPool*const context = string->pool;
     /* find the matching handle in the string array */
-    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(*string);
     korl_assert(s < arrlenu(context->stbDaStrings));
-    _korl_stringPool_deduceUtf8(context, &(context->stbDaStrings[s]), __FILEW__, __LINE__);
-    const _Korl_StringPool_String*const _string = context->stbDaStrings + s;
+    _Korl_StringPool_String*const _string = context->stbDaStrings + s;
+    _korl_stringPool_deduceUtf8(context, _string, __FILEW__, __LINE__);
+    string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, context->characterPool + _string->poolByteOffsetUtf8);
     /* first just compare the raw string sizes */
     if(_string->rawSizeUtf8 < utf8.size)
         return KORL_STRINGPOOL_COMPARE_RESULT_LESS;
@@ -677,15 +681,17 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithAcu8(Korl
     else
         return KORL_STRINGPOOL_COMPARE_RESULT_GREATER;
 }
-korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl_StringPool_String string, const char* cStringUtf8)
+korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl_StringPool_String* string, const char* cStringUtf8)
 {
-    Korl_StringPool*const context = string.pool;
+    Korl_StringPool*const context = string->pool;
     /* find the matching handle in the string array */
-    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(*string);
     korl_assert(s < arrlenu(context->stbDaStrings));
-    _korl_stringPool_deduceUtf8(context, &(context->stbDaStrings[s]), __FILEW__, __LINE__);
+    _Korl_StringPool_String*const _string = context->stbDaStrings + s;
+    _korl_stringPool_deduceUtf8(context, _string, __FILEW__, __LINE__);
+    string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, context->characterPool + _string->poolByteOffsetUtf8);
     /* do the raw string comparison */
-    const int resultCompare = korl_string_compareUtf8(korl_checkCast_cpu8_to_cpchar(context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8)
+    const int resultCompare = korl_string_compareUtf8(korl_checkCast_cpu8_to_cpchar(context->characterPool + _string->poolByteOffsetUtf8)
                                                      ,cStringUtf8);
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
@@ -694,21 +700,20 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl
     else
         return KORL_STRINGPOOL_COMPARE_RESULT_GREATER;
 }
-korl_internal bool korl_stringPool_equals(Korl_StringPool_String stringA, Korl_StringPool_String stringB)
+korl_internal bool korl_stringPool_equals(Korl_StringPool_String* stringA, Korl_StringPool_String* stringB)
 {
-    korl_assert(stringA.pool == stringB.pool);
-    Korl_StringPool* context = stringA.pool;
+    korl_assert(stringA->pool == stringB->pool);
     return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL == korl_stringPool_compare(stringA, stringB);
 }
-korl_internal bool korl_stringPool_equalsAcu8(Korl_StringPool_String string, acu8 utf8)
+korl_internal bool korl_stringPool_equalsAcu8(Korl_StringPool_String* string, acu8 utf8)
 {
     return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL == korl_stringPool_compareWithAcu8(string, utf8);
 }
-korl_internal bool korl_stringPool_equalsUtf8(Korl_StringPool_String string, const char* cStringUtf8)
+korl_internal bool korl_stringPool_equalsUtf8(Korl_StringPool_String* string, const char* cStringUtf8)
 {
     return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL == korl_stringPool_compareWithUtf8(string, cStringUtf8);
 }
-korl_internal bool korl_stringPool_equalsUtf16(Korl_StringPool_String string, const u16* cStringUtf16)
+korl_internal bool korl_stringPool_equalsUtf16(Korl_StringPool_String* string, const u16* cStringUtf16)
 {
     return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL == korl_stringPool_compareWithUtf16(string, cStringUtf16);
 }

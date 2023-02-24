@@ -82,7 +82,7 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
     {
         if(context->stbDaDevices[d].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
             continue;
-        if(string_equals(stringDevicePath, context->stbDaDevices[d].path))
+        if(string_equals(&stringDevicePath, &context->stbDaDevices[d].path))
             return;
     }
     /* this device is not registered yet; open a handle to the device */
@@ -119,7 +119,7 @@ korl_internal void _korl_windows_gamepad_disconnectPath(LPTSTR devicePath)
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
     for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
         /* if a device in our database matches the devicePath, we need to clean it up and remove it */
-        if(string_equals(stringDevicePath, context->stbDaDevices[d].path))
+        if(string_equals(&stringDevicePath, &context->stbDaDevices[d].path))
         {
             _korl_windows_gamepad_disconnectIndex(d);
             goto cleanUp;

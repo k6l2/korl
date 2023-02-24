@@ -64,7 +64,7 @@ korl_internal void korl_command_registerModule(HMODULE moduleHandle, acu8 utf8Mo
     _Korl_Command_Module* module = NULL;
     _Korl_Command_Module* modulesEnd = _korl_command_context.stbDaModules + arrlen(_korl_command_context.stbDaModules);
     for(_Korl_Command_Module* m = _korl_command_context.stbDaModules; m < modulesEnd; m++)
-        if(string_equalsAcu8(m->stringName, utf8ModuleName))
+        if(string_equalsAcu8(&m->stringName, utf8ModuleName))
         {
             module = m;
             goto module_set;
@@ -82,7 +82,7 @@ korl_internal void korl_command_registerModule(HMODULE moduleHandle, acu8 utf8Mo
             are registered to this code module */
         const _Korl_Command*const commandsEnd = _korl_command_context.stbDaCommands + arrlen(_korl_command_context.stbDaCommands);
         for(_Korl_Command* command = _korl_command_context.stbDaCommands; command < commandsEnd; command++)
-            if(string_equals(command->stringModule, module->stringName))
+            if(string_equals(&command->stringModule, &module->stringName))
                 _korl_command_findCallbackAddress(command, module->handle);
 }
 korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke)
@@ -102,9 +102,9 @@ korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke)
     {
         /* use the first token to find the command whose string matches */
         const _Korl_Command*const commandsEnd = _korl_command_context.stbDaCommands + arrlen(_korl_command_context.stbDaCommands);
-        const _Korl_Command*      command     = _korl_command_context.stbDaCommands;
+        _Korl_Command*            command     = _korl_command_context.stbDaCommands;
         for(; command < commandsEnd; command++)
-            if(string_equalsAcu8(command->stringCommand, stbDaTokens[0]))
+            if(string_equalsAcu8(&command->stringCommand, stbDaTokens[0]))
                 break;
         /* if we found a command, let's invoke it! */
         if(command < commandsEnd)
@@ -123,9 +123,9 @@ korl_internal KORL_FUNCTION__korl_command_register(_korl_command_register)
     /* check to see if this command already exists in the database */
     const _Korl_Command*const commandsEnd = _korl_command_context.stbDaCommands + arrlen(_korl_command_context.stbDaCommands);
     for(_Korl_Command* c = _korl_command_context.stbDaCommands; c < commandsEnd; c++)
-        if(string_equalsAcu8(c->stringCommand, utf8CommandName))
+        if(string_equalsAcu8(&c->stringCommand, utf8CommandName))
         {
-            korl_assert(string_equalsAcu8(c->stringCallback, utf8Callback));// the callback's symbol _must_ be the same as when it was first registered!
+            korl_assert(string_equalsAcu8(&c->stringCallback, utf8Callback));// the callback's symbol _must_ be the same as when it was first registered!
             command = c;
             goto command_set;
         }

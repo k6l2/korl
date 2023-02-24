@@ -59,7 +59,7 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
     /* see if the asset is already loaded, and if so select it */
     for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
-        if(string_equalsUtf16(context->stbDaAssets[a].name, assetName))
+        if(string_equalsUtf16(&context->stbDaAssets[a].name, assetName))
         {
             asset = &(context->stbDaAssets[a]);
             break;
