@@ -421,7 +421,7 @@ korl_internal void korl_file_initialize(void)
         if(resultGetModuleFileName == 0)
             korl_logLastError("GetModuleFileName failed!");
         if(resultGetModuleFileName >= string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]))
-            string_reserveUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], 
+            string_reserveUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], 
                                 2*string_getRawSizeUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]));
         else
             break;
@@ -432,7 +432,7 @@ korl_internal void korl_file_initialize(void)
     for(const wchar_t* c = string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY]); *c; c++)
         if(*c == '\\')
             lastBackslash = c;
-    string_reserveUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], 
+    string_reserveUtf16(&context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY], 
                         korl_checkCast_i$_to_u32(lastBackslash - string_getRawUtf16(context->directoryStrings[KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY])));
     //  //
     korl_log(INFO, "directoryExecutable=%ws", 
@@ -942,7 +942,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
         {
             /* apparently pFrom needs to be double null-terminated */
             const u32 filePathOldestSize = string_getRawSizeUtf16(filePathOldest);
-            string_reserveUtf16(filePathOldest, filePathOldestSize + 1);
+            string_reserveUtf16(&filePathOldest, filePathOldestSize + 1);
             string_getRawWriteableUtf16(filePathOldest)[filePathOldestSize] = L'\0';
             /**/
             const WCHAR* rawUtf16FilePathOldest = string_getRawUtf16(filePathOldest);
@@ -1478,7 +1478,7 @@ korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wc
                 goto cleanUp;
             }
             if(string_getRawSizeUtf16(allocationFileBuffer) <= allocationFileCharacterCount)
-                string_reserveUtf16(allocationFileBuffer, allocationFileCharacterCount);
+                string_reserveUtf16(&allocationFileBuffer, allocationFileCharacterCount);
             else
                 string_getRawWriteableUtf16(allocationFileBuffer)[allocationFileCharacterCount] = L'\0';
             if(!ReadFile(hFile, string_getRawWriteableUtf16(allocationFileBuffer), allocationFileCharacterCount*sizeof(u16), NULL/*bytes read*/, NULL/*no overlapped*/))

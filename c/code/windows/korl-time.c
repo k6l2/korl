@@ -392,7 +392,7 @@ korl_internal void korl_time_probeLogReport(void)
                         longestProbeFunction, timeProbe->function, file, timeProbe->line, 
                         string_getRawUtf16(stringData));
         mcarrpush(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), stbDaTimeProbeStack, tpi + 1);
-        string_reserveUtf16(stringData, 0);// clear the data string buffer for re-use in future probes
+        string_reserveUtf16(&stringData, 0);// clear the data string buffer for re-use in future probes
     }
     korl_free(_korl_time_context.allocatorHandle, bufferDuration);
     korl_free(_korl_time_context.allocatorHandle, timeProbeCoverageCounts);

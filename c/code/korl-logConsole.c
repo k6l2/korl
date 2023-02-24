@@ -25,7 +25,7 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
     }
     if(context->commandInvoked)
     {
-        string_reserveUtf8(context->stringInput, 0);
+        string_reserveUtf8(&context->stringInput, 0);
         context->commandInvoked = false;
     }
     if(context->enable || !korl_math_isNearlyEqualEpsilon(context->fadeInRatio, 0, .01f))

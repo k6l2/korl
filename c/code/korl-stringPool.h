@@ -168,8 +168,8 @@ korl_internal Korl_StringPool_String        korl_stringPool_newEmptyUtf16(Korl_S
 korl_internal Korl_StringPool_String        korl_stringPool_newFormatUtf8(Korl_StringPool* context, const wchar_t* file, int line, const char* formatUtf8, ...);
 korl_internal Korl_StringPool_String        korl_stringPool_newFormatUtf16(Korl_StringPool* context, const wchar_t* file, int line, const wchar_t* formatUtf16, ...);
 korl_internal void                          korl_stringPool_free(Korl_StringPool_String* string);
-korl_internal void                          korl_stringPool_reserveUtf8(Korl_StringPool_String string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_reserveUtf16(Korl_StringPool_String string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_reserveUtf8(Korl_StringPool_String* string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_reserveUtf16(Korl_StringPool_String* string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringPool_String stringA, Korl_StringPool_String stringB);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithAcu8(Korl_StringPool_String string, acu8 utf8);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl_StringPool_String string, const char* cStringUtf8);

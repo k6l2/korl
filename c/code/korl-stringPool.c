@@ -553,12 +553,12 @@ korl_internal void korl_stringPool_free(Korl_StringPool_String* string)
     /* invalidate the user's String */
     *string = KORL_STRINGPOOL_STRING_NULL;
 }
-korl_internal void korl_stringPool_reserveUtf8(Korl_StringPool_String string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
+korl_internal void korl_stringPool_reserveUtf8(Korl_StringPool_String* string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
-    if(!string.handle)
+    if(!string->handle)
         return;// if the string handle is invalid, we don't have to do anything
-    Korl_StringPool*const context = string.pool;
-    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    Korl_StringPool*const context = string->pool;
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(*string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if there are other raw strings representing this string pool entry, we 
         need to invalidate them since those strings will have to be re-encoded */
@@ -569,13 +569,15 @@ korl_internal void korl_stringPool_reserveUtf8(Korl_StringPool_String string, u3
     /* make sure the raw string is null-terminated properly */
     u8*const rawUtf8 = KORL_C_CAST(u8*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf8);
     rawUtf8[context->stbDaStrings[s].rawSizeUtf8] = '\0';
+    /* update debugger-only raw C string */
+    string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, rawUtf8);
 }
-korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool_String string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
+korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool_String* string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line)
 {
-    if(!string.handle)
+    if(!string->handle)
         return;// if the string handle is invalid, we don't have to do anything
-    Korl_StringPool*const context = string.pool;
-    const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
+    Korl_StringPool*const context = string->pool;
+    const u$ s = _korl_stringPool_findIndexMatchingHandle(*string);
     korl_assert(s < arrlenu(context->stbDaStrings));
     /* if there are other raw strings representing this string pool entry, we 
         need to invalidate them since those strings will have to be re-encoded */
@@ -586,6 +588,8 @@ korl_internal void korl_stringPool_reserveUtf16(Korl_StringPool_String string, u
     /* make sure the raw string is null-terminated properly */
     u16*const rawUtf16 = KORL_C_CAST(u16*, context->characterPool + context->stbDaStrings[s].poolByteOffsetUtf16);
     rawUtf16[context->stbDaStrings[s].rawSizeUtf16] = L'\0';
+    /* update debugger-only raw C string */
+    string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf16 = KORL_C_CAST(const wchar_t*, rawUtf16);
 }
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringPool_String stringA, Korl_StringPool_String stringB)
 {
