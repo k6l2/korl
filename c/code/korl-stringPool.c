@@ -825,6 +825,9 @@ korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_Strin
     const u$ s = _korl_stringPool_findIndexMatchingHandle(string);
     korl_assert(s < arrlenu(sourceContext->stbDaStrings));
     _Korl_StringPool_String*const newString = _korl_stringPool_addNewString(destContext, sourceContext->stbDaStrings[s].flags);
+    KORL_ZERO_STACK(Korl_StringPool_String, result);
+    result.handle = newString->handle;
+    result.pool   = destContext;
     newString->rawSizeUtf8  = sourceContext->stbDaStrings[s].rawSizeUtf8;
     newString->rawSizeUtf16 = sourceContext->stbDaStrings[s].rawSizeUtf16;
     _Korl_StringPool_StringFlags flagsAdded = _KORL_STRINGPOOL_STRING_FLAGS_NONE;
@@ -838,6 +841,8 @@ korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_Strin
         // apply null terminator //
         u8*const newUtf8 = destContext->characterPool + newString->poolByteOffsetUtf8;
         newUtf8[newString->rawSizeUtf8] = '\0';
+        // //
+        result._DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, destContext->characterPool + newString->poolByteOffsetUtf8);
     }
     if(newString->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
@@ -849,12 +854,11 @@ korl_internal Korl_StringPool_String korl_stringPool_copyToStringPool(Korl_Strin
         // apply null terminator //
         u16*const newUtf16 = KORL_C_CAST(u16*, destContext->characterPool + newString->poolByteOffsetUtf16);
         newUtf16[newString->rawSizeUtf16] = L'\0';
+        // //
+        result._DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf16 = KORL_C_CAST(const wchar_t*, destContext->characterPool + newString->poolByteOffsetUtf16);
     }
     if(flagsAdded != newString->flags)
         korl_log(ERROR, "not all string flags implemented! string flags=0x%X", newString->flags);
-    KORL_ZERO_STACK(Korl_StringPool_String, result);
-    result.handle = newString->handle;
-    result.pool   = destContext;
     return result;
 }
 korl_internal Korl_StringPool_String korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line)
@@ -894,6 +898,7 @@ korl_internal Korl_StringPool_String korl_stringPool_subString(Korl_StringPool_S
     /* resize the final raw string to be the correct size */
     _subString->poolByteOffsetUtf8 = _korl_stringPool_reallocate(poolDestination, _subString->poolByteOffsetUtf8, (finalRawSize + 1/*null terminator*/)*sizeof(u8), file, line);
     _subString->rawSizeUtf8        = korl_checkCast_u$_to_u32(finalRawSize);
+    subString._DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, poolDestination->characterPool + _subString->poolByteOffsetUtf8);
     return subString;
 }
 korl_internal void korl_stringPool_insertUtf8(Korl_StringPool_String string, u$ graphemeOffset, acu8 utf8, const wchar_t* file, int line)
