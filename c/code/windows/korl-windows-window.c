@@ -861,10 +861,8 @@ korl_internal void korl_windows_window_loop(void)
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             }
         }
-        korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded);
-        korl_time_probeStart(save_state_create);
-        korl_file_saveStateCreate();
-        korl_time_probeStop(save_state_create);
+        korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
+        korl_time_probeStart(save_state_create);              korl_file_saveStateCreate();                                                     korl_time_probeStop(save_state_create);
         if(context->deferSaveStateSave)
         {
             context->deferSaveStateSave = false;
