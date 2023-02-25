@@ -62,5 +62,10 @@ korl_internal Korl_Time_DateStamp_Compare_Result korl_time_dateStampCompare(Korl
 korl_internal Korl_Time_ProbeHandle korl_time_probeBegin(const wchar_t* file, const wchar_t* function, int line, const wchar_t* label);
 korl_internal Korl_Time_Counts korl_time_probeEnd(Korl_Time_ProbeHandle timeProbeHandle);
 korl_internal void korl_time_probeDataU32(const wchar_t* label, u32 data);
-korl_internal void korl_time_probeLogReport(void);
+/**
+ * \param maxProbeDepth a negative value results in all probes being logged; a 
+ * positive value will prevent probes from being logged if their depth in the 
+ * probe tree exceeds this value
+ */
+korl_internal void korl_time_probeLogReport(i32 maxProbeDepth);
 korl_internal void korl_time_probeReset(void);

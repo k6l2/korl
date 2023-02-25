@@ -251,7 +251,7 @@ korl_internal void korl_time_probeDataU32(const wchar_t* label, u32 data)
     arrlast(_korl_time_context.stbDaTimeProbeData).bufferOffsetLabel = bufferOffsetLabel;
     arrlast(_korl_time_context.stbDaTimeProbeData).bufferOffsetData  = bufferOffsetData;
 }
-korl_internal void korl_time_probeLogReport(void)
+korl_internal void korl_time_probeLogReport(i32 maxProbeDepth)
 {
     const PlatformTimeStamp timeStampStart = korl_timeStamp();
     u$ timeDiffMinutes;
@@ -320,16 +320,20 @@ korl_internal void korl_time_probeLogReport(void)
     for(Korl_Time_ProbeHandle tpi = 0; tpi < arrlenu(_korl_time_context.stbDaTimeProbes); tpi++)
     {
         const _Korl_Time_Probe*const timeProbe = &_korl_time_context.stbDaTimeProbes[tpi];
-        /* assemble the formatted duration string for this probe */
-        _korl_time_timeStampExtractDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd, 
-                                              &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
-        timeDiffMinutes = KORL_MATH_CLAMP(timeDiffMinutes, 0, 99);
+        /* pop probes off the stack until we encounter our parent */
+        while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
+            arrpop(stbDaTimeProbeStack);
+        if(maxProbeDepth >= 0 && arrlen(stbDaTimeProbeStack) > maxProbeDepth)
+            goto printProbesLoop_cleanUp;
+        /**/
         const wchar_t* file = timeProbe->file;
         for(const wchar_t* fileNameCursor = timeProbe->file; *fileNameCursor; fileNameCursor++)
             if(*fileNameCursor == '\\' || *fileNameCursor == '/')
                 file = fileNameCursor + 1;
-        while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
-            arrpop(stbDaTimeProbeStack);
+        /* assemble the formatted duration string for this probe */
+        _korl_time_timeStampExtractDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd, 
+                                              &timeDiffMinutes, &timeDiffSeconds, &timeDiffMilliseconds, &timeDiffMicroseconds);
+        timeDiffMinutes = KORL_MATH_CLAMP(timeDiffMinutes, 0, 99);
         const i$ durationBufferSize = 
             korl_string_formatBufferUtf16(bufferDuration, bufferDurationSize*sizeof(*bufferDuration)
                                          ,L"%*ws% 2llu:% 2hhu'% 3hu\"% 3hu%*ws"
@@ -391,8 +395,9 @@ korl_internal void korl_time_probeLogReport(void)
                         longestProbeLabel, timeProbe->label ? timeProbe->label : L"", 
                         longestProbeFunction, timeProbe->function, file, timeProbe->line, 
                         string_getRawUtf16(&stringData));
-        mcarrpush(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), stbDaTimeProbeStack, tpi + 1);
-        string_reserveUtf16(&stringData, 0);// clear the data string buffer for re-use in future probes
+        printProbesLoop_cleanUp:
+            mcarrpush(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), stbDaTimeProbeStack, tpi + 1);
+            string_reserveUtf16(&stringData, 0);// clear the data string buffer for re-use in future probes
     }
     korl_free(_korl_time_context.allocatorHandle, bufferDuration);
     korl_free(_korl_time_context.allocatorHandle, timeProbeCoverageCounts);

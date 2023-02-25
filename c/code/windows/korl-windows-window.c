@@ -62,6 +62,7 @@ typedef struct _Korl_Windows_Window_Context
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferMemoryReport; // defer until the beginning of the next frame
     bool deferCpuReport;
+    // u32  deferCpuReportMaxDepth;///@TODO
     struct
     {
         bool deferSaveConfiguration;
@@ -810,7 +811,7 @@ korl_internal void korl_windows_window_loop(void)
 #endif
         if(context->deferCpuReport)
         {
-            korl_time_probeLogReport();
+            korl_time_probeLogReport(1);
             context->deferCpuReport = false;
         }
         if(context->deferMemoryReport)
