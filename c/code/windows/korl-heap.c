@@ -2,6 +2,13 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"// for KorlEnumLogLevel
 #include "korl-memory.h"
+/** A note about \c _KORL_HEAP_*_GUARD_* defines: after analyzing performance a 
+ * bit with more realistic work loads, I've determined that this behavior 
+ * (guarding unused pages) is just too aggressive for most scenarios.  We 
+ * probably only want to do this when we are getting a memory crash somewhere & 
+ * we need to perform extra validation steps (such as the code when 
+ * _KORL_HEAP_GENERAL_DEBUG==1).  Ergo, we will just default this behavior to 
+ * OFF until the time comes when we actually need it for testing/validation. */
 #define _KORL_HEAP_INVALID_BYTE_PATTERN 0xFE
 #define _KORL_HEAP_GENERAL_GUARD_UNUSED_ALLOCATION_PAGES 0
 #define _KORL_HEAP_GENERAL_GUARD_ALLOCATOR 0
