@@ -61,6 +61,7 @@ typedef struct _Korl_Windows_Window_Context
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferMemoryReport; // defer until the beginning of the next frame
+    bool deferCpuReport;
     struct
     {
         bool deferSaveConfiguration;
@@ -486,6 +487,10 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandMemo
 {
     _korl_windows_window_context.deferMemoryReport = true;
 }
+KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandCpuReport)
+{
+    _korl_windows_window_context.deferCpuReport = true;
+}
 korl_internal void _korl_windows_window_commandCrash_stackOverflow(bool recurse)
 {
     if(recurse)
@@ -594,6 +599,7 @@ korl_internal void korl_windows_window_initialize(void)
     korl_command_register(KORL_RAW_CONST_UTF8("save")  , _korl_windows_window_commandSave);
     korl_command_register(KORL_RAW_CONST_UTF8("load")  , _korl_windows_window_commandLoad);
     korl_command_register(KORL_RAW_CONST_UTF8("memory"), _korl_windows_window_commandMemoryReport);
+    korl_command_register(KORL_RAW_CONST_UTF8("cpu")   , _korl_windows_window_commandCpuReport);
     korl_command_register(KORL_RAW_CONST_UTF8("crash") , _korl_windows_window_commandCrash);
 }
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY)
@@ -802,6 +808,11 @@ korl_internal void korl_windows_window_loop(void)
             deferProbeReport = false;
         }
 #endif
+        if(context->deferCpuReport)
+        {
+            korl_time_probeLogReport();
+            context->deferCpuReport = false;
+        }
         if(context->deferMemoryReport)
         {
             korl_memory_reportLog(korl_memory_reportGenerate());

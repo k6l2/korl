@@ -7,6 +7,7 @@
 #define _KORL_HEAP_GENERAL_GUARD_ALLOCATOR 1
 #define _KORL_HEAP_GENERAL_LAZY_COMMIT_PAGES 1
 #define _KORL_HEAP_GENERAL_DEBUG 0
+#define _KORL_HEAP_LINEAR_GUARD_ALLOCATOR 1
 korl_global_const i8 _KORL_HEAP_GENERAL_ALLOCATION_META_SEPARATOR[]     = "[KORL-general-allocation]";
 korl_global_const i8 _KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR[]      = "[KORL-linear-allocation]";
 korl_global_const i8 _KORL_HEAP_LINEAR_ALLOCATION_META_SEPARATOR_FREE[] = "[KORL-linear-free-alloc]";
@@ -475,17 +476,21 @@ korl_internal _Korl_Heap_General* _korl_heap_general_create(u$ bytes, void* addr
 }
 korl_internal void _korl_heap_linear_allocatorPageGuard(_Korl_Heap_Linear* allocator)
 {
+#if _KORL_HEAP_LINEAR_GUARD_ALLOCATOR
     DWORD oldProtect;
     if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE | PAGE_GUARD, &oldProtect))
         korl_logLastError("VirtualProtect failed!");
     korl_assert(oldProtect == PAGE_READWRITE);
+#endif
 }
 korl_internal void _korl_heap_linear_allocatorPageUnguard(_Korl_Heap_Linear* allocator)
 {
+#if _KORL_HEAP_LINEAR_GUARD_ALLOCATOR
     DWORD oldProtect;
     if(!VirtualProtect(allocator, sizeof(*allocator), PAGE_READWRITE, &oldProtect))
         korl_logLastError("VirtualProtect failed!");
     korl_assert(oldProtect == (PAGE_READWRITE | PAGE_GUARD));
+#endif
 }
 /** iterate over allocations recursively on the stack so that we can iterate in 
  * monotonically-increasing memory addresses */
