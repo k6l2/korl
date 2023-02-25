@@ -190,26 +190,26 @@ korl_internal u32                           korl_stringPool_getGraphemeSize(Korl
 korl_internal Korl_StringPool_String        korl_stringPool_copyToStringPool(Korl_StringPool* destContext, Korl_StringPool_String string, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_copy(Korl_StringPool_String string, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_subString(Korl_StringPool_String string, u$ graphemeOffset, u$ graphemeSize, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_insertUtf8(Korl_StringPool_String string, u$ graphemeOffset, acu8 utf8, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_erase(Korl_StringPool_String string, u$ graphemeOffset, u$ graphemeCount, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_append(Korl_StringPool_String string, Korl_StringPool_String stringToAppend, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_appendUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_appendUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_appendFormatUtf8(Korl_StringPool_String string, const wchar_t* file, int line, const char* format, ...);
-korl_internal void                          korl_stringPool_appendFormatUtf16(Korl_StringPool_String string, const wchar_t* file, int line, const wchar_t* format, ...);
-korl_internal void                          korl_stringPool_prependUtf8(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
-korl_internal void                          korl_stringPool_prependUtf16(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_insertUtf8(Korl_StringPool_String* string, u$ graphemeOffset, acu8 utf8, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_erase(Korl_StringPool_String* string, u$ graphemeOffset, u$ graphemeCount, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_append(Korl_StringPool_String* string, Korl_StringPool_String* stringToAppend, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_appendUtf8(Korl_StringPool_String* string, const i8* cStringUtf8, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_appendUtf16(Korl_StringPool_String* string, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_appendFormatUtf8(Korl_StringPool_String* string, const wchar_t* file, int line, const char* format, ...);
+korl_internal void                          korl_stringPool_appendFormatUtf16(Korl_StringPool_String* string, const wchar_t* file, int line, const wchar_t* format, ...);
+korl_internal void                          korl_stringPool_prependUtf8(Korl_StringPool_String* string, const i8* cStringUtf8, const wchar_t* file, int line);
+korl_internal void                          korl_stringPool_prependUtf16(Korl_StringPool_String* string, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal void                          korl_stringPool_toUpper(Korl_StringPool_String string);
 /** \return The raw character offset of the first location of \c cStringUtf8 , 
  * starting from \c characterOffsetStart and advancing the search forward 
  * towards the end of the raw string.  If \c cStringUtf8 is not found, the 
  * value of \c korl_stringPool_getRawSizeUtf8 is returned. */
-korl_internal u32                           korl_stringPool_findUtf8(Korl_StringPool_String string, const i8* cStringUtf8, u32 characterOffsetStart);
+korl_internal u32                           korl_stringPool_findUtf8(Korl_StringPool_String* string, const i8* cStringUtf8, u32 characterOffsetStart);
 /** \return The raw character offset of the first location of \c cStringUtf16 , 
  * starting from \c characterOffsetStart and advancing the search forward 
  * towards the end of the raw string.  If \c cStringUtf16 is not found, the 
  * value of \c korl_stringPool_getRawSizeUtf16 is returned. */
-korl_internal u32                           korl_stringPool_findUtf16(Korl_StringPool_String string, const u16* cStringUtf16, u32 characterOffsetStart);
+korl_internal u32                           korl_stringPool_findUtf16(Korl_StringPool_String* string, const u16* cStringUtf16, u32 characterOffsetStart);
 /* if we're using C++, we can support function overloads, which should reduce 
     typing & hopefully cognitive load */
 #if defined(__cplusplus)
@@ -217,10 +217,10 @@ korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* 
 korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String       korl_stringPool_new(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line);
-korl_internal void                         korl_stringPool_append(Korl_StringPool_String string, const i8* cStringUtf8, const wchar_t* file, int line);
-korl_internal void                         korl_stringPool_append(Korl_StringPool_String string, const u16* cStringUtf16, const wchar_t* file, int line);
-korl_internal void                         korl_stringPool_appendFormat(Korl_StringPool_String string, const wchar_t* file, int line, const char* format, ...);
-korl_internal void                         korl_stringPool_appendFormat(Korl_StringPool_String string, const wchar_t* file, int line, const wchar_t* format, ...);
+korl_internal void                         korl_stringPool_append(Korl_StringPool_String* string, const i8* cStringUtf8, const wchar_t* file, int line);
+korl_internal void                         korl_stringPool_append(Korl_StringPool_String* string, const u16* cStringUtf16, const wchar_t* file, int line);
+korl_internal void                         korl_stringPool_appendFormat(Korl_StringPool_String* string, const wchar_t* file, int line, const char* format, ...);
+korl_internal void                         korl_stringPool_appendFormat(Korl_StringPool_String* string, const wchar_t* file, int line, const wchar_t* format, ...);
 #if 0
 typedef struct Korl_StringPool_String
 {

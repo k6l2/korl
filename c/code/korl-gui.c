@@ -843,7 +843,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                 context->ignoreNextCodepoint = true;
                 if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
                 {
-                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    korl_string_erase(&activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
                 }
@@ -852,7 +852,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
                     clipboardUtf8.size--;// ignore the null-terminator
                 /* submit this new codepoint to the input text's string at the cursor position(s) */
                 const u32 stringGraphemes = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
-                korl_string_insertUtf8(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, clipboardUtf8);
+                korl_string_insertUtf8(&activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, clipboardUtf8);
                 const u32 stringGraphemesAfter = korl_stringPool_getGraphemeSize(activeLeafWidget->widget->subType.inputText.string);
                 /* adjust the cursor position(s) */
                 activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex += stringGraphemesAfter - stringGraphemes;
@@ -915,13 +915,13 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             case KORL_KEY_BACKSPACE:{
                 if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
                 {
-                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    korl_string_erase(&activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
                 }
                 else if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex > 0)
                 {
-                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex - 1, 1);
+                    korl_string_erase(&activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex - 1, 1);
                     cursorDelta = -1;
                     cursorDeltaSelect = false;
                 }
@@ -935,13 +935,13 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
             case KORL_KEY_DELETE:{
                 if(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection)
                 {
-                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                    korl_string_erase(&activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
                     activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
                 }
                 else
                 {
-                    korl_string_erase(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, 1);
+                    korl_string_erase(&activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, 1);
                 }
                 //NOTE: [Del] does _not_ seem to generate a codepoint...
                 break;}
@@ -1056,12 +1056,12 @@ korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* cod
                                                     ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
                 const u$ cursorEnd   = KORL_MATH_MAX(activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex
                                                     ,activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex + activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection);
-                korl_string_erase(activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
+                korl_string_erase(&activeLeafWidget->widget->subType.inputText.string, cursorBegin, cursorEnd - cursorBegin);
                 activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex     = cursorBegin;
                 activeLeafWidget->widget->subType.inputText.stringCursorGraphemeSelection = 0;
             }
             /* submit this new codepoint to the input text's string at the cursor position(s) */
-            korl_string_insertUtf8(activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, utf8);
+            korl_string_insertUtf8(&activeLeafWidget->widget->subType.inputText.string, activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex, utf8);
             /* adjust the cursor position(s) */
             ++activeLeafWidget->widget->subType.inputText.stringCursorGraphemeIndex;
             break;}

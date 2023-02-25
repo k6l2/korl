@@ -364,21 +364,21 @@ korl_internal void korl_time_probeLogReport(void)
         {
             const u16*const dataLabel = KORL_C_CAST(u16*, _korl_time_context.stbDaTimeProbeDataRaw + _korl_time_context.stbDaTimeProbeData[currentProbeData].bufferOffsetLabel);
             if(string_getRawSizeUtf16(&stringData) == 0)
-                string_appendUtf16(stringData, L"(");
+                string_appendUtf16(&stringData, L"(");
             else
-                string_appendUtf16(stringData, L", ");
-            string_appendFormatUtf16(stringData, L"%ws: ", dataLabel);
+                string_appendUtf16(&stringData, L", ");
+            string_appendFormatUtf16(&stringData, L"%ws: ", dataLabel);
             switch(_korl_time_context.stbDaTimeProbeData[currentProbeData].type)
             {
             case _KORL_TIME_PROBE_DATA_TYPE_U32:{
                 const u32*const data = KORL_C_CAST(u32*, _korl_time_context.stbDaTimeProbeDataRaw + _korl_time_context.stbDaTimeProbeData[currentProbeData].bufferOffsetData);
-                string_appendFormatUtf16(stringData, L"%u", *data);
+                string_appendFormatUtf16(&stringData, L"%u", *data);
                 break;}
             }
             currentProbeData++;
         }
         if(string_getRawSizeUtf16(&stringData))
-            string_appendUtf16(stringData, L")");
+            string_appendUtf16(&stringData, L")");
         /**/
         const f64 probeCoverageRatio = KORL_C_CAST(f64, timeProbeCoverageCounts[tpi]) 
                                      / KORL_C_CAST(f64, korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd));
