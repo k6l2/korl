@@ -81,9 +81,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_time_probeStop(KORL_initialization);
     korl_windows_window_loop();
     korl_vulkan_destroy();
+    korl_audio_shutDown();
     korl_log(INFO, "korl_windows_main END ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄🏁");
 shutdownSuccess:
-    korl_audio_shutDown();
     korl_time_shutDown();
     korl_log_shutDown();
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
