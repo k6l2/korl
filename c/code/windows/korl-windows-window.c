@@ -62,7 +62,7 @@ typedef struct _Korl_Windows_Window_Context
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferMemoryReport; // defer until the beginning of the next frame
     bool deferCpuReport;
-    // u32  deferCpuReportMaxDepth;///@TODO
+    i32  deferCpuReportMaxDepth;
     struct
     {
         bool deferSaveConfiguration;
@@ -490,7 +490,19 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandMemo
 }
 KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandCpuReport)
 {
-    _korl_windows_window_context.deferCpuReport = true;
+    if(parametersSize < 2)
+        korl_log(INFO, "cpu command usage: `cpu <maxProbeDepth>`, where <maxProbeDepth> == {< 0 => log all probes, >= 0 => exclude probes above this depth in the probe tree}");
+    else
+    {
+        bool stringConversionValid = false;
+        _korl_windows_window_context.deferCpuReportMaxDepth = korl_checkCast_i$_to_i32(korl_string_utf8_to_i64(parameters[1], &stringConversionValid));
+        if(!stringConversionValid)
+        {
+            korl_log(WARNING, "invalid parameter[1] \"%hs\"", parameters[1].data);
+            return;
+        }
+        _korl_windows_window_context.deferCpuReport = true;
+    }
 }
 korl_internal void _korl_windows_window_commandCrash_stackOverflow(bool recurse)
 {
@@ -811,7 +823,7 @@ korl_internal void korl_windows_window_loop(void)
 #endif
         if(context->deferCpuReport)
         {
-            korl_time_probeLogReport(1);
+            korl_time_probeLogReport(context->deferCpuReportMaxDepth);
             context->deferCpuReport = false;
         }
         if(context->deferMemoryReport)
