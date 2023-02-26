@@ -566,7 +566,6 @@ korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle han
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        //KORL-ISSUE-000-000-080: memory: korl_heap_linear_enumerateAllocations can't properly early-out if the enumeration callback returns false
         korl_heap_linear_enumerateAllocations(allocator->userData, _korl_memory_allocator_isEmpty_enumAllocationsCallback, &resultIsEmpty);
         return resultIsEmpty;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
