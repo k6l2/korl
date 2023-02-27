@@ -99,6 +99,11 @@ set "buildCommand=%buildCommand% /std:c++20"
 rem     enable all exception handling code generation
 set "buildCommand=%buildCommand% /EHa"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
+if not "%buildOptionVerbose%"=="TRUE" (
+    goto :SKIP_SHOW_GAME_INCLUDES
+)
+set "buildCommand=%buildCommand% /showIncludes"
+:SKIP_SHOW_GAME_INCLUDES
 set "buildCommand=cl.exe %CL% %buildCommand% %_CL_%"
 if %KORL_GAME_IS_DYNAMIC% == TRUE ( 
     goto :BUILD_GAME_SET_OPTIONS_DYNAMIC 
@@ -177,6 +182,11 @@ set "buildCommand=%buildCommand% /D KORL_APP_VERSION#%KORL_EXE_VERSION%"
 set "buildCommand=%buildCommand% /D KORL_APP_TARGET_FRAME_HZ#%KORL_GAME_TARGET_FRAMES_PER_SECOND%"
 set "buildCommand=%buildCommand% /D KORL_DLL_NAME#%KORL_GAME_SOURCE_BASE_NAME%"
 set "buildCommand=%buildCommand% %KORL_DISABLED_WARNINGS%"
+if not "%buildOptionVerbose%"=="TRUE" (
+    goto :SKIP_SHOW_KORL_INCLUDES
+)
+set "buildCommand=%buildCommand% /showIncludes"
+:SKIP_SHOW_KORL_INCLUDES
 echo cl.exe %CL% %buildCommand% %_CL_%
 echo:
 rem     NOTE: the CL & _CL_ variables are automatically used by cl.exe
