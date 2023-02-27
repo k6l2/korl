@@ -23,3 +23,4 @@ korl_internal void                            korl_heap_linear_defragment(_Korl_
 korl_internal void                            korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void* allocation, const wchar_t* file, int line);
 korl_internal KORL_HEAP_ENUMERATE            (korl_heap_linear_enumerate);
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations);
+korl_internal void                            korl_heap_linear_log(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName);

@@ -24,3 +24,10 @@ typedef u32 Korl_MemoryPool_Size;
 #define KORL_MEMORY_POOL_RESIZE(name, newSize) \
     ( korl_assert(newSize <= korl_arraySize(name)) \
     , name##_korlMemoryPoolSize = newSize )
+#define KORL_MEMORY_POOL_LAST(name) \
+    ( korl_assert(name##_korlMemoryPoolSize > 0)\
+    , (name)[name##_korlMemoryPoolSize - 1])
+#define KORL_MEMORY_POOL_POP(name) \
+    ( korl_assert(name##_korlMemoryPoolSize > 0)\
+    , name##_korlMemoryPoolSize--\
+    , (name)[name##_korlMemoryPoolSize])

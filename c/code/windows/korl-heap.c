@@ -1773,6 +1773,13 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_FREE    , allocationMeta->allocationMeta.bytes - bytes);
             korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
         }
+        /* if we're the last allocation, we should make sure the heap's allocatedBytes is up-to-date */
+        if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
+        {
+            korl_assert(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes == heapAllocateEnd);// the last allocation _must_ be aligned _exactly_ with the end of the heap's allocated byte region
+            allocator->allocatedBytes  -= allocationMeta->allocationMeta.bytes - bytes;
+            allocationMeta->grossBytes -= allocationMeta->allocationMeta.bytes - bytes;
+        }
         allocationMeta->allocationMeta.bytes = bytes;
         allocationMeta->allocationMeta.file  = file;
         allocationMeta->allocationMeta.line  = line;
@@ -1921,7 +1928,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                 }
                 allocationPointerArrayIterator++;
             }
-            /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations */
+            /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations OR unused bytes */
             if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
             {
                 korl_assert(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes == heapAllocateEnd);// the last allocation _must_ be aligned _exactly_ with the end of the heap's allocated byte region)
@@ -1934,12 +1941,25 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                     if(previousAllocationMeta)
                         previousAllocationMeta->grossBytes = sizeof(*previousAllocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + previousAllocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
                 }
+                else/* this allocation is being used; check if the allocation has a non-zero [unused] component*/
+                {
+                    const u$ unusedBytes = allocationMeta->grossBytes - (sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES);
+                    if(unusedBytes)
+                    {
+                        /* if we have unusedBytes, since we know we are the last allocation, we shrink the heap's allocatedBytes region */
+                        currentHeap->allocatedBytes -= unusedBytes;                                              // this invalidates `heapAllocateEnd`
+                        heapAllocateEnd              = heapVirtualBase + heapBytes + currentHeap->allocatedBytes;// so we have to re-calculate it here
+                        /* this allocation no longer has unusedBytes */
+                        allocationMeta->grossBytes -= unusedBytes;
+                    }
+                }
             }
             if(allocationMeta->allocationMeta.bytes)
             {
                 previousAllocationMeta = allocationMeta;// set the previous allocation to the last non-free allocation; this is the lower-limit which we can defragment the next non-free allocation
                 /* reset unoccupied bytes to be this allocation's [unused] component */
-                unoccupiedBytes = allocationMeta->grossBytes - (sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES);
+                const u$ unusedBytes = allocationMeta->grossBytes - (sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES);
+                unoccupiedBytes      = unusedBytes;
             }
             else
                 /* accumulate all freed allocations as candidates for space we can move allocations into */
@@ -1967,7 +1987,14 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
     allocationMeta->allocationMeta.line = line;
     korl_memory_set(allocation, _KORL_HEAP_BYTE_PATTERN_FREE, allocationMeta->allocationMeta.bytes);
     allocationMeta->allocationMeta.bytes = 0;
-    //@TODO?: reduce allocator->allocatedBytes by the allocation's gross bytes if this is the last allocation?  or actually, perhaps this is `defragment`'s job
+    /* if we're the last allocation, we might as well update the allocator's 
+        allocatedBytes metric to reduce unnecessary fragmentation; this should 
+        be an insanely cheap operation, so no reason not to... */
+    if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
+    {
+        korl_assert(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes == heapAllocateEnd);// the last allocation _must_ be aligned _exactly_ with the end of the heap's allocated byte region)
+        allocator->allocatedBytes -= allocationMeta->grossBytes;
+    }
 }
 korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
 {
@@ -2001,6 +2028,50 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocati
                 return;/* stop enumerating allocations if the user's callback returns false */
         }
         allocator = allocator->next;
+    }
+}
+korl_internal void korl_heap_linear_log(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName)
+{
+    korl_log(INFO, "===== heap \"%ws\" log =====", allocatorName);
+    _Korl_Heap_Linear* currentHeap      = allocator;
+    u$                 currentHeapIndex = 0;
+    while(currentHeap)
+    {
+        const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*currentHeap);
+        const u8*const   heapVirtualBase   = KORL_C_CAST(u8*, currentHeap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+        const void*const heapVirtualEnd    = heapVirtualBase + currentHeap->virtualPages * korl_memory_pageBytes();
+        const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
+        const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + currentHeap->allocatedBytes;
+        korl_log(INFO, "\t----- heap[%llu] -----", currentHeapIndex);
+        korl_log(INFO, "\t\tvirtual address range: [0x%p, 0x%p), virtual bytes: %llu, committed bytes: %llu"
+                ,heapVirtualBase, heapVirtualEnd, currentHeap->virtualPages * korl_memory_pageBytes()
+                ,currentHeap->committedPages * korl_memory_pageBytes());
+        korl_log(INFO, "\t\tallocated address range: [0x%p, 0x%p), allocated bytes: %llu"
+                ,heapAllocateBegin, heapAllocateEnd, currentHeap->allocatedBytes);
+        u$ currentAllocationIndex = 0;
+        u$ fragmentedBytes        = 0;
+        for(_Korl_Heap_Linear_AllocationMeta* allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, heapAllocateBegin)
+           ;KORL_C_CAST(void*, allocationMeta) < heapAllocateEnd
+           ; allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes)
+            ,currentAllocationIndex++)
+        {
+            const u$ netBytes = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+            korl_log(INFO, "\t\t- %hs allocation[%llu]: &meta=0x%p, &=0x%p, bytes=%llu, unusedBytes=%llu, grossBytes=%llu"
+                    ,allocationMeta->allocationMeta.bytes ? "USED" : "FREE"
+                    ,currentAllocationIndex
+                    ,allocationMeta
+                    ,/*allocation*/KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES
+                    ,allocationMeta->allocationMeta.bytes
+                    ,allocationMeta->grossBytes - netBytes
+                    ,allocationMeta->grossBytes);
+            if(allocationMeta->allocationMeta.bytes)
+                fragmentedBytes += allocationMeta->grossBytes - netBytes;
+            else
+                fragmentedBytes += allocationMeta->grossBytes;
+        }
+        korl_log(INFO, "\t\tfragmented bytes: %llu", fragmentedBytes);
+        currentHeap = currentHeap->next;
+        currentHeapIndex++;
     }
 }
 #endif

@@ -26,8 +26,10 @@
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
+    //@TODO: comment all these out
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
+    #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -774,11 +776,11 @@ korl_internal void korl_windows_window_loop(void)
     _korl_windows_window_dynamicGameLoad(string_getRawUtf16(&stringGameDll));
     _korl_windows_window_gameInitialize(&korlApi);
     korl_time_probeStop(game_initialization);
-#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
-    korl_log(INFO, "KORL initialization time probe report:");
-    korl_time_probeLogReport();
-    u$ renderFrameCount = 0;
-#endif
+    #ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
+        korl_log(INFO, "KORL initialization time probe report:");
+        korl_time_probeLogReport();
+        u$ renderFrameCount = 0;
+    #endif
     bool quit = false;
     /* For reference, this is essentially what the application developers who 
         consume KORL have rated their application as the _maximum_ amount of 
@@ -787,40 +789,114 @@ korl_internal void korl_windows_window_loop(void)
         values. */
     const Korl_Time_Counts timeCountsTargetGamePerFrame = korl_time_countsFromHz(KORL_APP_TARGET_FRAME_HZ);
     PlatformTimeStamp timeStampLast                     = korl_timeStamp();
-#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
-    typedef struct _Korl_Window_LoopStats
+    #ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
+        typedef struct _Korl_Window_LoopStats
+        {
+            Korl_Time_Counts timeTotal;
+            Korl_Time_Counts timeSleep;
+        } _Korl_Window_LoopStats;
+        KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 1024);
+        loopStats_korlMemoryPoolSize = 0;
+        bool deferProbeReport = false;
+    #endif
+    #ifdef _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
+        Korl_Gfx_Text* debugText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf", .size = 66}, 24);
+        {
+            const wchar_t* text = L"test line 0\n"
+                                  L"line 1\n";
+            korl_gfx_text_fifoAdd(debugText, (acu16){.data = text, .size = korl_string_sizeUtf16(text)}, context->allocatorHandle, NULL, NULL);
+        }
+    #endif
+    #ifdef _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
     {
-        Korl_Time_Counts timeTotal;
-        Korl_Time_Counts timeSleep;
-    } _Korl_Window_LoopStats;
-    KORL_MEMORY_POOL_DECLARE(_Korl_Window_LoopStats, loopStats, 1024);
-    loopStats_korlMemoryPoolSize = 0;
-    bool deferProbeReport = false;
-#endif
-#ifdef _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
-    Korl_Gfx_Text* debugText = korl_gfx_text_create(context->allocatorHandle, (acu16){.data = L"submodules/korl/c/test-assets/source-sans/SourceSans3-Semibold.otf", .size = 66}, 24);
-    {
-        const wchar_t* text = L"test line 0\n"
-                              L"line 1\n";
-        korl_gfx_text_fifoAdd(debugText, (acu16){.data = text, .size = korl_string_sizeUtf16(text)}, context->allocatorHandle, NULL, NULL);
+        korl_log(VERBOSE, "============= _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS");
+        KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+        heapCreateInfo.initialHeapBytes = 2 * korl_memory_pageBytes();
+        korl_shared_const wchar_t DEBUG_HEAP_NAME[] = L"DEBUG-linear-unit-test";
+        KORL_MEMORY_POOL_DECLARE(u8*   , allocations      , 32);
+        KORL_MEMORY_POOL_DECLARE(void**, tempAllocPointers, 32);
+        KORL_MEMORY_POOL_SIZE(allocations) = 0;
+        _Korl_Heap_Linear* heap = korl_heap_linear_create(&heapCreateInfo);
+        korl_log(VERBOSE, "::::: create allocations :::::");
+            *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
+            *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: create partial internal fragmentation :::::");
+            allocations[0] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[0], 16, __FILEW__, __LINE__);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: defragment :::::");
+            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                tempAllocPointers[i] = &(allocations[i]);
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
+        korl_log(VERBOSE, "::::: create full internal fragmentation :::::");
+            korl_heap_linear_free(heap, allocations[0], __FILEW__, __LINE__);
+            KORL_MEMORY_POOL_REMOVE(allocations, 0);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: defragment :::::");
+            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                tempAllocPointers[i] = &(allocations[i]);
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
+        korl_log(VERBOSE, "::::: attempt to create partial trailing fragmentation (this should not cause fragmentation) :::::");
+            *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
+            allocations[1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[1], 16, __FILEW__, __LINE__);
+            *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: attempt to create full trailing fragmentation (this should not cause fragmentation) :::::");
+            korl_heap_linear_free(heap, KORL_MEMORY_POOL_POP(allocations), __FILEW__, __LINE__);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: create partial mid fragmentation :::::");
+            allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, KORL_MEMORY_POOL_LAST(allocations), 32, __FILEW__, __LINE__);
+            *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
+            allocations[1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[1], 16, __FILEW__, __LINE__);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: defragment :::::");
+            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                tempAllocPointers[i] = &(allocations[i]);
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
+        korl_log(VERBOSE, "::::: create full mid fragmentation :::::");
+            korl_heap_linear_free(heap, allocations[1], __FILEW__, __LINE__);
+            KORL_MEMORY_POOL_REMOVE(allocations, 1);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: defragment :::::");
+            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                tempAllocPointers[i] = &(allocations[i]);
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
+        korl_heap_linear_destroy(heap);
+        korl_log(VERBOSE, "END _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS ===============");
     }
-#endif
+    #endif
     while(!quit)
     {
-#ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
-        _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
-            ? NULL
-            : KORL_MEMORY_POOL_ADD(loopStats);
-        if(stats)
-            korl_memory_zero(stats, sizeof(*stats));
-        if(renderFrameCount == 1 || renderFrameCount == 3 || deferProbeReport)
-        {
-            korl_log(INFO, "generating reports for frame %llu:", renderFrameCount - 1);
-            korl_time_probeLogReport();
-            korl_memory_reportLog(korl_memory_reportGenerate());
-            deferProbeReport = false;
-        }
-#endif
+        #ifdef _KORL_WINDOWS_WINDOW_LOG_REPORTS
+            _Korl_Window_LoopStats*const stats = KORL_MEMORY_POOL_ISFULL(loopStats) 
+                                                 ? NULL
+                                                 : KORL_MEMORY_POOL_ADD(loopStats);
+            if(stats)
+                korl_memory_zero(stats, sizeof(*stats));
+            if(renderFrameCount == 1 || renderFrameCount == 3 || deferProbeReport)
+            {
+                korl_log(INFO, "generating reports for frame %llu:", renderFrameCount - 1);
+                korl_time_probeLogReport();
+                korl_memory_reportLog(korl_memory_reportGenerate());
+                deferProbeReport = false;
+            }
+        #endif
         if(context->deferCpuReport)
         {
             korl_time_probeLogReport(context->deferCpuReportMaxDepth);
