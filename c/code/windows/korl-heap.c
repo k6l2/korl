@@ -157,6 +157,8 @@ typedef struct _Korl_Heap_Linear_AllocationMeta
     u$                         grossBytes;// byte count sum of _all_ allocation components; this is what we use to iterate over all allocations in the heap */
 } _Korl_Heap_Linear_AllocationMeta;
 #endif
+#define _korl_heap_defragmentPointer_getAllocation(defragmentPointer)          (KORL_C_CAST(u8*, *((defragmentPointer).userAddressPointer)) + (defragmentPointer).userAddressByteOffset)
+#define _korl_heap_defragmentPointer_setAllocation(defragmentPointer, address) *((defragmentPointer).userAddressPointer) = KORL_C_CAST(u8*, address) - (defragmentPointer).userAddressByteOffset
 #if _KORL_HEAP_GENERAL_USE_OLD
 korl_internal void _korl_heap_general_allocatorPagesGuard(_Korl_Heap_General* allocator)
 {
@@ -1835,25 +1837,25 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
 #ifndef SORT_CHECK_CAST_SIZET_TO_INT
     #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
 #endif
-#define SORT_NAME _korl_heap_linear_voidpp_ascendHeapIndex_ascendAddress
-#define SORT_TYPE void**
-#define SORT_CMP(x, y) (_korl_heap_linear_heapIndex(x) < _korl_heap_linear_heapIndex(y) ? -1 \
-                        : _korl_heap_linear_heapIndex(x) > _korl_heap_linear_heapIndex(y) ? 1 \
-                          : *(x) < *(y) ? -1 \
-                            : *(x) > *(y) ? 1 \
+#define SORT_NAME _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress
+#define SORT_TYPE Korl_Heap_DefragmentPointer
+#define SORT_CMP(x, y) (_korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(x)) < _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(y)) ? -1 \
+                        : _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(x)) > _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(y)) ? 1 \
+                          : _korl_heap_defragmentPointer_getAllocation(x) < _korl_heap_defragmentPointer_getAllocation(y) ? -1 \
+                            : _korl_heap_defragmentPointer_getAllocation(x) > _korl_heap_defragmentPointer_getAllocation(y) ? 1 \
                               : 0)
-korl_global_variable _Korl_Heap_Linear* _korl_heap_linear_voidpp_sortContext;// @TODO: backlog this as a multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
-korl_internal i32 _korl_heap_linear_heapIndex(const void*const*const allocationPointer)
+korl_global_variable _Korl_Heap_Linear* _korl_heap_defragmentPointer_sortContext;// @TODO: backlog this as a multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
+korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
 {
     i32                result = 0;
-    _Korl_Heap_Linear* heap   = _korl_heap_linear_voidpp_sortContext;
+    _Korl_Heap_Linear* heap   = _korl_heap_defragmentPointer_sortContext;
     while(heap)
     {
         const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*heap);
         u8*const         heapVirtualBase   = KORL_C_CAST(u8*, heap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
         const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
         const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + heap->allocatedBytes;
-        if(*allocationPointer >= heapAllocateBegin && *allocationPointer < heapAllocateEnd)
+        if(allocation >= heapAllocateBegin && allocation < heapAllocateEnd)
             return result;
         result++;
         heap = heap->next;
@@ -1861,25 +1863,24 @@ korl_internal i32 _korl_heap_linear_heapIndex(const void*const*const allocationP
     return -1;
 }
 #include "sort.h"
-#define SORT_NAME _korl_heap_linear_voidpp_ascendAddress
-#define SORT_TYPE void**
-#define SORT_CMP(x, y) (*(x) < *(y) ? -1 \
-                        : *(x) > *(y) ? 1 \
+#define SORT_NAME _korl_heap_defragmentPointer_ascendAddress
+#define SORT_TYPE Korl_Heap_DefragmentPointer
+#define SORT_CMP(x, y) (_korl_heap_defragmentPointer_getAllocation(x) < _korl_heap_defragmentPointer_getAllocation(y) ? -1 \
+                        : _korl_heap_defragmentPointer_getAllocation(x) > _korl_heap_defragmentPointer_getAllocation(y) ? 1 \
                           : 0)
 #include "sort.h"
 /**/
-korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void*** allocationPointerArray, u$ allocationPointerArraySize)
+korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize)
 {
-    korl_assert(allocationPointerArraySize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
+    korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
     /* sort the allocation pointer array by increasing heap-chain index, then by increasing address - O(nlogn) */
     if(allocator->next)
     {
-        _korl_heap_linear_voidpp_sortContext = allocator;
-        _korl_heap_linear_voidpp_ascendHeapIndex_ascendAddress_quick_sort(allocationPointerArray, allocationPointerArraySize);
-        korl_assert(allocationPointerArray[0] >= 0);// if we fail this, it means the user is trying to defragment an allocation that isn't even located in this allocator, which I am pretty sure they should never attempt
+        _korl_heap_defragmentPointer_sortContext = allocator;
+        _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress_quick_sort(defragmentPointers, defragmentPointersSize);
     }
     else/* choose a less expensive sort if we know there is only one heap in the heap list */
-        _korl_heap_linear_voidpp_ascendAddress_quick_sort(allocationPointerArray, allocationPointerArraySize);
+        _korl_heap_defragmentPointer_ascendAddress_quick_sort(defragmentPointers, defragmentPointersSize);
     /* enumerate over each allocation - O(n), 
         remembering whether or not & how much trailing empty space is behind us; 
         if    the current allocation is the next allocationPointer 
@@ -1888,10 +1889,10 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
             move the allocation, such that there is no more space between these two allocations; 
             update the allocationPointer corresponding do this allocation appropriately; 
             make sure that the moved allocation occupies all bytes (as its [unused] component) */
-    _Korl_Heap_Linear*           currentHeap                    = allocator;
-    const u$                     heapBytes                      = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
-    const void*const*const*const allocationPointerArrayEnd      = allocationPointerArray + allocationPointerArraySize;
-    const void***                allocationPointerArrayIterator = allocationPointerArray;
+    _Korl_Heap_Linear*                      currentHeap                = allocator;
+    const u$                                heapBytes                  = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
+    const Korl_Heap_DefragmentPointer*const defragmentPointersEnd      = defragmentPointers + defragmentPointersSize;
+    const Korl_Heap_DefragmentPointer*      defragmentPointersIterator = defragmentPointers;
     while(currentHeap)
     {
         const u8*const                    heapVirtualBase        = KORL_C_CAST(u8*, currentHeap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
@@ -1904,8 +1905,8 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
            ;allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes))
         {
             void* allocation = KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES;
-            if(   allocationPointerArrayIterator < allocationPointerArrayEnd 
-               && allocation == **allocationPointerArrayIterator)// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
+            if(   defragmentPointersIterator < defragmentPointersEnd 
+               && allocation == _korl_heap_defragmentPointer_getAllocation(*defragmentPointersIterator))// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
             {
                 korl_assert(allocationMeta->allocationMeta.bytes > 0);
                 if(unoccupiedBytes)// we can only move allocations which are preceded by non-zero unoccupiedBytes
@@ -1919,14 +1920,14 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                     else
                         korl_memory_move(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes, allocationMeta, allocationNetBytes);
                     /* update the caller's allocation address, as well as our own pointers to allocation */
-                    allocationMeta                   = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes);
-                    allocation                       =                                                KORL_C_CAST(u8*, allocation)     - unoccupiedBytes;
-                    **allocationPointerArrayIterator = allocation;
+                    allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes);
+                    allocation     =                                                KORL_C_CAST(u8*, allocation)     - unoccupiedBytes;
+                    _korl_heap_defragmentPointer_setAllocation(*defragmentPointersIterator, allocation);
                     /* if there is one, eliminate the previous allocation's unused region, as we will be occupying it if it exists */
                     if(previousAllocationMeta)
                         previousAllocationMeta->grossBytes = sizeof(*previousAllocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + previousAllocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
                 }
-                allocationPointerArrayIterator++;
+                defragmentPointersIterator++;
             }
             /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations OR unused bytes */
             if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
@@ -1967,7 +1968,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         }
         currentHeap = currentHeap->next;
     }
-    korl_assert(allocationPointerArrayIterator == allocationPointerArrayEnd);// ensure that we did, in fact, visit all allocationPointers in the array; if this fails, the user likely passed an allocation that doesn't exist in this heap list
+    korl_assert(defragmentPointersIterator == defragmentPointersEnd);// ensure that we did, in fact, visit all allocationPointers in the array; if this fails, the user likely passed an allocation that doesn't exist in this heap list
 }
 korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void* allocation, const wchar_t* file, int line)
 {

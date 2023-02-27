@@ -1154,6 +1154,7 @@ cleanUp:
  */
 korl_internal void korl_file_saveStateCreate(void)
 {
+    #if 0//@TODO: delete
     _Korl_File_Context*const context = &_korl_file_context;
     /* recycle the context's persistent save-state enum context */
     _Korl_File_SaveStateEnumerateContext*const enumContext = &context->saveStateEnumContext;
@@ -1208,9 +1209,11 @@ korl_internal void korl_file_saveStateCreate(void)
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartGui        , sizeof(descriptorByteStartGui));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartGfx        , sizeof(descriptorByteStartGfx));
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(context->allocatorHandle), &enumContext->stbDaSaveStateBuffer, &descriptorByteStartCommand    , sizeof(descriptorByteStartCommand));
+    #endif
 }
 korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName)
 {
+    #if 0//@TODO: delete
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -1252,9 +1255,11 @@ korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wc
             korl_time_probeStop(close_file_handle);
         }
         korl_time_probeStop(clean_up);
+    #endif
 }
 korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wchar_t* fileName)
 {
+    #if 0//@TODO: delete
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
     HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -1590,5 +1595,6 @@ cleanUp:
         korl_free(context->allocatorHandle, allocatorDescriptors);
     if(hFile != INVALID_HANDLE_VALUE)
         korl_assert(CloseHandle(hFile));
+    #endif
 }
 #undef _LOCAL_STRING_POOL_POINTER// keep this at the end of file (after all code)!

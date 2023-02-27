@@ -546,6 +546,25 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_empty(korl_memory_allocator_em
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
+korl_internal void korl_memory_allocator_defragment(Korl_Memory_AllocatorHandle handle, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return;
+    }
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        korl_heap_linear_defragment(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, defragmentPointers, defragmentPointersSize);
+        return;}
+    case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{ break; }
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+}
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_allocator_isEmpty_enumAllocationsCallback)
 {
     bool*const resultIsEmpty = KORL_C_CAST(bool*, userData);

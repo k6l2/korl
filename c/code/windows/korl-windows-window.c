@@ -30,7 +30,7 @@
     //@TODO: comment all these out
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
-    // #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
+    #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -815,8 +815,8 @@ korl_internal void korl_windows_window_loop(void)
         KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
         heapCreateInfo.initialHeapBytes = 2 * korl_memory_pageBytes();
         korl_shared_const wchar_t DEBUG_HEAP_NAME[] = L"DEBUG-linear-unit-test";
-        KORL_MEMORY_POOL_DECLARE(u8*   , allocations      , 32);
-        KORL_MEMORY_POOL_DECLARE(void**, tempAllocPointers, 32);
+        KORL_MEMORY_POOL_DECLARE(u8*                        , allocations   , 32);
+        KORL_MEMORY_POOL_DECLARE(Korl_Heap_DefragmentPointer, defragPointers, 32);
         KORL_MEMORY_POOL_SIZE(allocations) = 0;
         _Korl_Heap_Linear* heap = korl_heap_linear_create(&heapCreateInfo);
         korl_log(VERBOSE, "::::: create allocations :::::");
@@ -827,10 +827,10 @@ korl_internal void korl_windows_window_loop(void)
             allocations[0] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[0], 16, __FILEW__, __LINE__);
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         korl_log(VERBOSE, "::::: defragment :::::");
-            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
-                tempAllocPointers[i] = &(allocations[i]);
-            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+                defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
                 korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -839,10 +839,10 @@ korl_internal void korl_windows_window_loop(void)
             KORL_MEMORY_POOL_REMOVE(allocations, 0);
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         korl_log(VERBOSE, "::::: defragment :::::");
-            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
-                tempAllocPointers[i] = &(allocations[i]);
-            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+                defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
                 korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -860,10 +860,10 @@ korl_internal void korl_windows_window_loop(void)
             allocations[1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[1], 16, __FILEW__, __LINE__);
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         korl_log(VERBOSE, "::::: defragment :::::");
-            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
-                tempAllocPointers[i] = &(allocations[i]);
-            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+                defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
                 korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -872,13 +872,37 @@ korl_internal void korl_windows_window_loop(void)
             KORL_MEMORY_POOL_REMOVE(allocations, 1);
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         korl_log(VERBOSE, "::::: defragment :::::");
-            KORL_MEMORY_POOL_RESIZE(tempAllocPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
-                tempAllocPointers[i] = &(allocations[i]);
-            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, tempAllocPointers, KORL_MEMORY_POOL_SIZE(tempAllocPointers));
+                defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
             korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
             for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
                 korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
+        korl_log(VERBOSE, "::::: create pseudo-stb_ds-array :::::");
+            *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
+            *allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1] = 3;// dynamic array size = 3
+            allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1] += 1;// header is 1 byte; advance the allocation to the array payload
+            for(u8 i = 0; i < 3; i++)
+                allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1][i] = i;// initialize our array values
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+            for(u8 i = 0; i < 3; i++)
+                korl_log(INFO, "testDynamicArray[%hhu]==%hhu", i, allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1][i]);
+        korl_log(VERBOSE, "::::: create full mid fragmentation :::::");
+            korl_heap_linear_free(heap, allocations[1], __FILEW__, __LINE__);
+            KORL_MEMORY_POOL_REMOVE(allocations, 1);
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+        korl_log(VERBOSE, "::::: defragment :::::");
+            KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
+            defragPointers[1].userAddressByteOffset = -1;// dynamic array header is the _true_ allocation address
+            korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+            korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
+            for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
+                korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
+            for(u8 i = 0; i < 3; i++)
+                korl_log(INFO, "testDynamicArray[%hhu]==%hhu", i, allocations[1][i]);// we should still be able to use our dynamic array as normal
         korl_heap_linear_destroy(heap);
         korl_log(VERBOSE, "END _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS ===============");
     }
@@ -940,6 +964,7 @@ korl_internal void korl_windows_window_loop(void)
             }
         }
         korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
+        //@TODO: defragment all modules which are going to be contained in the memory state
         korl_time_probeStart(memory_state_create);
         {
             korl_free(context->allocatorHandle, context->memoryStateLast);
