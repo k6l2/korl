@@ -23,13 +23,14 @@
 #include "korl-string.h"
 #include "korl-crash.h"
 #include "korl-sfx.h"
+#include "korl-memoryState.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
     //@TODO: comment all these out
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
-    #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
+    // #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -42,6 +43,7 @@ typedef struct _Korl_Windows_Window_Context
     Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_StringPool stringPool;
     void* gameContext;
+    void* memoryStateLast;
     struct
     {
         HWND handle;
@@ -938,7 +940,11 @@ korl_internal void korl_windows_window_loop(void)
             }
         }
         korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
-        korl_time_probeStart(save_state_create);              korl_file_saveStateCreate();                                                     korl_time_probeStop(save_state_create);
+        korl_time_probeStart(memory_state_create);
+        {
+            korl_free(context->allocatorHandle, context->memoryStateLast);
+            context->memoryStateLast = korl_memoryState_create(context->allocatorHandle);
+        }korl_time_probeStop(memory_state_create);
         if(context->deferSaveStateSave)
         {
             context->deferSaveStateSave = false;
