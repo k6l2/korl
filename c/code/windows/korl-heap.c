@@ -136,20 +136,25 @@ typedef struct _Korl_Heap_Linear_AllocationMeta
     u$ availableBytes;// calculated as: (metaBytesRequired + bytes) rounded up to nearest page size
 } _Korl_Heap_Linear_AllocationMeta;
 #else
-/* it is likely that this struct is _not_ aligned to a page boundary, as we will 
-    likely place a sentinel between the page boundary & the struct */
+/** it is likely that this struct is _not_ aligned to a page boundary, as we will 
+ * likely place a sentinel between the page boundary & the struct */
 typedef struct _Korl_Heap_Linear
 {
     u$                 virtualPages;// _total_ # of virtual pages occupied by this heap, including the page(s) occupied by this struct & all allocations
     u$                 committedPages;// will always be <= virtualPages
     u$                 allocatedBytes;// gross-byte total of all allocations after (this heap struct + padding)
-    const void*        lastAllocation;// @TODO: delete this; this is completely unnecessary/redundant; we already know whether an allocation is the last one based on the allocation address & the value of `allocatedBytes`
+    // void*              lowestFreeAllocation;// this allocation can be either (1) completely free, or (2) // @TODO: delete; premature optimization; let's see the #s first without this...
     _Korl_Heap_Linear* next;// support for "limitless" heap; if this heap fails to allocate, we shunt to the `next` heap, or create a new heap if `next` doesn't exist yet
 } _Korl_Heap_Linear;
+/** each allocation in _Korl_Heap_Linear is in the form: 
+ *   [_Korl_Heap_Linear_AllocationMeta][SENTINEL-meta][allocation][SENTINEL-allocation][unused]
+ * where sizeof([unused]) is potentially == 0
+ * - "gross bytes" is the sum of _all_ components
+ * - an allocation is considered "free" if `meta.allocationMeta.bytes` <= 0 */
 typedef struct _Korl_Heap_Linear_AllocationMeta
 {
-    Korl_Memory_AllocationMeta allocationMeta;
-    bool                       isFree;
+    Korl_Memory_AllocationMeta allocationMeta;// `allocationMeta.bytes` refers to "net-bytes", which is _specifically_ the [allocation] component
+    u$                         grossBytes;// byte count sum of _all_ allocation components; this is what we use to iterate over all allocations in the heap */
 } _Korl_Heap_Linear_AllocationMeta;
 #endif
 #if _KORL_HEAP_GENERAL_USE_OLD
@@ -1169,11 +1174,13 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
             {
                 const u$ allocationPageIndex = pfr*bitsPerFlagRegister + (bitsPerFlagRegister - 1 - mostSignificantSetBitIndex);
                 if(allocationPageIndex >= allocator->allocationPages)
-                    break;// TODO: it's possible that our pageFlagRegisters contain more bits than we have actual allocation pages, and it's also currently possible that our shitty allocator is raising these flags; we need to ignore these page flags, as they are outside the bounds of the allocator & therefore cannot possibly be valid
+                    break;// @TODO: it's possible that our pageFlagRegisters contain more bits than we have actual allocation pages, and it's also currently possible that our shitty allocator is raising these flags; we need to ignore these page flags, as they are outside the bounds of the allocator & therefore cannot possibly be valid
                 const _Korl_Heap_General_AllocationMeta*const metaAddress = KORL_C_CAST(_Korl_Heap_General_AllocationMeta*, 
                     KORL_C_CAST(u8*, allocator) + (allocatorPages + allocationPageIndex)*pageBytes);
                 const u$ metaBytesRequired = sizeof(*metaAddress) + sizeof(_KORL_HEAP_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
-                if(!callback(callbackUserData, KORL_C_CAST(u8*, metaAddress) + metaBytesRequired, &(metaAddress->allocationMeta)))
+                const u$ grossBytes = 0;// @TODO: actually calculate this? or maybe we dump this allocator :')
+                const u$ netBytes   = 0;// @TODO: actually calculate this? or maybe we dump this allocator :')
+                if(!callback(callbackUserData, KORL_C_CAST(u8*, metaAddress) + metaBytesRequired, &(metaAddress->allocationMeta), grossBytes, netBytes))
                 {
                     abortEnumeration = true;
                     goto guardAllocator;
@@ -1737,18 +1744,19 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
     resultMeta->allocationMeta.bytes = bytes;
     resultMeta->allocationMeta.file  = file;
     resultMeta->allocationMeta.line  = line;
-    resultMeta->isFree               = false;
+    resultMeta->grossBytes           = grossBytes;
     korl_memory_set(resultMeta + 1, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
     korl_memory_zero(result, bytes);
     korl_memory_set(result + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
     allocator->allocatedBytes += grossBytes;
-    allocator->lastAllocation = result;
     return result;
 }
 korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
+    korl_assert(bytes);
     const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
     u8*const         heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    const void*const heapVirtualEnd    = heapVirtualBase + (allocator->virtualPages * korl_memory_pageBytes());
     const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
     const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + allocator->allocatedBytes;
     if(allocation < heapAllocateBegin || allocation >= heapAllocateEnd)
@@ -1758,15 +1766,35 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
         return korl_heap_linear_reallocate(allocator->next, allocatorName, allocation, bytes, file, line);
     }
     _Korl_Heap_Linear_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
-    if(bytes <= allocationMeta->allocationMeta.bytes)
-        return allocation;
-    const u$ allocatableBytesTotal = (allocator->virtualPages * korl_memory_pageBytes()) - heapBytes;
-    const u$ grossBytesOld         = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
-    const u$ grossBytesNew         = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + bytes                                + _KORL_HEAP_SENTINEL_PADDING_BYTES;
-    if(   allocation == allocator->lastAllocation
-       && allocator->allocatedBytes - grossBytesOld + grossBytesNew <= allocatableBytesTotal)
+    if(/*we're in-place shrinking the allocation*/bytes <= allocationMeta->allocationMeta.bytes)
     {
-        const u$ newHeapGrossBytes     = heapBytes + allocator->allocatedBytes - grossBytesOld + grossBytesNew;
+        if(bytes < allocationMeta->allocationMeta.bytes)
+        {
+            korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_FREE    , allocationMeta->allocationMeta.bytes - bytes);
+            korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
+        }
+        allocationMeta->allocationMeta.bytes = bytes;
+        allocationMeta->allocationMeta.file  = file;
+        allocationMeta->allocationMeta.line  = line;
+        return allocation;
+    }
+    /* ----- everything below here _must_ involve _growing_ `allocation` ----- */
+    const u$ maxBytes = allocationMeta->grossBytes - (sizeof(*allocationMeta) + 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES);
+    if(/*we're in-place expanding the allocation*/bytes <= maxBytes)
+    {
+        korl_memory_zero(KORL_C_CAST(u8*, allocation) + allocationMeta->allocationMeta.bytes, bytes - allocationMeta->allocationMeta.bytes);
+        korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
+        allocationMeta->allocationMeta.bytes = bytes;
+        allocationMeta->allocationMeta.file  = file;
+        allocationMeta->allocationMeta.line  = line;
+        return allocation;
+    }
+    const u$ grossBytesNew = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    if(   /* we're the last allocation */           KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd)
+       && /* grossBytesNew wont overflow the heap */KORL_C_CAST(u8*, allocationMeta) + grossBytesNew              <= KORL_C_CAST(const u8*, heapVirtualEnd))
+    {
+        korl_assert(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes == heapAllocateEnd);// the last allocation _must_ be aligned _exactly_ with the end of the heap's allocated byte region
+        const u$ newHeapGrossBytes     = heapBytes + allocator->allocatedBytes - allocationMeta->grossBytes + grossBytesNew;
         const u$ newHeapCommittedPages = korl_math_nextHighestDivision(newHeapGrossBytes, korl_memory_pageBytes());
         if(newHeapCommittedPages > allocator->committedPages)
         {
@@ -1779,21 +1807,152 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
         }
         korl_memory_zero(KORL_C_CAST(u8*, allocation) + allocationMeta->allocationMeta.bytes, bytes - allocationMeta->allocationMeta.bytes);
         korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
-        allocator->allocatedBytes += grossBytesNew - grossBytesOld;
+        allocator->allocatedBytes += grossBytesNew - allocationMeta->grossBytes;
         allocationMeta->allocationMeta.bytes = bytes;
         allocationMeta->allocationMeta.file  = file;
         allocationMeta->allocationMeta.line  = line;
+        allocationMeta->grossBytes           = grossBytesNew;
         return allocation;
     }
+    /* we couldn't in-place shrink/expand; we must allocate => copy => free */
     korl_assert(bytes > allocationMeta->allocationMeta.bytes);
     void*const result = korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, NULL);
     korl_memory_copy(result, allocation, allocationMeta->allocationMeta.bytes);
+    korl_heap_linear_free(allocator, allocation, file, line);
     return result;
+}
+/* sort support for linear heap addresses */
+#ifndef SORT_CHECK_CAST_INT_TO_SIZET
+    #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
+#endif
+#ifndef SORT_CHECK_CAST_SIZET_TO_INT
+    #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
+#endif
+#define SORT_NAME _korl_heap_linear_voidpp_ascendHeapIndex_ascendAddress
+#define SORT_TYPE void**
+#define SORT_CMP(x, y) (_korl_heap_linear_heapIndex(x) < _korl_heap_linear_heapIndex(y) ? -1 \
+                        : _korl_heap_linear_heapIndex(x) > _korl_heap_linear_heapIndex(y) ? 1 \
+                          : *(x) < *(y) ? -1 \
+                            : *(x) > *(y) ? 1 \
+                              : 0)
+korl_global_variable _Korl_Heap_Linear* _korl_heap_linear_voidpp_sortContext;// @TODO: backlog this as a multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
+korl_internal i32 _korl_heap_linear_heapIndex(const void*const*const allocationPointer)
+{
+    i32                result = 0;
+    _Korl_Heap_Linear* heap   = _korl_heap_linear_voidpp_sortContext;
+    while(heap)
+    {
+        const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*heap);
+        u8*const         heapVirtualBase   = KORL_C_CAST(u8*, heap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+        const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
+        const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + heap->allocatedBytes;
+        if(*allocationPointer >= heapAllocateBegin && *allocationPointer < heapAllocateEnd)
+            return result;
+        result++;
+        heap = heap->next;
+    }
+    return -1;
+}
+#include "sort.h"
+#define SORT_NAME _korl_heap_linear_voidpp_ascendAddress
+#define SORT_TYPE void**
+#define SORT_CMP(x, y) (*(x) < *(y) ? -1 \
+                        : *(x) > *(y) ? 1 \
+                          : 0)
+#include "sort.h"
+/**/
+korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void*** allocationPointerArray, u$ allocationPointerArraySize)
+{
+    korl_assert(allocationPointerArraySize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
+    /* sort the allocation pointer array by increasing heap-chain index, then by increasing address - O(nlogn) */
+    if(allocator->next)
+    {
+        _korl_heap_linear_voidpp_sortContext = allocator;
+        _korl_heap_linear_voidpp_ascendHeapIndex_ascendAddress_quick_sort(allocationPointerArray, allocationPointerArraySize);
+        korl_assert(allocationPointerArray[0] >= 0);// if we fail this, it means the user is trying to defragment an allocation that isn't even located in this allocator, which I am pretty sure they should never attempt
+    }
+    else/* choose a less expensive sort if we know there is only one heap in the heap list */
+        _korl_heap_linear_voidpp_ascendAddress_quick_sort(allocationPointerArray, allocationPointerArraySize);
+    /* enumerate over each allocation - O(n), 
+        remembering whether or not & how much trailing empty space is behind us; 
+        if    the current allocation is the next allocationPointer 
+           && the last non-free allocation was also an allocationPointer
+           && there is a non-zero amount of unoccupied space between these two allocations, 
+            move the allocation, such that there is no more space between these two allocations; 
+            update the allocationPointer corresponding do this allocation appropriately; 
+            make sure that the moved allocation occupies all bytes (as its [unused] component) */
+    _Korl_Heap_Linear*           currentHeap                    = allocator;
+    const u$                     heapBytes                      = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
+    const void*const*const*const allocationPointerArrayEnd      = allocationPointerArray + allocationPointerArraySize;
+    const void***                allocationPointerArrayIterator = allocationPointerArray;
+    while(currentHeap)
+    {
+        const u8*const                    heapVirtualBase        = KORL_C_CAST(u8*, currentHeap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+        const void*const                  heapAllocateBegin      = heapVirtualBase + heapBytes;
+        const void*                       heapAllocateEnd        = heapVirtualBase + heapBytes + currentHeap->allocatedBytes;
+        _Korl_Heap_Linear_AllocationMeta* previousAllocationMeta = NULL;
+        u$                                unoccupiedBytes        = 0;
+        for(_Korl_Heap_Linear_AllocationMeta* allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, heapAllocateBegin)
+           ;KORL_C_CAST(void*, allocationMeta) < heapAllocateEnd
+           ;allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes))
+        {
+            void* allocation = KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+            if(   allocationPointerArrayIterator < allocationPointerArrayEnd 
+               && allocation == **allocationPointerArrayIterator)// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
+            {
+                korl_assert(allocationMeta->allocationMeta.bytes > 0);
+                if(unoccupiedBytes)// we can only move allocations which are preceded by non-zero unoccupiedBytes
+                {
+                    /* before we copy/move the allocation back, we can update our grossBytes; this should have no effect on the proceding calculations */
+                    allocationMeta->grossBytes += unoccupiedBytes;
+                    /* move this entire allocation (excluding the [unused] component) into the start of the preceding unoccupied bytes */
+                    const u$ allocationNetBytes = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+                    if(unoccupiedBytes >= allocationNetBytes)
+                        korl_memory_copy(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes, allocationMeta, allocationNetBytes);
+                    else
+                        korl_memory_move(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes, allocationMeta, allocationNetBytes);
+                    /* update the caller's allocation address, as well as our own pointers to allocation */
+                    allocationMeta                   = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes);
+                    allocation                       =                                                KORL_C_CAST(u8*, allocation)     - unoccupiedBytes;
+                    **allocationPointerArrayIterator = allocation;
+                    /* if there is one, eliminate the previous allocation's unused region, as we will be occupying it if it exists */
+                    if(previousAllocationMeta)
+                        previousAllocationMeta->grossBytes = sizeof(*previousAllocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + previousAllocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+                }
+                allocationPointerArrayIterator++;
+            }
+            /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations */
+            if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
+            {
+                korl_assert(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes == heapAllocateEnd);// the last allocation _must_ be aligned _exactly_ with the end of the heap's allocated byte region)
+                /* if the last allocation is free, we can collapse the heap's allocatedBytes region by the total size of the unoccupied bytes */
+                if(allocationMeta->allocationMeta.bytes <= 0)
+                {
+                    currentHeap->allocatedBytes -= unoccupiedBytes + allocationMeta->grossBytes;             // this invalidates `heapAllocateEnd`
+                    heapAllocateEnd              = heapVirtualBase + heapBytes + currentHeap->allocatedBytes;// so we have to re-calculate it here
+                    /* if there is a previous non-free allocation, we _must_ eliminate its [unused] component, as it would now exceed the heap's allocatedBytes region */
+                    if(previousAllocationMeta)
+                        previousAllocationMeta->grossBytes = sizeof(*previousAllocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + previousAllocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+                }
+            }
+            if(allocationMeta->allocationMeta.bytes)
+            {
+                previousAllocationMeta = allocationMeta;// set the previous allocation to the last non-free allocation; this is the lower-limit which we can defragment the next non-free allocation
+                /* reset unoccupied bytes to be this allocation's [unused] component */
+                unoccupiedBytes = allocationMeta->grossBytes - (sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES);
+            }
+            else
+                /* accumulate all freed allocations as candidates for space we can move allocations into */
+                unoccupiedBytes += allocationMeta->grossBytes;
+        }
+        currentHeap = currentHeap->next;
+    }
+    korl_assert(allocationPointerArrayIterator == allocationPointerArrayEnd);// ensure that we did, in fact, visit all allocationPointers in the array; if this fails, the user likely passed an allocation that doesn't exist in this heap list
 }
 korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void* allocation, const wchar_t* file, int line)
 {
     const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
-    u8*const         heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    const u8*const   heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
     const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
     const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + allocator->allocatedBytes;
     if(allocation < heapAllocateBegin || allocation >= heapAllocateEnd)
@@ -1806,14 +1965,15 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
     _Korl_Heap_Linear_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
     allocationMeta->allocationMeta.file = file;
     allocationMeta->allocationMeta.line = line;
-    allocationMeta->isFree              = true;
     korl_memory_set(allocation, _KORL_HEAP_BYTE_PATTERN_FREE, allocationMeta->allocationMeta.bytes);
+    allocationMeta->allocationMeta.bytes = 0;
+    //@TODO?: reduce allocator->allocatedBytes by the allocation's gross bytes if this is the last allocation?  or actually, perhaps this is `defragment`'s job
 }
 korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
 {
     _Korl_Heap_Linear*const allocator       = heap;
     const u$                heapBytes       = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
-    u8*const                heapVirtualBase = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    const u8*const          heapVirtualBase = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
     const void*const        heapVirtualEnd  = heapVirtualBase + allocator->virtualPages * korl_memory_pageBytes();
     callback(callbackUserData, heapVirtualBase, heapVirtualEnd);
     if(allocator->next)
@@ -1825,14 +1985,21 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocati
     const u$           heapBytes = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
     while(allocator)
     {
-        u8*const         heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+        const u8*const   heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
         const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
         const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + allocator->allocatedBytes;
         for(_Korl_Heap_Linear_AllocationMeta* allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, heapAllocateBegin)
            ;KORL_C_CAST(void*, allocationMeta) < heapAllocateEnd
-           ;allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES))
-            if(!callback(callbackUserData, KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES, &allocationMeta->allocationMeta))
+           ;allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes))
+        {
+            const u$ netBytes = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+            if(!callback(callbackUserData
+                        ,/*allocation*/KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES
+                        ,&allocationMeta->allocationMeta
+                        ,allocationMeta->grossBytes
+                        ,netBytes))
                 return;/* stop enumerating allocations if the user's callback returns false */
+        }
         allocator = allocator->next;
     }
 }
