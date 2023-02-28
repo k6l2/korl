@@ -529,12 +529,21 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandCras
     else
         korl_log(WARNING, "invalid parameter \"%hs\"", parameters[1].data);
 }
+korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle stackAllocator)
+{
+    Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
+    if(_korl_windows_window_context.memoryStateLast)
+        mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){&_korl_windows_window_context.memoryStateLast, 0}));
+    korl_stringPool_collectDefragmentPointers(&_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers);
+    korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers));
+}
 korl_internal void korl_windows_window_initialize(void)
 {
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
-    _korl_windows_window_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-windows-window-heap", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
+    _korl_windows_window_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     _korl_windows_window_context.allocatorHandleStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
     _korl_windows_window_context.stringPool           = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
@@ -752,7 +761,6 @@ korl_internal KorlPlatformApi _korl_windows_window_createPlatformApi(void)
 korl_internal void korl_windows_window_loop(void)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
-    Korl_StringPool stringPool = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* get a handle to the file used to create the calling process */
     const HMODULE hInstance = GetModuleHandle(NULL/*lpModuleName*/);
     korl_assert(hInstance);
@@ -969,10 +977,11 @@ korl_internal void korl_windows_window_loop(void)
         //@TODO: defragment all modules which are going to be contained in the memory state
         korl_time_probeStart(defragmentation);{
             korl_command_defragment(context->allocatorHandleStack);
+            _korl_windows_window_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
         korl_time_probeStart(memory_state_create);{
             korl_free(context->allocatorHandle, context->memoryStateLast);
-            context->memoryStateLast = korl_memoryState_create(context->allocatorHandle);
+            context->memoryStateLast = korl_memoryState_create(context->allocatorHandle, context->allocatorHandleStack);
         }korl_time_probeStop(memory_state_create);
         if(context->deferSaveStateSave)
         {
@@ -1091,6 +1100,15 @@ korl_internal void korl_windows_window_loop(void)
     while(context->configuration.deferSaveConfiguration || context->configuration.asyncIo.handle)
         _korl_windows_window_configurationStep();
 }
+korl_internal void korl_windows_window_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+{
+    //@TODO
+}
+korl_internal bool korl_windows_window_memoryStateRead(u8* memoryState)
+{
+    //@TODO
+}
+#if 0//@TODO: delete
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
@@ -1129,4 +1147,5 @@ korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
     KORL_WINDOWS_CHECK(SetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
     return true;
 }
+#endif
 #undef _LOCAL_STRING_POOL_POINTER

@@ -57,7 +57,7 @@
 #include "korl-stringPool.h"
 typedef struct Korl_Codec_Configuration
 {
-    Korl_Memory_AllocatorHandle allocator;
+    Korl_Memory_AllocatorHandle           allocator;
     struct _Korl_Codec_Configuration_Map* stbShDatabase;
     // Korl_StringPool             stringPool;
 } Korl_Codec_Configuration;
@@ -77,6 +77,7 @@ typedef struct Korl_Codec_Configuration_MapValue
 } Korl_Codec_Configuration_MapValue;
 korl_internal void korl_codec_configuration_create(Korl_Codec_Configuration* context, Korl_Memory_AllocatorHandle allocator);
 korl_internal void korl_codec_configuration_destroy(Korl_Codec_Configuration* context);
+korl_internal void korl_codec_configuration_collectDefragmentPointers(Korl_Codec_Configuration* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers);
 korl_internal acu8 korl_codec_configuration_toUtf8(Korl_Codec_Configuration* context, Korl_Memory_AllocatorHandle allocatorResult);
 korl_internal void korl_codec_configuration_fromUtf8(Korl_Codec_Configuration* context, acu8 fileDataBuffer);
 korl_internal void korl_codec_configuration_setU32(Korl_Codec_Configuration* context, acu8 rawUtf8Key, u32 value);

@@ -33,6 +33,10 @@ korl_internal void korl_codec_configuration_destroy(Korl_Codec_Configuration* co
     mcshfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbShDatabase);
     korl_memory_zero(context, sizeof(*context));
 }
+korl_internal void korl_codec_configuration_collectDefragmentPointers(Korl_Codec_Configuration* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers)
+{
+    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbShDatabase), -KORL_C_CAST(i32, sizeof(stbds_array_header))}));
+}
 korl_internal acu8 korl_codec_configuration_toUtf8(Korl_Codec_Configuration* context, Korl_Memory_AllocatorHandle allocatorResult)
 {
 
