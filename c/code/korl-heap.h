@@ -1,12 +1,8 @@
 #pragma once
 #include "korl-globalDefines.h"
-typedef struct Korl_Heap_CreateInfo       Korl_Heap_CreateInfo;
-typedef struct Korl_Memory_AllocationMeta Korl_Memory_AllocationMeta;
-typedef struct Korl_Heap_DefragmentPointer
-{
-    void** userAddressPointer;
-    i32    userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){&stbDaFoos, -sizeof(stbds_array_header)}` to `korl_heap_*_defragment`
-} Korl_Heap_DefragmentPointer;
+typedef struct Korl_Heap_CreateInfo        Korl_Heap_CreateInfo;
+typedef struct Korl_Memory_AllocationMeta  Korl_Memory_AllocationMeta;
+typedef struct Korl_Heap_DefragmentPointer Korl_Heap_DefragmentPointer;
 #define KORL_HEAP_ENUMERATE_ALLOCATIONS(name)          void name(void* allocatorUserData, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)
 #define KORL_HEAP_ENUMERATE(name)                      void name(void* heap, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData)
 typedef struct _Korl_Heap_General _Korl_Heap_General;

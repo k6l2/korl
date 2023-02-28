@@ -158,6 +158,7 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
  * above! @korl-string-pool-no-data-segment-storage */
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
+korl_internal void                          korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers);
 korl_internal Korl_StringPool_String        korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_newFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line);
 korl_internal Korl_StringPool_String        korl_stringPool_newFromAci8(Korl_StringPool* context, aci8 constArrayCi8, const wchar_t* file, int line);

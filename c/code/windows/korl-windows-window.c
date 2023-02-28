@@ -30,7 +30,7 @@
     //@TODO: comment all these out
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
-    #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
+    // #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -41,6 +41,7 @@ korl_shared_const wchar_t* _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME = L"korl-window
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
+    Korl_Memory_AllocatorHandle allocatorHandleStack;
     Korl_StringPool stringPool;
     void* gameContext;
     void* memoryStateLast;
@@ -533,8 +534,9 @@ korl_internal void korl_windows_window_initialize(void)
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
-    _korl_windows_window_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
-    _korl_windows_window_context.stringPool      = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
+    _korl_windows_window_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-windows-window-heap", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
+    _korl_windows_window_context.allocatorHandleStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    _korl_windows_window_context.stringPool           = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
         running the game module as a DLL */
@@ -965,8 +967,10 @@ korl_internal void korl_windows_window_loop(void)
         }
         korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
         //@TODO: defragment all modules which are going to be contained in the memory state
-        korl_time_probeStart(memory_state_create);
-        {
+        korl_time_probeStart(defragmentation);{
+            korl_command_defragment(context->allocatorHandleStack);
+        }korl_time_probeStop(defragmentation);
+        korl_time_probeStart(memory_state_create);{
             korl_free(context->allocatorHandle, context->memoryStateLast);
             context->memoryStateLast = korl_memoryState_create(context->allocatorHandle);
         }korl_time_probeStop(memory_state_create);
@@ -974,9 +978,9 @@ korl_internal void korl_windows_window_loop(void)
         {
             context->deferSaveStateSave = false;
             // deferProbeReport = true;
-            korl_time_probeStart(save_state_save);
-            korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
-            korl_time_probeStop(save_state_save);
+            korl_time_probeStart(save_state_save);{
+                korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
+            }korl_time_probeStop(save_state_save);
         }
         if(context->deferSaveStateLoad)
         {

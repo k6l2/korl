@@ -7,24 +7,24 @@
 typedef struct _Korl_Command_Module
 {
     Korl_StringPool_String stringName;
-    HMODULE handle;
+    HMODULE                handle;
 } _Korl_Command_Module;
 typedef struct _Korl_Command
 {
-    Korl_StringPool_String stringCommand;
-    Korl_StringPool_String stringCallback;
-    Korl_StringPool_String stringModule;// weak reference; _Korl_Command should never allocate a new string & store it here, nor should it ever free this String
+    Korl_StringPool_String       stringCommand;
+    Korl_StringPool_String       stringCallback;
+    Korl_StringPool_String       stringModule;// weak reference; _Korl_Command should never allocate a new string & store it here, nor should it ever free this String
     fnSig_korl_command_callback* callback;
 } _Korl_Command;
 typedef struct _Korl_Command_Context
 {
     Korl_Memory_AllocatorHandle allocator;
-    Korl_StringPool stringPool;// this _must_ be stored in a heap allocator because we need the address of the StringPool to persist between application runs; since we are going to store the entire context in heap (as it is going to be (re)stored from/in memoryState), it's okay to store it in this struct
-    Korl_StringPool_String stringPlatformModuleName;
-    _Korl_Command_Module* stbDaModules;
-    _Korl_Command* stbDaCommands;
+    Korl_StringPool             stringPool;// this _must_ be stored in a heap allocator because we need the address of the StringPool to persist between application runs; since we are going to store the entire context in heap (as it is going to be (re)stored from/in memoryState), it's okay to store it in this struct
+    Korl_StringPool_String      stringPlatformModuleName;
+    _Korl_Command_Module*       stbDaModules;
+    _Korl_Command*              stbDaCommands;
 } _Korl_Command_Context;
-korl_global_variable _Korl_Command_Context* _korl_command_context;
+korl_global_variable _Korl_Command_Context* _korl_command_context;// NOTE: we are _only_ storing a pointer to the context in data segment memory since we want to (re)store the entire context in korl-memoryState, so the context is allocated from its own `allocator` member
 korl_internal void _korl_command_destroy(_Korl_Command* context)
 {
     string_free(&context->stringCommand);
@@ -166,11 +166,13 @@ korl_internal KORL_FUNCTION__korl_command_register(_korl_command_register)
 }
 korl_internal void korl_command_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
-    // void*** stbDaAllocationPointers = NULL;
-    // mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaAllocationPointers, 16);
-    // mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaAllocationPointers, &_korl_command_context);
-    // korl_memory_allocator_defragment(_korl_command_context->allocator, stbDaAllocationPointers, arrlenu(stbDaAllocationPointers));
-    //@TODO
+    Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
+    mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){&_korl_command_context, 0}));
+    mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &_korl_command_context->stbDaModules) , -KORL_C_CAST(i32, sizeof(stbds_array_header))}));
+    mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &_korl_command_context->stbDaCommands), -KORL_C_CAST(i32, sizeof(stbds_array_header))}));
+    korl_stringPool_collectDefragmentPointers(&_korl_command_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers);
+    korl_memory_allocator_defragment(_korl_command_context->allocator, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers));
 }
 korl_internal void korl_command_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {

@@ -56,6 +56,11 @@ typedef struct Korl_Memory_AllocationMeta
 #define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd)
 typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_heap_enumerateAllocationsCallback);
 typedef KORL_HEAP_ENUMERATE_CALLBACK            (fnSig_korl_heap_enumerateCallback);
+typedef struct Korl_Heap_DefragmentPointer
+{
+    void** userAddressPointer;
+    i32    userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbDaFoos), -KORL_C_CAST(i32, sizeof(stbds_array_header))}` to `korl_heap_*_defragment`
+} Korl_Heap_DefragmentPointer;
 /** As of right now, the smallest possible value for \c maxBytes for a linear 
  * allocator is 16 kilobytes (4 pages), since two pages are required for the 
  * allocator struct, and a minimum of two pages are required for each allocation 
