@@ -234,7 +234,9 @@ korl_internal void _korl_windows_window_configurationStep(void)
                 KORL_WINDOWS_CHECK(SetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
                 break;}
             case _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_WRITE:{
-                /* we have written to the config file; nothing else to do probably */
+                /* we have written to the config file; we can now free the file data buffer */
+                korl_free(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data));
+                context->configuration.fileDataBuffer = KORL_STRUCT_INITIALIZE_ZERO(acu8);
                 break;}
             default:
                 korl_log(ERROR, "invalid asyncIo operation: %i", context->configuration.asyncIo.operation);
