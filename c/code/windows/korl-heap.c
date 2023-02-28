@@ -1873,7 +1873,7 @@ korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
 /**/
 korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize)
 {
-    /*@TODO
+    /*@TODO; 
         UH OH - we have another major issue; assume the heap looks like so:
             [FREE][allocA][allocB]
         and the user passes these defrag pointers:
@@ -1882,8 +1882,25 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
             - [allocA] is moved into [FREE]
             - [&allocA] is correctly updated to the new address
             - _ERROR_(delayed); [&allocB] address has changed, but the defrag pointer is not updated!
-            - [allocB] is move down as well
-            - _ERROR_; [&allocB] defrag pointer update is attempted, but fails because it is pointing to gods-only-know where */
+            - [allocB] is moved into [allocA]'s trailing unused region
+            - _ERROR_; [&allocB] defrag pointer update is attempted, but fails because it is pointing to gods-only-know where 
+        --- mitigation strategies ---
+        let's assume that the user provides a Korl_Heap_DefragmentPointer* in each element of `defragmentPointers` which indicates which allocationAddress "owns" any given allocation; 
+        these values become INVALID the moment we sort the list of DefragmentPointers!; 
+        options:
+            - copy the entire `defragmentPointers` & perform the sort on the copy; this will allow the Korl_Heap_DefragmentPointer* addresses to remain valid even after sorting
+            x inject each "parent void*" into the _Korl_Heap_Linear_AllocationMeta of each allocation before sorting
+                NO, this wont work, because the address will still change when the parent gets defragmented
+                similarly, we can't inject the DefragmentPointer* because those will get invalidated after sorting
+            - if we have access to dynamic stack allocator/heap, we can:
+                - create our own temp mutable copy of defragmentPointers to preserve each parent address, as mentioned above - size(n) - O(n) memory_copy
+                - sort the above mutable copy of defragmentPointers instead of defragmentPointers itself
+                - create a list to record how many children each DefragmentPointer has - size(n)
+                - iterate over each sorted DefragmentPointer, increment its parent's child count, and increment a `totalChildren` counter - O(n)
+                - create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(?)
+                - iterate over each sorted DefragmentPointer, assign an offset into `childPool`, & add the defrag pointer to its parent's child list, assigning the parent's `childPool` offset if it doesn't already have one - O(n)
+                - then, during defragmentation, when an allocation is moved, we iterate over all our child DefragmentPointer*s & shift their userAddressPointer by the same # of bytes
+                    NOTE: we don't have to do this recursively! the only DefragmentPointers that become stale/invalid/dangling after we move an allocation are those who are _direct_ children of a defragmented allocation (dynamic allocation addresses that are stored within this allocation itself)! */
     korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
     /* sort the allocation pointer array by increasing heap-chain index, then by increasing address - O(nlogn) */
     if(allocator->next)

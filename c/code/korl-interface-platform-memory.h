@@ -58,8 +58,9 @@ typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_heap_enumerateAlloca
 typedef KORL_HEAP_ENUMERATE_CALLBACK            (fnSig_korl_heap_enumerateCallback);
 typedef struct Korl_Heap_DefragmentPointer
 {
-    void** userAddressPointer;
-    i32    userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbDaFoos), -KORL_C_CAST(i32, sizeof(stbds_array_header))}` to `korl_heap_*_defragment`
+    void**                              userAddressPointer;
+    i32                                 userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbDaFoos), -KORL_C_CAST(i32, sizeof(stbds_array_header))}` to `korl_heap_*_defragment`
+    struct Korl_Heap_DefragmentPointer* parent;// some allocations will themselves contain pointers to other allocations in the same heap; when a DefragmentPointer's userAddress is changed, all recursive children of it should be considered "stale"/dangling, since at that point the algorithm wont be able to update the pointer within the data struct that just moved if its child is also defragmented; the defragmentation algorithm needs to know this relationship so that it doesn't accidentally move a stale DefragmentPointer; example: if the caller allocates two linked list nodes, the child node's DefragmentPointer might look like `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &node[1]), 0, &defragPointers[0]}`
 } Korl_Heap_DefragmentPointer;
 /** As of right now, the smallest possible value for \c maxBytes for a linear 
  * allocator is 16 kilobytes (4 pages), since two pages are required for the 
