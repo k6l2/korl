@@ -25,3 +25,4 @@ korl_internal void                            korl_heap_linear_free(_Korl_Heap_L
 korl_internal KORL_HEAP_ENUMERATE            (korl_heap_linear_enumerate);
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations);
 korl_internal void                            korl_heap_linear_log(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName);
+korl_internal void                            korl_heap_linear_debugUnitTests(void);
