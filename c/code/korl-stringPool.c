@@ -459,11 +459,11 @@ korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
     korl_free(context->allocatorHandle, context->characterPool);
     korl_memory_zero(context, sizeof(*context));
 }
-korl_internal void korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** parentUserAddressPointer)
+korl_internal void korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
 {
-    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->characterPool)   , 0                                            , parentUserAddressPointer}));
-    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbDaAllocations), -KORL_C_CAST(i32, sizeof(stbds_array_header)), parentUserAddressPointer}));
-    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbDaStrings)    , -KORL_C_CAST(i32, sizeof(stbds_array_header)), parentUserAddressPointer}));
+    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->characterPool)   , 0                                            , userAddressPointerParent}));
+    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbDaAllocations), -KORL_C_CAST(i32, sizeof(stbds_array_header)), userAddressPointerParent}));
+    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbDaStrings)    , -KORL_C_CAST(i32, sizeof(stbds_array_header)), userAddressPointerParent}));
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
 {

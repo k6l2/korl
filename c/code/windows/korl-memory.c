@@ -566,7 +566,7 @@ korl_internal void korl_memory_allocator_defragment(Korl_Memory_AllocatorHandle 
             korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
             return;
         }
-        korl_heap_linear_defragment(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, defragmentPointers, defragmentPointersSize, KORL_C_CAST(_Korl_Heap_Linear*, allocatorStack->userData), allocatorStack->name);
+        korl_heap_linear_defragment(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, defragmentPointers, defragmentPointersSize, KORL_C_CAST(_Korl_Heap_Linear*, allocatorStack->userData), allocatorStack->name, handleStack);
         return;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{ break; }
     }
