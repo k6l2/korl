@@ -717,7 +717,7 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ════════════════════════════╝");
 }
-korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback *callback, void *callbackUserData)
+korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateAllocators(korl_memory_allocator_enumerateAllocators)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
@@ -728,7 +728,7 @@ korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_a
             break;
     }
 }
-korl_internal void korl_memory_allocator_enumerateAllocations(void* opaqueAllocator, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)
+korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateAllocations(korl_memory_allocator_enumerateAllocations)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
@@ -744,7 +744,7 @@ korl_internal void korl_memory_allocator_enumerateAllocations(void* opaqueAlloca
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
-korl_internal void korl_memory_allocator_enumerateHeaps(void* opaqueAllocator, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData)
+korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateHeaps(korl_memory_allocator_enumerateHeaps)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());

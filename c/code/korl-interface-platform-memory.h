@@ -38,6 +38,24 @@ typedef struct Korl_Heap_CreateInfo
     u32         heapDescriptorOffset_addressStart;
     u32         heapDescriptorOffset_addressEnd;
 } Korl_Heap_CreateInfo;
+typedef struct Korl_Memory_AllocationMeta
+{
+    const wchar_t* file;
+    int line;
+    /** 
+     * The amount of actual memory used by the caller.  The grand total amount 
+     * of memory used by an allocation will likely be the sum of the following:  
+     * - the allocation meta data
+     * - the actual memory used by the caller
+     * - any additional padding required by the allocator (likely to round 
+     *   everything up to the nearest page size)
+     */
+    u$ bytes;
+} Korl_Memory_AllocationMeta;
+#define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
+#define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd)
+typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_heap_enumerateAllocationsCallback);
+typedef KORL_HEAP_ENUMERATE_CALLBACK            (fnSig_korl_heap_enumerateCallback);
 /** As of right now, the smallest possible value for \c maxBytes for a linear 
  * allocator is 16 kilobytes (4 pages), since two pages are required for the 
  * allocator struct, and a minimum of two pages are required for each allocation 
@@ -46,13 +64,16 @@ typedef struct Korl_Heap_CreateInfo
  * \param address [OPTIONAL] the allocator itself will attempt to be placed at 
  * the specified virtual address.  If this value is \c NULL , the operating 
  * system will choose this address for us. */
-#define KORL_FUNCTION_korl_memory_allocator_create(name)     Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags, const Korl_Heap_CreateInfo* heapCreateInfo)
+#define KORL_FUNCTION_korl_memory_allocator_create(name)               Korl_Memory_AllocatorHandle name(Korl_Memory_AllocatorType type, const wchar_t* allocatorName, Korl_Memory_AllocatorFlags flags, const Korl_Heap_CreateInfo* heapCreateInfo)
 /** \param address [OPTIONAL] the allocation will be placed at this exact 
  * address in the allocator.  Safety checks are performed to ensure that the 
  * specified address is valid (within allocator address range, not overlapping 
  * other allocations).  If this value is \c NULL , the allocator will choose the 
  * address of the allocation automatically (as you would typically expect). */
-#define KORL_FUNCTION_korl_memory_allocator_allocate(name)   void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line, void* address)
-#define KORL_FUNCTION_korl_memory_allocator_reallocate(name) void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
-#define KORL_FUNCTION_korl_memory_allocator_free(name)       void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
-#define KORL_FUNCTION_korl_memory_allocator_empty(name)      void                        name(Korl_Memory_AllocatorHandle handle)
+#define KORL_FUNCTION_korl_memory_allocator_allocate(name)             void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line, void* address)
+#define KORL_FUNCTION_korl_memory_allocator_reallocate(name)           void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
+#define KORL_FUNCTION_korl_memory_allocator_free(name)                 void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
+#define KORL_FUNCTION_korl_memory_allocator_empty(name)                void                        name(Korl_Memory_AllocatorHandle handle)
+#define KORL_FUNCTION_korl_memory_allocator_enumerateAllocators(name)  void                        name(fnSig_korl_memory_allocator_enumerateAllocatorsCallback* callback, void* callbackUserData)
+#define KORL_FUNCTION_korl_memory_allocator_enumerateAllocations(name) void                        name(void* opaqueAllocator, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)
+#define KORL_FUNCTION_korl_memory_allocator_enumerateHeaps(name)       void                        name(void* opaqueAllocator, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData)

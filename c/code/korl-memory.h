@@ -2,20 +2,6 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-memory.h"
 #include "korl-heap.h"
-typedef struct Korl_Memory_AllocationMeta
-{
-    const wchar_t* file;
-    int line;
-    /** 
-     * The amount of actual memory used by the caller.  The grand total amount 
-     * of memory used by an allocation will likely be the sum of the following:  
-     * - the allocation meta data
-     * - the actual memory used by the caller
-     * - any additional padding required by the allocator (likely to round 
-     *   everything up to the nearest page size)
-     */
-    u$ bytes;
-} Korl_Memory_AllocationMeta;
 typedef struct Korl_Memory_FileMapAllocation_CreateInfo
 {
     u$         physicalMemoryChunkBytes;// this is merely a request; the final physical memory chunk bytes value will be >= to this in order to satisfy memory alignment constraints
@@ -52,9 +38,9 @@ korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 korl_internal void* korl_memory_reportGenerate(void);
 /** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */
 korl_internal void korl_memory_reportLog(void* reportAddress);
-korl_internal void korl_memory_allocator_enumerateAllocators(fnSig_korl_memory_allocator_enumerateAllocatorsCallback* callback, void* callbackUserData);
-korl_internal void korl_memory_allocator_enumerateAllocations(void* opaqueAllocator, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData);
-korl_internal void korl_memory_allocator_enumerateHeaps(void* opaqueAllocator, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData);
+korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateAllocators(korl_memory_allocator_enumerateAllocators);
+korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateAllocations(korl_memory_allocator_enumerateAllocations);
+korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateHeaps(korl_memory_allocator_enumerateHeaps);
 /** \param out_allocatorIndex if the return value is \c true , then the memory 
  * at this address is populated with the internal index of the found allocator.
  * \return \c true if the allocator with the given \c name exists */
