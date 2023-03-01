@@ -1945,9 +1945,15 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                     /* move this entire allocation (excluding the [unused] component) into the start of the preceding unoccupied bytes */
                     const u$ allocationNetBytes = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
                     if(unoccupiedBytes >= allocationNetBytes)
+                    {
                         korl_memory_copy(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes, allocationMeta, allocationNetBytes);
+                        korl_memory_set(allocationMeta, _KORL_HEAP_BYTE_PATTERN_FREE, allocationNetBytes);
+                    }
                     else
+                    {
                         korl_memory_move(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes, allocationMeta, allocationNetBytes);
+                        korl_memory_set(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes + allocationNetBytes, _KORL_HEAP_BYTE_PATTERN_FREE, allocationNetBytes - unoccupiedBytes);
+                    }
                     /* update the caller's allocation address, as well as our own pointers to allocation */
                     allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes);
                     allocation     =                                                KORL_C_CAST(u8*, allocation)     - unoccupiedBytes;
@@ -2205,29 +2211,37 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
     korl_log(VERBOSE, "::::: create scenario where a dynamic struct holds a pointer to another dynamic struct :::::");
         typedef struct _LinkedList
         {
+            u32 data;
             struct _LinkedList* next;
         } _LinkedList;
-        _LinkedList* nodes[3];
+        _LinkedList* nodes[2];
         nodes[0] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, NULL);
         nodes[1] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, NULL);
-        nodes[2] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, NULL);
-        nodes[1]->next = nodes[2];
+        nodes[1]->data = 0x69420;
+        nodes[1]->next = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, NULL);
+        nodes[1]->next->data = 0xDEADFEE7;
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < korl_arraySize(nodes); i++)
-            if(nodes[i])
-                korl_log(INFO, "nodes[%llu]: &=0x%p next=0x%p", i, nodes[i], nodes[i]->next);
+            for(const _LinkedList* node = nodes[i]; node; node = node->next)
+                if(node == nodes[i])
+                    korl_log(INFO, "nodes[%llu]: &=0x%p data=0x%X next=0x%p", i, node, node->data, node->next);
+                else
+                    korl_log(INFO, "\tchild: &=0x%p data=0x%X next=0x%p", node, node->data, node->next);
     korl_log(VERBOSE, "::::: delete node[0], then defragment :::::");
         korl_heap_linear_free(heap, nodes[0], __FILEW__, __LINE__); nodes[0] = NULL;
         KORL_MEMORY_POOL_EMPTY(defragPointers);
-        for(u$ i = 0; i < korl_arraySize(nodes); i++)
-            if(nodes[i])
-                *KORL_MEMORY_POOL_ADD(defragPointers) = (Korl_Heap_DefragmentPointer){&nodes[i], 0};
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+        *KORL_MEMORY_POOL_ADD(defragPointers) = (Korl_Heap_DefragmentPointer){&nodes[1], 0, NULL};
+        *KORL_MEMORY_POOL_ADD(defragPointers) = (Korl_Heap_DefragmentPointer){&(nodes[1]->next), 0, &defragPointers[0]};
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));// if nodes[1]->next doesn't get updated to the correct value during defragmentation, this call will likely hit an assert, as our second defrag pointer will get wiped when nodes[1] gets moved, thus the algorithm will think we passed a pointer that doesn't exist
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < korl_arraySize(nodes); i++)
-            if(nodes[i])
-                korl_log(INFO, "nodes[%llu]: &=0x%p next=0x%p", i, nodes[i], nodes[i]->next);
-        korl_assert(nodes[1]->next == nodes[2]);// we need to be able to ensure that "stale"/dangling DefragmentPointers do _not_ get updated; when DefragmentPointer's userAddress is moved during defragmentation, _all_ recursive child DefragmentPointers should be considered STALE
+            for(const _LinkedList* node = nodes[i]; node; node = node->next)
+                if(node == nodes[i])
+                    korl_log(INFO, "nodes[%llu]: &=0x%p data=0x%X next=0x%p", i, node, node->data, node->next);
+                else
+                    korl_log(INFO, "\tchild: &=0x%p data=0x%X next=0x%p", node, node->data, node->next);
+        korl_assert(nodes[1]->data == 0x69420);
+        korl_assert(nodes[1]->next->data == 0xDEADFEE7);
     korl_heap_linear_destroy(heap);
     korl_log(VERBOSE, "END DEBUG UNIT TESTS ===============");
 }
