@@ -52,7 +52,7 @@ typedef struct Korl_Memory_AllocationMeta
      */
     u$ bytes;
 } Korl_Memory_AllocationMeta;
-#define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta)
+#define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta, u$ grossBytes, u$ netBytes)
 #define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd)
 typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_heap_enumerateAllocationsCallback);
 typedef KORL_HEAP_ENUMERATE_CALLBACK            (fnSig_korl_heap_enumerateCallback);
