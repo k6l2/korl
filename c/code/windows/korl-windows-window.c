@@ -30,7 +30,7 @@
     //@TODO: comment all these out
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
-    #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
+    // #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
@@ -538,7 +538,7 @@ korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle s
     if(_korl_windows_window_context.memoryStateLast)
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){&_korl_windows_window_context.memoryStateLast, 0}));
     korl_stringPool_collectDefragmentPointers(&_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers);
-    korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers));
+    korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_windows_window_initialize(void)
 {

@@ -1832,6 +1832,13 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     return result;
 }
 /* sort support for linear heap addresses */
+typedef struct _Korl_Heap_DefragmentPointer
+{
+    Korl_Heap_DefragmentPointer*   pDefragmentPointer;
+    u32                            childrenSize;
+    u32                            childrenCapacity;
+     Korl_Heap_DefragmentPointer** children;
+} _Korl_Heap_DefragmentPointer;
 #ifndef SORT_CHECK_CAST_INT_TO_SIZET
     #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
 #endif
@@ -1839,11 +1846,11 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
 #endif
 #define SORT_NAME _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress
-#define SORT_TYPE Korl_Heap_DefragmentPointer
-#define SORT_CMP(x, y) (_korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(x)) < _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(y)) ? -1 \
-                        : _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(x)) > _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(y)) ? 1 \
-                          : _korl_heap_defragmentPointer_getAllocation(x) < _korl_heap_defragmentPointer_getAllocation(y) ? -1 \
-                            : _korl_heap_defragmentPointer_getAllocation(x) > _korl_heap_defragmentPointer_getAllocation(y) ? 1 \
+#define SORT_TYPE _Korl_Heap_DefragmentPointer
+#define SORT_CMP(x, y) (_korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer)) < _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer)) ? -1 \
+                        : _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer)) > _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer)) ? 1 \
+                          : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? -1 \
+                            : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? 1 \
                               : 0)
 korl_global_variable _Korl_Heap_Linear* _korl_heap_defragmentPointer_sortContext;// @TODO: backlog this as a multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
 korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
@@ -1865,16 +1872,16 @@ korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
 }
 #include "sort.h"
 #define SORT_NAME _korl_heap_defragmentPointer_ascendAddress
-#define SORT_TYPE Korl_Heap_DefragmentPointer
-#define SORT_CMP(x, y) (_korl_heap_defragmentPointer_getAllocation(x) < _korl_heap_defragmentPointer_getAllocation(y) ? -1 \
-                        : _korl_heap_defragmentPointer_getAllocation(x) > _korl_heap_defragmentPointer_getAllocation(y) ? 1 \
+#define SORT_TYPE _Korl_Heap_DefragmentPointer
+#define SORT_CMP(x, y) (_korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? -1 \
+                        : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? 1 \
                           : 0)
 #include "sort.h"
 /**/
-korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize)
+korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, _Korl_Heap_Linear* stackAllocator, const wchar_t* stackAllocatorName)
 {
-    /*@TODO; 
-        UH OH - we have another major issue; assume the heap looks like so:
+    korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
+    /* UH OH - we have another major issue; assume the heap looks like so:
             [FREE][allocA][allocB]
         and the user passes these defrag pointers:
             [&allocA][&allocB]
@@ -1884,32 +1891,51 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
             - _ERROR_(delayed); [&allocB] address has changed, but the defrag pointer is not updated!
             - [allocB] is moved into [allocA]'s trailing unused region
             - _ERROR_; [&allocB] defrag pointer update is attempted, but fails because it is pointing to gods-only-know where 
-        --- mitigation strategies ---
-        let's assume that the user provides a Korl_Heap_DefragmentPointer* in each element of `defragmentPointers` which indicates which allocationAddress "owns" any given allocation; 
-        these values become INVALID the moment we sort the list of DefragmentPointers!; 
-        options:
-            - copy the entire `defragmentPointers` & perform the sort on the copy; this will allow the Korl_Heap_DefragmentPointer* addresses to remain valid even after sorting
-            x inject each "parent void*" into the _Korl_Heap_Linear_AllocationMeta of each allocation before sorting
-                NO, this wont work, because the address will still change when the parent gets defragmented
-                similarly, we can't inject the DefragmentPointer* because those will get invalidated after sorting
-            - if we have access to dynamic stack allocator/heap, we can:
-                - create our own temp mutable copy of defragmentPointers to preserve each parent address, as mentioned above - size(n) - O(n) memory_copy
-                - sort the above mutable copy of defragmentPointers instead of defragmentPointers itself
-                - create a list to record how many children each DefragmentPointer has - size(n)
-                - iterate over each sorted DefragmentPointer, increment its parent's child count, and increment a `totalChildren` counter - O(n)
-                - create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(?)
-                - iterate over each sorted DefragmentPointer, assign an offset into `childPool`, & add the defrag pointer to its parent's child list, assigning the parent's `childPool` offset if it doesn't already have one - O(n)
-                - then, during defragmentation, when an allocation is moved, we iterate over all our child DefragmentPointer*s & shift their userAddressPointer by the same # of bytes
-                    NOTE: we don't have to do this recursively! the only DefragmentPointers that become stale/invalid/dangling after we move an allocation are those who are _direct_ children of a defragmented allocation (dynamic allocation addresses that are stored within this allocation itself)! */
-    korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
+        the way I decided to mitigate this issue is by:
+            - add a `parent` member to DefragmentPointer, which will allow the defragment algorithm to automatically update pointers that are stored in other allocations
+            - require the user to pass a stack allocator so we can dynamically allocate temporary buffers which help mitigate the above issue; hopefully sacrificing some memory for speed */
+    /* create a copy of defragmentPointers that we can shuffle, allowing the `parent` pointers to remain valid - size(n) - O(n) memory_copy*/
+    _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, NULL);
+    for(u$ i = 0; i < defragmentPointersSize; i++)
+        sortedDefragmentPointers[i].pDefragmentPointer = &defragmentPointers[i];
+    /* iterate over each DefragmentPointer, increment its parent's child count, and increment a `totalChildren` counter - O(n) */
+    u32 totalChildren = 0;
+    for(u$ i = 0; i < defragmentPointersSize; i++)
+    {
+        _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
+        if(!defragmentPointer->pDefragmentPointer->parent)
+            continue;
+        const u$                           parentIndex = defragmentPointer->pDefragmentPointer->parent - defragmentPointers;
+        _Korl_Heap_DefragmentPointer*const parent      = sortedDefragmentPointers + parentIndex;
+        parent->childrenCapacity++;
+        totalChildren++;
+    }
+    /* create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(?) */
+    Korl_Heap_DefragmentPointer** childPool            = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, NULL);
+    u$                            childPoolAllocations = 0;
+    /* iterate over each DefragmentPointer, & add the defrag pointer to its parent's child list, assigning the parent's `childPool` offset if it doesn't already have one - O(n) */
+    for(u$ i = 0; i < defragmentPointersSize; i++)
+    {
+        _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
+        if(!defragmentPointer->pDefragmentPointer->parent)
+            continue;
+        const u$                           parentIndex = defragmentPointer->pDefragmentPointer->parent - defragmentPointers;
+        _Korl_Heap_DefragmentPointer*const parent      = sortedDefragmentPointers + parentIndex;
+        if(!parent->children)
+        {
+            parent->children = childPool + childPoolAllocations;
+            childPoolAllocations += parent->childrenCapacity;
+        }
+        parent->children[parent->childrenSize++] = defragmentPointer->pDefragmentPointer;
+    }
     /* sort the allocation pointer array by increasing heap-chain index, then by increasing address - O(nlogn) */
     if(allocator->next)
     {
         _korl_heap_defragmentPointer_sortContext = allocator;
-        _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress_quick_sort(defragmentPointers, defragmentPointersSize);
+        _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress_quick_sort(sortedDefragmentPointers, defragmentPointersSize);
     }
     else/* choose a less expensive sort if we know there is only one heap in the heap list */
-        _korl_heap_defragmentPointer_ascendAddress_quick_sort(defragmentPointers, defragmentPointersSize);
+        _korl_heap_defragmentPointer_ascendAddress_quick_sort(sortedDefragmentPointers, defragmentPointersSize);
     /* enumerate over each allocation - O(n), 
         remembering whether or not & how much trailing empty space is behind us; 
         if    the current allocation is the next allocationPointer 
@@ -1918,10 +1944,10 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
             move the allocation, such that there is no more space between these two allocations; 
             update the allocationPointer corresponding do this allocation appropriately; 
             make sure that the moved allocation occupies all bytes (as its [unused] component) */
-    _Korl_Heap_Linear*                      currentHeap                = allocator;
-    const u$                                heapBytes                  = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
-    const Korl_Heap_DefragmentPointer*const defragmentPointersEnd      = defragmentPointers + defragmentPointersSize;
-    const Korl_Heap_DefragmentPointer*      defragmentPointersIterator = defragmentPointers;
+    _Korl_Heap_Linear*                       currentHeap                = allocator;
+    const u$                                 heapBytes                  = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
+    const _Korl_Heap_DefragmentPointer*const defragmentPointersEnd      = sortedDefragmentPointers + defragmentPointersSize;
+    const _Korl_Heap_DefragmentPointer*      defragmentPointersIterator = sortedDefragmentPointers;
     while(currentHeap)
     {
         const u8*const                    heapVirtualBase        = KORL_C_CAST(u8*, currentHeap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
@@ -1935,7 +1961,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         {
             void* allocation = KORL_C_CAST(u8*, allocationMeta) + sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES;
             if(   defragmentPointersIterator < defragmentPointersEnd 
-               && allocation == _korl_heap_defragmentPointer_getAllocation(*defragmentPointersIterator))// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
+               && allocation == _korl_heap_defragmentPointer_getAllocation(*defragmentPointersIterator->pDefragmentPointer))// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
             {
                 korl_assert(allocationMeta->allocationMeta.bytes > 0);
                 if(unoccupiedBytes)// we can only move allocations which are preceded by non-zero unoccupiedBytes
@@ -1952,15 +1978,24 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                     else
                     {
                         korl_memory_move(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes, allocationMeta, allocationNetBytes);
-                        korl_memory_set(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes + allocationNetBytes, _KORL_HEAP_BYTE_PATTERN_FREE, allocationNetBytes - unoccupiedBytes);
+                        korl_memory_set(KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes + allocationNetBytes, _KORL_HEAP_BYTE_PATTERN_FREE, unoccupiedBytes);
                     }
                     /* update the caller's allocation address, as well as our own pointers to allocation */
                     allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) - unoccupiedBytes);
                     allocation     =                                                KORL_C_CAST(u8*, allocation)     - unoccupiedBytes;
-                    _korl_heap_defragmentPointer_setAllocation(*defragmentPointersIterator, allocation);
+                    _korl_heap_defragmentPointer_setAllocation(*defragmentPointersIterator->pDefragmentPointer, allocation);
                     /* if there is one, eliminate the previous allocation's unused region, as we will be occupying it if it exists */
                     if(previousAllocationMeta)
                         previousAllocationMeta->grossBytes = sizeof(*previousAllocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + previousAllocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+                    /* when an allocation is moved, we iterate over all our child DefragmentPointer*s 
+                        & shift their userAddressPointer by the same # of bytes
+                        NOTE: we don't have to do this recursively! the only DefragmentPointers that become stale/invalid/dangling 
+                              after we move an allocation are those who are _direct_ children of a defragmented allocation 
+                              (dynamic allocation addresses that are stored within this allocation itself)! */
+                    for(u$ i = 0; i < defragmentPointersIterator->childrenSize; i++)
+                        /* this looks janky because it kinda is; we're literally offsetting the address of the child allocation pointer by a certain # of bytes, 
+                            and the only way to do this is by casting the pointer to an integral datatype & operating on it, as far as I know... */
+                        defragmentPointersIterator->children[i]->userAddressPointer = KORL_C_CAST(void**, KORL_C_CAST(u$, defragmentPointersIterator->children[i]->userAddressPointer) - unoccupiedBytes);
                 }
                 defragmentPointersIterator++;
             }
@@ -2115,11 +2150,13 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
     korl_log(VERBOSE, "============= DEBUG UNIT TESTS");
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = 2 * korl_memory_pageBytes();
-    korl_shared_const wchar_t DEBUG_HEAP_NAME[] = L"DEBUG-linear-unit-test";
+    korl_shared_const wchar_t DEBUG_HEAP_NAME[]       = L"DEBUG-linear-unit-test";
+    korl_shared_const wchar_t DEBUG_HEAP_NAME_STACK[] = L"DEBUG-linear-unit-test-stack";
     KORL_MEMORY_POOL_DECLARE(u8*                        , allocations   , 32);
     KORL_MEMORY_POOL_DECLARE(Korl_Heap_DefragmentPointer, defragPointers, 32);
     KORL_MEMORY_POOL_SIZE(allocations) = 0;
-    _Korl_Heap_Linear* heap = korl_heap_linear_create(&heapCreateInfo);
+    _Korl_Heap_Linear* heapStack = korl_heap_linear_create(&heapCreateInfo);
+    _Korl_Heap_Linear* heap      = korl_heap_linear_create(&heapCreateInfo);
     korl_log(VERBOSE, "::::: create allocations :::::");
         *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
         *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, NULL);
@@ -2131,7 +2168,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers), heapStack, DEBUG_HEAP_NAME_STACK);
+        korl_heap_linear_empty(heapStack);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -2143,7 +2181,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers), heapStack, DEBUG_HEAP_NAME_STACK);
+        korl_heap_linear_empty(heapStack);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -2164,7 +2203,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers), heapStack, DEBUG_HEAP_NAME_STACK);
+        korl_heap_linear_empty(heapStack);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -2176,7 +2216,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         KORL_MEMORY_POOL_RESIZE(defragPointers, KORL_MEMORY_POOL_SIZE(allocations));
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers), heapStack, DEBUG_HEAP_NAME_STACK);
+        korl_heap_linear_empty(heapStack);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -2198,7 +2239,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             defragPointers[i] = (Korl_Heap_DefragmentPointer){&(allocations[i]), 0};
         defragPointers[1].userAddressByteOffset = -1;// dynamic array header is the _true_ allocation address
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers), heapStack, DEBUG_HEAP_NAME_STACK);
+        korl_heap_linear_empty(heapStack);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
@@ -2232,7 +2274,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         KORL_MEMORY_POOL_EMPTY(defragPointers);
         *KORL_MEMORY_POOL_ADD(defragPointers) = (Korl_Heap_DefragmentPointer){&nodes[1], 0, NULL};
         *KORL_MEMORY_POOL_ADD(defragPointers) = (Korl_Heap_DefragmentPointer){&(nodes[1]->next), 0, &defragPointers[0]};
-        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers));// if nodes[1]->next doesn't get updated to the correct value during defragmentation, this call will likely hit an assert, as our second defrag pointer will get wiped when nodes[1] gets moved, thus the algorithm will think we passed a pointer that doesn't exist
+        korl_heap_linear_defragment(heap, DEBUG_HEAP_NAME, defragPointers, KORL_MEMORY_POOL_SIZE(defragPointers), heapStack, DEBUG_HEAP_NAME_STACK);
+        korl_heap_linear_empty(heapStack);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < korl_arraySize(nodes); i++)
             for(const _LinkedList* node = nodes[i]; node; node = node->next)

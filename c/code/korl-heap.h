@@ -20,7 +20,7 @@ korl_internal void                            korl_heap_linear_destroy(_Korl_Hea
 korl_internal void                            korl_heap_linear_empty(_Korl_Heap_Linear*const allocator);
 korl_internal void*                           korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, void* requestedAddress/*@TODO: remove requestedAddress; we should just do a single memcpy to restore heaps instead of injecting individual memory allocations!*/);
 korl_internal void*                           korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line);
-korl_internal void                            korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize);
+korl_internal void                            korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, _Korl_Heap_Linear* stackAllocator, const wchar_t* stackAllocatorName);
 korl_internal void                            korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void* allocation, const wchar_t* file, int line);
 korl_internal KORL_HEAP_ENUMERATE            (korl_heap_linear_enumerate);
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocations);
