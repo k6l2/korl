@@ -1894,6 +1894,14 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         the way I decided to mitigate this issue is by:
             - add a `parent` member to DefragmentPointer, which will allow the defragment algorithm to automatically update pointers that are stored in other allocations
             - require the user to pass a stack allocator so we can dynamically allocate temporary buffers which help mitigate the above issue; hopefully sacrificing some memory for speed */
+    /* @TODO; oh boy, yet another problem to solve; the user code for passing in DefragmentPointer parents is bad for several reasons:
+        - the dynamic array favored by the user can't work, since the pointers will be invalidated as the user is accumulating the array
+        - it's just annoying to keep track of which DefragmentPointer* is the parent of any given allocation; it's much easier to just select the void** parent
+        so, it's up to us to take the slack of this luxury; allowing the user to just pass the void** parent, we must re-build the `_Korl_Heap_DefragmentPointer*`(child)=>`_Korl_Heap_DefragmentPointer*`(parent) map ourselves...
+        options:
+        - we could N^2 this shit and just manually re-establish these pointers
+        - we could allocate a stb_ds hash-map and create a void**(child)=>DefragmentPointer*(parent) map
+        - we could add a transient data field to each _Korl_Heap_Linear_AllocationMeta which stores the DefragmentPointer*(parent), and to populate these fields is just O(n) */
     /* create a copy of defragmentPointers that we can shuffle, allowing the `parent` pointers to remain valid - size(n) - O(n) memory_copy*/
     _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, NULL);
     for(u$ i = 0; i < defragmentPointersSize; i++)
@@ -1910,7 +1918,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         parent->childrenCapacity++;
         totalChildren++;
     }
-    /* create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(?) */
+    /* create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(<=n), as each DefragmentPointer can only have one parent */
     Korl_Heap_DefragmentPointer** childPool            = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, NULL);
     u$                            childPoolAllocations = 0;
     /* iterate over each DefragmentPointer, & add the defrag pointer to its parent's child list, assigning the parent's `childPool` offset if it doesn't already have one - O(n) */

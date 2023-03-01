@@ -537,7 +537,7 @@ korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle s
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
     if(_korl_windows_window_context.memoryStateLast)
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){&_korl_windows_window_context.memoryStateLast, 0}));
-    korl_stringPool_collectDefragmentPointers(&_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers);
+    korl_stringPool_collectDefragmentPointers(&_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, NULL/*defragPointerIndexParent*/);
     korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_windows_window_initialize(void)
@@ -881,8 +881,8 @@ korl_internal void korl_windows_window_loop(void)
             }
         }
         korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
-        //@TODO: defragment all modules which are going to be contained in the memory state
         korl_time_probeStart(defragmentation);{
+            //@TODO: defragment all modules which are going to be contained in the memory state
             korl_command_defragment(context->allocatorHandleStack);
             _korl_windows_window_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
