@@ -85,9 +85,6 @@ korl_internal KORL_FUNCTION_korl_gfx_batchTextSetPositionAnchor(korl_gfx_batchTe
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetSize(korl_gfx_batchRectangleSetSize);
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectangleSetColor);
 korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSetColor);
-korl_internal void korl_gfx_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
-/** I don't like how this API requires us to do file I/O in modules outside of 
- * korl-file; maybe improve this in the future to use korl-file API instea of 
- * Win32 API?
- * KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file? */
-korl_internal bool korl_gfx_saveStateRead(HANDLE hFile);
+korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
+korl_internal void korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
+korl_internal bool korl_gfx_memoryStateRead(u8* memoryState);

@@ -1745,10 +1745,8 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
     }
     _Korl_Heap_Linear_AllocationMeta*const resultMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, heapVirtualBase + heapBytes + allocator->allocatedBytes);
     u8*const                               result     = heapVirtualBase + heapBytes + allocator->allocatedBytes + sizeof(*resultMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES;
-    resultMeta->allocationMeta.bytes = bytes;
-    resultMeta->allocationMeta.file  = file;
-    resultMeta->allocationMeta.line  = line;
-    resultMeta->grossBytes           = grossBytes;
+    resultMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
+    resultMeta->grossBytes     = grossBytes;
     korl_memory_set(resultMeta + 1, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
     korl_memory_zero(result, bytes);
     korl_memory_set(result + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
@@ -1784,9 +1782,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             allocator->allocatedBytes  -= allocationMeta->allocationMeta.bytes - bytes;
             allocationMeta->grossBytes -= allocationMeta->allocationMeta.bytes - bytes;
         }
-        allocationMeta->allocationMeta.bytes = bytes;
-        allocationMeta->allocationMeta.file  = file;
-        allocationMeta->allocationMeta.line  = line;
+        allocationMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
         return allocation;
     }
     /* ----- everything below here _must_ involve _growing_ `allocation` ----- */
@@ -1795,9 +1791,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     {
         korl_memory_zero(KORL_C_CAST(u8*, allocation) + allocationMeta->allocationMeta.bytes, bytes - allocationMeta->allocationMeta.bytes);
         korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
-        allocationMeta->allocationMeta.bytes = bytes;
-        allocationMeta->allocationMeta.file  = file;
-        allocationMeta->allocationMeta.line  = line;
+        allocationMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
         return allocation;
     }
     const u$ grossBytesNew = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
@@ -1819,10 +1813,8 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
         korl_memory_zero(KORL_C_CAST(u8*, allocation) + allocationMeta->allocationMeta.bytes, bytes - allocationMeta->allocationMeta.bytes);
         korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
         allocator->allocatedBytes += grossBytesNew - allocationMeta->grossBytes;
-        allocationMeta->allocationMeta.bytes = bytes;
-        allocationMeta->allocationMeta.file  = file;
-        allocationMeta->allocationMeta.line  = line;
-        allocationMeta->grossBytes           = grossBytesNew;
+        allocationMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
+        allocationMeta->grossBytes     = grossBytesNew;
         return allocation;
     }
     /* we couldn't in-place shrink/expand; we must allocate => copy => free */
@@ -1920,9 +1912,10 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
     for(u$ i = 0; i < defragmentPointersSize; i++)
     {
         _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
-        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointerParent);
-        if(parentMapIndex < 0)
+        if(!defragmentPointer->pDefragmentPointer->userAddressPointerParent)
             continue;
+        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointerParent);
+        korl_assert(parentMapIndex >= 0);
         _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
         parent->childrenCapacity++;
         totalChildren++;
@@ -1934,9 +1927,10 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
     for(u$ i = 0; i < defragmentPointersSize; i++)
     {
         _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
-        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointerParent);
-        if(parentMapIndex < 0)
+        if(!defragmentPointer->pDefragmentPointer->userAddressPointerParent)
             continue;
+        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointerParent);
+        korl_assert(parentMapIndex >= 0);
         _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
         if(!parent->children)
         {
@@ -1981,6 +1975,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                && allocation == _korl_heap_defragmentPointer_getAllocation(*defragmentPointersIterator->pDefragmentPointer))// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
             {
                 korl_assert(allocationMeta->allocationMeta.bytes > 0);
+                allocationMeta->allocationMeta.defragmented = true;
                 if(unoccupiedBytes)// we can only move allocations which are preceded by non-zero unoccupiedBytes
                 {
                     /* before we copy/move the allocation back, we can update our grossBytes; this should have no effect on the proceding calculations */
@@ -2016,6 +2011,8 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                 }
                 defragmentPointersIterator++;
             }
+            else
+                allocationMeta->allocationMeta.defragmented = false;
             /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations OR unused bytes */
             if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
             {
@@ -2071,9 +2068,10 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
         return;
     }
     _Korl_Heap_Linear_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
-    allocationMeta->allocationMeta.file = file;
-    allocationMeta->allocationMeta.line = line;
     korl_memory_set(allocation, _KORL_HEAP_BYTE_PATTERN_FREE, allocationMeta->allocationMeta.bytes);
+    //@TODO: do we actually want to know where the allocation was freed?...
+    // allocationMeta->allocationMeta.file  = file;
+    // allocationMeta->allocationMeta.line  = line;
     allocationMeta->allocationMeta.bytes = 0;
     /* if we're the last allocation, we might as well update the allocator's 
         allocatedBytes metric to reduce unnecessary fragmentation; this should 

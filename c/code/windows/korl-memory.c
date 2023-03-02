@@ -55,8 +55,9 @@ typedef struct _Korl_Memory_ReportMeta_Allocation
 } _Korl_Memory_ReportMeta_Allocation;
 typedef struct _Korl_Memory_ReportMeta_Allocator
 {
-    Korl_Memory_AllocatorType allocatorType;
-    wchar_t name[32];
+    Korl_Memory_AllocatorType  allocatorType;
+    Korl_Memory_AllocatorFlags flags;
+    wchar_t                    name[32];
     struct
     {
         u$ byteOffset;// relative to the first byte of the entire report
@@ -670,6 +671,7 @@ korl_internal void* korl_memory_reportGenerate(void)
     {
         _Korl_Memory_Allocator*const allocator = &context->allocators[a];
         reportMeta.allocatorMeta[a].allocatorType = allocator->type;
+        reportMeta.allocatorMeta[a].flags         = allocator->flags;
         korl_string_copyUtf16(allocator->name, (au16){korl_arraySize(reportMeta.allocatorMeta[a].name), reportMeta.allocatorMeta[a].name});
         KORL_ZERO_STACK(_Korl_Memory_ReportGenerate_EnumContext, enumContext);
         enumContext.stbDaReportData = &stbDaReportData;
@@ -718,8 +720,8 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
         case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR :{ allocatorType = "KORL_MEMORY_ALLOCATOR_TYPE_LINEAR"; break; }
         case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{ allocatorType = "KORL_MEMORY_ALLOCATOR_TYPE_GENERAL"; break; }
         }
-        korl_log_noMeta(INFO, "║ %hs {\"%ws\", heaps: %llu, allocations: %llu}"
-                       ,allocatorType, allocatorMeta->name, heapMetaEnd - heapMeta, allocationMetaEnd - allocationMeta);
+        korl_log_noMeta(INFO, "║ %hs {\"%ws\", heaps: %llu, allocations: %llu, flags: 0x%X}"
+                       ,allocatorType, allocatorMeta->name, heapMetaEnd - heapMeta, allocationMetaEnd - allocationMeta, allocatorMeta->flags);
         for(const _Korl_Memory_ReportMeta_Heap* h = heapMeta; h < heapMetaEnd; h++)
         {
             korl_log_noMeta(INFO, "║ heap[%llu]: [0x%p ~ 0x%p]", h - heapMeta, h->virtualAddressStart, h->virtualAddressEnd);
@@ -731,11 +733,15 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
                 const void*const allocAddressEnd = KORL_C_CAST(u8*, ha->allocationAddress) + ha->meta.bytes;
                 const bool lastHeapAllocation =   ha >= allocationMetaEnd - 1
                                                || (ha+1)->allocationAddress >= h->virtualAddressEnd;
-                korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i"
+                korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i, %ws"
                                ,lastHeapAllocation ? L"└" : L"├"
                                ,ha->allocationAddress, allocAddressEnd
                                ,ha->meta.bytes
-                               ,ha->meta.file, ha->meta.line);
+                               ,ha->meta.file, ha->meta.line
+                               ,   allocatorMeta->allocatorType == KORL_MEMORY_ALLOCATOR_TYPE_LINEAR 
+                                && 0 == (allocatorMeta->flags & KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME)
+                                ? ha->meta.defragmented ? L"managed" : L"UNMANAGED" 
+                                : L"");
             }
         }
         korl_assert(ha == allocationMetaEnd);// we should have enumerated over all allocations for this allocator

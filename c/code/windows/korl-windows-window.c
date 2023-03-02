@@ -885,6 +885,7 @@ korl_internal void korl_windows_window_loop(void)
             //@TODO: defragment all modules which are going to be contained in the memory state
             korl_command_defragment(context->allocatorHandleStack);
             _korl_windows_window_defragment(context->allocatorHandleStack);
+            korl_gfx_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
         korl_time_probeStart(memory_state_create);{
             korl_free(context->allocatorHandle, context->memoryStateLast);

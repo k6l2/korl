@@ -71,16 +71,18 @@ typedef struct _Korl_Gfx_FontGlyphInstance
 } _Korl_Gfx_FontGlyphInstance;
 typedef struct _Korl_Gfx_FontGlyphPage
 {
-    u16                               packRowsSize;
-    u16                               packRowsCapacity;
-    _Korl_Gfx_FontGlyphBitmapPackRow* packRows;// emplaced after `data` in memory
-    Korl_Resource_Handle resourceHandleTexture;
-    Korl_Resource_Handle resourceHandleSsboGlyphMeshVertices;
-    u16 dataSquareSize;
-    u8* data;//1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize; currently being stored in contiguously memory immediately following this struct
-    bool textureOutOfDate;// when this flag is set, it means that there are pending changes to `data` which have yet to be uploaded to the GPU
+    u16                        packRowsSize;
+    u16                        packRowsCapacity;
+    u32                        byteOffsetPackRows;// _Korl_Gfx_FontGlyphBitmapPackRow*; emplaced after `data` in memory
+    Korl_Resource_Handle       resourceHandleTexture;
+    Korl_Resource_Handle       resourceHandleSsboGlyphMeshVertices;
+    u16                        dataSquareSize;
+    u32                        byteOffsetData;//u8*; 1-channel, Alpha8 format, with an array size of dataSquareSize*dataSquareSize; currently being stored in contiguously memory immediately following this struct
+    bool                       textureOutOfDate;// when this flag is set, it means that there are pending changes to `data` which have yet to be uploaded to the GPU
     _Korl_Gfx_FontGlyphVertex* stbDaGlyphMeshVertices;
 } _Korl_Gfx_FontGlyphPage;
+#define _korl_gfx_fontGlyphPage_getData(pFontGlyphPage) (KORL_C_CAST(u8*, (pFontGlyphPage)) + (pFontGlyphPage)->byteOffsetData)
+#define _korl_gfx_fontGlyphPage_getPackRows(pFontGlyphPage) KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, (pFontGlyphPage)) + (pFontGlyphPage)->byteOffsetPackRows)
 typedef struct _Korl_Gfx_FontCache
 {
     stbtt_fontinfo fontInfo;
@@ -93,19 +95,21 @@ typedef struct _Korl_Gfx_FontCache
     f32 pixelHeight;
     f32 pixelOutlineThickness;// if this is 0.f, then an outline has not yet been cached in this fontCache glyphPageList
     //KORL-PERFORMANCE-000-000-000: (minor) convert pointers to contiguous memory into offsets to save some space
-    wchar_t* fontAssetName;
+    u32 byteOffsetFontAssetNameU16;// wchar_t*
     _Korl_Gfx_FontBakedGlyphMap* stbHmGlyphs;
-    _Korl_Gfx_FontGlyphPage* glyphPage;
+    u32 byteOffsetGlyphPage;// _Korl_Gfx_FontGlyphPage*
 } _Korl_Gfx_FontCache;
+#define _korl_gfx_fontCache_getFontAssetName(pFontCache) KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetFontAssetNameU16)
+#define _korl_gfx_fontCache_getGlyphPage(pFontCache) KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetGlyphPage)
 typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    _Korl_Gfx_FontCache** stbDaFontCaches;
-    u8 nextResourceSalt;
-    Korl_StringPool stringPool;// used for Resource database strings
-    Korl_Math_V2u32 surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
-    Korl_Gfx_Camera currentCameraState;
+    _Korl_Gfx_FontCache**       stbDaFontCaches;
+    u8                          nextResourceSalt;
+    Korl_StringPool             stringPool;// used for Resource database strings
+    Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
+    Korl_Gfx_Camera             currentCameraState;
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {
@@ -113,7 +117,7 @@ typedef struct _Korl_Gfx_Text_Line
     Korl_Math_Aabb2f32 modelAabb;
     Korl_Math_V4f32 color;
 } _Korl_Gfx_Text_Line;
-korl_global_variable _Korl_Gfx_Context _korl_gfx_context;
+korl_global_variable _Korl_Gfx_Context* _korl_gfx_context;
 korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyphPage, const int sizeX, const int sizeY, 
                                               u16* out_x0, u16* out_y0, u16* out_x1, u16* out_y1)
 {
@@ -125,17 +129,18 @@ korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyp
     u16 packRowSizeY = KORL_U16_MAX;
     for(u16 p = 0; p < glyphPage->packRowsSize; p++)
     {
-        if(glyphPage->packRows[p].offsetX > glyphPage->dataSquareSize)
+        _Korl_Gfx_FontGlyphBitmapPackRow*const packRow = _korl_gfx_fontGlyphPage_getPackRows(glyphPage) + p;
+        if(packRow->offsetX > glyphPage->dataSquareSize)
             continue;
         const u16 remainingSpaceX = glyphPage->dataSquareSize 
-                                  - glyphPage->packRows[p].offsetX;
-        if(    glyphPage->packRows[p].sizeY < sizeY + 2*PACK_ROW_PADDING 
-            || remainingSpaceX              < sizeX + 2*PACK_ROW_PADDING)
+                                  - packRow->offsetX;
+        if(    packRow->sizeY  < sizeY + 2*PACK_ROW_PADDING 
+            || remainingSpaceX < sizeX + 2*PACK_ROW_PADDING)
             continue;
-        if(packRowSizeY > glyphPage->packRows[p].sizeY)
+        if(packRowSizeY > packRow->sizeY)
         {
             packRowIndex = p;
-            packRowSizeY = glyphPage->packRows[p].sizeY;
+            packRowSizeY = packRow->sizeY;
         }
     }
     /* if we couldn't find a pack row, we need to allocate a new one */
@@ -145,32 +150,33 @@ korl_internal void _korl_gfx_glyphPage_insert(_Korl_Gfx_FontGlyphPage*const glyp
         if(glyphPage->packRowsSize == 0)
             korl_assert(sizeY + 2*PACK_ROW_PADDING <= glyphPage->dataSquareSize);
         else
-            korl_assert(sizeY + 2*PACK_ROW_PADDING + glyphPage->packRows[glyphPage->packRowsSize - 1].sizeY <= glyphPage->dataSquareSize);
+            korl_assert(sizeY + 2*PACK_ROW_PADDING + _korl_gfx_fontGlyphPage_getPackRows(glyphPage)[glyphPage->packRowsSize - 1].sizeY <= glyphPage->dataSquareSize);
         korl_assert(glyphPage->packRowsSize < glyphPage->packRowsCapacity);
         packRowIndex = glyphPage->packRowsSize++;
-        glyphPage->packRows[packRowIndex].sizeY   = korl_checkCast_i$_to_u16(sizeY + 2*PACK_ROW_PADDING);
-        glyphPage->packRows[packRowIndex].offsetX = PACK_ROW_PADDING;
+        _Korl_Gfx_FontGlyphBitmapPackRow*const packRow = _korl_gfx_fontGlyphPage_getPackRows(glyphPage) + packRowIndex;
+        packRow->sizeY   = korl_checkCast_i$_to_u16(sizeY + 2*PACK_ROW_PADDING);
+        packRow->offsetX = PACK_ROW_PADDING;
         if(packRowIndex > 0)
-            glyphPage->packRows[packRowIndex].offsetY = glyphPage->packRows[packRowIndex - 1].offsetY 
-                                                      + glyphPage->packRows[packRowIndex - 1].sizeY;
+            packRow->offsetY =   (packRow - 1)->offsetY 
+                               + (packRow - 1)->sizeY;
         else
-            glyphPage->packRows[packRowIndex].offsetY = PACK_ROW_PADDING;
+            packRow->offsetY = PACK_ROW_PADDING;
     }
     korl_assert(packRowIndex < glyphPage->packRowsSize);
     /* At this point, we should be guaranteed to have a pack row which 
         can fit our SDF glyph!  This means we can generate all of the 
         metrics related to the baked form of this glyph: */
-    *out_x0 = glyphPage->packRows[packRowIndex].offsetX;
-    *out_y0 = glyphPage->packRows[packRowIndex].offsetY;
+    *out_x0 = _korl_gfx_fontGlyphPage_getPackRows(glyphPage)[packRowIndex].offsetX;
+    *out_y0 = _korl_gfx_fontGlyphPage_getPackRows(glyphPage)[packRowIndex].offsetY;
     *out_x1 = korl_checkCast_i$_to_u16(*out_x0 + sizeX);
     *out_y1 = korl_checkCast_i$_to_u16(*out_y0 + sizeY);
     /* update the pack row metrics */
-    glyphPage->packRows[packRowIndex].offsetX += korl_checkCast_i$_to_u16(sizeX + PACK_ROW_PADDING);
+    _korl_gfx_fontGlyphPage_getPackRows(glyphPage)[packRowIndex].offsetX += korl_checkCast_i$_to_u16(sizeX + PACK_ROW_PADDING);
 }
 korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl_Gfx_FontCache* fontCache, u32 codePoint)
 {
-    _Korl_Gfx_Context*const gfxContext      = &_korl_gfx_context;
-    _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
+    _Korl_Gfx_Context*const gfxContext      = _korl_gfx_context;
+    _Korl_Gfx_FontGlyphPage*const glyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
     /* iterate over the glyph page codepoints to see if any match codePoint */
     _Korl_Gfx_FontBakedGlyph* glyph = NULL;
     const ptrdiff_t glyphMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(gfxContext->allocatorHandle), fontCache->stbHmGlyphs, codePoint);
@@ -201,18 +207,18 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
                 stbtt_GetGlyphBitmapBox(&(fontCache->fontInfo), glyphIndex, fontCache->fontScale, fontCache->fontScale, &ix0, &iy0, &ix1, &iy1);
                 const int w = ix1 - ix0;
                 const int h = iy1 - iy0;
-                _korl_gfx_glyphPage_insert(glyphPage, w, h, 
-                                           &glyph->bbox.x0, 
-                                           &glyph->bbox.y0, 
-                                           &glyph->bbox.x1, 
-                                           &glyph->bbox.y1);
+                _korl_gfx_glyphPage_insert(glyphPage, w, h
+                                          ,&glyph->bbox.x0
+                                          ,&glyph->bbox.y0
+                                          ,&glyph->bbox.x1
+                                          ,&glyph->bbox.y1);
                 glyph->bbox.offsetX = glyph->bearingLeft;
                 glyph->bbox.offsetY = -KORL_C_CAST(f32, iy1);
                 /* actually write the glyph bitmap in the glyph page data */
-                stbtt_MakeGlyphBitmap(&(fontCache->fontInfo), 
-                                      glyphPage->data + (glyph->bbox.y0*glyphPage->dataSquareSize + glyph->bbox.x0), 
-                                      w, h, glyphPage->dataSquareSize, 
-                                      fontCache->fontScale, fontCache->fontScale, glyphIndex);
+                stbtt_MakeGlyphBitmap(&(fontCache->fontInfo)
+                                     ,_korl_gfx_fontGlyphPage_getData(glyphPage) + (glyph->bbox.y0*glyphPage->dataSquareSize + glyph->bbox.x0)
+                                     ,w, h, glyphPage->dataSquareSize
+                                     ,fontCache->fontScale, fontCache->fontScale, glyphIndex);
                 /* create the glyph mesh vertices & indices, and append them to 
                     the appropriate stb_ds array to be uploaded to the GPU later */
                 const f32 x0 = 0.f/*start glyph at baseline cursor origin*/ + glyph->bbox.offsetX;
@@ -267,7 +273,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
                     for(int x = 0; x < w; x++)
                     {
                         const int pageX = glyph->bbox.x0 + x;
-                        if(fontCache->glyphPage->data[pageY*fontCache->glyphPage->dataSquareSize + pageX])
+                        if(_korl_gfx_fontGlyphPage_getData(_korl_gfx_fontCache_getGlyphPage(fontCache))[pageY*_korl_gfx_fontCache_getGlyphPage(fontCache)->dataSquareSize + pageX])
                             outlineBuffer[(outlineOffset+y)*outlineW + (outlineOffset+x)] = 1;
                     }
                 }
@@ -309,7 +315,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
                 for(int y = 0; y < outlineH; y++)
                     for(int x = 0; x < outlineW; x++)
                     {
-                        u8*const dataPixel = glyphPage->data + ((glyph->bboxOutline.y0 + y)*glyphPage->dataSquareSize + glyph->bboxOutline.x0 + x);
+                        u8*const dataPixel = _korl_gfx_fontGlyphPage_getData(glyphPage) + ((glyph->bboxOutline.y0 + y)*glyphPage->dataSquareSize + glyph->bboxOutline.x0 + x);
                         *dataPixel = outlineBuffer[y*outlineW + x];
                     }
                 /* free temporary resources */
@@ -363,7 +369,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
 #endif
             }
         }//if(!glyph->isEmpty)
-        fontCache->glyphPage->textureOutOfDate = true;
+        _korl_gfx_fontCache_getGlyphPage(fontCache)->textureOutOfDate = true;
     }//if(!glyph)// create new glyph code
     // at this point, we should have a valid glyph //
     korl_assert(glyph);
@@ -371,7 +377,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
 }
 korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetNameFont, f32 textPixelHeight, f32 textPixelOutline)
 {
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    _Korl_Gfx_Context*const context = _korl_gfx_context;
     /* get the font asset */
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetDataFont);
     const Korl_AssetCache_Get_Result resultAssetCacheGetFont = korl_assetCache_get(utf16AssetNameFont.data, KORL_ASSETCACHE_GET_FLAGS_NONE, &assetDataFont);
@@ -543,7 +549,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
     for(; existingFontCacheIndex < arrlenu(context->stbDaFontCaches); existingFontCacheIndex++)
         // find the font cache with a matching font asset name AND render 
         //  parameters such as font pixel height, etc... //
-        if(   0 == korl_string_compareUtf16(utf16AssetNameFont.data, context->stbDaFontCaches[existingFontCacheIndex]->fontAssetName) 
+        if(   0 == korl_string_compareUtf16(utf16AssetNameFont.data, _korl_gfx_fontCache_getFontAssetName(context->stbDaFontCaches[existingFontCacheIndex])) 
            && context->stbDaFontCaches[existingFontCacheIndex]->pixelHeight == textPixelHeight 
            && (   context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
                || context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == textPixelOutline))
@@ -576,18 +582,18 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
 #if KORL_DEBUG
         korl_assert(korl_memory_isNull(*newFontCache, fontCacheRequiredBytes));
 #endif//KORL_DEBUG
-        fontCache->pixelHeight             = textPixelHeight;
-        fontCache->pixelOutlineThickness   = textPixelOutline;
-        fontCache->fontAssetName           = KORL_C_CAST(wchar_t*, fontCache + 1);
-        fontCache->glyphPage               = KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, fontCache->fontAssetName) + assetNameFontBufferBytes);
+        fontCache->pixelHeight                = textPixelHeight;
+        fontCache->pixelOutlineThickness      = textPixelOutline;
+        fontCache->byteOffsetFontAssetNameU16 = sizeof(*fontCache);
+        fontCache->byteOffsetGlyphPage        = sizeof(*fontCache) + korl_checkCast_u$_to_u32(assetNameFontBufferBytes);
         mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandle), fontCache->stbHmGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_FontBakedGlyph));
-        _Korl_Gfx_FontGlyphPage*const glyphPage = fontCache->glyphPage;
-        glyphPage->packRowsCapacity = PACK_ROWS_CAPACITY;
-        glyphPage->dataSquareSize   = GLYPH_PAGE_SQUARE_SIZE;
-        glyphPage->data             = KORL_C_CAST(u8*, glyphPage + 1/*pointer arithmetic trick to skip to the address following the glyphPage*/);
-        glyphPage->packRows         = KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, glyphPage->data + GLYPH_PAGE_SQUARE_SIZE*GLYPH_PAGE_SQUARE_SIZE));
+        _Korl_Gfx_FontGlyphPage*const glyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
+        glyphPage->packRowsCapacity   = PACK_ROWS_CAPACITY;
+        glyphPage->dataSquareSize     = GLYPH_PAGE_SQUARE_SIZE;
+        glyphPage->byteOffsetData     = sizeof(*glyphPage);
+        glyphPage->byteOffsetPackRows = sizeof(*glyphPage) + (GLYPH_PAGE_SQUARE_SIZE * GLYPH_PAGE_SQUARE_SIZE);
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
-        korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_string_copyUtf16(utf16AssetNameFont.data, (au16){assetNameFontBufferSize, fontCache->fontAssetName}));
+        korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_string_copyUtf16(utf16AssetNameFont.data, (au16){assetNameFontBufferSize, _korl_gfx_fontCache_getFontAssetName(fontCache)}));
         /* initialize the font info using the raw font asset data */
         korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
         fontCache->fontScale = stbtt_ScaleForPixelHeight(&(fontCache->fontInfo), fontCache->pixelHeight);
@@ -619,7 +625,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
  * , top-left ] */
 korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 {
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    _Korl_Gfx_Context*const context = _korl_gfx_context;
     if(!batch->_assetNameFont || batch->_fontTextureHandle)
         return;
     _Korl_Gfx_FontCache* fontCache = _korl_gfx_matchFontCache((acu16){.data = batch->_assetNameFont
@@ -628,7 +634,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
                                                              ,batch->_textPixelOutline);
     if(!fontCache)
         return;
-    _Korl_Gfx_FontGlyphPage*const fontGlyphPage = fontCache->glyphPage;
+    _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
     if(batch->_textVisibleCharacterCount)
         goto done_setFontTextureHandle;
     /* iterate over each character in the batch text, and update the 
@@ -695,30 +701,31 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
 }
 korl_internal Korl_Math_M4f32 _korl_gfx_camera_projection(const Korl_Gfx_Camera*const context)
 {
+    _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
     switch(context->type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
-        const f32 viewportWidthOverHeight = _korl_gfx_context.surfaceSize.y == 0 
+        const f32 viewportWidthOverHeight = gfxContext->surfaceSize.y == 0 
             ? 1.f 
-            :  KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x)
-             / KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+            :  KORL_C_CAST(f32, gfxContext->surfaceSize.x)
+             / KORL_C_CAST(f32, gfxContext->surfaceSize.y);
         return korl_math_m4f32_projectionFov(context->subCamera.perspective.fovHorizonDegrees
                                             ,viewportWidthOverHeight
                                             ,context->subCamera.perspective.clipNear
                                             ,context->subCamera.perspective.clipFar);}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
-        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x);
-        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
-        const f32 right  = KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x) - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x);
-        const f32 top    = KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y) - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, gfxContext->surfaceSize.x);
+        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, gfxContext->surfaceSize.y);
+        const f32 right  = KORL_C_CAST(f32, gfxContext->surfaceSize.x) - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, gfxContext->surfaceSize.x);
+        const f32 top    = KORL_C_CAST(f32, gfxContext->surfaceSize.y) - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, gfxContext->surfaceSize.y);
         const f32 far    = -context->subCamera.orthographic.clipDepth;
         const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
         return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-        const f32 viewportWidthOverHeight = _korl_gfx_context.surfaceSize.y == 0 
+        const f32 viewportWidthOverHeight = gfxContext->surfaceSize.y == 0 
             ? 1.f 
-            :  KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x) 
-             / KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+            :  KORL_C_CAST(f32, gfxContext->surfaceSize.x) 
+             / KORL_C_CAST(f32, gfxContext->surfaceSize.y);
         /* w / fixedHeight == windowAspectRatio */
         const f32 width  = context->subCamera.orthographic.fixedHeight * viewportWidthOverHeight;
         const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*width;
@@ -739,29 +746,26 @@ korl_internal Korl_Math_M4f32 _korl_gfx_camera_view(const Korl_Gfx_Camera*const 
 }
 korl_internal void korl_gfx_initialize(void)
 {
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
-    korl_memory_zero(context, sizeof(*context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(8);
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL
-                                                           ,L"korl-gfx"
-                                                           ,KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE
-                                                           ,&heapCreateInfo);
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaFontCaches, 16);
-    context->stringPool = korl_stringPool_create(context->allocatorHandle);
+    const Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-gfx", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
+    _korl_gfx_context = korl_allocate(allocator, sizeof(*_korl_gfx_context));
+    _korl_gfx_context->allocatorHandle = allocator;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gfx_context->allocatorHandle), _korl_gfx_context->stbDaFontCaches, 16);
+    _korl_gfx_context->stringPool = korl_stringPool_create(_korl_gfx_context->allocatorHandle);
 }
 korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size)
 {
-    _korl_gfx_context.surfaceSize = size;
+    _korl_gfx_context->surfaceSize = size;
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
-    _Korl_Gfx_Context*const context = &_korl_gfx_context;
+    _Korl_Gfx_Context*const context = _korl_gfx_context;
     for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
     {
         _Korl_Gfx_FontCache*const     fontCache     = context->stbDaFontCaches[fc];
-        _Korl_Gfx_FontGlyphPage*const fontGlyphPage = fontCache->glyphPage;
-        if(!fontCache->glyphPage->textureOutOfDate)
+        _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
+        if(!fontGlyphPage->textureOutOfDate)
             continue;
         /* upload the glyph data to the GPU & obtain texture handle */
 #if KORL_DEBUG && _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS
@@ -822,7 +826,7 @@ korl_internal void korl_gfx_flushGlyphPages(void)
         for(u$ y = 0; y < fontGlyphPage->dataSquareSize; y++)
             for(u$ x = 0; x < fontGlyphPage->dataSquareSize; x++)
                 /* store a pure white pixel with the alpha component set to the stbtt font bitmap value */
-                tempImageBuffer[y*fontGlyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = fontGlyphPage->data[y*fontGlyphPage->dataSquareSize + x]};
+                tempImageBuffer[y*fontGlyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = _korl_gfx_fontGlyphPage_getData(fontGlyphPage)[y*fontGlyphPage->dataSquareSize + x]};
         // upload the image buffer to graphics device texture //
         korl_assert(fontGlyphPage->resourceHandleTexture);
         korl_resource_update(fontGlyphPage->resourceHandleTexture, tempImageBuffer, tempImageBufferSize, 0/*destinationByteOffset*/);
@@ -1014,9 +1018,9 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     vertexData.instancePositionsStride = 2*sizeof(f32);
     vertexData.instanceUintStride      = sizeof(u32);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
-    samplers.resourceHandleTexture = fontCache->glyphPage->resourceHandleTexture;
+    samplers.resourceHandleTexture = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
-    storageBuffers.resourceHandleVertex = fontCache->glyphPage->resourceHandleSsboGlyphMeshVertices;
+    storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
     features.enableBlend = true;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
@@ -1217,6 +1221,7 @@ korl_internal KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(korl_gfx_camer
 }
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
+    _Korl_Gfx_Context*const context = _korl_gfx_context;
     korl_time_probeStart(useCamera);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Scissor, scissor);
     switch(camera._scissorType)
@@ -1226,10 +1231,10 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
         korl_assert(camera._viewportScissorPosition.y >= 0 && camera._viewportScissorPosition.y <= 1);
         korl_assert(camera._viewportScissorSize.x >= 0 && camera._viewportScissorSize.x <= 1);
         korl_assert(camera._viewportScissorSize.y >= 0 && camera._viewportScissorSize.y <= 1);
-        scissor.x      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.x * _korl_gfx_context.surfaceSize.x);
-        scissor.y      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.y * _korl_gfx_context.surfaceSize.y);
-        scissor.width  = korl_math_round_f32_to_u32(camera._viewportScissorSize.x * _korl_gfx_context.surfaceSize.x);
-        scissor.height = korl_math_round_f32_to_u32(camera._viewportScissorSize.y * _korl_gfx_context.surfaceSize.y);
+        scissor.x      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.x * context->surfaceSize.x);
+        scissor.y      = korl_math_round_f32_to_u32(camera._viewportScissorPosition.y * context->surfaceSize.y);
+        scissor.width  = korl_math_round_f32_to_u32(camera._viewportScissorSize.x * context->surfaceSize.x);
+        scissor.height = korl_math_round_f32_to_u32(camera._viewportScissorSize.y * context->surfaceSize.y);
         break;}
     case KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE:{
         korl_assert(camera._viewportScissorPosition.x >= 0);
@@ -1272,12 +1277,12 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
     drawState.view       = &view;
     drawState.projection = &projection;
     korl_vulkan_setDrawState(&drawState);
-    _korl_gfx_context.currentCameraState = camera;
+    context->currentCameraState = camera;
     korl_time_probeStop(useCamera);
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_getCurrent(korl_gfx_camera_getCurrent)
 {
-    return _korl_gfx_context.currentCameraState;
+    return _korl_gfx_context->currentCameraState;
 }
 korl_internal KORL_FUNCTION_korl_gfx_cameraSetScissor(korl_gfx_cameraSetScissor)
 {
@@ -1326,16 +1331,17 @@ korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoSetOriginAnchor(korl_gfx_cameraO
 }
 korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetSize)
 {
+    _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
     switch(context->type)
     {
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
-        return (Korl_Math_V2f32){KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x)
-                                ,KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y)};}
+        return (Korl_Math_V2f32){KORL_C_CAST(f32, gfxContext->surfaceSize.x)
+                                ,KORL_C_CAST(f32, gfxContext->surfaceSize.y)};}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-        const f32 viewportWidthOverHeight = _korl_gfx_context.surfaceSize.y == 0 
+        const f32 viewportWidthOverHeight = gfxContext->surfaceSize.y == 0 
             ? 1.f 
-            :   KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x) 
-              / KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y);
+            :   KORL_C_CAST(f32, gfxContext->surfaceSize.x) 
+              / KORL_C_CAST(f32, gfxContext->surfaceSize.y);
         return (Korl_Math_V2f32){context->subCamera.orthographic.fixedHeight*viewportWidthOverHeight// w / fixedHeight == windowAspectRatio
                                 ,context->subCamera.orthographic.fixedHeight};}
     default:{
@@ -1345,6 +1351,7 @@ korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetS
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_windowToWorld)
 {
+    _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
     Korl_Gfx_ResultRay3d result = {.position ={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}
                                   ,.direction={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}};
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
@@ -1373,8 +1380,8 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_window
     /* viewport-space => normalized-device-space */
     //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
     const Korl_Math_V2f32 eyeRayNds = 
-        {  2*v2f32WindowPos.x / _korl_gfx_context.surfaceSize.x - 1
-        , -2*v2f32WindowPos.y / _korl_gfx_context.surfaceSize.y + 1 };
+        {  2*v2f32WindowPos.x / gfxContext->surfaceSize.x - 1
+        , -2*v2f32WindowPos.y / gfxContext->surfaceSize.y + 1 };
     /* normalized-device-space => homogeneous-clip-space */
     /* arbitrarily set the eye ray direction vector as far to the "back" of the 
         homogeneous clip space box; we set the Z coordinate to 0, since Vulkan 
@@ -1411,13 +1418,14 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_window
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldToWindow)
 {
+    _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
     const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
     //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
     const Korl_Math_Aabb2f32 viewport     = {.min={0,0}
-                                            ,.max={KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.x)
-                                                  ,KORL_C_CAST(f32, _korl_gfx_context.surfaceSize.y)}};
+                                            ,.max={KORL_C_CAST(f32, gfxContext->surfaceSize.x)
+                                                  ,KORL_C_CAST(f32, gfxContext->surfaceSize.y)}};
     const Korl_Math_V2f32    viewportSize = korl_math_aabb2f32_size(viewport);
     /* transform from world=>camera=>clip space */
     const Korl_Math_V4f32 worldPoint       = {worldPosition.x, worldPosition.y, worldPosition.z, 1};
@@ -1877,8 +1885,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batchAddLine(korl_gfx_batchAddLine)
     const u$ newTotalBytes = sizeof(Korl_Gfx_Batch)
                            + newVertexCount * _KORL_GFX_POSITION_DIMENSIONS*sizeof(f32)
                            + newVertexCount * sizeof(Korl_Vulkan_Color4u8);
-    (*pContext) = KORL_C_CAST(Korl_Gfx_Batch*, 
-        korl_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
+    (*pContext) = KORL_C_CAST(Korl_Gfx_Batch*, korl_reallocate((*pContext)->allocatorHandle, *pContext, newTotalBytes));
     void*const previousVertexColors = (*pContext)->_vertexColors;
     korl_assert(*pContext);
     (*pContext)->_vertexPositions = KORL_C_CAST(f32*                 , (*pContext) + 1);
@@ -1942,6 +1949,45 @@ korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSet
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
 }
+korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
+{
+    Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 16);
+    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches, _korl_gfx_context);
+    const _Korl_Gfx_FontCache*const*const fontCachesEnd = _korl_gfx_context->stbDaFontCaches + arrlen(_korl_gfx_context->stbDaFontCaches);
+    for(const _Korl_Gfx_FontCache*const* fontCache = _korl_gfx_context->stbDaFontCaches; fontCache < fontCachesEnd; fontCache++)
+    {
+        const u$ fontCacheIndex = fontCache - _korl_gfx_context->stbDaFontCaches;
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches[fontCacheIndex], _korl_gfx_context->stbDaFontCaches);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_fontCache_getGlyphPage(_korl_gfx_context->stbDaFontCaches[fontCacheIndex])->stbDaGlyphMeshVertices, _korl_gfx_context->stbDaFontCaches[fontCacheIndex]);
+        /*@TODO: oh NO, yet another fucking problem; so we're in a situation here where a stb_ds struct (stbds_hash_index to be exact) 
+            is storing pointers that point to addresses relative to the struct itself, just like how korl-gfx structs were before this 
+            exact commit; I have these options:
+            - go into stb_ds and refactor all their code (just like how I just did with korl-gfx) such that their structs store 
+              byte offsets which can be used to derive specific addresses within the allocation on the fly
+              - I really do _not_ feel like doing this, tbh...
+              - and where does it end?  am I going to go in and refactor _EVERY_ 3rd-party library's dynamically allocated structs each time this happens?
+            - add a stack-callback mechanism to DefragmentPointer, so the user can process moved structs arbitrarily given the # of 
+              bytes the struct moved in memory
+              - so, for example, we can make a korl-stb-ds callback function specifically for hash maps which will offset the 
+                stbds_hash_index pointers by the byte offset when defragment occurs
+              - then, this callback can be automatically passed when KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD is called, 
+                so the user doesn't have to worry about anything */
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches[fontCacheIndex]->stbHmGlyphs, _korl_gfx_context->stbDaFontCaches[fontCacheIndex]);
+    }
+    korl_stringPool_collectDefragmentPointers(&_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gfx_context);
+    korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
+}
+korl_internal void korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+{
+    //@TODO
+}
+korl_internal bool korl_gfx_memoryStateRead(u8* memoryState)
+{
+    //@TODO
+}
+#if 0//@TODO: delete
 korl_internal void korl_gfx_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
@@ -1957,4 +2003,5 @@ korl_internal bool korl_gfx_saveStateRead(HANDLE hFile)
     }
     return true;
 }
+#endif
 #undef _LOCAL_STRING_POOL_POINTER
