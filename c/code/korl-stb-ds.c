@@ -86,3 +86,10 @@ korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArr
 #define STB_DS_IMPLEMENTATION
 #define STBDS_ASSERT(x) korl_assert(x)
 #include "stb/stb_ds.h"
+/** this _must_ be placed _below_ the stb_ds implementation, as we need the 
+ * `stbds_hash_index` struct definition */
+korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(korl_stb_ds_onAllocationMovedCallback_hashMap_hashTable)
+{
+    stbds_hash_index*const stbDsHashIndex = KORL_C_CAST(stbds_hash_index*, allocationAddress);
+    stbDsHashIndex->storage = KORL_C_CAST(stbds_hash_bucket*, KORL_C_CAST(i$, stbDsHashIndex->storage) + byteOffsetFromOldAddress);
+}

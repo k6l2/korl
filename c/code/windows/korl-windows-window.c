@@ -535,8 +535,7 @@ korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle s
 {
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
-    if(_korl_windows_window_context.memoryStateLast)
-        mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){&_korl_windows_window_context.memoryStateLast, 0}));
+    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_windows_window_context.memoryStateLast);
     korl_stringPool_collectDefragmentPointers(&_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, NULL/*defragPointerIndexParent*/);
     korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }

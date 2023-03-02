@@ -1953,28 +1953,15 @@ korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocato
 {
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 16);
-    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);
     KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches, _korl_gfx_context);
     const _Korl_Gfx_FontCache*const*const fontCachesEnd = _korl_gfx_context->stbDaFontCaches + arrlen(_korl_gfx_context->stbDaFontCaches);
     for(const _Korl_Gfx_FontCache*const* fontCache = _korl_gfx_context->stbDaFontCaches; fontCache < fontCachesEnd; fontCache++)
     {
-        const u$ fontCacheIndex = fontCache - _korl_gfx_context->stbDaFontCaches;
-        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches[fontCacheIndex], _korl_gfx_context->stbDaFontCaches);
-        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_fontCache_getGlyphPage(_korl_gfx_context->stbDaFontCaches[fontCacheIndex])->stbDaGlyphMeshVertices, _korl_gfx_context->stbDaFontCaches[fontCacheIndex]);
-        /*@TODO: oh NO, yet another fucking problem; so we're in a situation here where a stb_ds struct (stbds_hash_index to be exact) 
-            is storing pointers that point to addresses relative to the struct itself, just like how korl-gfx structs were before this 
-            exact commit; I have these options:
-            - go into stb_ds and refactor all their code (just like how I just did with korl-gfx) such that their structs store 
-              byte offsets which can be used to derive specific addresses within the allocation on the fly
-              - I really do _not_ feel like doing this, tbh...
-              - and where does it end?  am I going to go in and refactor _EVERY_ 3rd-party library's dynamically allocated structs each time this happens?
-            - add a stack-callback mechanism to DefragmentPointer, so the user can process moved structs arbitrarily given the # of 
-              bytes the struct moved in memory
-              - so, for example, we can make a korl-stb-ds callback function specifically for hash maps which will offset the 
-                stbds_hash_index pointers by the byte offset when defragment occurs
-              - then, this callback can be automatically passed when KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD is called, 
-                so the user doesn't have to worry about anything */
-        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches[fontCacheIndex]->stbHmGlyphs, _korl_gfx_context->stbDaFontCaches[fontCacheIndex]);
+        _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(*fontCache);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD            (stackAllocator, stbDaDefragmentPointers, *fontCache                           , _korl_gfx_context->stbDaFontCaches);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD  (stackAllocator, stbDaDefragmentPointers, fontGlyphPage->stbDaGlyphMeshVertices, *fontCache);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, (*fontCache)->stbHmGlyphs            , *fontCache);
     }
     korl_stringPool_collectDefragmentPointers(&_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gfx_context);
     korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);

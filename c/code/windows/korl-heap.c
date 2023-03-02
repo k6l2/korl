@@ -4,6 +4,7 @@
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include "korl-stb-ds.h"
+#include "korl-checkCast.h"
 #define _KORL_HEAP_BYTE_PATTERN_SENTINEL  0x5A
 #define _KORL_HEAP_BYTE_PATTERN_FREE      0xA5
 #define _KORL_HEAP_SENTINEL_PADDING_BYTES 64
@@ -1895,6 +1896,12 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         - allocate a stb_ds hash-map and create a void**(child)=>DefragmentPointer*(parent) map
             fuck... there is a problem, since korl-stb-ds _only_ supports Korl_Memory_AllocatorHandle values for the memory context!
             for now, I will just modify this API to require the stack allocator's Korl_Memory_AllocatorHandle as well... */
+    /* oh NO, yet another fucking problem; so we're in a situation here where a stb_ds struct (stbds_hash_index to be exact) 
+        is storing pointers that point to addresses relative to the struct itself, just like how korl-gfx structs were before this 
+        exact commit; to mitigate this issue, I am adding a stack-callback mechanism to DefragmentPointer, allowing the user to 
+        perform custom actions on newly-moved allocations, such as manually offsetting a pointer to memory within the same allocation; 
+        although honestly, going forward I am going to enforce a policy of _no_ allocation-local pointers stored in structs, in favor 
+        of byte offsets which can be used to derive the pointers at run-time, at least for my own code */
     /* create a copy of defragmentPointers that we can shuffle, allowing the `parent` pointers to remain valid - size(n) - O(n) memory_copy*/
     _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, NULL);
     for(u$ i = 0; i < defragmentPointersSize; i++)
@@ -1975,7 +1982,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                && allocation == _korl_heap_defragmentPointer_getAllocation(*defragmentPointersIterator->pDefragmentPointer))// we can only move allocations whose address can be reported back to the user via the allocationPointerArray
             {
                 korl_assert(allocationMeta->allocationMeta.bytes > 0);
-                allocationMeta->allocationMeta.defragmented = true;
+                allocationMeta->allocationMeta.defragmentState = KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_MANAGED;
                 if(unoccupiedBytes)// we can only move allocations which are preceded by non-zero unoccupiedBytes
                 {
                     /* before we copy/move the allocation back, we can update our grossBytes; this should have no effect on the proceding calculations */
@@ -2008,11 +2015,14 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                         /* this looks janky because it kinda is; we're literally offsetting the address of the child allocation pointer by a certain # of bytes, 
                             and the only way to do this is by casting the pointer to an integral datatype & operating on it, as far as I know... */
                         defragmentPointersIterator->children[i]->userAddressPointer = KORL_C_CAST(void**, KORL_C_CAST(u$, defragmentPointersIterator->children[i]->userAddressPointer) - unoccupiedBytes);
+                    /* if the user provided a callback function to this DefragmentPointer, we must call it now */
+                    if(defragmentPointersIterator->pDefragmentPointer->onAllocationMovedCallback)
+                        defragmentPointersIterator->pDefragmentPointer->onAllocationMovedCallback(allocation, -korl_checkCast_u$_to_i$(unoccupiedBytes));
                 }
                 defragmentPointersIterator++;
             }
             else
-                allocationMeta->allocationMeta.defragmented = false;
+                allocationMeta->allocationMeta.defragmentState = KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNMANAGED;
             /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations OR unused bytes */
             if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
             {

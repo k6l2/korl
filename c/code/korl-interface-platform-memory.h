@@ -38,56 +38,69 @@ typedef struct Korl_Heap_CreateInfo
     u32         heapDescriptorOffset_addressStart;
     u32         heapDescriptorOffset_addressEnd;
 } Korl_Heap_CreateInfo;
+typedef enum Korl_Memory_AllocationMeta_DefragmentState
+    {KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNKNOWN// defragment has not yet been called on the heap containing this allocation
+    ,KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_MANAGED// the user has properly passed this allocation as a DefragmentPointer to a call to defragment
+    ,KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNMANAGED// defragment has been called on the heap containing this allocation, but the user did _not_ add it to the DefragmentPointer manifest
+} Korl_Memory_AllocationMeta_DefragmentState;
 typedef struct Korl_Memory_AllocationMeta
 {
-    const wchar_t* file;
-    int            line;
+    const wchar_t*                             file;
+    int                                        line;
     /** The amount of actual memory used by the caller.  The grand total amount 
      * of memory used by an allocation will likely be the sum of the following:  
      * - the allocation meta data
      * - the actual memory used by the caller
      * - any additional padding required by the allocator (likely to round 
      *   everything up to the nearest page size) */
-    u$             bytes;
-    bool           defragmented;// raised if the user passes their userAddressPointer to this allocation to allocator defragment API; only shows the status of the last call to defragment
+    u$                                         bytes;
+    Korl_Memory_AllocationMeta_DefragmentState defragmentState;
 } Korl_Memory_AllocationMeta;
 #define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta, u$ grossBytes, u$ netBytes)
 #define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd)
-typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(fnSig_korl_heap_enumerateAllocationsCallback);
-typedef KORL_HEAP_ENUMERATE_CALLBACK            (fnSig_korl_heap_enumerateCallback);
+typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK       (fnSig_korl_heap_enumerateAllocationsCallback);
+typedef KORL_HEAP_ENUMERATE_CALLBACK                   (fnSig_korl_heap_enumerateCallback);
+#define KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(name)   void name(void* allocationAddress, i$ byteOffsetFromOldAddress)
+typedef KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK         (fnSig_korl_heap_onAllocationMovedCallback);
 typedef struct Korl_Heap_DefragmentPointer
 {
-    void** userAddressPointer;
-    i32    userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbDaFoos), -KORL_C_CAST(i32, sizeof(stbds_array_header))}` to `korl_heap_*_defragment`
-    void** userAddressPointerParent;// some allocations will themselves contain pointers to other allocations in the same heap; when a DefragmentPointer's userAddress is changed, all recursive children of it should be considered "stale"/dangling, since at that point the algorithm wont be able to update the pointer within the data struct that just moved if its child is also defragmented; the defragmentation algorithm needs to know this relationship so that it doesn't accidentally move a stale DefragmentPointer
+    void**                                     userAddressPointer;
+    i32                                        userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbDaFoos), -KORL_C_CAST(i32, sizeof(stbds_array_header))}` to `korl_heap_*_defragment`
+    void**                                     userAddressPointerParent;// some allocations will themselves contain pointers to other allocations in the same heap; when a DefragmentPointer's userAddress is changed, all recursive children of it should be considered "stale"/dangling, since at that point the algorithm wont be able to update the pointer within the data struct that just moved if its child is also defragmented; the defragmentation algorithm needs to know this relationship so that it doesn't accidentally move a stale DefragmentPointer
+    fnSig_korl_heap_onAllocationMovedCallback* onAllocationMovedCallback;// optional; if non-NULL, this function will be called the moment when `*userAddressPointer` changes during defragmentation; useful if you have a data structure that stores pointers, which are just addresses within the same allocation (offset from the allocation's root address)
 } Korl_Heap_DefragmentPointer;
+/** after testing the defragment API, I have found that it is _extremely_ 
+ * annoying checking for valid pointers, filling out the DefragmentPointer 
+ * struct, and pushing them onto the stb_ds array of DefragmentPointers; thus, 
+ * I have created a set of convenience macros to mitigate all this overhead: */
 #define KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocatorHandle, stbDaDefragmentPointers, allocation) \
     if(allocation)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(allocation)), 0, NULL}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(allocation)), 0, NULL, NULL}));\
     }
 #define KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stackAllocatorHandle, stbDaDefragmentPointers, allocation, allocationParent) \
     if(allocation)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(allocation)), 0, KORL_C_CAST(void**, &(allocationParent))}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(allocation)), 0, KORL_C_CAST(void**, &(allocationParent)), NULL}));\
     }
 #define KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocatorHandle, stbDaDefragmentPointers, stbDsArray, allocationParent) \
     if(stbDsArray)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsArray)), -KORL_C_CAST(i32, sizeof(stbds_array_header)), KORL_C_CAST(void**, &(allocationParent))}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsArray)), -KORL_C_CAST(i32, sizeof(stbds_array_header)), KORL_C_CAST(void**, &(allocationParent)), NULL}));\
     }
 #define KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocatorHandle, stbDaDefragmentPointers, stbDsHashMap, allocationParent) \
     if(stbDsHashMap)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsHashMap)), -KORL_C_CAST(i32, sizeof(stbds_array_header) + sizeof(*(stbDsHashMap))), KORL_C_CAST(void**, &(allocationParent))}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsHashMap)), -KORL_C_CAST(i32, sizeof(stbds_array_header) + sizeof(*(stbDsHashMap))), KORL_C_CAST(void**, &(allocationParent)), NULL}));\
         if(stbds_header((stbDsHashMap) - 1)->hash_table)\
         {\
             mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                     ,((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbds_header((stbDsHashMap) - 1)->hash_table), 0, KORL_C_CAST(void**, &(stbDsHashMap))}));\
+                     ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbds_header((stbDsHashMap) - 1)->hash_table), 0, KORL_C_CAST(void**, &(stbDsHashMap))\
+                                                                          ,korl_stb_ds_onAllocationMovedCallback_hashMap_hashTable}));\
         }\
     }
 /** As of right now, the smallest possible value for \c maxBytes for a linear 

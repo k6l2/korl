@@ -740,7 +740,11 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
                                ,ha->meta.file, ha->meta.line
                                ,   allocatorMeta->allocatorType == KORL_MEMORY_ALLOCATOR_TYPE_LINEAR 
                                 && 0 == (allocatorMeta->flags & KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME)
-                                ? ha->meta.defragmented ? L"managed" : L"UNMANAGED" 
+                                ? ha->meta.defragmentState == KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_MANAGED 
+                                  ? L"managed" 
+                                  : ha->meta.defragmentState == KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNMANAGED 
+                                    ? L"UNMANAGED" 
+                                    : L"new"
                                 : L"");
             }
         }

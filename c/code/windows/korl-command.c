@@ -168,9 +168,9 @@ korl_internal void korl_command_defragment(Korl_Memory_AllocatorHandle stackAllo
 {
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
-    mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){&_korl_command_context, 0, NULL}));
-    mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &_korl_command_context->stbDaModules) , -KORL_C_CAST(i32, sizeof(stbds_array_header)), &_korl_command_context}));
-    mcarrpush(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, ((Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &_korl_command_context->stbDaCommands), -KORL_C_CAST(i32, sizeof(stbds_array_header)), &_korl_command_context}));
+    KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_command_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_command_context->stbDaModules , _korl_command_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_command_context->stbDaCommands, _korl_command_context);
     korl_stringPool_collectDefragmentPointers(&_korl_command_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_command_context);
     korl_memory_allocator_defragment(_korl_command_context->allocator, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }

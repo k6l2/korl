@@ -461,9 +461,9 @@ korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
 }
 korl_internal void korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
 {
-    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->characterPool)   , 0                                            , userAddressPointerParent}));
-    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbDaAllocations), -KORL_C_CAST(i32, sizeof(stbds_array_header)), userAddressPointerParent}));
-    mcarrpush(stbDaMemoryContext, *pStbDaDefragmentPointers, (KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &context->stbDaStrings)    , -KORL_C_CAST(i32, sizeof(stbds_array_header)), userAddressPointerParent}));
+    KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD          (stbDaMemoryContext, *pStbDaDefragmentPointers, context->characterPool   , *userAddressPointerParent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaAllocations, *userAddressPointerParent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaStrings    , *userAddressPointerParent);
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
 {
