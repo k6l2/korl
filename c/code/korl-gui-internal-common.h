@@ -68,7 +68,7 @@ typedef enum Korl_Gui_ScrollBar_Region
 } Korl_Gui_ScrollBar_Region;
 typedef struct _Korl_Gui_Widget
 {
-    u64 identifierHashParent;// a value of 0 => this Widget has no parent
+    u64 identifierHashParent;// 0 => this Widget has no parent
     u64 identifierHash;// _all_ widgets _must_ have a non-zero identifierHash
     u16 transientChildCount;// cleared at the end of each frame; accumulated during the frame each time a direct child widget is added; directly affects the orderIndex of each child widget
     u16 orderIndex;// determines the order in which widgets are processed/displayed in their parent, as well as top-level widgets (windows) relative to one another; 0 => the bottom-most widget that is drawn below all other widgets at the same heirarchical depth; in other words, lower values are processed/drawn _first_

@@ -105,7 +105,7 @@ typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    _Korl_Gfx_FontCache**       stbDaFontCaches;
+    _Korl_Gfx_FontCache**       stbDaFontCaches;//@TODO: I feel like it makes a whole lot more sense to move Font cache stuff into korl-resource; in this way, everything that uses a font could just hold onto a ResourceHandle instead of the font's asset string, and it might make a bunch of other stuff simpler as well; worth investigating...
     u8                          nextResourceSalt;
     Korl_StringPool*            stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
@@ -861,12 +861,13 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     const u$ bytesRequired = sizeof(Korl_Gfx_Text) + (utf16AssetNameFont.size + 1/*for null-terminator*/)*sizeof(*utf16AssetNameFont.data);
     Korl_Gfx_Text*const result    = korl_allocate(allocator, bytesRequired);
     u16*const resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
-    result->allocator                = allocator;
-    result->textPixelHeight          = textPixelHeight;
-    result->utf16AssetNameFont       = (acu16){.data = resultAssetNameFont, .size = utf16AssetNameFont.size};
-    result->modelRotate              = KORL_MATH_QUATERNION_IDENTITY;
-    result->modelScale               = KORL_MATH_V3F32_ONE;
-    result->resourceHandleBufferText = korl_resource_createVertexBuffer(&createInfoBufferText);
+    result->allocator                       = allocator;
+    result->textPixelHeight                 = textPixelHeight;
+    result->assetNameFontRawUtf16ByteOffset = sizeof(*result);
+    result->assetNameFontRawUtf16Size       = korl_checkCast_u$_to_u32(utf16AssetNameFont.size);
+    result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelScale                      = KORL_MATH_V3F32_ONE;
+    result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);
     mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
@@ -877,10 +878,14 @@ korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
     mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines);
     korl_free(context->allocator, context);
 }
+korl_internal void korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
+{
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaLines, *userAddressPointerParent);
+}
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
     /* get the font asset matching the provided asset name */
-    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
     /* initialize scratch space for storing glyph instance data of the current 
         working text line */
@@ -980,7 +985,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
 korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
 {
     /* get the font asset matching the provided asset name */
-    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
     /**/
     const u$ linesToRemove = KORL_MATH_MIN(lineCount, arrlenu(context->stbDaLines));
@@ -1005,7 +1010,7 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
 korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
     /* get the font asset matching the provided asset name */
-    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(context->utf16AssetNameFont, context->textPixelHeight, 0.f/*textPixelOutline*/);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
     const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     /**/

@@ -279,6 +279,33 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
         break;}
     }
 }
+korl_internal void _korl_gui_widget_collectDefragmentPointers(_Korl_Gui_Widget*const context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
+{
+    _Korl_Gui_Context*const guiContext = _korl_gui_context;
+    switch(context->type)
+    {
+    case KORL_GUI_WIDGET_TYPE_WINDOW:{
+        break;}
+    case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
+        break;}
+    case KORL_GUI_WIDGET_TYPE_SCROLL_BAR:{
+        break;}
+    case KORL_GUI_WIDGET_TYPE_TEXT:{
+        if(context->subType.text.gfxText)
+        {
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->subType.text.gfxText, *userAddressPointerParent);
+            korl_gfx_text_collectDefragmentPointers(context->subType.text.gfxText, stbDaMemoryContext, pStbDaDefragmentPointers, &context->subType.text.gfxText);
+        }
+        break;}
+    case KORL_GUI_WIDGET_TYPE_BUTTON:{
+        break;}
+    case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+        break;}
+    default:{
+        korl_log(ERROR, "invalid widget type: %i", context->type);
+        break;}
+    }
+}
 /** Prepare a new GUI batch for the current application frame.  The user _must_ 
  * call \c korl_gui_frameEnd after each call to \c _korl_gui_frameBegin . */
 korl_internal void _korl_gui_frameBegin(void)
@@ -456,8 +483,8 @@ korl_internal void korl_gui_initialize(void)
     context->style.widgetButtonLabelMargin        =  2.f;
     context->style.windowScrollBarPixelWidth      = 15.f;
     context->pendingUnicodeSurrogate              = -1;
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, 64);
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, 64);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, 128);
     /* kick-start the first GUI frame as soon as initialization of this module is complete */
     _korl_gui_frameBegin();
 }
@@ -2261,7 +2288,16 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
 }
 korl_internal void korl_gui_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
-    //@TODO
+    Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 16);
+    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_gui_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gui_context->stbDaUsedWidgets, _korl_gui_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gui_context->stbDaWidgets    , _korl_gui_context);
+    const _Korl_Gui_Widget*const widgetsEnd = _korl_gui_context->stbDaWidgets + arrlen(_korl_gui_context->stbDaWidgets);
+    for(_Korl_Gui_Widget* widget = _korl_gui_context->stbDaWidgets; widget < widgetsEnd; widget++)
+        _korl_gui_widget_collectDefragmentPointers(widget, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gui_context->stbDaWidgets);
+    korl_stringPool_collectDefragmentPointers(_korl_gui_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gui_context);
+    korl_memory_allocator_defragment(_korl_gui_context->allocatorHandleHeap, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {
