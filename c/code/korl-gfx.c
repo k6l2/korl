@@ -878,9 +878,9 @@ korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
     mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines);
     korl_free(context->allocator, context);
 }
-korl_internal void korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
+korl_internal void korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
 {
-    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaLines, *userAddressPointerParent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaLines, parent);
 }
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
@@ -1969,7 +1969,7 @@ korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocato
         KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD  (stackAllocator, stbDaDefragmentPointers, fontGlyphPage->stbDaGlyphMeshVertices, *fontCache);
         KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, (*fontCache)->stbHmGlyphs            , *fontCache);
     }
-    korl_stringPool_collectDefragmentPointers(_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gfx_context);
+    korl_stringPool_collectDefragmentPointers(_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gfx_context);
     korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)

@@ -1906,22 +1906,22 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
     _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, NULL);
     for(u$ i = 0; i < defragmentPointersSize; i++)
         sortedDefragmentPointers[i].pDefragmentPointer = &defragmentPointers[i];
-    /* create a hash map which we can use to lookup void**(parentUserAddressPointer)=>Korl_Heap_DefragmentPointer*(parent) */
-    struct {void** key; _Korl_Heap_DefragmentPointer* value;}* stbHm_userAddress_to_defragPointer = NULL;
+    /* create a hash map which we can use to lookup void*(parentAllocation)=>Korl_Heap_DefragmentPointer*(parent) */
+    struct {const void* key; _Korl_Heap_DefragmentPointer* value;}* stbHm_userAddress_to_defragPointer = NULL;
     mchmdefault(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, NULL);
     for(u$ i = 0; i < defragmentPointersSize; i++)
     {
         _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
-        mchmput(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointer, defragmentPointer);
+        mchmput(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, *defragmentPointer->pDefragmentPointer->userAddressPointer, defragmentPointer);
     }
     /* iterate over each DefragmentPointer, increment its parent's child count, and increment a `totalChildren` counter - O(n) */
     u32 totalChildren = 0;
     for(u$ i = 0; i < defragmentPointersSize; i++)
     {
         _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
-        if(!defragmentPointer->pDefragmentPointer->userAddressPointerParent)
+        if(!defragmentPointer->pDefragmentPointer->parent)
             continue;
-        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointerParent);
+        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->parent);
         korl_assert(parentMapIndex >= 0);
         _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
         parent->childrenCapacity++;
@@ -1934,9 +1934,9 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
     for(u$ i = 0; i < defragmentPointersSize; i++)
     {
         _Korl_Heap_DefragmentPointer*const defragmentPointer = sortedDefragmentPointers + i;
-        if(!defragmentPointer->pDefragmentPointer->userAddressPointerParent)
+        if(!defragmentPointer->pDefragmentPointer->parent)
             continue;
-        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->userAddressPointerParent);
+        const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->parent);
         korl_assert(parentMapIndex >= 0);
         _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
         if(!parent->children)

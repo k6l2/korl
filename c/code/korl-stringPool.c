@@ -459,12 +459,11 @@ korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
     korl_free(context->allocatorHandle, context->characterPool);
     korl_memory_zero(context, sizeof(*context));
 }
-//@TODO: for all these `*_collectDefragmentPointers` APIs I've been making, it likely makes more sense to just pass `void* parentAllocation` instead of `void** userAddressPointerParent`, since the parent hierarchy only needs the void* to determine this relationship inside the defragment algorithm
-korl_internal void korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
+korl_internal void korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
 {
-    KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD          (stbDaMemoryContext, *pStbDaDefragmentPointers, context->characterPool   , *userAddressPointerParent);
-    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaAllocations, *userAddressPointerParent);
-    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaStrings    , *userAddressPointerParent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD          (stbDaMemoryContext, *pStbDaDefragmentPointers, context->characterPool   , parent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaAllocations, parent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaStrings    , parent);
 }
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
 {

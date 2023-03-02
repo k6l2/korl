@@ -66,7 +66,7 @@ typedef struct Korl_Heap_DefragmentPointer
 {
     void**                                     userAddressPointer;
     i32                                        userAddressByteOffset;// an offset applied to `*userAddressPointer` to determine the true allocation address of an opaque datatype pointer, as well as write the correct address after defragmentation takes place on that allocation; example usage: caller has a stb_ds array `Foo* stbDaFoos = NULL; mcarrsetcap(memoryContext, stbDaFoos, 8);`, so caller passes a `(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbDaFoos), -KORL_C_CAST(i32, sizeof(stbds_array_header))}` to `korl_heap_*_defragment`
-    void**                                     userAddressPointerParent;// some allocations will themselves contain pointers to other allocations in the same heap; when a DefragmentPointer's userAddress is changed, all recursive children of it should be considered "stale"/dangling, since at that point the algorithm wont be able to update the pointer within the data struct that just moved if its child is also defragmented; the defragmentation algorithm needs to know this relationship so that it doesn't accidentally move a stale DefragmentPointer
+    const void*                                parent;// some allocations will themselves contain pointers to other allocations in the same heap; when a DefragmentPointer's userAddress is changed, all recursive children of it should be considered "stale"/dangling, since at that point the algorithm wont be able to update the pointer within the data struct that just moved if its child is also defragmented; the defragmentation algorithm needs to know this relationship so that it doesn't accidentally move a stale DefragmentPointer
     fnSig_korl_heap_onAllocationMovedCallback* onAllocationMovedCallback;// optional; if non-NULL, this function will be called the moment when `*userAddressPointer` changes during defragmentation; useful if you have a data structure that stores pointers, which are just addresses within the same allocation (offset from the allocation's root address)
 } Korl_Heap_DefragmentPointer;
 /** after testing the defragment API, I have found that it is _extremely_ 
@@ -83,23 +83,23 @@ typedef struct Korl_Heap_DefragmentPointer
     if(allocation)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(allocation)), 0, KORL_C_CAST(void**, &(allocationParent)), NULL}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(allocation)), 0, allocationParent, NULL}));\
     }
 #define KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocatorHandle, stbDaDefragmentPointers, stbDsArray, allocationParent) \
     if(stbDsArray)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsArray)), -KORL_C_CAST(i32, sizeof(stbds_array_header)), KORL_C_CAST(void**, &(allocationParent)), NULL}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsArray)), -KORL_C_CAST(i32, sizeof(stbds_array_header)), allocationParent, NULL}));\
     }
 #define KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocatorHandle, stbDaDefragmentPointers, stbDsHashMap, allocationParent) \
     if(stbDsHashMap)\
     {\
         mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsHashMap)), -KORL_C_CAST(i32, sizeof(stbds_array_header) + sizeof(*(stbDsHashMap))), KORL_C_CAST(void**, &(allocationParent)), NULL}));\
+                 ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &(stbDsHashMap)), -KORL_C_CAST(i32, sizeof(stbds_array_header) + sizeof(*(stbDsHashMap))), allocationParent, NULL}));\
         if(stbds_header((stbDsHashMap) - 1)->hash_table)\
         {\
             mcarrpush(KORL_STB_DS_MC_CAST(stackAllocatorHandle), (stbDaDefragmentPointers)\
-                     ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbds_header((stbDsHashMap) - 1)->hash_table), 0, KORL_C_CAST(void**, &(stbDsHashMap))\
+                     ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){KORL_C_CAST(void**, &stbds_header((stbDsHashMap) - 1)->hash_table), 0, (stbDsHashMap)\
                                                                           ,korl_stb_ds_onAllocationMovedCallback_hashMap_hashTable}));\
         }\
     }

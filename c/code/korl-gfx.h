@@ -24,7 +24,7 @@ typedef struct Korl_Gfx_Text
                                                                                    ,KORL_C_CAST(u16*, KORL_C_CAST(u8*, (context)) + context->assetNameFontRawUtf16ByteOffset)})
 korl_internal Korl_Gfx_Text*     korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight);
 korl_internal void               korl_gfx_text_destroy(Korl_Gfx_Text* context);
-korl_internal void               korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent);
+korl_internal void               korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent);
 korl_internal void               korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData);
 korl_internal void               korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount);
 korl_internal void               korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);

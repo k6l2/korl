@@ -279,7 +279,7 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
         break;}
     }
 }
-korl_internal void _korl_gui_widget_collectDefragmentPointers(_Korl_Gui_Widget*const context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void** userAddressPointerParent)
+korl_internal void _korl_gui_widget_collectDefragmentPointers(_Korl_Gui_Widget*const context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
 {
     _Korl_Gui_Context*const guiContext = _korl_gui_context;
     switch(context->type)
@@ -293,8 +293,8 @@ korl_internal void _korl_gui_widget_collectDefragmentPointers(_Korl_Gui_Widget*c
     case KORL_GUI_WIDGET_TYPE_TEXT:{
         if(context->subType.text.gfxText)
         {
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->subType.text.gfxText, *userAddressPointerParent);
-            korl_gfx_text_collectDefragmentPointers(context->subType.text.gfxText, stbDaMemoryContext, pStbDaDefragmentPointers, &context->subType.text.gfxText);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->subType.text.gfxText, parent);
+            korl_gfx_text_collectDefragmentPointers(context->subType.text.gfxText, stbDaMemoryContext, pStbDaDefragmentPointers, context->subType.text.gfxText);
         }
         break;}
     case KORL_GUI_WIDGET_TYPE_BUTTON:{
@@ -2295,8 +2295,8 @@ korl_internal void korl_gui_defragment(Korl_Memory_AllocatorHandle stackAllocato
     KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gui_context->stbDaWidgets    , _korl_gui_context);
     const _Korl_Gui_Widget*const widgetsEnd = _korl_gui_context->stbDaWidgets + arrlen(_korl_gui_context->stbDaWidgets);
     for(_Korl_Gui_Widget* widget = _korl_gui_context->stbDaWidgets; widget < widgetsEnd; widget++)
-        _korl_gui_widget_collectDefragmentPointers(widget, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gui_context->stbDaWidgets);
-    korl_stringPool_collectDefragmentPointers(_korl_gui_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gui_context);
+        _korl_gui_widget_collectDefragmentPointers(widget, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gui_context->stbDaWidgets);
+    korl_stringPool_collectDefragmentPointers(_korl_gui_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gui_context);
     korl_memory_allocator_defragment(_korl_gui_context->allocatorHandleHeap, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
