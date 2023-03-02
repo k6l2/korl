@@ -35,14 +35,14 @@
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
-#define _LOCAL_STRING_POOL_POINTER (&(_korl_windows_window_context.stringPool))
+#define _LOCAL_STRING_POOL_POINTER (_korl_windows_window_context.stringPool)
 korl_global_const TCHAR    _KORL_WINDOWS_WINDOW_CLASS_NAME[]     = _T("KorlWindowClass");
 korl_shared_const wchar_t* _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME = L"korl-windows-window.ini";
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_Memory_AllocatorHandle allocatorHandleStack;
-    Korl_StringPool stringPool;
+    Korl_StringPool* stringPool;// Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     void* gameContext;
     void* memoryStateLast;
     struct
@@ -98,7 +98,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
     {
     case KORL_CLIPBOARD_DATA_FORMAT_UTF8:{
         clipboardDataFormat = CF_UNICODETEXT;
-        Korl_StringPool_String stringTemp = korl_stringNewAcu8(&_korl_windows_window_context.stringPool, data);
+        Korl_StringPool_String stringTemp = korl_stringNewAcu8(_korl_windows_window_context.stringPool, data);
         acu16 rawU16 = korl_stringPool_getRawAcu16(&stringTemp);
         u16* clipboardMemoryLocked = NULL;
         clipboardMemory = GlobalAlloc(GMEM_MOVEABLE, (rawU16.size + 1/*null-terminator*/) * sizeof(*rawU16.data));
@@ -148,7 +148,7 @@ korl_internal KORL_FUNCTION_korl_clipboard_get(korl_clipboard_get)
             korl_logLastError("GlobalLock failed");
             goto close_clipboard_return_result;
         }
-        Korl_StringPool_String stringTemp = korl_stringNewUtf16(&_korl_windows_window_context.stringPool, clipboardUtf16);
+        Korl_StringPool_String stringTemp = korl_stringNewUtf16(_korl_windows_window_context.stringPool, clipboardUtf16);
         acu8 stringTempUtf8 = string_getRawAcu8(&stringTemp);
         result.size = stringTempUtf8.size + 1/*null-terminator*/;
         u8* resultData = korl_allocate(allocator, result.size);
@@ -536,7 +536,7 @@ korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle s
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
     KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_windows_window_context.memoryStateLast);
-    korl_stringPool_collectDefragmentPointers(&_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, NULL/*defragPointerIndexParent*/);
+    korl_stringPool_collectDefragmentPointers(_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, NULL/*defragPointerIndexParent*/);
     korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_windows_window_initialize(void)
@@ -546,7 +546,8 @@ korl_internal void korl_windows_window_initialize(void)
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
     _korl_windows_window_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     _korl_windows_window_context.allocatorHandleStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
-    _korl_windows_window_context.stringPool           = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
+    _korl_windows_window_context.stringPool           = korl_allocate(_korl_windows_window_context.allocatorHandle, sizeof(*_korl_windows_window_context.stringPool));
+    *_korl_windows_window_context.stringPool          = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
         running the game module as a DLL */
@@ -885,6 +886,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_command_defragment(context->allocatorHandleStack);
             _korl_windows_window_defragment(context->allocatorHandleStack);
             korl_gfx_defragment(context->allocatorHandleStack);
+            korl_gui_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
         korl_time_probeStart(memory_state_create);{
             korl_free(context->allocatorHandle, context->memoryStateLast);
@@ -1020,7 +1022,7 @@ korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** 
 {
     KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
     KORL_WINDOWS_CHECK(GetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, _korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.gameContext, sizeof(_korl_windows_window_context.gameContext));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &windowPlacement, sizeof(windowPlacement));
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_windows_window_context.configuration.fileDataBuffer, sizeof(_korl_windows_window_context.configuration.fileDataBuffer));
@@ -1028,7 +1030,7 @@ korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** 
 korl_internal bool korl_windows_window_saveStateRead(HANDLE hFile)
 {
     //KORL-ISSUE-000-000-079: stringPool/file/savestate: either create a (de)serialization API for stringPool, or just put context state into a single allocation?
-    if(!ReadFile(hFile, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool), NULL/*bytes read*/, NULL/*no overlapped*/))
+    if(!ReadFile(hFile, _korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool), NULL/*bytes read*/, NULL/*no overlapped*/))
     {
         korl_logLastError("ReadFile failed");
         return false;

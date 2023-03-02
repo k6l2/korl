@@ -53,7 +53,7 @@ typedef struct _Korl_Gui_WidgetMap
 #if defined(_LOCAL_STRING_POOL_POINTER)
     #undef _LOCAL_STRING_POOL_POINTER
 #endif
-#define _LOCAL_STRING_POOL_POINTER (_korl_gui_context.stringPool)
+#define _LOCAL_STRING_POOL_POINTER (_korl_gui_context->stringPool)
 korl_shared_const wchar_t _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT[] = L"DEBUG";
 korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL_U64_MAX;
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X"; // special internal button string to allow button widget to draw special graphics
@@ -132,7 +132,7 @@ korl_internal KORL_GFX_TEXT_CODEPOINT_TEST(_korl_gui_codepointTest_log)
 }
 korl_internal void _korl_gui_frameEnd_recursiveAddToParent(_Korl_Gui_UsedWidget* usedWidget, _Korl_Gui_WidgetMap** stbHmWidgetMap)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     if(usedWidget->dagMetaData.visited)
         return;
     usedWidget->dagMetaData.visited = true;
@@ -148,7 +148,7 @@ korl_internal void _korl_gui_frameEnd_recursiveAddToParent(_Korl_Gui_UsedWidget*
 }
 korl_internal void _korl_gui_frameEnd_recursiveAppend(_Korl_Gui_UsedWidget** io_stbDaResult, _Korl_Gui_UsedWidget* usedWidget)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), *io_stbDaResult, *usedWidget);
     _korl_gui_pUsedWidget_ascendOrderIndex_quick_sort(usedWidget->dagMetaData.stbDaChildren, arrlenu(usedWidget->dagMetaData.stbDaChildren));
     const _Korl_Gui_UsedWidget*const*const stbDaChildrenEnd = usedWidget->dagMetaData.stbDaChildren + arrlen(usedWidget->dagMetaData.stbDaChildren);
@@ -157,7 +157,7 @@ korl_internal void _korl_gui_frameEnd_recursiveAppend(_Korl_Gui_UsedWidget** io_
 }
 korl_internal void _korl_gui_resetTransientNextWidgetModifiers(void)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     context->transientNextWidgetModifiers.size         = korl_math_v2f32_nan();
     context->transientNextWidgetModifiers.anchor       = korl_math_v2f32_nan();
     context->transientNextWidgetModifiers.parentAnchor = korl_math_v2f32_nan();
@@ -166,7 +166,7 @@ korl_internal void _korl_gui_resetTransientNextWidgetModifiers(void)
 }
 korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widgetType, bool* out_newAllocation)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     /* if there is no current active window, then we should just default to use 
         an internal "debug" window to allow the user to just create widgets at 
         any time without worrying about creating a window first */
@@ -256,7 +256,7 @@ widgetIndexValid:
 }
 korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     switch(widget->type)
     {
     case KORL_GUI_WIDGET_TYPE_SCROLL_AREA:{
@@ -283,7 +283,7 @@ korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
  * call \c korl_gui_frameEnd after each call to \c _korl_gui_frameBegin . */
 korl_internal void _korl_gui_frameBegin(void)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     korl_memory_allocator_empty(context->allocatorHandleStack);
     context->stbDaWidgetParentStack = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), context->stbDaWidgetParentStack, 16);
@@ -292,12 +292,12 @@ korl_internal void _korl_gui_frameBegin(void)
 }
 korl_internal void _korl_gui_setNextWidgetOrderIndex(u16 orderIndex)
 {
-    _korl_gui_context.transientNextWidgetModifiers.orderIndex = orderIndex;
+    _korl_gui_context->transientNextWidgetModifiers.orderIndex = orderIndex;
 }
 korl_internal void _korl_gui_widget_window_activate(_Korl_Gui_Widget* widget)
 {
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     //KORL-ISSUE-000-000-117: gui: don't we only want to do this logic if the activated window has changed?  not doing so is going to likely cause really annoying behavior such as the last window's leaf widget candidate always getting activated even when the window was already active :|
     {
         context->identifierHashLeafWidgetActive = 0;
@@ -419,47 +419,51 @@ korl_internal void _korl_gui_widget_scrollBar_onMouseDrag(_Korl_Gui_Widget* widg
 }
 korl_internal void korl_gui_initialize(void)
 {
-    korl_memory_zero(&_korl_gui_context, sizeof(_korl_gui_context));
+    /* create the heap allocator, & allocate the context inside of it */
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
-    _korl_gui_context.allocatorHandleHeap                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-gui-heap" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
-    _korl_gui_context.allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
-    _korl_gui_context.stringPool                           = korl_allocate(_korl_gui_context.allocatorHandleHeap, sizeof(*_korl_gui_context.stringPool));
-    *_korl_gui_context.stringPool                          = korl_stringPool_create(_korl_gui_context.allocatorHandleHeap);
-    _korl_gui_context.style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
-    _korl_gui_context.style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
-    _korl_gui_context.style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
-    _korl_gui_context.style.colorWindowBorderHovered       = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
-    _korl_gui_context.style.colorWindowBorderResize        = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
-    _korl_gui_context.style.colorWindowBorderActive        = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
-    _korl_gui_context.style.colorTitleBar                  = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
-    _korl_gui_context.style.colorTitleBarActive            = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
-    _korl_gui_context.style.colorButtonInactive            = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
-    _korl_gui_context.style.colorButtonActive              = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
-    _korl_gui_context.style.colorButtonPressed             = (Korl_Vulkan_Color4u8){  0,   8,   0, 255};
-    _korl_gui_context.style.colorButtonWindowTitleBarIcons = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
-    _korl_gui_context.style.colorButtonWindowCloseActive   = (Korl_Vulkan_Color4u8){255,   0,   0, 255};
-    _korl_gui_context.style.colorScrollBar                 = (Korl_Vulkan_Color4u8){  8,   8,   8, 230};
-    _korl_gui_context.style.colorScrollBarActive           = (Korl_Vulkan_Color4u8){ 32,  32,  32, 250};
-    _korl_gui_context.style.colorScrollBarPressed          = (Korl_Vulkan_Color4u8){  0,   0,   0, 250};
-    _korl_gui_context.style.colorText                      = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
-    _korl_gui_context.style.colorTextOutline               = (Korl_Vulkan_Color4u8){  0,   5,   0, 255};
-    _korl_gui_context.style.textOutlinePixelSize           = 0.f;
-    _korl_gui_context.style.fontWindowText                 = string_newEmptyUtf16(0);
-    _korl_gui_context.style.windowTextPixelSizeY           = 24.f;
-    _korl_gui_context.style.windowTitleBarPixelSizeY       = 20.f;
-    _korl_gui_context.style.widgetSpacingY                 =  0.f;
-    _korl_gui_context.style.widgetButtonLabelMargin        =  2.f;
-    _korl_gui_context.style.windowScrollBarPixelWidth      = 15.f;
-    _korl_gui_context.pendingUnicodeSurrogate              = -1;
-    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaWidgets, 64);
-    mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gui_context.allocatorHandleHeap), _korl_gui_context.stbDaUsedWidgets, 64);
+    const Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-gui" , KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
+    _korl_gui_context = korl_allocate(allocator, sizeof(*_korl_gui_context));
+    /* now we can initialize the context */
+    _Korl_Gui_Context*const context = _korl_gui_context;
+    context->allocatorHandleHeap                  = allocator;
+    context->allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    context->stringPool                           = korl_allocate(context->allocatorHandleHeap, sizeof(*context->stringPool));
+    *context->stringPool                          = korl_stringPool_create(context->allocatorHandleHeap);
+    context->style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
+    context->style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
+    context->style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
+    context->style.colorWindowBorderHovered       = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
+    context->style.colorWindowBorderResize        = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
+    context->style.colorWindowBorderActive        = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
+    context->style.colorTitleBar                  = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
+    context->style.colorTitleBarActive            = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
+    context->style.colorButtonInactive            = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
+    context->style.colorButtonActive              = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
+    context->style.colorButtonPressed             = (Korl_Vulkan_Color4u8){  0,   8,   0, 255};
+    context->style.colorButtonWindowTitleBarIcons = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
+    context->style.colorButtonWindowCloseActive   = (Korl_Vulkan_Color4u8){255,   0,   0, 255};
+    context->style.colorScrollBar                 = (Korl_Vulkan_Color4u8){  8,   8,   8, 230};
+    context->style.colorScrollBarActive           = (Korl_Vulkan_Color4u8){ 32,  32,  32, 250};
+    context->style.colorScrollBarPressed          = (Korl_Vulkan_Color4u8){  0,   0,   0, 250};
+    context->style.colorText                      = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
+    context->style.colorTextOutline               = (Korl_Vulkan_Color4u8){  0,   5,   0, 255};
+    context->style.textOutlinePixelSize           = 0.f;
+    context->style.fontWindowText                 = string_newEmptyUtf16(0);
+    context->style.windowTextPixelSizeY           = 24.f;
+    context->style.windowTitleBarPixelSizeY       = 20.f;
+    context->style.widgetSpacingY                 =  0.f;
+    context->style.widgetButtonLabelMargin        =  2.f;
+    context->style.windowScrollBarPixelWidth      = 15.f;
+    context->pendingUnicodeSurrogate              = -1;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, 64);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaUsedWidgets, 64);
     /* kick-start the first GUI frame as soon as initialization of this module is complete */
     _korl_gui_frameBegin();
 }
 korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
     switch(mouseEvent->type)
     {
@@ -786,7 +790,7 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
 }
 korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     /* locate the active leaf widget, if it exists */
     _Korl_Gui_UsedWidget* activeLeafWidget = NULL;
     const _Korl_Gui_UsedWidget*const stbDaUsedWidgetsEnd = context->stbDaUsedWidgets + arrlen(context->stbDaUsedWidgets);
@@ -989,7 +993,7 @@ korl_internal void korl_gui_onKeyEvent(const _Korl_Gui_KeyEvent* keyEvent)
 }
 korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* codepointEvent)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     /* if this codepoint is a surrogate, we need to store the surrogate & wait until we receive its companion */
     u16 utf16Buffer[2];
     if(korl_string_isUtf16Surrogate(codepointEvent->utf16Unit))
@@ -1071,7 +1075,7 @@ korl_internal void korl_gui_onCodepointEvent(const _Korl_Gui_CodepointEvent* cod
 }
 korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     string_free(&context->style.fontWindowText);
     if(fontAssetName)
         context->style.fontWindowText = string_newUtf16(fontAssetName);
@@ -1079,7 +1083,7 @@ korl_internal KORL_FUNCTION_korl_gui_setFontAsset(korl_gui_setFontAsset)
 korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 {
     //KORL-ISSUE-000-000-109: gui: there are a lot of similarities here to _getWidget; in an effort to generalize Window/Widget behavior, maybe I should just call _getWidget here???
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     i16 currentWindowIndex = -1;
     /* assemble the window identifier hash; composed of the string hash of the 
         titleBarText, as well as the context loop index */
@@ -1230,7 +1234,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     korl_assert(arrlen(context->stbDaWidgetParentStack) >= 0);
     _Korl_Gui_Widget*const rootWidget = context->stbDaWidgets + context->stbDaWidgetParentStack[0];
     korl_assert(rootWidget->type == KORL_GUI_WIDGET_TYPE_WINDOW);
@@ -1241,26 +1245,26 @@ korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 }
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetSize(korl_gui_setNextWidgetSize)
 {
-    _korl_gui_context.transientNextWidgetModifiers.size = size;
+    _korl_gui_context->transientNextWidgetModifiers.size = size;
 }
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetAnchor(korl_gui_setNextWidgetAnchor)
 {
-    _korl_gui_context.transientNextWidgetModifiers.anchor = localAnchorRatioRelativeToTopLeft;
+    _korl_gui_context->transientNextWidgetModifiers.anchor = localAnchorRatioRelativeToTopLeft;
 }
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetParentAnchor(korl_gui_setNextWidgetParentAnchor)
 {
-    _korl_gui_context.transientNextWidgetModifiers.parentAnchor = anchorRatioRelativeToParentTopLeft;
+    _korl_gui_context->transientNextWidgetModifiers.parentAnchor = anchorRatioRelativeToParentTopLeft;
 }
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetParentOffset(korl_gui_setNextWidgetParentOffset)
 {
-    _korl_gui_context.transientNextWidgetModifiers.parentOffset = positionRelativeToAnchor;
+    _korl_gui_context->transientNextWidgetModifiers.parentOffset = positionRelativeToAnchor;
 }
 /** This function is called from within \c frameEnd as soon as we are in a 
  * state where we are absolutely sure that all of the children of \c usedWidget 
  * have been processed & drawn for the end of this frame. */
 korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_UsedWidget* usedWidget)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     switch(usedWidget->widget->type)
     {
     case KORL_GUI_WIDGET_TYPE_WINDOW:{
@@ -1305,7 +1309,7 @@ korl_internal void _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(_Korl_Gui_Us
 }
 korl_internal void korl_gui_frameEnd(void)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     /* Once again, the only time the current window index is allowed to be set 
         to a valid id at this point is if the user is making orphan widgets. */
     if(arrlen(context->stbDaWidgetParentStack) > 0)
@@ -2005,12 +2009,12 @@ korl_internal void korl_gui_frameEnd(void)
 }
 korl_internal KORL_FUNCTION_korl_gui_setLoopIndex(korl_gui_setLoopIndex)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     context->loopIndex = loopIndex;
 }
 korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     if(   context->currentUserWidgetIndex < 0
        || context->currentUserWidgetIndex >= korl_checkCast_u$_to_i$(arrlenu(context->stbDaWidgets)))
         return;// silently do nothing if user has not created a widget yet for the current window
@@ -2018,7 +2022,7 @@ korl_internal KORL_FUNCTION_korl_gui_realignY(korl_gui_realignY)
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
@@ -2033,7 +2037,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     //KORL-ISSUE-000-000-128: gui: (minor) WARNING logged on memory state load due to frivolous resource destruction
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(identifier), KORL_GUI_WIDGET_TYPE_TEXT, &newAllocation);
@@ -2067,7 +2071,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(textFormat), KORL_GUI_WIDGET_TYPE_BUTTON, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
@@ -2104,7 +2108,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScrollAreaBegin)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_AREA, &newAllocation);
     if(newAllocation)
@@ -2168,7 +2172,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScroll
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     korl_assert(arrlenu(context->stbDaWidgetParentStack) > 0);
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
@@ -2176,7 +2180,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAr
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
 {
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     /* create a widget id hash using string.pool + string.handle */
     u64 identifierHashComponents[2];
@@ -2218,7 +2222,7 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
 {
     if(korl_math_isNearlyZero(scrollRegionVisible) || korl_math_isNearlyZero(scrollRegionContent))
         return 0;// KORL-ISSUE-000-000-110: gui: this is causing a leak of transient next widget modifiers!  _korl_gui_getWidget never gets called, which we currently expect to be the only place _korl_gui_resetTransientNextWidgetModifiers is called, ergo the next widget invocation will receive the modifiers intended for _this_ widget!!
-    _Korl_Gui_Context*const context = &_korl_gui_context;
+    _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
@@ -2255,6 +2259,19 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
     /**/
     return contentScrollDelta;
 }
+korl_internal void korl_gui_defragment(Korl_Memory_AllocatorHandle stackAllocator)
+{
+    //@TODO
+}
+korl_internal void korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+{
+    //@TODO
+}
+korl_internal bool korl_gui_memoryStateRead(u8* memoryState)
+{
+    //@TODO
+}
+#if 0//@TODO: delete
 korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
@@ -2271,3 +2288,4 @@ korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
     _korl_gui_frameBegin();// begin a new frame, since it is entirely possible that we saved state with dirty transient data!
     return true;
 }
+#endif

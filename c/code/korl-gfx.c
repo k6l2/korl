@@ -107,7 +107,7 @@ typedef struct _Korl_Gfx_Context
     Korl_Memory_AllocatorHandle allocatorHandle;
     _Korl_Gfx_FontCache**       stbDaFontCaches;
     u8                          nextResourceSalt;
-    Korl_StringPool             stringPool;// used for Resource database strings
+    Korl_StringPool*            stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
     Korl_Gfx_Camera             currentCameraState;
 } _Korl_Gfx_Context;
@@ -751,8 +751,9 @@ korl_internal void korl_gfx_initialize(void)
     const Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-gfx", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     _korl_gfx_context = korl_allocate(allocator, sizeof(*_korl_gfx_context));
     _korl_gfx_context->allocatorHandle = allocator;
+    _korl_gfx_context->stringPool      = korl_allocate(allocator, sizeof(*_korl_gfx_context->stringPool));// allocate this ASAP to reduce fragmentation, since this struct _must_ remain UNMANAGED
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gfx_context->allocatorHandle), _korl_gfx_context->stbDaFontCaches, 16);
-    _korl_gfx_context->stringPool = korl_stringPool_create(_korl_gfx_context->allocatorHandle);
+    *_korl_gfx_context->stringPool = korl_stringPool_create(_korl_gfx_context->allocatorHandle);
 }
 korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size)
 {
@@ -857,7 +858,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     createInfoBufferText.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
     createInfoBufferText.vertexAttributeDescriptors     = vertexAttributeDescriptors;
     createInfoBufferText.bytes                          = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
-    const u$ bytesRequired = sizeof(Korl_Gfx_Text) + utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data);
+    const u$ bytesRequired = sizeof(Korl_Gfx_Text) + (utf16AssetNameFont.size + 1/*for null-terminator*/)*sizeof(*utf16AssetNameFont.data);
     Korl_Gfx_Text*const result    = korl_allocate(allocator, bytesRequired);
     u16*const resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
     result->allocator                = allocator;
@@ -1963,7 +1964,7 @@ korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocato
         KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD  (stackAllocator, stbDaDefragmentPointers, fontGlyphPage->stbDaGlyphMeshVertices, *fontCache);
         KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, (*fontCache)->stbHmGlyphs            , *fontCache);
     }
-    korl_stringPool_collectDefragmentPointers(&_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gfx_context);
+    korl_stringPool_collectDefragmentPointers(_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_gfx_context);
     korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)

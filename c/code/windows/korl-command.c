@@ -19,7 +19,7 @@ typedef struct _Korl_Command
 typedef struct _Korl_Command_Context
 {
     Korl_Memory_AllocatorHandle allocator;
-    Korl_StringPool             stringPool;// this _must_ be stored in a heap allocator because we need the address of the StringPool to persist between application runs; since we are going to store the entire context in heap (as it is going to be (re)stored from/in memoryState), it's okay to store it in this struct
+    Korl_StringPool*            stringPool;// Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     Korl_StringPool_String      stringPlatformModuleName;
     _Korl_Command_Module*       stbDaModules;
     _Korl_Command*              stbDaCommands;
@@ -53,8 +53,9 @@ korl_internal void korl_command_initialize(acu8 utf8PlatformModuleName)
     const Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-command", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     _korl_command_context = korl_allocate(allocator, sizeof(*_korl_command_context));
     _korl_command_context->allocator                = allocator;
-    _korl_command_context->stringPool               = korl_stringPool_create(_korl_command_context->allocator);
-    _korl_command_context->stringPlatformModuleName = korl_stringNewAcu8(&_korl_command_context->stringPool, utf8PlatformModuleName);
+    _korl_command_context->stringPool               = korl_allocate(allocator, sizeof(*_korl_command_context->stringPool));
+    *_korl_command_context->stringPool              = korl_stringPool_create(_korl_command_context->allocator);
+    _korl_command_context->stringPlatformModuleName = korl_stringNewAcu8(_korl_command_context->stringPool, utf8PlatformModuleName);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_command_context->allocator), _korl_command_context->stbDaModules , 8);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_command_context->allocator), _korl_command_context->stbDaCommands, 32);
     korl_command_registerModule(GetModuleHandle(NULL), utf8PlatformModuleName);
@@ -73,7 +74,7 @@ korl_internal void korl_command_registerModule(HMODULE moduleHandle, acu8 utf8Mo
     if(!module)
     {
         KORL_ZERO_STACK(_Korl_Command_Module, newModule);
-        newModule.stringName = korl_stringNewAcu8(&_korl_command_context->stringPool, utf8ModuleName);
+        newModule.stringName = korl_stringNewAcu8(_korl_command_context->stringPool, utf8ModuleName);
         mcarrpush(KORL_STB_DS_MC_CAST(_korl_command_context->allocator), _korl_command_context->stbDaModules, newModule);
         module = &arrlast(_korl_command_context->stbDaModules);
     }
@@ -134,8 +135,8 @@ korl_internal KORL_FUNCTION__korl_command_register(_korl_command_register)
     if(!command)
     {
         KORL_ZERO_STACK(_Korl_Command, newCommand);
-        newCommand.stringCommand  = korl_stringNewAcu8(&_korl_command_context->stringPool, utf8CommandName);
-        newCommand.stringCallback = korl_stringNewAcu8(&_korl_command_context->stringPool, utf8Callback);
+        newCommand.stringCommand  = korl_stringNewAcu8(_korl_command_context->stringPool, utf8CommandName);
+        newCommand.stringCallback = korl_stringNewAcu8(_korl_command_context->stringPool, utf8Callback);
         mcarrpush(KORL_STB_DS_MC_CAST(_korl_command_context->allocator), _korl_command_context->stbDaCommands, newCommand);
         command = &arrlast(_korl_command_context->stbDaCommands);
     }
@@ -171,7 +172,7 @@ korl_internal void korl_command_defragment(Korl_Memory_AllocatorHandle stackAllo
     KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_command_context);
     KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_command_context->stbDaModules , _korl_command_context);
     KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_command_context->stbDaCommands, _korl_command_context);
-    korl_stringPool_collectDefragmentPointers(&_korl_command_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_command_context);
+    korl_stringPool_collectDefragmentPointers(_korl_command_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, &_korl_command_context);
     korl_memory_allocator_defragment(_korl_command_context->allocator, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_command_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)

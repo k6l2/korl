@@ -57,15 +57,11 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
     const bool asyncLoad = flags & KORL_ASSETCACHE_GET_FLAG_LAZY;
     _Korl_AssetCache_Asset* asset = NULL;
     /* see if the asset is already loaded, and if so select it */
-    for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
-    {
-        if(string_equalsUtf16(&context->stbDaAssets[a].name, assetName))
-        {
-            asset = &(context->stbDaAssets[a]);
+    const _Korl_AssetCache_Asset* assetsEnd = context->stbDaAssets + arrlen(context->stbDaAssets);
+    for(asset = context->stbDaAssets; asset < assetsEnd; asset++)
+        if(string_equalsUtf16(&asset->name, assetName))
             break;
-        }
-    }
-    if(!asset)
+    if(asset >= assetsEnd)
     {
         /* otherwise, add a new asset */
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAssets, (_Korl_AssetCache_Asset){0});
@@ -73,6 +69,8 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
         korl_memory_zero(asset, sizeof(*asset));// not _entirely_ sure this is necessary, but I've read that struct initialization using {0} might have portability issues?...
         asset->name = string_newUtf16(assetName);
     }
+    assetsEnd = context->stbDaAssets + arrlen(context->stbDaAssets);
+    korl_assert(asset >= context->stbDaAssets && asset < assetsEnd);
     switch(asset->state)
     {
     case _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED:{

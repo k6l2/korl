@@ -184,7 +184,7 @@ typedef struct _Korl_Gui_Context
     } style;
     Korl_Memory_AllocatorHandle allocatorHandleHeap;
     Korl_Memory_AllocatorHandle allocatorHandleStack;
-    Korl_StringPool* stringPool;// this is a pointer because we _must_ store this pool in a serialized heap allocator, due to the fact that we have Strings in the code segment which refer to this pool!
+    Korl_StringPool* stringPool;// Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     _Korl_Gui_Widget* stbDaWidgets;// everything is a Widget, including windows!
     struct _Korl_Gui_UsedWidget* stbDaUsedWidgets;// list of currently in-use widgets, sorted from back-to-front; re-built each call to korl_gui_frameEnd
     u16 rootWidgetOrderIndexHighest;// like stbDaUsedWidgets, this is updated each call to korl-gui-frameEnd
@@ -231,4 +231,4 @@ typedef struct _Korl_Gui_Context
     i32 pendingUnicodeSurrogate;// used by `korl_gui_onCodepointEvent` to determine if the codepoint unit we received forms a complete codepoint; if this value is < 0, that means the previous codepoint unit formed a complete codepoint
     bool ignoreNextCodepoint;// set when we process a virtual key to perform a special action, which we know will also result in a codepoint event that we no longer want (we want to override the behavior of the key press)
 } _Korl_Gui_Context;
-korl_global_variable _Korl_Gui_Context _korl_gui_context;
+korl_global_variable _Korl_Gui_Context* _korl_gui_context;
