@@ -547,7 +547,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_empty(korl_memory_allocator_em
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
-korl_internal void korl_memory_allocator_defragment(Korl_Memory_AllocatorHandle handle, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, Korl_Memory_AllocatorHandle handleStack)
+korl_internal KORL_FUNCTION_korl_memory_allocator_defragment(korl_memory_allocator_defragment)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);

@@ -32,7 +32,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_allocate  (korl_memory_allocat
 korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocator_reallocate);
 korl_internal KORL_FUNCTION_korl_memory_allocator_free      (korl_memory_allocator_free);
 korl_internal KORL_FUNCTION_korl_memory_allocator_empty     (korl_memory_allocator_empty);
-korl_internal void korl_memory_allocator_defragment(Korl_Memory_AllocatorHandle handle, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, Korl_Memory_AllocatorHandle handleStack);
+korl_internal KORL_FUNCTION_korl_memory_allocator_defragment(korl_memory_allocator_defragment);
 korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 /** \return the address of the allocated memory report */
