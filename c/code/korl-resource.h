@@ -80,10 +80,7 @@ korl_internal void                                           korl_resource_flush
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat);
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
-korl_internal void                                           korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
-/** I don't like how this API requires us to do file I/O in modules outside of 
- * korl-file; maybe improve this in the future to use korl-file API instea of 
- * Win32 API?
- * KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file? */
-korl_internal bool                                           korl_resource_saveStateRead(HANDLE hFile);
+korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
+korl_internal void                                           korl_resource_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
+korl_internal bool                                           korl_resource_memoryStateRead(u8* memoryState);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload);
