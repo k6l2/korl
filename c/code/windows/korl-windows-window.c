@@ -888,6 +888,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_gfx_defragment(context->allocatorHandleStack);
             korl_gui_defragment(context->allocatorHandleStack);
             korl_resource_defragment(context->allocatorHandleStack);
+            korl_assetCache_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
         korl_time_probeStart(memory_state_create);{
             korl_free(context->allocatorHandle, context->memoryStateLast);

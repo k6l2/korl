@@ -19,7 +19,6 @@ typedef enum Korl_AssetCache_Get_Flags
      * - do _not_ use this for large/cosmetic assets! (PNGs, WAVs, OGGs, etc...)
      * - use on small text/script/database files that dictate simulation 
      *   behaviors (JSON, INI, etc...) */
-    //KORL-PERFORMANCE-000-000-026: savestate/assetCache: there is no need to save/load every asset; we only need assets that have been flagged as "operation critical"Z
     // Actually... Is a CRITICAL flag even necessary?  Why not just assume that all assets that don't have the LAZY flag are all critical assets???
     // , KORL_ASSETCACHE_GET_FLAG_CRITICAL = 1<<1
 } Korl_AssetCache_Get_Flags;

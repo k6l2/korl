@@ -7,9 +7,9 @@
 #include "korl-stb-ds.h"
 #include "korl-checkCast.h"
 #ifdef _LOCAL_STRING_POOL_POINTER
-#undef _LOCAL_STRING_POOL_POINTER
+    #undef _LOCAL_STRING_POOL_POINTER
 #endif
-#define _LOCAL_STRING_POOL_POINTER _korl_assetCache_context.stringPool
+#define _LOCAL_STRING_POOL_POINTER _korl_assetCache_context->stringPool
 typedef enum _Korl_AssetCache_AssetState
     { _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED// the file hasn't been opened yet
     , _KORL_ASSET_CACHE_ASSET_STATE_PENDING    // the file is open, and we are async loading the asset
@@ -23,36 +23,38 @@ typedef enum _Korl_AssetCache_AssetFlags
 typedef struct _Korl_AssetCache_Asset
 {
     _Korl_AssetCache_AssetState state;
-    Korl_AssetCache_AssetData data;
-    Korl_StringPool_String name;
-    Korl_File_Descriptor fileDescriptor;
-    Korl_File_AsyncIoHandle asyncIoHandle;
-    KorlPlatformDateStamp dateStampLastWrite;
+    Korl_AssetCache_AssetData   assetData;
+    Korl_StringPool_String      name;
+    Korl_File_Descriptor        fileDescriptor;
+    Korl_File_AsyncIoHandle     asyncIoHandle;
+    KorlPlatformDateStamp       dateStampLastWrite;
     _Korl_AssetCache_AssetFlags flags;
 } _Korl_AssetCache_Asset;
 typedef struct _Korl_AssetCache_Context
 {
+    Korl_Memory_AllocatorHandle allocatorHandle;// all data that _isn't_ stbDaAssets[i].assetData.data is stored here, including this struct itself
+    Korl_Memory_AllocatorHandle allocatorHandleTransient;// _only_ stbDaAssets[i].assetData.data is stored here; this entire allocator should be wiped when a korl-memoryState is loaded
     _Korl_AssetCache_Asset* stbDaAssets;
-    /** this allocator will store all the data for the raw assets */
-    Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_StringPool* stringPool;// @korl-string-pool-no-data-segment-storage
 } _Korl_AssetCache_Context;
-korl_global_variable _Korl_AssetCache_Context _korl_assetCache_context;
+korl_global_variable _Korl_AssetCache_Context* _korl_assetCache_context;
 korl_internal void korl_assetCache_initialize(void)
 {
-    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
-    korl_memory_zero(context, sizeof(*context));
-    //KORL-PERFORMANCE-000-000-026: savestate/assetCache: there is no need to save/load every asset; we only need assets that have been flagged as "operation critical"
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(8);
+    const Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_gigabytes(1);
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-assetCache", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
-    context->stringPool      = korl_allocate(context->allocatorHandle, sizeof(*context->stringPool));
-    *context->stringPool     = korl_stringPool_create(context->allocatorHandle);
+    _korl_assetCache_context = korl_allocate(allocator, sizeof(*_korl_assetCache_context));
+    _Korl_AssetCache_Context*const context = _korl_assetCache_context;
+    context->allocatorHandle          = allocator;
+    context->allocatorHandleTransient = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-assetCache-transient", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);;
+    context->stringPool               = korl_allocate(context->allocatorHandle, sizeof(*context->stringPool));
+    *context->stringPool              = korl_stringPool_create(context->allocatorHandle);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAssets, 1024);// reduce reallocations by setting the asset database to some arbitrary large size
 }
 korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
 {
-    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    _Korl_AssetCache_Context*const context = _korl_assetCache_context;
     const u$ assetNameSize = korl_string_sizeUtf16(assetName);
     const bool asyncLoad = flags & KORL_ASSETCACHE_GET_FLAG_LAZY;
     _Korl_AssetCache_Asset* asset = NULL;
@@ -81,17 +83,17 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
                                                    asyncLoad);
         if(resultFileOpen)
         {
-            asset->dateStampLastWrite = korl_file_getDateStampLastWrite(asset->fileDescriptor);
-            asset->data.dataBytes     = korl_file_getTotalBytes(asset->fileDescriptor);
-            asset->data.data          = korl_allocate(context->allocatorHandle, asset->data.dataBytes);
+            asset->dateStampLastWrite  = korl_file_getDateStampLastWrite(asset->fileDescriptor);
+            asset->assetData.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
+            asset->assetData.data      = korl_allocate(context->allocatorHandleTransient, asset->assetData.dataBytes);
             if(asyncLoad)
             {
-                asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+                asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->assetData.data, asset->assetData.dataBytes);
                 asset->state         = _KORL_ASSET_CACHE_ASSET_STATE_PENDING;
             }
             else
             {
-                const bool resultFileRead = korl_file_read(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+                const bool resultFileRead = korl_file_read(asset->fileDescriptor, asset->assetData.data, asset->assetData.dataBytes);
                 if(resultFileRead)
                 {
                     asset->state = _KORL_ASSET_CACHE_ASSET_STATE_LOADED;
@@ -130,13 +132,13 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
                 another attempt to async load.  NOTE: we are assuming that the 
                 file descriptor is still valid.  If this breaks, we should do 
                 something about that. */
-            asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+            asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->assetData.data, asset->assetData.dataBytes);
             break;}
         }
         break;}
     case _KORL_ASSET_CACHE_ASSET_STATE_LOADED:{
         returnLoadedData:
-        *o_assetData = asset->data;
+        *o_assetData = asset->assetData;
         return KORL_ASSETCACHE_GET_RESULT_LOADED;}
     case _KORL_ASSET_CACHE_ASSET_STATE_RELOADING:{
         return KORL_ASSETCACHE_GET_RESULT_PENDING;}
@@ -148,7 +150,7 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
 }
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded)
 {
-    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    _Korl_AssetCache_Context*const context = _korl_assetCache_context;
     for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
         _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
@@ -164,7 +166,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                 asset->flags = KORL_ASSETCACHE_GET_FLAGS_NONE;
                 const acu16 rawUtf16AssetName = string_getRawAcu16(&asset->name);
                 korl_log(INFO, "Asset \"%ws\" has been hot-reloaded!  Running callbacks...", rawUtf16AssetName.data);
-                callbackOnAssetHotReloaded(rawUtf16AssetName, asset->data);
+                callbackOnAssetHotReloaded(rawUtf16AssetName, asset->assetData);
                 break;}
             case KORL_FILE_GET_ASYNC_IO_RESULT_PENDING:{
                 break;}
@@ -173,7 +175,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                     another attempt to async load.  NOTE: we are assuming that the 
                     file descriptor is still valid.  If this breaks, we should do 
                     something about that. */
-                asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+                asset->asyncIoHandle = korl_file_readAsync(asset->fileDescriptor, asset->assetData.data, asset->assetData.dataBytes);
                 break;}
             }
             continue;
@@ -194,8 +196,8 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
             if(resultFileOpen)
             {
                 korl_assert(!asset->asyncIoHandle);
-                asset->data.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
-                if(0 == asset->data.dataBytes)
+                asset->assetData.dataBytes = korl_file_getTotalBytes(asset->fileDescriptor);
+                if(0 == asset->assetData.dataBytes)
                 {
                     /* It is possible for us to open a file for exclusive write 
                         access that has a file size set to 0 by the program 
@@ -220,8 +222,8 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
                     file in a valid state, so we can async load the contents */
                 asset->dateStampLastWrite = dateStampLatestFileWrite;
                 asset->state              = _KORL_ASSET_CACHE_ASSET_STATE_RELOADING;
-                asset->data.data          = korl_reallocate(context->allocatorHandle, asset->data.data, asset->data.dataBytes);
-                asset->asyncIoHandle      = korl_file_readAsync(asset->fileDescriptor, asset->data.data, asset->data.dataBytes);
+                asset->assetData.data     = korl_reallocate(context->allocatorHandleTransient, asset->assetData.data, asset->assetData.dataBytes);
+                asset->asyncIoHandle      = korl_file_readAsync(asset->fileDescriptor, asset->assetData.data, asset->assetData.dataBytes);
             }
             else
                 /* It should be okay for us to continue trying to open the file; 
@@ -238,7 +240,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
 }
 korl_internal void korl_assetCache_clearAllFileHandles(void)
 {
-    _Korl_AssetCache_Context*const context = &_korl_assetCache_context;
+    _Korl_AssetCache_Context*const context = _korl_assetCache_context;
     for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
         _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
@@ -246,6 +248,24 @@ korl_internal void korl_assetCache_clearAllFileHandles(void)
             korl_file_close(&(asset->fileDescriptor));
     }
 }
+korl_internal void korl_assetCache_defragment(Korl_Memory_AllocatorHandle stackAllocator)
+{
+    Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
+    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_assetCache_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_assetCache_context->stbDaAssets, _korl_assetCache_context);
+    korl_stringPool_collectDefragmentPointers(_korl_assetCache_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_assetCache_context);
+    korl_memory_allocator_defragment(_korl_assetCache_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
+}
+korl_internal void korl_assetCache_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+{
+    //@TODO
+}
+korl_internal bool korl_assetCache_memoryStateRead(u8* memoryState)
+{
+    //@TODO
+}
+#if 0//@TODO: delete
 korl_internal void korl_assetCache_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
 {
     //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
@@ -262,4 +282,5 @@ korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
     }
     return true;
 }
+#endif
 #undef _LOCAL_STRING_POOL_POINTER

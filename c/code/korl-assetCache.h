@@ -38,9 +38,6 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get);
 typedef KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(fnSig_korl_assetCache_onAssetHotReloadedCallback);
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded);
 korl_internal void korl_assetCache_clearAllFileHandles(void);
-korl_internal void korl_assetCache_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer);
-/** I don't like how this API requires us to do file I/O in modules outside of 
- * korl-file; maybe improve this in the future to use korl-file API instea of 
- * Win32 API?
- * KORL-ISSUE-000-000-069: savestate/file: contain filesystem API to korl-file? */
-korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile);
+korl_internal void korl_assetCache_defragment(Korl_Memory_AllocatorHandle stackAllocator);
+korl_internal void korl_assetCache_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
+korl_internal bool korl_assetCache_memoryStateRead(u8* memoryState);
