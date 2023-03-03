@@ -65,7 +65,8 @@ typedef struct _Korl_Resource_Map
 } _Korl_Resource_Map;
 typedef struct _Korl_Resource_Context
 {
-    Korl_Memory_AllocatorHandle allocatorHandle;
+    Korl_Memory_AllocatorHandle allocatorHandleRuntime;// all unique data that cannot be easily reobtained/reconstructed from a korl-memoryState is stored here, including this struct itself
+    Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
     _Korl_Resource_Map*         stbHmResources;
     Korl_Resource_Handle*       stbDsDirtyResourceHandles;
     u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
@@ -158,7 +159,7 @@ korl_internal void _korl_resource_resampleAudio(_Korl_Resource* resource)
                                  : KORL_C_CAST(u$, seconds * resampledFormat.frameHz);
     const u$  newBytesPerFrame = resampledFormat.bytesPerSample * resampledFormat.channels;
     resource->subType.audio.resampledDataBytes = newFrames * newBytesPerFrame;
-    resource->subType.audio.resampledData      = korl_allocate(context->allocatorHandle, resource->subType.audio.resampledDataBytes);
+    resource->subType.audio.resampledData      = korl_allocate(context->allocatorHandleTransient, resource->subType.audio.resampledDataBytes);
     korl_codec_audio_resample(&resource->subType.audio.format, resource->data, resource->dataBytes
                              ,&resampledFormat, resource->subType.audio.resampledData, resource->subType.audio.resampledDataBytes);
 }
@@ -169,27 +170,28 @@ korl_internal void korl_resource_initialize(void)
     const Korl_Memory_AllocatorHandle allocator = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-resource", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     _korl_resource_context = korl_allocate(allocator, sizeof(*_korl_resource_context));
     _Korl_Resource_Context*const context = _korl_resource_context;
-    context->allocatorHandle = allocator;
-    context->stringPool      = korl_allocate(context->allocatorHandle, sizeof(*context->stringPool));
-    *context->stringPool     = korl_stringPool_create(context->allocatorHandle);
-    mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDsDirtyResourceHandles, 128);
+    context->allocatorHandleRuntime   = allocator;
+    context->allocatorHandleTransient = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-resource-transient", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    context->stringPool               = korl_allocate(context->allocatorHandleRuntime, sizeof(*context->stringPool));
+    *context->stringPool              = korl_stringPool_create(context->allocatorHandleRuntime);
+    mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, 128);
 }
 korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
 {
     _Korl_Resource_Context*const         context        = _korl_resource_context;
     _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);// sets the type to _KORL_RESOURCE_TYPE_FILE
     /* we should now have all the info needed to create the packed resource handle */
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     korl_assert(handle);
     /* check if the resource was already added */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     /* if the resource is new, we need to add it to the database */
     if(hashMapIndex < 0)
     {
-        mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-        hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+        mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+        hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
         korl_assert(hashMapIndex >= 0);
         _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
         resource->stringFileName = string_newAcu16(fileName);
@@ -217,8 +219,8 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
                     {
                         stbi_uc*const stbiPixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
                         korl_assert(stbiPixels);
-                        const u$ pixelBytes = imageSizeX*imageSizeY*imageChannels;
-                        resource->data      = korl_allocate(context->allocatorHandle, pixelBytes);
+                        const u$ pixelBytes = imageSizeX * imageSizeY * imageChannels;
+                        resource->data      = korl_allocate(context->allocatorHandleTransient, pixelBytes);
                         resource->dataBytes = pixelBytes;
                         korl_memory_copy(resource->data, stbiPixels, pixelBytes);
                         stbi_image_free(stbiPixels);
@@ -234,7 +236,7 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
                 }
                 break;}
             case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
-                resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, context->allocatorHandle, &resource->dataBytes, &resource->subType.audio.format);
+                resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient, &resource->dataBytes, &resource->subType.audio.format);
                 korl_assert(resource->data);
                 break;}
             default:{
@@ -259,16 +261,16 @@ korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const Korl_V
     unpackedHandle.uniqueId       = context->nextUniqueId++;
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* add the new resource to the database */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex < 0);
-    mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     resource->subType.graphics.type = _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER;
     /* allocate the memory for the raw decoded asset data */
     resource->dataBytes = createInfo->bytes;
-    resource->data      = korl_allocate(context->allocatorHandle, createInfo->bytes);
+    resource->data      = korl_allocate(context->allocatorHandleRuntime, createInfo->bytes);
     korl_assert(resource->data);
     /* create the multimedia asset */
     resource->subType.graphics.deviceMemoryAllocationHandle       = korl_vulkan_deviceAsset_createVertexBuffer(createInfo, 0/*0 => generate new handle*/);
@@ -290,16 +292,16 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     unpackedHandle.uniqueId       = context->nextUniqueId++;
     const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
     /* add the new resource to the database */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex < 0);
-    mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
+    hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     resource->subType.graphics.type = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
     /* allocate the memory for the raw decoded asset data */
     resource->dataBytes = createInfo->sizeX * createInfo->sizeY * sizeof(Korl_Vulkan_Color4u8);
-    resource->data      = korl_allocate(context->allocatorHandle, resource->dataBytes);
+    resource->data      = korl_allocate(context->allocatorHandleRuntime, resource->dataBytes);
     korl_assert(resource->data);
     /* create the multimedia asset */
     resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(createInfo, 0/*0 => generate new handle*/);
@@ -311,7 +313,7 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     _Korl_Resource_Context*const context = _korl_resource_context;
     if(!handle)
         return;// silently do nothing for NULL handles
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -322,7 +324,7 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
         korl_vulkan_deviceAsset_destroy(resource->subType.graphics.deviceMemoryAllocationHandle);
         break;}
     case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
-        korl_free(context->allocatorHandle, resource->subType.audio.resampledData);
+        korl_free(context->allocatorHandleTransient, resource->subType.audio.resampledData);
         break;}
     default:{
         korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
@@ -331,14 +333,17 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     /* if the resource backed by a file, we should destroy the cached file name string */
     string_free(&resource->stringFileName);
     /* destroy the cached decoded raw asset data */
-    korl_free(context->allocatorHandle, resource->data);
+    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME)
+        korl_free(context->allocatorHandleRuntime, resource->data);
+    else
+        korl_free(context->allocatorHandleTransient, resource->data);
     /* remove the resource from the database */
-    mchmdel(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    mchmdel(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
 }
 korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -347,14 +352,14 @@ korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void*
     korl_memory_copy(KORL_C_CAST(u8*, resource->data) + destinationByteOffset, sourceData, sourceDataBytes);
     if(!resource->dirty)
     {
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDsDirtyResourceHandles, handle);
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
 }
 korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     return resource->dataBytes;
@@ -362,7 +367,7 @@ korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
 korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -388,14 +393,14 @@ korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteS
         korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
         break;}
     }
-    resource->data      = korl_reallocate(context->allocatorHandle, resource->data, newByteSize);
+    resource->data      = korl_reallocate(context->allocatorHandleRuntime, resource->data, newByteSize);
     resource->dataBytes = newByteSize;
     korl_assert(resource->data);
 }
 korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -423,7 +428,7 @@ korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShift
     /* shifting data by a non-zero amount => the resource must be flushed */
     if(!resource->dirty)
     {
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDsDirtyResourceHandles, handle);
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
 }
@@ -433,7 +438,7 @@ korl_internal void korl_resource_flushUpdates(void)
     const Korl_Resource_Handle*const dirtyHandlesEnd = context->stbDsDirtyResourceHandles + arrlen(context->stbDsDirtyResourceHandles);
     for(const Korl_Resource_Handle* dirtyHandle = context->stbDsDirtyResourceHandles; dirtyHandle < dirtyHandlesEnd; dirtyHandle++)
     {
-        const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, *dirtyHandle);
+        const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, *dirtyHandle);
         if(hashMapIndex < 0)
         {
             //KORL-ISSUE-000-000-128: gui: (minor) WARNING logged on memory state load due to frivolous resource destruction
@@ -466,7 +471,7 @@ korl_internal void korl_resource_flushUpdates(void)
         }
         resource->dirty = false;
     }
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDsDirtyResourceHandles, 0);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, 0);
     /* once per frame, if we have any audio resources that are pending generation 
         of cached resampled audio data to match the audio renderer's format, we 
         attempt to resample as many of these as possible; once all audio 
@@ -514,7 +519,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanD
         return 0;// silently return a NULL device memory allocation handle if the resource handle is NULL
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     return resource->subType.graphics.deviceMemoryAllocationHandle;
@@ -534,7 +539,7 @@ korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFo
         if(unpackedHandle.multimediaType != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
             continue;
         _Korl_Resource*const resource = &resourceMapIt->value;
-        korl_free(context->allocatorHandle, resource->subType.audio.resampledData);
+        korl_free(context->allocatorHandleTransient, resource->subType.audio.resampledData);
         resource->subType.audio.resampledData = NULL;
     }
 }
@@ -545,7 +550,7 @@ korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audi
         return KORL_STRUCT_INITIALIZE_ZERO(acu8);// silently return a NULL device memory allocation handle if the resource handle is NULL _or_ if korl-resource has a pending resampling operation
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     *o_resourceAudioFormat = context->audioRendererFormat;
@@ -562,7 +567,7 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
     KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_resource_context);
     //@TODO
-    korl_memory_allocator_defragment(_korl_resource_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
+    korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleRuntime, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
 korl_internal void korl_resource_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {
@@ -650,13 +655,13 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
     const Korl_Resource_Handle handle                   = _korl_resource_handle_pack(unpackedHandle);
     if(!handle)
         return;// if we weren't able to derive a valid resource handle from the provided asset name, then it _should_ be safe to say that we don't have to do anything here
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbHmResources, handle);
+    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     if(hashMapIndex < 0)
         return;// if the asset isn't found in the resource database, then we don't have to do anything
     /* perform asset hot-reloading logic; clear the cached resource so that the 
         next time it is obtained by the user (via _fromFile) it is re-transcoded */
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    korl_free(context->allocatorHandle, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
+    korl_free(context->allocatorHandleTransient, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
     resource->data      = NULL;
     resource->dataBytes = 0;
 }
