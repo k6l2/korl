@@ -1962,12 +1962,12 @@ korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocato
     KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);
     KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context->stbDaFontCaches, _korl_gfx_context);
     const _Korl_Gfx_FontCache*const*const fontCachesEnd = _korl_gfx_context->stbDaFontCaches + arrlen(_korl_gfx_context->stbDaFontCaches);
-    for(const _Korl_Gfx_FontCache*const* fontCache = _korl_gfx_context->stbDaFontCaches; fontCache < fontCachesEnd; fontCache++)
+    for(_Korl_Gfx_FontCache*const* fontCache = _korl_gfx_context->stbDaFontCaches; fontCache < fontCachesEnd; fontCache++)
     {
         _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(*fontCache);
-        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD            (stackAllocator, stbDaDefragmentPointers, *fontCache                           , _korl_gfx_context->stbDaFontCaches);
-        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD  (stackAllocator, stbDaDefragmentPointers, fontGlyphPage->stbDaGlyphMeshVertices, *fontCache);
-        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, (*fontCache)->stbHmGlyphs            , *fontCache);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD            (stackAllocator,  stbDaDefragmentPointers, *fontCache                           , _korl_gfx_context->stbDaFontCaches);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD  (stackAllocator,  stbDaDefragmentPointers, fontGlyphPage->stbDaGlyphMeshVertices, *fontCache);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, &stbDaDefragmentPointers, (*fontCache)->stbHmGlyphs            , *fontCache);
     }
     korl_stringPool_collectDefragmentPointers(_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gfx_context);
     korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);

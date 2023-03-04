@@ -2012,12 +2012,21 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                               after we move an allocation are those who are _direct_ children of a defragmented allocation 
                               (dynamic allocation addresses that are stored within this allocation itself)! */
                     for(u$ i = 0; i < defragmentPointersIterator->childrenSize; i++)
+                    {
                         /* this looks janky because it kinda is; we're literally offsetting the address of the child allocation pointer by a certain # of bytes, 
                             and the only way to do this is by casting the pointer to an integral datatype & operating on it, as far as I know... */
                         defragmentPointersIterator->children[i]->userAddressPointer = KORL_C_CAST(void**, KORL_C_CAST(u$, defragmentPointersIterator->children[i]->userAddressPointer) - unoccupiedBytes);
+                        /* update our childrens' parent allocation address with the new one; 
+                            this allows us to pass the correct parent address in the call to `onAllocationMovedCallback` below */
+                        defragmentPointersIterator->children[i]->parent             = allocation;
+                    }
                     /* if the user provided a callback function to this DefragmentPointer, we must call it now */
                     if(defragmentPointersIterator->pDefragmentPointer->onAllocationMovedCallback)
-                        defragmentPointersIterator->pDefragmentPointer->onAllocationMovedCallback(allocation, -korl_checkCast_u$_to_i$(unoccupiedBytes));
+                        defragmentPointersIterator->pDefragmentPointer->onAllocationMovedCallback(defragmentPointersIterator->pDefragmentPointer->onAllocationMovedCallbackUserData
+                                                                                                 ,allocation, allocationMeta->allocationMeta.bytes
+                                                                                                 ,-korl_checkCast_u$_to_i$(unoccupiedBytes)
+                                                                                                 ,defragmentPointersIterator->pDefragmentPointer->parent
+                                                                                                 ,defragmentPointers, defragmentPointersSize);
                 }
                 defragmentPointersIterator++;
             }

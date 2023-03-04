@@ -163,6 +163,7 @@ rem     disable exception handling unwind code generation
 set "buildCommand=%buildCommand% /EHa-"
 rem     ONLY compile; do not link!
 set "buildCommand=%buildCommand% /c"
+set "buildCommand=%buildCommand% /D KORL_PLATFORM"
 set "buildCommand=%buildCommand% /D KORL_PLATFORM_WINDOWS"
 rem     use wide character implementations for Windows API
 set "buildCommand=%buildCommand% /D UNICODE"

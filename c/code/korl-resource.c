@@ -566,7 +566,7 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
     KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_resource_context);
-    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_resource_context->stbHmResources, _korl_resource_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, &stbDaDefragmentPointers, _korl_resource_context->stbHmResources, _korl_resource_context);
     KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_resource_context->stbDsDirtyResourceHandles, _korl_resource_context);
     korl_stringPool_collectDefragmentPointers(_korl_resource_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_resource_context);
     for(u$ r = 0; r < hmlenu(_korl_resource_context->stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
