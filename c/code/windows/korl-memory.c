@@ -547,6 +547,25 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_empty(korl_memory_allocator_em
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
 }
+korl_internal KORL_FUNCTION_korl_memory_allocator_isFragmented(korl_memory_allocator_isFragmented)
+{
+    _Korl_Memory_Context*const context = &_korl_memory_context;
+    _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
+    korl_assert(allocator);
+    if(!(allocator->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
+    {
+        korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
+        return false;
+    }
+    switch(allocator->type)
+    {
+    case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
+        return korl_heap_linear_isFragmented(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData));}
+    default:{ break; }
+    }
+    korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
+    return false;
+}
 korl_internal KORL_FUNCTION_korl_memory_allocator_defragment(korl_memory_allocator_defragment)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;

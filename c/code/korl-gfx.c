@@ -1957,6 +1957,8 @@ korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSet
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
+    if(!korl_memory_allocator_isFragmented(_korl_gfx_context->allocatorHandle))
+        return;
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 16);
     KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);

@@ -115,6 +115,7 @@ typedef struct Korl_Heap_DefragmentPointer
 #define KORL_FUNCTION_korl_memory_allocator_reallocate(name)           void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
 #define KORL_FUNCTION_korl_memory_allocator_free(name)                 void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
 #define KORL_FUNCTION_korl_memory_allocator_empty(name)                void                        name(Korl_Memory_AllocatorHandle handle)
+#define KORL_FUNCTION_korl_memory_allocator_isFragmented(name)         bool                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_FUNCTION_korl_memory_allocator_defragment(name)           void                        name(Korl_Memory_AllocatorHandle handle, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, Korl_Memory_AllocatorHandle handleStack)
 #define KORL_FUNCTION_korl_memory_allocator_enumerateAllocators(name)  void                        name(fnSig_korl_memory_allocator_enumerateAllocatorsCallback* callback, void* callbackUserData)
 #define KORL_FUNCTION_korl_memory_allocator_enumerateAllocations(name) void                        name(void* opaqueAllocator, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)

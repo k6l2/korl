@@ -147,6 +147,7 @@ typedef struct _Korl_Heap_Linear
     u$                 committedPages;// will always be <= virtualPages
     u$                 allocatedBytes;// gross-byte total of all allocations after (this heap struct + padding)
     // void*              lowestFreeAllocation;// this allocation can be either (1) completely free, or (2) // @TODO: delete; premature optimization; let's see the #s first without this...
+    bool               isFragmented;
     _Korl_Heap_Linear* next;// support for "limitless" heap; if this heap fails to allocate, we shunt to the `next` heap, or create a new heap if `next` doesn't exist yet
 } _Korl_Heap_Linear;
 /** each allocation in _Korl_Heap_Linear is in the form: 
@@ -1718,6 +1719,7 @@ korl_internal void korl_heap_linear_empty(_Korl_Heap_Linear*const allocator)
 }
 korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, void* requestedAddress)
 {
+    korl_assert(bytes);
     const u$ heapBytes                 = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
     const u$ allocatableBytesTotal     = (allocator->virtualPages * korl_memory_pageBytes()) - heapBytes;
     const u$ allocatableBytesRemaining = allocatableBytesTotal - allocator->allocatedBytes;
@@ -1757,6 +1759,8 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
 korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line)
 {
     korl_assert(bytes);
+    if(!allocation)
+        return korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, NULL);
     const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
     u8*const         heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
     const void*const heapVirtualEnd    = heapVirtualBase + (allocator->virtualPages * korl_memory_pageBytes());
@@ -1783,6 +1787,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             allocator->allocatedBytes  -= allocationMeta->allocationMeta.bytes - bytes;
             allocationMeta->grossBytes -= allocationMeta->allocationMeta.bytes - bytes;
         }
+        allocator->isFragmented = true;
         allocationMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
         return allocation;
     }
@@ -1792,6 +1797,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     {
         korl_memory_zero(KORL_C_CAST(u8*, allocation) + allocationMeta->allocationMeta.bytes, bytes - allocationMeta->allocationMeta.bytes);
         korl_memory_set(KORL_C_CAST(u8*, allocation) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
+        // we don't know enough information to know whether or not the allocator is still fragmented after this
         allocationMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
         return allocation;
     }
@@ -1824,6 +1830,10 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     korl_memory_copy(result, allocation, allocationMeta->allocationMeta.bytes);
     korl_heap_linear_free(allocator, allocation, file, line);
     return result;
+}
+korl_internal bool korl_heap_linear_isFragmented(_Korl_Heap_Linear*const allocator)
+{
+    return allocator->isFragmented;
 }
 /* sort support for linear heap addresses */
 typedef struct _Korl_Heap_DefragmentPointer
@@ -1875,6 +1885,7 @@ korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
 korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, _Korl_Heap_Linear* stackAllocator, const wchar_t* stackAllocatorName, Korl_Memory_AllocatorHandle handleStackAllocator)
 {
     korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
+    allocator->isFragmented = false;// assume we will, in fact, fully de-fragment the allocator; if we can't, we'll just raise this flag once more
     /* UH OH - we have another major issue; assume the heap looks like so:
             [FREE][allocA][allocB]
         and the user passes these defrag pointers:
@@ -1928,7 +1939,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         totalChildren++;
     }
     /* create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(<=n), as each DefragmentPointer can only have one parent */
-    Korl_Heap_DefragmentPointer** childPool            = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, NULL);
+    Korl_Heap_DefragmentPointer** childPool            = totalChildren ? korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, NULL) : NULL;
     u$                            childPoolAllocations = 0;
     /* iterate over each DefragmentPointer, & add the defrag pointer to its parent's child list, assigning the parent's `childPool` offset if it doesn't already have one - O(n) */
     for(u$ i = 0; i < defragmentPointersSize; i++)
@@ -2031,7 +2042,11 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
                 defragmentPointersIterator++;
             }
             else
+            {
+                if(unoccupiedBytes)
+                    allocator->isFragmented = true;
                 allocationMeta->allocationMeta.defragmentState = KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNMANAGED;
+            }
             /* ensure that allocator->allocatedBytes contains _no_ trailing free allocations OR unused bytes */
             if(/* we're the last allocation */KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes >= KORL_C_CAST(const u8*, heapAllocateEnd))
             {
@@ -2100,6 +2115,7 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
         korl_assert(KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes == heapAllocateEnd);// the last allocation _must_ be aligned _exactly_ with the end of the heap's allocated byte region)
         allocator->allocatedBytes -= allocationMeta->grossBytes;
     }
+    allocator->isFragmented = true;
 }
 korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
 {

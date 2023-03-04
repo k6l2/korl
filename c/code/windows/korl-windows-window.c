@@ -533,6 +533,8 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandCras
 }
 korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
+    if(!korl_memory_allocator_isFragmented(_korl_windows_window_context.allocatorHandle))
+        return;
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
     KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_windows_window_context.memoryStateLast);

@@ -167,6 +167,8 @@ korl_internal KORL_FUNCTION__korl_command_register(_korl_command_register)
 }
 korl_internal void korl_command_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
+    if(!korl_memory_allocator_isFragmented(_korl_command_context->allocator))
+        return;
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
     KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_command_context);
