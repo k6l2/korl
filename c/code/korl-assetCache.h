@@ -39,5 +39,5 @@ typedef KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(fnSig_korl_assetCache_onA
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded);
 korl_internal void korl_assetCache_clearAllFileHandles(void);
 korl_internal void korl_assetCache_defragment(Korl_Memory_AllocatorHandle stackAllocator);
-korl_internal void korl_assetCache_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
+korl_internal u32  korl_assetCache_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
 korl_internal bool korl_assetCache_memoryStateRead(u8* memoryState);

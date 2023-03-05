@@ -57,7 +57,7 @@ typedef struct Korl_Memory_AllocationMeta
     Korl_Memory_AllocationMeta_DefragmentState defragmentState;
 } Korl_Memory_AllocationMeta;
 #define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta, u$ grossBytes, u$ netBytes)
-#define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd)
+#define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd, u$ committedBytes, const void* allocatedBytesStart, u$ allocatedBytes)
 typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK       (fnSig_korl_heap_enumerateAllocationsCallback);
 typedef KORL_HEAP_ENUMERATE_CALLBACK                   (fnSig_korl_heap_enumerateCallback);
 typedef struct Korl_Heap_DefragmentPointer Korl_Heap_DefragmentPointer;

@@ -2301,9 +2301,11 @@ korl_internal void korl_gui_defragment(Korl_Memory_AllocatorHandle stackAllocato
     korl_stringPool_collectDefragmentPointers(_korl_gui_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gui_context);
     korl_memory_allocator_defragment(_korl_gui_context->allocatorHandleHeap, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
-korl_internal void korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+korl_internal u32 korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {
-    //@TODO
+    const u32 byteOffset = korl_checkCast_u$_to_u32(arrlenu(*pStbDaMemoryState));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_gui_context, sizeof(_korl_gui_context));
+    return byteOffset;
 }
 korl_internal bool korl_gui_memoryStateRead(u8* memoryState)
 {

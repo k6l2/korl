@@ -1974,9 +1974,11 @@ korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocato
     korl_stringPool_collectDefragmentPointers(_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gfx_context);
     korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
-korl_internal void korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+korl_internal u32 korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {
-    //@TODO
+    const u32 byteOffset = korl_checkCast_u$_to_u32(arrlenu(*pStbDaMemoryState));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_gfx_context, sizeof(_korl_gfx_context));
+    return byteOffset;
 }
 korl_internal bool korl_gfx_memoryStateRead(u8* memoryState)
 {

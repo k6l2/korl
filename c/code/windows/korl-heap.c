@@ -1144,7 +1144,8 @@ korl_internal KORL_HEAP_ENUMERATE(korl_heap_general_enumerate)
     _korl_heap_general_allocatorPagesUnguard(allocator);
     const u$         allocatorPages    = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
     const void*const virtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes + allocator->allocationPages*pageBytes;
-    callback(callbackUserData, allocator, virtualAddressEnd);
+    korl_assert(!"@TODO: not implemented; should we just destroy this?");
+    callback(callbackUserData, allocator, virtualAddressEnd, 0, NULL, 0);
     if(allocator->next)
         korl_heap_general_enumerate(allocator->next, callback, callbackUserData);
     _korl_heap_general_allocatorPagesGuard(allocator);
@@ -2119,11 +2120,12 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
 }
 korl_internal KORL_HEAP_ENUMERATE(korl_heap_linear_enumerate)
 {
-    _Korl_Heap_Linear*const allocator       = heap;
-    const u$                heapBytes       = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
-    const u8*const          heapVirtualBase = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
-    const void*const        heapVirtualEnd  = heapVirtualBase + allocator->virtualPages * korl_memory_pageBytes();
-    callback(callbackUserData, heapVirtualBase, heapVirtualEnd);
+    _Korl_Heap_Linear*const allocator         = heap;
+    const u$                heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
+    const u8*const          heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    const void*const        heapVirtualEnd    = heapVirtualBase + allocator->virtualPages * korl_memory_pageBytes();
+    const void*const        heapAllocateBegin = heapVirtualBase + heapBytes;
+    callback(callbackUserData, heapVirtualBase, heapVirtualEnd, allocator->committedPages * korl_memory_pageBytes(), heapAllocateBegin, allocator->allocatedBytes);
     if(allocator->next)
         korl_heap_linear_enumerate(allocator->next, callback, callbackUserData);
 }

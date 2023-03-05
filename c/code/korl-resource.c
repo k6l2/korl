@@ -583,9 +583,11 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
     }
     //@TODO: defragment transient resource data
 }
-korl_internal void korl_resource_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {
-    //@TODO
+    const u32 byteOffset = korl_checkCast_u$_to_u32(arrlenu(*pStbDaMemoryState));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_resource_context, sizeof(_korl_resource_context));
+    return byteOffset;
 }
 korl_internal bool korl_resource_memoryStateRead(u8* memoryState)
 {

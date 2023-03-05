@@ -41,6 +41,7 @@ korl_shared_const wchar_t* _KORL_WINDOWS_WINDOW_CONFIG_FILE_NAME = L"korl-window
 typedef struct _Korl_Windows_Window_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
+    Korl_Memory_AllocatorHandle allocatorHandleMemoryState;
     Korl_Memory_AllocatorHandle allocatorHandleStack;
     Korl_StringPool* stringPool;// Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     void* gameContext;
@@ -537,7 +538,6 @@ korl_internal void _korl_windows_window_defragment(Korl_Memory_AllocatorHandle s
         return;
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 8);
-    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_windows_window_context.memoryStateLast);
     korl_stringPool_collectDefragmentPointers(_korl_windows_window_context.stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, NULL/*defragPointerIndexParent*/);
     korl_memory_allocator_defragment(_korl_windows_window_context.allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
@@ -546,10 +546,12 @@ korl_internal void korl_windows_window_initialize(void)
     korl_memory_zero(&_korl_windows_window_context, sizeof(_korl_windows_window_context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
-    _korl_windows_window_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
-    _korl_windows_window_context.allocatorHandleStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
-    _korl_windows_window_context.stringPool           = korl_allocate(_korl_windows_window_context.allocatorHandle, sizeof(*_korl_windows_window_context.stringPool));
-    *_korl_windows_window_context.stringPool          = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
+    _korl_windows_window_context.allocatorHandle            = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
+    _korl_windows_window_context.allocatorHandleStack       = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(16);
+    _korl_windows_window_context.allocatorHandleMemoryState = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-windows-window-memoryState", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    _korl_windows_window_context.stringPool                 = korl_allocate(_korl_windows_window_context.allocatorHandle, sizeof(*_korl_windows_window_context.stringPool));
+    *_korl_windows_window_context.stringPool                = korl_stringPool_create(_korl_windows_window_context.allocatorHandle);
     /* attempt to obtain function pointers to the game interface API from within 
         the exe file; if we fail to get them, then we can assume that we're 
         running the game module as a DLL */
@@ -884,7 +886,6 @@ korl_internal void korl_windows_window_loop(void)
         }
         korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
         korl_time_probeStart(defragmentation);{
-            //@TODO: defragment all modules which are going to be contained in the memory state
             korl_command_defragment(context->allocatorHandleStack);
             _korl_windows_window_defragment(context->allocatorHandleStack);
             korl_gfx_defragment(context->allocatorHandleStack);
@@ -893,8 +894,8 @@ korl_internal void korl_windows_window_loop(void)
             korl_assetCache_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
         korl_time_probeStart(memory_state_create);{
-            korl_free(context->allocatorHandle, context->memoryStateLast);
-            context->memoryStateLast = korl_memoryState_create(context->allocatorHandle, context->allocatorHandleStack);
+            korl_free(context->allocatorHandleMemoryState, context->memoryStateLast);
+            context->memoryStateLast = korl_memoryState_create(context->allocatorHandleMemoryState);
         }korl_time_probeStop(memory_state_create);
         if(context->deferSaveStateSave)
         {
@@ -1013,9 +1014,16 @@ korl_internal void korl_windows_window_loop(void)
     while(context->configuration.deferSaveConfiguration || context->configuration.asyncIo.handle)
         _korl_windows_window_configurationStep();
 }
-korl_internal void korl_windows_window_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+korl_internal u32 korl_windows_window_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
 {
-    //@TODO
+    const u32 byteOffset = korl_checkCast_u$_to_u32(arrlenu(*pStbDaMemoryState));
+    KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
+    KORL_WINDOWS_CHECK(GetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_windows_window_context.stringPool, sizeof(_korl_windows_window_context.stringPool));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_windows_window_context.gameContext, sizeof(_korl_windows_window_context.gameContext));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &windowPlacement, sizeof(windowPlacement));
+    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_windows_window_context.configuration.fileDataBuffer, sizeof(_korl_windows_window_context.configuration.fileDataBuffer));
+    return byteOffset;
 }
 korl_internal bool korl_windows_window_memoryStateRead(u8* memoryState)
 {
