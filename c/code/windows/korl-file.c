@@ -447,6 +447,22 @@ korl_internal void korl_file_initialize(void)
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaSaveStateBuffer, korl_math_kilobytes(16));
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaAllocatorData, 32);
 }
+korl_internal i32 korl_file_makePathString(Korl_File_PathType pathType, const wchar_t* fileName, u8* o_pathUtf8Buffer, u$ pathUtf8BufferSize)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    Korl_StringPool_String stringFilePath = string_copy(context->directoryStrings[pathType]);
+    string_appendFormatUtf16(&stringFilePath, L"\\%ws", fileName);
+    _korl_file_sanitizeFilePath(&stringFilePath);
+    acu8 rawFilePathUtf8 = string_getRawAcu8(&stringFilePath);
+    const i32 resultUnitsWritten = rawFilePathUtf8.size + 1 > pathUtf8BufferSize
+                                   ? -korl_checkCast_u$_to_i32(rawFilePathUtf8.size + 1)
+                                   : korl_checkCast_u$_to_i32(rawFilePathUtf8.size + 1);
+    if(resultUnitsWritten > 0)
+        korl_memory_copy(o_pathUtf8Buffer, rawFilePathUtf8.data, (rawFilePathUtf8.size + 1) * sizeof(*rawFilePathUtf8.data));
+    string_free(&stringFilePath);
+    return resultUnitsWritten;
+}
 korl_internal bool korl_file_open(Korl_File_PathType pathType
                                  ,const wchar_t* fileName
                                  ,Korl_File_Descriptor* o_fileDescriptor
@@ -1021,7 +1037,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     subPathSaveState = string_newUtf16(DUMP_SUBDIRECTORY);
     string_append(&subPathSaveState, &subDirectoryMemoryDump);
     string_appendUtf16(&subPathSaveState, L"\\savestate");
-    korl_file_saveStateSave(type, string_getRawUtf16(&subPathSaveState));
+    korl_windows_window_saveLastMemoryState(type, string_getRawUtf16(&subPathSaveState));
     /* Attempt to copy the win32 application's symbol files to the dump 
         location.  This will allow us to at LEAST view the call stack properly 
         during development for all of our minidumps even after making source 

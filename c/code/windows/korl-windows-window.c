@@ -902,7 +902,8 @@ korl_internal void korl_windows_window_loop(void)
             context->deferSaveStateSave = false;
             // deferProbeReport = true;
             korl_time_probeStart(save_state_save);{
-                korl_file_saveStateSave(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
+                if(context->memoryStateLast)
+                    korl_memoryState_save(context->memoryStateLast, KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
             }korl_time_probeStop(save_state_save);
         }
         if(context->deferSaveStateLoad)
@@ -1028,6 +1029,11 @@ korl_internal u32 korl_windows_window_memoryStateWrite(void* memoryContext, u8**
 korl_internal bool korl_windows_window_memoryStateRead(u8* memoryState)
 {
     //@TODO
+}
+korl_internal void korl_windows_window_saveLastMemoryState(Korl_File_PathType pathType, const wchar_t *fileName)
+{
+    if(_korl_windows_window_context.memoryStateLast)
+        korl_memoryState_save(_korl_windows_window_context.memoryStateLast, pathType, fileName);
 }
 #if 0//@TODO: delete
 korl_internal void korl_windows_window_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)

@@ -93,3 +93,28 @@ korl_internal void* korl_memoryState_create(Korl_Memory_AllocatorHandle allocato
     korl_memory_copy(stbDaMemoryState + manifestByteOffset, &enumerateContext.manifest, sizeof(enumerateContext.manifest));
     return stbds_header(stbDaMemoryState);
 }
+korl_internal void korl_memoryState_save(void* context, Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    if(!context)
+        return;// silently do nothing if the user's memory state context is NULL
+    u8* stbDaMemoryState = KORL_C_CAST(u8*, (KORL_C_CAST(stbds_array_header*, context) + 1));
+    KORL_ZERO_STACK(Korl_File_Descriptor, fileDescriptor);
+    if(   !korl_file_openClear(pathType, fileName, &fileDescriptor, false/*_not_ async*/)
+       && !korl_file_create   (pathType, fileName, &fileDescriptor, false/*_not_ async*/))
+    {
+        korl_log(WARNING, "failed to open memory state file");
+        return;
+    }
+    korl_file_write(fileDescriptor, stbDaMemoryState, arrlenu(stbDaMemoryState));
+    korl_file_close(&fileDescriptor);
+    u8        pathUtf8[256];
+    const i32 pathUtf8Size = korl_file_makePathString(pathType, fileName, pathUtf8, sizeof(pathUtf8));
+    if(pathUtf8Size <= 0)
+        korl_log(WARNING, "korl_file_makePathString failed; result=%i", pathUtf8Size);
+    else
+        korl_log(INFO, "memory state saved to \"%hs\"", pathUtf8);
+}
+korl_internal void korl_memoryState_load(Korl_File_PathType pathType, const wchar_t* fileName)
+{
+    korl_assert(!"@TODO");
+}

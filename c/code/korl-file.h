@@ -35,6 +35,8 @@ typedef enum Korl_File_ResultRenameReplace
     , KORL_FILE_RESULT_RENAME_REPLACE_FAIL_MOVE_OLD_FILE
 } Korl_File_ResultRenameReplace;
 korl_internal void korl_file_initialize(void);
+/** \return the # of characters written to \c o_pathUtf8Buffer */
+korl_internal i32 korl_file_makePathString(Korl_File_PathType pathType, const wchar_t* fileName, u8* o_pathUtf8Buffer, u$ pathUtf8BufferSize);
 /** \return \c NULL if the library failed to load */
 korl_internal HMODULE korl_file_loadDynamicLibrary(Korl_File_PathType pathType, const wchar_t* fileName);
 korl_internal bool korl_file_copy(Korl_File_PathType pathTypeFileName   , const wchar_t* fileName
