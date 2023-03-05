@@ -14,7 +14,7 @@ typedef struct _Korl_MemoryState_Manifest_Heap
     const void* virtualRoot;
     u$          virtualBytes;
     u$          committedBytes;
-    u$          allocatedBytes;
+    u$          grossAllocatedBytes;// the size of the contiguous region within `committedBytes` which contains the Heap itself, as well as all allocations within the heap
 } _Korl_MemoryState_Manifest_Heap;
 typedef struct _Korl_MemoryState_Manifest_Allocator
 {
@@ -43,13 +43,13 @@ korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_memoryState_create_enumerateAll
     _Korl_MemoryState_Manifest_Allocator*const      enumAllocator    = enumerateContext->manifest.allocators + KORL_MEMORY_POOL_SIZE(enumerateContext->manifest.allocators) - 1;
     _Korl_MemoryState_Manifest_Heap*const           enumHeap         = KORL_MEMORY_POOL_ADD(enumAllocator->heaps);
     korl_assert(virtualAddressEnd > virtualAddressStart);
-    enumHeap->virtualRoot    = virtualAddressStart;
-    enumHeap->virtualBytes   = KORL_C_CAST(u$, virtualAddressEnd) - KORL_C_CAST(u$, virtualAddressStart);
-    enumHeap->committedBytes = committedBytes;
-    enumHeap->allocatedBytes = allocatedBytes;
+    enumHeap->virtualRoot         = virtualAddressStart;
+    enumHeap->virtualBytes        = KORL_C_CAST(u$, virtualAddressEnd) - KORL_C_CAST(u$, virtualAddressStart);
+    enumHeap->committedBytes      = committedBytes;
+    enumHeap->grossAllocatedBytes = grossAllocatedBytes;
     const i$ memoryStateBytes = arrlen(*enumerateContext->pStbDaMemoryState);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(enumerateContext->allocatorHandleResult), *enumerateContext->pStbDaMemoryState, memoryStateBytes + allocatedBytes);
-    korl_memory_copy(*enumerateContext->pStbDaMemoryState + memoryStateBytes, allocatedBytesStart, allocatedBytes);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(enumerateContext->allocatorHandleResult), *enumerateContext->pStbDaMemoryState, memoryStateBytes + grossAllocatedBytes);
+    korl_memory_copy(*enumerateContext->pStbDaMemoryState + memoryStateBytes, virtualAddressStart, grossAllocatedBytes);
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_memoryState_create_enumerateAllocatorsCallback)
 {
@@ -65,6 +65,12 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_memorySt
 korl_internal void* korl_memoryState_create(Korl_Memory_AllocatorHandle allocatorHandleResult)
 {
     u8* stbDaMemoryState = NULL;
+    /*@TODO: > 50% of the time spent in this function is in reallocation of `stbDaMemoryState`; 
+        specifically due to `korl_memory_zero` on each allocation, and just as bad: the destruction
+        of this buffer _also_ causes a huge/frivolous `korl_memory_zero` invocation; 
+        this alone is costing us nearly 750µs per optimized build frame; 
+        perhaps it is time to allow the user to specifically tell the call to 
+        korl_allocate/reallocate/free that we do _not_ want it to zero-out the memory for us, as well as with */
     mcarrsetcap(KORL_STB_DS_MC_CAST(allocatorHandleResult), stbDaMemoryState, korl_math_megabytes(8));
     _Korl_MemoryState_Create_EnumerateContext enumerateContext;
     enumerateContext.pStbDaMemoryState                      = &stbDaMemoryState;
