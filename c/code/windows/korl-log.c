@@ -342,8 +342,8 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
             korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log.%lli", KORL_APPLICATION_NAME, f));
         wchar_t logFileNameNext[256];
         korl_assert(0 < korl_string_formatBufferUtf16(logFileNameNext, sizeof(logFileNameNext), L"%ws.log.%lli", KORL_APPLICATION_NAME, f + 1));
-        const Korl_File_ResultRenameReplace resultRenameReplace = 
-            korl_file_renameReplace(KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameCurrent, KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameNext);
+        const Korl_File_ResultRenameReplace resultRenameReplace = korl_file_renameReplace(KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameCurrent
+                                                                                         ,KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameNext);
         korl_assert(   resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS 
                     || resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST);
     }

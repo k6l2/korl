@@ -903,7 +903,10 @@ korl_internal void korl_windows_window_loop(void)
             // deferProbeReport = true;
             korl_time_probeStart(save_state_save);{
                 if(context->memoryStateLast)
-                    korl_memoryState_save(context->memoryStateLast, KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
+                {
+                    korl_file_directory_create(KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states");//@TODO: make `korl_file_create` iterate over each directory separator & ensure the directory exists, then we can delete this line
+                    korl_memoryState_save(context->memoryStateLast, KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states/0.kms");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
+                }
             }korl_time_probeStop(save_state_save);
         }
         if(context->deferSaveStateLoad)
@@ -915,7 +918,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_file_finishAllAsyncOperations();
             korl_assetCache_clearAllFileHandles();
             korl_vulkan_clearAllDeviceAllocations();
-            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"save-states/savestate");
+            korl_file_saveStateLoad(KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states/0.kms");
             // korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             if(context->gameDll)
                 korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));

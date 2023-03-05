@@ -463,6 +463,28 @@ korl_internal i32 korl_file_makePathString(Korl_File_PathType pathType, const wc
     string_free(&stringFilePath);
     return resultUnitsWritten;
 }
+korl_internal bool korl_file_directory_create(Korl_File_PathType pathType, const wchar_t* directoryName)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    Korl_StringPool_String stringPath = string_copy(context->directoryStrings[pathType]);
+    string_appendFormatUtf16(&stringPath, L"\\%ws", directoryName);
+    _korl_file_sanitizeFilePath(&stringPath);
+    bool resultSuccess = true;
+    if(!CreateDirectory(string_getRawUtf16(&stringPath), NULL/*default security*/))
+        switch(GetLastError())
+        {
+        case ERROR_ALREADY_EXISTS:
+            break;
+        case ERROR_PATH_NOT_FOUND:
+            korl_log(ERROR, "CreateDirectory(%ws) failed: path not found", string_getRawUtf16(&stringPath));
+        default:
+            resultSuccess = false;
+            break;
+        }
+    string_free(&stringPath);
+    return resultSuccess;
+}
 korl_internal bool korl_file_open(Korl_File_PathType pathType
                                  ,const wchar_t* fileName
                                  ,Korl_File_Descriptor* o_fileDescriptor
@@ -933,7 +955,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     Korl_StringPool_String dumpDirectory          = {0};
     Korl_StringPool_String pathMemoryDump         = {0};
     Korl_StringPool_String subDirectoryMemoryDump = {0};
-    Korl_StringPool_String subPathSaveState       = {0};
+    Korl_StringPool_String subPathMemoryState     = {0};
     // derived from MSDN sample code:
     //	https://docs.microsoft.com/en-us/windows/win32/dxtecharts/crash-dump-analysis
     SYSTEMTIME localTime;
@@ -1034,10 +1056,10 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     }
     korl_log(INFO, "MiniDump written to: %ws", string_getRawUtf16(&pathFileWrite));
     /* let's also save the state of the top of this frame in the dump folder */
-    subPathSaveState = string_newUtf16(DUMP_SUBDIRECTORY);
-    string_append(&subPathSaveState, &subDirectoryMemoryDump);
-    string_appendUtf16(&subPathSaveState, L"\\savestate");
-    korl_windows_window_saveLastMemoryState(type, string_getRawUtf16(&subPathSaveState));
+    subPathMemoryState = string_newUtf16(DUMP_SUBDIRECTORY);
+    string_append(&subPathMemoryState, &subDirectoryMemoryDump);
+    string_appendUtf16(&subPathMemoryState, L"\\last.kms");
+    korl_windows_window_saveLastMemoryState(type, string_getRawUtf16(&subPathMemoryState));
     /* Attempt to copy the win32 application's symbol files to the dump 
         location.  This will allow us to at LEAST view the call stack properly 
         during development for all of our minidumps even after making source 
@@ -1129,7 +1151,7 @@ cleanUp:
     string_free(&dumpDirectory);
     string_free(&pathMemoryDump);
     string_free(&subDirectoryMemoryDump);
-    string_free(&subPathSaveState);
+    string_free(&subPathMemoryState);
 }
 /** In this function, we just write out each allocator to the file.  Instead of 
  * enumerating over each memory allocator and writing the contents to the file 
