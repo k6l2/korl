@@ -112,9 +112,9 @@ typedef struct Korl_Heap_DefragmentPointer
  * specified address is valid (within allocator address range, not overlapping 
  * other allocations).  If this value is \c NULL , the allocator will choose the 
  * address of the allocation automatically (as you would typically expect). */
-#define KORL_FUNCTION_korl_memory_allocator_allocate(name)             void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line)
-#define KORL_FUNCTION_korl_memory_allocator_reallocate(name)           void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line)
-#define KORL_FUNCTION_korl_memory_allocator_free(name)                 void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line)
+#define KORL_FUNCTION_korl_memory_allocator_allocate(name)             void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+#define KORL_FUNCTION_korl_memory_allocator_reallocate(name)           void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+#define KORL_FUNCTION_korl_memory_allocator_free(name)                 void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line, bool fastAndDirty)
 #define KORL_FUNCTION_korl_memory_allocator_empty(name)                void                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_FUNCTION_korl_memory_allocator_isFragmented(name)         bool                        name(Korl_Memory_AllocatorHandle handle)
 #define KORL_FUNCTION_korl_memory_allocator_defragment(name)           void                        name(Korl_Memory_AllocatorHandle handle, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, Korl_Memory_AllocatorHandle handleStack)

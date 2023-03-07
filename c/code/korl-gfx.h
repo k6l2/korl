@@ -90,5 +90,5 @@ korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetSize(korl_gfx_batchRectang
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectangleSetColor);
 korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSetColor);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
-korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
+korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_gfx_memoryStateRead(const u8* memoryState);

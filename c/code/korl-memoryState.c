@@ -2,7 +2,6 @@
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include "korl-string.h"
-#include "korl-stb-ds.h"
 #include "korl-command.h"
 #include "korl-windows-window.h"
 #include "korl-gui.h"
@@ -33,7 +32,7 @@ typedef struct _Korl_MemoryState_Manifest
 } _Korl_MemoryState_Manifest;
 typedef struct _Korl_MemoryState_Create_EnumerateContext
 {
-    u8**                        pStbDaMemoryState;
+    Korl_Memory_ByteBuffer**    byteBuffer;
     Korl_Memory_AllocatorHandle allocatorHandleResult;
     _Korl_MemoryState_Manifest  manifest;
 } _Korl_MemoryState_Create_EnumerateContext;
@@ -47,9 +46,7 @@ korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_memoryState_create_enumerateAll
     enumHeap->virtualBytes        = KORL_C_CAST(u$, virtualAddressEnd) - KORL_C_CAST(u$, virtualAddressStart);
     enumHeap->committedBytes      = committedBytes;
     enumHeap->grossAllocatedBytes = grossAllocatedBytes;
-    const i$ memoryStateBytes = arrlen(*enumerateContext->pStbDaMemoryState);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(enumerateContext->allocatorHandleResult), *enumerateContext->pStbDaMemoryState, memoryStateBytes + grossAllocatedBytes);
-    korl_memory_copy(*enumerateContext->pStbDaMemoryState + memoryStateBytes, virtualAddressStart, grossAllocatedBytes);
+    korl_memory_byteBuffer_append(enumerateContext->byteBuffer, (acu8){.data = virtualAddressStart, .size = grossAllocatedBytes});
 }
 korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_memoryState_create_enumerateAllocatorsCallback)
 {
@@ -62,42 +59,33 @@ korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_memorySt
     korl_memory_allocator_enumerateHeaps(opaqueAllocator, _korl_memoryState_create_enumerateAllocatorsCallback_enumerateHeapsCallback, enumerateContext);
     return true;// true => continue enumerating
 }
-korl_internal void* korl_memoryState_create(Korl_Memory_AllocatorHandle allocatorHandleResult)
+korl_internal Korl_Memory_ByteBuffer* korl_memoryState_create(Korl_Memory_AllocatorHandle allocatorHandleResult)
 {
-    u8* stbDaMemoryState = NULL;
-    /*@TODO: > 50% of the time spent in this function is in reallocation of `stbDaMemoryState`; 
-        specifically due to `korl_memory_zero` on each allocation, and just as bad: the destruction
-        of this buffer _also_ causes a huge/frivolous `korl_memory_zero` invocation; 
-        this alone is costing us nearly 750µs per optimized build frame; 
-        perhaps it is time to allow the user to specifically tell the call to 
-        korl_allocate/reallocate/free that we do _not_ want it to zero-out the memory for us, as well as with */
-    mcarrsetcap(KORL_STB_DS_MC_CAST(allocatorHandleResult), stbDaMemoryState, korl_math_megabytes(8));
+    Korl_Memory_ByteBuffer* result = korl_memory_byteBuffer_create(allocatorHandleResult, korl_math_megabytes(8), true/*fastAndDirty*/);
     _Korl_MemoryState_Create_EnumerateContext enumerateContext;
-    enumerateContext.pStbDaMemoryState                      = &stbDaMemoryState;
-    enumerateContext.allocatorHandleResult                  = allocatorHandleResult;
+    enumerateContext.byteBuffer            = &result;
+    enumerateContext.allocatorHandleResult = allocatorHandleResult;
     KORL_MEMORY_POOL_EMPTY(enumerateContext.manifest.allocators);
     /* iterate over all "serialized" allocators; 
         determine the "allocated memory" address range; 
-        copy the entire allocated address range into `stbDaMemoryState`, while remembering the byte offsets of each heap */
+        copy the entire allocated address range into `result`; 
+        note: we don't have to remember the byte offsets of each heap, as this information is implicit */
     korl_memory_allocator_enumerateAllocators(_korl_memoryState_create_enumerateAllocatorsCallback, &enumerateContext);
-    /* call module-specific functions to write module-specific data to `stbDaMemoryState`, while remembering byte offsets for each module */
-    enumerateContext.manifest.byteOffsetKorlCommand    = korl_command_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &stbDaMemoryState);
-    enumerateContext.manifest.byteOffsetKorlWindow     = korl_windows_window_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &stbDaMemoryState);
-    enumerateContext.manifest.byteOffsetKorlGfx        = korl_gfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &stbDaMemoryState);
-    enumerateContext.manifest.byteOffsetKorlGui        = korl_gui_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &stbDaMemoryState);
-    enumerateContext.manifest.byteOffsetKorlResource   = korl_resource_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &stbDaMemoryState);
-    enumerateContext.manifest.byteOffsetKorlAssetCache = korl_assetCache_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &stbDaMemoryState);
-    /* write a manifest into `stbDaMemoryState` containing the heap offsets for each allocator & offsets to each module-specific data */
-    const i$ manifestByteOffset = arrlen(stbDaMemoryState);
-    mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandleResult), stbDaMemoryState, manifestByteOffset + sizeof(enumerateContext.manifest));
-    korl_memory_copy(stbDaMemoryState + manifestByteOffset, &enumerateContext.manifest, sizeof(enumerateContext.manifest));
-    return stbds_header(stbDaMemoryState);
+    /* call module-specific functions to write module-specific data to `result`, while remembering byte offsets for each module */
+    enumerateContext.manifest.byteOffsetKorlCommand    = korl_command_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlWindow     = korl_windows_window_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlGfx        = korl_gfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlGui        = korl_gui_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlResource   = korl_resource_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlAssetCache = korl_assetCache_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    /* write a manifest into `result` containing the heap offsets for each allocator & offsets to each module-specific data */
+    korl_memory_byteBuffer_append(&result, (acu8){.data = KORL_C_CAST(u8*, &enumerateContext.manifest), .size = sizeof(enumerateContext.manifest)});
+    return result;
 }
-korl_internal void korl_memoryState_save(void* context, Korl_File_PathType pathType, const wchar_t* fileName)
+korl_internal void korl_memoryState_save(Korl_Memory_ByteBuffer* context, Korl_File_PathType pathType, const wchar_t* fileName)
 {
     if(!context)
         return;// silently do nothing if the user's memory state context is NULL
-    u8* stbDaMemoryState = KORL_C_CAST(u8*, (KORL_C_CAST(stbds_array_header*, context) + 1));
     KORL_ZERO_STACK(Korl_File_Descriptor, fileDescriptor);
     if(   !korl_file_openClear(pathType, fileName, &fileDescriptor, false/*_not_ async*/)
        && !korl_file_create   (pathType, fileName, &fileDescriptor, false/*_not_ async*/))
@@ -105,7 +93,7 @@ korl_internal void korl_memoryState_save(void* context, Korl_File_PathType pathT
         korl_log(WARNING, "failed to open memory state file");
         return;
     }
-    korl_file_write(fileDescriptor, stbDaMemoryState, arrlenu(stbDaMemoryState));
+    korl_file_write(fileDescriptor, context->data, context->size);
     korl_file_close(&fileDescriptor);
     u8        pathUtf8[256];
     const i32 pathUtf8Size = korl_file_makePathString(pathType, fileName, pathUtf8, sizeof(pathUtf8));
@@ -114,7 +102,7 @@ korl_internal void korl_memoryState_save(void* context, Korl_File_PathType pathT
     else
         korl_log(INFO, "memory state saved to \"%hs\"", pathUtf8);
 }
-korl_internal void* korl_memoryState_load(Korl_Memory_AllocatorHandle allocatorHandleResult, Korl_File_PathType pathType, const wchar_t* fileName)
+korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_AllocatorHandle allocatorHandleResult, Korl_File_PathType pathType, const wchar_t* fileName)
 {
     /* flush the state of some modules which depend on system resources prior to 
         overwriting the state of modules which depend on these resources */
@@ -130,13 +118,12 @@ korl_internal void* korl_memoryState_load(Korl_Memory_AllocatorHandle allocatorH
         return NULL;
     }
     const u32 fileBytes = korl_file_getTotalBytes(fileDescriptor);
-    u8* stbDaMemoryState = NULL;
-    mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandleResult), stbDaMemoryState, fileBytes);
-    korl_assert(korl_file_read(fileDescriptor, stbDaMemoryState, fileBytes));
+    Korl_Memory_ByteBuffer*const result = korl_memory_byteBuffer_create(allocatorHandleResult, fileBytes, true/*fastAndDirty*/);
+    korl_assert(korl_file_read(fileDescriptor, result->data, fileBytes));
     korl_file_close(&fileDescriptor);// we're done with the file, so close it immediately
     /* using the memory state's manifest, we can reconstruct all the memory 
         allocators which are stored within */
-    const _Korl_MemoryState_Manifest*const manifest = KORL_C_CAST(_Korl_MemoryState_Manifest*, stbDaMemoryState + fileBytes - sizeof(*manifest));
+    const _Korl_MemoryState_Manifest*const manifest = KORL_C_CAST(_Korl_MemoryState_Manifest*, result->data + fileBytes - sizeof(*manifest));
     u$ currentMemoryStateHeapByte = 0;// the first heap is at byte 0 of the memory state, and all heaps are contiguous
     for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(manifest->allocators); i++)
     {
@@ -152,18 +139,18 @@ korl_internal void* korl_memoryState_load(Korl_Memory_AllocatorHandle allocatorH
         for(u$ j = 0; j < KORL_MEMORY_POOL_SIZE(manifest->allocators[i].heaps); j++)
         {
             const _Korl_MemoryState_Manifest_Heap*const heap = manifest->allocators[i].heaps + j;
-            korl_memory_copy(KORL_C_CAST(void*/*fuck it*/, heap->virtualRoot), stbDaMemoryState + currentMemoryStateHeapByte, heap->grossAllocatedBytes);
+            korl_memory_copy(KORL_C_CAST(void*/*fuck it*/, heap->virtualRoot), result->data + currentMemoryStateHeapByte, heap->grossAllocatedBytes);
             currentMemoryStateHeapByte += heap->grossAllocatedBytes;
         }
     }
     /* finally, we can perform module-specific memory state loading procedures */
-    korl_command_memoryStateRead       (stbDaMemoryState + manifest->byteOffsetKorlCommand);
-    korl_windows_window_memoryStateRead(stbDaMemoryState + manifest->byteOffsetKorlWindow);
-    korl_gfx_memoryStateRead           (stbDaMemoryState + manifest->byteOffsetKorlGfx);
-    korl_gui_memoryStateRead           (stbDaMemoryState + manifest->byteOffsetKorlGui);
-    korl_resource_memoryStateRead      (stbDaMemoryState + manifest->byteOffsetKorlResource);
-    korl_assetCache_memoryStateRead    (stbDaMemoryState + manifest->byteOffsetKorlAssetCache);
+    korl_command_memoryStateRead       (result->data + manifest->byteOffsetKorlCommand);
+    korl_windows_window_memoryStateRead(result->data + manifest->byteOffsetKorlWindow);
+    korl_gfx_memoryStateRead           (result->data + manifest->byteOffsetKorlGfx);
+    korl_gui_memoryStateRead           (result->data + manifest->byteOffsetKorlGui);
+    korl_resource_memoryStateRead      (result->data + manifest->byteOffsetKorlResource);
+    korl_assetCache_memoryStateRead    (result->data + manifest->byteOffsetKorlAssetCache);
     /**/
     korl_resource_flushUpdates();
-    return stbDaMemoryState ? stbds_header(stbDaMemoryState) : NULL;
+    return result;
 }

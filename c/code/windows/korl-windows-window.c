@@ -44,7 +44,7 @@ typedef struct _Korl_Windows_Window_Context
     Korl_Memory_AllocatorHandle allocatorHandleStack;
     Korl_StringPool stringPool;// Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience; since we are _not_ serializing this struct (_or_ any Strings created with it), it should be safe to assume that this StringPool will never move around in memory
     void* gameContext;
-    void* memoryStateLast;
+    Korl_Memory_ByteBuffer* memoryStateLast;
     struct
     {
         HWND handle;
@@ -892,7 +892,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_assetCache_defragment(context->allocatorHandleStack);
         }korl_time_probeStop(defragmentation);
         korl_time_probeStart(memory_state_create);{
-            korl_free(context->allocatorHandleMemoryState, context->memoryStateLast);
+            korl_memory_byteBuffer_destroy(&context->memoryStateLast);
             context->memoryStateLast = korl_memoryState_create(context->allocatorHandleMemoryState);
         }korl_time_probeStop(memory_state_create);
         if(context->deferSaveStateSave)
@@ -1013,15 +1013,15 @@ korl_internal void korl_windows_window_loop(void)
     while(context->configuration.deferSaveConfiguration || context->configuration.asyncIo.handle)
         _korl_windows_window_configurationStep();
 }
-korl_internal u32 korl_windows_window_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+korl_internal u32 korl_windows_window_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
 {
-    const u32 byteOffset = korl_checkCast_u$_to_u32(arrlenu(*pStbDaMemoryState));
+    const u32 byteOffset = korl_checkCast_u$_to_u32((*pByteBuffer)->size);
     KORL_ZERO_STACK(WINDOWPLACEMENT, windowPlacement);
     KORL_WINDOWS_CHECK(GetWindowPlacement(_korl_windows_window_context.window.handle, &windowPlacement));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_windows_window_context.stringPool                  , sizeof(_korl_windows_window_context.stringPool));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_windows_window_context.gameContext                 , sizeof(_korl_windows_window_context.gameContext));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &windowPlacement                                          , sizeof(windowPlacement));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_windows_window_context.configuration.fileDataBuffer, sizeof(_korl_windows_window_context.configuration.fileDataBuffer));
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(u8*, &_korl_windows_window_context.stringPool                  ), .size = sizeof(_korl_windows_window_context.stringPool)});
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(u8*, &_korl_windows_window_context.gameContext                 ), .size = sizeof(_korl_windows_window_context.gameContext)});
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(u8*, &windowPlacement                                          ), .size = sizeof(windowPlacement)});
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(u8*, &_korl_windows_window_context.configuration.fileDataBuffer), .size = sizeof(_korl_windows_window_context.configuration.fileDataBuffer)});
     return byteOffset;
 }
 korl_internal void korl_windows_window_memoryStateRead(const u8* memoryState)

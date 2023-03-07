@@ -92,3 +92,15 @@ korl_internal u$ korl_memory_unpackI16(i16 data, u8** bufferCursor, const u8*con
 korl_internal u$ korl_memory_unpackI8 (i8  data, u8** bufferCursor, const u8*const bufferEnd);
 korl_internal u$ korl_memory_unpackF64(f64 data, u8** bufferCursor, const u8*const bufferEnd);
 korl_internal u$ korl_memory_unpackF32(f32 data, u8** bufferCursor, const u8*const bufferEnd);
+typedef struct Korl_Memory_ByteBuffer
+{
+    Korl_Memory_AllocatorHandle allocator;
+    u$                          size;
+    u$                          capacity;
+    bool                        fastAndDirty;// tell the allocator not to zero-out our memory when we (re)allocate/free this ByteBuffer
+    u8                          data[1];// array size is actually `capacity`, and immediately follows this struct
+} Korl_Memory_ByteBuffer;
+korl_internal Korl_Memory_ByteBuffer* korl_memory_byteBuffer_create(Korl_Memory_AllocatorHandle allocator, u$ capacity, bool fastAndDirty);
+korl_internal void                    korl_memory_byteBuffer_destroy(Korl_Memory_ByteBuffer** pContext);
+korl_internal void                    korl_memory_byteBuffer_append(Korl_Memory_ByteBuffer** pContext, acu8 data);
+korl_internal void                    korl_memory_byteBuffer_trim(Korl_Memory_ByteBuffer** pContext);

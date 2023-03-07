@@ -177,10 +177,10 @@ korl_internal void korl_command_defragment(Korl_Memory_AllocatorHandle stackAllo
     korl_stringPool_collectDefragmentPointers(_korl_command_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_command_context);
     korl_memory_allocator_defragment(_korl_command_context->allocator, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }
-korl_internal u32 korl_command_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState)
+korl_internal u32 korl_command_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
 {
-    const u32 byteOffset = korl_checkCast_u$_to_u32(arrlenu(*pStbDaMemoryState));
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_command_context, sizeof(_korl_command_context));
+    const u32 byteOffset = korl_checkCast_u$_to_u32((*pByteBuffer)->size);
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(u8*, &_korl_command_context), .size = sizeof(_korl_command_context)});
     return byteOffset;
 }
 korl_internal void korl_command_memoryStateRead(const u8* memoryState)

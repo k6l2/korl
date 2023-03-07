@@ -475,9 +475,9 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_allocate(korl_memory_allocator
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line);}
+        return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line, fastAndDirty);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line);}
+        return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line, fastAndDirty);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
@@ -498,12 +498,12 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocat
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         if(allocation == NULL)
-            return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line);
-        return korl_heap_linear_reallocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, allocation, bytes, persistentFileString, line);}
+            return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line, fastAndDirty);
+        return korl_heap_linear_reallocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, allocation, bytes, persistentFileString, line, fastAndDirty);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
         if(allocation == NULL)
-            return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line);
-        return korl_heap_general_reallocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, allocation, bytes, persistentFileString, line);}
+            return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line, fastAndDirty);
+        return korl_heap_general_reallocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, allocation, bytes, persistentFileString, line, fastAndDirty);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
@@ -524,10 +524,10 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_free(korl_memory_allocator_fre
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        korl_heap_linear_free(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocation, persistentFileString, line);
+        korl_heap_linear_free(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocation, persistentFileString, line, fastAndDirty);
         return;}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        korl_heap_general_free(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocation, persistentFileString, line);
+        korl_heap_general_free(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocation, persistentFileString, line, fastAndDirty);
         return;}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
@@ -1026,4 +1026,45 @@ korl_internal u$ korl_memory_unpackF64(f64 data, u8** bufferCursor, const u8*con
 korl_internal u$ korl_memory_unpackF32(f32 data, u8** bufferCursor, const u8*const bufferEnd)
 {
     return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
+}
+korl_internal Korl_Memory_ByteBuffer* korl_memory_byteBuffer_create(Korl_Memory_AllocatorHandle allocator, u$ capacity, bool fastAndDirty)
+{
+    korl_assert(capacity);
+    Korl_Memory_ByteBuffer* result = fastAndDirty 
+                                     ? korl_dirtyAllocate(allocator, sizeof(*result) - sizeof(result->data) + capacity)
+                                     : korl_allocate     (allocator, sizeof(*result) - sizeof(result->data) + capacity);
+    *result = (Korl_Memory_ByteBuffer){.allocator = allocator, .capacity = capacity, .fastAndDirty = fastAndDirty};
+    return result;
+}
+korl_internal void korl_memory_byteBuffer_destroy(Korl_Memory_ByteBuffer** pContext)
+{
+    if(*pContext)// we can't obtain the ByteBuffer's allocator without a ByteBuffer lol
+        if((*pContext)->fastAndDirty)
+            korl_dirtyFree((*pContext)->allocator, *pContext);
+        else
+            korl_free((*pContext)->allocator, *pContext);
+    *pContext = NULL;
+}
+korl_internal void korl_memory_byteBuffer_append(Korl_Memory_ByteBuffer** pContext, acu8 data)
+{
+    if((*pContext)->size + data.size > (*pContext)->capacity)
+    {
+        (*pContext)->capacity = KORL_MATH_MAX(2 * (*pContext)->capacity, (*pContext)->size + data.size);
+        if((*pContext)->fastAndDirty)
+            *pContext = korl_dirtyReallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
+        else
+            *pContext = korl_reallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
+    }
+    korl_memory_copy((*pContext)->data + (*pContext)->size, data.data, data.size);
+    (*pContext)->size += data.size;
+}
+korl_internal void korl_memory_byteBuffer_trim(Korl_Memory_ByteBuffer** pContext)
+{
+    if((*pContext)->size == (*pContext)->capacity)
+        return;
+    (*pContext)->capacity = (*pContext)->size;
+    if((*pContext)->fastAndDirty)
+        *pContext = korl_dirtyReallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
+    else
+        *pContext = korl_reallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
 }

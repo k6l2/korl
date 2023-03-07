@@ -40,7 +40,7 @@ korl_internal KORL_FUNCTION__korl_stb_ds_reallocate(_korl_stb_ds_reallocate)
         allocatorHandle = enumAllocatorsUserData.out_allocatorHandle;
     }
 #endif
-    return korl_memory_allocator_reallocate(allocatorHandle, allocation, bytes, file, line);
+    return korl_memory_allocator_reallocate(allocatorHandle, allocation, bytes, file, line, false);
 }
 korl_internal KORL_FUNCTION__korl_stb_ds_free(_korl_stb_ds_free)
 {
