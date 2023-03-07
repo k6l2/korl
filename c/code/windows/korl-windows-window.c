@@ -27,7 +27,6 @@
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG
-    //@TODO: comment all these out
     // #define _KORL_WINDOWS_WINDOW_DEBUG_DISPLAY_MEMORY_STATE
     // #define _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
     // #define _KORL_WINDOWS_WINDOW_DEBUG_HEAP_UNIT_TESTS

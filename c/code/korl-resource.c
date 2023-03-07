@@ -635,9 +635,11 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
                 switch(resourceMapItem->value.subType.graphics.type)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
+                    korl_log(VERBOSE, "creating IMAGE Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
                     korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
                     break;}
                 case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
+                    korl_log(VERBOSE, "creating VERTEX_BUFFER Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
                     resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo.vertexAttributeDescriptors = resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
                     korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
                     break;}
@@ -659,75 +661,6 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
         }
     }
 }
-#if 0//@TODO: delete
-korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_resource_context, sizeof(_korl_resource_context));
-}
-korl_internal bool korl_resource_saveStateRead(HANDLE hFile)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    if(!ReadFile(hFile, &_korl_resource_context, sizeof(_korl_resource_context), NULL/*bytes read*/, NULL/*no overlapped*/))
-    {
-        korl_logLastError("ReadFile failed");
-        return false;
-    }
-    /* go through each Resource & re-create the transcoded multimedia assets, 
-        since we should expect that when a memory state is loaded all multimedia 
-        device assets are invalidated! */
-    for(u$ r = 0; r < hmlenu(_korl_resource_context.stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
-    {
-        _Korl_Resource_Map*const resourceMapItem = &(_korl_resource_context.stbHmResources[r]);
-        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapItem->key);
-        switch(unpackedHandle.type)
-        {
-        case _KORL_RESOURCE_TYPE_FILE:{
-            /* maybe just free the data allocation & reset the resource to the 
-                unloaded state?  the external device memory allocations should 
-                all be invalid at this point, so we should be able to just 
-                nullify this struct */
-            korl_free(_korl_resource_context.allocatorHandle, resourceMapItem->value.data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
-            resourceMapItem->value.data      = NULL;
-            resourceMapItem->value.dataBytes = 0;
-            break;}
-        case _KORL_RESOURCE_TYPE_RUNTIME:{
-            /* here we can just re-create each device memory allocation & mark 
-                each asset as dirty, and they will get updated at the end of the 
-                frame, since we already have all the CPU-encoded asset data from 
-                the memory state */
-            switch(unpackedHandle.multimediaType)
-            {
-            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-                switch(resourceMapItem->value.subType.graphics.type)
-                {
-                case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
-                    break;}
-                case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-                    resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo.vertexAttributeDescriptors = resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
-                    korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
-                    break;}
-                default:
-                    korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);
-                    break;
-                }
-                break;}
-            default:
-                korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
-                break;
-            }
-            mcarrpush(KORL_STB_DS_MC_CAST(_korl_resource_context.allocatorHandle), _korl_resource_context.stbDsDirtyResourceHandles, resourceMapItem->key);
-            resourceMapItem->value.dirty = true;
-            break;}
-        default:
-            korl_log(ERROR, "invalid resource type %i", unpackedHandle.type);
-            break;
-        }
-    }
-    return true;
-}
-#endif
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;

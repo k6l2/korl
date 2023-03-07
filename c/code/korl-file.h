@@ -85,6 +85,3 @@ korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor f
                                                          ,void* buffer, u32 bufferBytes);
 korl_internal void korl_file_finishAllAsyncOperations(void);
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount);
-korl_internal void korl_file_saveStateCreate(void);
-korl_internal void korl_file_saveStateSave(Korl_File_PathType pathType, const wchar_t* fileName);
-korl_internal void korl_file_saveStateLoad(Korl_File_PathType pathType, const wchar_t* fileName);
