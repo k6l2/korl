@@ -184,11 +184,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
             continue;
         const wchar_t*const rawUtf16AssetName = string_getRawUtf16(&asset->name);
         KorlPlatformDateStamp dateStampLatestFileWrite;
-        /* @TODO: approx. 93% of the time spent in this entire function is inside 
-            korl_file_getDateStampLastWriteFileName; this wastes > 850µs of 
-            optimized build frame time; is it possible to perform this same 
-            functionality via async events with the OS?  
-            https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-directory-change-notifications */
+        // KORL-PERFORMANCE-000-000-048: assetCache: (MAJOR) approx. 93% of the time spent in this entire function is inside korl_file_getDateStampLastWriteFileName
         if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
                                                       rawUtf16AssetName, &dateStampLatestFileWrite)
            && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))

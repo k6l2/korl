@@ -101,7 +101,7 @@ korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_stb_ds_onAllocationMo
 {
     stbds_hash_index*const stbDsHashIndex = KORL_C_CAST(stbds_hash_index*, allocationAddress);
     stbDsHashIndex->storage = KORL_C_CAST(stbds_hash_bucket*, KORL_C_CAST(i$, stbDsHashIndex->storage) + byteOffsetFromOldAddress);
-    /*@TODO: `stbDsHashIndex->storage` is expected to be 64-bit-aligned, and it is unlikely to be aligned anymore; performance hazard? */
+    // KORL-PERFORMANCE-000-000-047: korl-stb-ds: (minor) `stbDsHashIndex->storage` is expected to be 64-bit-aligned, and it is unlikely to be aligned anymore
     switch(stbDsHashIndex->string.mode)
     {
     case STBDS_SH_STRDUP:{// stbDsHashIndex->temp_key potentially points to a single dynamic allocation (see `stbds_hmput_key`)
@@ -114,7 +114,8 @@ korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_stb_ds_onAllocationMo
     case STBDS_SH_DEFAULT:{/*no idea if we have to do anything here...*/ break;}
     default:              {/*no idea if we have to do anything here...*/ break;}
     }
-    /*@TODO: do we need to modify stbDsHashIndex->temp_key here in certain cases? ... */
+    /* do we need to modify stbDsHashIndex->temp_key here in certain cases? ... 
+        so far I haven't run into any other issues not doing so, but we'll see...*/
 }
 korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_stb_ds_onAllocationMovedCallback_hashMap_stringStorageBlockArena)
 {

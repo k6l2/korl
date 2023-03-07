@@ -106,7 +106,7 @@ typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
     Korl_Memory_AllocatorHandle allocatorHandle;
-    _Korl_Gfx_FontCache**       stbDaFontCaches;//@TODO: I feel like it makes a whole lot more sense to move Font cache stuff into korl-resource; in this way, everything that uses a font could just hold onto a ResourceHandle instead of the font's asset string, and it might make a bunch of other stuff simpler as well; worth investigating...
+    _Korl_Gfx_FontCache**       stbDaFontCaches;// KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource, replace all "fontAssetName" strings in korl-gfx data structures with FONT Korl_Resource_Handles
     u8                          nextResourceSalt;
     Korl_StringPool*            stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx

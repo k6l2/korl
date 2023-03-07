@@ -8,7 +8,7 @@
 #define _KORL_HEAP_BYTE_PATTERN_SENTINEL  0x5A
 #define _KORL_HEAP_BYTE_PATTERN_FREE      0xA5
 #define _KORL_HEAP_SENTINEL_PADDING_BYTES 64
-#define _KORL_HEAP_GENERAL_USE_OLD 1//@TODO: remove this define & all unused code once rewrite is complete
+#define _KORL_HEAP_GENERAL_USE_OLD 1// remove this define & all unused code once rewrite is complete; KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 #if _KORL_HEAP_GENERAL_USE_OLD
     /** A note about \c _KORL_HEAP_*_GUARD_* defines: after analyzing performance a 
      * bit with more realistic work loads, I've determined that this behavior 
@@ -515,7 +515,7 @@ korl_internal _Korl_Heap_General* korl_heap_general_create(const Korl_Heap_Creat
         u$*const virtualAddressStart =   KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_virtualAddressStart);
         const u$ virtualBytes        = *(KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_virtualBytes));
         *currentHeapList = _korl_heap_general_create(virtualBytes, KORL_C_CAST(void*, *virtualAddressStart));
-        korl_assert(!"@TODO: utilize createInfo->heapDescriptorOffset_committedBytes");
+        korl_assert(!"incomplete; utilize createInfo->heapDescriptorOffset_committedBytes");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
         _korl_heap_general_allocatorPagesUnguard(*currentHeapList);// unguard the heap so that we can modify its next pointer if we need to
         currentHeapList = &((*currentHeapList)->next);
     }
@@ -586,7 +586,8 @@ korl_internal void korl_heap_general_empty(_Korl_Heap_General* allocator)
 }
 korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 {
-    //@TODO: utilize fastAndDirty
+    if(fastAndDirty)
+        korl_assert(!"not implemented");//KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 #if _KORL_HEAP_GENERAL_DEBUG
     u$ allocationCountBegin, occupiedPageCountBegin;
     _korl_heap_general_checkIntegrity(allocator, &allocationCountBegin, &occupiedPageCountBegin);
@@ -665,7 +666,8 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, co
 }
 korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 {
-    //@TODO: utilize fastAndDirty
+    if(fastAndDirty)
+        korl_assert(!"not implemented");//KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
     #if _KORL_HEAP_GENERAL_DEBUG
         u$ allocationCountBegin, occupiedPageCountBegin;
         _korl_heap_general_checkIntegrity(allocator, &allocationCountBegin, &occupiedPageCountBegin);
@@ -973,7 +975,7 @@ korl_internal KORL_HEAP_ENUMERATE(korl_heap_general_enumerate)
     _korl_heap_general_allocatorPagesUnguard(allocator);
     const u$         allocatorPages    = korl_math_nextHighestDivision(sizeof(*allocator) + allocator->availablePageFlagsSize*sizeof(*(allocator->availablePageFlags)), pageBytes);
     const void*const virtualAddressEnd = KORL_C_CAST(u8*, allocator) + allocatorPages*pageBytes + allocator->allocationPages*pageBytes;
-    korl_assert(!"@TODO: not implemented; should we just destroy this?");
+    //callback params not fully implementedhere; KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
     callback(callbackUserData, allocator, virtualAddressEnd, 0, 0);
     if(allocator->next)
         korl_heap_general_enumerate(allocator->next, callback, callbackUserData);
@@ -1010,12 +1012,13 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
             {
                 const u$ allocationPageIndex = pfr*bitsPerFlagRegister + (bitsPerFlagRegister - 1 - mostSignificantSetBitIndex);
                 if(allocationPageIndex >= allocator->allocationPages)
-                    break;// @TODO: it's possible that our pageFlagRegisters contain more bits than we have actual allocation pages, and it's also currently possible that our shitty allocator is raising these flags; we need to ignore these page flags, as they are outside the bounds of the allocator & therefore cannot possibly be valid
+                    //KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
+                    break;// it's possible that our pageFlagRegisters contain more bits than we have actual allocation pages, and it's also currently possible that our shitty allocator is raising these flags; we need to ignore these page flags, as they are outside the bounds of the allocator & therefore cannot possibly be valid
                 const _Korl_Heap_General_AllocationMeta*const metaAddress = KORL_C_CAST(_Korl_Heap_General_AllocationMeta*, 
                     KORL_C_CAST(u8*, allocator) + (allocatorPages + allocationPageIndex)*pageBytes);
                 const u$ metaBytesRequired = sizeof(*metaAddress) + sizeof(_KORL_HEAP_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
-                const u$ grossBytes = 0;// @TODO: actually calculate this? or maybe we dump this allocator :')
-                const u$ netBytes   = 0;// @TODO: actually calculate this? or maybe we dump this allocator :')
+                const u$ grossBytes = 0;// actually calculate this? or maybe we dump this allocator :'); KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
+                const u$ netBytes   = 0;// actually calculate this? or maybe we dump this allocator :'); KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
                 if(!callback(callbackUserData, KORL_C_CAST(u8*, metaAddress) + metaBytesRequired, &(metaAddress->allocationMeta), grossBytes, netBytes))
                 {
                     abortEnumeration = true;
@@ -1042,38 +1045,38 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
 #else
 korl_internal _Korl_Heap_General* korl_heap_general_create(const Korl_Heap_CreateInfo* createInfo)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
     return NULL;
 }
 korl_internal void korl_heap_general_destroy(_Korl_Heap_General* allocator)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 }
 korl_internal void korl_heap_general_empty(_Korl_Heap_General* allocator)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 }
 korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
     return NULL;
 }
 korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
     return NULL;
 }
 korl_internal void korl_heap_general_free(_Korl_Heap_General* allocator, void* allocation, const wchar_t* file, int line, bool fastAndDirty)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 }
 korl_internal KORL_HEAP_ENUMERATE(korl_heap_general_enumerate)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 }
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocations)
 {
-    korl_assert(!"@TODO");
+    korl_assert(!"not implemented");// KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 }
 #endif
 korl_internal _Korl_Heap_Linear* korl_heap_linear_create(const Korl_Heap_CreateInfo* createInfo)
@@ -1251,7 +1254,7 @@ typedef struct _Korl_Heap_DefragmentPointer
                           : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? -1 \
                             : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? 1 \
                               : 0)
-korl_global_variable _Korl_Heap_Linear* _korl_heap_defragmentPointer_sortContext;// @TODO: backlog this as a multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
+korl_global_variable _Korl_Heap_Linear* _korl_heap_defragmentPointer_sortContext;// KORL-ISSUE-000-000-132: heap: multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or somethingin order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
 korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
 {
     i32                result = 0;

@@ -581,7 +581,7 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
         }
         korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleRuntime, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
     }
-    //@TODO: defragment transient resource data
+    // KORL-ISSUE-000-000-135: resource: defragment transient resource data
 }
 korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
 {

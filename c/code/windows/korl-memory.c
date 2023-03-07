@@ -664,6 +664,7 @@ korl_internal KORL_HEAP_ENUMERATE_CALLBACK(_korl_memory_reportGenerate_enumerate
 korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memory_reportGenerate_enumerateAllocationsCallback)
 {
     _Korl_Memory_ReportGenerate_EnumContext*const enumContext = KORL_C_CAST(_Korl_Memory_ReportGenerate_EnumContext*, userData);
+    //@TODO: after loading a memoryState, the allocation meta->file is dangling!
     const _Korl_Memory_ReportMeta_Allocation allocationMeta = {.allocationAddress = allocation
                                                               ,.meta              = *meta};
     korl_stb_ds_arrayAppendU8(KORL_STB_DS_MC_CAST(_korl_memory_context.allocatorHandle), enumContext->stbDaReportData, &allocationMeta, sizeof(allocationMeta));

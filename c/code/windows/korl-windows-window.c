@@ -902,7 +902,7 @@ korl_internal void korl_windows_window_loop(void)
             korl_time_probeStart(save_state_save);{
                 if(context->memoryStateLast)
                 {
-                    korl_file_directory_create(KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states");//@TODO: make `korl_file_create` iterate over each directory separator & ensure the directory exists, then we can delete this line
+                    korl_file_directory_create(KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states");// KORL-ISSUE-000-000-131: file: make `korl_file_create` iterate over each directory separator & ensure the directory exists, then we can likely just delete `korl_file_directory_create`
                     korl_memoryState_save(context->memoryStateLast, KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states/0.kms");//KORL-ISSUE-000-000-077: crash/window: savestates do not properly "save" crashes that occur inside game module callbacks on window events
                 }
             }korl_time_probeStop(save_state_save);

@@ -829,7 +829,7 @@ korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Vulkan_Blend
 }
 korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDeviceSize alignmentRequired, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
 {
-    const u$ stagingBufferArenaBytes = korl_math_megabytes(32);//@TODO: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
+    const u$ stagingBufferArenaBytes = korl_math_megabytes(32);// KORL-ISSUE-000-000-134: vulkan: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
     korl_assert(bytesRequired <= stagingBufferArenaBytes);
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
