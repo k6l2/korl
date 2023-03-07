@@ -6,6 +6,7 @@
 #include "korl-time.h"
 #include "korl-string.h"
 #include "korl-stb-ds.h"
+#include "korl-algorithm.h"
 typedef struct _Korl_Gui_UsedWidget
 {
     _Korl_Gui_Widget* widget;
@@ -32,20 +33,6 @@ typedef struct _Korl_Gui_WidgetMap
     u64 key;  // the widget's id hash value
     u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
 } _Korl_Gui_WidgetMap;
-/* UsedWidget sorting algorithm support */
-#ifndef SORT_CHECK_CAST_INT_TO_SIZET
-    #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
-#endif
-#ifndef SORT_CHECK_CAST_SIZET_TO_INT
-    #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
-#endif
-#define SORT_NAME _korl_gui_pUsedWidget_ascendOrderIndex
-#define SORT_TYPE _Korl_Gui_UsedWidget*
-#define SORT_CMP(x, y) ((x)->widget->orderIndex < (y)->widget->orderIndex ? -1 \
-                        : ((x)->widget->orderIndex > (y)->widget->orderIndex ? 1 \
-                          : 0))
-#include "sort.h"
-/**/
 #if KORL_DEBUG
     // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     // #define _KORL_GUI_DEBUG_DRAW_SCROLL_AREA
@@ -59,6 +46,14 @@ korl_shared_const u64     _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH          = KORL
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_CLOSE[]          = L"X"; // special internal button string to allow button widget to draw special graphics
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZE[]       = L"-"; // special internal button string to allow button widget to draw special graphics
 korl_shared_const wchar_t _KORL_GUI_WIDGET_BUTTON_WINDOW_MINIMIZED[]      = L"!-";// special internal button string to allow button widget to draw special graphics
+korl_internal KORL_ALGORITHM_COMPARE(_korl_gui_compareUsedWidget_ascendOrderIndex)
+{
+    const _Korl_Gui_UsedWidget*const x = *KORL_C_CAST(const _Korl_Gui_UsedWidget**, a);
+    const _Korl_Gui_UsedWidget*const y = *KORL_C_CAST(const _Korl_Gui_UsedWidget**, b);
+    return x->widget->orderIndex < y->widget->orderIndex ? -1 
+           : x->widget->orderIndex > y->widget->orderIndex ? 1 
+             : 0;
+}
 typedef struct _Korl_Gui_CodepointTestData_Log
 {
     u8 trailingMetaTagCodepoints;
@@ -150,7 +145,7 @@ korl_internal void _korl_gui_frameEnd_recursiveAppend(_Korl_Gui_UsedWidget** io_
 {
     _Korl_Gui_Context*const context = _korl_gui_context;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), *io_stbDaResult, *usedWidget);
-    _korl_gui_pUsedWidget_ascendOrderIndex_quick_sort(usedWidget->dagMetaData.stbDaChildren, arrlenu(usedWidget->dagMetaData.stbDaChildren));
+    korl_algorithm_sort_quick(usedWidget->dagMetaData.stbDaChildren, arrlenu(usedWidget->dagMetaData.stbDaChildren), sizeof(*usedWidget->dagMetaData.stbDaChildren), _korl_gui_compareUsedWidget_ascendOrderIndex);
     const _Korl_Gui_UsedWidget*const*const stbDaChildrenEnd = usedWidget->dagMetaData.stbDaChildren + arrlen(usedWidget->dagMetaData.stbDaChildren);
     for(_Korl_Gui_UsedWidget** child = usedWidget->dagMetaData.stbDaChildren; child < stbDaChildrenEnd; child++)
         _korl_gui_frameEnd_recursiveAppend(io_stbDaResult, *child);
@@ -1428,7 +1423,7 @@ korl_internal void korl_gui_frameEnd(void)
             mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaRootWidgets, &(context->stbDaUsedWidgets[w]));
     }
     // sort stbDaRootWidgets by ascending orderIndex //
-    _korl_gui_pUsedWidget_ascendOrderIndex_quick_sort(stbDaRootWidgets, arrlenu(stbDaRootWidgets));
+    korl_algorithm_sort_quick(stbDaRootWidgets, arrlenu(stbDaRootWidgets), sizeof(*stbDaRootWidgets), _korl_gui_compareUsedWidget_ascendOrderIndex);
     // create an array to store the topological sort results, and recursively build this //
     _Korl_Gui_UsedWidget* stbDaTopologicalSortedUsedWidgets = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaTopologicalSortedUsedWidgets, arrlenu(context->stbDaUsedWidgets));

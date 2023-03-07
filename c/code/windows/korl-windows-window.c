@@ -24,6 +24,7 @@
 #include "korl-crash.h"
 #include "korl-sfx.h"
 #include "korl-memoryState.h"
+#include "korl-algorithm.h"
 // we should probably delete all the log reporting code in here when KORL-FEATURE-000-000-009 & KORL-FEATURE-000-000-028 are complete
 // #define _KORL_WINDOWS_WINDOW_LOG_REPORTS
 #if KORL_DEBUG

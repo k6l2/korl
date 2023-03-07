@@ -52,6 +52,10 @@ typedef enum Korl_Clipboard_DataFormat
 #define KORL_FUNCTION_korl_string_formatVaListUtf8(name)        char*    name(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, va_list vaList)
 #define KORL_FUNCTION_korl_string_formatVaListUtf16(name)       wchar_t* name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
 #define KORL_FUNCTION_korl_string_formatBufferVaListUtf16(name) i$       name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)
+/* korl-algorithm interface ***************************************************/
+#define KORL_ALGORITHM_COMPARE(name) int name(const void* a, const void* b)
+typedef KORL_ALGORITHM_COMPARE(fnSig_korl_algorithm_compare);
+#define KORL_FUNCTION_korl_algorithm_sort_quick(name) void name(void* array, u$ arraySize, u$ arrayStride, fnSig_korl_algorithm_compare* compare)
 /* FUNCTION TYPEDEFS **********************************************************/
 #define _KORL_PLATFORM_API_MACRO_OPERATION(x) typedef KORL_FUNCTION_##x (fnSig_##x);
 #include "korl-interface-platform-api.h"

@@ -126,3 +126,4 @@ shutdownSuccess:
 #include "korl-codec-audio.c"
 #include "korl-stb-vorbis.c"
 #include "korl-memoryState.c"
+#include "korl-algorithm.c"

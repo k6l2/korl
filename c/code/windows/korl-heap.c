@@ -5,6 +5,7 @@
 #include "korl-memoryPool.h"
 #include "korl-stb-ds.h"
 #include "korl-checkCast.h"
+#include "korl-algorithm.h"
 #define _KORL_HEAP_BYTE_PATTERN_SENTINEL  0x5A
 #define _KORL_HEAP_BYTE_PATTERN_FREE      0xA5
 #define _KORL_HEAP_SENTINEL_PADDING_BYTES 64
@@ -26,6 +27,14 @@
 #if _KORL_HEAP_GENERAL_USE_OLD
     korl_global_const i8 _KORL_HEAP_GENERAL_ALLOCATION_META_SEPARATOR[] = "[KORL-general-allocation]";
 #endif
+typedef struct _Korl_Heap_DefragmentPointer
+{
+    Korl_Heap_DefragmentPointer*   pDefragmentPointer;
+    u32                            childrenSize;
+    u32                            childrenCapacity;
+     Korl_Heap_DefragmentPointer** children;
+} _Korl_Heap_DefragmentPointer;
+korl_global_variable _Korl_Heap_Linear* _korl_heap_defragmentPointer_sortContext;// KORL-ISSUE-000-000-132: heap: multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or somethingin order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
 #if _KORL_HEAP_GENERAL_USE_OLD
 /** Allocator properties: 
  * - all allocations are page-aligned
@@ -502,6 +511,23 @@ korl_internal _Korl_Heap_Linear* _korl_heap_linear_create(u$ bytes, void* addres
     result->committedPages = heapPages;
     korl_memory_set(result + 1, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
     return result;
+}
+korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
+{
+    i32                result = 0;
+    _Korl_Heap_Linear* heap   = _korl_heap_defragmentPointer_sortContext;
+    while(heap)
+    {
+        const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*heap);
+        u8*const         heapVirtualBase   = KORL_C_CAST(u8*, heap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+        const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
+        const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + heap->allocatedBytes;
+        if(allocation >= heapAllocateBegin && allocation < heapAllocateEnd)
+            return result;
+        result++;
+        heap = heap->next;
+    }
+    return -1;
 }
 #if _KORL_HEAP_GENERAL_USE_OLD
 korl_internal _Korl_Heap_General* korl_heap_general_create(const Korl_Heap_CreateInfo* createInfo)
@@ -1234,53 +1260,24 @@ korl_internal bool korl_heap_linear_isFragmented(_Korl_Heap_Linear*const allocat
 {
     return allocator->isFragmented;
 }
-/* sort support for linear heap addresses */
-typedef struct _Korl_Heap_DefragmentPointer
+korl_internal KORL_ALGORITHM_COMPARE(_korl_heap_compareDefragmentPointer_ascendAllocation)
 {
-    Korl_Heap_DefragmentPointer*   pDefragmentPointer;
-    u32                            childrenSize;
-    u32                            childrenCapacity;
-     Korl_Heap_DefragmentPointer** children;
-} _Korl_Heap_DefragmentPointer;
-#ifndef SORT_CHECK_CAST_INT_TO_SIZET
-    #define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
-#endif
-#ifndef SORT_CHECK_CAST_SIZET_TO_INT
-    #define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
-#endif
-#define SORT_NAME _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress
-#define SORT_TYPE _Korl_Heap_DefragmentPointer
-#define SORT_CMP(x, y) (_korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer)) < _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer)) ? -1 \
-                        : _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer)) > _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer)) ? 1 \
-                          : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? -1 \
-                            : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? 1 \
-                              : 0)
-korl_global_variable _Korl_Heap_Linear* _korl_heap_defragmentPointer_sortContext;// KORL-ISSUE-000-000-132: heap: multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or somethingin order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
-korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation)
-{
-    i32                result = 0;
-    _Korl_Heap_Linear* heap   = _korl_heap_defragmentPointer_sortContext;
-    while(heap)
-    {
-        const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*heap);
-        u8*const         heapVirtualBase   = KORL_C_CAST(u8*, heap) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
-        const void*const heapAllocateBegin = heapVirtualBase + heapBytes;
-        const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + heap->allocatedBytes;
-        if(allocation >= heapAllocateBegin && allocation < heapAllocateEnd)
-            return result;
-        result++;
-        heap = heap->next;
-    }
-    return -1;
+    const _Korl_Heap_DefragmentPointer*const x = a;
+    const _Korl_Heap_DefragmentPointer*const y = b;
+    return _korl_heap_defragmentPointer_getAllocation(*x->pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*y->pDefragmentPointer) ? -1 
+           : _korl_heap_defragmentPointer_getAllocation(*x->pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*y->pDefragmentPointer) ? 1 
+             : 0;
 }
-#include "sort.h"
-#define SORT_NAME _korl_heap_defragmentPointer_ascendAddress
-#define SORT_TYPE _Korl_Heap_DefragmentPointer
-#define SORT_CMP(x, y) (_korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? -1 \
-                        : _korl_heap_defragmentPointer_getAllocation(*(x).pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*(y).pDefragmentPointer) ? 1 \
-                          : 0)
-#include "sort.h"
-/**/
+korl_internal KORL_ALGORITHM_COMPARE(_korl_heap_linear_compareDefragmentPointer_ascendHeapIndex_ascendAllocation)
+{
+    const _Korl_Heap_DefragmentPointer*const x = a;
+    const _Korl_Heap_DefragmentPointer*const y = b;
+    return _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*x->pDefragmentPointer)) < _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*y->pDefragmentPointer)) ? -1 
+           : _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*x->pDefragmentPointer)) > _korl_heap_linear_heapIndex(_korl_heap_defragmentPointer_getAllocation(*y->pDefragmentPointer)) ? 1 
+             : _korl_heap_defragmentPointer_getAllocation(*x->pDefragmentPointer) < _korl_heap_defragmentPointer_getAllocation(*y->pDefragmentPointer) ? -1 
+               : _korl_heap_defragmentPointer_getAllocation(*x->pDefragmentPointer) > _korl_heap_defragmentPointer_getAllocation(*y->pDefragmentPointer) ? 1 
+                 : 0;
+}
 korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, _Korl_Heap_Linear* stackAllocator, const wchar_t* stackAllocatorName, Korl_Memory_AllocatorHandle handleStackAllocator)
 {
     korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
@@ -1360,10 +1357,10 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
     if(allocator->next)
     {
         _korl_heap_defragmentPointer_sortContext = allocator;
-        _korl_heap_defragmentPointer_ascendHeapIndex_ascendAddress_quick_sort(sortedDefragmentPointers, defragmentPointersSize);
+        korl_algorithm_sort_quick(sortedDefragmentPointers, defragmentPointersSize, sizeof(*sortedDefragmentPointers), _korl_heap_linear_compareDefragmentPointer_ascendHeapIndex_ascendAllocation);
     }
     else/* choose a less expensive sort if we know there is only one heap in the heap list */
-        _korl_heap_defragmentPointer_ascendAddress_quick_sort(sortedDefragmentPointers, defragmentPointersSize);
+        korl_algorithm_sort_quick(sortedDefragmentPointers, defragmentPointersSize, sizeof(*sortedDefragmentPointers), _korl_heap_compareDefragmentPointer_ascendAllocation);
     /* enumerate over each allocation - O(n), 
         remembering whether or not & how much trailing empty space is behind us; 
         if    the current allocation is the next allocationPointer 

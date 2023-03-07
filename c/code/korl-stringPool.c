@@ -4,6 +4,7 @@
 #include "korl-string.h"
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform.h"
+#include "korl-algorithm.h"
 #include <ctype.h>// for toupper
 typedef struct _Korl_StringPool_Allocation
 {
@@ -12,16 +13,6 @@ typedef struct _Korl_StringPool_Allocation
     const wchar_t* file;
     int line;
 } _Korl_StringPool_Allocation;
-#define SORT_NAME _korl_stringPool_allocation
-#define SORT_TYPE _Korl_StringPool_Allocation
-#define SORT_CMP(x, y) ((x).poolByteOffset < (y).poolByteOffset ? -1 : ((x).poolByteOffset > (y).poolByteOffset ? 1 : 0))
-#ifndef SORT_CHECK_CAST_INT_TO_SIZET
-#define SORT_CHECK_CAST_INT_TO_SIZET(x) korl_checkCast_i$_to_u$(x)
-#endif
-#ifndef SORT_CHECK_CAST_SIZET_TO_INT
-#define SORT_CHECK_CAST_SIZET_TO_INT(x) korl_checkCast_u$_to_i32(x)
-#endif
-#include "sort.h"
 typedef enum _Korl_StringPool_StringFlags
     { _KORL_STRINGPOOL_STRING_FLAGS_NONE = 0
     , _KORL_STRINGPOOL_STRING_FLAG_UTF8  = 1<<0
@@ -60,11 +51,19 @@ typedef struct _Korl_StringPool_String
     u32 rawSizeUtf16;// _excluding_ any null-terminator characters
     _Korl_StringPool_StringFlags flags;
 } _Korl_StringPool_String;
+korl_internal KORL_ALGORITHM_COMPARE(_korl_stringPool_compareStringPoolAllocation_ascendByteOffset)
+{
+    const _Korl_StringPool_Allocation*const x = KORL_C_CAST(const _Korl_StringPool_Allocation*, a);
+    const _Korl_StringPool_Allocation*const y = KORL_C_CAST(const _Korl_StringPool_Allocation*, b);
+    return x->poolByteOffset < y->poolByteOffset ? -1 
+           : x->poolByteOffset > y->poolByteOffset ? 1 
+             : 0;
+}
 /** \return the byte offset of the new allocation */
 korl_internal u32 _korl_stringPool_allocate(Korl_StringPool* context, u$ bytes, const wchar_t* file, int line)
 {
     korl_assert(bytes > 0);
-    _korl_stringPool_allocation_quick_sort(context->stbDaAllocations, arrlenu(context->stbDaAllocations));
+    korl_algorithm_sort_quick(context->stbDaAllocations, arrlenu(context->stbDaAllocations), sizeof(*context->stbDaAllocations), _korl_stringPool_compareStringPoolAllocation_ascendByteOffset);
     u$ currentPoolOffset  = 0;
     u$ currentUnusedBytes = context->characterPoolBytes;// value only used if there are no allocations
     for(u$ a = 0; a < arrlenu(context->stbDaAllocations); a++)
@@ -101,7 +100,7 @@ create_allocation_and_return_currentPoolOffset:
 korl_internal u32 _korl_stringPool_reallocate(Korl_StringPool* context, u32 allocationOffset, u$ bytes, const wchar_t* file, int line)
 {
     korl_assert(bytes > 0);
-    _korl_stringPool_allocation_quick_sort(context->stbDaAllocations, arrlenu(context->stbDaAllocations));
+    korl_algorithm_sort_quick(context->stbDaAllocations, arrlenu(context->stbDaAllocations), sizeof(*context->stbDaAllocations), _korl_stringPool_compareStringPoolAllocation_ascendByteOffset);
     /* find the allocation matching the provided byte offset */
     u$ allocIndex = 0;
     for(; allocIndex < arrlenu(context->stbDaAllocations); allocIndex++)
