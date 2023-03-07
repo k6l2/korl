@@ -102,6 +102,18 @@ korl_internal void korl_memoryState_save(Korl_Memory_ByteBuffer* context, Korl_F
     else
         korl_log(INFO, "memory state saved to \"%hs\"", pathUtf8);
 }
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(_korl_memoryState_load_enumerateAllocatorsCallback_enumerateAllocationsCallback)
+{
+    meta->file = NULL;
+    return true;// true => continue enumerating
+}
+korl_internal KORL_MEMORY_ALLOCATOR_ENUMERATE_ALLOCATORS_CALLBACK(_korl_memoryState_load_enumerateAllocatorsCallback)
+{
+    if(!(allocatorFlags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE))
+        return true;// true => continue enumerating
+    korl_memory_allocator_enumerateAllocations(opaqueAllocator, _korl_memoryState_load_enumerateAllocatorsCallback_enumerateAllocationsCallback, NULL);
+    return true;// true => continue enumerating
+}
 korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_AllocatorHandle allocatorHandleResult, Korl_File_PathType pathType, const wchar_t* fileName)
 {
     /* flush the state of some modules which depend on system resources prior to 
@@ -143,6 +155,7 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_Allocato
             currentMemoryStateHeapByte += heap->grossAllocatedBytes;
         }
     }
+    korl_memory_allocator_enumerateAllocators(_korl_memoryState_load_enumerateAllocatorsCallback, NULL);
     /* finally, we can perform module-specific memory state loading procedures */
     korl_command_memoryStateRead       (result->data + manifest->byteOffsetKorlCommand);
     korl_windows_window_memoryStateRead(result->data + manifest->byteOffsetKorlWindow);

@@ -57,7 +57,8 @@ typedef struct Korl_Memory_AllocationMeta
     u$                                         bytes;
     Korl_Memory_AllocationMeta_DefragmentState defragmentState;
 } Korl_Memory_AllocationMeta;
-#define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, const Korl_Memory_AllocationMeta* meta, u$ grossBytes, u$ netBytes)
+// once memoryState_load supports restoration of allocation meta->file, we should make the `meta` parameter const again// KORL-ISSUE-000-000-136: memoryState: after loading a memory state, "serialized" allocator allocations have invalid meta->file pointers
+#define KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK(name) bool name(void* userData, const void* allocation, Korl_Memory_AllocationMeta* meta, u$ grossBytes, u$ netBytes)
 #define KORL_HEAP_ENUMERATE_CALLBACK(name)             void name(void* userData, const void* virtualAddressStart, const void* virtualAddressEnd, u$ committedBytes, u$ grossAllocatedBytes)
 typedef KORL_HEAP_ENUMERATE_ALLOCATIONS_CALLBACK       (fnSig_korl_heap_enumerateAllocationsCallback);
 typedef KORL_HEAP_ENUMERATE_CALLBACK                   (fnSig_korl_heap_enumerateCallback);

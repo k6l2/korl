@@ -1014,8 +1014,9 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_general_enumerateAllocat
                 if(allocationPageIndex >= allocator->allocationPages)
                     //KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
                     break;// it's possible that our pageFlagRegisters contain more bits than we have actual allocation pages, and it's also currently possible that our shitty allocator is raising these flags; we need to ignore these page flags, as they are outside the bounds of the allocator & therefore cannot possibly be valid
-                const _Korl_Heap_General_AllocationMeta*const metaAddress = KORL_C_CAST(_Korl_Heap_General_AllocationMeta*, 
-                    KORL_C_CAST(u8*, allocator) + (allocatorPages + allocationPageIndex)*pageBytes);
+                // once memoryState_load supports restoration of allocation meta->file, we should make the `meta` parameter const again// KORL-ISSUE-000-000-136: memoryState: after loading a memory state, "serialized" allocator allocations have invalid meta->file pointers
+                _Korl_Heap_General_AllocationMeta*const metaAddress = KORL_C_CAST(_Korl_Heap_General_AllocationMeta*
+                                                                                 ,KORL_C_CAST(u8*, allocator) + (allocatorPages + allocationPageIndex)*pageBytes);
                 const u$ metaBytesRequired = sizeof(*metaAddress) + sizeof(_KORL_HEAP_GENERAL_ALLOCATION_META_SEPARATOR) - 1/*don't include null-terminator*/;
                 const u$ grossBytes = 0;// actually calculate this? or maybe we dump this allocator :'); KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
                 const u$ netBytes   = 0;// actually calculate this? or maybe we dump this allocator :'); KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
