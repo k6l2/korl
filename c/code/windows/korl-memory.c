@@ -475,9 +475,9 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_allocate(korl_memory_allocator
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line, address);}
+        return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line, address);}
+        return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
@@ -498,11 +498,11 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocat
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         if(allocation == NULL)
-            return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line, NULL/*automatically find address*/);
+            return korl_heap_linear_allocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, bytes, persistentFileString, line);
         return korl_heap_linear_reallocate(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, allocation, bytes, persistentFileString, line);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
         if(allocation == NULL)
-            return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line, NULL/*automatically find address*/);
+            return korl_heap_general_allocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, bytes, persistentFileString, line);
         return korl_heap_general_reallocate(KORL_C_CAST(_Korl_Heap_General*, allocator->userData), allocator->name, allocation, bytes, persistentFileString, line);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
