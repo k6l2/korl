@@ -82,5 +82,5 @@ korl_internal void                                           korl_resource_setAu
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
-korl_internal bool                                           korl_resource_memoryStateRead(u8* memoryState);
+korl_internal void                                           korl_resource_memoryStateRead(const u8* memoryState);
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload);

@@ -27,7 +27,12 @@ korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
 korl_internal KORL_FUNCTION_korl_memory_allocator_create      (korl_memory_allocator_create);
 korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle handle);
-korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, u$ heapDescriptorCount, void* heapDescriptors, u$ heapDescriptorStride, u32 heapDescriptorOffset_addressStart, u32 heapDescriptorOffset_addressEnd);
+korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle
+                                                 ,u$ heapDescriptorCount, const void* heapDescriptors
+                                                 ,u$ heapDescriptorStride
+                                                 ,u32 heapDescriptorOffset_virtualAddressStart
+                                                 ,u32 heapDescriptorOffset_virtualBytes
+                                                 ,u32 heapDescriptorOffset_committedBytes);
 korl_internal KORL_FUNCTION_korl_memory_allocator_allocate    (korl_memory_allocator_allocate);
 korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate  (korl_memory_allocator_reallocate);
 korl_internal KORL_FUNCTION_korl_memory_allocator_free        (korl_memory_allocator_free);

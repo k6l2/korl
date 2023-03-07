@@ -34,8 +34,8 @@ typedef struct _Korl_AssetCache_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;// all data that _isn't_ stbDaAssets[i].assetData.data is stored here, including this struct itself
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// _only_ stbDaAssets[i].assetData.data is stored here; this entire allocator should be wiped when a korl-memoryState is loaded
-    _Korl_AssetCache_Asset* stbDaAssets;
-    Korl_StringPool* stringPool;// @korl-string-pool-no-data-segment-storage
+    _Korl_AssetCache_Asset*     stbDaAssets;
+    Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage
 } _Korl_AssetCache_Context;
 korl_global_variable _Korl_AssetCache_Context* _korl_assetCache_context;
 korl_internal void korl_assetCache_initialize(void)
@@ -270,26 +270,22 @@ korl_internal u32 korl_assetCache_memoryStateWrite(void* memoryContext, u8** pSt
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_assetCache_context, sizeof(_korl_assetCache_context));
     return byteOffset;
 }
-korl_internal bool korl_assetCache_memoryStateRead(u8* memoryState)
+korl_internal void korl_assetCache_memoryStateRead(const u8* memoryState)
 {
-    //@TODO
-}
-#if 0//@TODO: delete
-korl_internal void korl_assetCache_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_assetCache_context, sizeof(_korl_assetCache_context));
-    ///
-}
-korl_internal bool korl_assetCache_saveStateRead(HANDLE hFile)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    if(!ReadFile(hFile, &_korl_assetCache_context, sizeof(_korl_assetCache_context), NULL/*bytes read*/, NULL/*no overlapped*/))
+    _korl_assetCache_context = *KORL_C_CAST(_Korl_AssetCache_Context**, memoryState);
+    _Korl_AssetCache_Context*const context = _korl_assetCache_context;
+    /* we do _not_ store transient data in a memoryState!; all pointers to 
+        memory within the transient allocator are now considered invalid, and we 
+        need to wipe all transient memory from the current application session */
+    korl_memory_allocator_empty(context->allocatorHandleTransient);
+    /* the asset cache has been wiped, so we must mark all our assets as being 
+        in a fresh unloaded "initialized" state; we must re-cache this file data 
+        in order to use them again */
+    for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
-        korl_logLastError("ReadFile failed");
-        return false;
+        _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
+        asset->assetData.data = NULL;
+        asset->state          = _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED;
     }
-    return true;
 }
-#endif
 #undef _LOCAL_STRING_POOL_POINTER

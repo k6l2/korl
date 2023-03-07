@@ -183,23 +183,8 @@ korl_internal u32 korl_command_memoryStateWrite(void* memoryContext, u8** pStbDa
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_command_context, sizeof(_korl_command_context));
     return byteOffset;
 }
-korl_internal bool korl_command_memoryStateRead(u8* memoryState)
+korl_internal void korl_command_memoryStateRead(const u8* memoryState)
 {
-    //@TODO
+    _korl_command_context = *KORL_C_CAST(_Korl_Command_Context**, memoryState);
+    korl_command_registerModule(GetModuleHandle(NULL), string_getRawAcu8(&_korl_command_context->stringPlatformModuleName));
 }
-#if 0//@TODO: delete
-korl_internal void korl_command_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_command_context, sizeof(_korl_command_context));
-    ///
-}
-korl_internal bool korl_command_saveStateRead(HANDLE hFile)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    if(!KORL_WINDOWS_CHECK(ReadFile(hFile, &_korl_command_context, sizeof(_korl_command_context), NULL/*bytes read*/, NULL/*no overlapped*/)))
-        return false;
-    korl_command_registerModule(GetModuleHandle(NULL), string_getRawAcu8(&_korl_command_context.stringPlatformModuleName));
-    return true;
-}
-#endif

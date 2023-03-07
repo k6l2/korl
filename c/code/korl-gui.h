@@ -33,4 +33,4 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText);
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset);
 korl_internal void korl_gui_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
-korl_internal bool korl_gui_memoryStateRead(u8* memoryState);
+korl_internal void korl_gui_memoryStateRead(const u8* memoryState);

@@ -6,4 +6,4 @@ korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke);
 korl_internal KORL_FUNCTION__korl_command_register(_korl_command_register);
 korl_internal void korl_command_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32 korl_command_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
-korl_internal bool korl_command_memoryStateRead(u8* memoryState);
+korl_internal void korl_command_memoryStateRead(const u8* memoryState);

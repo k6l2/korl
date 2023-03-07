@@ -40,4 +40,4 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
 korl_internal void korl_assetCache_clearAllFileHandles(void);
 korl_internal void korl_assetCache_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_assetCache_memoryStateWrite(void* memoryContext, u8** pStbDaMemoryState);
-korl_internal bool korl_assetCache_memoryStateRead(u8* memoryState);
+korl_internal void korl_assetCache_memoryStateRead(const u8* memoryState);

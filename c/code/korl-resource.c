@@ -589,9 +589,75 @@ korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, u8** pStbD
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_resource_context, sizeof(_korl_resource_context));
     return byteOffset;
 }
-korl_internal bool korl_resource_memoryStateRead(u8* memoryState)
+korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
 {
-    //@TODO
+    _korl_resource_context = *KORL_C_CAST(_Korl_Resource_Context**, memoryState);
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    /* we do _not_ store transient data in a memoryState!; all pointers to 
+        memory within the transient allocator are now considered invalid, and we 
+        need to wipe all transient memory from the current application session */
+    korl_memory_allocator_empty(context->allocatorHandleTransient);
+    /* go through each Resource & re-create the transcoded multimedia assets, 
+        since we should expect that when a memory state is loaded all multimedia 
+        device assets are invalidated! */
+    for(u$ r = 0; r < hmlenu(context->stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
+    {
+        _Korl_Resource_Map*const resourceMapItem = &(context->stbHmResources[r]);
+        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapItem->key);
+        _Korl_Resource*const resource = &resourceMapItem->value;
+        /* regardless of whether or not the resource is backed by a file, we 
+            must ensure that all AUDIO resources are resampled to match the 
+            audio renderer; ergo, we wipe the transient resampledData and raise 
+            the pending resample flag */
+        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+        {
+            context->audioResamplesPending = true;
+            resource->subType.audio.resampledData = NULL;// NOTE: there is no need to call free on this allocation, as the entire transient allocator has been wiped
+        }
+        switch(unpackedHandle.type)
+        {
+        case _KORL_RESOURCE_TYPE_FILE:{
+            /* maybe just free the data allocation & reset the resource to the 
+                unloaded state?  the external device memory allocations should 
+                all be invalid at this point, so we should be able to just 
+                nullify this struct */
+            resourceMapItem->value.data      = NULL;// NOTE: there is no need to call free on this allocation, as the entire transient allocator has been wiped
+            resourceMapItem->value.dataBytes = 0;
+            break;}
+        case _KORL_RESOURCE_TYPE_RUNTIME:{
+            /* here we can just re-create each device memory allocation & mark 
+                each asset as dirty, and they will get updated at the end of the 
+                frame, since we already have all the CPU-encoded asset data from 
+                the memory state */
+            switch(unpackedHandle.multimediaType)
+            {
+            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
+                switch(resourceMapItem->value.subType.graphics.type)
+                {
+                case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
+                    korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
+                    break;}
+                case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
+                    resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo.vertexAttributeDescriptors = resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
+                    korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
+                    break;}
+                default:
+                    korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);
+                    break;
+                }
+                break;}
+            default:
+                korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
+                break;
+            }
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, resourceMapItem->key);
+            resourceMapItem->value.dirty = true;
+            break;}
+        default:
+            korl_log(ERROR, "invalid resource type %i", unpackedHandle.type);
+            break;
+        }
+    }
 }
 #if 0//@TODO: delete
 korl_internal void korl_resource_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)

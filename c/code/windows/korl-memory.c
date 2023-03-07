@@ -396,7 +396,12 @@ korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle han
     }
     KORL_MEMORY_POOL_REMOVE(context->allocators, a);
 }
-korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle, u$ heapDescriptorCount, void* heapDescriptors, u$ heapDescriptorStride, u32 heapDescriptorOffset_addressStart, u32 heapDescriptorOffset_addressEnd)
+korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle
+                                                 ,u$ heapDescriptorCount, const void* heapDescriptors
+                                                 ,u$ heapDescriptorStride
+                                                 ,u32 heapDescriptorOffset_virtualAddressStart
+                                                 ,u32 heapDescriptorOffset_virtualBytes
+                                                 ,u32 heapDescriptorOffset_committedBytes)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(GetCurrentThreadId() == context->mainThreadId);
@@ -407,11 +412,12 @@ korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle ha
     korl_assert(a < KORL_MEMORY_POOL_SIZE(context->allocators));
     _Korl_Memory_Allocator*const allocator = &context->allocators[a];
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
-    heapCreateInfo.heapDescriptorCount               = korl_checkCast_u$_to_u32(heapDescriptorCount);
-    heapCreateInfo.heapDescriptors                   = heapDescriptors;
-    heapCreateInfo.heapDescriptorStride              = korl_checkCast_u$_to_u32(heapDescriptorStride);
-    heapCreateInfo.heapDescriptorOffset_addressStart = heapDescriptorOffset_addressStart;
-    heapCreateInfo.heapDescriptorOffset_addressEnd   = heapDescriptorOffset_addressEnd;
+    heapCreateInfo.heapDescriptorCount                      = korl_checkCast_u$_to_u32(heapDescriptorCount);
+    heapCreateInfo.heapDescriptors                          = heapDescriptors;
+    heapCreateInfo.heapDescriptorStride                     = korl_checkCast_u$_to_u32(heapDescriptorStride);
+    heapCreateInfo.heapDescriptorOffset_virtualAddressStart = heapDescriptorOffset_virtualAddressStart;
+    heapCreateInfo.heapDescriptorOffset_virtualBytes        = heapDescriptorOffset_virtualBytes;
+    heapCreateInfo.heapDescriptorOffset_committedBytes      = heapDescriptorOffset_committedBytes;
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{

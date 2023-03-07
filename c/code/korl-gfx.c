@@ -83,21 +83,22 @@ typedef struct _Korl_Gfx_FontGlyphPage
 } _Korl_Gfx_FontGlyphPage;
 #define _korl_gfx_fontGlyphPage_getData(pFontGlyphPage) (KORL_C_CAST(u8*, (pFontGlyphPage)) + (pFontGlyphPage)->byteOffsetData)
 #define _korl_gfx_fontGlyphPage_getPackRows(pFontGlyphPage) KORL_C_CAST(_Korl_Gfx_FontGlyphBitmapPackRow*, KORL_C_CAST(u8*, (pFontGlyphPage)) + (pFontGlyphPage)->byteOffsetPackRows)
+// KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource, replace all "fontAssetName" strings in korl-gfx data structures with FONT Korl_Resource_Handles; this has gotten ridiculous: all the FontCache stuff should be managed by korl-resource because we need to be able to invalidate/reload this data properly when the underlying font asset is hot-reloaded, or when we load a memoryState or something; all the FontCache APIs should be `korl_resource_font_*` APIs, or something similar
 typedef struct _Korl_Gfx_FontCache
 {
-    stbtt_fontinfo fontInfo;
-    f32 fontScale;// scale calculated from fontInfo & pixelHeight
+    stbtt_fontinfo               fontInfo;
+    bool                         fontInfoInitialized;
+    f32                          fontScale;// scale calculated from fontInfo & pixelHeight
     /** From STB TrueType documentation: 
      * you should advance the vertical position by "*ascent - *descent + *lineGap" */
-    f32 fontAscent; // adjusted by pixelHeight already
-    f32 fontDescent;// adjusted by pixelHeight already
-    f32 fontLineGap;// adjusted by pixelHeight already
-    f32 pixelHeight;
-    f32 pixelOutlineThickness;// if this is 0.f, then an outline has not yet been cached in this fontCache glyphPageList
-    //KORL-PERFORMANCE-000-000-000: (minor) convert pointers to contiguous memory into offsets to save some space
-    u32 byteOffsetFontAssetNameU16;// wchar_t*
+    f32                          fontAscent; // adjusted by pixelHeight already
+    f32                          fontDescent;// adjusted by pixelHeight already
+    f32                          fontLineGap;// adjusted by pixelHeight already
+    f32                          pixelHeight;
+    f32                          pixelOutlineThickness;// if this is 0.f, then an outline has not yet been cached in this fontCache glyphPageList
+    u32                          byteOffsetFontAssetNameU16;// wchar_t*
     _Korl_Gfx_FontBakedGlyphMap* stbHmGlyphs;
-    u32 byteOffsetGlyphPage;// _Korl_Gfx_FontGlyphPage*
+    u32                          byteOffsetGlyphPage;// _Korl_Gfx_FontGlyphPage*
 } _Korl_Gfx_FontCache;
 #define _korl_gfx_fontCache_getFontAssetName(pFontCache) KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetFontAssetNameU16)
 #define _korl_gfx_fontCache_getGlyphPage(pFontCache) KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetGlyphPage)
@@ -579,9 +580,6 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         korl_assert(*newFontCache);
         fontCache = *newFontCache;
         /* initialize the memory */
-#if KORL_DEBUG
-        korl_assert(korl_memory_isNull(*newFontCache, fontCacheRequiredBytes));
-#endif//KORL_DEBUG
         fontCache->pixelHeight                = textPixelHeight;
         fontCache->pixelOutlineThickness      = textPixelOutline;
         fontCache->byteOffsetFontAssetNameU16 = sizeof(*fontCache);
@@ -594,16 +592,6 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         glyphPage->byteOffsetPackRows = sizeof(*glyphPage) + (GLYPH_PAGE_SQUARE_SIZE * GLYPH_PAGE_SQUARE_SIZE);
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_string_copyUtf16(utf16AssetNameFont.data, (au16){assetNameFontBufferSize, _korl_gfx_fontCache_getFontAssetName(fontCache)}));
-        /* initialize the font info using the raw font asset data */
-        korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
-        fontCache->fontScale = stbtt_ScaleForPixelHeight(&(fontCache->fontInfo), fontCache->pixelHeight);
-        int ascent;
-        int descent;
-        int lineGap;
-        stbtt_GetFontVMetrics(&(fontCache->fontInfo), &ascent, &descent, &lineGap);
-        fontCache->fontAscent  = fontCache->fontScale*KORL_C_CAST(f32, ascent );
-        fontCache->fontDescent = fontCache->fontScale*KORL_C_CAST(f32, descent);
-        fontCache->fontLineGap = fontCache->fontScale*KORL_C_CAST(f32, lineGap);
         /* initialize render device memory allocations */
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
         createInfoTexture.sizeX = glyphPage->dataSquareSize;
@@ -615,6 +603,21 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_createVertexBuffer(&createInfo);
         /**/
         korl_time_probeStop(create_font_cache);
+    }
+    if(!fontCache->fontInfoInitialized)
+    {
+        /* initialize the font info using the raw font asset data */
+        //KORL-ISSUE-000-000-130: gfx/font: (MAJOR) `fontCache->fontInfo` sets up pointers to data within `assetDataFont.data`; if that data ever moves or gets wiped (defragment, memoryState-load, etc.), then `fontCache->fontInfo` will contain dangling pointers!
+        korl_assert(stbtt_InitFont(&(fontCache->fontInfo), assetDataFont.data, 0/*font offset*/));
+        fontCache->fontInfoInitialized = true;
+        fontCache->fontScale = stbtt_ScaleForPixelHeight(&(fontCache->fontInfo), fontCache->pixelHeight);
+        int ascent;
+        int descent;
+        int lineGap;
+        stbtt_GetFontVMetrics(&(fontCache->fontInfo), &ascent, &descent, &lineGap);
+        fontCache->fontAscent  = fontCache->fontScale*KORL_C_CAST(f32, ascent );
+        fontCache->fontDescent = fontCache->fontScale*KORL_C_CAST(f32, descent);
+        fontCache->fontLineGap = fontCache->fontScale*KORL_C_CAST(f32, lineGap);
     }
     return fontCache;
 }
@@ -1980,25 +1983,17 @@ korl_internal u32 korl_gfx_memoryStateWrite(void* memoryContext, u8** pStbDaMemo
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_gfx_context, sizeof(_korl_gfx_context));
     return byteOffset;
 }
-korl_internal bool korl_gfx_memoryStateRead(u8* memoryState)
+korl_internal void korl_gfx_memoryStateRead(const u8* memoryState)
 {
-    //@TODO
-}
-#if 0//@TODO: delete
-korl_internal void korl_gfx_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_gfx_context, sizeof(_korl_gfx_context));
-}
-korl_internal bool korl_gfx_saveStateRead(HANDLE hFile)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    if(!ReadFile(hFile, &_korl_gfx_context, sizeof(_korl_gfx_context), NULL/*bytes read*/, NULL/*no overlapped*/))
+    _korl_gfx_context = *KORL_C_CAST(_Korl_Gfx_Context**, memoryState);
+    _Korl_Gfx_Context*const context = _korl_gfx_context;
+    /* when a memory state is loaded, the raw font assets will need to be 
+        re-loaded, and each FontCache contains pointers to the raw font asset's 
+        data; ergo, we must tell each FontCache to re-establish these addresses */
+    for(Korl_MemoryPool_Size fc = 0; fc < arrlenu(context->stbDaFontCaches); fc++)
     {
-        korl_logLastError("ReadFile failed");
-        return false;
+        _Korl_Gfx_FontCache*const fontCache = context->stbDaFontCaches[fc];
+        fontCache->fontInfoInitialized = false;
     }
-    return true;
 }
-#endif
 #undef _LOCAL_STRING_POOL_POINTER

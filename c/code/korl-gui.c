@@ -2307,25 +2307,8 @@ korl_internal u32 korl_gui_memoryStateWrite(void* memoryContext, u8** pStbDaMemo
     korl_stb_ds_arrayAppendU8(memoryContext, pStbDaMemoryState, &_korl_gui_context, sizeof(_korl_gui_context));
     return byteOffset;
 }
-korl_internal bool korl_gui_memoryStateRead(u8* memoryState)
+korl_internal void korl_gui_memoryStateRead(const u8* memoryState)
 {
-    //@TODO
-}
-#if 0//@TODO: delete
-korl_internal void korl_gui_saveStateWrite(void* memoryContext, u8** pStbDaSaveStateBuffer)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    korl_stb_ds_arrayAppendU8(memoryContext, pStbDaSaveStateBuffer, &_korl_gui_context, sizeof(_korl_gui_context));
-}
-korl_internal bool korl_gui_saveStateRead(HANDLE hFile)
-{
-    //KORL-ISSUE-000-000-081: savestate: weak/bad assumption; we currently rely on the fact that korl memory allocator handles remain the same between sessions
-    if(!ReadFile(hFile, &_korl_gui_context, sizeof(_korl_gui_context), NULL/*bytes read*/, NULL/*no overlapped*/))
-    {
-        korl_logLastError("ReadFile failed");
-        return false;
-    }
+    _korl_gui_context = *KORL_C_CAST(_Korl_Gui_Context**, memoryState);
     _korl_gui_frameBegin();// begin a new frame, since it is entirely possible that we saved state with dirty transient data!
-    return true;
 }
-#endif

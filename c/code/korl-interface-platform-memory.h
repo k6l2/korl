@@ -35,8 +35,9 @@ typedef struct Korl_Heap_CreateInfo
     u32         heapDescriptorCount;// if non-zero, all fields below _must_ be populated with valid data
     const void* heapDescriptors;
     u32         heapDescriptorStride;
-    u32         heapDescriptorOffset_addressStart;
-    u32         heapDescriptorOffset_addressEnd;
+    u32         heapDescriptorOffset_virtualAddressStart;
+    u32         heapDescriptorOffset_virtualBytes;
+    u32         heapDescriptorOffset_committedBytes;
 } Korl_Heap_CreateInfo;
 typedef enum Korl_Memory_AllocationMeta_DefragmentState
     {KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNKNOWN// defragment has not yet been called on the heap containing this allocation

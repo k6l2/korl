@@ -652,11 +652,10 @@ korl_internal _Korl_Heap_General* korl_heap_general_create(const Korl_Heap_Creat
     _Korl_Heap_General** currentHeapList = &result;
     for(u32 h = 0; h < createInfo->heapDescriptorCount; h++)
     {
-        u$*const       heapAddressStart = KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressStart);
-        const u$*const heapAddressEnd   = KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressEnd);
-        korl_assert(*heapAddressEnd > *heapAddressStart);
-        const u$ heapBytes = *heapAddressEnd - *heapAddressStart;
-        *currentHeapList = _korl_heap_general_create(heapBytes, KORL_C_CAST(void*, *heapAddressStart));
+        u$*const virtualAddressStart =   KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_virtualAddressStart);
+        const u$ virtualBytes        = *(KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_virtualBytes));
+        *currentHeapList = _korl_heap_general_create(virtualBytes, KORL_C_CAST(void*, *virtualAddressStart));
+        korl_assert(!"@TODO: utilize createInfo->heapDescriptorOffset_committedBytes");
         _korl_heap_general_allocatorPagesUnguard(*currentHeapList);// unguard the heap so that we can modify its next pointer if we need to
         currentHeapList = &((*currentHeapList)->next);
     }
@@ -1695,11 +1694,13 @@ korl_internal _Korl_Heap_Linear* korl_heap_linear_create(const Korl_Heap_CreateI
     _Korl_Heap_Linear** currentHeapList = &result;
     for(u32 h = 0; h < createInfo->heapDescriptorCount; h++)
     {
-        u$*const       heapAddressStart = KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressStart);
-        const u$*const heapAddressEnd   = KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_addressEnd);
-        korl_assert(*heapAddressEnd > *heapAddressStart);
-        const u$ heapBytes = *heapAddressEnd - *heapAddressStart;
-        *currentHeapList = _korl_heap_linear_create(heapBytes, KORL_C_CAST(void*, *heapAddressStart));
+        u$*const virtualAddressStart =   KORL_C_CAST(u$*, KORL_C_CAST(      u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_virtualAddressStart);
+        const u$ virtualBytes        = *(KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_virtualBytes));
+        const u$ committedBytes      = *(KORL_C_CAST(u$*, KORL_C_CAST(const u8*, createInfo->heapDescriptors) + (h*createInfo->heapDescriptorStride) + createInfo->heapDescriptorOffset_committedBytes));
+        *currentHeapList = _korl_heap_linear_create(virtualBytes, KORL_C_CAST(void*, *virtualAddressStart));
+        const void*const resultCommit = VirtualAlloc(KORL_C_CAST(void*, *virtualAddressStart), committedBytes, MEM_COMMIT, PAGE_READWRITE);
+        if(!resultCommit)
+            korl_logLastError("memory commit failed");
         currentHeapList = &((*currentHeapList)->next);
     }
     return result;
