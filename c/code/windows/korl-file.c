@@ -42,6 +42,7 @@ typedef struct _Korl_File_Context
     Korl_Memory_AllocatorHandle allocatorHandle;
     Korl_StringPool stringPool;
     Korl_StringPool_String directoryStrings[KORL_FILE_PATHTYPE_ENUM_COUNT];
+    HANDLE                 directoryHandleOnSubtreeChangeLastWrite[KORL_FILE_PATHTYPE_ENUM_COUNT];
     /** We cannot use a KORL_MEMORY_POOL here, because we need the memory 
      * locations of used OVERLAPPED structs to remain completely STATIC once in 
      * use by Windows.  
@@ -446,6 +447,13 @@ korl_internal void korl_file_initialize(void)
     /* persistent storage of a save-state memory buffer */
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaSaveStateBuffer, korl_math_kilobytes(16));
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->saveStateEnumContext.stbDaAllocatorData, 32);
+    /* setup notification handles to detect subtree file changes for each path type */
+    for(i32 pt = 0; pt < KORL_FILE_PATHTYPE_ENUM_COUNT; pt++)
+    {
+        context->directoryHandleOnSubtreeChangeLastWrite[pt] = FindFirstChangeNotification(string_getRawUtf16(&context->directoryStrings[pt]), TRUE, FILE_NOTIFY_CHANGE_LAST_WRITE);
+        if(INVALID_HANDLE_VALUE == context->directoryHandleOnSubtreeChangeLastWrite[pt])
+            korl_logLastError("FindFirstChangeNotification failed");
+    }
 }
 korl_internal i32 korl_file_makePathString(Korl_File_PathType pathType, const wchar_t* fileName, u8* o_pathUtf8Buffer, u$ pathUtf8BufferSize)
 {
@@ -1152,5 +1160,24 @@ cleanUp:
     string_free(&pathMemoryDump);
     string_free(&subDirectoryMemoryDump);
     string_free(&subPathMemoryState);
+}
+korl_internal bool korl_file_detectsChangedFileLastWrite(Korl_File_PathType type)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    korl_assert(type < KORL_FILE_PATHTYPE_ENUM_COUNT);
+    const DWORD resultWaitForObject = WaitForSingleObject(context->directoryHandleOnSubtreeChangeLastWrite[type], 0/*milliseconds*/);
+    switch(resultWaitForObject)
+    {
+    case WAIT_OBJECT_0:{
+        KORL_WINDOWS_CHECK(FindNextChangeNotification(context->directoryHandleOnSubtreeChangeLastWrite[type]));
+        return true;
+        break;}
+    case WAIT_TIMEOUT:{
+        break;}
+    default:{
+        korl_logLastError("WaitForSingleObject failed; result=%lu", resultWaitForObject);
+        break;}
+    }
+    return false;
 }
 #undef _LOCAL_STRING_POOL_POINTER// keep this at the end of file (after all code)!

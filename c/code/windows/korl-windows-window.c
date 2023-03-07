@@ -883,7 +883,9 @@ korl_internal void korl_windows_window_loop(void)
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             }
         }
-        korl_time_probeStart(asset_cache_check_obsolescence); korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded); korl_time_probeStop(asset_cache_check_obsolescence);
+        korl_time_probeStart(asset_cache_check_obsolescence);{
+            korl_assetCache_checkAssetObsolescence(_korl_windows_window_onAssetHotReloaded);
+        }korl_time_probeStop(asset_cache_check_obsolescence);
         korl_time_probeStart(defragmentation);{
             korl_command_defragment(context->allocatorHandleStack);
             _korl_windows_window_defragment(context->allocatorHandleStack);

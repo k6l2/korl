@@ -77,10 +77,10 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
     {
     case _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED:{
         korl_assert(asset->fileDescriptor.flags == 0);
-        const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
-                                                   string_getRawUtf16(&asset->name), 
-                                                   &(asset->fileDescriptor), 
-                                                   asyncLoad);
+        const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY
+                                                  ,string_getRawUtf16(&asset->name)
+                                                  ,&(asset->fileDescriptor)
+                                                  ,asyncLoad);
         if(resultFileOpen)
         {
             asset->dateStampLastWrite  = korl_file_getDateStampLastWrite(asset->fileDescriptor);
@@ -150,6 +150,7 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
 }
 korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_onAssetHotReloadedCallback* callbackOnAssetHotReloaded)
 {
+    const bool assetChangesDetected = korl_file_detectsChangedFileLastWrite(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY);
     _Korl_AssetCache_Context*const context = _korl_assetCache_context;
     for(u$ a = 0; a < arrlenu(context->stbDaAssets); a++)
     {
@@ -182,9 +183,10 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
         }
         else if(asset->state != _KORL_ASSET_CACHE_ASSET_STATE_LOADED)
             continue;
+        if(!assetChangesDetected)
+            continue;
         const wchar_t*const rawUtf16AssetName = string_getRawUtf16(&asset->name);
         KorlPlatformDateStamp dateStampLatestFileWrite;
-        // KORL-PERFORMANCE-000-000-048: assetCache: (MAJOR) approx. 93% of the time spent in this entire function is inside korl_file_getDateStampLastWriteFileName
         if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
                                                       rawUtf16AssetName, &dateStampLatestFileWrite)
            && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))

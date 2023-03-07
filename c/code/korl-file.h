@@ -85,3 +85,4 @@ korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor f
                                                          ,void* buffer, u32 bufferBytes);
 korl_internal void korl_file_finishAllAsyncOperations(void);
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount);
+korl_internal bool korl_file_detectsChangedFileLastWrite(Korl_File_PathType type);
