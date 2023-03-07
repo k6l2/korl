@@ -133,6 +133,7 @@ korl_internal void* korl_memoryState_load(Korl_Memory_AllocatorHandle allocatorH
     u8* stbDaMemoryState = NULL;
     mcarrsetlen(KORL_STB_DS_MC_CAST(allocatorHandleResult), stbDaMemoryState, fileBytes);
     korl_assert(korl_file_read(fileDescriptor, stbDaMemoryState, fileBytes));
+    korl_file_close(&fileDescriptor);// we're done with the file, so close it immediately
     /* using the memory state's manifest, we can reconstruct all the memory 
         allocators which are stored within */
     const _Korl_MemoryState_Manifest*const manifest = KORL_C_CAST(_Korl_MemoryState_Manifest*, stbDaMemoryState + fileBytes - sizeof(*manifest));
