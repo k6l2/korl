@@ -75,7 +75,6 @@
 [ ] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource, replace all "fontAssetName" strings in korl-gfx data structures with FONT Korl_Resource_Handles; this has gotten ridiculous: all the FontCache stuff should be managed by korl-resource because we need to be able to invalidate/reload this data properly when the underlying font asset is hot-reloaded, or when we load a memoryState or something; all the FontCache APIs should be `korl_resource_font_*` APIs, or something similar
 [ ] KORL-ISSUE-000-000-130: gfx/font: (MAJOR) `fontCache->fontInfo` sets up pointers to data within `assetDataFont.data`; if that data ever moves or gets wiped (defragment, memoryState-load, etc.), then `fontCache->fontInfo` will contain dangling pointers!
 [ ] KORL-ISSUE-000-000-131: file: make `korl_file_create` iterate over each directory separator & ensure the directory exists, then we can likely just delete `korl_file_directory_create`
-[ ] KORL-ISSUE-000-000-132: heap: multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
 [ ] KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 [ ] KORL-ISSUE-000-000-134: vulkan: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
 [ ] KORL-ISSUE-000-000-135: resource: defragment transient resource data
@@ -199,6 +198,7 @@
 [x] KORL-ISSUE-000-000-118: gui: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
 [x] KORL-ISSUE-000-000-121: command/memory-state: loading a memory state that contains registered command(s) that no longer exist will cause assert to fire
 [x] KORL-ISSUE-000-000-122: logConsole: fix '\t' character rendering
+[x] KORL-ISSUE-000-000-132: heap: multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
 [x] KORL-PERFORMANCE-000-000-000: (minor) these pointers all reference contiguous memory regions which immediately follow this struct itself, ergo can be converted to offsets, saving us space but making the code less readable
 [x] KORL-PERFORMANCE-000-000-008: even if we do end up needing to store the asset strings, it would likely be better if we store the strings in a separate string pool, and store a handle to that string here for faster iteration over device assets - we're wasting like an entire cache line per device asset lol
 [x] KORL-PERFORMANCE-000-000-009: pass model as push constant instead?  Timings required.

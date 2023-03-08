@@ -1,5 +1,6 @@
 #include "korl-stb-vorbis.h"
 #include "korl-crash.h"
+#include "korl-algorithm.h"
 korl_global_variable Korl_Memory_AllocatorHandle _korl_stb_vorbis_allocatorHandle;
 korl_internal void* _korl_stb_vorbis_allocate(u$ bytes)
 {
