@@ -831,6 +831,11 @@ korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_intersect(Korl_Math_Aabb2f32
     result.max.y = KORL_MATH_MIN(aabbA.max.y, aabbB.max.y);
     return result;
 }
+korl_internal bool korl_math_aabb2f32_areIntersecting(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB)
+{
+    return KORL_MATH_MAX(aabbA.min.x, aabbB.min.x) <= KORL_MATH_MIN(aabbA.max.x, aabbB.max.x)
+        && KORL_MATH_MAX(aabbA.min.y, aabbB.min.y) <= KORL_MATH_MIN(aabbA.max.y, aabbB.max.y);
+}
 korl_internal void korl_math_aabb2f32_addPoint(Korl_Math_Aabb2f32*const aabb, f32* point2d)
 {
     KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.x, point2d[0]);
@@ -958,5 +963,10 @@ korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 v, f32 scalar)
 korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v)
 {
     return korl_math_v3f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v)
+{
+    Korl_Math_V4f32 v4 = {v.x, v.y, 0, 0};
+    return korl_math_m4f32_multiplyV4f32(&m, &v4).xy;
 }
 #endif//__cplusplus
