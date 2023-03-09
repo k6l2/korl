@@ -51,11 +51,14 @@ korl_internal inline bool korl_math_isNearlyZero(f32 x)
 }
 korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 epsilon)
 {
-    const f32 diff = korl_math_abs(fA - fB);
+    const f32 diff = korl_math_f32_positive(fA - fB);
     return diff <= epsilon;
     //KORL-ISSUE-000-000-085: math: isNearlyEqualEpsilon code doesn't work and I don't know why
-    // fA = korl_math_abs(fA);
-    // fB = korl_math_abs(fB);
+    /**  Thanks, Bruce Dawson!  Source: 
+     * https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+     */
+    // fA = korl_math_f32_positive(fA);
+    // fB = korl_math_f32_positive(fB);
     // const f32 largest = (fB > fA) ? fB : fA;
     // return (diff <= largest * epsilon);
 }
@@ -63,25 +66,25 @@ korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB)
 {
     return korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f);
 }
-korl_internal inline f32 korl_math_abs(f32 x)
+korl_internal inline f32 korl_math_f32_positive(f32 x)
 {
     if(x >= 0)
         return x;
     return -x;
 }
-korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator)
+korl_internal inline f32 korl_math_f32_modulus(f32 numerator, f32 denominator)
 {
     return fmodf(numerator, denominator);
 }
-korl_internal inline f32 korl_math_sin(f32 x)
+korl_internal inline f32 korl_math_sine(f32 x)
 {
     return sinf(x);
 }
-korl_internal inline f32 korl_math_cos(f32 x)
+korl_internal inline f32 korl_math_cosine(f32 x)
 {
     return cosf(x);
 }
-korl_internal inline f32 korl_math_acos(f32 x)
+korl_internal inline f32 korl_math_arcCosine(f32 x)
 {
     if(korl_math_isNearlyEqual(x, 1.f))
         x = 1.f;
@@ -90,39 +93,39 @@ korl_internal inline f32 korl_math_acos(f32 x)
     korl_assert(-1.f <= x && x <= 1.f);
     return acosf(x);
 }
-korl_internal inline f32 korl_math_atan2(f32 numerator, f32 denominator)
+korl_internal inline f32 korl_math_arcTangent(f32 numerator, f32 denominator)
 {
     return atan2f(numerator, denominator);
 }
-korl_internal inline f32 korl_math_floor(f32 x)
+korl_internal inline f32 korl_math_f32_floor(f32 x)
 {
     return floorf(x);
 }
-korl_internal inline f64 korl_math_floorF64(f64 x)
+korl_internal inline f64 korl_math_f64_floor(f64 x)
 {
     return floor(x);
 }
-korl_internal inline f32 korl_math_ceil(f32 x)
+korl_internal inline f32 korl_math_f32_ceiling(f32 x)
 {
     return ceilf(x);
 }
-korl_internal inline f32 korl_math_sqrt(f32 x)
+korl_internal inline f32 korl_math_f32_squareRoot(f32 x)
 {
     return sqrtf(x);
 }
-korl_internal inline f32 korl_math_exponential(f32 x)
+korl_internal inline f32 korl_math_f32_exponential(f32 x)
 {
     return expf(x);
 }
-korl_internal inline f64 korl_math_exponentialF64(f64 x)
+korl_internal inline f64 korl_math_f64_exponential(f64 x)
 {
     return exp(x);
 }
-korl_internal inline f32 korl_math_power(f32 x, f32 exponent)
+korl_internal inline f32 korl_math_f32_power(f32 x, f32 exponent)
 {
     return powf(x, exponent);
 }
-korl_internal inline f64 korl_math_powerF64(f64 x, f64 exponent)
+korl_internal inline f64 korl_math_f64_power(f64 x, f64 exponent)
 {
     return pow(x, exponent);
 }
@@ -130,12 +133,12 @@ korl_internal inline f32 korl_math_loadExponent(f32 x, i32 exponent)
 {
     return ldexpf(x, exponent);
 }
-korl_internal inline f32 korl_math_nanf32(void)
+korl_internal inline f32 korl_math_f32_nan(void)
 {
     korl_shared_const u32 MAX_U32 = KORL_U32_MAX;
     return *KORL_C_CAST(f32*, &MAX_U32);
 }
-korl_internal inline bool korl_math_isNanf32(f32 x)
+korl_internal inline bool korl_math_f32_isNan(f32 x)
 {
     return 0 != _isnanf(x);
 }
@@ -176,10 +179,10 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_Wichma
     context->seed[0] = korl_checkCast_i$_to_u16((171 * context->seed[0]) % WICHMANN_HILL_CONSTS[0]);
     context->seed[1] = korl_checkCast_i$_to_u16((172 * context->seed[1]) % WICHMANN_HILL_CONSTS[1]);
     context->seed[2] = korl_checkCast_i$_to_u16((170 * context->seed[2]) % WICHMANN_HILL_CONSTS[2]);
-    return korl_math_fmod(   context->seed[0] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[0])
-                           + context->seed[1] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[1])
-                           + context->seed[2] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[2]), 
-                          1);
+    return korl_math_f32_modulus(   context->seed[0] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[0])
+                                  + context->seed[1] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[1])
+                                  + context->seed[2] / KORL_C_CAST(f32,WICHMANN_HILL_CONSTS[2]), 
+                                 1);
 }
 korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_WichmannHill*const context, f32 range0, f32 range1)
 {
@@ -232,11 +235,11 @@ korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 }
 korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
-    return korl_math_acos(korl_math_v2f32_dot(korl_math_v2f32_normal(vA), korl_math_v2f32_normal(vB)));
+    return korl_math_arcCosine(korl_math_v2f32_dot(korl_math_v2f32_normal(vA), korl_math_v2f32_normal(vB)));
 }
 korl_internal f32 korl_math_v2f32_radiansZ(Korl_Math_V2f32 v)
 {
-    return korl_math_atan2(v.y, v.x);
+    return korl_math_arcTangent(v.y, v.x);
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_project(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB, bool vbIsNormalized)
 {
@@ -325,12 +328,12 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};
 }
 korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
 {
     for(u8 i = 0; i < korl_arraySize(v.elements); i++)
-        if(korl_math_isNanf32(v.elements[i]))
+        if(korl_math_f32_isNan(v.elements[i]))
             return true;
     return false;
 }
@@ -381,7 +384,7 @@ korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 }
 korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
-    return korl_math_acos(korl_math_v3f32_dot(korl_math_v3f32_normal(vA), korl_math_v3f32_normal(vB)));
+    return korl_math_arcCosine(korl_math_v3f32_dot(korl_math_v3f32_normal(vA), korl_math_v3f32_normal(vB)));
 }
 korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
@@ -658,7 +661,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const
             + m->elements[3] * result.elements[12];
     if (korl_math_isNearlyEqualEpsilon(det, 0.f, 1e-10f))
     {
-        result.r0c0 = korl_math_nanf32();
+        result.r0c0 = korl_math_f32_nan();
         return result;
     }
     det = 1.0f / det;

@@ -108,29 +108,25 @@ korl_internal inline i64 korl_math_round_f64_to_i64(f64 x);
 korl_internal inline u$ korl_math_nextHighestDivision(u$ value, u$ division);
 korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple);
 korl_internal inline bool korl_math_isNearlyZero(f32 x);
-/**  Thanks, Bruce Dawson!  Source: 
- * https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
- */
 korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 epsilon);
-/** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
-korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);
-korl_internal inline f32 korl_math_abs(f32 x);
-korl_internal inline f32 korl_math_fmod(f32 numerator, f32 denominator);
-korl_internal inline f32 korl_math_sin(f32 x);
-korl_internal inline f32 korl_math_cos(f32 x);
-korl_internal inline f32 korl_math_acos(f32 x);
-korl_internal inline f32 korl_math_atan2(f32 numerator, f32 denominator);
-korl_internal inline f32 korl_math_floor(f32 x);
-korl_internal inline f64 korl_math_floorF64(f64 x);
-korl_internal inline f32 korl_math_ceil(f32 x);
-korl_internal inline f32 korl_math_sqrt(f32 x);
-korl_internal inline f32 korl_math_exponential(f32 x);
-korl_internal inline f64 korl_math_exponentialF64(f64 x);
-korl_internal inline f32 korl_math_power(f32 x, f32 exponent);
-korl_internal inline f64 korl_math_powerF64(f64 x, f64 exponent);
-korl_internal inline f32 korl_math_loadExponent(f32 x, i32 exponent);
-korl_internal inline f32 korl_math_nanf32(void);
-korl_internal inline bool korl_math_isNanf32(f32 x);
+korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);/** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
+korl_internal inline f32 korl_math_f32_positive(f32 x);
+korl_internal inline f32 korl_math_f32_modulus(f32 numerator, f32 denominator);
+korl_internal inline f32 korl_math_sine(f32 x);
+korl_internal inline f32 korl_math_cosine(f32 x);
+korl_internal inline f32 korl_math_arcCosine(f32 x);
+korl_internal inline f32 korl_math_arcTangent(f32 numerator, f32 denominator);
+korl_internal inline f32 korl_math_f32_floor(f32 x);
+korl_internal inline f64 korl_math_f64_floor(f64 x);
+korl_internal inline f32 korl_math_f32_ceiling(f32 x);
+korl_internal inline f32 korl_math_f32_squareRoot(f32 x);
+korl_internal inline f32 korl_math_f32_exponential(f32 x);
+korl_internal inline f64 korl_math_f64_exponential(f64 x);
+korl_internal inline f32 korl_math_f32_power(f32 x, f32 exponent);
+korl_internal inline f64 korl_math_f64_power(f64 x, f64 exponent);
+korl_internal inline f32 korl_math_loadExponent(f32 x, i32 exponent);/** computes x*(2^exponent) */
+korl_internal inline f32 korl_math_f32_nan(void);
+korl_internal inline bool korl_math_f32_isNan(f32 x);
 korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor);
 korl_internal inline f32 korl_math_exDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime);
 /* RNG ************************************************************************/

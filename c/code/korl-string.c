@@ -1,4 +1,5 @@
 #include "korl-string.h"
+#include <stdlib.h>// for strtof
 korl_internal bool _korl_string_isBigEndian(void)
 {
     korl_shared_const i32 I = 1;
@@ -219,7 +220,6 @@ korl_internal bool korl_string_isNumeric(u$ codePoint)
 }
 korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid)
 {
-    korl_assert(out_resultIsValid != NULL);
     i$   byteOffsetNumberStart = -1;
     bool isNegative            = false;
     i64  result                = 0;
@@ -251,7 +251,8 @@ korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid)
                 result += digit;
                 if((result - digit) / 10 != resultPrevious)// the UTF-8 number is too large to fit in result
                 {
-                    *out_resultIsValid = false;
+                    if(out_resultIsValid)
+                        *out_resultIsValid = false;
                     return KORL_I64_MAX;
                 }
             }
@@ -261,13 +262,29 @@ korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid)
                     isNegative = true;
                 else// invalid non-numeric codepoint
                 {
-                    *out_resultIsValid = false;
+                    if(out_resultIsValid)
+                        *out_resultIsValid = false;
                     return KORL_I64_MAX;
                 }
             }
         }
     }
-    *out_resultIsValid = true;
+    if(out_resultIsValid)
+        *out_resultIsValid = true;
+    return result;
+}
+korl_internal f32 korl_string_utf8_to_f32(acu8 utf8, u8** out_utf8F32End, bool* out_resultIsValid)
+{
+    char* endPointer = NULL;
+    errno = 0;
+    const f32 result = strtof(KORL_C_CAST(const char*, utf8.data), &endPointer);
+    if(out_utf8F32End)
+    {
+        *out_utf8F32End = KORL_C_CAST(u8*, endPointer);
+        korl_assert(*out_utf8F32End < utf8.data + utf8.size);
+    }
+    if(out_resultIsValid)
+        *out_resultIsValid = (errno == 0);
     return result;
 }
 korl_internal i$ korl_string_copyUtf16(const wchar_t* source, au16 destination)

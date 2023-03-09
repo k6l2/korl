@@ -5,14 +5,20 @@
         https://developercommunity.visualstudio.com/t/issue-in-corecrth-header-results-in-an-undefined-m/433021 */
     #define _CRT_HAS_CXX17 0
 #endif// def KORL_PLATFORM_WINDOWS
-/* C doesn't have bool by default until we include this I guess */
-#include <stdbool.h>
-/* for wchar_t */
-#include <stddef.h>// note that this pulls in <corecrt.h>!!!
-/* support for stdalign.h, since MSVC just doesn't have this I guess */
-#if defined(_MSC_VER) && !defined(__cplusplus)
-    #define alignof            _Alignof
-    #define alignas(byteCount) __declspec(align(byteCount))
+#if defined(__cplusplus)
+    #define KORL_STATIC_ASSERT(expression) static_assert(expression)
+#else
+    #ifdef __clang__
+        #define KORL_STATIC_ASSERT(expression) _Static_assert((expression), #expression)
+    #else
+        #define KORL_STATIC_ASSERT(expression) typedef char __static_assert_t[(expression) != 0]
+    #endif
+    #include <stdbool.h>// C doesn't have bool by default until we include this I guess
+    /* support for stdalign.h, since MSVC just doesn't have this I guess */
+    #if defined(_MSC_VER)
+        #define alignof            _Alignof
+        #define alignas(byteCount) __declspec(align(byteCount))
+    #endif
 #endif// defined(_MSC_VER)
 /** disambiguations of the \c static key word to improve project 
  * searchability */
@@ -36,16 +42,16 @@ typedef float  f32;
 typedef double f64;
 // and if any of these asserts fail, we can just fix these based on target 
 //  platform architecture/compiler:
-_STATIC_ASSERT(sizeof(i8 ) == 1);
-_STATIC_ASSERT(sizeof(i16) == 2);
-_STATIC_ASSERT(sizeof(i32) == 4);
-_STATIC_ASSERT(sizeof(i64) == 8);
-_STATIC_ASSERT(sizeof(u8 ) == 1);
-_STATIC_ASSERT(sizeof(u16) == 2);
-_STATIC_ASSERT(sizeof(u32) == 4);
-_STATIC_ASSERT(sizeof(u64) == 8);
-_STATIC_ASSERT(sizeof(f32) == 4);
-_STATIC_ASSERT(sizeof(f64) == 8);
+KORL_STATIC_ASSERT(sizeof(i8 ) == 1);
+KORL_STATIC_ASSERT(sizeof(i16) == 2);
+KORL_STATIC_ASSERT(sizeof(i32) == 4);
+KORL_STATIC_ASSERT(sizeof(i64) == 8);
+KORL_STATIC_ASSERT(sizeof(u8 ) == 1);
+KORL_STATIC_ASSERT(sizeof(u16) == 2);
+KORL_STATIC_ASSERT(sizeof(u32) == 4);
+KORL_STATIC_ASSERT(sizeof(u64) == 8);
+KORL_STATIC_ASSERT(sizeof(f32) == 4);
+KORL_STATIC_ASSERT(sizeof(f64) == 8);
 /* definitions for useful values of these primitive types */
 #define KORL_U8_MAX  0xFF
 #define KORL_U16_MAX 0xFFFF

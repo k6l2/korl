@@ -43,6 +43,7 @@ korl_internal bool korl_string_isUtf16SurrogateLow(u16 utf16Unit);
 korl_internal bool korl_string_isWhitespace(u$ codePoint);
 korl_internal bool korl_string_isNumeric(u$ codePoint);
 korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid);
+korl_internal f32 korl_string_utf8_to_f32(acu8 utf8, u8** out_utf8F32End, bool* out_resultIsValid);
 /**
  * \return the number of characters copied from \c source into \c destination , 
  * INCLUDING the null terminator.  If the \c source cannot be copied into the 

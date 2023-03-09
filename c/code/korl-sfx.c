@@ -165,12 +165,12 @@ korl_internal void korl_sfx_mix(void)
         {
             const Korl_Math_V3f32 listenerToDeck         = korl_math_v3f32_subtract(tapeDeck->control.spatialization.worldPosition, _korl_sfx_context.listener.worldPosition);
             const f32             listenerToDeckDistance = korl_math_v3f32_magnitude(&listenerToDeck);
-            const f32             attenuationFactor      = korl_math_exponential(-tapeDeck->control.spatialization.attenuation * listenerToDeckDistance);
+            const f32             attenuationFactor      = korl_math_f32_exponential(-tapeDeck->control.spatialization.attenuation * listenerToDeckDistance);
             const Korl_Math_V3f32 listenerToDeckNormal   = korl_math_v3f32_normalKnownMagnitude(listenerToDeck, listenerToDeckDistance);
             const f32             orientationDots[2]     = {korl_math_v3f32_dot(listenerLeft , listenerToDeckNormal)
                                                            ,korl_math_v3f32_dot(listenerRight, listenerToDeckNormal)};
-            const f32             orientationFactors[2]  = {-korl_math_power(0.4f*(orientationDots[0] - 1.f), 2.f) + 1.f// map dot products [-1,1] => the range [0.36-ish, 1], with more higher magnitudes when dot products are closer to 1; the first constant in this equation is potentially tunable by the user, maybe via a TapeDeckControl
-                                                           ,-korl_math_power(0.4f*(orientationDots[1] - 1.f), 2.f) + 1.f};
+            const f32             orientationFactors[2]  = {-korl_math_f32_power(0.4f*(orientationDots[0] - 1.f), 2.f) + 1.f// map dot products [-1,1] => the range [0.36-ish, 1], with more higher magnitudes when dot products are closer to 1; the first constant in this equation is potentially tunable by the user, maybe via a TapeDeckControl
+                                                           ,-korl_math_f32_power(0.4f*(orientationDots[1] - 1.f), 2.f) + 1.f};
             korl_assert(korl_arraySize(tapeDeck->control.channelVolumeRatios) == korl_arraySize(orientationFactors));
             for(u8 channel = 0; channel < korl_arraySize(tapeDeck->control.channelVolumeRatios); channel++)
                 /* this equation allows us to achieve the following effect: 

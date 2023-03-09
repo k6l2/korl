@@ -1909,7 +1909,7 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
             /* draw the selection region _behind_ the text, if our cursor defines a selection */
             const Korl_Math_V2f32      cursorSize   = {2, textLineDeltaY};
-            const Korl_Math_V2f32      cursorOrigin = {0, korl_math_abs(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
+            const Korl_Math_V2f32      cursorOrigin = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
             const Korl_Vulkan_Color4u8 cursorColor  = {0, 255, 0, 100};
             const u$                   cursorBegin  = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
                                                                    ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);

@@ -124,8 +124,8 @@ typedef struct _Korl_Vulkan_SwapChainImageUniformTransforms
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
 } _Korl_Vulkan_SwapChainImageUniformTransforms;
 /* Ensure _Korl_Vulkan_SwapChainImageUniformTransforms member alignment here: */
-_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32Projection) & 16) == 0);
-_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32Projection) & 16) == 0);
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
 typedef struct _Korl_Vulkan_DrawPushConstants
 {
     Korl_Math_M4f32 m4f32Model;

@@ -26,7 +26,7 @@ korl_global_const Korl_Vulkan_VertexIndex _KORL_GFX_TRI_QUAD_INDICES[] =
     { 0, 1, 3
     , 1, 2, 3 };
 korl_global_const u8 _KORL_GFX_POSITION_DIMENSIONS = 3;// for now, we will always store 3D position data
-_STATIC_ASSERT(sizeof(Korl_Vulkan_DeviceMemory_AllocationHandle) == sizeof(Korl_Gfx_DeviceMemoryAllocationHandle));
+KORL_STATIC_ASSERT(sizeof(Korl_Vulkan_DeviceMemory_AllocationHandle) == sizeof(Korl_Gfx_DeviceMemoryAllocationHandle));
 typedef struct _Korl_Gfx_FontGlyphBakedCharacterBoundingBox
 {
     u16 x0,y0,x1,y1; // coordinates of bbox in bitmap
@@ -252,7 +252,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
                     that all original glyphs are baked at this point */
                 const int w = glyph->bbox.x1 - glyph->bbox.x0;
                 const int h = glyph->bbox.y1 - glyph->bbox.y0;
-                const int outlineOffset = KORL_C_CAST(int, korl_math_ceil(fontCache->pixelOutlineThickness));
+                const int outlineOffset = KORL_C_CAST(int, korl_math_f32_ceiling(fontCache->pixelOutlineThickness));
                 const int outlineW = w + 2*outlineOffset;
                 const int outlineH = h + 2*outlineOffset;
                 /* Allocate a temp buffer to store the outline glyph.  
@@ -323,7 +323,7 @@ korl_internal const _Korl_Gfx_FontBakedGlyph* _korl_gfx_fontCache_getGlyph(_Korl
                 korl_free(gfxContext->allocatorHandle, outlineBuffer);
 #else// This technique looks like poop, and I can't seem to change that, so maybe just delete this section?
                 const u8 on_edge_value     = 180;// This is rather arbitrary; it seems like we can just select any reasonable # here and it will be enough for most fonts/sizes.  This value seems rather finicky however...  So if we have to modify how any of this glyph outline stuff is drawn, this will likely have to change somehow.
-                const int padding          = 1/*this is necessary to keep the SDF glyph outline from bleeding all the way to the bitmap edge*/ + KORL_C_CAST(int, korl_math_ceil(fontCache->pixelOutlineThickness));
+                const int padding          = 1/*this is necessary to keep the SDF glyph outline from bleeding all the way to the bitmap edge*/ + KORL_C_CAST(int, korl_math_f32_ceiling(fontCache->pixelOutlineThickness));
                 const f32 pixel_dist_scale = KORL_C_CAST(f32, on_edge_value)/KORL_C_CAST(f32, padding);
                 int w, h, offsetX, offsetY;
                 u8* bitmapSdf = stbtt_GetGlyphSDF(&(fontCache->fontInfo), 
@@ -441,7 +441,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         korl_assert(stbtt_InitFont(&fontInfo, assetDataFont.data, 0/*font offset*/));
         int w, h, offsetX, offsetY;
         const u8 on_edge_value     = 100;// This is rather arbitrary; it seems like we can just select any reasonable # here and it will be enough for most fonts/sizes.  This value seems rather finicky however...  So if we have to modify how any of this glyph outline stuff is drawn, this will likely have to change somehow.
-        const int padding          = 1/*this is necessary to keep the SDF glyph outline from bleeding all the way to the bitmap edge*/ + KORL_C_CAST(int, korl_math_ceil(pixelOutlineThickness));
+        const int padding          = 1/*this is necessary to keep the SDF glyph outline from bleeding all the way to the bitmap edge*/ + KORL_C_CAST(int, korl_math_f32_ceiling(pixelOutlineThickness));
         const f32 pixel_dist_scale = KORL_C_CAST(f32, on_edge_value)/KORL_C_CAST(f32, padding);
         u8* bitmapSdf = stbtt_GetCodepointSDF(&fontInfo, 
                                               stbtt_ScaleForPixelHeight(&fontInfo, batch->_textPixelHeight), 
@@ -1056,7 +1056,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     {
         if(model.translation.y < visibleRegion.min.y - fontCache->fontAscent)
             break;
-        if(model.translation.y <= visibleRegion.max.y + korl_math_abs(fontCache->fontDescent))
+        if(model.translation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
         {
             model.color = line->color;
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
@@ -1355,25 +1355,25 @@ korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetS
                                 ,context->subCamera.orthographic.fixedHeight};}
     default:{
         korl_log(ERROR, "invalid camera type: %i", context->type);
-        return (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};}
+        return (Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};}
     }
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_windowToWorld)
 {
     _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
-    Korl_Gfx_ResultRay3d result = {.position ={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}
-                                  ,.direction={korl_math_nanf32(),korl_math_nanf32(),korl_math_nanf32()}};
+    Korl_Gfx_ResultRay3d result = {.position ={korl_math_f32_nan(),korl_math_f32_nan(),korl_math_f32_nan()}
+                                  ,.direction={korl_math_f32_nan(),korl_math_f32_nan(),korl_math_f32_nan()}};
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
     const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
     const Korl_Math_M4f32 viewInverse       = korl_math_m4f32_invert(&view);
     const Korl_Math_M4f32 projectionInverse = korl_math_m4f32_invert(&projection);
-    if(korl_math_isNanf32(viewInverse.r0c0))
+    if(korl_math_f32_isNan(viewInverse.r0c0))
     {
         korl_log(WARNING, "failed to invert view matrix");
         return result;
     }
-    if(korl_math_isNanf32(projectionInverse.r0c0))
+    if(korl_math_f32_isNan(projectionInverse.r0c0))
     {
         korl_log(WARNING, "failed to invert projection matrix");
         return result;
@@ -1441,7 +1441,7 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldT
     const Korl_Math_V4f32 cameraSpacePoint = korl_math_m4f32_multiplyV4f32(&view, &worldPoint);
     const Korl_Math_V4f32 clipSpacePoint   = korl_math_m4f32_multiplyV4f32(&projection, &cameraSpacePoint);
     if(korl_math_isNearlyZero(clipSpacePoint.w))
-        return (Korl_Math_V2f32){korl_math_nanf32(), korl_math_nanf32()};
+        return (Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};
     /* calculate normalized-device-coordinate-space 
         y is inverted here because screen-space y axis is flipped! */
     const Korl_Math_V3f32 ndcSpacePoint = 

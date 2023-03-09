@@ -44,7 +44,7 @@ typedef union _Korl_Time_TimeStampUnion
     LARGE_INTEGER largeInt;
     PlatformTimeStamp timeStamp;
 } _Korl_Time_TimeStampUnion;
-_STATIC_ASSERT(sizeof(PlatformTimeStamp) <= sizeof(LARGE_INTEGER));
+KORL_STATIC_ASSERT(sizeof(PlatformTimeStamp) <= sizeof(LARGE_INTEGER));
 korl_internal void _korl_time_timeStampExtractDifferenceCounts(Korl_Time_Counts countDiff, 
                                                                u$* out_minutes, u8* out_seconds, u16* out_milliseconds, u16* out_microseconds)
 {

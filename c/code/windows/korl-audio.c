@@ -135,11 +135,11 @@ korl_internal void _korl_audio_output_open(IMMDevice* mmDevice)
         const f32 samplesPerSine = KORL_C_CAST(f32, context->output.waveFormat->nSamplesPerSec) / sineHz;
         for(u32 f = 0; f < context->output.bufferFramesSize; f++)
         {
-            const f32 currentSineSample = korl_math_fmod(KORL_C_CAST(f32, f), samplesPerSine);
+            const f32 currentSineSample = korl_math_f32_modulus(KORL_C_CAST(f32, f), samplesPerSine);
             const f32 currentSineRatio  = currentSineSample / samplesPerSine;
             for(u16 c = 0; c < context->output.waveFormat->nChannels; c++)
             {
-                (sampleBuffer + f*context->output.waveFormat->nChannels)[c] = korl_math_sin(currentSineRatio*KORL_TAU32);
+                (sampleBuffer + f*context->output.waveFormat->nChannels)[c] = korl_math_sine(currentSineRatio*KORL_TAU32);
             }
         }
     }

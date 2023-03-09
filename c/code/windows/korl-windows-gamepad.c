@@ -224,7 +224,7 @@ korl_internal void _korl_windows_gamepad_xInputFilterStickDeadzone(SHORT* inOut_
 {
     f32 fX = *inOut_stickX;
     f32 fY = *inOut_stickY;
-    f32 magnitude = korl_math_sqrt(fX*fX + fY*fY);
+    f32 magnitude = korl_math_f32_squareRoot(fX*fX + fY*fY);
     if(magnitude <= deadzoneMagnitude)
     {
         *inOut_stickX = 0;
