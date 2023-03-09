@@ -350,3 +350,13 @@ korl_internal KORL_FUNCTION_korl_sfx_tape_stop(korl_sfx_tape_stop)
     invalidateHandle:
         korl_memory_zero(tapeHandle, sizeof(*tapeHandle));
 }
+korl_internal u32 korl_sfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
+{
+    const u32 byteOffset = korl_checkCast_u$_to_u32((*pByteBuffer)->size);
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(const u8*, &_korl_sfx_context), .size = sizeof(_korl_sfx_context)});
+    return byteOffset;
+}
+korl_internal void korl_sfx_memoryStateRead(const u8* memoryState)
+{
+    korl_memory_copy(&_korl_sfx_context, memoryState, sizeof(_korl_sfx_context));
+}

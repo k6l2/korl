@@ -6,6 +6,7 @@
 #include "korl-windows-window.h"
 #include "korl-gui.h"
 #include "korl-gfx.h"
+#include "korl-sfx.h"
 #include "korl-assetCache.h"
 #include "korl-resource.h"
 typedef struct _Korl_MemoryState_Manifest_Heap
@@ -26,6 +27,7 @@ typedef struct _Korl_MemoryState_Manifest
     u32 byteOffsetKorlCommand;
     u32 byteOffsetKorlWindow;
     u32 byteOffsetKorlGfx;
+    u32 byteOffsetKorlSfx;
     u32 byteOffsetKorlGui;
     u32 byteOffsetKorlResource;
     u32 byteOffsetKorlAssetCache;
@@ -75,6 +77,7 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_create(Korl_Memory_Alloca
     enumerateContext.manifest.byteOffsetKorlCommand    = korl_command_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
     enumerateContext.manifest.byteOffsetKorlWindow     = korl_windows_window_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
     enumerateContext.manifest.byteOffsetKorlGfx        = korl_gfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlSfx        = korl_sfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
     enumerateContext.manifest.byteOffsetKorlGui        = korl_gui_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
     enumerateContext.manifest.byteOffsetKorlResource   = korl_resource_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
     enumerateContext.manifest.byteOffsetKorlAssetCache = korl_assetCache_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
@@ -160,6 +163,7 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_Allocato
     korl_command_memoryStateRead       (result->data + manifest->byteOffsetKorlCommand);
     korl_windows_window_memoryStateRead(result->data + manifest->byteOffsetKorlWindow);
     korl_gfx_memoryStateRead           (result->data + manifest->byteOffsetKorlGfx);
+    korl_sfx_memoryStateRead           (result->data + manifest->byteOffsetKorlSfx);
     korl_gui_memoryStateRead           (result->data + manifest->byteOffsetKorlGui);
     korl_resource_memoryStateRead      (result->data + manifest->byteOffsetKorlResource);
     korl_assetCache_memoryStateRead    (result->data + manifest->byteOffsetKorlAssetCache);
