@@ -176,6 +176,9 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)         Korl_Math_V2f32       name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_FUNCTION_korl_gfx_batch(name)                        void                  name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
 #define KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(name) Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Resource_Handle resourceHandleTexture)
+/**
+ * \param localOriginNormal relative to the rectangle's lower-left corner
+ */
 #define KORL_FUNCTION_korl_gfx_createBatchRectangleColored(name)  Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Math_V2f32 localOriginNormal, Korl_Vulkan_Color4u8 color)
 #define KORL_FUNCTION_korl_gfx_createBatchCircle(name)            Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color)
 #define KORL_FUNCTION_korl_gfx_createBatchCircleSector(name)      Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color, f32 sectorRadians)

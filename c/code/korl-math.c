@@ -966,7 +966,7 @@ korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v)
 }
 korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v)
 {
-    Korl_Math_V4f32 v4 = {v.x, v.y, 0, 0};
+    Korl_Math_V4f32 v4 = {v.x, v.y, 0, 1};
     return korl_math_m4f32_multiplyV4f32(&m, &v4).xy;
 }
 #endif//__cplusplus
