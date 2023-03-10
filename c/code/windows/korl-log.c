@@ -330,28 +330,31 @@ korl_internal void korl_log_initiateFile(bool logFileEnabled)
     context->logFileEnabled = logFileEnabled;
     if(!logFileEnabled)
         return;
+    korl_shared_const Korl_File_PathType LOG_PATH_TYPE   = KORL_FILE_PATHTYPE_TEMPORARY_DATA;
+    korl_shared_const wchar_t            LOG_BASE_PATH[] = L"logs/";
+    korl_shared_const wchar_t            LOG_EXTENSION[] = L".log";
     wchar_t logFileName[256];
-    korl_assert(0 < korl_string_formatBufferUtf16(logFileName, sizeof(logFileName), L"%ws.log", KORL_APPLICATION_NAME));
+    korl_assert(0 < korl_string_formatBufferUtf16(logFileName, sizeof(logFileName), L"%ws%ws%ws", LOG_BASE_PATH, KORL_APPLICATION_NAME, LOG_EXTENSION));
     /* perform log file rotation */
     for(i$ f = _KORL_LOG_FILE_ROTATION_MAX - 2; f >= 0; f--)
     {
         wchar_t logFileNameCurrent[256];
         if(f == 0)
-            korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log", KORL_APPLICATION_NAME));
+            korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws%ws%ws", LOG_BASE_PATH, KORL_APPLICATION_NAME, LOG_EXTENSION));
         else
-            korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws.log.%lli", KORL_APPLICATION_NAME, f));
+            korl_assert(0 < korl_string_formatBufferUtf16(logFileNameCurrent, sizeof(logFileNameCurrent), L"%ws%ws%ws.%lli", LOG_BASE_PATH, KORL_APPLICATION_NAME, LOG_EXTENSION, f));
         wchar_t logFileNameNext[256];
-        korl_assert(0 < korl_string_formatBufferUtf16(logFileNameNext, sizeof(logFileNameNext), L"%ws.log.%lli", KORL_APPLICATION_NAME, f + 1));
-        const Korl_File_ResultRenameReplace resultRenameReplace = korl_file_renameReplace(KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameCurrent
-                                                                                         ,KORL_FILE_PATHTYPE_LOCAL_DATA, logFileNameNext);
+        korl_assert(0 < korl_string_formatBufferUtf16(logFileNameNext, sizeof(logFileNameNext), L"%ws%ws%ws.%lli", LOG_BASE_PATH, KORL_APPLICATION_NAME, LOG_EXTENSION, f + 1));
+        const Korl_File_ResultRenameReplace resultRenameReplace = korl_file_renameReplace(LOG_PATH_TYPE, logFileNameCurrent
+                                                                                         ,LOG_PATH_TYPE, logFileNameNext);
         korl_assert(   resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS 
                     || resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST);
     }
     /**/
-    korl_assert(korl_file_create(KORL_FILE_PATHTYPE_LOCAL_DATA, 
-                                 logFileName, 
-                                 &context->fileDescriptor, 
-                                 true/*async*/));
+    korl_assert(korl_file_create(LOG_PATH_TYPE
+                                ,logFileName
+                                ,&context->fileDescriptor
+                                ,true/*async*/));
     /* info about BOMs: https://unicode.org/faq/utf_bom.html */
     korl_shared_const u8 BOM_UTF16_LITTLE_ENDIAN[] = { 0xFF,0xFE };// Byte Order Marker to indicate UTF-16LE; must be written to the beginnning of the file!
     korl_file_write(context->fileDescriptor, BOM_UTF16_LITTLE_ENDIAN, sizeof(BOM_UTF16_LITTLE_ENDIAN));

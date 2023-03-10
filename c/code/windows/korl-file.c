@@ -471,7 +471,7 @@ korl_internal i32 korl_file_makePathString(Korl_File_PathType pathType, const wc
     string_free(&stringFilePath);
     return resultUnitsWritten;
 }
-korl_internal bool korl_file_directory_create(Korl_File_PathType pathType, const wchar_t* directoryName)
+korl_internal bool _korl_file_directory_create(Korl_File_PathType pathType, const wchar_t* directoryName)
 {
     _Korl_File_Context*const context = &_korl_file_context;
     korl_assert(pathType < KORL_FILE_PATHTYPE_ENUM_COUNT);
@@ -488,6 +488,7 @@ korl_internal bool korl_file_directory_create(Korl_File_PathType pathType, const
             korl_log(ERROR, "CreateDirectory(%ws) failed: path not found", string_getRawUtf16(&stringPath));
         default:
             resultSuccess = false;
+            korl_logLastError("CreateDirectory(%ws) failed", string_getRawUtf16(&stringPath));
             break;
         }
     string_free(&stringPath);
@@ -509,6 +510,19 @@ korl_internal bool korl_file_create(Korl_File_PathType pathType
                                    ,Korl_File_Descriptor* o_fileDescriptor
                                    ,bool async)
 {
+    /* enumerate over all directories in the fileName & ensure that they exist 
+        by attempting to create each one */
+    for(const wchar_t* c = fileName; *c; c++)
+    {
+        if(*c != L'/' && *c != L'\"')
+            continue;
+        Korl_StringPool_String stringPath = string_newAcu16(((acu16){.data = fileName, .size = c - fileName}));
+        const bool successCreateDirectory = _korl_file_directory_create(pathType, string_getRawUtf16(&stringPath));
+        string_free(&stringPath);
+        if(!successCreateDirectory)
+            return false;
+    }
+    /**/
     Korl_File_Descriptor_Flags flags = KORL_FILE_DESCRIPTOR_FLAG_READ 
                                      | KORL_FILE_DESCRIPTOR_FLAG_WRITE;
     if(async)
@@ -585,6 +599,7 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
     Korl_StringPool_String filePath = string_copy(context->directoryStrings[pathTypeFileName]);
     string_appendUtf16(&filePath, L"\\");
     string_appendUtf16(&filePath, fileName);
+    _korl_file_sanitizeFilePath(&filePath);
     if(GetFileAttributes(string_getRawUtf16(&filePath)) == INVALID_FILE_ATTRIBUTES)
     {
         result = KORL_FILE_RESULT_RENAME_REPLACE_SOURCE_FILE_DOES_NOT_EXIST;
@@ -593,6 +608,7 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
     filePathNew = string_copy(context->directoryStrings[pathTypeFileNameNew]);
     string_appendUtf16(&filePathNew, L"\\");
     string_appendUtf16(&filePathNew, fileNameNew);
+    _korl_file_sanitizeFilePath(&filePathNew);
     if(GetFileAttributes(string_getRawUtf16(&filePathNew)) != INVALID_FILE_ATTRIBUTES)
         if(DeleteFile(string_getRawUtf16(&filePathNew)))
             korl_log(INFO, "file '%ws' deleted", string_getRawUtf16(&filePathNew));
