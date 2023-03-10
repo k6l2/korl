@@ -1,2 +1,0 @@
-#pragma once
-static const unsigned char z85_png_default[] = "Ibl@q4gj0X0000dnK#lE0000:0000:2Ngne0if:M?t^JQQ!9%urcT@2/%814fBU(+/#Tdy+vs=?A!bOzBVM>vbro<]Uatq3kNRljPANdQ=&PTqxAp*dW1b1Nt0M0^eUBLy7si:X3UP)u1Vczf0?6g70zJQ4FtJrIkVmUmP.XkfE+1(7@SiC11Vczf0?6g70zJQ4FtJrIkVmUmPECyb=>F.MxBpyogZhkcNGvd6o-.RKRt%^+qVFzxds-hXjD^5OFXF<E:]zzw07/QOm6n<:F=GP!";

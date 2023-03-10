@@ -1,9 +1,0 @@
-frame-size-x              : 0
-frame-size-y              : 0
-frame-count               : 0
-texture-asset-file-name   : gfx/fighter.png
-default-repeat            : 1
-default-reverse           : 0
-default-seconds-per-frame : 0.05
-default-anchor-ratio-x    : 0.5
-default-anchor-ratio-y    : 0.5
