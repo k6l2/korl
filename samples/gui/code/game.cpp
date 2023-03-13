@@ -1,3 +1,4 @@
+#include <stdlib.h>// needed for __FILEW__, etc...
 #include "korl-interface-game.h"
 #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
     #include "korl-interface-platform-api.h"
@@ -10,6 +11,7 @@ korl_internal void _game_getInterfacePlatformApi(KorlPlatformApi korlApi)
     #include "korl-interface-platform-api.h"
     #undef _KORL_PLATFORM_API_MACRO_OPERATION
 }
+#include "korl-string.h"
 #include "korl-stringPool.h"
 #include "korl-logConsole.h"
 typedef struct Memory
@@ -29,13 +31,15 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(korl_game_commandTest)
 KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
 {
     _game_getInterfacePlatformApi(korlApi);
-    const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, korl_math_megabytes(8), L"game-heap", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, NULL/*auto-select start address*/);
+    KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
+    heapCreateInfo.initialHeapBytes = korl_math_megabytes(8);
+    const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-heap", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     memory = KORL_C_CAST(Memory*, korl_allocate(allocatorHeap, sizeof(Memory)));
-    memory->allocatorHeap       = allocatorHeap;
-    memory->continueRunning     = true;
-    memory->testWindowOpen      = true;
-    memory->stringPool          = korl_stringPool_create(allocatorHeap);
-    memory->logConsole          = korl_logConsole_create(&memory->stringPool);
+    memory->allocatorHeap   = allocatorHeap;
+    memory->continueRunning = true;
+    memory->testWindowOpen  = true;
+    memory->stringPool      = korl_stringPool_create(allocatorHeap);
+    memory->logConsole      = korl_logConsole_create(&memory->stringPool);
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     korl_command_register(KORL_RAW_CONST_UTF8("test"), korl_game_commandTest);
     return memory;
@@ -62,8 +66,8 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY});
-    korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
-    for(u$ i = 0; i < 5; i++)
+    // korl_gui_widgetButtonFormat(L"just a test button that does nothing!");
+    for(u$ i = 0; i < 1; i++)
     {
         korl_gui_setLoopIndex(i);
         korl_gui_widgetTextFormat(L"orphan widget test");
@@ -94,6 +98,9 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     bool isNoTitlebarWindowOpen = memory->testWindowOpen;
     korl_gui_windowBegin(L"Test Window NO-TITLEBAR", &isNoTitlebarWindowOpen, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
     korl_gui_windowEnd();
+    korl_gui_windowBegin(L"Test Bare Window", NULL, KORL_GUI_WINDOW_STYLE_FLAG_NONE);
+    korl_gui_windowEnd();
+    korl_gui_widgetTextFormat(L"orphan widget test2");
     return memory->continueRunning;
 }
 #include "korl-math.c"

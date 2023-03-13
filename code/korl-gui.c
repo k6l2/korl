@@ -246,7 +246,6 @@ widgetIndexValid:
         widget->parentOffset = korl_math_v2f32_nan();
     if(context->transientNextWidgetModifiers.orderIndex >= 0)
         widget->orderIndex = korl_checkCast_i$_to_u16(context->transientNextWidgetModifiers.orderIndex);
-    _korl_gui_resetTransientNextWidgetModifiers();
     return widget;
 }
 korl_internal void _korl_gui_widget_destroy(_Korl_Gui_Widget*const widget)
@@ -1253,6 +1252,8 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         /* auto-activate the window when it is opened for the first time */
         if(!wasOpen && newWindow->subType.window.isOpen && (styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_DEFAULT_ACTIVE))
             _korl_gui_widget_window_activate(newWindow);
+        /**/
+        _korl_gui_resetTransientNextWidgetModifiers();
 }
 korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
 {
@@ -1264,6 +1265,7 @@ korl_internal KORL_FUNCTION_korl_gui_windowEnd(korl_gui_windowEnd)
         korl_gui_widgetScrollAreaEnd();
     korl_assert(arrlen(context->stbDaWidgetParentStack) == 1);
     arrpop(context->stbDaWidgetParentStack);
+    _korl_gui_resetTransientNextWidgetModifiers();
 }
 korl_internal KORL_FUNCTION_korl_gui_setNextWidgetSize(korl_gui_setNextWidgetSize)
 {
@@ -2056,6 +2058,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetTextFormat(korl_gui_widgetTextFormat)
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
+    /**/
+    _korl_gui_resetTransientNextWidgetModifiers();
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
 {
@@ -2090,6 +2094,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
     /* these widgets will not support children, so we must pop widget from the parent stack */
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
+    /**/
+    _korl_gui_resetTransientNextWidgetModifiers();
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFormat)
 {
@@ -2126,6 +2132,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetButtonFormat(korl_gui_widgetButtonFor
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
     /**/
+    _korl_gui_resetTransientNextWidgetModifiers();
     return resultActuationCount;
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScrollAreaBegin)
@@ -2191,6 +2198,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaBegin(korl_gui_widgetScroll
     if((flags & KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL) && widget->subType.scrollArea.isScrolledToEndY)
         widget->subType.scrollArea.contentOffset.y = widget->subType.scrollArea.aabbScrollableSize.y - widget->size.y;
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);
+    _korl_gui_resetTransientNextWidgetModifiers();
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAreaEnd)
 {
@@ -2199,6 +2207,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetScrollAreaEnd(korl_gui_widgetScrollAr
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     const _Korl_Gui_Widget*const widget = context->stbDaWidgets + widgetIndex;
     korl_assert(widget->type == KORL_GUI_WIDGET_TYPE_SCROLL_AREA);
+    _korl_gui_resetTransientNextWidgetModifiers();
 }
 korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
 {
@@ -2238,12 +2247,14 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     /**/
     const u8 enterKeyEventsReceived = widget->subType.inputText.enterKeyEventsReceived;
     widget->subType.inputText.enterKeyEventsReceived = 0;
+    _korl_gui_resetTransientNextWidgetModifiers();
     return enterKeyEventsReceived;
 }
 korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis axis, f32 scrollRegionVisible, f32 scrollRegionContent, f32 contentOffset)
 {
+    f32 contentScrollDelta = 0;
     if(korl_math_isNearlyZero(scrollRegionVisible) || korl_math_isNearlyZero(scrollRegionContent))
-        return 0;// KORL-ISSUE-000-000-110: gui: this is causing a leak of transient next widget modifiers!  _korl_gui_getWidget never gets called, which we currently expect to be the only place _korl_gui_resetTransientNextWidgetModifiers is called, ergo the next widget invocation will receive the modifiers intended for _this_ widget!!
+        goto return_contentScrollDelta;
     _Korl_Gui_Context*const context = _korl_gui_context;
     bool newAllocation = false;
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(korl_checkCast_cvoidp_to_u64(label.data), KORL_GUI_WIDGET_TYPE_SCROLL_BAR, &newAllocation);
@@ -2252,7 +2263,6 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
     korl_assert(scrollRegionContent > scrollRegionVisible);
     const f32 clippedSize = scrollRegionContent - scrollRegionVisible;
     f32 scrollPositionRatio = (axis == KORL_GUI_SCROLL_BAR_AXIS_X ? -contentOffset : contentOffset) / clippedSize;
-    f32 contentScrollDelta = 0;
     if(!korl_math_isNearlyZero(widget->subType.scrollBar.draggedMagnitude))
     {
         switch(widget->subType.scrollBar.dragMode)
@@ -2279,7 +2289,9 @@ korl_internal f32 korl_gui_widgetScrollBar(acu16 label, Korl_Gui_ScrollBar_Axis 
     const u16 widgetIndex = arrpop(context->stbDaWidgetParentStack);
     korl_assert(widgetIndex == widget - context->stbDaWidgets);
     /**/
-    return contentScrollDelta;
+    return_contentScrollDelta:
+        _korl_gui_resetTransientNextWidgetModifiers();
+        return contentScrollDelta;
 }
 korl_internal void korl_gui_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
