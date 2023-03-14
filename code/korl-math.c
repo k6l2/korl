@@ -190,6 +190,12 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_Wich
     const f32 rangeMin = KORL_MATH_MIN(range0, range1);
     return rangeMin + (rangeMax - rangeMin)*korl_math_rng_wichmannHill_f32_0_1(context);
 }
+korl_internal Korl_Math_V2u32 korl_math_v2u32_divide(Korl_Math_V2u32 vA, Korl_Math_V2u32 vB)
+{
+    vA.elements[0] /= vB.elements[0];
+    vA.elements[1] /= vB.elements[1];
+    return vA;
+}
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v)
 {
     return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_checkCast_u$_to_f32(v.x), korl_checkCast_u$_to_f32(v.y)};
@@ -893,6 +899,15 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aab
     return result;
 }
 #ifdef __cplusplus
+korl_internal Korl_Math_V2u32 operator/(Korl_Math_V2u32 vNumerator, Korl_Math_V2u32 vDenominator)
+{
+    return korl_math_v2u32_divide(vNumerator, vDenominator);
+}
+korl_internal Korl_Math_V2u32& operator/=(Korl_Math_V2u32& vA, Korl_Math_V2u32 vB)
+{
+    vA = korl_math_v2u32_divide(vA, vB);
+    return vA;
+}
 korl_internal Korl_Math_Quaternion operator*(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
     return korl_math_quaternion_multiply(qA, qB);

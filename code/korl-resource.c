@@ -566,7 +566,7 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     if(!resourceHandleTexture)
-        return (Korl_Math_V2u32){1,1};
+        return KORL_MATH_V2U32_ZERO;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceHandleTexture);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandleTexture);

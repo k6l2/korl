@@ -1957,6 +1957,17 @@ korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectan
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
 }
+korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv(korl_gfx_batch_rectangle_setUv)
+{
+    korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
+    korl_assert(context->_vertexUvs);
+    Korl_Math_V2f32 textureSize = korl_math_v2f32_fromV2u32(korl_resource_texture_getSize(context->_texture));
+    /* NOTE: the renderer interprets UV {0,0} as the upper-left corner of the image */
+    context->_vertexUvs[0] = korl_math_v2f32_divide((Korl_Math_V2f32){pixelSpaceAabb.min.x, pixelSpaceAabb.max.y}, textureSize);
+    context->_vertexUvs[1] = korl_math_v2f32_divide(pixelSpaceAabb.max, textureSize);
+    context->_vertexUvs[2] = korl_math_v2f32_divide((Korl_Math_V2f32){pixelSpaceAabb.max.x, pixelSpaceAabb.min.y}, textureSize);
+    context->_vertexUvs[3] = korl_math_v2f32_divide(pixelSpaceAabb.min, textureSize);
+}
 korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSetColor)
 {
     /// for refactoring this code module in the future; we should probably assert this is a circle batch?

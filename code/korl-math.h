@@ -14,6 +14,7 @@ typedef union Korl_Math_V2u32
     struct { u32 x, y; };
     u32 elements[2];
 } Korl_Math_V2u32;
+const Korl_Math_V2u32 KORL_MATH_V2U32_ZERO = {0, 0};
 typedef union Korl_Math_V2i32
 {
     struct { i32 x, y; };
@@ -134,6 +135,8 @@ korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed);
 korl_internal inline f32 korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_WichmannHill*const context);
 korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_WichmannHill*const context, f32 range0, f32 range1);
+/* V2u32 **********************************************************************/
+korl_internal Korl_Math_V2u32 korl_math_v2u32_divide(Korl_Math_V2u32 vA, Korl_Math_V2u32 vB);
 /* V2f32 **********************************************************************/
 /** \return a rotated V2f32 from a starting position of {radius, 0}, rotated 
  * around the +Z axis by \c radians */
@@ -259,6 +262,8 @@ korl_internal bool korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Kor
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB);
 /* C++ API ********************************************************************/
 #ifdef __cplusplus
+korl_internal Korl_Math_V2u32 operator/(Korl_Math_V2u32 vNumerator, Korl_Math_V2u32 vDenominator);
+korl_internal Korl_Math_V2u32& operator/=(Korl_Math_V2u32& vA, Korl_Math_V2u32 vB);
 korl_internal Korl_Math_Quaternion operator*(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
 korl_internal Korl_Math_V2f32 operator*(Korl_Math_Quaternion q, Korl_Math_V2f32 v);
 korl_internal Korl_Math_V3f32 operator*(Korl_Math_Quaternion q, Korl_Math_V3f32 v);
