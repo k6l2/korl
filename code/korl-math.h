@@ -137,16 +137,17 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_Wich
 /* V2f32 **********************************************************************/
 /** \return a rotated V2f32 from a starting position of {radius, 0}, rotated 
  * around the +Z axis by \c radians */
+korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radians);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_rotateHalfPiZ(Korl_Math_V2f32 v);
-korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v);
-korl_internal f32 korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v);
+korl_internal f32             korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v);
+korl_internal f32             korl_math_v2f32_magnitudeSquared(const Korl_Math_V2f32*const v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_normal(Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_normalKnownMagnitude(Korl_Math_V2f32 v, f32 magnitude);
-korl_internal f32 korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
-korl_internal f32 korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
-korl_internal f32 korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
-korl_internal f32 korl_math_v2f32_radiansZ(Korl_Math_V2f32 v);
+korl_internal f32             korl_math_v2f32_cross(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal f32             korl_math_v2f32_dot(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal f32             korl_math_v2f32_radiansBetween(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
+korl_internal f32             korl_math_v2f32_radiansZ(Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_project(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB, bool vbIsNormalized);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_add(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 // korl_internal Korl_Math_V2f32 korl_math_v2f32_addScalar(Korl_Math_V2f32 v, f32 scalar);
@@ -156,17 +157,16 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_multiply(Korl_Math_V2f32 vA, Korl_
 korl_internal Korl_Math_V2f32 korl_math_v2f32_multiplyScalar(Korl_Math_V2f32 v, f32 scalar);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_divide(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_divideScalar(Korl_Math_V2f32 v, f32 scalar);
-korl_internal void korl_math_v2f32_assignAdd(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
-korl_internal void korl_math_v2f32_assignAddScalar(Korl_Math_V2f32*const v, f32 scalar);
-korl_internal void korl_math_v2f32_assignSubtract(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
-korl_internal void korl_math_v2f32_assignSubtractScalar(Korl_Math_V2f32*const v, f32 scalar);
-korl_internal void korl_math_v2f32_assignMultiply(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
-korl_internal void korl_math_v2f32_assignMultiplyScalar(Korl_Math_V2f32*const v, f32 scalar);
+korl_internal void            korl_math_v2f32_assignAdd(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
+korl_internal void            korl_math_v2f32_assignAddScalar(Korl_Math_V2f32*const v, f32 scalar);
+korl_internal void            korl_math_v2f32_assignSubtract(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
+korl_internal void            korl_math_v2f32_assignSubtractScalar(Korl_Math_V2f32*const v, f32 scalar);
+korl_internal void            korl_math_v2f32_assignMultiply(Korl_Math_V2f32*const vA, Korl_Math_V2f32 vB);
+korl_internal void            korl_math_v2f32_assignMultiplyScalar(Korl_Math_V2f32*const v, f32 scalar);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void);
-korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v);
-korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v);
+korl_internal bool            korl_math_v2f32_hasNan(Korl_Math_V2f32 v);
 /* V3f32 **********************************************************************/
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);

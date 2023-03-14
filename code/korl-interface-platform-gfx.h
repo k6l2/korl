@@ -2,6 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-interface-platform-memory.h"
+#include "korl-interface-platform-resource.h"
 /** \return \c true if the codepoint should be drawn, \c false otherwise */
 #define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, u32 codepoint, u8 codepointCodeUnits, const u8* currentCodeUnit, u8 bytesPerCodeUnit, Korl_Math_V4f32* o_currentLineColor)
 typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);

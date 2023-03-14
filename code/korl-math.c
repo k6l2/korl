@@ -190,6 +190,10 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_Wich
     const f32 rangeMin = KORL_MATH_MIN(range0, range1);
     return rangeMin + (rangeMax - rangeMin)*korl_math_rng_wichmannHill_f32_0_1(context);
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_checkCast_u$_to_f32(v.x), korl_checkCast_u$_to_f32(v.y)};
+}
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radians)
 {
     return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius * cosf(radians)
@@ -336,10 +340,6 @@ korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
         if(korl_math_f32_isNan(v.elements[i]))
             return true;
     return false;
-}
-korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v)
-{
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_checkCast_u$_to_f32(v.x), korl_checkCast_u$_to_f32(v.y)};
 }
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {

@@ -195,6 +195,8 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
         korl_assert(hashMapIndex >= 0);
         _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
         resource->stringFileName = string_newAcu16(fileName);
+        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
+            resource->subType.graphics.type = graphicsType;
     }
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     /* regardless of whether or not the resource was just added, we still need to make sure that the asset was loaded for it */
@@ -210,7 +212,6 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
             switch(unpackedHandle.multimediaType)
             {
             case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-                resource->subType.graphics.type = graphicsType;
                 switch(resource->subType.graphics.type)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
@@ -560,6 +561,20 @@ korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audi
         return (acu8){.data=resource->subType.audio.resampledData, .size=resource->subType.audio.resampledDataBytes};
     /* otherwise, we can just directly use the audio data */
     return (acu8){.data=resource->data, .size=resource->dataBytes};
+}
+korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_getSize)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    if(!resourceHandleTexture)
+        return (Korl_Math_V2u32){1,1};
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceHandleTexture);
+    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandleTexture);
+    korl_assert(hashMapIndex >= 0);
+    const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE);
+    return (Korl_Math_V2u32){resource->subType.graphics.createInfo.texture.sizeX
+                            ,resource->subType.graphics.createInfo.texture.sizeY};
 }
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
