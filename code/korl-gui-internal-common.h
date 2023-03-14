@@ -176,7 +176,7 @@ typedef struct _Korl_Gui_Context
         Korl_Vulkan_Color4u8   colorTextOutline;
         f32                    textOutlinePixelSize;
         Korl_StringPool_String fontWindowText;
-        f32                    windowTextPixelSizeY;
+        f32                    windowTextPixelSizeY;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
         f32                    windowTitleBarPixelSizeY;
         f32                    widgetSpacingY;
         f32                    widgetButtonLabelMargin;

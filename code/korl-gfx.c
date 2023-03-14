@@ -91,8 +91,8 @@ typedef struct _Korl_Gfx_FontCache
     f32                          fontScale;// scale calculated from fontInfo & pixelHeight
     /** From STB TrueType documentation: 
      * you should advance the vertical position by "*ascent - *descent + *lineGap" */
-    f32                          fontAscent; // adjusted by pixelHeight already
-    f32                          fontDescent;// adjusted by pixelHeight already
+    f32                          fontAscent; // adjusted by pixelHeight already; relative to the text baseline; generally positive
+    f32                          fontDescent;// adjusted by pixelHeight already; relative to the text baseline; generally negative
     f32                          fontLineGap;// adjusted by pixelHeight already
     f32                          pixelHeight;
     f32                          pixelOutlineThickness;// if this is 0.f, then an outline has not yet been cached in this fontCache glyphPageList
@@ -643,7 +643,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     /* iterate over each character in the batch text, and update the 
         pre-allocated vertex attributes to use the data for the corresponding 
         codepoint in the glyph cache */
-    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, 0.f};
+    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
     u32 currentGlyph = 0;
     const bool outlinePass = (batch->_textPixelOutline > 0.f);
     /* While we're at it, we can also generate the text mesh AABB...
@@ -652,7 +652,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         - font vertical metrics
         - glyph horizontal metrics
         - glyph X bearings */
-    batch->_textAabb = (Korl_Math_Aabb2f32 ){.min = {0.f, 0.f}, .max = {0.f, 0.f}};
+    batch->_textAabb = KORL_MATH_AABB2F32_EMPTY;
     int glyphIndexPrevious = -1;// used to calculate kerning advance between the previous glyph and the current glyph
     korl_time_probeStart(process_characters);
     for(const wchar_t* character = batch->_text; *character; character++)
@@ -677,15 +677,21 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
         textBaselineCursor.x += bakedGlyph->advanceX;
         if(*character == L'\n')
         {
-            textBaselineCursor.x = 0.f;
+            textBaselineCursor.x  = 0.f;
             textBaselineCursor.y -= (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
             continue;
         }
         glyphIndexPrevious = bakedGlyph->glyphIndex;
         if(bakedGlyph->isEmpty)
             continue;
-        batch->_textAabb.min = korl_math_v2f32_min(batch->_textAabb.min, (Korl_Math_V2f32){x0, y0});
-        batch->_textAabb.max = korl_math_v2f32_max(batch->_textAabb.max, (Korl_Math_V2f32){x1, y1});
+        /* at this point, we know this glyph contains graphical components; 
+            let's expand the text's local AABB such that the y-axis matches the 
+            font's metrics precisely */
+        KORL_MATH_ASSIGN_CLAMP_MAX(batch->_textAabb.min.x, x0);
+        KORL_MATH_ASSIGN_CLAMP_MIN(batch->_textAabb.max.x, x1);
+        KORL_MATH_ASSIGN_CLAMP_MAX(batch->_textAabb.min.y, textBaselineCursor.y + fontCache->fontDescent);
+        KORL_MATH_ASSIGN_CLAMP_MIN(batch->_textAabb.max.y, textBaselineCursor.y + fontCache->fontAscent);
+        /**/
         currentGlyph++;
         batch->_textVisibleCharacterCount++;
     }

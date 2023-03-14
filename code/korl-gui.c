@@ -471,7 +471,7 @@ korl_internal void korl_gui_initialize(void)
     context->style.colorTextOutline               = (Korl_Vulkan_Color4u8){  0,   5,   0, 255};
     context->style.textOutlinePixelSize           = 0.f;
     context->style.fontWindowText                 = string_newEmptyUtf16(0);
-    context->style.windowTextPixelSizeY           = 24.f;
+    context->style.windowTextPixelSizeY           = 20.f;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
     context->style.windowTitleBarPixelSizeY       = 20.f;
     context->style.widgetSpacingY                 =  0.f;
     context->style.widgetButtonLabelMargin        =  2.f;
@@ -1597,16 +1597,16 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                     ,context->style.colorText
                                                                                     ,context->style.textOutlinePixelSize
                                                                                     ,context->style.colorTextOutline);
-                const Korl_Math_V2f32 batchTextSize = korl_math_aabb2f32_size(korl_gfx_batchTextGetAabb(batchWindowTitleText));
-                korl_gfx_batchSetPosition(batchWindowTitleText
-                                         ,(f32[]){widget->position.x
-                                                 ,widget->position.y - (context->style.windowTitleBarPixelSizeY - batchTextSize.y) / 2.f
-                                                 ,z + 0.2f}, 3);
+                Korl_Math_Aabb2f32    batchTextAabb         = korl_gfx_batchTextGetAabb(batchWindowTitleText);// model-space, needs to be transformed to world-space
+                const Korl_Math_V2f32 batchTextAabbSize     = korl_math_aabb2f32_size(batchTextAabb);
+                const f32             titleBarTextAabbSizeX =   batchTextAabbSize.x 
+                                                              + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
+                const f32             titleBarTextAabbSizeY = context->style.windowTitleBarPixelSizeY;
+                const f32             textPaddingY          = batchTextAabbSize.y < context->style.windowTitleBarPixelSizeY 
+                                                              ? 0.5f * (context->style.windowTitleBarPixelSizeY - batchTextAabbSize.y)
+                                                              : 0;
+                korl_gfx_batchSetPosition(batchWindowTitleText, (f32[]){widget->position.x, widget->position.y - textPaddingY, z + 0.2f}, 3);
                 korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAGS_NONE);
-                Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchWindowTitleText);// model-space, needs to be transformed to world-space
-                const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
-                const f32 titleBarTextAabbSizeX = batchTextAabbSize.x + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
-                const f32 titleBarTextAabbSizeY = context->style.windowTitleBarPixelSizeY;
                 batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + titleBarTextAabbSizeX, widget->position.y - titleBarTextAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
                 /**/
@@ -1753,10 +1753,9 @@ korl_internal void korl_gui_frameEnd(void)
                 const f32 buttonAabbSizeY = textLineDeltaY      + (context->style.widgetButtonLabelMargin * 2.f);
                 batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
-                korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the text origin to be the font's baseline
                 korl_gfx_batchSetPosition2d(batchText
                                            ,widget->position.x + context->style.widgetButtonLabelMargin
-                                           ,widget->position.y - context->style.widgetButtonLabelMargin - fontMetrics.ascent);
+                                           ,widget->position.y - context->style.widgetButtonLabelMargin);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
@@ -1816,16 +1815,13 @@ korl_internal void korl_gui_frameEnd(void)
             {
                 korl_assert(widget->subType.text.displayText.data);
                 korl_assert(!widget->subType.text.gfxText);
-                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
-                const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines per button */;
                 Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-                korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
-                korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z}, 3);
+                korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y, z}, 3);
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);
                 const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
                 const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
                 usedWidget->transient.aabbContent.max.x += batchTextAabbSize.x;
-                usedWidget->transient.aabbContent.min.y -= textLineDeltaY;
+                usedWidget->transient.aabbContent.min.y -= batchTextAabbSize.y;
             }
             korl_time_probeStop(widget_text);
             break;}
@@ -1893,12 +1889,10 @@ korl_internal void korl_gui_frameEnd(void)
             break;}
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
             /* prepare the graphics to draw the text buffer to obtain metrics, but defer drawing until later */
-            Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
-            const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
+            const Korl_Gfx_Font_Metrics fontMetrics    = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
+            const f32                   textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
             Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), string_getRawUtf16(&widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-            //KORL-ISSUE-000-000-116: gui: this does _not_ actually place the text position at the baseline!  This places the local origin at the bottom-left of the shrink-wrapped AABB; this causes the position of text to get jacked up when a glyph below the baseline is drawn (such as 'g' or 'j')
-            korl_gfx_batchTextSetPositionAnchor(batchText, KORL_MATH_V2F32_ZERO);// we do, in fact, want the local origin to be the text's baseline
-            korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y - fontMetrics.ascent, z + 0.5f}, 3);
+            korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y, z + 0.5f}, 3);
             const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
             const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
             usedWidget->transient.aabbContent.min.y -= textLineDeltaY;
@@ -1910,17 +1904,17 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_batchSetPosition(batchBox, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
             /* draw the selection region _behind_ the text, if our cursor defines a selection */
-            const Korl_Math_V2f32      cursorSize   = {2, textLineDeltaY};
-            const Korl_Math_V2f32      cursorOrigin = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
-            const Korl_Vulkan_Color4u8 cursorColor  = {0, 255, 0, 100};
-            const u$                   cursorBegin  = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
-                                                                   ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
-            const u$                   cursorEnd    = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
-                                                                   ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
-            const Korl_Math_V2f32 cursorPositionBegin = korl_gfx_font_textGraphemePosition(string_getRawAcu16(&context->style.fontWindowText)
-                                                                                          ,context->style.windowTextPixelSizeY
-                                                                                          ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
-                                                                                          ,cursorBegin);
+            const Korl_Math_V2f32      cursorSize          = {2, textLineDeltaY};
+            const Korl_Math_V2f32      cursorOrigin        = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
+            const Korl_Vulkan_Color4u8 cursorColor         = {0, 255, 0, 100};
+            const u$                   cursorBegin         = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
+                                                                          ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
+            const u$                   cursorEnd           = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
+                                                                          ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
+            const Korl_Math_V2f32      cursorPositionBegin = korl_gfx_font_textGraphemePosition(string_getRawAcu16(&context->style.fontWindowText)
+                                                                                               ,context->style.windowTextPixelSizeY
+                                                                                               ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
+                                                                                               ,cursorBegin);
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin < cursorEnd)
             {
                 const Korl_Math_V2f32 cursorPositionEnd = korl_gfx_font_textGraphemePosition(string_getRawAcu16(&context->style.fontWindowText)
