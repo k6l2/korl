@@ -55,7 +55,8 @@ typedef struct _Korl_Resource
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType _unless_ that multimedia type requires further processing to prepare it for the rendering process, such as is the case with audio, as we must resample all audio data to match the format of the audio renderer; examples: an image resource data will point to an RGBA bitmap, an audio resource will point to raw PCM waveform data, in some sample format defined by the `audio.format` member
     u$    dataBytes;
     bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
-    Korl_StringPool_String stringFileName;
+    Korl_StringPool_String    stringFileName;    // only valid for file-backed resources
+    Korl_AssetCache_Get_Flags assetCacheGetFlags;// only valid for file-backed resources
     //KORL-FEATURE-000-000-046: resource: right now it is very difficult to trace the owner of a resource; modify API to require FILE:LINE information for Resource allocations
 } _Korl_Resource;
 typedef struct _Korl_Resource_Map
@@ -163,6 +164,58 @@ korl_internal void _korl_resource_resampleAudio(_Korl_Resource* resource)
     korl_codec_audio_resample(&resource->subType.audio.format, resource->data, resource->dataBytes
                              ,&resampledFormat, resource->subType.audio.resampledData, resource->subType.audio.resampledDataBytes);
 }
+korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE);
+    if(resource->data)
+        return;// if the resource data exists, there's nothing to do here
+    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
+    const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resource->stringFileName), resource->assetCacheGetFlags, &assetData);
+    if(resource->assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
+        korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
+    /* if the asset for this resource was just loaded, create the multimedia resource now */
+    if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
+    {
+        switch(unpackedHandle.multimediaType)
+        {
+        case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
+            switch(resource->subType.graphics.type)
+            {
+            case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
+                int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
+                ///KORL-PERFORMANCE-000-000-032: resource: stbi API unfortunately doesn't seem to have the ability for the user to provide their own allocator, so we need an extra alloc/copy/free here
+                {
+                    stbi_uc*const stbiPixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
+                    korl_assert(stbiPixels);
+                    const u$ pixelBytes = imageSizeX * imageSizeY * imageChannels;
+                    resource->data      = korl_allocate(context->allocatorHandleTransient, pixelBytes);
+                    resource->dataBytes = pixelBytes;
+                    korl_memory_copy(resource->data, stbiPixels, pixelBytes);
+                    stbi_image_free(stbiPixels);
+                }
+                resource->subType.graphics.createInfo.texture.sizeX     = korl_checkCast_i$_to_u32(imageSizeX);
+                resource->subType.graphics.createInfo.texture.sizeY     = korl_checkCast_i$_to_u32(imageSizeY);
+                resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.createInfo.texture, 0/*0 => generate new handle*/);
+                korl_vulkan_texture_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data);
+                break;}
+            default:
+                korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
+                break;
+            }
+            break;}
+        case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
+            resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient, &resource->dataBytes, &resource->subType.audio.format);
+            korl_assert(resource->data);
+            break;}
+        default:{
+            korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
+            break;}
+        }
+    }
+    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+        context->audioResamplesPending = true;
+}
 korl_internal void korl_resource_initialize(void)
 {
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
@@ -194,60 +247,14 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
         hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
         korl_assert(hashMapIndex >= 0);
         _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-        resource->stringFileName = string_newAcu16(fileName);
+        resource->stringFileName     = string_newAcu16(fileName);
+        resource->assetCacheGetFlags = assetCacheGetFlags;
         if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
             resource->subType.graphics.type = graphicsType;
     }
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     /* regardless of whether or not the resource was just added, we still need to make sure that the asset was loaded for it */
-    if(!resource->data)
-    {
-        KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
-        const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(fileName.data, assetCacheGetFlags, &assetData);
-        if(assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
-            korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
-        /* if the asset for this resource was just loaded, create the multimedia resource now */
-        if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
-        {
-            switch(unpackedHandle.multimediaType)
-            {
-            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-                switch(resource->subType.graphics.type)
-                {
-                case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
-                    ///KORL-PERFORMANCE-000-000-032: resource: stbi API unfortunately doesn't seem to have the ability for the user to provide their own allocator, so we need an extra alloc/copy/free here
-                    {
-                        stbi_uc*const stbiPixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
-                        korl_assert(stbiPixels);
-                        const u$ pixelBytes = imageSizeX * imageSizeY * imageChannels;
-                        resource->data      = korl_allocate(context->allocatorHandleTransient, pixelBytes);
-                        resource->dataBytes = pixelBytes;
-                        korl_memory_copy(resource->data, stbiPixels, pixelBytes);
-                        stbi_image_free(stbiPixels);
-                    }
-                    resource->subType.graphics.createInfo.texture.sizeX     = korl_checkCast_i$_to_u32(imageSizeX);
-                    resource->subType.graphics.createInfo.texture.sizeY     = korl_checkCast_i$_to_u32(imageSizeY);
-                    resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.createInfo.texture, 0/*0 => generate new handle*/);
-                    korl_vulkan_texture_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data);
-                    break;}
-                default:
-                    korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
-                    break;
-                }
-                break;}
-            case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
-                resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient, &resource->dataBytes, &resource->subType.audio.format);
-                korl_assert(resource->data);
-                break;}
-            default:{
-                korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
-                break;}
-            }
-        }
-        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
-            context->audioResamplesPending = true;
-    }
+    _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     /**/
     return handle;
 }
@@ -571,8 +578,9 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandleTexture);
     korl_assert(hashMapIndex >= 0);
-    const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE);
+    _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return (Korl_Math_V2u32){resource->subType.graphics.createInfo.texture.sizeX
                             ,resource->subType.graphics.createInfo.texture.sizeY};
 }

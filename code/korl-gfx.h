@@ -68,6 +68,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircle);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatchCircleSector);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTriangles);
+korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBatchQuadsTextured);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines);
 /** 
  * \param assetNameFont If this value is \c NULL , a default internal font asset 
@@ -90,6 +91,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetSize(korl_gfx_batchRectang
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectangleSetColor);
 korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv(korl_gfx_batch_rectangle_setUv);
 korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSetColor);
+korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(korl_gfx_batch_quadsTextured_setQuad);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_gfx_memoryStateRead(const u8* memoryState);

@@ -184,6 +184,7 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_createBatchCircle(name)            Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color)
 #define KORL_FUNCTION_korl_gfx_createBatchCircleSector(name)      Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, f32 radius, u32 pointCount, Korl_Vulkan_Color4u8 color, f32 sectorRadians)
 #define KORL_FUNCTION_korl_gfx_createBatchTriangles(name)         Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 triangleCount)
+#define KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(name)     Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 quadCount, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_FUNCTION_korl_gfx_createBatchLines(name)             Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
 #define KORL_FUNCTION_korl_gfx_createBatchText(name)              Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight, Korl_Vulkan_Color4u8 color, f32 outlinePixelSize, Korl_Vulkan_Color4u8 colorOutline)
 #define KORL_FUNCTION_korl_gfx_batchSetBlendState(name)           void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget)
@@ -202,3 +203,4 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_batchRectangleSetColor(name)       void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 #define KORL_FUNCTION_korl_gfx_batch_rectangle_setUv(name)        void                  name(Korl_Gfx_Batch*const context, Korl_Math_Aabb2f32 pixelSpaceAabb)
 #define KORL_FUNCTION_korl_gfx_batchCircleSetColor(name)          void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
+#define KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(name)  void                  name(Korl_Gfx_Batch*const context, u32 quadIndex, Korl_Math_V2f32 size, Korl_Math_V2f32 position, Korl_Math_Aabb2f32 pixelSpaceAabb)
