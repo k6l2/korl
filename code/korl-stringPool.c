@@ -985,13 +985,14 @@ korl_internal void korl_stringPool_erase(Korl_StringPool_String* string, u$ grap
 }
 korl_internal void korl_stringPool_append(Korl_StringPool_String* string, Korl_StringPool_String* stringToAppend, const wchar_t* file, int line)
 {
-    Korl_StringPool*const context = string->pool;
+    Korl_StringPool*const pool0 = string->pool;
+    Korl_StringPool*const pool1 = stringToAppend->pool;
     const u$ s0 = _korl_stringPool_findIndexMatchingHandle(*string);
-    korl_assert(s0 < arrlenu(context->stbDaStrings));
+    korl_assert(s0 < arrlenu(pool0->stbDaStrings));
     const u$ s1 = _korl_stringPool_findIndexMatchingHandle(*stringToAppend);
-    korl_assert(s1 < arrlenu(context->stbDaStrings));
-    _Korl_StringPool_String*const _string = &(context->stbDaStrings[s0]);
-    _Korl_StringPool_String*const _stringToAppend = &(context->stbDaStrings[s1]);
+    korl_assert(s1 < arrlenu(pool1->stbDaStrings));
+    _Korl_StringPool_String*const _string = &(pool0->stbDaStrings[s0]);
+    _Korl_StringPool_String*const _stringToAppend = &(pool1->stbDaStrings[s1]);
     /* for each matching type of raw string between the two string pool entries, 
         copy the raw string from s1 onto the end of s0 */
     _Korl_StringPool_StringFlags flagsS0 = _string->flags;
@@ -1003,10 +1004,10 @@ korl_internal void korl_stringPool_append(Korl_StringPool_String* string, Korl_S
         flagsS0 &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF8;
         flagsS1 &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF8;
         flagsMatched |= _KORL_STRINGPOOL_STRING_FLAG_UTF8;
-        _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + _stringToAppend->rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
-        korl_memory_copy(context->characterPool + _string->poolByteOffsetUtf8 + _string->rawSizeUtf8*sizeof(u8), 
-                         context->characterPool + _stringToAppend->poolByteOffsetUtf8, 
-                         (_stringToAppend->rawSizeUtf8 + 1/*include the null terminator*/)*sizeof(u8));
+        _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(pool0, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + _stringToAppend->rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
+        korl_memory_copy(pool0->characterPool + _string->poolByteOffsetUtf8 + _string->rawSizeUtf8*sizeof(u8)
+                        ,pool1->characterPool + _stringToAppend->poolByteOffsetUtf8
+                        ,(_stringToAppend->rawSizeUtf8 + 1/*include the null terminator*/)*sizeof(u8));
         _string->rawSizeUtf8 += _stringToAppend->rawSizeUtf8;
         string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8  = KORL_C_CAST(const char*, string->pool->characterPool + _string->poolByteOffsetUtf8);
     }
@@ -1016,10 +1017,10 @@ korl_internal void korl_stringPool_append(Korl_StringPool_String* string, Korl_S
         flagsS0 &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF16;
         flagsS1 &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF16;
         flagsMatched |= _KORL_STRINGPOOL_STRING_FLAG_UTF16;
-        _string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, _string->poolByteOffsetUtf16, (_string->rawSizeUtf16 + _stringToAppend->rawSizeUtf16 + 1/*null terminator*/)*sizeof(u16), file, line);
-        korl_memory_copy(context->characterPool + _string->poolByteOffsetUtf16 + _string->rawSizeUtf16*sizeof(u16), 
-                         context->characterPool + _stringToAppend->poolByteOffsetUtf16, 
-                         (_stringToAppend->rawSizeUtf16 + 1/*include the null terminator*/)*sizeof(u16));
+        _string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(pool0, _string->poolByteOffsetUtf16, (_string->rawSizeUtf16 + _stringToAppend->rawSizeUtf16 + 1/*null terminator*/)*sizeof(u16), file, line);
+        korl_memory_copy(pool0->characterPool + _string->poolByteOffsetUtf16 + _string->rawSizeUtf16*sizeof(u16)
+                        ,pool1->characterPool + _stringToAppend->poolByteOffsetUtf16
+                        ,(_stringToAppend->rawSizeUtf16 + 1/*include the null terminator*/)*sizeof(u16));
         _string->rawSizeUtf16 += _stringToAppend->rawSizeUtf16;
         string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf16  = KORL_C_CAST(const wchar_t*, string->pool->characterPool + _string->poolByteOffsetUtf16);
     }
@@ -1028,17 +1029,17 @@ korl_internal void korl_stringPool_append(Korl_StringPool_String* string, Korl_S
     /* if there were no matching raw string types, perform a UTF-8 deduction of 
         both strings, and perform the operation in UTF-8 encoding */
     if(flagsMatched)
-        _korl_stringPool_setStringFlags(context, _string, flagsMatched);
+        _korl_stringPool_setStringFlags(pool0, _string, flagsMatched);
     else
     {
-        _korl_stringPool_deduceUtf8(context, _string, file, line);
-        _korl_stringPool_deduceUtf8(context, _stringToAppend, file, line);
+        _korl_stringPool_deduceUtf8(pool0, _string, file, line);
+        _korl_stringPool_deduceUtf8(pool1, _stringToAppend, file, line);
         /* now that we know both strings have UTF-8, we can do the same UTF-8 
             append operation as the above code */
-        _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + _stringToAppend->rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
-        korl_memory_copy(context->characterPool + _string->poolByteOffsetUtf8 + _string->rawSizeUtf8*sizeof(u8), 
-                         context->characterPool + _stringToAppend->poolByteOffsetUtf8, 
-                         (_stringToAppend->rawSizeUtf8 + 1/*include the null terminator*/)*sizeof(u8));
+        _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(pool0, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + _stringToAppend->rawSizeUtf8 + 1/*null terminator*/)*sizeof(u8), file, line);
+        korl_memory_copy(pool0->characterPool + _string->poolByteOffsetUtf8 + _string->rawSizeUtf8*sizeof(u8)
+                        ,pool1->characterPool + _stringToAppend->poolByteOffsetUtf8
+                        ,(_stringToAppend->rawSizeUtf8 + 1/*include the null terminator*/)*sizeof(u8));
         _string->rawSizeUtf8 += _stringToAppend->rawSizeUtf8;
         string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8         = KORL_C_CAST(const char*, string->pool->characterPool + _string->poolByteOffsetUtf8);
         stringToAppend->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, stringToAppend->pool->characterPool + _stringToAppend->poolByteOffsetUtf8);
