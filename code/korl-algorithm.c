@@ -102,6 +102,8 @@ korl_internal void _korl_algorithm_bvh_buildRecursive(Korl_Algorithm_Bvh*const c
 }
 korl_internal void korl_algorithm_bvh_build(Korl_Algorithm_Bvh* context)
 {
+    if(context->createInfo.leafBoundingVolumes <= 0)
+        return;// nothing to build if there are no leaf volumes!
     _korl_algorithm_bvh_buildRecursive(context, 0/*index 0 => the root node*/);
 }
 korl_internal void _korl_algorithm_bvh_queryRecursive(Korl_Algorithm_Bvh* context, u32 nodeIndex, const void* boundingVolume, void** pResult, u$* pResultCapacity, u$* o_resultArraySize, fnSig_korl_algorithm_bvh_volumeIntersects* volumeIntersects)
