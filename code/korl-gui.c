@@ -798,6 +798,8 @@ korl_internal void korl_gui_onMouseEvent(const _Korl_Gui_MouseEvent* mouseEvent)
                     break;}
                 case KORL_GUI_WIDGET_TYPE_BUTTON:{
                     break;}
+                case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+                    break;}
                 default:{
                     korl_log(ERROR, "invalid widget type: %i", widget->type);
                     break;}

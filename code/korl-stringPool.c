@@ -897,13 +897,15 @@ korl_internal Korl_StringPool_String korl_stringPool_subString(Korl_StringPool_S
     const u$ frontRawCharsToRemove = korl_checkCast_i$_to_u$(utf8GraphemeIt._currentRawUtf8 - rawUtf8);
     /* move the remaining string after the `graphemeOffset` to the beginning of the string */
     korl_memory_move(rawUtf8, utf8GraphemeIt._currentRawUtf8, korl_checkCast_i$_to_u$(rawUtf8End - utf8GraphemeIt._currentRawUtf8));
-    /* iterate over `graphemeSize` graphemes to find the final raw size of the string */
-    currentGrapheme = 0;
-    for(utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _subString->rawSizeUtf8)
-       ;!korl_string_codepointIteratorUtf8_done(&utf8GraphemeIt) && currentGrapheme < graphemeSize
-       ; korl_string_codepointIteratorUtf8_next(&utf8GraphemeIt),   currentGrapheme++)
-    {/*do nothing; we just want to advance the iterator `graphemeSize` times*/}
-    const u$ finalRawSize = korl_checkCast_i$_to_u$(utf8GraphemeIt._currentRawUtf8 - rawUtf8);
+    const u$ finalRawSize = korl_checkCast_i$_to_u$(rawUtf8End - utf8GraphemeIt._currentRawUtf8);
+    rawUtf8[finalRawSize] = '\0';
+    // /* iterate over `graphemeSize` graphemes to find the final raw size of the string */
+    // currentGrapheme = 0;
+    // for(utf8GraphemeIt = korl_string_codepointIteratorUtf8_initialize(rawUtf8, _subString->rawSizeUtf8)
+    //    ;!korl_string_codepointIteratorUtf8_done(&utf8GraphemeIt) && currentGrapheme < graphemeSize
+    //    ; korl_string_codepointIteratorUtf8_next(&utf8GraphemeIt),   currentGrapheme++)
+    // {/*do nothing; we just want to advance the iterator `graphemeSize` times*/}
+    // const u$ finalRawSize = korl_checkCast_i$_to_u$(utf8GraphemeIt._currentRawUtf8 - rawUtf8);
     /* resize the final raw string to be the correct size */
     _subString->poolByteOffsetUtf8 = _korl_stringPool_reallocate(poolDestination, _subString->poolByteOffsetUtf8, (finalRawSize + 1/*null terminator*/)*sizeof(u8), file, line);
     _subString->rawSizeUtf8        = korl_checkCast_u$_to_u32(finalRawSize);
@@ -1187,7 +1189,7 @@ korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool_String* string, const
     const u$ searchStringSize = korl_string_sizeUtf8(cStringUtf8);
     if(searchStringSize > str->rawSizeUtf8)
         return str->rawSizeUtf8;// the search string can't even fit inside this string
-    for(u32 i = 0; i <= str->rawSizeUtf8 - searchStringSize; i++)
+    for(u32 i = characterOffsetStart; i <= str->rawSizeUtf8 - searchStringSize; i++)
         if(0 == korl_memory_arrayU8Compare(context->characterPool + str->poolByteOffsetUtf8 + i*sizeof(u8), 
                                            searchStringSize, 
                                            KORL_C_CAST(const u8*, cStringUtf8), 
@@ -1212,7 +1214,7 @@ korl_internal u32 korl_stringPool_findUtf16(Korl_StringPool_String* string, cons
     const u$ searchStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
     if(searchStringSize > str->rawSizeUtf16)
         return str->rawSizeUtf16;// the search string can't even fit inside this string
-    for(u32 i = 0; i <= str->rawSizeUtf16 - searchStringSize; i++)
+    for(u32 i = characterOffsetStart; i <= str->rawSizeUtf16 - searchStringSize; i++)
         if(0 == korl_memory_arrayU16Compare(KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16 + i*sizeof(u16)), 
                                             searchStringSize, 
                                             cStringUtf16, 
