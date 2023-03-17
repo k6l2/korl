@@ -160,6 +160,7 @@ korl_internal f64 _korl_codec_audio_sampleRatio(const Korl_Audio_Format* format,
         case 2:
             result = *KORL_C_CAST(const i16*, sampleData) / KORL_C_CAST(f64, KORL_I16_MAX);
             break;
+        //KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
         case 4:
             result = *KORL_C_CAST(const i32*, sampleData) / KORL_C_CAST(f64, KORL_I32_MAX);
             break;
@@ -202,6 +203,7 @@ korl_internal void _korl_codec_audio_encodeSample(const f64 sampleRatio, const K
         case 2:
             *KORL_C_CAST(i16*, o_sampleData) = KORL_C_CAST(i16, sampleRatio * KORL_I16_MAX);
             break;
+        //KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
         case 4:
             *KORL_C_CAST(i32*, o_sampleData) = KORL_C_CAST(i32, sampleRatio * KORL_I32_MAX);
             break;
