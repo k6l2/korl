@@ -95,6 +95,7 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
 #define string_compareWithUtf16(stringHandle, cStringUtf16)                    korl_stringPool_compareWithUtf16(stringHandle, cStringUtf16)
 #define string_equals(stringHandleA, stringHandleB)                            korl_stringPool_equals(stringHandleA, stringHandleB)
 #define string_equalsAcu8(stringHandle, acu8RawUtf8)                           korl_stringPool_equalsAcu8(stringHandle, acu8RawUtf8)
+#define string_equalsAcu16(stringHandle, acu16RawUtf16)                        korl_stringPool_equalsAcu16(stringHandle, acu16RawUtf16)
 #define string_equalsUtf8(stringHandle, cStringUtf8)                           korl_stringPool_equalsUtf8(stringHandle, cStringUtf8)
 #define string_equalsUtf16(stringHandle, cStringUtf16)                         korl_stringPool_equalsUtf16(stringHandle, cStringUtf16)
 #define string_getRawUtf8(stringHandle)                                        korl_stringPool_getRawUtf8(stringHandle)
@@ -175,10 +176,12 @@ korl_internal void                          korl_stringPool_reserveUtf8(Korl_Str
 korl_internal void                          korl_stringPool_reserveUtf16(Korl_StringPool_String* string, u32 reservedSizeExcludingNullTerminator, const wchar_t* file, int line);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringPool_String* stringA, Korl_StringPool_String* stringB);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithAcu8(Korl_StringPool_String* string, acu8 utf8);
+korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithAcu16(Korl_StringPool_String* string, acu16 utf16);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl_StringPool_String* string, const char* cStringUtf8);
 korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Korl_StringPool_String* string, const u16* cStringUtf16);
 korl_internal bool                          korl_stringPool_equals(Korl_StringPool_String* stringA, Korl_StringPool_String* stringB);
 korl_internal bool                          korl_stringPool_equalsAcu8(Korl_StringPool_String* string, acu8 utf8);
+korl_internal bool                          korl_stringPool_equalsAcu16(Korl_StringPool_String* string, acu16 utf16);
 korl_internal bool                          korl_stringPool_equalsUtf8(Korl_StringPool_String* string, const char* cStringUtf8);
 korl_internal bool                          korl_stringPool_equalsUtf16(Korl_StringPool_String* string, const u16* cStringUtf16);
 korl_internal const char*                   korl_stringPool_getRawUtf8(Korl_StringPool_String* string);
