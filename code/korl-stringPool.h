@@ -69,6 +69,7 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
 /* if we're using C++, we can have convenience macros for function overloads, 
     which are defined later in this header file */
 #define string_new(...)                                korl_stringPool_new(_LOCAL_STRING_POOL_POINTER, ##__VA_ARGS__, __FILEW__, __LINE__)
+#define korl_string_new(stringPoolPointer, ...)        korl_stringPool_new(stringPoolPointer, ##__VA_ARGS__, __FILEW__, __LINE__)
 //      string_append(stringHandle, ...)               Should already work with `const char*`, `const wchar_t*`, and StringHandle as second parameter!
 #define string_appendFormat(stringHandle, format, ...) korl_stringPool_appendFormat(stringHandle, __FILEW__, __LINE__, format, ##__VA_ARGS__)
 #endif// defined(__cplusplus)
@@ -157,6 +158,7 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
  * the Korl_StringPool returned by this function given the behavior described 
  * above! @korl-string-pool-no-data-segment-storage */
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
+korl_internal void                          korl_stringPool_empty(Korl_StringPool* context);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
 korl_internal void                          korl_stringPool_collectDefragmentPointers(Korl_StringPool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent);
 korl_internal Korl_StringPool_String        korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line);

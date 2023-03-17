@@ -3,6 +3,7 @@
 #include "korl-checkCast.h"
 #include "korl-interface-platform.h"
 #include "korl-stb-vorbis.h"
+#include <stdlib.h>
 typedef struct _Korl_Codec_Audio_WaveMeta
 {
     u32       riffChunkSize;

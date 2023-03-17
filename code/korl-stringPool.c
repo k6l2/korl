@@ -450,6 +450,14 @@ korl_internal Korl_StringPool korl_stringPool_create(Korl_Memory_AllocatorHandle
     korl_assert(result.stbDaStrings);
     return result;
 }
+korl_internal void korl_stringPool_empty(Korl_StringPool* context)
+{
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaAllocations, 0);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaStrings, 0);
+    korl_memory_zero(context->stbDaAllocations, arrcap(context->stbDaAllocations) * sizeof(*context->stbDaAllocations));
+    korl_memory_zero(context->stbDaAllocations, arrcap(context->stbDaStrings)     * sizeof(*context->stbDaStrings));
+    korl_memory_zero(context->characterPool, context->characterPoolBytes);
+}
 korl_internal void korl_stringPool_destroy(Korl_StringPool* context)
 {
     //KORL-ISSUE-000-000-012: add a cleanup function to verify that there are not memory leaks (ensure that strings & allocations are empty)
