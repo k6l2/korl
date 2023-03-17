@@ -203,4 +203,4 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_batchRectangleSetColor(name)       void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
 #define KORL_FUNCTION_korl_gfx_batch_rectangle_setUv(name)        void                  name(Korl_Gfx_Batch*const context, Korl_Math_Aabb2f32 pixelSpaceAabb)
 #define KORL_FUNCTION_korl_gfx_batchCircleSetColor(name)          void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
-#define KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(name)  void                  name(Korl_Gfx_Batch*const context, u32 quadIndex, Korl_Math_V2f32 size, Korl_Math_V2f32 position, Korl_Math_Aabb2f32 pixelSpaceAabb)
+#define KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(name)  void                  name(Korl_Gfx_Batch*const context, u32 quadIndex, Korl_Math_V2f32 size, Korl_Math_V2f32 positionMinimum, Korl_Math_Aabb2f32 pixelSpaceAabb)

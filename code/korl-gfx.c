@@ -2022,7 +2022,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(korl_gfx_batch_
     korl_assert(context->_vertexCount      % 4 == 0);
     korl_assert(context->_vertexPositionDimensions == 3);
     korl_assert(context->_vertexUvs);
-    const Korl_Math_Aabb2f32 aabb      = korl_math_aabb2f32_fromPoints(position.x, position.y, position.x + size.x, position.y + size.y);
+    const Korl_Math_Aabb2f32 aabb      = korl_math_aabb2f32_fromPoints(positionMinimum.x, positionMinimum.y, positionMinimum.x + size.x, positionMinimum.y + size.y);
     Korl_Math_V3f32*const    positions = KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions);
     positions[(quadIndex * 4) + 0] = (Korl_Math_V3f32){.x = aabb.min.x, .y = aabb.min.y};
     positions[(quadIndex * 4) + 1] = (Korl_Math_V3f32){.x = aabb.max.x, .y = aabb.min.y};
