@@ -954,6 +954,11 @@ korl_internal Korl_Math_V2f32 operator/(Korl_Math_V2f32 v, f32 scalar)
 {
     return korl_math_v2f32_divideScalar(v, scalar);
 }
+korl_internal Korl_Math_V2f32& operator/=(Korl_Math_V2f32& v, f32 scalar)
+{
+    v = korl_math_v2f32_divideScalar(v, scalar);
+    return v;
+}
 korl_internal Korl_Math_V2f32& operator+=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
 {
     vA.x += vB.x;
