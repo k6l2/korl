@@ -9,8 +9,8 @@ enum
     KORL_GUI_WINDOW_STYLE_FLAG_DEFAULT_ACTIVE = 1 << 3,// when the window is first created, it will automatically become activated
     KORL_GUI_WINDOW_STYLE_FLAGS_DEFAULT       = KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR | KORL_GUI_WINDOW_STYLE_FLAG_RESIZABLE,
 };
+typedef u32 Korl_Gui_Window_Style_Flags;// separate flag type definition for C++ compatibility reasons (C++ does not easily allow the | operator for enums; cool language, bro)
 typedef enum Korl_Gui_ScrollBar_Axis
     { KORL_GUI_SCROLL_BAR_AXIS_X
     , KORL_GUI_SCROLL_BAR_AXIS_Y
 } Korl_Gui_ScrollBar_Axis;
-typedef u32 Korl_Gui_Window_Style_Flags;// separate flag type definition for C++ compatibility reasons (C++ does not easily allow the | operator for enums; cool language, bro)

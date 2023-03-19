@@ -93,12 +93,12 @@ typedef struct Korl_Gfx_Camera
         } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
-typedef enum Korl_Gfx_Batch_Flags
-{
-    KORL_GFX_BATCH_FLAGS_NONE              = 0, 
-    KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0,
-    KORL_GFX_BATCH_FLAG_DISABLE_BLENDING   = 1 << 1
-} Korl_Gfx_Batch_Flags;
+enum
+    {KORL_GFX_BATCH_FLAGS_NONE              = 0
+    ,KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0
+    ,KORL_GFX_BATCH_FLAG_DISABLE_BLENDING   = 1 << 1
+};
+typedef u32 Korl_Gfx_Batch_Flags;// separate flag type definition for C++ compatibility reasons (C++ does not easily allow the | operator for enums; cool language, bro)
 //KORL-ISSUE-000-000-097: interface-platform, gfx: maybe just destroy Korl_Gfx_Batch & start over, since we've gotten rid of the concept of "batching" in the platform renderer; the primitive storage struct might also benefit from being a polymorphic tagged union
 typedef struct Korl_Gfx_Batch
 {
