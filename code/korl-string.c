@@ -1,5 +1,6 @@
 #include "korl-string.h"
 #include <stdlib.h>// for strtof
+#include "korl-interface-platform-memory.h"
 korl_internal bool _korl_string_isBigEndian(void)
 {
     korl_shared_const i32 I = 1;
@@ -316,7 +317,6 @@ korl_internal i$ korl_string_formatBufferUtf16(wchar_t* buffer, u$ bufferBytes, 
     va_end(args);
     return result;
 }
-#if 0//currently unused, but I'll keep it around for now...
 korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...)
 {
     va_list args;
@@ -325,7 +325,6 @@ korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle alloc
     va_end(args);
     return result;
 }
-#endif
 korl_internal int korl_string_compareUtf8(const char* a, const char* b)
 {
     for(; *a && *b; ++a, ++b)

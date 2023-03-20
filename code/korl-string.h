@@ -60,9 +60,7 @@ korl_internal char* korl_string_formatUtf8(Korl_Memory_AllocatorHandle allocator
  * multiplied by -1, is returned.
  */
 korl_internal i$ korl_string_formatBufferUtf16(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...);
-#if 0//currently unused, but I'll keep it around for now...
 korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
-#endif
 /**
  * \return \c 0 if the two strings are equal
  */

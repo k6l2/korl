@@ -406,6 +406,13 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_subtract(Korl_Math_V3f32 vA, Korl_
     vA.elements[2] -= vB.elements[2];
     return vA;
 }
+korl_internal Korl_Math_V3f32 korl_math_v3f32_multiply(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
+{
+    vA.elements[0] *= vB.elements[0];
+    vA.elements[1] *= vB.elements[1];
+    vA.elements[2] *= vB.elements[2];
+    return vA;
+}
 korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar)
 {
     v.elements[0] *= scalar;
@@ -924,6 +931,16 @@ korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& v, Korl_Math_Quaterni
 {
     v = korl_math_quaternion_transformV3f32(q, v, false);
     return v;
+}
+korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
+{
+    vA = korl_math_v3f32_multiply(vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
+{
+    vA = korl_math_v3f32_add(vA, vB);
+    return vA;
 }
 korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
