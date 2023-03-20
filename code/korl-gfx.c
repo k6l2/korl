@@ -1500,7 +1500,10 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     model.scale       = batch->_scale;
     model.rotation    = batch->_rotation;
     model.translation = batch->_position;
-    model.color       = KORL_MATH_V4F32_ONE;
+    model.color       = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
+                                         ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
+                                         ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
+                                         ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
     samplers.resourceHandleTexture = batch->_texture;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
@@ -1565,6 +1568,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(korl_gfx_creat
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = 6;
     result->_vertexCount              = 4;
     result->opColor                   = KORL_BLEND_OP_ADD;
@@ -1615,6 +1619,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = 6;
     result->_vertexCount              = 4;
     result->opColor                   = KORL_BLEND_OP_ADD;
@@ -1673,6 +1678,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = korl_checkCast_u$_to_u32(indices);
     result->_vertexCount              = korl_checkCast_u$_to_u32(vertices);
     result->opColor                   = KORL_BLEND_OP_ADD;
@@ -1725,6 +1731,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTr
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexCount              = 3*triangleCount;
     result->opColor                   = KORL_BLEND_OP_ADD;
     result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
@@ -1757,6 +1764,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBat
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = 6 * quadCount;
     result->_vertexCount              = 4 * quadCount;
     result->opColor                   = KORL_BLEND_OP_ADD;
@@ -1794,6 +1802,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines)
     result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_LINES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexCount              = 2*lineCount;
     result->opColor                   = KORL_BLEND_OP_ADD;
     result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
@@ -1847,6 +1856,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
     result->primitiveType               = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
     result->_scale                      = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                   = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                  = KORL_COLOR4U8_WHITE;
     result->_textPixelHeight            = textPixelHeight;
     result->_textPixelOutline           = outlinePixelSize;
     result->_textColor                  = color;
@@ -1992,9 +2002,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetSize(korl_gfx_batchRectang
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectangleSetColor)
 {
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
-    korl_assert(context->_vertexColors);
-    for(u$ c = 0; c < context->_vertexCount; c++)
-        context->_vertexColors[c] = color;
+    context->modelColor = color;
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv(korl_gfx_batch_rectangle_setUv)
 {

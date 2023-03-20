@@ -107,6 +107,7 @@ typedef struct Korl_Gfx_Batch
     Korl_Math_V3f32 _position;
     Korl_Math_V3f32 _scale;
     Korl_Math_Quaternion _rotation;
+    Korl_Vulkan_Color4u8 modelColor;
     //KORL-PERFORMANCE-000-000-017: GFX; separate batch capacity with batch vertex/index counts
     u32 _vertexIndexCount;
     u32 _vertexCount;

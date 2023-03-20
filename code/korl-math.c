@@ -20,13 +20,22 @@ korl_internal inline u64 korl_math_gigabytes(u64 x)
 {
     return 1024 * korl_math_megabytes(x);
 }
+korl_internal inline u8 korl_math_round_f32_to_u8(f32 x)
+{
+    /** maybe in the future, we can have a general solution? 
+     * https://stackoverflow.com/a/497079 */
+    x = roundf(x);
+    KORL_MATH_ASSERT(x >= 0.0f);
+    KORL_MATH_ASSERT(x <= KORL_C_CAST(f32, KORL_U8_MAX));
+    return KORL_C_CAST(u8, x);
+}
 korl_internal inline u32 korl_math_round_f32_to_u32(f32 x)
 {
     /** maybe in the future, we can have a general solution? 
      * https://stackoverflow.com/a/497079 */
     x = roundf(x);
     KORL_MATH_ASSERT(x >= 0.0f);
-    KORL_MATH_ASSERT(x <= (f32)0xFFFFFFFF);
+    KORL_MATH_ASSERT(x <= KORL_C_CAST(f32, KORL_U32_MAX));
     return KORL_C_CAST(u32, x);
 }
 korl_internal inline i64 korl_math_round_f64_to_i64(f64 x)
