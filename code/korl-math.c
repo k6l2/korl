@@ -38,6 +38,15 @@ korl_internal inline u32 korl_math_round_f32_to_u32(f32 x)
     KORL_MATH_ASSERT(x <= KORL_C_CAST(f32, KORL_U32_MAX));
     return KORL_C_CAST(u32, x);
 }
+korl_internal inline i32 korl_math_round_f32_to_i32(f32 x)
+{
+    /** maybe in the future, we can have a general solution? 
+     * https://stackoverflow.com/a/497079 */
+    x = roundf(x);
+    KORL_MATH_ASSERT(x >= KORL_C_CAST(f32, KORL_I32_MIN));
+    KORL_MATH_ASSERT(x <= KORL_C_CAST(f32, KORL_I32_MAX));
+    return KORL_C_CAST(i32, x);
+}
 korl_internal inline i64 korl_math_round_f64_to_i64(f64 x)
 {
     return KORL_C_CAST(i64, round(x));

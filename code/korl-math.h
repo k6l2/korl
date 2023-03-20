@@ -106,6 +106,7 @@ korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);
 korl_internal inline u8 korl_math_round_f32_to_u8(f32 x);
 korl_internal inline u32 korl_math_round_f32_to_u32(f32 x);
+korl_internal inline i32 korl_math_round_f32_to_i32(f32 x);
 korl_internal inline i64 korl_math_round_f64_to_i64(f64 x);
 korl_internal inline u$ korl_math_nextHighestDivision(u$ value, u$ division);
 korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple);
