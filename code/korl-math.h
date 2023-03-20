@@ -279,7 +279,7 @@ korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 // korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 v, f32 scalar);
 // korl_internal Korl_Math_V2f32 operator-(f32 scalar, Korl_Math_V2f32 v);
-// korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);// component-wise multiplication
+korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);// component-wise multiplication
 korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar);
 korl_internal Korl_Math_V2f32 operator*(f32 scalar, Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32& operator*=(Korl_Math_V2f32& v, f32 scalar);

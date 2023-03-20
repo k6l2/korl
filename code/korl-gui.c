@@ -1169,6 +1169,8 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
         {
             windowOrderIndexHighest = widget->orderIndex;
             nextWindowPosition   = korl_math_v2f32_add(widget->position, (Korl_Math_V2f32){ 32.f, 32.f });//offset from the current top-level window by this amount
+            KORL_MATH_ASSIGN_CLAMP(nextWindowPosition.x, 0, surfaceSize.x);
+            KORL_MATH_ASSIGN_CLAMP(nextWindowPosition.y, 0, surfaceSize.y);
             nextWindowOrderIndex = widget->orderIndex + 1;
             korl_assert(nextWindowOrderIndex);// sanity check integer overflow
         }

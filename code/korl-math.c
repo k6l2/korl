@@ -972,6 +972,10 @@ korl_internal Korl_Math_V2f32 operator-(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     return korl_math_v2f32_subtract(vA, vB);
 }
+korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
+{
+    return korl_math_v2f32_multiply(vA, vB);
+}
 korl_internal Korl_Math_V2f32 operator*(Korl_Math_V2f32 v, f32 scalar)
 {
     return korl_math_v2f32_multiplyScalar(v, scalar);
