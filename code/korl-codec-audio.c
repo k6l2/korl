@@ -161,7 +161,17 @@ korl_internal f64 _korl_codec_audio_sampleRatio(const Korl_Audio_Format* format,
         case 2:
             result = *KORL_C_CAST(const i16*, sampleData) / KORL_C_CAST(f64, KORL_I16_MAX);
             break;
-        //KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
+        case 3:
+            u8*const sampleDataU8 = KORL_C_CAST(u8*, sampleData);
+            /* RIFF data is in little-endian, so we load in the data as such */
+            u32 sampleBuffer =    KORL_C_CAST(u32, sampleDataU8[0])
+                               | (KORL_C_CAST(u32, sampleDataU8[1]) <<  8)
+                               | (KORL_C_CAST(u32, sampleDataU8[2]) << 16);
+            if(sampleDataU8[2] & 0x80)
+                /* fill the rest of the high bits if our highest bit is set, so when we reinterpret this u32 as a i32 it will be negative */
+                sampleBuffer |= KORL_C_CAST(u32, KORL_U8_MAX) << 24;
+            result = *KORL_C_CAST(const i32*, &sampleBuffer) / KORL_C_CAST(f64, 0x7FFFFF);
+            break;
         case 4:
             result = *KORL_C_CAST(const i32*, sampleData) / KORL_C_CAST(f64, KORL_I32_MAX);
             break;
@@ -204,7 +214,12 @@ korl_internal void _korl_codec_audio_encodeSample(const f64 sampleRatio, const K
         case 2:
             *KORL_C_CAST(i16*, o_sampleData) = KORL_C_CAST(i16, sampleRatio * KORL_I16_MAX);
             break;
-        //KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
+        case 3:
+            u8*const o_sampleDataU8 = KORL_C_CAST(u8*, o_sampleData);
+            i32 sampleBuffer = KORL_C_CAST(i32, sampleRatio * 0x7FFFFF);
+            for(u8 i = 0; i < 3; i++)
+                o_sampleDataU8[i] = (sampleBuffer >> (i*8)) & 0xFF;
+            break;
         case 4:
             *KORL_C_CAST(i32*, o_sampleData) = KORL_C_CAST(i32, sampleRatio * KORL_I32_MAX);
             break;
