@@ -5,6 +5,15 @@ typedef struct Korl_Memory_AllocationMeta  Korl_Memory_AllocationMeta;
 typedef struct Korl_Heap_DefragmentPointer Korl_Heap_DefragmentPointer;
 #define KORL_HEAP_ENUMERATE_ALLOCATIONS(name)          void name(void* allocatorUserData, fnSig_korl_heap_enumerateAllocationsCallback* callback, void* callbackUserData)
 #define KORL_HEAP_ENUMERATE(name)                      void name(void* heap, fnSig_korl_heap_enumerateCallback* callback, void* callbackUserData)
+typedef struct _Korl_Heap_Crt _Korl_Heap_Crt;
+korl_internal _Korl_Heap_Crt*                 korl_heap_crt_create(const Korl_Heap_CreateInfo* createInfo);
+korl_internal void                            korl_heap_crt_destroy(_Korl_Heap_Crt* allocator);
+korl_internal void                            korl_heap_crt_empty(_Korl_Heap_Crt* allocator);
+korl_internal void*                           korl_heap_crt_allocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty);
+korl_internal void*                           korl_heap_crt_reallocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty);
+korl_internal void                            korl_heap_crt_free(_Korl_Heap_Crt* allocator, void* allocation, const wchar_t* file, int line, bool fastAndDirty);
+korl_internal KORL_HEAP_ENUMERATE            (korl_heap_crt_enumerate);
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_crt_enumerateAllocations);
 typedef struct _Korl_Heap_General _Korl_Heap_General;
 korl_internal _Korl_Heap_General*             korl_heap_general_create(const Korl_Heap_CreateInfo* createInfo);
 korl_internal void                            korl_heap_general_destroy(_Korl_Heap_General* allocator);

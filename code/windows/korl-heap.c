@@ -34,6 +34,17 @@ typedef struct _Korl_Heap_DefragmentPointer
     u32                            childrenCapacity;
      Korl_Heap_DefragmentPointer** children;
 } _Korl_Heap_DefragmentPointer;
+typedef struct _Korl_Heap_Crt
+{
+    struct _Korl_Heap_Crt_Allocation* allocations;
+    u$                                allocationsCapacity;
+    u$                                allocationsSize;
+} _Korl_Heap_Crt;
+typedef struct _Korl_Heap_Crt_Allocation
+{
+    void*                      address;
+    Korl_Memory_AllocationMeta meta;
+} _Korl_Heap_Crt_Allocation;
 #if _KORL_HEAP_GENERAL_USE_OLD
 /** Allocator properties: 
  * - all allocations are page-aligned
@@ -118,6 +129,90 @@ typedef struct _Korl_Heap_Linear_AllocationMeta
 } _Korl_Heap_Linear_AllocationMeta;
 #define _korl_heap_defragmentPointer_getAllocation(defragmentPointer)          (KORL_C_CAST(u8*, *((defragmentPointer).userAddressPointer)) + (defragmentPointer).userAddressByteOffset)
 #define _korl_heap_defragmentPointer_setAllocation(defragmentPointer, address) *((defragmentPointer).userAddressPointer) = KORL_C_CAST(u8*, address) - (defragmentPointer).userAddressByteOffset
+korl_internal _Korl_Heap_Crt* korl_heap_crt_create(const Korl_Heap_CreateInfo* createInfo)
+{
+    _Korl_Heap_Crt*const result = malloc(sizeof(*result));
+    result->allocationsSize     = 0;
+    result->allocationsCapacity = 64;
+    result->allocations         = malloc(result->allocationsCapacity * sizeof(*result->allocations));
+    return result;
+}
+korl_internal void korl_heap_crt_destroy(_Korl_Heap_Crt* allocator)
+{
+    korl_heap_crt_empty(allocator);
+    free(allocator->allocations);
+    free(allocator);
+}
+korl_internal void korl_heap_crt_empty(_Korl_Heap_Crt* allocator)
+{
+    for(u$ i = 0; i < allocator->allocationsSize; i++)
+        free(allocator->allocations[i].address);
+    allocator->allocationsSize = 0;
+}
+korl_internal void* korl_heap_crt_allocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+{
+    if(allocator->allocationsSize >= allocator->allocationsCapacity)
+    {
+        allocator->allocationsCapacity *= 2;
+        allocator->allocations = realloc(allocator->allocations, allocator->allocationsCapacity * sizeof(*allocator->allocations));
+    }
+    _Korl_Heap_Crt_Allocation*const heapCrtAllocation = allocator->allocations + allocator->allocationsSize++;
+    heapCrtAllocation->address    = malloc(bytes);
+    heapCrtAllocation->meta.bytes = bytes;
+    heapCrtAllocation->meta.file  = file;
+    heapCrtAllocation->meta.line  = line;
+    return heapCrtAllocation->address;
+}
+korl_internal void* korl_heap_crt_reallocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+{
+    if(!allocation)
+        return korl_heap_crt_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty);
+    _Korl_Heap_Crt_Allocation* heapCrtAllocation = NULL;
+    for(u$ i = 0; i < allocator->allocationsSize; i++)
+        if(allocator->allocations[i].address == allocation)
+        {
+            heapCrtAllocation = allocator->allocations + i;
+            break;
+        }
+    korl_assert(heapCrtAllocation);
+    heapCrtAllocation->address    = realloc(heapCrtAllocation->address, bytes);
+    heapCrtAllocation->meta.bytes = bytes;
+    heapCrtAllocation->meta.file  = file;
+    heapCrtAllocation->meta.line  = line;
+    return heapCrtAllocation->address;
+}
+korl_internal void korl_heap_crt_free(_Korl_Heap_Crt* allocator, void* allocation, const wchar_t* file, int line, bool fastAndDirty)
+{
+    if(!allocation)
+        return;
+    _Korl_Heap_Crt_Allocation* heapCrtAllocation = NULL;
+    for(u$ i = 0; i < allocator->allocationsSize; i++)
+        if(allocator->allocations[i].address == allocation)
+        {
+            heapCrtAllocation = allocator->allocations + i;
+            break;
+        }
+    korl_assert(heapCrtAllocation);
+    free(heapCrtAllocation->address);
+    allocator->allocations[heapCrtAllocation - allocator->allocations] = allocator->allocations[(allocator->allocationsSize--) - 1];
+}
+korl_internal KORL_HEAP_ENUMERATE(korl_heap_crt_enumerate)
+{
+    _Korl_Heap_Crt* const context = heap;
+    /* there is only ever one "heap" using the CRT allocation strategy */
+    u$ grossAllocatedBytes = 0;
+    for(u$ i = 0; i < context->allocationsSize; i++)
+        grossAllocatedBytes += context->allocations[i].meta.bytes;
+    grossAllocatedBytes += context->allocationsCapacity * sizeof(*context->allocations);
+    callback(callbackUserData, NULL/*there is no "start address"*/, NULL/*there is no "end address"*/, 0/*there's no way to determine how many bytes are committed*/, grossAllocatedBytes);
+}
+korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_crt_enumerateAllocations)
+{
+    _Korl_Heap_Crt* const context = allocatorUserData;
+    u$ allocatedBytes = 0;
+    for(u$ i = 0; i < context->allocationsSize; i++)
+        callback(callbackUserData, context->allocations[i].address, &context->allocations[i].meta, context->allocations[i].meta.bytes, context->allocations[i].meta.bytes);
+}
 #if _KORL_HEAP_GENERAL_USE_OLD
 korl_internal void _korl_heap_general_allocatorPagesGuard(_Korl_Heap_General* allocator)
 {

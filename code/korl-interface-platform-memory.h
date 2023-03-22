@@ -20,7 +20,8 @@
 #define KORL_FUNCTION_korl_memory_acu16_hash(name) u$ name(acu16 arrayCU16)
 typedef u16 Korl_Memory_AllocatorHandle;
 typedef enum Korl_Memory_AllocatorType
-    { KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
+    { KORL_MEMORY_ALLOCATOR_TYPE_CRT    // just call into CRT APIs to perform memory allocation; useful for debugging allocator crashes
+    , KORL_MEMORY_ALLOCATOR_TYPE_LINEAR
     , KORL_MEMORY_ALLOCATOR_TYPE_GENERAL
 } Korl_Memory_AllocatorType;
 typedef enum Korl_Memory_AllocatorFlags
