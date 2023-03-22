@@ -646,6 +646,18 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
                 nullify this struct */
             resourceMapItem->value.data      = NULL;// NOTE: there is no need to call free on this allocation, as the entire transient allocator has been wiped
             resourceMapItem->value.dataBytes = 0;
+            switch(unpackedHandle.multimediaType)
+            {
+            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
+                /* device memory allocations have been invalidated! */
+                resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle = 0;
+                break;}
+            case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
+                break;}
+            default:
+                korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
+                break;
+            }
             break;}
         case _KORL_RESOURCE_TYPE_RUNTIME:{
             /* here we can just re-create each device memory allocation & mark 
