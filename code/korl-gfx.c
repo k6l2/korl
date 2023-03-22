@@ -2046,6 +2046,34 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(korl_gfx_batch_
         context->_vertexUvs[(quadIndex * 4) + 3] = korl_math_v2f32_divide(pixelSpaceAabb.min                                           , textureSize);
     }
 }
+korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_gfx_batch_collectDefragmentPointers_onAllocationMoved)
+{
+    Korl_Gfx_Batch*const batch = KORL_C_CAST(Korl_Gfx_Batch*, allocationAddress);
+    if(batch->_text)
+        batch->_text = KORL_C_CAST(wchar_t*, KORL_C_CAST(i$, batch->_text) + byteOffsetFromOldAddress);
+    if(batch->_assetNameFont)
+        batch->_assetNameFont = KORL_C_CAST(wchar_t*, KORL_C_CAST(i$, batch->_assetNameFont) + byteOffsetFromOldAddress);
+    if(batch->_vertexIndices)
+        batch->_vertexIndices = KORL_C_CAST(Korl_Vulkan_VertexIndex*, KORL_C_CAST(i$, batch->_vertexIndices) + byteOffsetFromOldAddress);
+    if(batch->_vertexPositions)
+        batch->_vertexPositions = KORL_C_CAST(f32*, KORL_C_CAST(i$, batch->_vertexPositions) + byteOffsetFromOldAddress);
+    if(batch->_vertexColors)
+        batch->_vertexColors = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(i$, batch->_vertexColors) + byteOffsetFromOldAddress);
+    if(batch->_vertexUvs)
+        batch->_vertexUvs = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(i$, batch->_vertexUvs) + byteOffsetFromOldAddress);
+    if(batch->_instancePositions)
+        batch->_instancePositions = KORL_C_CAST(f32*, KORL_C_CAST(i$, batch->_instancePositions) + byteOffsetFromOldAddress);
+    if(batch->_instanceU32s)
+        batch->_instanceU32s = KORL_C_CAST(u32*, KORL_C_CAST(i$, batch->_instanceU32s) + byteOffsetFromOldAddress);
+}
+korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_batch_collectDefragmentPointers)
+{
+    // KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context, parent);
+    if(!(*pContext))
+        return;
+    mcarrpush(KORL_STB_DS_MC_CAST(stbDaMemoryContext), (*pStbDaDefragmentPointers)
+             ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){pContext, 0, parent, _korl_gfx_batch_collectDefragmentPointers_onAllocationMoved, NULL}));
+}
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
     if(!korl_memory_allocator_isFragmented(_korl_gfx_context->allocatorHandle))
