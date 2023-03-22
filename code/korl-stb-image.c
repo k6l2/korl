@@ -12,7 +12,7 @@ korl_internal void korl_stb_image_initialize(void)
     korl_memory_zero(context, sizeof(*context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(16);
-    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-image", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    context->allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-stb-image", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
 }
 korl_internal void* _korl_stb_image_allocate(u$ bytes)
 {

@@ -70,7 +70,7 @@ korl_internal void korl_time_initialize(void)
     korl_memory_zero(&_korl_time_context, sizeof(_korl_time_context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(16);
-    _korl_time_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-time", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    _korl_time_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-time", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbes      , 1024/*1024 comes out to ~48kB*/);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeStack  , 128);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_time_context.allocatorHandle), _korl_time_context.stbDaTimeProbeDataRaw, korl_math_kilobytes(16));

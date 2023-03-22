@@ -71,11 +71,11 @@ korl_internal void korl_stb_ds_initialize(void)
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
 #if defined(STBDS_UNIT_TESTS)
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(448);
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     stbds_unit_tests();
     korl_assert(korl_memory_allocator_isEmpty(_korl_stb_ds_allocatorHandle));
 #else
-    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
 #endif
 }
 #endif

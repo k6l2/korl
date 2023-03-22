@@ -18,7 +18,7 @@ korl_internal void korl_stb_vorbis_initialize(void)
 {
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(16);
-    _korl_stb_vorbis_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-stb-vorbis", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    _korl_stb_vorbis_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-stb-vorbis", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
 }
 #define stb_vorbis_assert(x)                                                korl_assert(x)
 #define stb_vorbis_ldexp(x,exponent)                                        korl_math_loadExponent(x, exponent)

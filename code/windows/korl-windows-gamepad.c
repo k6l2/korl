@@ -133,7 +133,7 @@ korl_internal void korl_windows_gamepad_initialize(void)
     korl_memory_zero(&_korl_windows_gamepad_context, sizeof(_korl_windows_gamepad_context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_kilobytes(128);
-    _korl_windows_gamepad_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-gamepad", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    _korl_windows_gamepad_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-gamepad", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     _korl_windows_gamepad_context.stringPool      = korl_stringPool_create(_korl_windows_gamepad_context.allocatorHandle);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_windows_gamepad_context.allocatorHandle), _korl_windows_gamepad_context.stbDaDevices, 8);
 }

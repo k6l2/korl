@@ -359,6 +359,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_c
     switch(type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_CRT:{
+        korl_assert(!(flags & KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE));// we can't support this feature, as it requires the allocator provides a complete & contiguous virtual byte range
         newAllocator->userData = korl_heap_crt_create(heapCreateInfo);
         break;}
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
