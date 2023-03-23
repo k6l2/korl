@@ -438,6 +438,16 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, 
     v.elements[2] *= scalar;
     return v;
 }
+#pragma warning(push)
+#pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
+korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_V4u8 to, f32 factor)
+{
+    Korl_Math_V4u8 result;
+    for(u8 i = 0; i < korl_arraySize(result.elements); i++)
+        result.elements[i] = korl_math_round_f32_to_u8(korl_math_lerp(from.elements[i], to.elements[i], factor));
+    return result;
+}
+#pragma warning(pop)
 korl_internal f32 korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v)
 {
     return sqrtf(korl_math_v4f32_magnitudeSquared(v));

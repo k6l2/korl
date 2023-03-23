@@ -196,6 +196,8 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, 
 // korl_internal void korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f32*const v, f32 scalar);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_min(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_max(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
+/* V4u8 ***********************************************************************/
+korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_V4u8 to, f32 factor);
 /* V4f32 **********************************************************************/
 korl_internal f32 korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v);
 korl_internal f32 korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v);
