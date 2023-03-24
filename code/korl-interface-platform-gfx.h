@@ -209,4 +209,4 @@ typedef struct Korl_Gfx_Font_Metrics
  * destroy any data structure member pointers which reference memory within the 
  * same allocation */
 #define KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(name) void                  name(Korl_Gfx_Batch**const pContext, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
-
+#define KORL_FUNCTION_korl_gfx_setClearColor(name)                   void                  name(u8 red, u8 green, u8 blue)

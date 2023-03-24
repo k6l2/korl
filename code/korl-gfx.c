@@ -2066,6 +2066,12 @@ korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_gfx_batch_collectDefr
     if(batch->_instanceU32s)
         batch->_instanceU32s = KORL_C_CAST(u32*, KORL_C_CAST(i$, batch->_instanceU32s) + byteOffsetFromOldAddress);
 }
+korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor)
+{
+    korl_vulkan_setSurfaceClearColor((f32[]){KORL_C_CAST(f32,   red) / KORL_C_CAST(f32, KORL_U8_MAX)
+                                            ,KORL_C_CAST(f32, green) / KORL_C_CAST(f32, KORL_U8_MAX)
+                                            ,KORL_C_CAST(f32,  blue) / KORL_C_CAST(f32, KORL_U8_MAX)});
+}
 korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_batch_collectDefragmentPointers)
 {
     // KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context, parent);
