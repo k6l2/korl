@@ -12,4 +12,4 @@ typedef struct Korl_LogConsole
 } Korl_LogConsole;
 korl_internal Korl_LogConsole korl_logConsole_create(Korl_StringPool* stringPool);
 korl_internal void            korl_logConsole_toggle(Korl_LogConsole* context);
-korl_internal void            korl_logConsole_update(Korl_LogConsole* context, f32 deltaSeconds, fnSig_korl_log_getBuffer* _korl_log_getBuffer, Korl_Math_V2u32 windowSize);
+korl_internal void            korl_logConsole_update(Korl_LogConsole* context, f32 deltaSeconds, fnSig_korl_log_getBuffer* _korl_log_getBuffer, Korl_Math_V2u32 windowSize, Korl_Memory_AllocatorHandle allocatorStack);

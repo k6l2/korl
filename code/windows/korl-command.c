@@ -90,13 +90,20 @@ korl_internal void korl_command_registerModule(HMODULE moduleHandle, acu8 utf8Mo
 korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke)
 {
     // korl_log(VERBOSE, "korl_command_invoke: \"%.*hs\"", rawUtf8.size, rawUtf8.data);
+    /* we create a temporary string so that we can modify it such that each 
+        token is null-terminated */
+    const u$ tempUtf8BufferBytes = rawUtf8.size + 1/*include space for a null-terminator code unit*/;
+    au8 tempUtf8 = {.data = korl_allocate(allocatorStack, tempUtf8BufferBytes), .size = tempUtf8BufferBytes};
+    korl_memory_copy(tempUtf8.data, rawUtf8.data, rawUtf8.size);
+    /**/
     acu8* stbDaTokens = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_command_context->allocator), stbDaTokens, 16);
-    for(Korl_String_CodepointTokenizerUtf8 tokenizer = korl_string_codepointTokenizerUtf8_initialize(rawUtf8.data, rawUtf8.size, ' '/*no need to transcode, as we know this code unit maps directly to a codepoint*/)
+    for(Korl_String_CodepointTokenizerUtf8 tokenizer = korl_string_codepointTokenizerUtf8_initialize(tempUtf8.data, tempUtf8.size, ' '/*no need to transcode, as we know this code unit maps directly to a codepoint*/)
        ;!korl_string_codepointTokenizerUtf8_done(&tokenizer)
        ; korl_string_codepointTokenizerUtf8_next(&tokenizer))
     {
         const acu8 token = {.data=tokenizer.tokenStart, .size=tokenizer.tokenEnd - tokenizer.tokenStart};
+        *KORL_C_CAST(u8*, tokenizer.tokenEnd) = '\0';// we can do this because we are tokenizing from a transient copy of the rawUtf8 string
         // korl_log(VERBOSE, "\ttoken: \"%.*hs\"", token.size, token.data);
         mcarrpush(KORL_STB_DS_MC_CAST(_korl_command_context->allocator), stbDaTokens, token);
     }

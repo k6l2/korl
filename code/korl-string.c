@@ -227,6 +227,14 @@ korl_internal i64 korl_string_utf8_to_i64(acu8 utf8, bool* out_resultIsValid)
     //KORL-ISSUE-000-000-104: unicode, UTF-8, UTF-16: likely related to KORL-ISSUE-000-000-076; UTF-8 string codepoints can _not_ be randomly accessed via an array index (and for that matter, I think UTF-16 also has this issue?); the only way to properly access UTF-8 string characters is to use an iterator; I have been doing this incorrectly in many places, so my only hope is probably to just search for "utf8" in the code and meticulously fix everything...  Sorry, future me! 😶
     for(u$ i = 0; i < utf8.size; i++)
     {
+        if(!utf8.data[i])
+        {
+            if(byteOffsetNumberStart >= 0)
+                break;
+            if(out_resultIsValid)
+                *out_resultIsValid = false;
+            return KORL_I64_MAX;
+        }
         const bool isWhiteSpace = korl_string_isWhitespace(utf8.data[i]);
         if(isWhiteSpace)
         {
