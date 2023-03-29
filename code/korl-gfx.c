@@ -2045,6 +2045,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(korl_gfx_batch_
         context->_vertexUvs[(quadIndex * 4) + 2] = korl_math_v2f32_divide((Korl_Math_V2f32){pixelSpaceAabb.max.x, pixelSpaceAabb.min.y}, textureSize);
         context->_vertexUvs[(quadIndex * 4) + 3] = korl_math_v2f32_divide(pixelSpaceAabb.min                                           , textureSize);
     }
+    //KORL-ISSUE-000-000-146: gfx: korl_gfx_batch_quadsTextured_setQuad: pixel-space => normalized UV coordinate transform requires the underlying texture to be loaded, but the implementation currently _assumes_ that it is already loaded; this leads to bugs where tile maps have corrupted UV data when the OS file cache is cold for the texture file asset (https://learn.microsoft.com/en-us/windows/win32/fileio/file-caching); easily reproduced by manually clearing the file cache using RAMMap: https://superuser.com/a/417112 https://learn.microsoft.com/en-us/sysinternals/downloads/rammap; solutions: (1) store whether or not _any_ quad is "dirty" (add a new flag to Korl_Gfx_Batch?), automatically attempt to re-obtain the correct texture coords each time the Batch is batched using the pixel-space coordinates provided by the user earlier, (2) return whether or not a quad was set with dirty UVs to the caller, then let them decide when to re-set the quads of this batch
 }
 korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_gfx_batch_collectDefragmentPointers_onAllocationMoved)
 {
