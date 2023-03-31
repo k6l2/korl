@@ -774,9 +774,9 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     /* check to see if the asset is loaded in our database */
-    _Korl_Resource_Graphics_Type graphicsType           = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
+    _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(rawUtf16AssetName, &graphicsType);
-    const Korl_Resource_Handle handle                   = _korl_resource_handle_pack(unpackedHandle);
+    const Korl_Resource_Handle           handle         = _korl_resource_handle_pack(unpackedHandle);
     if(!handle)
         return;// if we weren't able to derive a valid resource handle from the provided asset name, then it _should_ be safe to say that we don't have to do anything here
     ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
@@ -785,8 +785,6 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
     /* perform asset hot-reloading logic; clear the cached resource so that the 
         next time it is obtained by the user (via _fromFile) it is re-transcoded */
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    korl_free(context->allocatorHandleTransient, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
-    resource->data      = NULL;
-    resource->dataBytes = 0;
+    _korl_resource_unload(resource, unpackedHandle);
 }
 #undef _LOCAL_STRING_POOL_POINTER
