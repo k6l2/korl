@@ -586,7 +586,9 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanD
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
-    const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
+        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle;
 }
 korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat)
@@ -637,7 +639,8 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE);
-    _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
+    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
+        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return (Korl_Math_V2u32){resource->subType.graphics.createInfo.texture.sizeX
                             ,resource->subType.graphics.createInfo.texture.sizeY};
 }
@@ -652,7 +655,8 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER);
-    _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
+    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
+        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.deviceHandle.shaderHandle;
 }
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
