@@ -676,30 +676,14 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoDynamicState.dynamicStateCount = korl_arraySize(dynamicStates);
     createInfoDynamicState.pDynamicStates    = dynamicStates;
     /* create pipeline */
-    KORL_ZERO_STACK_ARRAY(
-        VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
+    KORL_ZERO_STACK_ARRAY(VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    if(pipeline->instancePositionStride && pipeline->instanceUintStride)
-        createInfoShaderStages[0].module = context->shaderVertexText;
-    else if(pipeline->positionDimensions == 2)
-        createInfoShaderStages[0].module = context->shaderVertex2d;
-    else if(pipeline->positionDimensions == 3)
-        if(   !pipeline->colorsStride
-           &&  pipeline->uvsStride)
-            createInfoShaderStages[0].module = context->shaderVertex3dUv;
-        else if(    pipeline->colorsStride
-                && !pipeline->uvsStride)
-            createInfoShaderStages[0].module = context->shaderVertex3dColor;
-        else
-            createInfoShaderStages[0].module = context->shaderVertex3d;
+    createInfoShaderStages[0].module = pipeline->shaderVertex;
     createInfoShaderStages[0].pName  = "main";
     createInfoShaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    if(pipeline->useTexture)
-        createInfoShaderStages[1].module = context->shaderFragmentColorTexture;
-    else
-        createInfoShaderStages[1].module = context->shaderFragmentColor;
+    createInfoShaderStages[1].module = pipeline->shaderFragment;
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -1004,19 +988,19 @@ korl_internal void _korl_vulkan_frameBegin(void)
             /* destroy swap chain & all resources which depend on it implicitly */
             _korl_vulkan_destroySwapChain();
             /* since the device surface meta data has changed, we need to query it */
-            _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
-                _korl_vulkan_deviceSurfaceMetaData(context->physicalDevice
-                                                  ,surfaceContext->surface);
+            const _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = _korl_vulkan_deviceSurfaceMetaData(context->physicalDevice, surfaceContext->surface);
             /* re-create the swap chain & all resources which depend on it */
             _korl_vulkan_createSwapChain(surfaceContext->deferredResizeX
                                         ,surfaceContext->deferredResizeY
                                         ,&deviceSurfaceMetaData);
             /* re-create pipelines */
-            for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
+            const _Korl_Vulkan_Pipeline*const pipelinesEnd = context->stbDaPipelines + arrlen(context->stbDaPipelines);
+            for(_Korl_Vulkan_Pipeline* pipeline = context->stbDaPipelines; pipeline < pipelinesEnd; pipeline++)
             {
-                korl_assert(context->stbDaPipelines[p].pipeline != VK_NULL_HANDLE);
-                vkDestroyPipeline(context->device, context->stbDaPipelines[p].pipeline, context->allocator);
-                context->stbDaPipelines[p].pipeline = VK_NULL_HANDLE;
+                const u$ p = pipeline - context->stbDaPipelines;
+                korl_assert(pipeline->pipeline != VK_NULL_HANDLE);
+                vkDestroyPipeline(context->device, pipeline->pipeline, context->allocator);
+                pipeline->pipeline = VK_NULL_HANDLE;
                 _korl_vulkan_createPipeline(p);
             }
             //KORL-ISSUE-000-000-025: re-record command buffers?...
@@ -1075,6 +1059,40 @@ korl_internal void _korl_vulkan_frameBegin(void)
     }
     if(freedDeviceLocalAllocations)
         arrdeln(surfaceContext->stbDaDeviceLocalFreeQueue, 0, freedDeviceLocalAllocations);
+    /* similarly to the above, we can now destroy shaders that we know are no longer in use */
+    {
+        const _Korl_Vulkan_ShaderTrash* shaderTrashEnd = context->stbDaShaderTrash + arrlen(context->stbDaShaderTrash);
+        for(_Korl_Vulkan_ShaderTrash* shaderTrash = context->stbDaShaderTrash; shaderTrash < shaderTrashEnd; )
+        {
+            if(shaderTrash->framesSinceQueued < KORL_U8_MAX)
+                shaderTrash->framesSinceQueued++;
+            if(shaderTrash->framesSinceQueued > surfaceContext->swapChainImagesSize)
+            {
+                vkDestroyShaderModule(context->device, shaderTrash->shader.shaderModule, context->allocator);
+                /* delete all pipelines that use this shader module, since we know they are also no longer in use by the device */
+                const _Korl_Vulkan_Pipeline* pipelinesEnd = context->stbDaPipelines + arrlen(context->stbDaPipelines);
+                for(_Korl_Vulkan_Pipeline* pipeline = context->stbDaPipelines; pipeline < pipelinesEnd; )
+                {
+                    if(   pipeline->shaderVertex   == shaderTrash->shader.shaderModule
+                       || pipeline->shaderFragment == shaderTrash->shader.shaderModule)
+                    {
+                        vkDestroyPipeline(context->device, pipeline->pipeline, context->allocator);
+                        *pipeline = arrlast(context->stbDaPipelines);
+                        pipelinesEnd--;
+                        arrsetlen(context->stbDaPipelines, pipelinesEnd - context->stbDaPipelines);
+                    }
+                    else
+                        pipeline++;
+                }
+                /* delete this ShaderTrash by simply replacing it with the last one */
+                *shaderTrash = arrlast(context->stbDaShaderTrash);
+                shaderTrashEnd--;
+                arrsetlen(context->stbDaShaderTrash, shaderTrashEnd - context->stbDaShaderTrash);
+            }
+            else
+                shaderTrash++;
+        }
+    }
 #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
     /* reset the debug pool of device asset indices */
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
@@ -1161,7 +1179,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.texture                       = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
-    surfaceContext->drawState.currentPipeline = arrcap(context->stbDaPipelines);
+    surfaceContext->drawState.currentPipeline = KORL_U$_MAX;//KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
 }
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
@@ -1640,8 +1658,11 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         vkCreateCommandPool(context->device, &createInfoCommandPool, context->allocator, 
                             &surfaceContext->commandPool));
     /* initialize the rest of the surface context's host memory structures */
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines, 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines                  , 128);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaders                    , 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash                , 128);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, 128);
+    korl_memory_zero(context->stbDaShaders, arrlenu(context->stbDaShaders) * sizeof(*context->stbDaShaders));
     // at this point, the surface context is fully created & ready to begin the first frame //
     /* as soon as the surface is created, we can "kick-start" the first frame; 
         this _must_ be done before attempting to perform any deviceAsset 
@@ -1692,9 +1713,24 @@ korl_internal void korl_vulkan_destroySurface(void)
     vkDestroySurfaceKHR(context->instance, surfaceContext->surface, context->allocator);
     korl_memory_zero(surfaceContext, sizeof(*surfaceContext));// NOTE: Keep this as the last operation in the surface destructor!
     /* destroy the device-specific resources */
-    for(u$ p = 0; p < arrlenu(context->stbDaPipelines); p++)
-        vkDestroyPipeline(context->device, context->stbDaPipelines[p].pipeline, context->allocator);
-    mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines);
+    {
+        const _Korl_Vulkan_Pipeline*const pipelinesEnd = context->stbDaPipelines + arrlen(context->stbDaPipelines);
+        for(_Korl_Vulkan_Pipeline* pipeline = context->stbDaPipelines; pipeline < pipelinesEnd; pipeline++)
+            vkDestroyPipeline(context->device, pipeline->pipeline, context->allocator);
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines);
+    }
+    {
+        const _Korl_Vulkan_Shader*const shadersEnd = context->stbDaShaders + arrlen(context->stbDaShaders);
+        for(_Korl_Vulkan_Shader* shader = context->stbDaShaders; shader < shadersEnd; shader++)
+            vkDestroyShaderModule(context->device, shader->shaderModule, context->allocator);
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaders);
+    }
+    {
+        const _Korl_Vulkan_ShaderTrash*const shaderTrashEnd = context->stbDaShaderTrash + arrlen(context->stbDaShaderTrash);
+        for(_Korl_Vulkan_ShaderTrash* shaderTrash = context->stbDaShaderTrash; shaderTrash < shaderTrashEnd; shaderTrash++)
+            vkDestroyShaderModule(context->device, shaderTrash->shader.shaderModule, context->allocator);
+        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash);
+    }
     for(u$ d = 0; d < korl_arraySize(context->descriptorSetLayouts); d++)
         vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayouts[d], context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
@@ -1729,10 +1765,19 @@ korl_internal _KORL_VULKAN_DEVICEMEMORY_ALLOCATOR_FOR_EACH_CALLBACK(_korl_vulkan
 }
 korl_internal void korl_vulkan_clearAllDeviceAllocations(void)
 {
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch*const dequeueBatch = KORL_MEMORY_POOL_ADD(surfaceContext->deviceLocalAllocationShallowDequeueBatches);
     korl_memory_zero(dequeueBatch, sizeof(*dequeueBatch));
     _korl_vulkan_deviceMemory_allocator_forEach(&surfaceContext->deviceMemoryDeviceLocal, _korl_vulkan_clearAllDeviceAllocations_forEachCallback, dequeueBatch);
+    {
+        const _Korl_Vulkan_Shader*const shadersEnd = context->stbDaShaders + arrlen(context->stbDaShaders);
+        for(_Korl_Vulkan_Shader* shader = context->stbDaShaders; shader < shadersEnd; shader++)
+        {
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash, ((_Korl_Vulkan_ShaderTrash){.shader = *shader, .framesSinceQueued = 0}));
+            shader->shaderModule = VK_NULL_HANDLE;
+        }
+    }
 }
 korl_internal void korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3])
 {
@@ -1878,13 +1923,14 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         goto done;
     /* all we have to do is configure the pipeline config cache here, as the 
         actual vulkan pipeline will be created & bound when we call draw */
+    _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
     if(state->features)
     {
-        surfaceContext->drawState.pipelineConfigurationCache.features.enableBlend     = 0 != state->features->enableBlend;
-        surfaceContext->drawState.pipelineConfigurationCache.features.enableDepthTest = 0 != state->features->enableDepthTest;
+        pipelineCache->features.enableBlend     = 0 != state->features->enableBlend;
+        pipelineCache->features.enableDepthTest = 0 != state->features->enableDepthTest;
     }
     if(state->blend)
-        surfaceContext->drawState.pipelineConfigurationCache.blend = *state->blend;
+        pipelineCache->blend = *state->blend;
     if(state->projection)
         switch(state->projection->type)
         {
@@ -1949,6 +1995,11 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     }
     if(state->storageBuffers)
         surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
+    if(state->programs)
+    {
+        surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->programs->resourceHandleShaderVertex);
+        surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->programs->resourceHandleShaderFragment);
+    }
     done:
     korl_time_probeStop(set_draw_state);
 }
@@ -2007,20 +2058,21 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         korl_assert(deviceMemoryAllocationVertexBuffer->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
     }
     /* prepare the pipeline config cache with the vertex data properties */
+    _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
     korl_time_probeStart(draw_config_pipeline);
     switch(vertexData->primitiveType)
     {
-    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{surfaceContext->drawState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
-    case KORL_VULKAN_PRIMITIVETYPE_LINES:    {surfaceContext->drawState.pipelineConfigurationCache.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;}
+    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
+    case KORL_VULKAN_PRIMITIVETYPE_LINES:    {pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;}
     }
-    surfaceContext->drawState.pipelineConfigurationCache.positionDimensions         = vertexData->positionDimensions;
-    surfaceContext->drawState.pipelineConfigurationCache.positionsStride            = vertexData->positionsStride;
-    surfaceContext->drawState.pipelineConfigurationCache.colorsStride               = vertexData->colorsStride;
-    surfaceContext->drawState.pipelineConfigurationCache.uvsStride                  = vertexData->uvsStride;
-    surfaceContext->drawState.pipelineConfigurationCache.instancePositionDimensions = vertexData->instancePositionDimensions;
-    surfaceContext->drawState.pipelineConfigurationCache.instancePositionStride     = vertexData->instancePositionsStride;
-    surfaceContext->drawState.pipelineConfigurationCache.instanceUintStride         = vertexData->instanceUintStride;
-    surfaceContext->drawState.pipelineConfigurationCache.useTexture                 = (0 != surfaceContext->drawState.texture);
+    pipelineCache->positionDimensions         = vertexData->positionDimensions;
+    pipelineCache->positionsStride            = vertexData->positionsStride;
+    pipelineCache->colorsStride               = vertexData->colorsStride;
+    pipelineCache->uvsStride                  = vertexData->uvsStride;
+    pipelineCache->instancePositionDimensions = vertexData->instancePositionDimensions;
+    pipelineCache->instancePositionStride     = vertexData->instancePositionsStride;
+    pipelineCache->instanceUintStride         = vertexData->instanceUintStride;
+    pipelineCache->useTexture                 = (0 != surfaceContext->drawState.texture);
     if(vertexData->resourceHandleVertexBuffer)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
@@ -2030,11 +2082,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
             switch(d)
             {
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D:{
-                surfaceContext->drawState.pipelineConfigurationCache.instancePositionDimensions = 2;
-                surfaceContext->drawState.pipelineConfigurationCache.instancePositionStride     = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                pipelineCache->instancePositionDimensions = 2;
+                pipelineCache->instancePositionStride     = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
                 break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT:{
-                surfaceContext->drawState.pipelineConfigurationCache.instanceUintStride = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                pipelineCache->instanceUintStride = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
                 break;}
             default:
                 korl_log(ERROR, "vertex attribute [%u] not implemented", d);
@@ -2046,6 +2098,40 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         checks before attempting to configure a pipeline */
     /// It really feels like I should be doing some sanity checks here, but I honestly don't know what I should be checking for...
     /// Maybe if _korl_vulkan_setPipelineMetaData fails in the future we can revisit this validation step.
+    // KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx; when the hard-coded context->shaders are removed from korl-vulkan, we can assert that the pipelineCache _must_ be configured with valid shaders
+    /* determine which shader modules this pipeline should use */
+    if(surfaceContext->drawState.transientShaderHandleVertex)
+    {
+        const u$ shaderIndex = surfaceContext->drawState.transientShaderHandleVertex - 1;
+        korl_assert(shaderIndex < arrlenu(context->stbDaShaders));
+        pipelineCache->shaderVertex = context->stbDaShaders[shaderIndex].shaderModule;
+    }
+    else if(pipelineCache->instancePositionStride && pipelineCache->instanceUintStride)
+        pipelineCache->shaderVertex = context->shaderVertexText;
+    else if(pipelineCache->positionDimensions == 2)
+        pipelineCache->shaderVertex = context->shaderVertex2d;
+    else if(pipelineCache->positionDimensions == 3)
+        if(   !pipelineCache->colorsStride
+           &&  pipelineCache->uvsStride)
+            pipelineCache->shaderVertex = context->shaderVertex3dUv;
+        else if(    pipelineCache->colorsStride
+                && !pipelineCache->uvsStride)
+            pipelineCache->shaderVertex = context->shaderVertex3dColor;
+        else
+            pipelineCache->shaderVertex = context->shaderVertex3d;
+    if(surfaceContext->drawState.transientShaderHandleFragment)
+    {
+        const u$ shaderIndex = surfaceContext->drawState.transientShaderHandleFragment - 1;
+        korl_assert(shaderIndex < arrlenu(context->stbDaShaders));
+        pipelineCache->shaderFragment = context->stbDaShaders[shaderIndex].shaderModule;
+    }
+    else if(pipelineCache->useTexture)
+        pipelineCache->shaderFragment = context->shaderFragmentColorTexture;
+    else
+        pipelineCache->shaderFragment = context->shaderFragmentColor;
+    /* reset the transient shader handles, requiring the user to re-set them via setDrawState for future draw calls */
+    surfaceContext->drawState.transientShaderHandleVertex   = 0;
+    surfaceContext->drawState.transientShaderHandleFragment = 0;
     /* now we can actually configure the pipeline */
     const u$ pipelinePrevious = surfaceContext->drawState.currentPipeline;
     _korl_vulkan_setPipelineMetaData(surfaceContext->drawState.pipelineConfigurationCache);
@@ -2510,4 +2596,56 @@ korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_Allo
                    ,bufferStaging
                    ,deviceMemoryAllocation->subType.buffer.vulkanBuffer
                    ,korl_arraySize(copyRegions), copyRegions);
+}
+korl_internal Korl_Vulkan_ShaderHandle korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /* find an unoccupied database index */
+    Korl_Vulkan_ShaderHandle shaderIndex = arrlenu(context->stbDaShaders);
+    _Korl_Vulkan_Shader*     shader      = NULL;
+    if(requiredHandle)
+    {
+        shaderIndex = requiredHandle - 1;
+        shader      = context->stbDaShaders + shaderIndex;
+        korl_assert(shader->shaderModule == VK_NULL_HANDLE);// the caller _must_ know that this handle is unoccupied via some other korl-vulkan API call
+    }
+    else
+    {
+        const _Korl_Vulkan_Shader*const shadersEnd = context->stbDaShaders + arrlen(context->stbDaShaders);
+        for(_Korl_Vulkan_Shader* s = context->stbDaShaders; s < shadersEnd && !shader; s++)
+        {
+            if(s->shaderModule != VK_NULL_HANDLE)
+                continue;
+            shader      = s;
+            shaderIndex = s - context->stbDaShaders;
+        }
+    }
+    /* if we couldn't find an unoccupied database entry, we need to expand the database */
+    if(!shader)
+    {
+        shaderIndex = arrlenu(context->stbDaShaders);
+        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaders, 2 * arrlen(context->stbDaShaders));
+        shader = context->stbDaShaders + shaderIndex;
+        korl_memory_zero(shader, shaderIndex * sizeof(*shader));// zero out the newly-allocated shader slots
+    }
+    /* create the vulkan shader module & add to the database */
+    KORL_ZERO_STACK(VkShaderModuleCreateInfo, vCreateInfo);
+    vCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    vCreateInfo.pCode    = createInfo->data;
+    vCreateInfo.codeSize = createInfo->dataBytes;
+    vkCreateShaderModule(context->device, &vCreateInfo, context->allocator, &shader->shaderModule);
+    /* construct & return the handle */
+    return shaderIndex + 1;
+}
+korl_internal void korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle)
+{
+    if(!shaderHandle)
+        return;
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    const u$ shaderIndex = shaderHandle - 1;
+    /* for now, just treat the shaderHandle as a direct index */
+    korl_assert(shaderHandle < arrlenu(context->stbDaShaders));
+    _Korl_Vulkan_Shader*const shader = context->stbDaShaders + shaderIndex;
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash, ((_Korl_Vulkan_ShaderTrash){.shader = *shader, .framesSinceQueued = 0}));
+    shader->shaderModule = VK_NULL_HANDLE;
 }

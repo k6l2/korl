@@ -1541,12 +1541,15 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     blend.opAlpha           = batch->opAlpha;
     blend.factorAlphaSource = batch->factorAlphaSource;
     blend.factorAlphaTarget = batch->factorAlphaTarget;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
+    programs.resourceHandleShaderFragment = batch->resourceHandleShaderFragment;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.features       = &features;
     drawState.blend          = &blend;
     drawState.model          = &model;
     drawState.samplers       = &samplers;
     drawState.storageBuffers = &storageBuffers;
+    drawState.programs       = &programs;
     korl_vulkan_setDrawState(&drawState);
     korl_vulkan_draw(&vertexData);
     done:

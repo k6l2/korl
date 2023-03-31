@@ -47,18 +47,29 @@ typedef struct _Korl_Vulkan_Pipeline
     /* ---------------------------------------------------------------------- */
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself: */
-    VkPrimitiveTopology primitiveTopology;
-    u8 positionDimensions;        // only acceptable values: {2, 3}
-    u8 instancePositionDimensions;// only acceptable values: {2, 3}
-    u32 positionsStride;       // 0 => absence of this attribute
-    u32 uvsStride;             // 0 => absence of this attribute
-    u32 colorsStride;          // 0 => absence of this attribute
-    u32 instancePositionStride;// 0 => absence of this attribute
-    u32 instanceUintStride;    // 0 => absence of this attribute
-    bool useTexture;
+    VkPrimitiveTopology            primitiveTopology;
+    u8                             positionDimensions;        // only acceptable values: {2, 3}
+    u8                             instancePositionDimensions;// only acceptable values: {2, 3}
+    u32                            positionsStride;       // 0 => absence of this attribute
+    u32                            uvsStride;             // 0 => absence of this attribute
+    u32                            colorsStride;          // 0 => absence of this attribute
+    u32                            instancePositionStride;// 0 => absence of this attribute
+    u32                            instanceUintStride;    // 0 => absence of this attribute
+    bool                           useTexture;
     Korl_Vulkan_DrawState_Features features;
-    Korl_Vulkan_DrawState_Blend blend;
+    Korl_Vulkan_DrawState_Blend    blend;
+    VkShaderModule                 shaderVertex;
+    VkShaderModule                 shaderFragment;
 } _Korl_Vulkan_Pipeline;
+typedef struct _Korl_Vulkan_Shader
+{
+    VkShaderModule shaderModule;// VK_NULL_HANDLE => this Shader is unoccupied
+} _Korl_Vulkan_Shader;
+typedef struct _Korl_Vulkan_ShaderTrash
+{
+    _Korl_Vulkan_Shader shader;
+    u8                  framesSinceQueued;// once this value >= SurfaceContext::swapChainImagesSize, we can safely delete the shader module
+} _Korl_Vulkan_ShaderTrash;
 typedef struct _Korl_Vulkan_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
@@ -92,7 +103,7 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
     VkQueue queueGraphics;
     VkQueue queuePresent;
-    //KORL-ISSUE-000-000-015: add shader module collection
+    // KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx
     VkShaderModule shaderVertex2d;
     VkShaderModule shaderVertex3d;
     VkShaderModule shaderVertex3dColor;
@@ -100,7 +111,9 @@ typedef struct _Korl_Vulkan_Context
     VkShaderModule shaderVertexText;
     VkShaderModule shaderFragmentColor;
     VkShaderModule shaderFragmentColorTexture;
-    _Korl_Vulkan_Pipeline* stbDaPipelines;
+    _Korl_Vulkan_Shader*      stbDaShaders;
+    _Korl_Vulkan_ShaderTrash* stbDaShaderTrash;
+    _Korl_Vulkan_Pipeline*    stbDaPipelines;
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
     VkPipelineLayout pipelineLayout;
     /** layouts for the descriptor data which are shared between all KORL Vulkan Surfaces
@@ -160,6 +173,8 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
      */
     u$ currentPipeline;
     _Korl_Vulkan_Pipeline pipelineConfigurationCache;
+    Korl_Vulkan_ShaderHandle transientShaderHandleVertex;
+    Korl_Vulkan_ShaderHandle transientShaderHandleFragment;
     /** ----- dynamic uniform state (push constants, etc...) ----- */
     _Korl_Vulkan_DrawPushConstants pushConstants;
     VkRect2D scissor;

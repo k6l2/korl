@@ -25,6 +25,7 @@ typedef enum _Korl_Resource_Graphics_Type
     {_KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN
     ,_KORL_RESOURCE_GRAPHICS_TYPE_IMAGE
     ,_KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER
+    ,_KORL_RESOURCE_GRAPHICS_TYPE_SHADER
 } _Korl_Resource_Graphics_Type;
 typedef struct _Korl_Resource
 {
@@ -34,7 +35,11 @@ typedef struct _Korl_Resource
         struct
         {
             _Korl_Resource_Graphics_Type type;
-            Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
+            union
+            {
+                Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
+                Korl_Vulkan_ShaderHandle                  shaderHandle;
+            } deviceHandle;
             union
             {
                 Korl_Vulkan_CreateInfoTexture texture;
@@ -90,6 +95,27 @@ korl_internal Korl_Resource_Handle _korl_resource_handle_pack(_Korl_Resource_Han
          | ((KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.multimediaType) & 0b11) << 60)
          | (                                   unpackedHandle.uniqueId        & _KORL_RESOURCE_UNIQUE_ID_MAX);
 }
+korl_internal bool _korl_resource_isLoaded(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
+{
+    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
+        if(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER)
+            return 0 != resource->subType.graphics.deviceHandle.shaderHandle;
+    return resource->data;
+}
+korl_internal void _korl_resource_unload(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
+        if(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER)
+        {
+            korl_vulkan_shader_destroy(resource->subType.graphics.deviceHandle.shaderHandle);
+            resource->subType.graphics.deviceHandle.shaderHandle = 0;
+            return;
+        }
+    korl_free(context->allocatorHandleTransient, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
+    resource->data      = NULL;
+    resource->dataBytes = 0;
+}
 korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHandle(acu16 fileName, _Korl_Resource_Graphics_Type* out_graphicsType)
 {
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
@@ -108,6 +134,20 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
                 graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
+                multimediaTypeFound           = true;
+                break;
+            }
+        }
+        korl_shared_const u16* SHADER_EXTENSIONS[] = {L".spv"};
+        for(u32 i = 0; i < korl_arraySize(SHADER_EXTENSIONS); i++)
+        {
+            const u$ extensionSize = korl_string_sizeUtf16(SHADER_EXTENSIONS[i]);
+            if(fileName.size < extensionSize)
+                continue;
+            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, SHADER_EXTENSIONS[i], extensionSize))
+            {
+                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
+                graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SHADER;
                 multimediaTypeFound           = true;
                 break;
             }
@@ -168,8 +208,8 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE);
-    if(resource->data)
-        return;// if the resource data exists, there's nothing to do here
+    if(_korl_resource_isLoaded(resource, unpackedHandle))
+        return;
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
     const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resource->stringFileName), resource->assetCacheGetFlags, &assetData);
     if(resource->assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
@@ -194,10 +234,16 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                     korl_memory_copy(resource->data, stbiPixels, pixelBytes);
                     stbi_image_free(stbiPixels);
                 }
-                resource->subType.graphics.createInfo.texture.sizeX     = korl_checkCast_i$_to_u32(imageSizeX);
-                resource->subType.graphics.createInfo.texture.sizeY     = korl_checkCast_i$_to_u32(imageSizeY);
-                resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.createInfo.texture, 0/*0 => generate new handle*/);
-                korl_vulkan_texture_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data);
+                resource->subType.graphics.createInfo.texture.sizeX                  = korl_checkCast_i$_to_u32(imageSizeX);
+                resource->subType.graphics.createInfo.texture.sizeY                  = korl_checkCast_i$_to_u32(imageSizeY);
+                resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.createInfo.texture, 0/*0 => generate new handle*/);
+                korl_vulkan_texture_update(resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle, resource->data);
+                break;}
+            case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
+                KORL_ZERO_STACK(Korl_Vulkan_CreateInfoShader, createInfoShader);// just keep this data on the stack, since the underlying data is transient anyway, and we don't really need this data to re-create the shader later
+                createInfoShader.data      = assetData.data;
+                createInfoShader.dataBytes = assetData.dataBytes;
+                resource->subType.graphics.deviceHandle.shaderHandle = korl_vulkan_shader_create(&createInfoShader, 0);
                 break;}
             default:
                 korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
@@ -281,8 +327,8 @@ korl_internal Korl_Resource_Handle korl_resource_createVertexBuffer(const Korl_V
     resource->data      = korl_allocate(context->allocatorHandleRuntime, createInfo->bytes);
     korl_assert(resource->data);
     /* create the multimedia asset */
-    resource->subType.graphics.deviceMemoryAllocationHandle       = korl_vulkan_deviceAsset_createVertexBuffer(createInfo, 0/*0 => generate new handle*/);
-    resource->subType.graphics.createInfo.vertexBuffer.createInfo = *createInfo;
+    resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createVertexBuffer(createInfo, 0/*0 => generate new handle*/);
+    resource->subType.graphics.createInfo.vertexBuffer.createInfo        = *createInfo;
     // we have to perform a deep-copy of the vertex buffer create info struct, since the vertex attribute descriptors is stored in the create info as a pointer
     korl_assert(createInfo->vertexAttributeDescriptorCount <= korl_arraySize(resource->subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors));
     for(u$ v = 0; v < createInfo->vertexAttributeDescriptorCount; v++)
@@ -312,8 +358,8 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     resource->data      = korl_allocate(context->allocatorHandleRuntime, resource->dataBytes);
     korl_assert(resource->data);
     /* create the multimedia asset */
-    resource->subType.graphics.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(createInfo, 0/*0 => generate new handle*/);
-    resource->subType.graphics.createInfo.texture           = *createInfo;
+    resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(createInfo, 0/*0 => generate new handle*/);
+    resource->subType.graphics.createInfo.texture                        = *createInfo;
     return handle;
 }
 korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
@@ -329,7 +375,18 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     switch(unpackedHandle.multimediaType)
     {
     case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-        korl_vulkan_deviceAsset_destroy(resource->subType.graphics.deviceMemoryAllocationHandle);
+        switch(resource->subType.graphics.type)
+        {
+        case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:
+        case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
+            korl_vulkan_deviceAsset_destroy(resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle);
+            break;}
+        case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
+            korl_vulkan_shader_destroy(resource->subType.graphics.deviceHandle.shaderHandle);
+            break;}
+        default:
+            korl_log(ERROR, "graphics type not implemented: %u", resource->subType.graphics.type);
+        }
         break;}
     case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
         korl_free(context->allocatorHandleTransient, resource->subType.audio.resampledData);
@@ -389,7 +446,7 @@ korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteS
         switch(resource->subType.graphics.type)
         {
         case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-            korl_vulkan_vertexBuffer_resize(&resource->subType.graphics.deviceMemoryAllocationHandle, newByteSize);
+            korl_vulkan_vertexBuffer_resize(&resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle, newByteSize);
             resource->subType.graphics.createInfo.vertexBuffer.createInfo.bytes = newByteSize;
             break;}
         default:{
@@ -463,10 +520,10 @@ korl_internal void korl_resource_flushUpdates(void)
             switch(resource->subType.graphics.type)
             {
             case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                korl_vulkan_texture_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data);
+                korl_vulkan_texture_update(resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle, resource->data);
                 break;}
             case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-                korl_vulkan_vertexBuffer_update(resource->subType.graphics.deviceMemoryAllocationHandle, resource->data, resource->dataBytes, 0);
+                korl_vulkan_vertexBuffer_update(resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle, resource->data, resource->dataBytes, 0);
                 break;}
             default:{
                 korl_log(ERROR, "invalid graphics type: %i", resource->subType.graphics.type);
@@ -494,7 +551,7 @@ korl_internal void korl_resource_flushUpdates(void)
         for(_Korl_Resource_Map* resourceMapIt = context->stbHmResources; resourceMapIt < resourcesEnd; resourceMapIt++)
         {
             const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapIt->key);
-            if(unpackedHandle.type != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
+            if(unpackedHandle.multimediaType != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
                 continue;
             _Korl_Resource*const resource = &resourceMapIt->value;
             if(!resource->data)
@@ -530,7 +587,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanD
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    return resource->subType.graphics.deviceMemoryAllocationHandle;
+    return resource->subType.graphics.deviceHandle.deviceMemoryAllocationHandle;
 }
 korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat)
 {
@@ -583,6 +640,20 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
     _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return (Korl_Math_V2u32){resource->subType.graphics.createInfo.texture.sizeX
                             ,resource->subType.graphics.createInfo.texture.sizeY};
+}
+korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    if(!handleResourceShader)
+        return 0;
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceShader);
+    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceShader);
+    korl_assert(hashMapIndex >= 0);
+    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER);
+    _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
+    return resource->subType.graphics.deviceHandle.shaderHandle;
 }
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
@@ -650,7 +721,7 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
             {
             case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
                 /* device memory allocations have been invalidated! */
-                resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle = 0;
+                korl_memory_zero(&resourceMapItem->value.subType.graphics.deviceHandle, sizeof(resourceMapItem->value.subType.graphics.deviceHandle));
                 break;}
             case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
                 break;}
@@ -670,13 +741,16 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
                 switch(resourceMapItem->value.subType.graphics.type)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    korl_log(VERBOSE, "creating IMAGE Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
-                    korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
+                    korl_log(VERBOSE, "creating IMAGE Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.deviceHandle.deviceMemoryAllocationHandle);
+                    korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.createInfo.texture, resourceMapItem->value.subType.graphics.deviceHandle.deviceMemoryAllocationHandle);
                     break;}
                 case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-                    korl_log(VERBOSE, "creating VERTEX_BUFFER Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
+                    korl_log(VERBOSE, "creating VERTEX_BUFFER Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.deviceHandle.deviceMemoryAllocationHandle);
                     resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo.vertexAttributeDescriptors = resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
-                    korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.deviceMemoryAllocationHandle);
+                    korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.createInfo.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.deviceHandle.deviceMemoryAllocationHandle);
+                    break;}
+                case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
+                    korl_log(ERROR, "RUNTIME GRAPHICS SHADER resources are not supported");// KORL currently requires all shaders to be SPIR-V file assets
                     break;}
                 default:
                     korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);

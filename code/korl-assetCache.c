@@ -284,7 +284,8 @@ korl_internal void korl_assetCache_memoryStateRead(const u8* memoryState)
         _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
         asset->assetData.data = NULL;
         asset->state          = _KORL_ASSET_CACHE_ASSET_STATE_INITIALIZED;
-        //@TODO: there is some shenanigans going on here; do we need to do anything special if an asset is loaded from a memory state that was in the middle of async IO?
+        //NOTE: there _was_ some shenanigans going on here; do we need to do anything special if an asset is loaded from a memory state that was in the middle of async IO?
+        //      (future me) I _think_ all these problems are solved, after fixing this bug...
         asset->asyncIoHandle  = 0;
         asset->fileDescriptor = KORL_STRUCT_INITIALIZE_ZERO(Korl_File_Descriptor);
     }

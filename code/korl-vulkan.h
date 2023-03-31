@@ -35,7 +35,9 @@
 #include "korl-checkCast.h"
 #include "korl-memory.h"
 #include "korl-assetCache.h"
+#include "korl-interface-platform-gfx.h"
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
+typedef u64 Korl_Vulkan_ShaderHandle;
 typedef struct Korl_Vulkan_DrawVertexData
 {
     Korl_Vulkan_PrimitiveType      primitiveType;
@@ -125,6 +127,11 @@ typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
 } Korl_Vulkan_DrawState_StorageBuffers;
+typedef struct Korl_Vulkan_DrawState_Programs
+{
+    Korl_Resource_Handle resourceHandleShaderVertex;
+    Korl_Resource_Handle resourceHandleShaderFragment;
+} Korl_Vulkan_DrawState_Programs;
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*       features;
@@ -135,6 +142,7 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_Scissor*        scissor;
     const Korl_Vulkan_DrawState_Samplers*       samplers;
     const Korl_Vulkan_DrawState_StorageBuffers* storageBuffers;
+    const Korl_Vulkan_DrawState_Programs*       programs;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX
@@ -162,30 +170,29 @@ typedef struct Korl_Vulkan_CreateInfoVertexBuffer
     const Korl_Vulkan_VertexAttributeDescriptor* vertexAttributeDescriptors;
     bool useAsStorageBuffer;
 } Korl_Vulkan_CreateInfoVertexBuffer;
-korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
-korl_internal void korl_vulkan_construct(void);
-korl_internal void korl_vulkan_destroy(void);
-korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 sizeX, u32 sizeY);
-korl_internal void korl_vulkan_destroySurface(void);
-korl_internal Korl_Math_V2u32 korl_vulkan_getSurfaceSize(void);
-korl_internal void korl_vulkan_clearAllDeviceAllocations(void);
-#if 0//KORL-ISSUE-000-000-027: Vulkan; feature: add shader/pipeline resource API
-/** 
- * This must be called AFTER \c korl_vulkan_createSurface since shader modules 
- * require a device to be created!
- */
-korl_internal void korl_vulkan_loadShaders(void);
-korl_internal void korl_vulkan_createPipeline(void);
-#endif//0
-korl_internal void korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3]);
-korl_internal void korl_vulkan_frameEnd(void);
-korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
-korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
-korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
+typedef struct Korl_Vulkan_CreateInfoShader
+{
+    const void* data;
+    u$          dataBytes;
+} Korl_Vulkan_CreateInfoShader;
+korl_internal Korl_Vulkan_VertexIndex                   korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
+korl_internal void                                      korl_vulkan_construct(void);
+korl_internal void                                      korl_vulkan_destroy(void);
+korl_internal void                                      korl_vulkan_createSurface(void* createSurfaceUserData, u32 sizeX, u32 sizeY);
+korl_internal void                                      korl_vulkan_destroySurface(void);
+korl_internal Korl_Math_V2u32                           korl_vulkan_getSurfaceSize(void);
+korl_internal void                                      korl_vulkan_clearAllDeviceAllocations(void);
+korl_internal void                                      korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3]);
+korl_internal void                                      korl_vulkan_frameEnd(void);
+korl_internal void                                      korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
+korl_internal void                                      korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
+korl_internal void                                      korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
-korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
-korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
-korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
-korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
-korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
+korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
+korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
+korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
+korl_internal void                                      korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
+korl_internal void                                      korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
+korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
+korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);

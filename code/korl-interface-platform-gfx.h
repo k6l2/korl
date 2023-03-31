@@ -146,6 +146,7 @@ typedef struct Korl_Gfx_Batch
     u8                    _instancePositionDimensions;
     f32*                  _instancePositions;
     u32*                  _instanceU32s;// we need a place to store the indices of each glyph in the instanced draw call
+    Korl_Resource_Handle resourceHandleShaderFragment;
 } Korl_Gfx_Batch;
 typedef struct Korl_Gfx_ResultRay3d
 {
