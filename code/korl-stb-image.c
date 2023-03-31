@@ -34,6 +34,8 @@ korl_internal void _korl_stb_image_free(void* allocation)
 #define STBI_REALLOC(p,newsz) _korl_stb_image_reallocate(p,newsz)
 #define STBI_FREE(p)          _korl_stb_image_free(p)
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
 #pragma warning(push)
     #pragma warning(disable:4702)// stb_image is doing assert(0), which causes unreachable code, and that's OK
     #include "stb/stb_image.h"

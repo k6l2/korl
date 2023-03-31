@@ -233,6 +233,15 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                     resource->dataBytes = pixelBytes;
                     korl_memory_copy(resource->data, stbiPixels, pixelBytes);
                     stbi_image_free(stbiPixels);
+                    /* pre-multiply alpha channel into all file images by default */
+                    Korl_Vulkan_Color4u8*const colorData = KORL_C_CAST(Korl_Vulkan_Color4u8*, resource->data);
+                    for(int i = 0; i < imageSizeX * imageSizeY; i++)
+                    {
+                        const f32 alpha = KORL_C_CAST(f32, colorData[i].a) / KORL_C_CAST(f32, KORL_U8_MAX);
+                        colorData[i].r = korl_math_round_f32_to_u8(alpha * KORL_C_CAST(f32, colorData[i].r));
+                        colorData[i].g = korl_math_round_f32_to_u8(alpha * KORL_C_CAST(f32, colorData[i].g));
+                        colorData[i].b = korl_math_round_f32_to_u8(alpha * KORL_C_CAST(f32, colorData[i].b));
+                    }
                 }
                 resource->subType.graphics.createInfo.texture.sizeX                  = korl_checkCast_i$_to_u32(imageSizeX);
                 resource->subType.graphics.createInfo.texture.sizeY                  = korl_checkCast_i$_to_u32(imageSizeY);

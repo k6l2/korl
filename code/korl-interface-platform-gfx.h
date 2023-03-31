@@ -65,6 +65,8 @@ korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ALPHA_PREMULTIPLIED = {.color = 
                                                                       ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ZERO}};
 korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ADD                 = {.color = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_SRC_ALPHA, KORL_BLEND_FACTOR_ONE}
                                                                       ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}};
+korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ADD_PREMULTIPLIED   = {.color = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}
+                                                                      ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}};
 typedef struct Korl_Gfx_Camera
 {
     enum
