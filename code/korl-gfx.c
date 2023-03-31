@@ -1039,12 +1039,12 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
     features.enableBlend = true;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
-    blend.opColor           = KORL_BLEND_OP_ADD;
-    blend.factorColorSource = KORL_BLEND_FACTOR_SRC_ALPHA;
-    blend.factorColorTarget = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    blend.opAlpha           = KORL_BLEND_OP_ADD;
-    blend.factorAlphaSource = KORL_BLEND_FACTOR_ONE;
-    blend.factorAlphaTarget = KORL_BLEND_FACTOR_ZERO;
+    blend.opColor           = KORL_GFX_BLEND_ALPHA.color.operation;
+    blend.factorColorSource = KORL_GFX_BLEND_ALPHA.color.factorSource;
+    blend.factorColorTarget = KORL_GFX_BLEND_ALPHA.color.factorTarget;
+    blend.opAlpha           = KORL_GFX_BLEND_ALPHA.alpha.operation;
+    blend.factorAlphaSource = KORL_GFX_BLEND_ALPHA.alpha.factorSource;
+    blend.factorAlphaTarget = KORL_GFX_BLEND_ALPHA.alpha.factorTarget;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.features       = &features;
     drawState.blend          = &blend;
@@ -1535,12 +1535,12 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     features.enableBlend     = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_BLENDING);
     features.enableDepthTest = !(flags & KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
-    blend.opColor           = batch->opColor;
-    blend.factorColorSource = batch->factorColorSource;
-    blend.factorColorTarget = batch->factorColorTarget;
-    blend.opAlpha           = batch->opAlpha;
-    blend.factorAlphaSource = batch->factorAlphaSource;
-    blend.factorAlphaTarget = batch->factorAlphaTarget;
+    blend.opColor           = batch->blend.color.operation;
+    blend.factorColorSource = batch->blend.color.factorSource;
+    blend.factorColorTarget = batch->blend.color.factorTarget;
+    blend.opAlpha           = batch->blend.alpha.operation;
+    blend.factorAlphaSource = batch->blend.alpha.factorSource;
+    blend.factorAlphaTarget = batch->blend.alpha.factorTarget;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
     programs.resourceHandleShaderFragment = batch->resourceHandleShaderFragment;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
@@ -1574,12 +1574,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(korl_gfx_creat
     result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = 6;
     result->_vertexCount              = 4;
-    result->opColor                   = KORL_BLEND_OP_ADD;
-    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                   = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
     result->_texture                  = resourceHandleTexture;
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexIndices            = KORL_C_CAST(wchar_t*        , result + 1);
@@ -1625,12 +1620,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
     result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = 6;
     result->_vertexCount              = 4;
-    result->opColor                   = KORL_BLEND_OP_ADD;
-    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                   = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
     result->_vertexPositions          = KORL_C_CAST(f32*                    , KORL_C_CAST(u8*, result->_vertexIndices   ) + 6*sizeof(Korl_Vulkan_VertexIndex));
@@ -1684,12 +1674,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
     result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = korl_checkCast_u$_to_u32(indices);
     result->_vertexCount              = korl_checkCast_u$_to_u32(vertices);
-    result->opColor                   = KORL_BLEND_OP_ADD;
-    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                   = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
     result->_vertexPositions          = KORL_C_CAST(f32*                    , KORL_C_CAST(u8*, result->_vertexIndices   ) + indices*sizeof(Korl_Vulkan_VertexIndex));
@@ -1736,12 +1721,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTr
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexCount              = 3*triangleCount;
-    result->opColor                   = KORL_BLEND_OP_ADD;
-    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                   = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexPositions          = KORL_C_CAST(f32*                 , result + 1);
     result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 3*triangleCount*result->_vertexPositionDimensions*sizeof(f32));
@@ -1770,12 +1750,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBat
     result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexIndexCount         = 6 * quadCount;
     result->_vertexCount              = 4 * quadCount;
-    result->opColor                   = KORL_BLEND_OP_ADD;
-    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                   = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
     result->_texture                  = resourceHandleTexture;
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
@@ -1807,12 +1782,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines)
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
     result->_vertexCount              = 2*lineCount;
-    result->opColor                   = KORL_BLEND_OP_ADD;
-    result->factorColorSource         = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget         = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                   = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource         = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget         = KORL_BLEND_FACTOR_ZERO;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexPositions          = KORL_C_CAST(f32*                 , result + 1);
     result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 2*lineCount*result->_vertexPositionDimensions*sizeof(f32));
@@ -1867,12 +1837,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
     result->_textPositionAnchor         = (Korl_Math_V2f32){0,1};// by default, we align the batch position to be the top-left corner of the text's local AABB
     result->_assetNameFont              = KORL_C_CAST(wchar_t*, result + 1);
     result->_text                       = KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, result->_assetNameFont) + assetNameFontBytes);
-    result->opColor                     = KORL_BLEND_OP_ADD;
-    result->factorColorSource           = KORL_BLEND_FACTOR_SRC_ALPHA;
-    result->factorColorTarget           = KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result->opAlpha                     = KORL_BLEND_OP_ADD;
-    result->factorAlphaSource           = KORL_BLEND_FACTOR_ONE;
-    result->factorAlphaTarget           = KORL_BLEND_FACTOR_ZERO;
+    result->blend                       = KORL_GFX_BLEND_ALPHA;
     result->_instancePositionDimensions = 2;
     result->_instancePositions          = KORL_C_CAST(f32*, KORL_C_CAST(u8*, result->_text             ) + textBytes);
     result->_instanceU32s               = KORL_C_CAST(u32*, KORL_C_CAST(u8*, result->_instancePositions) + maxVisibleGlyphCount*result->_instancePositionDimensions*sizeof(*result->_instancePositions));
@@ -1904,12 +1869,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetBlendState(korl_gfx_batchSetBlendState)
 {
-    context->opColor = opColor;
-    context->factorColorSource = factorColorSource;
-    context->factorColorTarget = factorColorTarget;
-    context->opAlpha = opAlpha;
-    context->factorAlphaSource = factorAlphaSource;
-    context->factorAlphaTarget = factorAlphaTarget;
+    context->blend = blend;
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition(korl_gfx_batchSetPosition)
 {

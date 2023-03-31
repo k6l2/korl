@@ -50,6 +50,21 @@ typedef enum Korl_Vulkan_BlendFactor
     KORL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
     KORL_BLEND_FACTOR_SRC_ALPHA_SATURATE
 } Korl_Vulkan_BlendFactor;
+typedef struct Korl_Gfx_Blend
+{
+    struct
+    {
+        Korl_Vulkan_BlendOperation operation;
+        Korl_Vulkan_BlendFactor    factorSource;
+        Korl_Vulkan_BlendFactor    factorTarget;
+    } color, alpha;
+} Korl_Gfx_Blend;
+korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ALPHA               = {.color = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_SRC_ALPHA, KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA}
+                                                                      ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ZERO}};
+korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ALPHA_PREMULTIPLIED = {.color = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA}
+                                                                      ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ZERO}};
+korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ADD                 = {.color = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_SRC_ALPHA, KORL_BLEND_FACTOR_ONE}
+                                                                      ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}};
 typedef struct Korl_Gfx_Camera
 {
     enum
@@ -130,12 +145,7 @@ typedef struct Korl_Gfx_Batch
     wchar_t* _assetNameFont;
     //KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
     wchar_t* _text;
-    Korl_Vulkan_BlendOperation opColor;       // only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
-    Korl_Vulkan_BlendFactor factorColorSource;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
-    Korl_Vulkan_BlendFactor factorColorTarget;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
-    Korl_Vulkan_BlendOperation opAlpha;       // only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
-    Korl_Vulkan_BlendFactor factorAlphaSource;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
-    Korl_Vulkan_BlendFactor factorAlphaTarget;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
+    Korl_Gfx_Blend blend;// only valid when batched without KORL_GFX_BATCH_FLAG_DISABLE_BLENDING
     Korl_Resource_Handle _fontTextureHandle;
     Korl_Resource_Handle _glyphMeshBufferVertices;
     Korl_Vulkan_VertexIndex* _vertexIndices;
@@ -189,7 +199,7 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(name)                Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 quadCount, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_FUNCTION_korl_gfx_createBatchLines(name)                        Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
 #define KORL_FUNCTION_korl_gfx_createBatchText(name)                         Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight, Korl_Vulkan_Color4u8 color, f32 outlinePixelSize, Korl_Vulkan_Color4u8 colorOutline)
-#define KORL_FUNCTION_korl_gfx_batchSetBlendState(name)                      void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_BlendOperation opColor, Korl_Vulkan_BlendFactor factorColorSource, Korl_Vulkan_BlendFactor factorColorTarget, Korl_Vulkan_BlendOperation opAlpha, Korl_Vulkan_BlendFactor factorAlphaSource, Korl_Vulkan_BlendFactor factorAlphaTarget)
+#define KORL_FUNCTION_korl_gfx_batchSetBlendState(name)                      void                  name(Korl_Gfx_Batch*const context, Korl_Gfx_Blend blend)
 #define KORL_FUNCTION_korl_gfx_batchSetPosition(name)                        void                  name(Korl_Gfx_Batch*const context, const f32* position, u8 positionDimensions)
 #define KORL_FUNCTION_korl_gfx_batchSetPosition2d(name)                      void                  name(Korl_Gfx_Batch*const context, f32 x, f32 y)
 #define KORL_FUNCTION_korl_gfx_batchSetPosition2dV2f32(name)                 void                  name(Korl_Gfx_Batch*const context, Korl_Math_V2f32 position)
