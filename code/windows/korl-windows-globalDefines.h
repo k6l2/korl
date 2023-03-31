@@ -65,3 +65,9 @@
 korl_global_const TCHAR KORL_APPLICATION_NAME[]         = L""KORL_DEFINE_TO_CSTR(KORL_APP_NAME);
 korl_global_const TCHAR KORL_APPLICATION_VERSION[]      = L""KORL_DEFINE_TO_CSTR(KORL_APP_VERSION);
 korl_global_const TCHAR KORL_DYNAMIC_APPLICATION_NAME[] = L""KORL_DEFINE_TO_CSTR(KORL_DLL_NAME);
+#ifndef KORL_APP_TARGET_FRAME_HZ
+    /* this should be defined in the KORL build scripts; having this be an 
+        unusually low value should make it easier to figure out that the build 
+        is not properly configured */
+    #define KORL_APP_TARGET_FRAME_HZ 10
+#endif

@@ -2007,7 +2007,17 @@ korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectan
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     context->modelColor = color;
 }
-korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv(korl_gfx_batch_rectangle_setUv)
+korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel(korl_gfx_batch_rectangle_setUv_pixel)
+{
+    korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
+    korl_assert(context->_vertexUvs);
+    /* NOTE: the renderer interprets UV {0,0} as the upper-left corner of the image */
+    context->_vertexUvs[0] = (Korl_Math_V2f32){pixelSpaceAabb.min.x, pixelSpaceAabb.max.y};
+    context->_vertexUvs[1] = pixelSpaceAabb.max                                           ;
+    context->_vertexUvs[2] = (Korl_Math_V2f32){pixelSpaceAabb.max.x, pixelSpaceAabb.min.y};
+    context->_vertexUvs[3] = pixelSpaceAabb.min                                           ;
+}
+korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel_to_normal(korl_gfx_batch_rectangle_setUv_pixel_to_normal)
 {
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     korl_assert(context->_vertexUvs);
