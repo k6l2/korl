@@ -2007,15 +2007,15 @@ korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectan
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     context->modelColor = color;
 }
-korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel(korl_gfx_batch_rectangle_setUv_pixel)
+korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_raw(korl_gfx_batch_rectangle_setUv_raw)
 {
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     korl_assert(context->_vertexUvs);
     /* NOTE: the renderer interprets UV {0,0} as the upper-left corner of the image */
-    context->_vertexUvs[0] = (Korl_Math_V2f32){pixelSpaceAabb.min.x, pixelSpaceAabb.max.y};
-    context->_vertexUvs[1] = pixelSpaceAabb.max                                           ;
-    context->_vertexUvs[2] = (Korl_Math_V2f32){pixelSpaceAabb.max.x, pixelSpaceAabb.min.y};
-    context->_vertexUvs[3] = pixelSpaceAabb.min                                           ;
+    context->_vertexUvs[0] = (Korl_Math_V2f32){aabbRawUvs.min.x, aabbRawUvs.max.y};
+    context->_vertexUvs[1] = aabbRawUvs.max;
+    context->_vertexUvs[2] = (Korl_Math_V2f32){aabbRawUvs.max.x, aabbRawUvs.min.y};
+    context->_vertexUvs[3] = aabbRawUvs.min;
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel_to_normal(korl_gfx_batch_rectangle_setUv_pixel_to_normal)
 {
@@ -2037,7 +2037,25 @@ korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSet
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
 }
-korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_setQuad(korl_gfx_batch_quadsTextured_setQuad)
+korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(korl_gfx_batch_quadsTextured_raw)
+{
+    korl_assert(context->_vertexIndexCount % 6 == 0);
+    korl_assert(context->_vertexCount      % 4 == 0);
+    korl_assert(context->_vertexPositionDimensions == 3);
+    korl_assert(context->_vertexUvs);
+    const Korl_Math_Aabb2f32 aabb      = korl_math_aabb2f32_fromPoints(positionMinimum.x, positionMinimum.y, positionMinimum.x + size.x, positionMinimum.y + size.y);
+    Korl_Math_V3f32*const    positions = KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions);
+    positions[(quadIndex * 4) + 0] = (Korl_Math_V3f32){.x = aabb.min.x, .y = aabb.min.y};
+    positions[(quadIndex * 4) + 1] = (Korl_Math_V3f32){.x = aabb.max.x, .y = aabb.min.y};
+    positions[(quadIndex * 4) + 2] = (Korl_Math_V3f32){.x = aabb.max.x, .y = aabb.max.y};
+    positions[(quadIndex * 4) + 3] = (Korl_Math_V3f32){.x = aabb.min.x, .y = aabb.max.y};
+    /* NOTE: the renderer interprets UV {0,0} as the upper-left corner of the image */
+    context->_vertexUvs[(quadIndex * 4) + 0] = (Korl_Math_V2f32){aabbRawUvs.min.x, aabbRawUvs.max.y};
+    context->_vertexUvs[(quadIndex * 4) + 1] = aabbRawUvs.max;
+    context->_vertexUvs[(quadIndex * 4) + 2] = (Korl_Math_V2f32){aabbRawUvs.max.x, aabbRawUvs.min.y};
+    context->_vertexUvs[(quadIndex * 4) + 3] = aabbRawUvs.min;
+}
+korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(korl_gfx_batch_quadsTextured_pixel_to_normal)
 {
     korl_assert(context->_vertexIndexCount % 6 == 0);
     korl_assert(context->_vertexCount      % 4 == 0);
