@@ -571,11 +571,11 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
     imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
     imageCreateInfo.usage         = imageUsageFlags;
     imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-#if 0// all these options are already defaulted to 0 //
+    #if 0// all these options are already defaulted to 0 //
     imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-#endif
+    #endif
     _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &image));
     /* obtain the device memory requirements for the image */
     KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);

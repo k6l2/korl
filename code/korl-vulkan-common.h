@@ -63,6 +63,7 @@ typedef struct _Korl_Vulkan_Pipeline
 } _Korl_Vulkan_Pipeline;
 typedef struct _Korl_Vulkan_Shader
 {
+    // potentially add some unique identification data here (like salt, etc.) to reduce the chance of the user attempting to use an invalid handle
     VkShaderModule shaderModule;// VK_NULL_HANDLE => this Shader is unoccupied
 } _Korl_Vulkan_Shader;
 typedef struct _Korl_Vulkan_ShaderTrash

@@ -1393,13 +1393,13 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         deviceDriverVersionMinor   = (devicePropertiesBest.driverVersion >>  6) & 0x0FF;
         deviceDriverVersionPatch   = (devicePropertiesBest.driverVersion >>  0) &  0x3F;
     }
-#ifdef KORL_PLATFORM_WINDOWS//KORL-ISSUE-000-000-060: Vulkan: test & verify driver version decoding on Intel+Windows
+    #ifdef KORL_PLATFORM_WINDOWS//KORL-ISSUE-000-000-060: Vulkan: test & verify driver version decoding on Intel+Windows
     else if(devicePropertiesBest.vendorID == 0x8086)// Intel
     {
         deviceDriverVersionMajor = devicePropertiesBest.driverVersion >> 14;
         deviceDriverVersionMinor = devicePropertiesBest.driverVersion & 0x3FFF;
     }
-#endif
+    #endif
     korl_log(INFO, "chosen physical device: \"%hs\"", devicePropertiesBest.deviceName);
     korl_log(INFO, "vendorID=0x%X|%u, apiVersion=0x%X|%u|%u.%u.%u.%u, driverVersion=0x%X|%u|%u.%u.%u.%u, deviceID=0x%X|%u, deviceType=%ws", 
              devicePropertiesBest.vendorID, devicePropertiesBest.vendorID, 
@@ -1478,10 +1478,10 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     createInfoDevice.pEnabledFeatures        = &physicalDeviceFeatures;
     createInfoDevice.enabledExtensionCount   = korl_arraySize(G_KORL_VULKAN_DEVICE_EXTENSIONS);
     createInfoDevice.ppEnabledExtensionNames = G_KORL_VULKAN_DEVICE_EXTENSIONS;
-#if KORL_DEBUG
+    #if KORL_DEBUG
     createInfoDevice.enabledLayerCount       = korl_arraySize(G_KORL_VULKAN_ENABLED_LAYERS);
     createInfoDevice.ppEnabledLayerNames     = G_KORL_VULKAN_ENABLED_LAYERS;
-#endif// KORL_DEBUG
+    #endif// KORL_DEBUG
     _KORL_VULKAN_CHECK(
         vkCreateDevice(context->physicalDevice, &createInfoDevice, 
                        context->allocator, &context->device));
