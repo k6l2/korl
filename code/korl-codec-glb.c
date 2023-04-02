@@ -26,6 +26,35 @@ korl_internal void _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_Chunk*const c
     const jsmntok_t*const jsonTokensEnd = jsonTokens + jsonTokensSize;
     for(const jsmntok_t* jsonToken = jsonTokens; jsonToken < jsonTokensEnd; jsonToken++)
     {
+        #if 1// DEBUG; print the JSON tokens
+        korl_shared_const char* TYPE_STRINGS[] = 
+            {"UNDEFINED"
+            ,"OBJECT"
+            ,"ARRAY"
+            ,"STRING"
+            ,"PRIMITIVE_NULL"
+            ,"PRIMITIVE_BOOL"
+            ,"PRIMITIVE_NUMBER"
+        };
+        const char* typeString = TYPE_STRINGS[0];
+        switch(jsonToken->type)
+        {
+        case JSMN_OBJECT:{typeString = TYPE_STRINGS[1]; break;}
+        case JSMN_ARRAY: {typeString = TYPE_STRINGS[2]; break;}
+        case JSMN_STRING:{typeString = TYPE_STRINGS[3]; break;}
+        case JSMN_PRIMITIVE:{
+            if(chunk->data[jsonToken->start] == 'n')
+                typeString = TYPE_STRINGS[4];
+            else if(chunk->data[jsonToken->start] == 't' || chunk->data[jsonToken->start] == 'f')
+                typeString = TYPE_STRINGS[5];
+            else
+                typeString = TYPE_STRINGS[6];
+            break;}
+        default: break;// everything else is UNDEFINED
+        }
+        const u$ jsonTokenSize = jsonToken->end - jsonToken->start;
+        korl_log(VERBOSE, "jsonToken: %hs \"%.*hs\"", typeString, jsonTokenSize, chunk->data + jsonToken->start);
+        #endif
         //@TODO
     }
     cleanUp:
