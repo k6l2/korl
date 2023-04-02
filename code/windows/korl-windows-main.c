@@ -127,3 +127,4 @@ shutdownSuccess:
 #include "korl-stb-vorbis.c"
 #include "korl-memoryState.c"
 #include "korl-algorithm.c"
+#include "korl-jsmn.h"
