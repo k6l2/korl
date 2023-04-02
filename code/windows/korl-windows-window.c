@@ -179,10 +179,18 @@ korl_internal void _korl_windows_window_configurationLoad(void)
     else/* the config file exists; let's read it & apply the settings when it finishes loading */
     {
         const u32 fileBytes = korl_file_getTotalBytes(context->configuration.fileDescriptor);
-        context->configuration.fileDataBuffer.size = fileBytes;
-        context->configuration.fileDataBuffer.data = korl_reallocate(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
-        context->configuration.asyncIo.handle      = korl_file_readAsync(context->configuration.fileDescriptor, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
-        context->configuration.asyncIo.operation   = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
+        if(fileBytes)
+        {
+            context->configuration.fileDataBuffer.size = fileBytes;
+            context->configuration.fileDataBuffer.data = korl_reallocate(context->allocatorHandle, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
+            context->configuration.asyncIo.handle      = korl_file_readAsync(context->configuration.fileDescriptor, KORL_C_CAST(void*, context->configuration.fileDataBuffer.data), fileBytes);
+            context->configuration.asyncIo.operation   = _KORL_WINDOWS_WINDOW_CONFIGURATION_ASYNCIO_OPERATION_READ;
+        }
+        else
+        {
+            korl_file_close(&context->configuration.fileDescriptor);
+            context->configuration.deferSaveConfiguration = true;// save configuration ASAP so that it is valid on the next run
+        }
     }
 }
 korl_internal void _korl_windows_window_configurationStep(void)
