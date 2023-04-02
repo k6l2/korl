@@ -4,6 +4,7 @@
 #include "korl-stringPool.h"
 #include "korl-audio.h"
 #include "korl-codec-audio.h"
+#include "korl-codec-glb.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
@@ -26,6 +27,7 @@ typedef enum _Korl_Resource_Graphics_Type
     ,_KORL_RESOURCE_GRAPHICS_TYPE_IMAGE
     ,_KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SHADER
+    ,_KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D
 } _Korl_Resource_Graphics_Type;
 typedef struct _Korl_Resource
 {
@@ -120,9 +122,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
 {
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
     /* automatically determine the type of multimedia this resource is based on the file extension */
-    bool multimediaTypeFound = false;
     _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
-    if(!multimediaTypeFound)
     {
         korl_shared_const u16* IMAGE_EXTENSIONS[] = {L".png", L".jpg", L".jpeg"};
         for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
@@ -134,10 +134,11 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
                 graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
-                multimediaTypeFound           = true;
-                break;
+                goto multimediaTypeFound;
             }
         }
+    }
+    {
         korl_shared_const u16* SHADER_EXTENSIONS[] = {L".spv"};
         for(u32 i = 0; i < korl_arraySize(SHADER_EXTENSIONS); i++)
         {
@@ -148,12 +149,25 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
                 graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SHADER;
-                multimediaTypeFound           = true;
-                break;
+                goto multimediaTypeFound;
             }
         }
     }
-    if(!multimediaTypeFound)
+    {
+        korl_shared_const u16* SCENE3D_EXTENSIONS[] = {L".glb"};
+        for(u32 i = 0; i < korl_arraySize(SCENE3D_EXTENSIONS); i++)
+        {
+            const u$ extensionSize = korl_string_sizeUtf16(SCENE3D_EXTENSIONS[i]);
+            if(fileName.size < extensionSize)
+                continue;
+            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, SCENE3D_EXTENSIONS[i], extensionSize))
+            {
+                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
+                graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D;
+                goto multimediaTypeFound;
+            }
+        }
+    }
     {
         korl_shared_const u16* AUDIO_EXTENSIONS[] = {L".wav", L".ogg"};
         for(u32 i = 0; i < korl_arraySize(AUDIO_EXTENSIONS); i++)
@@ -164,23 +178,22 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, AUDIO_EXTENSIONS[i], extensionSize))
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO;
-                multimediaTypeFound           = true;
-                break;
+                goto multimediaTypeFound;
             }
         }
     }
-    if(!multimediaTypeFound)
-        goto returnUnpackedHandle;
-    /* hash the file name, generate our resource handle */
-    unpackedHandle.type     = _KORL_RESOURCE_TYPE_FILE;
-    unpackedHandle.uniqueId = korl_memory_acu16_hash(fileName);
-    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-    {
-        korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);
-        *out_graphicsType = graphicsType;
-    }
+    goto returnUnpackedHandle;
+    multimediaTypeFound:
+        /* hash the file name, generate our resource handle */
+        unpackedHandle.type     = _KORL_RESOURCE_TYPE_FILE;
+        unpackedHandle.uniqueId = korl_memory_acu16_hash(fileName);
+        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
+        {
+            korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);
+            *out_graphicsType = graphicsType;
+        }
     returnUnpackedHandle:
-    return unpackedHandle;
+        return unpackedHandle;
 }
 korl_internal void _korl_resource_resampleAudio(_Korl_Resource* resource)
 {
@@ -253,6 +266,10 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                 createInfoShader.data      = assetData.data;
                 createInfoShader.dataBytes = assetData.dataBytes;
                 resource->subType.graphics.deviceHandle.shaderHandle = korl_vulkan_shader_create(&createInfoShader, 0);
+                break;}
+            case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
+                resource->data = korl_codec_glb_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient, &resource->dataBytes);
+                korl_assert(resource->data);
                 break;}
             default:
                 korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);

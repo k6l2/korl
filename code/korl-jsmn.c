@@ -1,2 +1,2 @@
 #include "korl-jsmn.h"
-#include "jsmn.h"
+#include "jsmn/jsmn.h"
