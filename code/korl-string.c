@@ -348,6 +348,19 @@ korl_internal int korl_string_compareUtf8(const char* a, const char* b)
         return -1;
     return 0;
 }
+korl_internal int korl_string_compareAcu8(acu8 a, acu8 b)
+{
+    if(a.size < b.size)
+        return -1;
+    if(a.size > b.size)
+        return  1;
+    for(u$ i = 0; i < a.size; i++)
+        if(a.data[i] < b.data[i])
+            return -1;
+        else if(a.data[i] > b.data[i])
+            return  1;
+    return 0;
+}
 korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b)
 {
     for(; *a && *b; ++a, ++b)

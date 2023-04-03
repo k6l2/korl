@@ -65,6 +65,7 @@ korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle alloc
  * \return \c 0 if the two strings are equal
  */
 korl_internal int korl_string_compareUtf8(const char* a, const char* b);
+korl_internal int korl_string_compareAcu8(acu8 a, acu8 b);
 /**
  * \return \c 0 if the two strings are equal
  */
