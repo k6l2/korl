@@ -46,8 +46,8 @@ const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Z = { 0,  0, -1};
 typedef union Korl_Math_V4f32
 {
     struct { f32 x, y, z, w; };
+    struct { Korl_Math_V2f32 xy, zw; };
     Korl_Math_V3f32 xyz;
-    Korl_Math_V2f32 xy;
     f32 elements[4];
 } Korl_Math_V4f32;
 const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};

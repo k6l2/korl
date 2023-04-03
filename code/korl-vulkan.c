@@ -1170,13 +1170,14 @@ korl_internal void _korl_vulkan_frameBegin(void)
     scissorDefault.extent = surfaceContext->swapChainImageExtent;
     korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
     korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
-    surfaceContext->drawState.pushConstants.m4f32Model      = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pushConstants.color           = KORL_MATH_V4F32_ONE;// default the model color to white
-    surfaceContext->drawState.uboTransforms.m4f32View       = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.uboTransforms.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pipelineConfigurationCache    = _korl_vulkan_pipeline_default();
-    surfaceContext->drawState.scissor                       = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.texture                       = surfaceContext->defaultTexture;
+    surfaceContext->drawState.pushConstants.vertex.m4f32Model = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pushConstants.vertex.color      = KORL_MATH_V4F32_ONE;// default the model color to white
+    surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){0,0,1,1};
+    surfaceContext->drawState.uboTransforms.m4f32View         = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.uboTransforms.m4f32Projection   = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pipelineConfigurationCache      = _korl_vulkan_pipeline_default();
+    surfaceContext->drawState.scissor                         = surfaceContext->drawState.scissor = scissorDefault;
+    surfaceContext->drawState.texture                         = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->drawState.currentPipeline = KORL_U$_MAX;//KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
@@ -1598,15 +1599,18 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                        ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS]));
     }
     /* create pipeline layout */
-    KORL_ZERO_STACK(VkPushConstantRange, pushConstantRange);
-    pushConstantRange.size       = sizeof(_Korl_Vulkan_DrawPushConstants);
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    KORL_ZERO_STACK_ARRAY(VkPushConstantRange, pushConstantRange, 2);
+    pushConstantRange[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange[0].size       = sizeof(surfaceContext->drawState.pushConstants.vertex);
+    pushConstantRange[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange[1].offset     = sizeof(surfaceContext->drawState.pushConstants.vertex);
+    pushConstantRange[1].size       = sizeof(surfaceContext->drawState.pushConstants.fragment);
     KORL_ZERO_STACK(VkPipelineLayoutCreateInfo, createInfoPipelineLayout);
     createInfoPipelineLayout.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     createInfoPipelineLayout.setLayoutCount         = korl_arraySize(context->descriptorSetLayouts);
     createInfoPipelineLayout.pSetLayouts            = context->descriptorSetLayouts;
-    createInfoPipelineLayout.pushConstantRangeCount = 1;
-    createInfoPipelineLayout.pPushConstantRanges    = &pushConstantRange;
+    createInfoPipelineLayout.pushConstantRangeCount = korl_arraySize(pushConstantRange);
+    createInfoPipelineLayout.pPushConstantRanges    = pushConstantRange;
     _KORL_VULKAN_CHECK(
         vkCreatePipelineLayout(context->device, &createInfoPipelineLayout, context->allocator
                               ,&context->pipelineLayout));
@@ -1976,8 +1980,9 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->drawState.uboTransforms.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
     if(state->model)
     {
-        surfaceContext->drawState.pushConstants.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
-        surfaceContext->drawState.pushConstants.color      = state->model->color;
+        surfaceContext->drawState.pushConstants.vertex.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
+        surfaceContext->drawState.pushConstants.vertex.color      = state->model->color;
+        surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){.xy = state->model->uvAabb.min, .zw = state->model->uvAabb.max};
     }
     if(state->scissor)
     {
@@ -2375,8 +2380,12 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     }
     vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
                       ,VK_SHADER_STAGE_VERTEX_BIT
-                      ,/*offset*/0, sizeof(surfaceContext->drawState.pushConstants)
-                      ,&surfaceContext->drawState.pushConstants);
+                      ,/*offset*/0, sizeof(surfaceContext->drawState.pushConstants.vertex)
+                      ,&surfaceContext->drawState.pushConstants.vertex);
+    vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
+                      ,VK_SHADER_STAGE_FRAGMENT_BIT
+                      ,/*offset*/sizeof(surfaceContext->drawState.pushConstants.vertex), sizeof(surfaceContext->drawState.pushConstants.fragment)
+                      ,&surfaceContext->drawState.pushConstants.fragment);
     vkCmdSetScissor(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                    ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
     vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics

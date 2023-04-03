@@ -111,6 +111,7 @@ typedef struct Korl_Vulkan_DrawState_Model
     Korl_Math_Quaternion rotation;
     Korl_Math_V3f32      scale;
     Korl_Math_V4f32      color;
+    Korl_Math_Aabb2f32   uvAabb;
 } Korl_Vulkan_DrawState_Model;
 typedef struct Korl_Vulkan_DrawState_Scissor
 {

@@ -155,6 +155,7 @@ typedef struct Korl_Gfx_Batch
     f32*                  _vertexPositions;
     Korl_Vulkan_Color4u8* _vertexColors;
     Korl_Math_V2f32*      _vertexUvs;
+    f32                   uvAabbOffset;
     u8                    _instancePositionDimensions;
     f32*                  _instancePositions;
     u32*                  _instanceU32s;// we need a place to store the indices of each glyph in the instanced draw call

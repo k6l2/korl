@@ -142,9 +142,18 @@ KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32
 KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
 typedef struct _Korl_Vulkan_DrawPushConstants
 {
-    Korl_Math_M4f32 m4f32Model;
-    Korl_Math_V4f32 color;
+    struct
+    {
+        Korl_Math_M4f32 m4f32Model;
+        Korl_Math_V4f32 color;// UNORM
+    } vertex;
+    struct
+    {
+        //KORL-ISSUE-000-000-149: vulkan: HACK; uvAabb fragment shader push constant is hacky & very implementation-specific; I would much rather allow the user to be able to configure their own push constants or something
+        Korl_Math_V4f32 uvAabb;// {x,y} => min, {z,w} => max; default = {0,0,1,1}
+    } fragment;
 } _Korl_Vulkan_DrawPushConstants;
+KORL_STATIC_ASSERT(sizeof(_Korl_Vulkan_DrawPushConstants) <= 128);// vulkan spec 42.1 table 53; minimum limit for VkPhysicalDeviceLimits::maxPushConstantsSize
 typedef struct _Korl_Vulkan_DescriptorPool
 {
     VkDescriptorPool vkDescriptorPool;

@@ -1504,6 +1504,14 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
                                          ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
                                          ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
                                          ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
+    if(batch->_vertexUvs)
+    {
+        model.uvAabb = KORL_MATH_AABB2F32_EMPTY;
+        for(u$ i = 0; i < batch->_vertexCount; i++)
+            korl_math_aabb2f32_addPointV2(&model.uvAabb, batch->_vertexUvs[i]);
+        korl_math_v2f32_assignAddScalar     (&model.uvAabb.min, batch->uvAabbOffset);
+        korl_math_v2f32_assignSubtractScalar(&model.uvAabb.max, batch->uvAabbOffset);
+    }
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
     samplers.resourceHandleTexture = batch->_texture;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
