@@ -365,6 +365,11 @@ korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
             return true;
     return false;
 }
+korl_internal Korl_Math_V2f32 korl_math_v2f32_positive(Korl_Math_V2f32 v)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_f32_positive(v.x)
+                                                  ,korl_math_f32_positive(v.y)};
+}
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {
     return sqrtf(korl_math_v3f32_magnitudeSquared(v));

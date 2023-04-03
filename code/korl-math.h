@@ -172,6 +172,7 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_min(Korl_Math_V2f32 vA, Korl_Math_
 korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void);
 korl_internal bool            korl_math_v2f32_hasNan(Korl_Math_V2f32 v);
+korl_internal Korl_Math_V2f32 korl_math_v2f32_positive(Korl_Math_V2f32 v);
 /* V3f32 **********************************************************************/
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
