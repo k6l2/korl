@@ -785,31 +785,39 @@ korl_internal void korl_memory_reportLog(void* reportAddress)
                        ,allocatorType, allocatorMeta->name, heapMetaEnd - heapMeta, allocationMetaEnd - allocationMeta, allocatorMeta->flags);
         for(const _Korl_Memory_ReportMeta_Heap* h = heapMeta; h < heapMetaEnd; h++)
         {
-            korl_log_noMeta(INFO, "║ heap[%llu]: [0x%p ~ 0x%p]", h - heapMeta, h->virtualAddressStart, h->virtualAddressEnd);
-            for(;   ha < allocationMetaEnd 
-                 && ha->allocationAddress >= h->virtualAddressStart 
-                 && ha->allocationAddress <  h->virtualAddressEnd
-                ;ha++)
+            if(allocatorMeta->allocatorType == KORL_MEMORY_ALLOCATOR_TYPE_CRT)
             {
-                const void*const allocAddressEnd = KORL_C_CAST(u8*, ha->allocationAddress) + ha->meta.bytes;
-                const bool lastHeapAllocation =   ha >= allocationMetaEnd - 1
-                                               || (ha+1)->allocationAddress >= h->virtualAddressEnd;
-                korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i, %ws"
-                               ,lastHeapAllocation ? L"└" : L"├"
-                               ,ha->allocationAddress, allocAddressEnd
-                               ,ha->meta.bytes
-                               ,ha->meta.file, ha->meta.line
-                               ,   allocatorMeta->allocatorType == KORL_MEMORY_ALLOCATOR_TYPE_LINEAR 
-                                && 0 == (allocatorMeta->flags & KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME)
-                                ? ha->meta.defragmentState == KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_MANAGED 
-                                  ? L"managed" 
-                                  : ha->meta.defragmentState == KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNMANAGED 
-                                    ? L"UNMANAGED" 
-                                    : L"new"
-                                : L"");
+                korl_log_noMeta(INFO, "║ heap[%llu]: [? ~ ?]", h - heapMeta);
+            }
+            else
+            {
+                korl_log_noMeta(INFO, "║ heap[%llu]: [0x%p ~ 0x%p]", h - heapMeta, h->virtualAddressStart, h->virtualAddressEnd);
+                for(;   ha < allocationMetaEnd 
+                     && ha->allocationAddress >= h->virtualAddressStart 
+                     && ha->allocationAddress <  h->virtualAddressEnd
+                    ;ha++)
+                {
+                    const void*const allocAddressEnd = KORL_C_CAST(u8*, ha->allocationAddress) + ha->meta.bytes;
+                    const bool lastHeapAllocation =   ha >= allocationMetaEnd - 1
+                                                   || (ha+1)->allocationAddress >= h->virtualAddressEnd;
+                    korl_log_noMeta(INFO, "║ %ws [0x%p ~ 0x%p] %llu bytes, %ws:%i, %ws"
+                                   ,lastHeapAllocation ? L"└" : L"├"
+                                   ,ha->allocationAddress, allocAddressEnd
+                                   ,ha->meta.bytes
+                                   ,ha->meta.file, ha->meta.line
+                                   ,   allocatorMeta->allocatorType == KORL_MEMORY_ALLOCATOR_TYPE_LINEAR 
+                                    && 0 == (allocatorMeta->flags & KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME)
+                                    ? ha->meta.defragmentState == KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_MANAGED 
+                                      ? L"managed" 
+                                      : ha->meta.defragmentState == KORL_MEMORY_ALLOCATION_META_DEFRAGMENT_STATE_UNMANAGED 
+                                        ? L"UNMANAGED" 
+                                        : L"new"
+                                    : L"");
+                }
             }
         }
-        korl_assert(ha == allocationMetaEnd);// we should have enumerated over all allocations for this allocator
+        if(allocatorMeta->allocatorType != KORL_MEMORY_ALLOCATOR_TYPE_CRT)
+            korl_assert(ha == allocationMetaEnd);// we should have enumerated over all allocations for this allocator
     }
     korl_log_noMeta(INFO, "╚═════ END of Memory Report ════════════════════════════╝");
 }
