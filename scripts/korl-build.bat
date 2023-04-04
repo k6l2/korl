@@ -90,11 +90,11 @@ rem because when they are loaded into an application module they effectively
 rem become locked on the file system until the debugging application is closed; 
 rem so if we don't do this, we'll just accumulate files forever.
 set "KORL_GAME_SOURCE_BASE_NAME=game"
+rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
 del *%KORL_GAME_SOURCE_BASE_NAME%*.pdb > NUL 2> NUL
 rem // create the async build command //
 set "buildCommand="
 set "buildCommand=%buildCommand% "%KORL_PROJECT_ROOT%\code\%KORL_GAME_SOURCE_BASE_NAME%.cpp""
-rem     Set the VCX0.PDB file name.  Only relevant when used with /Zi
 set "buildCommand=%buildCommand% /std:c++20"
 rem     enable all exception handling code generation
 set "buildCommand=%buildCommand% /EHa"

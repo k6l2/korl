@@ -55,7 +55,7 @@ typedef enum Korl_Clipboard_DataFormat
 /* korl-algorithm interface ***************************************************/
 #define KORL_ALGORITHM_COMPARE(name) int name(const void* a, const void* b)
 typedef KORL_ALGORITHM_COMPARE(fnSig_korl_algorithm_compare);
-#define KORL_ALGORITHM_COMPARE_CONTEXT(name) int name(const void* a, const void* b, const void* context)
+#define KORL_ALGORITHM_COMPARE_CONTEXT(name) int name(const void* a, const void* b, void* context)
 typedef KORL_ALGORITHM_COMPARE_CONTEXT(fnSig_korl_algorithm_compare_context);
 #define KORL_FUNCTION_korl_algorithm_sort_quick(name)                     void  name(void* array, u$ arraySize, u$ arrayStride, fnSig_korl_algorithm_compare* compare)
 #define KORL_FUNCTION_korl_algorithm_sort_quick_context(name)             void  name(void* array, u$ arraySize, u$ arrayStride, fnSig_korl_algorithm_compare_context* compare, void* context)

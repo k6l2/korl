@@ -12,7 +12,7 @@
 #include "korl-time.h"
 #include "korl-resource.h"
 #if defined(KORL_PLATFORM_WINDOWS)
-#include <vulkan/vulkan_win32.h>
+    #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
 //#define _KORL_VULKAN_LOG_REPORTS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS            0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
@@ -1250,12 +1250,12 @@ korl_internal void korl_vulkan_construct(void)
     //KORL-ISSUE-000-000-024: robustness: cross-check this list of extensions
     const char* enabledExtensions[] = 
         { VK_KHR_SURFACE_EXTENSION_NAME
-#if defined(KORL_PLATFORM_WINDOWS)
+        #if defined(KORL_PLATFORM_WINDOWS)
         , VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-#endif// defined(KORL_PLATFORM_WINDOWS)
-#if KORL_DEBUG
+        #endif// defined(KORL_PLATFORM_WINDOWS)
+        #if KORL_DEBUG
         , VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-#endif// KORL_DEBUG
+        #endif// KORL_DEBUG
         };
     KORL_ZERO_STACK(VkApplicationInfo, applicationInfo);
     applicationInfo.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
