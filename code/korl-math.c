@@ -829,6 +829,18 @@ korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y,
     result.max.y = KORL_MATH_MAX(p0y, p1y);
     return result;
 }
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPointsV2(const Korl_Math_V2f32* points, u$ pointsSize)
+{
+    Korl_Math_Aabb2f32 result = KORL_MATH_AABB2F32_EMPTY;
+    for(u$ i = 0; i < pointsSize; i++)
+    {
+        KORL_MATH_ASSIGN_CLAMP_MAX(result.min.x, points[i].x);
+        KORL_MATH_ASSIGN_CLAMP_MAX(result.min.y, points[i].y);
+        KORL_MATH_ASSIGN_CLAMP_MIN(result.max.x, points[i].x);
+        KORL_MATH_ASSIGN_CLAMP_MIN(result.max.y, points[i].y);
+    }
+    return result;
+}
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY)
 {
     const Korl_Math_V2f32 expandV2 = {expandX, expandY};

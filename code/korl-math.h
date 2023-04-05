@@ -245,6 +245,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(const Korl_Math_V3f32*const
 korl_internal bool korl_math_m4f32_isNearEqual(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB);
 /* Aabb2f32 *******************************************************************/
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y);
+korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPointsV2(const Korl_Math_V2f32* points, u$ pointsSize);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpandedV2(Korl_Math_V2f32 v, f32 expandX, f32 expandY);
 korl_internal void korl_math_aabb2f32_expand(Korl_Math_Aabb2f32*const aabb, f32 expandXY);
