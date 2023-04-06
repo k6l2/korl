@@ -21,7 +21,7 @@
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION          0
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR             1
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV                2
-#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 3
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 3// @TODO: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_UINT     4
 korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
     { "VK_LAYER_KHRONOS_validation"
