@@ -208,6 +208,12 @@ korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_Wich
     const f32 rangeMin = KORL_MATH_MIN(range0, range1);
     return rangeMin + (rangeMax - rangeMin)*korl_math_rng_wichmannHill_f32_0_1(context);
 }
+korl_internal Korl_Math_V2u32 korl_math_v2u32_addScalar(Korl_Math_V2u32 v, u32 scalar)
+{
+    v.elements[0] += scalar;
+    v.elements[1] += scalar;
+    return v;
+}
 korl_internal Korl_Math_V2u32 korl_math_v2u32_divide(Korl_Math_V2u32 vA, Korl_Math_V2u32 vB)
 {
     vA.elements[0] /= vB.elements[0];
@@ -951,6 +957,10 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aab
     return result;
 }
 #ifdef __cplusplus
+korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar)
+{
+    return korl_math_v2u32_addScalar(v, scalar);
+}
 korl_internal Korl_Math_V2u32 operator/(Korl_Math_V2u32 vNumerator, Korl_Math_V2u32 vDenominator)
 {
     return korl_math_v2u32_divide(vNumerator, vDenominator);

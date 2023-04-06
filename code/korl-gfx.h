@@ -69,6 +69,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircl
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatchCircleSector);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTriangles);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBatchQuadsTextured);
+korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_createBatchQuadsTexturedColored);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines);
 /** 
  * \param assetNameFont If this value is \c NULL , a default internal font asset 

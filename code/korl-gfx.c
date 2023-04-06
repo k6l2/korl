@@ -1551,6 +1551,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     blend.factorAlphaTarget = batch->blend.alpha.factorTarget;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
     programs.resourceHandleShaderFragment = batch->resourceHandleShaderFragment;
+    programs.resourceHandleShaderVertex   = batch->resourceHandleShaderVertex;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.features       = &features;
     drawState.blend          = &blend;
@@ -1746,7 +1747,6 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBat
     const u$ totalBytes =  sizeof(Korl_Gfx_Batch)
                          + 6 * quadCount * sizeof(Korl_Vulkan_VertexIndex)
                          + 4 * quadCount * _KORL_GFX_POSITION_DIMENSIONS * sizeof(f32)
-                        //  + 3 * triangleCount * sizeof(Korl_Vulkan_Color4u8)
                          + 4 * quadCount * sizeof(Korl_Math_V2f32)/*UVs*/;
     /* allocate the memory */
     Korl_Gfx_Batch*const result = korl_allocate(allocatorHandle, totalBytes);
@@ -1763,8 +1763,44 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBat
     result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
     result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
     result->_vertexPositions          = KORL_C_CAST(f32*            , KORL_C_CAST(u8*, result->_vertexIndices)   + 6 * quadCount * sizeof(Korl_Vulkan_VertexIndex));
-    // result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 3*triangleCount*result->_vertexPositionDimensions*sizeof(f32));
     result->_vertexUvs                = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, result->_vertexPositions) + 4 * quadCount * _KORL_GFX_POSITION_DIMENSIONS * sizeof(f32));
+    /* we can only initialize vertex indices here, as the user must specify 
+        vertex data manually via `korl_gfx_batch_quadsTextured_setQuad` for example */
+    for(u32 i = 0; i < quadCount; i++)
+        for(u32 j = 0; j < korl_arraySize(_KORL_GFX_TRI_QUAD_INDICES); j++)
+            result->_vertexIndices[i * korl_arraySize(_KORL_GFX_TRI_QUAD_INDICES) + j] = korl_vulkan_safeCast_u$_to_vertexIndex(_KORL_GFX_TRI_QUAD_INDICES[j] + (4 * i));// if this cast fails, we have too many quads; u16 index => maximum of 65'535 / 6 == 10922 quads
+    /* return the batch */
+    korl_time_probeStop(create_batch_quads_textured);
+    return result;
+}
+korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_createBatchQuadsTexturedColored)
+{
+    korl_assert(quadCount > 0);
+    korl_assert(quadCount <= KORL_U16_MAX / 6);// ensure that we can store the required vertex index count
+    korl_time_probeStart(create_batch_quads_textured);
+    /* calculate required amount of memory for the batch */
+    const u$ totalBytes =  sizeof(Korl_Gfx_Batch)
+                         + 6 * quadCount * sizeof(Korl_Vulkan_VertexIndex)
+                         + 4 * quadCount * _KORL_GFX_POSITION_DIMENSIONS * sizeof(f32)
+                         + 4 * quadCount * sizeof(Korl_Vulkan_Color4u8)
+                         + 4 * quadCount * sizeof(Korl_Math_V2f32)/*UVs*/;
+    /* allocate the memory */
+    Korl_Gfx_Batch*const result = korl_allocate(allocatorHandle, totalBytes);
+    /* initialize the batch struct */
+    result->allocatorHandle           = allocatorHandle;
+    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
+    result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelColor                = KORL_COLOR4U8_WHITE;
+    result->_vertexIndexCount         = 6 * quadCount;
+    result->_vertexCount              = 4 * quadCount;
+    result->blend                     = KORL_GFX_BLEND_ALPHA;
+    result->_texture                  = resourceHandleTexture;
+    result->_vertexPositionDimensions = _KORL_GFX_POSITION_DIMENSIONS;
+    result->_vertexIndices            = KORL_C_CAST(Korl_Vulkan_VertexIndex*, result + 1);
+    result->_vertexPositions          = KORL_C_CAST(f32*                 , KORL_C_CAST(u8*, result->_vertexIndices)   + 6 * quadCount * sizeof(Korl_Vulkan_VertexIndex));
+    result->_vertexColors             = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result->_vertexPositions) + 4 * quadCount * _KORL_GFX_POSITION_DIMENSIONS * sizeof(f32));
+    result->_vertexUvs                = KORL_C_CAST(Korl_Math_V2f32*     , KORL_C_CAST(u8*, result->_vertexColors)    + 4 * quadCount * sizeof(Korl_Vulkan_Color4u8));
     /* we can only initialize vertex indices here, as the user must specify 
         vertex data manually via `korl_gfx_batch_quadsTextured_setQuad` for example */
     for(u32 i = 0; i < quadCount; i++)
@@ -2022,6 +2058,14 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(korl_gfx_batch_quad
     context->_vertexUvs[(quadIndex * 4) + 1] = aabbRawUvs.max;
     context->_vertexUvs[(quadIndex * 4) + 2] = (Korl_Math_V2f32){aabbRawUvs.max.x, aabbRawUvs.min.y};
     context->_vertexUvs[(quadIndex * 4) + 3] = aabbRawUvs.min;
+    if(colors || colorsSize)
+    {
+        korl_assert(colors);
+        korl_assert(colorsSize);
+        korl_assert(context->_vertexColors);
+        for(u8 i = 0; i < 4; i++)
+            context->_vertexColors[(quadIndex * 4) + i] = colors[i % colorsSize];
+    }
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(korl_gfx_batch_quadsTextured_pixel_to_normal)
 {
