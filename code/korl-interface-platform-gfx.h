@@ -221,6 +221,7 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_raw(name)               void                  name(Korl_Gfx_Batch*const context, Korl_Math_Aabb2f32 aabbRawUvs)
 #define KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel_to_normal(name)   void                  name(Korl_Gfx_Batch*const context, Korl_Math_Aabb2f32 pixelSpaceAabb)
 #define KORL_FUNCTION_korl_gfx_batchCircleSetColor(name)                     void                  name(Korl_Gfx_Batch*const context, Korl_Vulkan_Color4u8 color)
+#define KORL_FUNCTION_korl_gfx_batch_quadsTexturedColored_set(name)          void                  name(Korl_Gfx_Batch*const context, u32 quadIndex, Korl_Math_V2f32 positions[4], Korl_Math_Aabb2f32 aabbRawUvs, const Korl_Vulkan_Color4u8 colors[4], u8 colorsSize)
 #define KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(name)                 void                  name(Korl_Gfx_Batch*const context, u32 quadIndex, Korl_Math_V2f32 size, Korl_Math_V2f32 positionMinimum, Korl_Math_Aabb2f32 aabbRawUvs, const Korl_Vulkan_Color4u8 colors[4], u8 colorsSize)
 #define KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(name)     void                  name(Korl_Gfx_Batch*const context, u32 quadIndex, Korl_Math_V2f32 size, Korl_Math_V2f32 positionMinimum, Korl_Math_Aabb2f32 pixelSpaceAabb)
 /** NOTE: this API is stupid; during the inevitable re-write of korl-gfx, 
