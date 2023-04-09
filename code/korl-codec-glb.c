@@ -25,6 +25,13 @@ typedef struct _Korl_Codec_Glb_Chunk
     const u32 currentSceneIndex = objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (scenesArrayObjectStackOffset)].parsedChildren;\
     korl_assert(!context || currentSceneIndex < context->scenes.size);\
     Korl_Codec_Gltf_Scene*const currentScene = context ? KORL_C_CAST(Korl_Codec_Gltf_Scene*, KORL_C_CAST(u8*, context) + context->scenes.byteOffset) + currentSceneIndex : NULL;
+#define _korl_codec_glb_decodeChunkJson_processPass_getCurrentNode(nodesArrayObjectStackOffset) \
+    /* get the current scenes array index by looking up the object stack for GLTF_OBJECT_NODES_ARRAY & checking its `parsedChildren` */\
+    korl_assert(KORL_MEMORY_POOL_SIZE(objectStack) >= (nodesArrayObjectStackOffset));\
+    korl_assert(objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (nodesArrayObjectStackOffset)].type == GLTF_OBJECT_NODES_ARRAY);\
+    const u32 currentNodeIndex = objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (nodesArrayObjectStackOffset)].parsedChildren;\
+    korl_assert(!context || currentNodeIndex < context->nodes.size);\
+    Korl_Codec_Gltf_Node*const currentNode = context ? KORL_C_CAST(Korl_Codec_Gltf_Node*, KORL_C_CAST(u8*, context) + context->nodes.byteOffset) + currentNodeIndex : NULL;
 #define _korl_codec_glb_decodeChunkJson_processPass_getString(rawUtf8) \
     if(context) \
         (rawUtf8).byteOffset = korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context));\
@@ -46,6 +53,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
         ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME
         ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES
         ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY
+        ,GLTF_OBJECT_NODES
+        ,GLTF_OBJECT_NODES_ARRAY
+        ,GLTF_OBJECT_NODES_ARRAY_ELEMENT
+        ,GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH
+        ,GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME
     } Gltf_Object_Type;
     typedef struct Gltf_Object
     {
@@ -77,6 +89,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     objectType = GLTF_OBJECT_SCENE;
                 else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scenes")))
                     objectType = GLTF_OBJECT_SCENES;
+                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
+                    objectType = GLTF_OBJECT_NODES;
             }
             else
                 switch(object->type)
@@ -112,6 +126,22 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     _korl_codec_glb_decodeChunkJson_processPass_getCurrentScene(3);
                     _korl_codec_glb_decodeChunkJson_processPass_allocateArray(context, currentScene->nodes, u32);
                     break;}
+                case GLTF_OBJECT_NODES:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = GLTF_OBJECT_NODES_ARRAY;
+                    _korl_codec_glb_decodeChunkJson_processPass_allocateArray(context, context->nodes, Korl_Codec_Gltf_Node);
+                    break;}
+                case GLTF_OBJECT_NODES_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = GLTF_OBJECT_NODES_ARRAY_ELEMENT;
+                    break;}
+                case GLTF_OBJECT_NODES_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                        objectType = GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME;
+                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mesh")))
+                        objectType = GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH;
+                    break;}
                 default: break;
                 }
             /* now we can push it onto the stack */
@@ -141,6 +171,14 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     u32*const nodes = KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + currentScene->nodes.byteOffset) + currentNodeIndex;
                     nodes[currentNodeIndex] = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
                 }
+                break;}
+            case GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME:{
+                _korl_codec_glb_decodeChunkJson_processPass_getCurrentNode(3);
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentNode->rawUtf8Name);
+                break;}
+            case GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH:{
+                _korl_codec_glb_decodeChunkJson_processPass_getCurrentNode(3);
+                if(currentNode) currentNode->mesh = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));b
                 break;}
             default:{break;}
             }

@@ -1,18 +1,5 @@
 #pragma once
 #include "korl-globalDefines.h"
-typedef struct Korl_Codec_Gltf_Scene
-{
-    struct
-    {
-        u32 byteOffset;
-        u32 size;
-    } rawUtf8Name;
-    struct
-    {
-        u32 byteOffset;
-        u32 size;
-    } nodes;
-} Korl_Codec_Gltf_Scene;
 typedef struct Korl_Codec_Gltf
 {
     struct
@@ -29,5 +16,32 @@ typedef struct Korl_Codec_Gltf
         u32 byteOffset;
         u32 size;
     } scenes;
+    struct
+    {
+        u32 byteOffset;
+        u32 size;
+    } nodes;
 } Korl_Codec_Gltf;
+typedef struct Korl_Codec_Gltf_Scene
+{
+    struct
+    {
+        u32 byteOffset;
+        u32 size;
+    } rawUtf8Name;
+    struct
+    {
+        u32 byteOffset;
+        u32 size;
+    } nodes;
+} Korl_Codec_Gltf_Scene;
+typedef struct Korl_Codec_Gltf_Node
+{
+    u32 mesh;
+    struct
+    {
+        u32 byteOffset;
+        u32 size;
+    } rawUtf8Name;
+} Korl_Codec_Gltf_Node;
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
