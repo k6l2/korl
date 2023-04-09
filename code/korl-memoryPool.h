@@ -27,6 +27,9 @@ typedef u32 Korl_MemoryPool_Size;
 #define KORL_MEMORY_POOL_LAST(name) \
     ( korl_assert(name##_korlMemoryPoolSize > 0)\
     , (name)[name##_korlMemoryPoolSize - 1])
+#define KORL_MEMORY_POOL_LAST_POINTER(name) \
+    ( korl_assert(name##_korlMemoryPoolSize > 0)\
+    , (name) + (name##_korlMemoryPoolSize) - 1)
 #define KORL_MEMORY_POOL_POP(name) \
     ( korl_assert(name##_korlMemoryPoolSize > 0)\
     , name##_korlMemoryPoolSize--\

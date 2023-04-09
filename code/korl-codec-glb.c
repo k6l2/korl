@@ -2,12 +2,22 @@
 #include "korl-jsmn.h"
 #include "korl-memoryPool.h"
 #include "korl-string.h"
+#include "korl-interface-platform.h"
+#include "korl-stb-ds.h"
+#include "korl-checkCast.h"
 typedef struct _Korl_Codec_Glb_Chunk
 {
     u32       bytes;
     u32       type;
     const u8* data;
 } _Korl_Codec_Glb_Chunk;
+korl_internal void _korl_codec_gltf_scene_initialize(Korl_Codec_Gltf_Scene* context, Korl_Memory_AllocatorHandle resultAllocator)
+{
+}
+korl_internal void _korl_codec_gltf_scene_release(Korl_Codec_Gltf_Scene* context, Korl_Memory_AllocatorHandle resultAllocator)
+{
+}
+korl_internal Korl_Codec_Gltf* _korl_codec_gltf_create(Korl_Memory_AllocatorHandle resultAllocator);// forward declare so I can keep the implementation next to the `free` implementation
 korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_Chunk*const chunk, Korl_Memory_AllocatorHandle resultAllocator)
 {
     Korl_Codec_Gltf* result = NULL;
@@ -26,13 +36,19 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
     resultJsmnParse = jsmn_parse(&jasmine, KORL_C_CAST(const char*, chunk->data), chunk->bytes, jsonTokens, jsonTokensSize);
     korl_assert(korl_checkCast_i$_to_u32(resultJsmnParse) == jsonTokensSize);
     /* process each JSON token to decode the GLTF data */
-    result = korl_allocate(resultAllocator, sizeof(*result));
-    result->allocator = resultAllocator;
+    result = _korl_codec_gltf_create(resultAllocator);
     typedef enum Gltf_Object_Type
         {GLTF_OBJECT_UNKNOWN
         ,GLTF_OBJECT_ASSET
-        ,GLTF_OBJECT_ASSET_VERSION
+        ,GLTF_OBJECT_ASSET_OBJECT
+        ,GLTF_OBJECT_ASSET_OBJECT_VERSION
         ,GLTF_OBJECT_SCENE
+        ,GLTF_OBJECT_SCENES
+        ,GLTF_OBJECT_SCENES_ARRAY
+        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT
+        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME
+        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES
+        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY
     } Gltf_Object_Type;
     typedef struct Gltf_Object
     {
@@ -48,45 +64,78 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
     for(const jsmntok_t* jsonToken = jsonTokens + 1; jsonToken < jsonTokensEnd; jsonToken++)
     {
         const acu8 tokenRawUtf8 = {.data = chunk->data + jsonToken->start, .size = jsonToken->end - jsonToken->start};
-        Gltf_Object_Type objectTypeParent = GLTF_OBJECT_UNKNOWN;
-        for(i32 i = KORL_MEMORY_POOL_SIZE(objectStack) - 1; i >= 0; i--)
-            if(objectStack[i].type != objectTypeParent)
-            {
-                objectTypeParent = objectStack[i].type;
-                break;
-            }
+        korl_assert(!KORL_MEMORY_POOL_ISEMPTY(objectStack));
+        Gltf_Object*const object = KORL_MEMORY_POOL_LAST_POINTER(objectStack);
         if(jsonToken->size)// this token has children, and so it _may_ be a GLTF object
         {
             /* this JSON token has children to process; determine what type of 
                 GLTF object it is based on our current object stack */
             Gltf_Object_Type objectType = GLTF_OBJECT_UNKNOWN;
-            if(jsonToken->type == JSMN_STRING)
+            if(KORL_MEMORY_POOL_SIZE(objectStack) == 1)
             {
-                if(KORL_MEMORY_POOL_SIZE(objectStack) == 1)
-                {
-                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("asset")))
-                        objectType = GLTF_OBJECT_ASSET;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scene")))
-                        objectType = GLTF_OBJECT_SCENE;
-                }
-                else if(objectTypeParent == GLTF_OBJECT_ASSET)
-                {
-                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("version")))
-                        objectType = GLTF_OBJECT_ASSET_VERSION;
-                }
+                korl_assert(jsonToken->type == JSMN_STRING);// top-level tokens of the root JSON object _must_ be key strings
+                if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("asset")))
+                    objectType = GLTF_OBJECT_ASSET;
+                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scene")))
+                    objectType = GLTF_OBJECT_SCENE;
+                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scenes")))
+                    objectType = GLTF_OBJECT_SCENES;
             }
+            else
+                switch(object->type)
+                {
+                case GLTF_OBJECT_ASSET:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = GLTF_OBJECT_ASSET_OBJECT;
+                    break;}
+                case GLTF_OBJECT_ASSET_OBJECT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("version")))
+                        objectType = GLTF_OBJECT_ASSET_OBJECT_VERSION;
+                    break;}
+                case GLTF_OBJECT_SCENES:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = GLTF_OBJECT_SCENES_ARRAY;
+                    result->scenes.arraySize = korl_checkCast_i$_to_u32(jsonToken->size);
+                    result->scenes.array     = korl_allocate(resultAllocator, result->scenes.arraySize * sizeof(*result->scenes.array));
+                    break;}
+                case GLTF_OBJECT_SCENES_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT;
+                    break;}
+                case GLTF_OBJECT_SCENES_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                        objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME;
+                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
+                        objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES;
+                    break;}
+                case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY;
+                    //@TODO: initialize the current scene's `nodes` array to the appropriate size
+                    break;}
+                default: break;
+                }
             /* now we can push it onto the stack */
             *KORL_MEMORY_POOL_ADD(objectStack) = (Gltf_Object){.type = objectType, .token = jsonToken};
         }
         else// otherwise this must be a property value token
         {
-            switch(objectTypeParent)
+            switch(object->type)
             {
-            case GLTF_OBJECT_ASSET_VERSION:{
+            case GLTF_OBJECT_ASSET_OBJECT_VERSION:{
                 korl_jsmn_getString(chunk->data, jsonToken, result->asset.versionRawUtf8, korl_arraySize(result->asset.versionRawUtf8));
                 break;}
             case GLTF_OBJECT_SCENE:{
                 result->scene = KORL_C_CAST(i32, korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME:{
+                /* get the current scenes array index by looking up the object stack for GLTF_OBJECT_SCENES_ARRAY & checking its `parsedChildren` */
+                //@TODO: set the current scene's name
+                break;}
+            case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY:{
+                //@TODO: set the current scene's current node's index value
                 break;}
             default:{break;}
             }
@@ -139,6 +188,19 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
     cleanUp_returnResult:
         korl_free(resultAllocator, jsonTokens);
         return result;
+}
+korl_internal Korl_Codec_Gltf* _korl_codec_gltf_create(Korl_Memory_AllocatorHandle resultAllocator)
+{
+    Korl_Codec_Gltf* result = korl_allocate(resultAllocator, sizeof(*result));
+    result->allocator = resultAllocator;
+    return result;
+}
+korl_internal void korl_codec_gltf_free(Korl_Codec_Gltf* context)
+{
+    for(u32 i = 0; i < context->scenes.arraySize; i++)
+        _korl_codec_gltf_scene_release(context->scenes.array + i, context->allocator);
+    korl_free(context->allocator, context->scenes.array);
+    korl_free(context->allocator, context);
 }
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator)
 {

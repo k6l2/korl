@@ -108,20 +108,34 @@ korl_internal Korl_Resource_Handle _korl_resource_handle_pack(_Korl_Resource_Han
 korl_internal bool _korl_resource_isLoaded(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
 {
     if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-        if(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER)
-            return 0 != resource->subType.graphics.subType.shader.handle;
+        switch(resource->subType.graphics.type)
+        {
+        case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
+            return 0 != resource->subType.graphics.subType.shader.handle;}
+        case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
+            return resource->subType.graphics.subType.scene3d.gltf;}
+        default: break;
+        }
     return resource->data;
 }
 korl_internal void _korl_resource_unload(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-        if(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER)
+    {
+        switch(resource->subType.graphics.type)
         {
+        case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
             korl_vulkan_shader_destroy(resource->subType.graphics.subType.shader.handle);
             resource->subType.graphics.subType.shader.handle = 0;
-            return;
+            break;}
+        case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
+            korl_codec_gltf_free(resource->subType.graphics.subType.scene3d.gltf);
+            resource->subType.graphics.subType.scene3d.gltf = NULL;
+            break;}
+        default: break;
         }
+    }
     korl_free(context->allocatorHandleTransient, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
     resource->data      = NULL;
     resource->dataBytes = 0;
