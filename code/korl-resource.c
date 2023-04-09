@@ -130,7 +130,7 @@ korl_internal void _korl_resource_unload(_Korl_Resource*const resource, const _K
             resource->subType.graphics.subType.shader.handle = 0;
             break;}
         case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
-            korl_codec_gltf_free(resource->subType.graphics.subType.scene3d.gltf);
+            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.gltf);
             resource->subType.graphics.subType.scene3d.gltf = NULL;
             break;}
         default: break;

@@ -11,32 +11,9 @@ typedef struct _Korl_Codec_Glb_Chunk
     u32       type;
     const u8* data;
 } _Korl_Codec_Glb_Chunk;
-korl_internal void _korl_codec_gltf_scene_initialize(Korl_Codec_Gltf_Scene* context, Korl_Memory_AllocatorHandle resultAllocator)
+korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Chunk*const chunk, const jsmntok_t*const jsonTokens, u32 jsonTokensSize, Korl_Codec_Gltf*const context)
 {
-}
-korl_internal void _korl_codec_gltf_scene_release(Korl_Codec_Gltf_Scene* context, Korl_Memory_AllocatorHandle resultAllocator)
-{
-}
-korl_internal Korl_Codec_Gltf* _korl_codec_gltf_create(Korl_Memory_AllocatorHandle resultAllocator);// forward declare so I can keep the implementation next to the `free` implementation
-korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_Chunk*const chunk, Korl_Memory_AllocatorHandle resultAllocator)
-{
-    Korl_Codec_Gltf* result = NULL;
-    /* parse the entire JSON chunk */
-    KORL_ZERO_STACK(jsmn_parser, jasmine);
-    jsmn_init(&jasmine);
-    int resultJsmnParse = jsmn_parse(&jasmine, KORL_C_CAST(const char*, chunk->data), chunk->bytes, NULL, 0);
-    if(resultJsmnParse <= 0)
-    {
-        korl_log(ERROR, "jsmn_parse failed: %i", resultJsmnParse);
-        return NULL;
-    }
-    const u32  jsonTokensSize = korl_checkCast_i$_to_u32(resultJsmnParse);
-    jsmntok_t* jsonTokens     = korl_dirtyAllocate(resultAllocator, jsonTokensSize * sizeof(*jsonTokens));
-    jsmn_init(&jasmine);
-    resultJsmnParse = jsmn_parse(&jasmine, KORL_C_CAST(const char*, chunk->data), chunk->bytes, jsonTokens, jsonTokensSize);
-    korl_assert(korl_checkCast_i$_to_u32(resultJsmnParse) == jsonTokensSize);
-    /* process each JSON token to decode the GLTF data */
-    result = _korl_codec_gltf_create(resultAllocator);
+    u8* contextByteNext = KORL_C_CAST(u8*, context + 1);
     typedef enum Gltf_Object_Type
         {GLTF_OBJECT_UNKNOWN
         ,GLTF_OBJECT_ASSET
@@ -96,8 +73,8 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
                 case GLTF_OBJECT_SCENES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = GLTF_OBJECT_SCENES_ARRAY;
-                    result->scenes.arraySize = korl_checkCast_i$_to_u32(jsonToken->size);
-                    result->scenes.array     = korl_allocate(resultAllocator, result->scenes.arraySize * sizeof(*result->scenes.array));
+                    // result->scenes.arraySize = korl_checkCast_i$_to_u32(jsonToken->size);
+                    // result->scenes.array     = korl_allocate(resultAllocator, result->scenes.arraySize * sizeof(*result->scenes.array));
                     break;}
                 case GLTF_OBJECT_SCENES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -125,10 +102,12 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
             switch(object->type)
             {
             case GLTF_OBJECT_ASSET_OBJECT_VERSION:{
-                korl_jsmn_getString(chunk->data, jsonToken, result->asset.versionRawUtf8, korl_arraySize(result->asset.versionRawUtf8));
+                if(context) context->asset.byteOffsetRawUtf8Version = korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context));
+                contextByteNext += korl_jsmn_getString(chunk->data, jsonToken, context ? contextByteNext : NULL);
+                if(context) context->asset.byteOffsetRawUtf8VersionEnd = korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context));
                 break;}
             case GLTF_OBJECT_SCENE:{
-                result->scene = KORL_C_CAST(i32, korl_jsmn_getF32(chunk->data, jsonToken));
+                if(context) context->scene = KORL_C_CAST(i32, korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME:{
                 /* get the current scenes array index by looking up the object stack for GLTF_OBJECT_SCENES_ARRAY & checking its `parsedChildren` */
@@ -183,24 +162,33 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
         const u$ jsonTokenSize = jsonToken->end - jsonToken->start;
         korl_log(VERBOSE, "jsonToken: %hs \"%.*hs\" [%i]", typeString, jsonTokenSize, chunk->data + jsonToken->start, jsonToken->size);
         #endif
-        //@TODO
     }
+    return korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context));
+}
+korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_Chunk*const chunk, Korl_Memory_AllocatorHandle resultAllocator)
+{
+    Korl_Codec_Gltf* result = NULL;
+    /* parse the entire JSON chunk */
+    KORL_ZERO_STACK(jsmn_parser, jasmine);
+    jsmn_init(&jasmine);
+    int resultJsmnParse = jsmn_parse(&jasmine, KORL_C_CAST(const char*, chunk->data), chunk->bytes, NULL, 0);
+    if(resultJsmnParse <= 0)
+    {
+        korl_log(ERROR, "jsmn_parse failed: %i", resultJsmnParse);
+        return NULL;
+    }
+    const u32  jsonTokensSize = korl_checkCast_i$_to_u32(resultJsmnParse);
+    jsmntok_t* jsonTokens     = korl_dirtyAllocate(resultAllocator, jsonTokensSize * sizeof(*jsonTokens));
+    jsmn_init(&jasmine);
+    resultJsmnParse = jsmn_parse(&jasmine, KORL_C_CAST(const char*, chunk->data), chunk->bytes, jsonTokens, jsonTokensSize);
+    korl_assert(korl_checkCast_i$_to_u32(resultJsmnParse) == jsonTokensSize);
+    /* process each JSON token to decode the GLTF data */
+    const u32 bytesRequired = _korl_codec_glb_decodeChunkJson_processPass(chunk, jsonTokens, jsonTokensSize, NULL);
+    result = korl_allocate(resultAllocator, bytesRequired);
+    _korl_codec_glb_decodeChunkJson_processPass(chunk, jsonTokens, jsonTokensSize, result);
     cleanUp_returnResult:
         korl_free(resultAllocator, jsonTokens);
         return result;
-}
-korl_internal Korl_Codec_Gltf* _korl_codec_gltf_create(Korl_Memory_AllocatorHandle resultAllocator)
-{
-    Korl_Codec_Gltf* result = korl_allocate(resultAllocator, sizeof(*result));
-    result->allocator = resultAllocator;
-    return result;
-}
-korl_internal void korl_codec_gltf_free(Korl_Codec_Gltf* context)
-{
-    for(u32 i = 0; i < context->scenes.arraySize; i++)
-        _korl_codec_gltf_scene_release(context->scenes.array + i, context->allocator);
-    korl_free(context->allocator, context->scenes.array);
-    korl_free(context->allocator, context);
 }
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator)
 {
