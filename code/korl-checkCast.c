@@ -91,6 +91,12 @@ korl_internal f32 korl_checkCast_i$_to_f32(i$ x)
     korl_assert(KORL_C_CAST(i$, result) == x);
     return result;
 }
+korl_internal u32 korl_checkCast_f32_to_u32(f32 x)
+{
+    const u32 result = KORL_C_CAST(u32, x);
+    korl_assert(KORL_C_CAST(f32, result) == x);
+    return result;
+}
 korl_internal wchar_t* korl_checkCast_pu16_to_pwchar(u16* x)
 {
     wchar_t*const result = KORL_C_CAST(wchar_t*, x);
