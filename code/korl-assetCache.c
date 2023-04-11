@@ -18,7 +18,8 @@ typedef enum _Korl_AssetCache_AssetState
 } _Korl_AssetCache_AssetState;
 typedef enum _Korl_AssetCache_AssetFlags
     { _KORL_ASSET_CACHE_ASSET_FLAGS_NONE                 = 0
-    , _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED = 1 << 0 // used to prevent log spam for asset hot-reload warning conditions
+    , _KORL_ASSET_CACHE_ASSET_FLAG_OUT_OF_DATE           = 1 << 0 // raised when the query to `korl_file_getDateStampLastWriteFileName` yields a date stamp that is more recent than the asset's `dateStampLastWrite` member
+    , _KORL_ASSET_CACHE_ASSET_FLAG_RELOAD_WARNING_ISSUED = 1 << 1 // used to prevent log spam for asset hot-reload warning conditions
 } _Korl_AssetCache_AssetFlags;
 typedef struct _Korl_AssetCache_Asset
 {
@@ -102,11 +103,9 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
                     goto returnLoadedData;
                 }
                 else
-                {
                     /* I guess we should just close the file & attempt to reload 
                         the asset next time? */
                     korl_file_close(&(asset->fileDescriptor));
-                }
             }
         }
         else
@@ -116,8 +115,7 @@ korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get)
         }
         break;}
     case _KORL_ASSET_CACHE_ASSET_STATE_PENDING:{
-        const Korl_File_GetAsyncIoResult asyncIoResult = 
-            korl_file_getAsyncIoResult(&asset->asyncIoHandle, !asyncLoad);
+        const Korl_File_GetAsyncIoResult asyncIoResult = korl_file_getAsyncIoResult(&asset->asyncIoHandle, !asyncLoad);
         switch(asyncIoResult)
         {
         case KORL_FILE_GET_ASYNC_IO_RESULT_DONE:{
@@ -157,8 +155,7 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
         _Korl_AssetCache_Asset*const asset = &(context->stbDaAssets[a]);
         if(asset->state == _KORL_ASSET_CACHE_ASSET_STATE_RELOADING)
         {
-            const Korl_File_GetAsyncIoResult asyncIoResult = 
-                korl_file_getAsyncIoResult(&asset->asyncIoHandle, false/*don't block*/);
+            const Korl_File_GetAsyncIoResult asyncIoResult = korl_file_getAsyncIoResult(&asset->asyncIoHandle, false/*don't block*/);
             switch(asyncIoResult)
             {
             case KORL_FILE_GET_ASYNC_IO_RESULT_DONE:{
@@ -183,19 +180,20 @@ korl_internal void korl_assetCache_checkAssetObsolescence(fnSig_korl_assetCache_
         }
         else if(asset->state != _KORL_ASSET_CACHE_ASSET_STATE_LOADED)
             continue;
-        if(!assetChangesDetected)
+        if(!assetChangesDetected && !(asset->flags & _KORL_ASSET_CACHE_ASSET_FLAG_OUT_OF_DATE))
             continue;
         const wchar_t*const rawUtf16AssetName = string_getRawUtf16(&asset->name);
         KorlPlatformDateStamp dateStampLatestFileWrite;
-        if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
-                                                      rawUtf16AssetName, &dateStampLatestFileWrite)
+        if(   korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY
+                                                     ,rawUtf16AssetName, &dateStampLatestFileWrite)
            && KORL_TIME_DATESTAMP_COMPARE_RESULT_FIRST_TIME_EARLIER == korl_time_dateStampCompare(asset->dateStampLastWrite, dateStampLatestFileWrite))
         {
+            asset->flags |= _KORL_ASSET_CACHE_ASSET_FLAG_OUT_OF_DATE;
             korl_assert(asset->fileDescriptor.flags == 0);
-            const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY, 
-                                                       string_getRawUtf16(&asset->name), 
-                                                       &(asset->fileDescriptor), 
-                                                       true/*async*/);
+            const bool resultFileOpen = korl_file_open(KORL_FILE_PATHTYPE_CURRENT_WORKING_DIRECTORY
+                                                      ,string_getRawUtf16(&asset->name)
+                                                      ,&(asset->fileDescriptor)
+                                                      ,true/*async*/);
             if(resultFileOpen)
             {
                 korl_assert(!asset->asyncIoHandle);
