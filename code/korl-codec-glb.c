@@ -11,158 +11,222 @@ typedef struct _Korl_Codec_Glb_Chunk
     u32       type;
     const u8* data;
 } _Korl_Codec_Glb_Chunk;
-#define _korl_codec_glb_decodeChunkJson_processPass_allocateArray(context, contextArray, type) \
-    if(context)\
-    {\
-        (contextArray).byteOffset = korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context));\
-        (contextArray).size       = korl_checkCast_i$_to_u32(jsonToken->size);\
-    }\
-    contextByteNext += jsonToken->size * sizeof(Korl_Codec_Gltf_Scene);
-#define _korl_codec_glb_decodeChunkJson_processPass_getCurrentScene(scenesArrayObjectStackOffset) \
-    /* get the current scenes array index by looking up the object stack for GLTF_OBJECT_SCENES_ARRAY & checking its `parsedChildren` */\
-    korl_assert(KORL_MEMORY_POOL_SIZE(objectStack) >= (scenesArrayObjectStackOffset));\
-    korl_assert(objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (scenesArrayObjectStackOffset)].type == GLTF_OBJECT_SCENES_ARRAY);\
-    const u32 currentSceneIndex = objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (scenesArrayObjectStackOffset)].parsedChildren;\
-    korl_assert(!context || currentSceneIndex < context->scenes.size);\
-    Korl_Codec_Gltf_Scene*const currentScene = context ? KORL_C_CAST(Korl_Codec_Gltf_Scene*, KORL_C_CAST(u8*, context) + context->scenes.byteOffset) + currentSceneIndex : NULL;
-#define _korl_codec_glb_decodeChunkJson_processPass_getCurrentNode(nodesArrayObjectStackOffset) \
-    /* get the current scenes array index by looking up the object stack for GLTF_OBJECT_NODES_ARRAY & checking its `parsedChildren` */\
-    korl_assert(KORL_MEMORY_POOL_SIZE(objectStack) >= (nodesArrayObjectStackOffset));\
-    korl_assert(objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (nodesArrayObjectStackOffset)].type == GLTF_OBJECT_NODES_ARRAY);\
-    const u32 currentNodeIndex = objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - (nodesArrayObjectStackOffset)].parsedChildren;\
-    korl_assert(!context || currentNodeIndex < context->nodes.size);\
-    Korl_Codec_Gltf_Node*const currentNode = context ? KORL_C_CAST(Korl_Codec_Gltf_Node*, KORL_C_CAST(u8*, context) + context->nodes.byteOffset) + currentNodeIndex : NULL;
+typedef enum Korl_Gltf_Object_Type
+    {KORL_GLTF_OBJECT_UNKNOWN
+    ,KORL_GLTF_OBJECT_ASSET
+    ,KORL_GLTF_OBJECT_ASSET_OBJECT
+    ,KORL_GLTF_OBJECT_ASSET_OBJECT_VERSION
+    ,KORL_GLTF_OBJECT_SCENE
+    ,KORL_GLTF_OBJECT_SCENES
+    ,KORL_GLTF_OBJECT_SCENES_ARRAY
+    ,KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME
+    ,KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES
+    ,KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY
+    ,KORL_GLTF_OBJECT_NODES
+    ,KORL_GLTF_OBJECT_NODES_ARRAY
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME
+    ,KORL_GLTF_OBJECT_MESHES
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_NAME
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_MATERIAL
+} Korl_Gltf_Object_Type;
+typedef struct Korl_Gltf_Object
+{
+    Korl_Gltf_Object_Type type;
+    const jsmntok_t*      token;
+    u32                   parsedChildren;
+    void*                 array;// only valid if `type == JSMN_ARRAY`; the size of the array is determined by `token->size`; the current index is determined by `parsedChildren`
+} Korl_Gltf_Object;
 #define _korl_codec_glb_decodeChunkJson_processPass_getString(rawUtf8) \
     if(context) \
         (rawUtf8).byteOffset = korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context));\
     contextByteNext += korl_jsmn_getString(chunk->data, jsonToken, context ? contextByteNext : NULL);\
     if(context) \
         (rawUtf8).size = korl_checkCast_i$_to_u32(contextByteNext - KORL_C_CAST(u8*, context)) - (rawUtf8).byteOffset - 1/*null-terminator*/;
+korl_internal void* _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(Korl_Gltf_Object* objectStack, u$ objectStackSize, Korl_Gltf_Object_Type objectType, u32 arrayStride)
+{
+    for(i$ i = objectStackSize - 1; i >= 0; i--)
+        if(objectStack[i].type == objectType)
+            return objectStack[i].array 
+                   ? KORL_C_CAST(u8*, objectStack[i].array) + objectStack[i].parsedChildren * arrayStride 
+                   : NULL;
+    return NULL;
+}
+korl_internal void* _korl_codec_glb_decodeChunkJson_processPass_newArray(Korl_Codec_Gltf*const context, const jsmntok_t* jsonToken, u8** contextByteNext, Korl_Codec_Gltf_Data* data, u32 arrayStride)
+{
+    if(context)
+    {
+        data->byteOffset = korl_checkCast_i$_to_u32(*contextByteNext - KORL_C_CAST(u8*, context));
+        data->size       = korl_checkCast_i$_to_u32(jsonToken->size);
+    }
+    *contextByteNext += jsonToken->size * arrayStride;
+    return context ? KORL_C_CAST(u8*, context) + data->byteOffset : NULL;
+}
 korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Chunk*const chunk, const jsmntok_t*const jsonTokens, u32 jsonTokensSize, Korl_Codec_Gltf*const context)
 {
     u8* contextByteNext = KORL_C_CAST(u8*, context + 1);
-    typedef enum Gltf_Object_Type
-        {GLTF_OBJECT_UNKNOWN
-        ,GLTF_OBJECT_ASSET
-        ,GLTF_OBJECT_ASSET_OBJECT
-        ,GLTF_OBJECT_ASSET_OBJECT_VERSION
-        ,GLTF_OBJECT_SCENE
-        ,GLTF_OBJECT_SCENES
-        ,GLTF_OBJECT_SCENES_ARRAY
-        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT
-        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME
-        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES
-        ,GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY
-        ,GLTF_OBJECT_NODES
-        ,GLTF_OBJECT_NODES_ARRAY
-        ,GLTF_OBJECT_NODES_ARRAY_ELEMENT
-        ,GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH
-        ,GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME
-    } Gltf_Object_Type;
-    typedef struct Gltf_Object
-    {
-        Gltf_Object_Type type;
-        const jsmntok_t* token;
-        u32              parsedChildren;
-    } Gltf_Object;
-    KORL_MEMORY_POOL_DECLARE(Gltf_Object, objectStack, 16);
+    KORL_MEMORY_POOL_DECLARE(Korl_Gltf_Object, objectStack, 16);
     KORL_MEMORY_POOL_EMPTY(objectStack);
     korl_assert(jsonTokens[0].type == JSMN_OBJECT);
-    *KORL_MEMORY_POOL_ADD(objectStack) = (Gltf_Object){.token = jsonTokens};
+    *KORL_MEMORY_POOL_ADD(objectStack) = (Korl_Gltf_Object){.token = jsonTokens};
     const jsmntok_t*const jsonTokensEnd = jsonTokens + jsonTokensSize;
     for(const jsmntok_t* jsonToken = jsonTokens + 1; jsonToken < jsonTokensEnd; jsonToken++)
     {
         const acu8 tokenRawUtf8 = {.data = chunk->data + jsonToken->start, .size = jsonToken->end - jsonToken->start};
         korl_assert(!KORL_MEMORY_POOL_ISEMPTY(objectStack));
-        Gltf_Object*const object = KORL_MEMORY_POOL_LAST_POINTER(objectStack);
+        Korl_Gltf_Object*const object = KORL_MEMORY_POOL_LAST_POINTER(objectStack);
         if(jsonToken->size)// this token has children, and so it _may_ be a GLTF object
         {
             /* this JSON token has children to process; determine what type of 
                 GLTF object it is based on our current object stack */
-            Gltf_Object_Type objectType = GLTF_OBJECT_UNKNOWN;
+            Korl_Gltf_Object_Type objectType = KORL_GLTF_OBJECT_UNKNOWN;
+            void*                 array      = NULL;
             if(KORL_MEMORY_POOL_SIZE(objectStack) == 1)
             {
                 korl_assert(jsonToken->type == JSMN_STRING);// top-level tokens of the root JSON object _must_ be key strings
-                if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("asset")))
-                    objectType = GLTF_OBJECT_ASSET;
+                if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("asset")))
+                    objectType = KORL_GLTF_OBJECT_ASSET;
                 else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scene")))
-                    objectType = GLTF_OBJECT_SCENE;
+                    objectType = KORL_GLTF_OBJECT_SCENE;
                 else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scenes")))
-                    objectType = GLTF_OBJECT_SCENES;
+                    objectType = KORL_GLTF_OBJECT_SCENES;
                 else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
-                    objectType = GLTF_OBJECT_NODES;
+                    objectType = KORL_GLTF_OBJECT_NODES;
+                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("meshes")))
+                    objectType = KORL_GLTF_OBJECT_MESHES;
             }
             else
                 switch(object->type)
                 {
-                case GLTF_OBJECT_ASSET:{
+                case KORL_GLTF_OBJECT_ASSET:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
-                    objectType = GLTF_OBJECT_ASSET_OBJECT;
+                    objectType = KORL_GLTF_OBJECT_ASSET_OBJECT;
                     break;}
-                case GLTF_OBJECT_ASSET_OBJECT:{
+                case KORL_GLTF_OBJECT_ASSET_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
                     if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("version")))
-                        objectType = GLTF_OBJECT_ASSET_OBJECT_VERSION;
+                        objectType = KORL_GLTF_OBJECT_ASSET_OBJECT_VERSION;
                     break;}
-                case GLTF_OBJECT_SCENES:{
+                case KORL_GLTF_OBJECT_SCENES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
-                    objectType = GLTF_OBJECT_SCENES_ARRAY;
-                    _korl_codec_glb_decodeChunkJson_processPass_allocateArray(context, context->scenes, Korl_Codec_Gltf_Scene);
+                    objectType = KORL_GLTF_OBJECT_SCENES_ARRAY;
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->scenes, sizeof(Korl_Codec_Gltf_Scene));
                     break;}
-                case GLTF_OBJECT_SCENES_ARRAY:{
+                case KORL_GLTF_OBJECT_SCENES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
-                    objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT;
+                    objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT;
                     break;}
-                case GLTF_OBJECT_SCENES_ARRAY_ELEMENT:{
+                case KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
                     if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
-                        objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME;
+                        objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME;
                     else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
-                        objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES;
+                        objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES;
                     break;}
-                case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES:{
+                case KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
-                    objectType = GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY;
-                    _korl_codec_glb_decodeChunkJson_processPass_getCurrentScene(3);
-                    _korl_codec_glb_decodeChunkJson_processPass_allocateArray(context, currentScene->nodes, u32);
+                    objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY;
+                    Korl_Codec_Gltf_Scene*const currentScene = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SCENES_ARRAY, sizeof(*currentScene));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentScene->nodes, sizeof(u32));
                     break;}
-                case GLTF_OBJECT_NODES:{
+                case KORL_GLTF_OBJECT_NODES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
-                    objectType = GLTF_OBJECT_NODES_ARRAY;
-                    _korl_codec_glb_decodeChunkJson_processPass_allocateArray(context, context->nodes, Korl_Codec_Gltf_Node);
+                    objectType = KORL_GLTF_OBJECT_NODES_ARRAY;
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->nodes, sizeof(Korl_Codec_Gltf_Node));
                     break;}
-                case GLTF_OBJECT_NODES_ARRAY:{
+                case KORL_GLTF_OBJECT_NODES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
-                    objectType = GLTF_OBJECT_NODES_ARRAY_ELEMENT;
+                    objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT;
                     break;}
-                case GLTF_OBJECT_NODES_ARRAY_ELEMENT:{
+                case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
                     if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
-                        objectType = GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME;
+                        objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME;
                     else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mesh")))
-                        objectType = GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH;
+                        objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH;
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = KORL_GLTF_OBJECT_MESHES_ARRAY;
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->meshes, sizeof(Korl_Codec_Gltf_Mesh));
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT;
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_NAME;
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("primitives")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES;
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY;
+                    Korl_Codec_Gltf_Mesh*const currentMesh = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY, sizeof(*currentMesh));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentMesh->primitives, sizeof(Korl_Codec_Gltf_Mesh_Primitive));
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT;
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("attributes")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES;
+                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("indices")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES;
+                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("material")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_MATERIAL;
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT;
+                    break;}
+                case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("POSITION")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION;
+                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("NORMAL")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL;
+                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("TEXCOORD_0")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0;
                     break;}
                 default: break;
                 }
             /* now we can push it onto the stack */
-            *KORL_MEMORY_POOL_ADD(objectStack) = (Gltf_Object){.type = objectType, .token = jsonToken};
+            *KORL_MEMORY_POOL_ADD(objectStack) = (Korl_Gltf_Object){.type = objectType, .token = jsonToken, .array = array};
         }
         else// otherwise this must be a property value token
         {
             switch(object->type)
             {
-            case GLTF_OBJECT_ASSET_OBJECT_VERSION:{
+            case KORL_GLTF_OBJECT_ASSET_OBJECT_VERSION:{
                 _korl_codec_glb_decodeChunkJson_processPass_getString(context->asset.rawUtf8Version);
                 break;}
-            case GLTF_OBJECT_SCENE:{
+            case KORL_GLTF_OBJECT_SCENE:{
                 if(context) context->scene = KORL_C_CAST(i32, korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
-            case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME:{
-                _korl_codec_glb_decodeChunkJson_processPass_getCurrentScene(3);
+            case KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME:{
+                Korl_Codec_Gltf_Scene*const currentScene = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SCENES_ARRAY, sizeof(*currentScene));
                 _korl_codec_glb_decodeChunkJson_processPass_getString(currentScene->rawUtf8Name);
                 break;}
-            case GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY:{
-                _korl_codec_glb_decodeChunkJson_processPass_getCurrentScene(4);
+            case KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY:{
+                Korl_Codec_Gltf_Scene*const currentScene = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SCENES_ARRAY, sizeof(*currentScene));
                 /* set the current scene's current node's index value */
                 if(currentScene)
                 {
@@ -172,19 +236,43 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     nodes[currentNodeIndex] = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
                 }
                 break;}
-            case GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME:{
-                _korl_codec_glb_decodeChunkJson_processPass_getCurrentNode(3);
+            case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME:{
+                Korl_Codec_Gltf_Node*const currentNode = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
                 _korl_codec_glb_decodeChunkJson_processPass_getString(currentNode->rawUtf8Name);
                 break;}
-            case GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH:{
-                _korl_codec_glb_decodeChunkJson_processPass_getCurrentNode(3);
-                if(currentNode) currentNode->mesh = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));b
+            case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH:{
+                Korl_Codec_Gltf_Node*const currentNode = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
+                if(currentNode) currentNode->mesh = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_NAME:{
+                Korl_Codec_Gltf_Mesh*const currentMesh = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY, sizeof(*currentMesh));
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMesh->rawUtf8Name);
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                //@TODO
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                //@TODO
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                //@TODO
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                //@TODO
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_MATERIAL:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                //@TODO
                 break;}
             default:{break;}
             }
             /* recursively update our parent objects, popping them off the stack 
                 when their parsedChildren count exceeds their token->size */
-            Gltf_Object* currentObject = KORL_MEMORY_POOL_ISEMPTY(objectStack) ? NULL : &objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - 1];
+            Korl_Gltf_Object* currentObject = KORL_MEMORY_POOL_ISEMPTY(objectStack) ? NULL : &objectStack[KORL_MEMORY_POOL_SIZE(objectStack) - 1];
             while(currentObject)
             {
                 currentObject->parsedChildren++;
