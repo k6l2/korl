@@ -179,6 +179,10 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY;
                     Korl_Codec_Gltf_Mesh*const currentMesh = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY, sizeof(*currentMesh));
                     array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentMesh->primitives, sizeof(Korl_Codec_Gltf_Mesh_Primitive));
+                    Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitiveArray = array;
+                    for(i32 i = 0; meshPrimitiveArray && i < jsonToken->size; i++)
+                        /* default all mesh primitive data to invalid indices */
+                        meshPrimitiveArray[i] = (Korl_Codec_Gltf_Mesh_Primitive){.attributes = {.position = -1, .normal = -1, .texCoord0 = -1}, .indices = -1, .material = -1};
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -250,23 +254,23 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                //@TODO
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes.position = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                //@TODO
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes.normal = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                //@TODO
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes.texCoord0 = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                //@TODO
+                if(currentMeshPrimitive) currentMeshPrimitive->indices = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_MATERIAL:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                //@TODO
+                if(currentMeshPrimitive) currentMeshPrimitive->material = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             default:{break;}
             }
