@@ -7,6 +7,7 @@ typedef struct Korl_Codec_Gltf_Data
 } Korl_Codec_Gltf_Data;
 typedef struct Korl_Codec_Gltf
 {
+    u32 bytes;// # of bytes required for this struct, as well as all memory referred to by byteOffsets stored in this struct
     struct
     {
         Korl_Codec_Gltf_Data rawUtf8Version;

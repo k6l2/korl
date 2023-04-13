@@ -5,6 +5,7 @@
 #include "korl-interface-platform.h"
 #include "korl-stb-ds.h"
 #include "korl-checkCast.h"
+#include "korl-memory.h"
 typedef struct _Korl_Codec_Glb_Chunk
 {
     u32       bytes;
@@ -494,6 +495,7 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
     /* process each JSON token to decode the GLTF data */
     const u32 bytesRequired = _korl_codec_glb_decodeChunkJson_processPass(chunk, jsonTokens, jsonTokensSize, NULL);
     result = korl_allocate(resultAllocator, bytesRequired);
+    result->bytes = bytesRequired;
     _korl_codec_glb_decodeChunkJson_processPass(chunk, jsonTokens, jsonTokensSize, result);
     cleanUp_returnResult:
         korl_free(resultAllocator, jsonTokens);
@@ -533,6 +535,8 @@ korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glb
     glbChunk.type  = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.bytes);
     glbChunk.data  = glbDataU8;                     glbDataU8 += glbChunk.bytes;
     korl_assert(glbChunk.type == 0x004E4942/*ascii string "\0BIN"*/);
-    //@TODO: copy the buffer data into resultAllocator
+    /* realloc the result struct, and append the binary buffer after the GLTF data */
+    result = korl_dirtyReallocate(resultAllocator, result, result->bytes + glbChunk.bytes);
+    korl_memory_copy(KORL_C_CAST(u8*, result) + result->bytes, glbChunk.data, glbChunk.bytes);
     return result;
 }
