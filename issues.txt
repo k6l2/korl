@@ -118,7 +118,7 @@
 [ ] KORL-FEATURE-000-000-001: GFX: add support for outlined geometry (requires refactoring this API to use >= 1 sub-batches per Batch)
 [ ] KORL-FEATURE-000-000-002: GFX: add support for outlined text (not sure how to do this with stbtt, maybe check how other implementations do this?); Technically this code works, but it's far too SLOW to be of use honestly.
 [ ] KORL-FEATURE-000-000-004: GUI: automatically save window positions/sizes to a config file, and load them on startup
-[ ] KORL-FEATURE-000-000-008: time: see if it's possible to use ETW in Windows to sample stack frames automatically for auto-generated profiling
+[ ] KORL-FEATURE-000-000-008: time: see if it's possible to use ETW in Windows to sample stack frames automatically for auto-generated profiling; https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-portal
 [ ] KORL-FEATURE-000-000-009: time: display useful metrics in real-time using GUI or something; how much time did we spend sleeping last frame? (higher # => better)
 [ ] KORL-FEATURE-000-000-012: time: add C++ API layer for RAII time probe support
 [ ] KORL-FEATURE-000-000-014: time: allow the user to filter the report display somehow to reduce clutter; perhaps allow the user to configure a maximum reported probe depth?  Or perhaps make probe categories or something?
@@ -154,6 +154,7 @@
 [ ] KORL-FEATURE-000-000-055: vulkan: reasonably efficient particle systems; maybe using transform-feedback pipeline or something
 [ ] KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
 [ ] KORL-FEATURE-000-000-057: vulkan: lighting system
+[ ] KORL-FEATURE-000-000-058: file/command: add a command to "open" the OS-specific directories obtained in korl_file_initialize; https://stackoverflow.com/a/354922/4526664
 [x] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAG_LAZY is specified
 [x] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
 [x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose
