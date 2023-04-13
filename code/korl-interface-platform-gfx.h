@@ -110,6 +110,29 @@ typedef struct Korl_Gfx_Camera
         } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
+typedef enum Korl_Gfx_Drawable_Type
+    {KORL_GFX_DRAWABLE_TYPE_SCENE3D
+} Korl_Gfx_Drawable_Type;
+typedef struct Korl_Gfx_Drawable
+{
+    Korl_Vulkan_PrimitiveType primitiveType;
+    struct
+    {
+        Korl_Math_V3f32      position;
+        Korl_Math_V3f32      scale;
+        Korl_Math_Quaternion rotation;
+    } _model;
+    Korl_Gfx_Drawable_Type type;
+    union
+    {
+        struct
+        {
+            Korl_Resource_Handle resourceHandle;
+            Korl_Resource_Handle resourceHandleShaderFragment;///@TODO: add "material" resource
+            Korl_Resource_Handle resourceHandleShaderVertex;  ///@TODO: add "material" resource
+        } scene3d;
+    } subType;
+} Korl_Gfx_Drawable;
 enum
     {KORL_GFX_BATCH_FLAGS_NONE              = 0
     ,KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0
@@ -204,6 +227,7 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(name)         Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 quadCount, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_FUNCTION_korl_gfx_createBatchLines(name)                        Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
 #define KORL_FUNCTION_korl_gfx_createBatchText(name)                         Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight, Korl_Vulkan_Color4u8 color, f32 outlinePixelSize, Korl_Vulkan_Color4u8 colorOutline)
+#define KORL_FUNCTION_korl_gfx_createBatchAxisLines(name)                    Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle)
 #define KORL_FUNCTION_korl_gfx_batchSetBlendState(name)                      void                  name(Korl_Gfx_Batch*const context, Korl_Gfx_Blend blend)
 #define KORL_FUNCTION_korl_gfx_batchSetPosition(name)                        void                  name(Korl_Gfx_Batch*const context, const f32* position, u8 positionDimensions)
 #define KORL_FUNCTION_korl_gfx_batchSetPosition2d(name)                      void                  name(Korl_Gfx_Batch*const context, f32 x, f32 y)
@@ -229,3 +253,5 @@ typedef struct Korl_Gfx_Font_Metrics
  * same allocation */
 #define KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(name)         void                  name(Korl_Gfx_Batch**const pContext, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                  name(u8 red, u8 green, u8 blue)
+#define KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(name)             void                  name(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d)
+#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context)

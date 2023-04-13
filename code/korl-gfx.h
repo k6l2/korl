@@ -71,6 +71,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTr
 korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBatchQuadsTextured);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_createBatchQuadsTexturedColored);
 korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines);
+korl_internal KORL_FUNCTION_korl_gfx_createBatchAxisLines(korl_gfx_createBatchAxisLines);
 /** 
  * \param assetNameFont If this value is \c NULL , a default internal font asset 
  * will be used.
@@ -98,6 +99,8 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(korl_gfx_batch_quad
 korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(korl_gfx_batch_quadsTextured_pixel_to_normal);
 korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor);
 korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_batch_collectDefragmentPointers);
+korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawable_scene3d_initialize);
+korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_gfx_memoryStateRead(const u8* memoryState);

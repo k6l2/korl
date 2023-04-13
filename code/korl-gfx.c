@@ -1834,6 +1834,14 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines)
     korl_time_probeStop(create_batch_lines);
     return result;
 }
+korl_internal KORL_FUNCTION_korl_gfx_createBatchAxisLines(korl_gfx_createBatchAxisLines)
+{
+    Korl_Gfx_Batch*const result = korl_gfx_createBatchLines(allocatorHandle, 3);
+    korl_gfx_batchSetLine(result, 0, KORL_MATH_V3F32_ZERO.elements, (Korl_Math_V3f32){1,0,0}.elements, 3, KORL_COLOR4U8_RED);
+    korl_gfx_batchSetLine(result, 1, KORL_MATH_V3F32_ZERO.elements, (Korl_Math_V3f32){0,1,0}.elements, 3, KORL_COLOR4U8_GREEN);
+    korl_gfx_batchSetLine(result, 2, KORL_MATH_V3F32_ZERO.elements, (Korl_Math_V3f32){0,0,1}.elements, 3, KORL_COLOR4U8_BLUE);
+    return result;
+}
 korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
 {
     korl_time_probeStart(create_batch_text);
@@ -2146,6 +2154,15 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_ba
         return;
     mcarrpush(KORL_STB_DS_MC_CAST(stbDaMemoryContext), (*pStbDaDefragmentPointers)
              ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){pContext, 0, parent, _korl_gfx_batch_collectDefragmentPointers_onAllocationMoved, NULL}));
+}
+korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawable_scene3d_initialize)
+{
+    korl_memory_zero(context, sizeof(*context));
+    //@TODO
+}
+korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
+{
+    //@TODO
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

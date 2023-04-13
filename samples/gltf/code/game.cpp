@@ -18,9 +18,9 @@ typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
     Korl_Memory_AllocatorHandle allocatorStack;
-    bool continueRunning;
-    Korl_StringPool stringPool;
-    Korl_LogConsole logConsole;
+    bool                        quit;
+    Korl_StringPool             stringPool;// used by logConsole
+    Korl_LogConsole             logConsole;
 } Memory;
 korl_global_variable Memory* memory;
 KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
@@ -30,11 +30,10 @@ KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(8);
     const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     memory = KORL_C_CAST(Memory*, korl_allocate(allocatorHeap, sizeof(Memory)));
-    memory->allocatorHeap   = allocatorHeap;
-    memory->allocatorStack  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
-    memory->continueRunning = true;
-    memory->stringPool      = korl_stringPool_create(allocatorHeap);
-    memory->logConsole      = korl_logConsole_create(&memory->stringPool);
+    memory->allocatorHeap  = allocatorHeap;
+    memory->allocatorStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    memory->stringPool     = korl_stringPool_create(allocatorHeap);
+    memory->logConsole     = korl_logConsole_create(&memory->stringPool);
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     return memory;
 }
@@ -49,7 +48,7 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
         switch(keyCode)
         {
         case KORL_KEY_ESCAPE:{
-            memory->continueRunning = false;
+            memory->quit = true;
             break;}
         case KORL_KEY_GRAVE:{
             korl_logConsole_toggle(&memory->logConsole);
@@ -60,8 +59,15 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
-    korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    return memory->continueRunning;
+    Korl_Gfx_Camera camera = korl_gfx_createCameraFov(90, 1, 1000, KORL_MATH_V3F32_ONE * 100, KORL_MATH_V3F32_ZERO);
+    korl_gfx_useCamera(camera);
+    Korl_Gfx_Drawable scene3d;
+    korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
+    korl_gfx_draw(&scene3d);
+    Korl_Gfx_Batch* batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);
+    korl_gfx_batchSetScale(batchAxis, {100,100,100});
+    korl_gfx_batch(batchAxis, KORL_GFX_BATCH_FLAGS_NONE);
+    return !memory->quit;
 }
 #include "korl-math.c"
 #include "korl-checkCast.c"
