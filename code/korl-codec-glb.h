@@ -16,6 +16,8 @@ typedef struct Korl_Codec_Gltf
     Korl_Codec_Gltf_Data nodes;
     Korl_Codec_Gltf_Data meshes;
     Korl_Codec_Gltf_Data accessors;
+    Korl_Codec_Gltf_Data bufferViews;
+    Korl_Codec_Gltf_Data buffers;
 } Korl_Codec_Gltf;
 typedef struct Korl_Codec_Gltf_Scene
 {
@@ -69,4 +71,14 @@ typedef struct Korl_Codec_Gltf_Accessor
     u32                                    count;
     Korl_Math_Aabb3f32                     aabb;
 } Korl_Codec_Gltf_Accessor;
+typedef struct Korl_Codec_Gltf_BufferView
+{
+    u32 buffer;
+    u32 byteLength;
+    u32 byteOffset;
+} Korl_Codec_Gltf_BufferView;
+typedef struct Korl_Codec_Gltf_Buffer
+{
+    u32 byteLength;
+} Korl_Codec_Gltf_Buffer;
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
