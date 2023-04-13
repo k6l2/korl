@@ -97,6 +97,8 @@ typedef struct Korl_Math_Aabb3f32
     Korl_Math_V3f32 min;
     Korl_Math_V3f32 max;
 } Korl_Math_Aabb3f32;
+const Korl_Math_Aabb3f32 KORL_MATH_AABB3F32_EMPTY = {{ KORL_F32_MAX, KORL_F32_MAX, KORL_F32_MAX}
+                                                    ,{-KORL_F32_MAX,-KORL_F32_MAX,-KORL_F32_MAX}};
 typedef struct Korl_Math_Rng_WichmannHill
 {
     u16 seed[3];
