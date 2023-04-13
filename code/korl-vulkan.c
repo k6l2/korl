@@ -23,6 +23,7 @@
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV                2
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 3// @TODO: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_UINT     4
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_NORMAL            5
 korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
     { "VK_LAYER_KHRONOS_validation"
     , "VK_LAYER_KHRONOS_synchronization2" };
@@ -540,6 +541,13 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
         vertexInputBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         vertexBindingDescriptionCount++;
     }
+    if(pipeline->normalsStride)
+    {
+        vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_NORMAL;
+        vertexInputBindings[vertexBindingDescriptionCount].stride    = pipeline->normalsStride;
+        vertexInputBindings[vertexBindingDescriptionCount].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        vertexBindingDescriptionCount++;
+    }
     if(pipeline->colorsStride)
     {
         vertexInputBindings[vertexBindingDescriptionCount].binding   = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR;
@@ -581,6 +589,20 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
         vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
         vertexAttributes[vertexAttributeDescriptionCount].format   = format;
         vertexAttributes[vertexAttributeDescriptionCount].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
+        vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
+        vertexAttributeDescriptionCount++;
+    }
+    if(pipeline->normalsStride)
+    {
+        const VkFormat format = pipeline->normalDimensions == 2 
+            ? VK_FORMAT_R32G32_SFLOAT
+            : pipeline->normalDimensions == 3
+              ? VK_FORMAT_R32G32B32_SFLOAT
+              : VK_FORMAT_UNDEFINED;
+        korl_assert(format != VK_FORMAT_UNDEFINED);
+        vertexAttributes[vertexAttributeDescriptionCount].binding  = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_NORMAL;
+        vertexAttributes[vertexAttributeDescriptionCount].format   = format;
+        vertexAttributes[vertexAttributeDescriptionCount].location = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_NORMAL;
         vertexAttributes[vertexAttributeDescriptionCount].offset   = 0;// we're not using interleaved vertex data
         vertexAttributeDescriptionCount++;
     }
@@ -2082,16 +2104,28 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
         {
-            if(0 == deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride)
+            const u32 stride = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+            if(0 == stride)
                 continue;
             switch(d)
             {
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D:{
+                pipelineCache->positionDimensions = 3;
+                pipelineCache->positionsStride    = stride;
+                break;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_NORMAL_3D:{
+                pipelineCache->normalDimensions = 3;
+                pipelineCache->normalsStride    = stride;
+                break;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_UV:{
+                pipelineCache->uvsStride = stride;
+                break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D:{
                 pipelineCache->instancePositionDimensions = 2;
-                pipelineCache->instancePositionStride     = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                pipelineCache->instancePositionStride     = stride;
                 break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT:{
-                pipelineCache->instanceUintStride = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].stride;
+                pipelineCache->instanceUintStride = stride;
                 break;}
             default:
                 korl_log(ERROR, "vertex attribute [%u] not implemented", d);
@@ -2249,6 +2283,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     u8* vertexStagingMemory = _korl_vulkan_getVertexStagingPool(vertexData, &bufferStaging, &byteOffsetStagingBuffer);
     VkDeviceSize byteOffsetStagingBufferIndices           = 0
                , byteOffsetStagingBufferPositions         = 0
+               , byteOffsetStagingBufferNormals           = 0
                , byteOffsetStagingBufferColors            = 0
                , byteOffsetStagingBufferUvs               = 0
                , byteOffsetStagingBufferInstancePositions = 0
@@ -2273,6 +2308,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         vertexStagingMemory     += stageDataBytes;
         byteOffsetStagingBuffer += stageDataBytes;
     }
+    //@TODO: vertexData->normals
     if(vertexData->colors)
     {
         const u$ stageDataBytes = vertexData->vertexCount*sizeof(*vertexData->colors);
@@ -2311,8 +2347,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         byteOffsetStagingBuffer += stageDataBytes;
     }
     korl_time_probeStop(draw_stage_vertices);
+    VkBuffer     batchIndexBuffer       = bufferStaging;
+    VkDeviceSize batchIndexBufferOffset = byteOffsetStagingBufferIndices;
     VkBuffer batchVertexBuffers[] = 
         { bufferStaging
+        , bufferStaging
         , bufferStaging
         , bufferStaging
         , bufferStaging
@@ -2322,7 +2361,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         , byteOffsetStagingBufferColors
         , byteOffsetStagingBufferUvs
         , byteOffsetStagingBufferInstancePositions
-        , byteOffsetStagingBufferInstanceU32s };
+        , byteOffsetStagingBufferInstanceU32s 
+        , byteOffsetStagingBufferNormals
+        /* NOTE: keep these in the same order as they appear in the 
+                 `_KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_*` defines!
+                 failure to do so will result in vertex attribute corruptions */};
     korl_assert(korl_arraySize(batchVertexBuffers) == korl_arraySize(batchVertexBufferOffsets));
     /* if we're passing a vertex buffer in the vertex data, that means we have 
         to bind to a user-managed device asset buffer instead of a staging 
@@ -2336,11 +2379,25 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
             u32 attributeBinding = KORL_U32_MAX;
             switch(d)
             {
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX:{
+                /* special case; modify the batch index buffer instead of vertex buffers */
+                batchIndexBuffer       = deviceMemoryAllocationVertexBuffer->subType.buffer.vulkanBuffer;
+                batchIndexBufferOffset = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset + vertexData->resourceHandleVertexBufferByteOffset;
+                continue;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D:{
+                attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
+                break;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_UV:{
+                attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV;
+                break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D:{
                 attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION;
                 break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT:{
                 attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_UINT;
+                break;}
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_NORMAL_3D:{
+                attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_NORMAL;
                 break;}
             default:
                 korl_log(ERROR, "vertex attribute [%u] not implemented", d);
@@ -2395,7 +2452,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     if(vertexData->indices)
     {
         vkCmdBindIndexBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
-                            ,bufferStaging, byteOffsetStagingBufferIndices
+                            ,batchIndexBuffer, batchIndexBufferOffset
                             ,_korl_vulkan_vertexIndexType());
         vkCmdDrawIndexed(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                         ,vertexData->indexCount

@@ -540,3 +540,68 @@ korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glb
     korl_memory_copy(KORL_C_CAST(u8*, result) + result->bytes, glbChunk.data, glbChunk.bytes);
     return result;
 }
+korl_internal Korl_Codec_Gltf_Mesh* korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Mesh*, KORL_C_CAST(u8*, context) + context->meshes.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_getMeshPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Mesh_Primitive*, KORL_C_CAST(u8*, context) + mesh->primitives.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Accessor* korl_codec_gltf_getAccessors(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Accessor*, KORL_C_CAST(u8*, context) + context->accessors.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_BufferView* korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_BufferView*, KORL_C_CAST(u8*, context) + context->bufferViews.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Buffer* korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Buffer*, KORL_C_CAST(u8*, context) + context->buffers.byteOffset);
+}
+korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context)
+{
+    u32 componentBytes = 0;
+    switch(context->componentType)
+    {
+    case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_I8:
+    case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U8:{
+        componentBytes = 1;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_I16:
+    case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U16:{
+        componentBytes = 2;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U32:
+    case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_F32:{
+        componentBytes = 4;
+        break;}
+    }
+    u32 componentMultiplier = 0;
+    switch(context->type)
+    {
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_SCALAR:{
+        componentMultiplier = 1;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC2:{
+        componentMultiplier = 2;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3:{
+        componentMultiplier = 3;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4:{
+        componentMultiplier = 4;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT2:{
+        componentMultiplier = 4;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3:{
+        componentMultiplier = 9;
+        break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4:{
+        componentMultiplier = 12;
+        break;}
+    }
+    return componentBytes * componentMultiplier;
+}

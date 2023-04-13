@@ -147,8 +147,9 @@ typedef struct Korl_Vulkan_DrawState
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX
-    // , KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_2D
-    // , KORL_VULKAN_VERTEX_ATTRIBUTE_UV
+    , KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D
+    , KORL_VULKAN_VERTEX_ATTRIBUTE_NORMAL_3D
+    , KORL_VULKAN_VERTEX_ATTRIBUTE_UV
     , KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_POSITION_2D
     , KORL_VULKAN_VERTEX_ATTRIBUTE_INSTANCE_UINT
     , KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT// keep last!
@@ -156,8 +157,8 @@ typedef enum Korl_Vulkan_VertexAttribute
 typedef struct Korl_Vulkan_VertexAttributeDescriptor
 {
     Korl_Vulkan_VertexAttribute vertexAttribute;
-    u$ offset;
-    u32 stride;
+    u$                          offset;
+    u32                         stride;
 } Korl_Vulkan_VertexAttributeDescriptor;
 typedef struct Korl_Vulkan_CreateInfoTexture
 {
@@ -166,10 +167,10 @@ typedef struct Korl_Vulkan_CreateInfoTexture
 } Korl_Vulkan_CreateInfoTexture;
 typedef struct Korl_Vulkan_CreateInfoVertexBuffer
 {
-    u$ bytes;
-    u$ vertexAttributeDescriptorCount;
+    u$                                           bytes;
+    u$                                           vertexAttributeDescriptorCount;
     const Korl_Vulkan_VertexAttributeDescriptor* vertexAttributeDescriptors;
-    bool useAsStorageBuffer;
+    bool                                         useAsStorageBuffer;
 } Korl_Vulkan_CreateInfoVertexBuffer;
 typedef struct Korl_Vulkan_CreateInfoShader
 {

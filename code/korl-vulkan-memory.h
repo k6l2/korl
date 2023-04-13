@@ -79,7 +79,7 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
              * contain the vertex attribute at that respective index of this array */
             struct
             {
-                u$ offset;
+                u$  offset;
                 u32 stride;
             } attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
         } buffer;

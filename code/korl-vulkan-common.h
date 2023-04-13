@@ -49,8 +49,10 @@ typedef struct _Korl_Vulkan_Pipeline
         itself: */
     VkPrimitiveTopology            primitiveTopology;
     u8                             positionDimensions;        // only acceptable values: {2, 3}
+    u8                             normalDimensions;          // only acceptable values: {2, 3}
     u8                             instancePositionDimensions;// only acceptable values: {2, 3}
     u32                            positionsStride;       // 0 => absence of this attribute
+    u32                            normalsStride;         // 0 => absence of this attribute
     u32                            uvsStride;             // 0 => absence of this attribute
     u32                            colorsStride;          // 0 => absence of this attribute
     u32                            instancePositionStride;// 0 => absence of this attribute
