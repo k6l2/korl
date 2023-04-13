@@ -786,6 +786,46 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.shader.handle;
 }
+korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, drawVertexData);
+    if(!handleResourceScene3d)
+        return drawVertexData;
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
+    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceScene3d);
+    korl_assert(hashMapIndex >= 0);
+    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D);
+    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
+        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
+    if(!resource->subType.graphics.subType.scene3d.gltf)
+        return drawVertexData;
+    const Korl_Codec_Gltf*const                gltf               = resource->subType.graphics.subType.scene3d.gltf;
+    const Korl_Codec_Gltf_Accessor*const       accessors          = korl_codec_gltf_getAccessors(gltf);
+    const Korl_Codec_Gltf_Mesh*const           meshes             = korl_codec_gltf_getMeshes(gltf);
+    const u32                                  meshIndex          = 0; korl_assert(meshIndex < gltf->meshes.size); //@TODO: support drawing multiple meshes
+    const Korl_Codec_Gltf_Mesh*const           mesh               = meshes + meshIndex;
+    const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives     = korl_codec_gltf_getMeshPrimitives(gltf, mesh);
+    const u32                                  meshPrimitiveIndex = 0; korl_assert(meshPrimitiveIndex < mesh->primitives.size);//@TODO: support drawing multiple mesh primitives
+    const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive      = meshPrimitives + meshPrimitiveIndex;
+    switch(meshPrimitive->mode)
+    {
+    case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES: drawVertexData.primitiveType = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES; break;
+    case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES:     drawVertexData.primitiveType = KORL_VULKAN_PRIMITIVETYPE_LINES;     break;
+    default:
+        korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
+    }
+    korl_assert(meshPrimitive->attributes.position >= 0);
+    const Korl_Codec_Gltf_Accessor*const accessorPosition = accessors + meshPrimitive->attributes.position;
+    const Korl_Codec_Gltf_Accessor*const accessorIndices  = meshPrimitive->indices >= 0 ? accessors + meshPrimitive->indices : NULL;
+    drawVertexData.vertexCount = accessorPosition->count;
+    drawVertexData.indexCount  = accessorIndices ? korl_vulkan_safeCast_u$_to_vertexIndex(accessorIndices->count) : 0;
+    drawVertexData.vertexBuffer.type                                 = KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION;
+    drawVertexData.vertexBuffer.subType.handleDeviceMemoryAllocation = resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk;
+    return drawVertexData;
+}
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
     if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleRuntime))

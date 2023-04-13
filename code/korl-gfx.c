@@ -1069,8 +1069,9 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             drawStateLine.model = &model;
             korl_vulkan_setDrawState(&drawStateLine);
             vertexData.instanceCount                        = line->visibleCharacters;
-            vertexData.resourceHandleVertexBuffer           = context->resourceHandleBufferText;
-            vertexData.resourceHandleVertexBufferByteOffset = currentVisibleGlyphOffset*sizeof(_Korl_Gfx_FontGlyphInstance);
+            vertexData.vertexBuffer.type                   = KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE;
+            vertexData.vertexBuffer.subType.handleResource = context->resourceHandleBufferText;
+            vertexData.vertexBuffer.byteOffset             = currentVisibleGlyphOffset*sizeof(_Korl_Gfx_FontGlyphInstance);
             korl_vulkan_draw(&vertexData);
         }
         model.translation.y       -= lineDeltaY;
@@ -2158,11 +2159,35 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_ba
 korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawable_scene3d_initialize)
 {
     korl_memory_zero(context, sizeof(*context));
-    //@TODO
+    context->type            = KORL_GFX_DRAWABLE_TYPE_SCENE3D;
+    context->_model.rotation = KORL_MATH_QUATERNION_IDENTITY;
+    context->_model.scale    = KORL_MATH_V3F32_ONE;
+    context->subType.scene3d.resourceHandle = resourceHandleScene3d;
+    #if 0//@TODO
+    context->subType.scene3d.resourceHandleShaderVertex   = ;
+    context->subType.scene3d.resourceHandleShaderFragment = ;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
-    //@TODO
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+    model.translation = context->_model.position;
+    model.rotation    = context->_model.rotation;
+    model.scale       = context->_model.scale;
+    model.color       = (Korl_Math_V4f32){1,1,1,1};
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
+    programs.resourceHandleShaderVertex   = context->subType.scene3d.resourceHandleShaderVertex;
+    programs.resourceHandleShaderFragment = context->subType.scene3d.resourceHandleShaderFragment;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    drawState.model    = &model;
+    drawState.programs = &programs;
+    drawState.samplers = &samplers;
+    korl_vulkan_setDrawState(&drawState);
+    Korl_Vulkan_DrawVertexData drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle);
+    if(drawVertexData.vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
+        /* we can't draw the scene3d if it has not yet loaded*/
+        korl_vulkan_draw(&drawVertexData);
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

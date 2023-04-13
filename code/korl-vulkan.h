@@ -38,11 +38,24 @@
 #include "korl-interface-platform-gfx.h"
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef u64 Korl_Vulkan_ShaderHandle;
+typedef enum Korl_Vulkan_DrawVertexData_VertexBufferType
+    {KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED
+    ,KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE
+    ,KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION
+} Korl_Vulkan_DrawVertexData_VertexBufferType;
 typedef struct Korl_Vulkan_DrawVertexData
 {
     Korl_Vulkan_PrimitiveType      primitiveType;
-    Korl_Resource_Handle           resourceHandleVertexBuffer;
-    u$                             resourceHandleVertexBufferByteOffset;
+    struct
+    {
+        Korl_Vulkan_DrawVertexData_VertexBufferType type;
+        u$                                          byteOffset;
+        union
+        {
+            Korl_Resource_Handle                      handleResource;
+            Korl_Vulkan_DeviceMemory_AllocationHandle handleDeviceMemoryAllocation;
+        } subType;
+    } vertexBuffer;
     Korl_Vulkan_VertexIndex        indexCount;
     const Korl_Vulkan_VertexIndex* indices;
     u32                            vertexCount;

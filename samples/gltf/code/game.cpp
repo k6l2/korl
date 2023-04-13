@@ -63,9 +63,10 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     korl_gfx_useCamera(camera);
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
+    scene3d._model.scale = KORL_MATH_V3F32_ONE * 50;
     korl_gfx_draw(&scene3d);
     Korl_Gfx_Batch* batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);
-    korl_gfx_batchSetScale(batchAxis, {100,100,100});
+    korl_gfx_batchSetScale(batchAxis, KORL_MATH_V3F32_ONE * 100);
     korl_gfx_batch(batchAxis, KORL_GFX_BATCH_FLAGS_NONE);
     return !memory->quit;
 }

@@ -82,6 +82,7 @@ korl_internal void                                           korl_resource_setAu
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
 korl_internal KORL_FUNCTION_korl_resource_texture_getSize   (korl_resource_texture_getSize);
 korl_internal Korl_Vulkan_ShaderHandle                       korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader);
+korl_internal Korl_Vulkan_DrawVertexData                     korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void                                           korl_resource_memoryStateRead(const u8* memoryState);

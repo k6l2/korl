@@ -35,8 +35,19 @@ typedef struct Korl_Codec_Gltf_Mesh
     Korl_Codec_Gltf_Data rawUtf8Name;
     Korl_Codec_Gltf_Data primitives;
 } Korl_Codec_Gltf_Mesh;
+typedef enum Korl_Codec_Gltf_Mesh_Primitive_Mode
+    /* glTF-2.0 spec 5.24.4: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_mesh_primitive_mode */
+    {KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_POINTS         = 0
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES          = 1
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINE_LOOP      = 2
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINE_STRIP     = 3
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES      = 4// DEFAULT
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLE_STRIP = 5
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLE_FAN   = 6
+} Korl_Codec_Gltf_Mesh_Primitive_Mode;
 typedef struct Korl_Codec_Gltf_Mesh_Primitive
 {
+    Korl_Codec_Gltf_Mesh_Primitive_Mode mode;
     struct
     {
         i32 position;

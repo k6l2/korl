@@ -115,7 +115,6 @@ typedef enum Korl_Gfx_Drawable_Type
 } Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Drawable
 {
-    Korl_Vulkan_PrimitiveType primitiveType;
     struct
     {
         Korl_Math_V3f32      position;
@@ -128,8 +127,8 @@ typedef struct Korl_Gfx_Drawable
         struct
         {
             Korl_Resource_Handle resourceHandle;
-            Korl_Resource_Handle resourceHandleShaderFragment;///@TODO: add "material" resource
             Korl_Resource_Handle resourceHandleShaderVertex;  ///@TODO: add "material" resource
+            Korl_Resource_Handle resourceHandleShaderFragment;///@TODO: add "material" resource
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;

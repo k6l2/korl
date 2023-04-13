@@ -210,7 +210,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitiveArray = array;
                     for(i32 i = 0; meshPrimitiveArray && i < jsonToken->size; i++)
                         /* default all mesh primitive data to invalid indices */
-                        meshPrimitiveArray[i] = (Korl_Codec_Gltf_Mesh_Primitive){.attributes = {.position = -1, .normal = -1, .texCoord0 = -1}, .indices = -1, .material = -1};
+                        meshPrimitiveArray[i] = (Korl_Codec_Gltf_Mesh_Primitive){.mode = KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES
+                                                                                ,.attributes = {.position = -1, .normal = -1, .texCoord0 = -1}
+                                                                                ,.indices = -1, .material = -1};
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);

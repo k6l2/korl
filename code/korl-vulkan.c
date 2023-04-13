@@ -2044,7 +2044,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     if(!surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics)
         return;
     /* basic parameter sanity checks */
-    if(vertexData->resourceHandleVertexBuffer)
+    if(vertexData->vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
     {
         /* if we're using a vertex buffer device asset for vertex data, we can't 
             do sanity checks on vertex data until we obtain the device asset and 
@@ -2076,10 +2076,21 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         obtain it now to configure the pipeline */
     Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandleVertexBuffer = 0;
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocationVertexBuffer = NULL;
-    if(vertexData->resourceHandleVertexBuffer)
+    switch(vertexData->vertexBuffer.type)
     {
-        deviceMemoryAllocationHandleVertexBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(vertexData->resourceHandleVertexBuffer);
-        deviceMemoryAllocationVertexBuffer       = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, deviceMemoryAllocationHandleVertexBuffer);
+    case KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED:{break;}
+    case KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE:{
+        deviceMemoryAllocationHandleVertexBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(vertexData->vertexBuffer.subType.handleResource);
+        break;}
+    case KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION:{
+        deviceMemoryAllocationHandleVertexBuffer = vertexData->vertexBuffer.subType.handleDeviceMemoryAllocation;
+        break;}
+    default:
+        korl_log(ERROR, "unsupported vertex buffer type: %i", vertexData->vertexBuffer.type);
+    }
+    if(vertexData->vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
+    {
+        deviceMemoryAllocationVertexBuffer = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, deviceMemoryAllocationHandleVertexBuffer);
         korl_assert(deviceMemoryAllocationVertexBuffer);
         korl_assert(!deviceMemoryAllocationVertexBuffer->freeQueued);
         korl_assert(deviceMemoryAllocationVertexBuffer->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
@@ -2100,7 +2111,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     pipelineCache->instancePositionStride     = vertexData->instancePositionsStride;
     pipelineCache->instanceUintStride         = vertexData->instanceUintStride;
     pipelineCache->useTexture                 = (0 != surfaceContext->drawState.texture);
-    if(vertexData->resourceHandleVertexBuffer)
+    if(vertexData->vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
         {
@@ -2109,6 +2120,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                 continue;
             switch(d)
             {
+            case KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX:{
+                /* for vertex indices, we _thankfully_ don't have to configure 
+                    anything special in the pipeline, as this just uses special 
+                    bind/draw commands (as you will see further down) */
+                break;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D:{
                 pipelineCache->positionDimensions = 3;
                 pipelineCache->positionsStride    = stride;
@@ -2370,7 +2386,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     /* if we're passing a vertex buffer in the vertex data, that means we have 
         to bind to a user-managed device asset buffer instead of a staging 
         buffer for a non-zero number of vertex (instance) attributes */
-    if(vertexData->resourceHandleVertexBuffer)
+    if(vertexData->vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
         {
@@ -2382,7 +2398,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
             case KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX:{
                 /* special case; modify the batch index buffer instead of vertex buffers */
                 batchIndexBuffer       = deviceMemoryAllocationVertexBuffer->subType.buffer.vulkanBuffer;
-                batchIndexBufferOffset = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset + vertexData->resourceHandleVertexBufferByteOffset;
+                batchIndexBufferOffset = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset + vertexData->vertexBuffer.byteOffset;
                 continue;}
             case KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D:{
                 attributeBinding = _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION;
@@ -2403,7 +2419,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                 korl_log(ERROR, "vertex attribute [%u] not implemented", d);
             }
             batchVertexBuffers      [attributeBinding] = deviceMemoryAllocationVertexBuffer->subType.buffer.vulkanBuffer;
-            batchVertexBufferOffsets[attributeBinding] = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset + vertexData->resourceHandleVertexBufferByteOffset;
+            batchVertexBufferOffsets[attributeBinding] = deviceMemoryAllocationVertexBuffer->subType.buffer.attributeDescriptors[d].offset + vertexData->vertexBuffer.byteOffset;
         }
     }
     /* compose the draw commands */
@@ -2449,7 +2465,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                           ,0/*first binding*/, korl_arraySize(batchVertexBuffers)
                           ,batchVertexBuffers, batchVertexBufferOffsets);
     const uint32_t instanceCount = vertexData->instanceCount ? vertexData->instanceCount : 1;
-    if(vertexData->indices)
+    if(vertexData->indexCount)
     {
         vkCmdBindIndexBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                             ,batchIndexBuffer, batchIndexBufferOffset
