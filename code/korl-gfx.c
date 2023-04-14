@@ -2163,7 +2163,7 @@ korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawab
     context->_model.rotation = KORL_MATH_QUATERNION_IDENTITY;
     context->_model.scale    = KORL_MATH_V3F32_ONE;
     context->subType.scene3d.resourceHandle = resourceHandleScene3d;
-    #if 0//@TODO
+    #if 0
     context->subType.scene3d.resourceHandleShaderVertex   = ;
     context->subType.scene3d.resourceHandleShaderFragment = ;
     #endif

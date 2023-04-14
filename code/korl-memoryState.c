@@ -169,5 +169,6 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_Allocato
     korl_assetCache_memoryStateRead    (result->data + manifest->byteOffsetKorlAssetCache);
     /**/
     korl_resource_flushUpdates();
+    korl_log(INFO, "memory state \"%ws\" loaded", fileName);
     return result;
 }

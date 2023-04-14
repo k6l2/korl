@@ -127,8 +127,8 @@ typedef struct Korl_Gfx_Drawable
         struct
         {
             Korl_Resource_Handle resourceHandle;
-            Korl_Resource_Handle resourceHandleShaderVertex;  ///@TODO: add "material" resource
-            Korl_Resource_Handle resourceHandleShaderFragment;///@TODO: add "material" resource
+            Korl_Resource_Handle resourceHandleShaderVertex;  //KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
+            Korl_Resource_Handle resourceHandleShaderFragment;//KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;

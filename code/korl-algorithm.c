@@ -39,8 +39,7 @@ typedef struct _Korl_Algorithm_Bvh_Node
     u32 bvhNodeChildIndexOffsetLeft;
     u32 bvhNodeChildIndexOffsetRight;
     // this struct should be followed by user-defined volume struct, which is where we will store this node's total volume
-    //  @TODO: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume
-    //         consider making the user-defined volume struct _just_ be the AABB, and just 
+    //KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
 } _Korl_Algorithm_Bvh_Node;
 korl_internal Korl_Algorithm_Bvh* korl_algorithm_bvh_create(const Korl_Algorithm_Bvh_CreateInfo*const createInfo)
 {
@@ -88,7 +87,7 @@ korl_internal void _korl_algorithm_bvh_buildRecursive(Korl_Algorithm_Bvh*const c
               if the compare result is non-zero, that defines the boundary
             - if we somehow don't find a boundary (due to numerical error or some nonsense), just split down the middle */
     korl_algorithm_sort_quick_context(nodeLeafVolumes, nodeLeafVolumesSize, context->createInfo.boundingVolumeStride, context->createInfo.nodeLeafSortCompare, nodeVolume);
-    u32 nodeLeafVolumesSplitIndex = 1;// @TODO: performance: we could technically calculate this in the first loop over nodeLeafVolumesSize (when we're calculating the node's volume union), but this would require a separate function callback since the nodes are not yet ordered
+    u32 nodeLeafVolumesSplitIndex = 1;//KORL-PERFORMANCE-000-000-049: algorithm/bvh: we could technically calculate this in the first loop over nodeLeafVolumesSize (when we're calculating the node's volume union), but this would require a separate function callback since the nodes are not yet ordered
     for(; nodeLeafVolumesSplitIndex < nodeLeafVolumesSize; nodeLeafVolumesSplitIndex++)
     {
         const void*const leaf         = KORL_C_CAST(u8*, nodeLeafVolumes) + ( nodeLeafVolumesSplitIndex      * context->createInfo.boundingVolumeStride);

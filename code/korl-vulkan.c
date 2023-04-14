@@ -21,7 +21,7 @@
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION          0
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_COLOR             1
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_UV                2
-#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 3// @TODO: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
+#define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_POSITION 3// KORL-ISSUE-000-000-151: vulkan: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_INSTANCE_UINT     4
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_NORMAL            5
 /** I'm going to be using a so-called "reversed" depth buffer, where the 
@@ -2331,7 +2331,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         vertexStagingMemory     += stageDataBytes;
         byteOffsetStagingBuffer += stageDataBytes;
     }
-    //@TODO: vertexData->normals
+    //KORL-ISSUE-000-000-150: vulkan: incomplete normals vertex attribute support
     if(vertexData->colors)
     {
         const u$ stageDataBytes = vertexData->vertexCount*sizeof(*vertexData->colors);

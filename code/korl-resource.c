@@ -298,12 +298,12 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                 Korl_Codec_Gltf_Accessor*const   accessors   = korl_codec_gltf_getAccessors(gltf);
                 Korl_Codec_Gltf_BufferView*const bufferViews = korl_codec_gltf_getBufferViews(gltf);
                 Korl_Codec_Gltf_Buffer*const     buffers     = korl_codec_gltf_getBuffers(gltf);
-                korl_assert(gltf->meshes.size == 1);// @TODO: for now, assume 1 mesh; later, we can store data for arbitrary meshes
+                korl_assert(gltf->meshes.size == 1);// KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
                 korl_assert(gltf->buffers.size == 1);// safe to assume GLB files have 1 buffer
                 for(u32 m = 0; m < gltf->meshes.size; m++)
                 {
                     Korl_Codec_Gltf_Mesh*const mesh = meshes + m;
-                    korl_assert(mesh->primitives.size == 1);// @TODO: for now, assume 1 mesh primitive; later, we can store data for arbitrary mesh primitives
+                    korl_assert(mesh->primitives.size == 1);// KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple meshe primitives
                     KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT);
                     u$ vertexAttributeDescriptorCount = 0;
                     Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_getMeshPrimitives(gltf, mesh);
@@ -805,10 +805,10 @@ korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData
     const Korl_Codec_Gltf*const                gltf               = resource->subType.graphics.subType.scene3d.gltf;
     const Korl_Codec_Gltf_Accessor*const       accessors          = korl_codec_gltf_getAccessors(gltf);
     const Korl_Codec_Gltf_Mesh*const           meshes             = korl_codec_gltf_getMeshes(gltf);
-    const u32                                  meshIndex          = 0; korl_assert(meshIndex < gltf->meshes.size); //@TODO: support drawing multiple meshes
+    const u32                                  meshIndex          = 0; korl_assert(meshIndex < gltf->meshes.size); //KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
     const Korl_Codec_Gltf_Mesh*const           mesh               = meshes + meshIndex;
     const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives     = korl_codec_gltf_getMeshPrimitives(gltf, mesh);
-    const u32                                  meshPrimitiveIndex = 0; korl_assert(meshPrimitiveIndex < mesh->primitives.size);//@TODO: support drawing multiple mesh primitives
+    const u32                                  meshPrimitiveIndex = 0; korl_assert(meshPrimitiveIndex < mesh->primitives.size);//KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple meshe primitives
     const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive      = meshPrimitives + meshPrimitiveIndex;
     switch(meshPrimitive->mode)
     {
@@ -882,34 +882,15 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
         switch(unpackedHandle.type)
         {
         case _KORL_RESOURCE_TYPE_FILE:{
-            /* maybe just free the data allocation & reset the resource to the 
-                unloaded state?  the external device memory allocations should 
-                all be invalid at this point, so we should be able to just 
-                nullify this struct */
-            resourceMapItem->value.data      = NULL;// NOTE: there is no need to call free on this allocation, as the entire transient allocator has been wiped
-            resourceMapItem->value.dataBytes = 0;
-            switch(unpackedHandle.multimediaType)
-            {
-            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-                /* device memory allocations have been invalidated! */
-                switch(resourceMapItem->value.subType.graphics.type)
-                {
-                case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    resourceMapItem->value.subType.graphics.subType.image.deviceMemoryAllocationHandle = 0;
-                    break;}
-                case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-                    resourceMapItem->value.subType.graphics.subType.vertexBuffer.deviceMemoryAllocationHandle = 0;
-                    break;}
-                default:
-                    korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);
-                }
-                break;}
-            case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
-                break;}
-            default:
-                korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
-                break;
-            }
+            /* just reset the resource to the unloaded state;  the external 
+                device memory allocations should all be invalid at this point, 
+                so we should be able to just nullify this struct */
+            const _Korl_Resource resourceTemporaryCopy = *resource;
+            korl_memory_zero(resource, sizeof(*resource));
+            resource->stringFileName     = resourceTemporaryCopy.stringFileName;
+            resource->assetCacheGetFlags = resourceTemporaryCopy.assetCacheGetFlags;
+            if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
+                resource->subType.graphics.type = resourceTemporaryCopy.subType.graphics.type;
             break;}
         case _KORL_RESOURCE_TYPE_RUNTIME:{
             /* here we can just re-create each device memory allocation & mark 
@@ -919,22 +900,22 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
             switch(unpackedHandle.multimediaType)
             {
             case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-                switch(resourceMapItem->value.subType.graphics.type)
+                switch(resource->subType.graphics.type)
                 {
                 case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    // korl_log(VERBOSE, "creating IMAGE Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.subType.image.deviceMemoryAllocationHandle);
-                    korl_vulkan_deviceAsset_createTexture(&resourceMapItem->value.subType.graphics.subType.image.createInfo, resourceMapItem->value.subType.graphics.subType.image.deviceMemoryAllocationHandle);
+                    // korl_log(VERBOSE, "creating IMAGE Resource 0x%llX=>0x%llX", resourceMapItem->key, resource->subType.graphics.subType.image.deviceMemoryAllocationHandle);
+                    korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.subType.image.createInfo, resource->subType.graphics.subType.image.deviceMemoryAllocationHandle);
                     break;}
                 case _KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER:{
-                    // korl_log(VERBOSE, "creating VERTEX_BUFFER Resource 0x%llX=>0x%llX", resourceMapItem->key, resourceMapItem->value.subType.graphics.subType.vertexBuffer.deviceMemoryAllocationHandle);
-                    resourceMapItem->value.subType.graphics.subType.vertexBuffer.createInfo.vertexAttributeDescriptors = resourceMapItem->value.subType.graphics.subType.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
-                    korl_vulkan_deviceAsset_createVertexBuffer(&resourceMapItem->value.subType.graphics.subType.vertexBuffer.createInfo, resourceMapItem->value.subType.graphics.subType.vertexBuffer.deviceMemoryAllocationHandle);
+                    // korl_log(VERBOSE, "creating VERTEX_BUFFER Resource 0x%llX=>0x%llX", resourceMapItem->key, resource->subType.graphics.subType.vertexBuffer.deviceMemoryAllocationHandle);
+                    resource->subType.graphics.subType.vertexBuffer.createInfo.vertexAttributeDescriptors = resource->subType.graphics.subType.vertexBuffer.vertexAttributeDescriptors;// refresh the address of the vertex attribute descriptors, since these hash map items are expected to have transient memory locations
+                    korl_vulkan_deviceAsset_createVertexBuffer(&resource->subType.graphics.subType.vertexBuffer.createInfo, resource->subType.graphics.subType.vertexBuffer.deviceMemoryAllocationHandle);
                     break;}
                 case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
                     korl_log(ERROR, "RUNTIME GRAPHICS SHADER resources are not supported");// KORL currently requires all shaders to be SPIR-V file assets
                     break;}
                 default:
-                    korl_log(ERROR, "invalid graphics type %i", resourceMapItem->value.subType.graphics.type);
+                    korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
                     break;
                 }
                 break;}
@@ -943,7 +924,7 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
                 break;
             }
             mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, resourceMapItem->key);
-            resourceMapItem->value.dirty = true;
+            resource->dirty = true;
             break;}
         default:
             korl_log(ERROR, "invalid resource type %i", unpackedHandle.type);
