@@ -740,33 +740,32 @@ korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32(const Korl_Math_M4f3
     return result;
 }
 #pragma warning(pop)
-korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(
-    f32 horizontalFovDegrees, f32 viewportWidthOverHeight, 
-    f32 clipNear, f32 clipFar)
+korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(f32 verticalFovDegrees, f32 viewportWidthOverHeight, f32 clipNear, f32 clipFar)
 {
     KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);
-    KORL_MATH_ASSERT(!korl_math_isNearlyZero(horizontalFovDegrees));
+    KORL_MATH_ASSERT(!korl_math_isNearlyZero(verticalFovDegrees));
     KORL_MATH_ASSERT(!korl_math_isNearlyEqual(clipNear, clipFar) && clipNear < clipFar);
-    const f32 horizontalFovRadians = horizontalFovDegrees*KORL_PI32/180.f;
-    const f32 tanHalfFov = tanf(horizontalFovRadians / 2.f);
+    const f32 verticalFovRadians = verticalFovDegrees*KORL_PI32/180.f;
+    const f32 tanHalfFov = tanf(verticalFovRadians / 2.f);
     /* Good sources for how to derive this matrix:
         http://ogldev.org/www/tutorial12/tutorial12.html
         http://www.songho.ca/opengl/gl_projectionmatrix.html */
     /* transforms eye-space into clip-space with the following properties:
-        - left-handed, because Vulkan default requires VkViewport.min/maxDepth 
+        - mapped to [0,1], because Vulkan default requires VkViewport.min/maxDepth 
           values to lie within the range [0,1] (unless the extension 
           `VK_EXT_depth_range_unrestricted` is used, but who wants to do that?)
-        - clipNear maps to Z==0 in clip-space
-        - clipFar  maps to Z==1 in clip-space */
-    result.r0c0 = 1.f / tanHalfFov;
-    result.r1c1 = viewportWidthOverHeight / tanHalfFov;
-    result.r2c2 =            -clipFar  / (clipNear - clipFar);
-    result.r2c3 = (clipNear * clipFar) / (clipNear - clipFar);
+        - clipNear maps to Z==1 in clip-space
+        - clipFar  maps to Z==0 in clip-space 
+        For the reasoning why we want this clip-space mapping, see: https://developer.nvidia.com/content/depth-precision-visualized 
+        In addition, korl-vulkan is now configured to require this clip-space mapping! */
+    result.r0c0 = 1.f / (tanHalfFov * viewportWidthOverHeight);
+    result.r1c1 = 1.f /  tanHalfFov;
+    result.r2c2 =              clipNear / (clipNear - clipFar);
+    result.r2c3 = -(clipNear * clipFar) / (clipNear - clipFar);
     result.r3c2 = 1;
     return result;
 }
-korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
-    f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax)
+korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax)
 {
     KORL_MATH_ASSERT(!korl_math_isNearlyZero(xMin - xMax));
     KORL_MATH_ASSERT(!korl_math_isNearlyZero(yMin - yMax));
@@ -789,10 +788,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(
     result.r3c3 = 1;
     return result;
 }
-korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(
-    const Korl_Math_V3f32*const positionEye, 
-    const Korl_Math_V3f32*const positionTarget, 
-    const Korl_Math_V3f32*const worldUpNormal)
+korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(const Korl_Math_V3f32*const positionEye, const Korl_Math_V3f32*const positionTarget, const Korl_Math_V3f32*const worldUpNormal)
 {
     //KORL-PERFORMANCE-000-000-006
     /* sanity check to ensure that worldUpNormal is, in fact, normalized!  
