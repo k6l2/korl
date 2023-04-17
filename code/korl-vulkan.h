@@ -146,6 +146,11 @@ typedef struct Korl_Vulkan_DrawState_Programs
     Korl_Resource_Handle resourceHandleShaderVertex;
     Korl_Resource_Handle resourceHandleShaderFragment;
 } Korl_Vulkan_DrawState_Programs;
+typedef struct Korl_Vulkan_DrawState_Lights
+{
+    //@TODO: duplicated struct; see _Korl_Vulkan_SwapChainImageUniformLights, Korl_Gfx_Light
+    Korl_Math_V4f32 color;
+} Korl_Vulkan_DrawState_Lights;
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*       features;
@@ -157,6 +162,7 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_Samplers*       samplers;
     const Korl_Vulkan_DrawState_StorageBuffers* storageBuffers;
     const Korl_Vulkan_DrawState_Programs*       programs;
+    const Korl_Vulkan_DrawState_Lights*         lights;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX

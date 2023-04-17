@@ -132,6 +132,11 @@ typedef struct Korl_Gfx_Drawable
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;
+typedef struct Korl_Gfx_Light
+{
+    //@TODO: duplicated struct; see _Korl_Vulkan_SwapChainImageUniformLights, Korl_Vulkan_DrawState_Lights
+    Korl_Math_V4f32 color;
+} Korl_Gfx_Light;
 enum
     {KORL_GFX_BATCH_FLAGS_NONE              = 0
     ,KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST = 1 << 0
@@ -254,3 +259,4 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                  name(u8 red, u8 green, u8 blue)
 #define KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(name)             void                  name(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d)
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context)
+#define KORL_FUNCTION_korl_gfx_light_use(name)                               void                  name(const Korl_Gfx_Light*const light)

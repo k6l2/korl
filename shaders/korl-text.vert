@@ -13,7 +13,7 @@ struct GlyphVertex
 {
     vec4 position2d_uv;// position occupies .xy, uv occupies .zw
 };
-layout(binding = 0, set = 1) readonly buffer BufferGlyphMeshData
+layout(binding = 0, set = 2) readonly buffer BufferGlyphMeshData
 {
     GlyphVertex glyphVertices[];
 } bufferGlyphMeshData;

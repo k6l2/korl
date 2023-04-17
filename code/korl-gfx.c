@@ -1,4 +1,5 @@
 #include "korl-gfx.h"
+#ifdef KORL_PLATFORM
 #include "korl-log.h"
 #include "korl-assetCache.h"
 #include "korl-memory.h"
@@ -2189,6 +2190,14 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         /* we can't draw the scene3d if it has not yet loaded*/
         korl_vulkan_draw(&drawVertexData);
 }
+korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
+{
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Lights, lights);
+    lights.color = light->color;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    drawState.lights = &lights;
+    korl_vulkan_setDrawState(&drawState);
+}
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
     if(!korl_memory_allocator_isFragmented(_korl_gfx_context->allocatorHandle))
@@ -2228,3 +2237,4 @@ korl_internal void korl_gfx_memoryStateRead(const u8* memoryState)
     }
 }
 #undef _LOCAL_STRING_POOL_POINTER
+#endif

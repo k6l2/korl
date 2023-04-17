@@ -1,8 +1,9 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-math.h"
-#include "korl-vulkan.h"
 #include "korl-interface-platform-gfx.h"
+//KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
+#if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size);
 korl_internal void korl_gfx_flushGlyphPages(void);
@@ -101,6 +102,8 @@ korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor);
 korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_batch_collectDefragmentPointers);
 korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawable_scene3d_initialize);
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw);
+korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_gfx_memoryStateRead(const u8* memoryState);
+#endif

@@ -14,6 +14,7 @@ korl_internal void _game_getInterfacePlatformApi(KorlPlatformApi korlApi)
 #include "korl-string.h"
 #include "korl-stringPool.h"
 #include "korl-logConsole.h"
+#include "korl-gfx.h"
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
@@ -59,6 +60,8 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
+    Korl_Gfx_Light light = {.color = {1,1,1,1}};
+    korl_gfx_light_use(&light);
     Korl_Gfx_Camera camera = korl_gfx_createCameraFov(90, 50, 1e16f, KORL_MATH_V3F32_ONE * 100, KORL_MATH_V3F32_ZERO);
     korl_gfx_useCamera(camera);
     Korl_Gfx_Drawable scene3d;
@@ -77,3 +80,4 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 #include "korl-logConsole.c"
 #define STBDS_UNIT_TESTS // for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests
 #include "korl-stb-ds.c"
+#include "korl-gfx.c"

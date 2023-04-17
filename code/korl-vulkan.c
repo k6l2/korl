@@ -16,6 +16,7 @@
 #endif// defined(KORL_PLATFORM_WINDOWS)
 //#define _KORL_VULKAN_LOG_REPORTS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TRANSFORMS            0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
+#define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_LIGHTS                0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_LIGHTS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_TEXTURE               0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS
 #define _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER 0 // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO
 #define _KORL_VULKAN_BATCH_VERTEXATTRIBUTE_BINDING_POSITION          0
@@ -1601,6 +1602,20 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     }
     {
         KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 1);
+        descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_LIGHTS;
+        descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
+        descriptorSetLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+        KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
+        createInfoDescriptorSetLayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfoDescriptorSetLayout.bindingCount = korl_arraySize(descriptorSetLayoutBindings);
+        createInfoDescriptorSetLayout.pBindings    = descriptorSetLayoutBindings;
+        _KORL_VULKAN_CHECK(
+            vkCreateDescriptorSetLayout(context->device, &createInfoDescriptorSetLayout, context->allocator
+                                       ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_LIGHTS]));
+    }
+    {
+        KORL_ZERO_STACK_ARRAY(VkDescriptorSetLayoutBinding, descriptorSetLayoutBindings, 1);
         descriptorSetLayoutBindings[0].binding         = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_VERTEX_STORAGE_BUFFER;
         descriptorSetLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorSetLayoutBindings[0].descriptorCount = 1;//size of the array in the shader
@@ -2034,6 +2049,8 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->programs->resourceHandleShaderVertex);
         surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->programs->resourceHandleShaderFragment);
     }
+    if(state->lights)
+        surfaceContext->drawState.uboLights.color = state->lights->color;
     done:
     korl_time_probeStop(set_draw_state);
 }
@@ -2206,8 +2223,8 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         update/bind descriptor sets, since this is a very expensive operation! */
     VkDeviceSize byteOffsetStagingBuffer = 0;
     VkBuffer     bufferStaging           = VK_NULL_HANDLE;
-    KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet           , descriptorSetWrites         , 3);
-    KORL_ZERO_STACK_ARRAY(_Korl_Vulkan_DescriptorSetIndex, descriptorSetWriteSetIndices, 3);
+    KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet           , descriptorSetWrites         , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT);
+    KORL_ZERO_STACK_ARRAY(_Korl_Vulkan_DescriptorSetIndex, descriptorSetWriteSetIndices, _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT);
     uint32_t descriptorWriteCount = 0;
     KORL_ZERO_STACK_ARRAY(bool, descriptorSetIndicesChanged, _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT);
     // write the uniform transform buffer (view-projection transforms) //
@@ -2219,8 +2236,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         /* stage the UBO transforms */
         _Korl_Vulkan_SwapChainImageUniformTransforms* stagingMemoryUniformTransforms = 
             _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformTransforms), &bufferStaging, &byteOffsetStagingBuffer);
-        stagingMemoryUniformTransforms->m4f32Projection = surfaceContext->drawState.uboTransforms.m4f32Projection;
-        stagingMemoryUniformTransforms->m4f32View       = surfaceContext->drawState.uboTransforms.m4f32View;
+        *stagingMemoryUniformTransforms = surfaceContext->drawState.uboTransforms;
         /* prepare a descriptor set write with the staged UBO */
         descriptorBufferInfoUniformTransforms.buffer = bufferStaging;
         descriptorBufferInfoUniformTransforms.range  = sizeof(*stagingMemoryUniformTransforms);
@@ -2232,6 +2248,30 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &descriptorBufferInfoUniformTransforms;
         // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
         descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS;
+        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
+        descriptorWriteCount++;
+    }
+    // write the uniform lights //
+    KORL_ZERO_STACK(VkDescriptorBufferInfo, descriptorBufferInfoUniformLights);
+    if(0 != korl_memory_compare(&surfaceContext->drawState.uboLights// only ever get new VP uniform staging memory if the VP state has changed!
+                               ,&surfaceContext->drawStateLast.uboLights
+                               ,sizeof(surfaceContext->drawState.uboLights)))
+    {
+        /* stage the UBO Lights */
+        _Korl_Vulkan_SwapChainImageUniformLights* stagingMemoryUniformLights = 
+            _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformLights), &bufferStaging, &byteOffsetStagingBuffer);
+        *stagingMemoryUniformLights = surfaceContext->drawState.uboLights;
+        /* prepare a descriptor set write with the staged UBO */
+        descriptorBufferInfoUniformLights.buffer = bufferStaging;
+        descriptorBufferInfoUniformLights.range  = sizeof(*stagingMemoryUniformLights);
+        descriptorBufferInfoUniformLights.offset = byteOffsetStagingBuffer;
+        descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorSetWrites[descriptorWriteCount].dstBinding      = _KORL_VULKAN_BATCH_DESCRIPTORSET_BINDING_LIGHTS;
+        descriptorSetWrites[descriptorWriteCount].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetWrites[descriptorWriteCount].descriptorCount = 1;
+        descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &descriptorBufferInfoUniformLights;
+        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_LIGHTS;
         descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }

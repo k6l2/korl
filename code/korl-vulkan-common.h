@@ -10,15 +10,19 @@
 #include "korl-memoryPool.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
+/** These enum values correspond directly to the `layout(set = x)` value for 
+ * uniform blocks in GLSL */
 typedef enum _Korl_Vulkan_DescriptorSetIndex
     /* ideally, these descriptor sets indices are defined in the order of least- 
         to most-frequently-changed for performance reasons; see 
         "Pipeline Layout Compatibility" in the Vulkan spec for more details */
     { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_LIGHTS
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS//@TODO: this descriptor set should probably just be dedicated to "material" data (color maps, etc.)
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT// Keep last!
 } _Korl_Vulkan_DescriptorSetIndex;
+KORL_STATIC_ASSERT(_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT <= 4);// Vulkan Spec 42.1; maxBoundDescriptorSets minimum is 4; any higher than this is hardware-dependent
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -139,6 +143,11 @@ typedef struct _Korl_Vulkan_SwapChainImageUniformTransforms
     Korl_Math_M4f32 m4f32View;
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
 } _Korl_Vulkan_SwapChainImageUniformTransforms;
+typedef struct _Korl_Vulkan_SwapChainImageUniformLights
+{
+    //@TODO: duplicated struct; see: Korl_Vulkan_DrawState_Lights, Korl_Gfx_Light
+    Korl_Math_V4f32 color;
+} _Korl_Vulkan_SwapChainImageUniformLights;
 /* Ensure _Korl_Vulkan_SwapChainImageUniformTransforms member alignment here: */
 KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32Projection) & 16) == 0);
 KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
@@ -192,8 +201,9 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     VkRect2D scissor;
     /** ----- descriptor state ----- */
     _Korl_Vulkan_SwapChainImageUniformTransforms uboTransforms;
-    Korl_Vulkan_DeviceMemory_AllocationHandle texture;
-    Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
+    _Korl_Vulkan_SwapChainImageUniformLights     uboLights;
+    Korl_Vulkan_DeviceMemory_AllocationHandle    texture;
+    Korl_Vulkan_DeviceMemory_AllocationHandle    vertexStorageBuffer;
 } _Korl_Vulkan_SurfaceContextDrawState;
 /**
  * Each buffer acts as a linear allocator
