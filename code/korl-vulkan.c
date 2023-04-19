@@ -2025,7 +2025,6 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     if(state->model)
     {
         surfaceContext->drawState.pushConstants.vertex.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
-        surfaceContext->drawState.pushConstants.vertex.color      = state->model->color;
         surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){.xy = state->model->uvAabb.min, .zw = state->model->uvAabb.max};
     }
     if(state->scissor)
@@ -2033,10 +2032,11 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         surfaceContext->drawState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
         surfaceContext->drawState.scissor.extent = (VkExtent2D){.width = state->scissor->width, .height = state->scissor->height};
     }
-    if(state->samplers)
+    if(state->material)
     {
-        surfaceContext->drawState.texture = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->samplers->resourceHandleTexture);
-        if(state->samplers->resourceHandleTexture)
+        surfaceContext->drawState.texture                    = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->resourceHandleTexture);
+        surfaceContext->drawState.pushConstants.vertex.color = state->material->color;
+        if(state->material->resourceHandleTexture)
         {
             if(!surfaceContext->drawState.texture)
                 surfaceContext->drawState.texture = surfaceContext->defaultTexture;

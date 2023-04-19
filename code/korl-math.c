@@ -421,6 +421,13 @@ korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V
 {
     return korl_math_arcCosine(korl_math_v3f32_dot(korl_math_v3f32_normal(vA), korl_math_v3f32_normal(vB)));
 }
+korl_internal Korl_Math_V3f32 korl_math_v3f32_project(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB, bool vbIsNormalized)
+{
+    if(!vbIsNormalized)
+        vB = korl_math_v3f32_normal(vB);
+    const f32 scalarProjection = korl_math_v3f32_dot(vA, vB);
+    return korl_math_v3f32_multiplyScalar(vB, scalarProjection);
+}
 korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
     vA.elements[0] += vB.elements[0];
@@ -508,6 +515,28 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Mat
         ,sine * axis.y
         ,sine * axis.z
         ,cosf(radians/2) };
+}
+korl_internal Korl_Math_Quaternion korl_math_quaternion_fromVector(Korl_Math_V3f32 forward, Korl_Math_V3f32 worldForward, Korl_Math_V3f32 worldUp)
+{
+    const f32 forwardMagnitude      = korl_math_v3f32_magnitude(&forward);
+    const f32 worldForwardMagnitude = korl_math_v3f32_magnitude(&worldForward);
+    const f32 worldUpMagnitude      = korl_math_v3f32_magnitude(&worldUp);
+    korl_assert(!korl_math_isNearlyZero(forwardMagnitude));
+    korl_assert(!korl_math_isNearlyZero(worldForwardMagnitude));
+    korl_assert(!korl_math_isNearlyZero(worldUpMagnitude));
+    forward      = korl_math_v3f32_normalKnownMagnitude(forward, forwardMagnitude);
+    worldForward = korl_math_v3f32_normalKnownMagnitude(worldForward, worldForwardMagnitude);
+    worldUp      = korl_math_v3f32_normalKnownMagnitude(worldUp, worldUpMagnitude);
+    const Korl_Math_V3f32      forward_componentUp      = korl_math_v3f32_project(forward, worldUp, true);
+    const Korl_Math_V3f32      forward_componentHorizon = korl_math_v3f32_subtract(forward, forward_componentUp);
+    const Korl_Math_V3f32      yawAxis                  = korl_math_v3f32_cross(&worldForward, &forward_componentHorizon);
+    const f32                  yawRadians               = korl_math_v3f32_radiansBetween(worldForward, forward_componentHorizon);
+    const Korl_Math_Quaternion quaternionYaw            = korl_math_quaternion_fromAxisRadians(yawAxis, yawRadians, false);
+    const Korl_Math_V3f32      worldForwardYawed        = korl_math_quaternion_transformV3f32(quaternionYaw, worldForward, false);
+    const Korl_Math_V3f32      pitchAxis                = korl_math_v3f32_cross(&worldForwardYawed, &forward);
+    const f32                  pitchRadians             = korl_math_v3f32_radiansBetween(worldForwardYawed, forward);
+    const Korl_Math_Quaternion quaternionPitch          = korl_math_quaternion_fromAxisRadians(pitchAxis, pitchRadians, false);
+    return korl_math_quaternion_multiply(quaternionYaw, quaternionPitch);
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
@@ -993,6 +1022,11 @@ korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 v
     vA = korl_math_v3f32_add(vA, vB);
     return vA;
 }
+korl_internal Korl_Math_V3f32& operator-=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
+{
+    vA = korl_math_v3f32_subtract(vA, vB);
+    return vA;
+}
 korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     return korl_math_v2f32_add(vA, vB);
@@ -1063,5 +1097,10 @@ korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Mat
 {
     Korl_Math_V4f32 v4 = {v.x, v.y, 0, 1};
     return korl_math_m4f32_multiplyV4f32(&m, &v4).xy;
+}
+korl_internal Korl_Math_V3f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V3f32& v)
+{
+    Korl_Math_V4f32 v4 = {v.x, v.y, v.z, 1};
+    return korl_math_m4f32_multiplyV4f32(&m, &v4).xyz;
 }
 #endif//__cplusplus

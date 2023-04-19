@@ -123,7 +123,6 @@ typedef struct Korl_Vulkan_DrawState_Model
     Korl_Math_V3f32      translation;
     Korl_Math_Quaternion rotation;
     Korl_Math_V3f32      scale;
-    Korl_Math_V4f32      color;
     Korl_Math_Aabb2f32   uvAabb;
 } Korl_Vulkan_DrawState_Model;
 typedef struct Korl_Vulkan_DrawState_Scissor
@@ -133,10 +132,11 @@ typedef struct Korl_Vulkan_DrawState_Scissor
     u32 width;
     u32 height;
 } Korl_Vulkan_DrawState_Scissor;
-typedef struct Korl_Vulkan_DrawState_Samplers
+typedef struct Korl_Vulkan_DrawState_Material
 {
     Korl_Resource_Handle resourceHandleTexture;
-} Korl_Vulkan_DrawState_Samplers;
+    Korl_Math_V4f32      color;
+} Korl_Vulkan_DrawState_Material;
 typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
@@ -159,7 +159,7 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_View*           view;      //KORL-ISSUE-000-000-103: vulkan: likely related to KORL-PERFORMANCE-000-000-041; refactor DrawState View & Projection to be M4f32; korl-vulkan shouldn't be concerned with how the user wants these transforms calculated
     const Korl_Vulkan_DrawState_Model*          model;
     const Korl_Vulkan_DrawState_Scissor*        scissor;
-    const Korl_Vulkan_DrawState_Samplers*       samplers;
+    const Korl_Vulkan_DrawState_Material*       material;
     const Korl_Vulkan_DrawState_StorageBuffers* storageBuffers;
     const Korl_Vulkan_DrawState_Programs*       programs;
     const Korl_Vulkan_DrawState_Lights*         lights;

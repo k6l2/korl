@@ -113,6 +113,7 @@ typedef struct Korl_Gfx_Camera
 typedef enum Korl_Gfx_Drawable_Type
     {KORL_GFX_DRAWABLE_TYPE_SCENE3D
 } Korl_Gfx_Drawable_Type;
+//@TODO: create a "Material" struct
 typedef struct Korl_Gfx_Drawable
 {
     struct
@@ -129,6 +130,7 @@ typedef struct Korl_Gfx_Drawable
             Korl_Resource_Handle resourceHandle;
             Korl_Resource_Handle resourceHandleShaderVertex;  //KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
             Korl_Resource_Handle resourceHandleShaderFragment;//KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
+            //@TODO: store "Material" slots here to allow the user to override mesh materials
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;
@@ -202,7 +204,7 @@ typedef struct Korl_Gfx_Font_Metrics
     f32 lineGap;
 } Korl_Gfx_Font_Metrics;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics name(acu16 utf16AssetNameFont, f32 textPixelHeight)
-#define KORL_FUNCTION_korl_gfx_createCameraFov(name)                         Korl_Gfx_Camera       name(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target)
+#define KORL_FUNCTION_korl_gfx_createCameraFov(name)                         Korl_Gfx_Camera       name(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target, Korl_Math_V3f32 up)
 #define KORL_FUNCTION_korl_gfx_createCameraOrtho(name)                       Korl_Gfx_Camera       name(f32 clipDepth)
 #define KORL_FUNCTION_korl_gfx_createCameraOrthoFixedHeight(name)            Korl_Gfx_Camera       name(f32 fixedHeight, f32 clipDepth)
 #define KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(name)            void                  name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)

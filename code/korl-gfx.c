@@ -1033,8 +1033,9 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     vertexData.indices                 = triQuadIndices;
     vertexData.instancePositionsStride = 2*sizeof(f32);
     vertexData.instanceUintStride      = sizeof(u32);
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
-    samplers.resourceHandleTexture = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
+    material.resourceHandleTexture = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
+    material.color                 = KORL_MATH_V4F32_ONE;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
@@ -1049,14 +1050,13 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.features       = &features;
     drawState.blend          = &blend;
-    drawState.samplers       = &samplers;
+    drawState.material       = &material;
     drawState.storageBuffers = &storageBuffers;
     korl_vulkan_setDrawState(&drawState);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
     model.scale       = context->modelScale;
     model.rotation    = context->modelRotate;
     model.translation = context->modelTranslate;
-    model.color       = KORL_MATH_V4F32_ONE;
     model.translation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     u$ currentVisibleGlyphOffset = 0;// used to determine the byte (transform required) offset into the Text object's text buffer resource
     for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
@@ -1065,9 +1065,10 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             break;
         if(model.translation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
         {
-            model.color = line->color;
+            material.color = line->color;
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
-            drawStateLine.model = &model;
+            drawStateLine.material = &material;
+            drawStateLine.model    = &model;
             korl_vulkan_setDrawState(&drawStateLine);
             vertexData.instanceCount                        = line->visibleCharacters;
             vertexData.vertexBuffer.type                   = KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE;
@@ -1191,7 +1192,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
     result.position                                = position;
     result.target                                  = target;
-    result.worldUpNormal                           = KORL_MATH_V3F32_Z;
+    result.worldUpNormal                           = up;
     result._viewportScissorPosition                = (Korl_Math_V2f32){0, 0};
     result._viewportScissorSize                    = (Korl_Math_V2f32){1, 1};
     result.subCamera.perspective.clipNear          = clipNear;
@@ -1502,10 +1503,6 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     model.scale       = batch->_scale;
     model.rotation    = batch->_rotation;
     model.translation = batch->_position;
-    model.color       = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
-                                         ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
-                                         ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
-                                         ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
     if(batch->_vertexUvs)
     {
         model.uvAabb = KORL_MATH_AABB2F32_EMPTY;
@@ -1514,8 +1511,12 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
         korl_math_v2f32_assignAddScalar     (&model.uvAabb.min, batch->uvAabbOffset);
         korl_math_v2f32_assignSubtractScalar(&model.uvAabb.max, batch->uvAabbOffset);
     }
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
-    samplers.resourceHandleTexture = batch->_texture;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
+    material.resourceHandleTexture = batch->_texture;
+    material.color                 = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                      ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                      ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                      ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     if(batch->_assetNameFont)
     {
@@ -1526,7 +1527,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
         vertexData.indices    = _KORL_GFX_TRI_QUAD_INDICES;
         vertexData.indexCount = korl_arraySize(_KORL_GFX_TRI_QUAD_INDICES);
         /* use glyph texture */
-        samplers.resourceHandleTexture = batch->_fontTextureHandle;
+        material.resourceHandleTexture = batch->_fontTextureHandle;
         /* use the glyph mesh vertices buffer as the shader storage buffer 
             object binding */
         storageBuffers.resourceHandleVertex = batch->_glyphMeshBufferVertices;
@@ -1558,7 +1559,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     drawState.features       = &features;
     drawState.blend          = &blend;
     drawState.model          = &model;
-    drawState.samplers       = &samplers;
+    drawState.material       = &material;
     drawState.storageBuffers = &storageBuffers;
     drawState.programs       = &programs;
     korl_vulkan_setDrawState(&drawState);
@@ -2175,15 +2176,15 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     model.translation = context->_model.position;
     model.rotation    = context->_model.rotation;
     model.scale       = context->_model.scale;
-    model.color       = (Korl_Math_V4f32){1,1,1,1};
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
     programs.resourceHandleShaderVertex   = context->subType.scene3d.resourceHandleShaderVertex;
     programs.resourceHandleShaderFragment = context->subType.scene3d.resourceHandleShaderFragment;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Samplers, samplers);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
+    material.color = (Korl_Math_V4f32){1,1,1,1};
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
     drawState.programs = &programs;
-    drawState.samplers = &samplers;
+    drawState.material = &material;
     korl_vulkan_setDrawState(&drawState);
     Korl_Vulkan_DrawVertexData drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle);
     if(drawVertexData.vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
