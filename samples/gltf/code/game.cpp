@@ -105,7 +105,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
     /* lights... */
-    Korl_Gfx_Light light = {.color = {1,1,1,1}};
+    Korl_Gfx_Light light = {.color = KORL_MATH_V4F32_ONE};
     korl_gfx_light_use(&light);
     /* camera... */
     korl_shared_const Korl_Math_V3f32 DEFAULT_FORWARD = KORL_MATH_V3F32_MINUS_Y;// blender model space
@@ -152,7 +152,11 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
     scene3d._model.scale = KORL_MATH_V3F32_ONE * 50;
+    scene3d.subType.scene3d.materialSlots[0].used = true;
+    scene3d.subType.scene3d.materialSlots[0].material.color = {0,0.7f,0.1f,1};
+    scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit-color.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     korl_gfx_draw(&scene3d);
+    scene3d.subType.scene3d.materialSlots[0].used = false;
     scene3d._model.scale = KORL_MATH_V3F32_ONE * 10;
     scene3d._model.position = Korl_Math_V3f32{-1,1,1} * 100;
     korl_gfx_draw(&scene3d);

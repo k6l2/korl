@@ -114,6 +114,19 @@ typedef enum Korl_Gfx_Drawable_Type
     {KORL_GFX_DRAWABLE_TYPE_SCENE3D
 } Korl_Gfx_Drawable_Type;
 //@TODO: create a "Material" struct
+typedef struct Korl_Gfx_Material
+{
+    //@TODO: duplicated struct; see Korl_Vulkan_DrawState_Material
+    Korl_Resource_Handle resourceHandleTexture;
+    Korl_Math_V4f32      color;
+    Korl_Resource_Handle resourceHandleShaderVertex;
+    Korl_Resource_Handle resourceHandleShaderFragment;
+} Korl_Gfx_Material;
+typedef struct Korl_Gfx_Drawable_MaterialSlot
+{
+    Korl_Gfx_Material material;
+    bool              used;
+} Korl_Gfx_Drawable_MaterialSlot;
 typedef struct Korl_Gfx_Drawable
 {
     struct
@@ -128,9 +141,7 @@ typedef struct Korl_Gfx_Drawable
         struct
         {
             Korl_Resource_Handle resourceHandle;
-            Korl_Resource_Handle resourceHandleShaderVertex;  //KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
-            Korl_Resource_Handle resourceHandleShaderFragment;//KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
-            //@TODO: store "Material" slots here to allow the user to override mesh materials
+            Korl_Gfx_Drawable_MaterialSlot materialSlots[1];//@TODO: the Drawable's materials need to be mapped to a specific MeshPrimitive in the SCENE3D Resource
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;

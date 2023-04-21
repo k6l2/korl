@@ -1512,11 +1512,13 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
         korl_math_v2f32_assignSubtractScalar(&model.uvAabb.max, batch->uvAabbOffset);
     }
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
-    material.resourceHandleTexture = batch->_texture;
-    material.color                 = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                      ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                      ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                      ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
+    material.resourceHandleTexture        = batch->_texture;
+    material.color                        = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                             ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                             ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                             ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
+    material.resourceHandleShaderFragment = batch->resourceHandleShaderFragment;
+    material.resourceHandleShaderVertex   = batch->resourceHandleShaderVertex;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     if(batch->_assetNameFont)
     {
@@ -1552,16 +1554,12 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     blend.opAlpha           = batch->blend.alpha.operation;
     blend.factorAlphaSource = batch->blend.alpha.factorSource;
     blend.factorAlphaTarget = batch->blend.alpha.factorTarget;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
-    programs.resourceHandleShaderFragment = batch->resourceHandleShaderFragment;
-    programs.resourceHandleShaderVertex   = batch->resourceHandleShaderVertex;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.features       = &features;
     drawState.blend          = &blend;
     drawState.model          = &model;
     drawState.material       = &material;
     drawState.storageBuffers = &storageBuffers;
-    drawState.programs       = &programs;
     korl_vulkan_setDrawState(&drawState);
     korl_vulkan_draw(&vertexData);
     done:
@@ -2176,14 +2174,18 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     model.translation = context->_model.position;
     model.rotation    = context->_model.rotation;
     model.scale       = context->_model.scale;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Programs, programs);
-    programs.resourceHandleShaderVertex   = context->subType.scene3d.resourceHandleShaderVertex;
-    programs.resourceHandleShaderFragment = context->subType.scene3d.resourceHandleShaderFragment;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
-    material.color = (Korl_Math_V4f32){1,1,1,1};
+    Korl_Vulkan_DrawState_Material material = korl_resource_scene3d_getMaterial(context->subType.scene3d.resourceHandle);
+    /* if the user provided a material to use with this VertexData, then we just 
+        override whatever Material was provided by the SCENE3D Resource */
+    if(context->subType.scene3d.materialSlots->used)
+    {
+        material.color                        = context->subType.scene3d.materialSlots[0].material.color;
+        material.resourceHandleTexture        = context->subType.scene3d.materialSlots[0].material.resourceHandleTexture;
+        material.resourceHandleShaderVertex   = context->subType.scene3d.materialSlots[0].material.resourceHandleShaderVertex;
+        material.resourceHandleShaderFragment = context->subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment;
+    }
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
-    drawState.programs = &programs;
     drawState.material = &material;
     korl_vulkan_setDrawState(&drawState);
     Korl_Vulkan_DrawVertexData drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle);

@@ -134,18 +134,16 @@ typedef struct Korl_Vulkan_DrawState_Scissor
 } Korl_Vulkan_DrawState_Scissor;
 typedef struct Korl_Vulkan_DrawState_Material
 {
+    //@TODO: duplicated struct; see Korl_Gfx_Material
     Korl_Resource_Handle resourceHandleTexture;
     Korl_Math_V4f32      color;
+    Korl_Resource_Handle resourceHandleShaderVertex;
+    Korl_Resource_Handle resourceHandleShaderFragment;
 } Korl_Vulkan_DrawState_Material;
 typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
 } Korl_Vulkan_DrawState_StorageBuffers;
-typedef struct Korl_Vulkan_DrawState_Programs
-{
-    Korl_Resource_Handle resourceHandleShaderVertex;
-    Korl_Resource_Handle resourceHandleShaderFragment;
-} Korl_Vulkan_DrawState_Programs;
 typedef struct Korl_Vulkan_DrawState_Lights
 {
     //@TODO: duplicated struct; see _Korl_Vulkan_SwapChainImageUniformLights, Korl_Gfx_Light
@@ -161,7 +159,6 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_Scissor*        scissor;
     const Korl_Vulkan_DrawState_Material*       material;
     const Korl_Vulkan_DrawState_StorageBuffers* storageBuffers;
-    const Korl_Vulkan_DrawState_Programs*       programs;
     const Korl_Vulkan_DrawState_Lights*         lights;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute

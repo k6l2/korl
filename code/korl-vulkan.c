@@ -2041,14 +2041,11 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
             if(!surfaceContext->drawState.texture)
                 surfaceContext->drawState.texture = surfaceContext->defaultTexture;
         }
+        surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->material->resourceHandleShaderVertex);
+        surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->material->resourceHandleShaderFragment);
     }
     if(state->storageBuffers)
         surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
-    if(state->programs)
-    {
-        surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->programs->resourceHandleShaderVertex);
-        surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->programs->resourceHandleShaderFragment);
-    }
     if(state->lights)
         surfaceContext->drawState.uboLights.color = state->lights->color;
     done:
