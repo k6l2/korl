@@ -2047,7 +2047,10 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     if(state->storageBuffers)
         surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
     if(state->lights)
-        surfaceContext->drawState.uboLights.color = state->lights->color;
+    {
+        surfaceContext->drawState.uboLights.position = state->lights->position;
+        surfaceContext->drawState.uboLights.color    = state->lights->color;
+    }
     done:
     korl_time_probeStop(set_draw_state);
 }
@@ -2258,6 +2261,11 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         _Korl_Vulkan_SwapChainImageUniformLights* stagingMemoryUniformLights = 
             _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformLights), &bufferStaging, &byteOffsetStagingBuffer);
         *stagingMemoryUniformLights = surfaceContext->drawState.uboLights;
+        {//@TODO: HACK: figure out a better way of doing this that doesn't involve breaking the symmetry of the C-side light UBO structs?
+            Korl_Math_V4f32 lightPosition = {.xyz = surfaceContext->drawState.uboLights.position}; lightPosition.w = 1;
+            const Korl_Math_V4f32 lightViewPosition = korl_math_m4f32_multiplyV4f32(&surfaceContext->drawState.uboTransforms.m4f32View, &lightPosition);
+            stagingMemoryUniformLights->position = lightViewPosition.xyz;
+        }
         /* prepare a descriptor set write with the staged UBO */
         descriptorBufferInfoUniformLights.buffer = bufferStaging;
         descriptorBufferInfoUniformLights.range  = sizeof(*stagingMemoryUniformLights);

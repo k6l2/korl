@@ -41,6 +41,7 @@ typedef struct Memory
     Korl_LogConsole             logConsole;
     Camera                      camera;
     u32                         inputFlags;
+    f32                         seconds;
 } Memory;
 korl_global_variable Memory* memory;
 KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
@@ -103,9 +104,11 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 }
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
+    memory->seconds += deltaSeconds;
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
     /* lights... */
-    Korl_Gfx_Light light = {.color = KORL_MATH_V4F32_ONE};
+    korl_gfx_setClearColor(1,1,1);
+    Korl_Gfx_Light light = {.position = Korl_Math_V3f32{-1,1,1} * 100, .color = KORL_MATH_V4F32_ONE};
     korl_gfx_light_use(&light);
     /* camera... */
     korl_shared_const Korl_Math_V3f32 DEFAULT_FORWARD = KORL_MATH_V3F32_MINUS_Y;// blender model space
@@ -151,14 +154,17 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     /* action! */
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
-    scene3d._model.scale = KORL_MATH_V3F32_ONE * 50;
+    scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
+    scene3d._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true);
     scene3d.subType.scene3d.materialSlots[0].used = true;
     scene3d.subType.scene3d.materialSlots[0].material.color = {0,0.7f,0.1f,1};
-    scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit-color.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     korl_gfx_draw(&scene3d);
     scene3d.subType.scene3d.materialSlots[0].used = false;
-    scene3d._model.scale = KORL_MATH_V3F32_ONE * 10;
-    scene3d._model.position = Korl_Math_V3f32{-1,1,1} * 100;
+    scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;
+    scene3d._model.position = light.position;
+    scene3d._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
     korl_gfx_draw(&scene3d);
     /* debug */
     Korl_Gfx_Batch* batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);

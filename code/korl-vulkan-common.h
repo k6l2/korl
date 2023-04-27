@@ -146,6 +146,7 @@ typedef struct _Korl_Vulkan_SwapChainImageUniformTransforms
 typedef struct _Korl_Vulkan_SwapChainImageUniformLights
 {
     //@TODO: duplicated struct; see: Korl_Vulkan_DrawState_Lights, Korl_Gfx_Light
+    Korl_Math_V3f32 position; f32 _padding_position;
     Korl_Math_V4f32 color;
 } _Korl_Vulkan_SwapChainImageUniformLights;
 /* Ensure _Korl_Vulkan_SwapChainImageUniformTransforms member alignment here: */

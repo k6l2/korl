@@ -148,6 +148,7 @@ typedef struct Korl_Gfx_Drawable
 typedef struct Korl_Gfx_Light
 {
     //@TODO: duplicated struct; see _Korl_Vulkan_SwapChainImageUniformLights, Korl_Vulkan_DrawState_Lights
+    Korl_Math_V3f32 position; f32 _padding_position;
     Korl_Math_V4f32 color;
 } Korl_Gfx_Light;
 enum

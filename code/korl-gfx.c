@@ -2196,7 +2196,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
 {
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Lights, lights);
-    lights.color = light->color;
+    lights.position = light->position;
+    lights.color    = light->color;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.lights = &lights;
     korl_vulkan_setDrawState(&drawState);
