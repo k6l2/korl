@@ -150,7 +150,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.direction.x, true);
     const Korl_Math_V3f32      cameraForward         = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_FORWARD;
     const Korl_Math_V3f32      cameraUp              = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_UP;
-    korl_gfx_useCamera(korl_gfx_createCameraFov(90, 50, 1e16f, memory->camera.position, memory->camera.position + cameraForward, cameraUp));
+    korl_gfx_useCamera(korl_gfx_createCameraFov(90, 10, 1e16f, memory->camera.position, memory->camera.position + cameraForward, cameraUp));
     /* action! */
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
