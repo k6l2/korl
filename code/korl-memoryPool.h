@@ -5,6 +5,9 @@ typedef u32 Korl_MemoryPool_Size;
  * \note This does NOT initialize the memory to a valid known state.
  */
 #define KORL_MEMORY_POOL_DECLARE(type, name, size) type name[size]; Korl_MemoryPool_Size name##_korlMemoryPoolSize
+#define KORL_MEMORY_POOL_ZERO(name) \
+    ( korl_memory_zero(name, sizeof(name))\
+    , name##_korlMemoryPoolSize = 0 )
 #define KORL_MEMORY_POOL_SIZE(name) (name##_korlMemoryPoolSize)
 #define KORL_MEMORY_POOL_CAPACITY(name) (sizeof(name) / sizeof((name)[0]))
 #define KORL_MEMORY_POOL_ISFULL(name) (name##_korlMemoryPoolSize >= korl_arraySize(name))

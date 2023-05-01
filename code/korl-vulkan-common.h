@@ -8,6 +8,7 @@
 #include "korl-math.h"
 #include "korl-stringPool.h"
 #include "korl-memoryPool.h"
+#include "korl-interface-platform-gfx.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
 /** These enum values correspond directly to the `layout(set = x)` value for 
@@ -16,13 +17,52 @@ typedef enum _Korl_Vulkan_DescriptorSetIndex
     /* ideally, these descriptor sets indices are defined in the order of least- 
         to most-frequently-changed for performance reasons; see 
         "Pipeline Layout Compatibility" in the Vulkan spec for more details */
-    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_VP_TRANSFORMS
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_UBO_LIGHTS
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_VERTEX_SSBO
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_FRAGMENT_SAMPLERS//@TODO: this descriptor set should probably just be dedicated to "material" data (color maps, etc.)
+    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE// used for things like glyph mesh lookup tables, maybe animation transforms, etc.; mostly stuff in vertex shader
+    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL// color maps, textures, etc.; mostly stuff used in fragment shader
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT// Keep last!
 } _Korl_Vulkan_DescriptorSetIndex;
 KORL_STATIC_ASSERT(_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT <= 4);// Vulkan Spec 42.1; maxBoundDescriptorSets minimum is 4; any higher than this is hardware-dependent
+typedef enum _Korl_Vulkan_DescriptorSetBinding
+    {_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION = 0
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT// keep last in the `SCENE_TRANSFORMS` section
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO = 0
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_COUNT// keep last in the `LIGHTS` section
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO = 0
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_COUNT// keep last in the `VERTEX_STORAGE` section
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO = 0
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_COUNT// keep last in the `MATERIAL` section
+} _Korl_Vulkan_DescriptorSetBinding;
+#define _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL (  _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT\
+                                               + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_COUNT\
+                                               + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_COUNT\
+                                               + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_COUNT)
+korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_SCENE_TRANSFORMS[] = 
+    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}/*_Korl_Vulkan_Uniform_VpTransforms*/};
+korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_LIGHTS[] = 
+    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*Korl_Vulkan_DrawState_Lights*/};
+korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_STORAGE[] = 
+    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::vertexStorageBuffer*/};
+korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_MATERIAL[] = 
+    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_Uniform_Material*/
+    ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::texture*/};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -132,31 +172,51 @@ typedef struct _Korl_Vulkan_Context
      * used for anything else in the future... */
     Korl_StringPool stringPool;
 } _Korl_Vulkan_Context;
+typedef struct _Korl_Vulkan_DescriptorPool
+{
+    VkDescriptorPool vkDescriptorPool;
+    u$               setsAllocated;
+} _Korl_Vulkan_DescriptorPool;
+typedef struct _Korl_Vulkan_SwapChainImageContext
+{
+    VkImageView                  imageView;
+    VkFramebuffer                frameBuffer;
+    // KORL-PERFORMANCE-000-000-037: vulkan: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
+    _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
+    #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+        u$* stbDaInUseDeviceAssetIndices;
+    #endif
+} _Korl_Vulkan_SwapChainImageContext;
 /** 
  * Make sure to ensure memory alignment of these data members according to GLSL 
  * data alignment spec after this struct definition!  See Vulkan Specification 
  * `15.6.4. Offset and Stride Assignment` for details.
  */
-typedef struct _Korl_Vulkan_SwapChainImageUniformTransforms
+typedef struct _Korl_Vulkan_Uniform_VpTransforms
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
-} _Korl_Vulkan_SwapChainImageUniformTransforms;
-typedef struct _Korl_Vulkan_SwapChainImageUniformLights
+} _Korl_Vulkan_Uniform_VpTransforms;
+/* Ensure _Korl_Vulkan_Uniform_VpTransforms member alignment here: */
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32Projection) & 16) == 0);
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32View      ) & 16) == 0);
+typedef struct _Korl_Vulkan_Uniform_Material
 {
-    //@TODO: duplicated struct; see: Korl_Vulkan_DrawState_Lights, Korl_Gfx_Light
-    Korl_Math_V3f32 position; f32 _padding_position;
-    Korl_Math_V4f32 color;
-} _Korl_Vulkan_SwapChainImageUniformLights;
-/* Ensure _Korl_Vulkan_SwapChainImageUniformTransforms member alignment here: */
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32Projection) & 16) == 0);
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_SwapChainImageUniformTransforms, m4f32View      ) & 16) == 0);
+
+    Korl_Math_V3f32 ambient;
+    f32             _padding_0;// need this to align vec3 to 16 bytes
+    Korl_Math_V3f32 diffuse;
+    f32             _padding_1;// need this to align vec3 to 16 bytes
+    Korl_Math_V3f32 specular;
+    f32             shininess;
+} _Korl_Vulkan_Uniform_Material;
 typedef struct _Korl_Vulkan_DrawPushConstants
 {
     struct
     {
         Korl_Math_M4f32 m4f32Model;
+        //@TODO: pull color out of PushConstants; make a separate "UnlitMaterial"?
         Korl_Math_V4f32 color;// UNORM
     } vertex;
     struct
@@ -166,21 +226,6 @@ typedef struct _Korl_Vulkan_DrawPushConstants
     } fragment;
 } _Korl_Vulkan_DrawPushConstants;
 KORL_STATIC_ASSERT(sizeof(_Korl_Vulkan_DrawPushConstants) <= 128);// vulkan spec 42.1 table 53; minimum limit for VkPhysicalDeviceLimits::maxPushConstantsSize
-typedef struct _Korl_Vulkan_DescriptorPool
-{
-    VkDescriptorPool vkDescriptorPool;
-    u$ setsAllocated;
-} _Korl_Vulkan_DescriptorPool;
-typedef struct _Korl_Vulkan_SwapChainImageContext
-{
-    VkImageView   imageView;
-    VkFramebuffer frameBuffer;
-    // KORL-PERFORMANCE-000-000-037: vulkan: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
-    _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
-#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
-    u$* stbDaInUseDeviceAssetIndices;
-#endif
-} _Korl_Vulkan_SwapChainImageContext;
 /** 
  * the contents of this struct are expected to be nullified at the end of each 
  * call to \c frameBegin() 
@@ -193,18 +238,19 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
      * If this value is >= \c arrlenu(context->stbDaPipelines) , that 
      * means there is no valid render state. 
      */
-    u$ currentPipeline;
-    _Korl_Vulkan_Pipeline pipelineConfigurationCache;
+    u$                       currentPipeline;
+    _Korl_Vulkan_Pipeline    pipelineConfigurationCache;
     Korl_Vulkan_ShaderHandle transientShaderHandleVertex;
     Korl_Vulkan_ShaderHandle transientShaderHandleFragment;
     /** ----- dynamic uniform state (push constants, etc...) ----- */
     _Korl_Vulkan_DrawPushConstants pushConstants;
-    VkRect2D scissor;
+    VkRect2D                       scissor;
     /** ----- descriptor state ----- */
-    _Korl_Vulkan_SwapChainImageUniformTransforms uboTransforms;
-    _Korl_Vulkan_SwapChainImageUniformLights     uboLights;
-    Korl_Vulkan_DeviceMemory_AllocationHandle    texture;
-    Korl_Vulkan_DeviceMemory_AllocationHandle    vertexStorageBuffer;
+    _Korl_Vulkan_Uniform_VpTransforms         uboTransforms;
+    Korl_Vulkan_DrawState_Lights              uboLights;
+    _Korl_Vulkan_Uniform_Material             uboMaterial;
+    Korl_Vulkan_DeviceMemory_AllocationHandle texture;
+    Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
 } _Korl_Vulkan_SurfaceContextDrawState;
 /**
  * Each buffer acts as a linear allocator

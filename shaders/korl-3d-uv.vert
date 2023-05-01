@@ -1,24 +1,24 @@
 #version 450
-layout(binding = 0, set = 0, row_major) uniform UniformBufferObject
+#extension GL_GOOGLE_include_directive : require
+#include "korl.glsl"
+layout(set     = KORL_DESCRIPTOR_SET_SCENE_TRANSFORMS
+      ,binding = KORL_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VP
+      ,row_major) 
+    uniform Korl_UniformBufferObject_VpTransforms
 {
-    mat4 projection;
-    mat4 view;
-    // mat4 model;
-} ubo;
-layout(push_constant, row_major) uniform UniformPushConstants
+    Korl_VpTransforms vpTransforms;
+};
+layout(push_constant, row_major) uniform Korl_UniformBufferObject_VertexPushConstants
 {
-    mat4 model;
-    vec4 color;
-} pushConstants;
-layout(location = 0) in vec3 attributePosition;
-// layout(location = 1) in vec4 attributeColor;
-layout(location = 2) in vec2 attributeUv;
-layout(location = 0) out vec4 fragmentColor;
-layout(location = 1) out vec2 fragmentUv;
+    Korl_Vertex_PushConstants pushConstants;
+};
+layout(location = KORL_VERTEX_INPUT_POSITION) in vec3 attributePosition;
+layout(location = KORL_VERTEX_INPUT_UV)       in vec2 attributeUv;
+layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
+layout(location = KORL_FRAGMENT_INPUT_UV)    out vec2 fragmentUv;
 void main() 
 {
-    // gl_Position = ubo.projection * ubo.view * ubo.model * vec4(attributePosition, 1.0);
-    gl_Position   = ubo.projection * ubo.view * pushConstants.model * vec4(attributePosition, 1.0);
+    gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(attributePosition, 1.0);
     fragmentColor = pushConstants.color;
     fragmentUv    = attributeUv;
 }

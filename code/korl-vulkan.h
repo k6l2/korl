@@ -132,24 +132,12 @@ typedef struct Korl_Vulkan_DrawState_Scissor
     u32 width;
     u32 height;
 } Korl_Vulkan_DrawState_Scissor;
-typedef struct Korl_Vulkan_DrawState_Material
-{
-    //@TODO: duplicated struct; see Korl_Gfx_Material
-    Korl_Resource_Handle resourceHandleTexture;
-    Korl_Math_V4f32      color;
-    Korl_Resource_Handle resourceHandleShaderVertex;
-    Korl_Resource_Handle resourceHandleShaderFragment;
-} Korl_Vulkan_DrawState_Material;
+typedef Korl_Gfx_Material Korl_Vulkan_DrawState_Material;// @TODO: likely unnecessary abstraction
 typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
 } Korl_Vulkan_DrawState_StorageBuffers;
-typedef struct Korl_Vulkan_DrawState_Lights
-{
-    //@TODO: duplicated struct; see _Korl_Vulkan_SwapChainImageUniformLights, Korl_Gfx_Light
-    Korl_Math_V3f32 position; f32 _padding_position;
-    Korl_Math_V4f32 color;
-} Korl_Vulkan_DrawState_Lights;
+typedef Korl_Gfx_Light Korl_Vulkan_DrawState_Lights;// @TODO: likely unnecessary abstraction
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*       features;

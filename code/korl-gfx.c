@@ -2178,12 +2178,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     /* if the user provided a material to use with this VertexData, then we just 
         override whatever Material was provided by the SCENE3D Resource */
     if(context->subType.scene3d.materialSlots->used)
-    {
-        material.color                        = context->subType.scene3d.materialSlots[0].material.color;
-        material.resourceHandleTexture        = context->subType.scene3d.materialSlots[0].material.resourceHandleTexture;
-        material.resourceHandleShaderVertex   = context->subType.scene3d.materialSlots[0].material.resourceHandleShaderVertex;
-        material.resourceHandleShaderFragment = context->subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment;
-    }
+        material = context->subType.scene3d.materialSlots[0].material;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
     drawState.material = &material;

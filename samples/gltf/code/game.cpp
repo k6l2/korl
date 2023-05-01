@@ -30,7 +30,7 @@ enum InputFlags
 typedef struct Camera
 {
     Korl_Math_V3f32 position;
-    Korl_Math_V2f32 direction;// x => yaw, y => pitch
+    Korl_Math_V2f32 yawPitch;// x => yaw, y => pitch
 } Camera;
 typedef struct Memory
 {
@@ -55,7 +55,7 @@ KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
     memory->allocatorStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
     memory->stringPool     = korl_stringPool_create(allocatorHeap);
     memory->logConsole     = korl_logConsole_create(&memory->stringPool);
-    memory->camera         = {.position = KORL_MATH_V3F32_ONE * 200, .direction = {-KORL_PI32/4, -KORL_PI32/4}};
+    memory->camera         = {.position = KORL_MATH_V3F32_ONE * 200, .yawPitch = {-KORL_PI32/4, -KORL_PI32/4}};
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     return memory;
 }
@@ -108,7 +108,10 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
-    Korl_Gfx_Light light = {.position = Korl_Math_V3f32{-1,1,1} * 100, .color = KORL_MATH_V4F32_ONE};
+    Korl_Gfx_Light light = {.position = Korl_Math_V3f32{-1,1,1} * 100
+                           ,.color = {.ambient  = KORL_MATH_V3F32_ONE * 0.2f
+                                     ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
+                                     ,.specular = KORL_MATH_V3F32_ONE}};
     korl_gfx_light_use(&light);
     /* camera... */
     korl_shared_const Korl_Math_V3f32 DEFAULT_FORWARD = KORL_MATH_V3F32_MINUS_Y;// blender model space
@@ -125,8 +128,8 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
         {
             korl_shared_const f32 CAMERA_LOOK_SPEED = 2;
             cameraLook = korl_math_v2f32_normalKnownMagnitude(cameraLook, cameraLookMagnitude);
-            memory->camera.direction += deltaSeconds * CAMERA_LOOK_SPEED * cameraLook;
-            KORL_MATH_ASSIGN_CLAMP(memory->camera.direction.y, -KORL_PI32/2, KORL_PI32/2);
+            memory->camera.yawPitch += deltaSeconds * CAMERA_LOOK_SPEED * cameraLook;
+            KORL_MATH_ASSIGN_CLAMP(memory->camera.yawPitch.y, -KORL_PI32/2, KORL_PI32/2);
         }
         Korl_Math_V3f32 cameraMove = KORL_MATH_V3F32_ZERO;
         if(memory->inputFlags & (1 << INPUT_FLAG_FORWARD))  cameraMove += DEFAULT_FORWARD;
@@ -140,14 +143,14 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
         {
             korl_shared_const f32 CAMERA_SPEED = 1000;
             cameraMove = korl_math_v3f32_normalKnownMagnitude(cameraMove, cameraMoveMagnitude);
-            const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(DEFAULT_RIGHT, memory->camera.direction.y, true);
-            const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.direction.x, true);
+            const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(DEFAULT_RIGHT, memory->camera.yawPitch.y, true);
+            const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.yawPitch.x, true);
             const Korl_Math_V3f32      cameraForward         = quaternionCameraYaw * quaternionCameraPitch * cameraMove;
             memory->camera.position += deltaSeconds * CAMERA_SPEED * cameraForward;
         }
     }
-    const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(DEFAULT_RIGHT, memory->camera.direction.y, true);
-    const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.direction.x, true);
+    const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(DEFAULT_RIGHT, memory->camera.yawPitch.y, true);
+    const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.yawPitch.x, true);
     const Korl_Math_V3f32      cameraForward         = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_FORWARD;
     const Korl_Math_V3f32      cameraUp              = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_UP;
     korl_gfx_useCamera(korl_gfx_createCameraFov(90, 10, 1e16f, memory->camera.position, memory->camera.position + cameraForward, cameraUp));
@@ -157,7 +160,11 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
     scene3d._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true);
     scene3d.subType.scene3d.materialSlots[0].used = true;
-    scene3d.subType.scene3d.materialSlots[0].material.color = {0,0.7f,0.1f,1};
+    scene3d.subType.scene3d.materialSlots[0].material.color     = KORL_MATH_V4F32_ONE; //{0, .7f, .1f, 1};
+    scene3d.subType.scene3d.materialSlots[0].material.ambient   = {0.f , .8f, .05f};
+    scene3d.subType.scene3d.materialSlots[0].material.diffuse   = {0.f , .8f, .05f};
+    scene3d.subType.scene3d.materialSlots[0].material.specular  = { .5f, .5f, .5f };
+    scene3d.subType.scene3d.materialSlots[0].material.shininess = 32.f;
     scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     korl_gfx_draw(&scene3d);

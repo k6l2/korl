@@ -1,11 +1,13 @@
 #version 450
-layout(binding = 0, set = 3) uniform sampler2D textureSampler;
-layout(location = 0) in vec4 fragmentColor;
-layout(location = 1) in vec2 fragmentUv;
-layout(location = 0) out vec4 outColor;
+#extension GL_GOOGLE_include_directive : require
+#include "korl.glsl"
+layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
+      ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_TEXTURE) 
+    uniform sampler2D textureSampler;
+layout(location = KORL_FRAGMENT_INPUT_COLOR) in vec4 fragmentColor;
+layout(location = KORL_FRAGMENT_INPUT_UV)    in vec2 fragmentUv;
+layout(location = KORL_FRAGMENT_OUTPUT_COLOR) out vec4 outColor;
 void main() 
 {
     outColor = fragmentColor*texture(textureSampler, fragmentUv);
-    //outColor = vec4(fragmentUv, 0.0, 1.0);
-    //outColor = vec4(1.0, 1.0, 1.0, 1.0);
 }

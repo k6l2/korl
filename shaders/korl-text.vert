@@ -1,35 +1,37 @@
 #version 450
-layout(binding = 0, set = 0, row_major) uniform UniformBufferObject
+#extension GL_GOOGLE_include_directive : require
+#include "korl.glsl"
+layout(set     = KORL_DESCRIPTOR_SET_SCENE_TRANSFORMS
+      ,binding = KORL_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VP
+      ,row_major) 
+    uniform Korl_UniformBufferObject_VpTransforms
 {
-    mat4 projection;
-    mat4 view;
-} ubo;
-layout(push_constant, row_major) uniform UniformPushConstants
+    Korl_VpTransforms vpTransforms;
+};
+layout(push_constant, row_major) uniform Korl_UniformBufferObject_VertexPushConstants
 {
-    mat4 model;
-    vec4 color;
-} pushConstants;
+    Korl_Vertex_PushConstants pushConstants;
+};
 struct GlyphVertex
 {
     vec4 position2d_uv;// position occupies .xy, uv occupies .zw
 };
-layout(binding = 0, set = 2) readonly buffer BufferGlyphMeshData
+layout(set     = KORL_DESCRIPTOR_SET_STORAGE
+      ,binding = KORL_DESCRIPTOR_SET_BINDING_STORAGE_SSBO) 
+    readonly buffer BufferGlyphMeshData
 {
     GlyphVertex glyphVertices[];
-} bufferGlyphMeshData;
-// layout(location = 0) in vec2 attributePosition;
-// layout(location = 1) in vec4 attributeColor;
-//layout(location = 2) in vec2 attributeUv;
-layout(location = 3) in vec2 instanceAttributeGlyphPosition;
-layout(location = 4) in uint instanceAttributeGlyphIndex;
-layout(location = 0) out vec4 fragmentColor;
-layout(location = 1) out vec2 fragmentUv;
+};
+layout(location = KORL_VERTEX_INPUT_INSTANCE_POSITION) in vec2 instanceAttributeGlyphPosition;// KORL-ISSUE-000-000-151: re-use KORL_VERTEX_INPUT_POSITION location? it would be nice if we had a way to configure any given attribute as per-vertex/instance in korl-vulkan
+layout(location = KORL_VERTEX_INPUT_INSTANCE_UINT)     in uint instanceAttributeGlyphIndex;
+layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
+layout(location = KORL_FRAGMENT_INPUT_UV)    out vec2 fragmentUv;
 void main() 
 {
     const uint glyphMeshVertexIndex = 4*instanceAttributeGlyphIndex + gl_VertexIndex;
-    const GlyphVertex glyphVertex   = bufferGlyphMeshData.glyphVertices[glyphMeshVertexIndex];
+    const GlyphVertex glyphVertex   = glyphVertices[glyphMeshVertexIndex];
     const vec2 modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
-    gl_Position   = ubo.projection * ubo.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
+    gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
     fragmentColor = pushConstants.color;
     fragmentUv    = glyphVertex.position2d_uv.zw;
 }
