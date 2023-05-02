@@ -26,7 +26,6 @@ struct Korl_VpTransforms
 struct Korl_Vertex_PushConstants
 {
     mat4 model;
-    vec4 color;
 };
 struct Korl_Light
 {
@@ -41,4 +40,5 @@ struct Korl_Material
     vec3  diffuse;
     vec3  specular;
     float shininess;
+    vec4  color;
 };

@@ -1197,14 +1197,13 @@ korl_internal void _korl_vulkan_frameBegin(void)
     korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
     korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
     surfaceContext->drawState.pushConstants.vertex.m4f32Model = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pushConstants.vertex.color      = KORL_MATH_V4F32_ONE;// default the model color to white
     surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){0,0,1,1};
     surfaceContext->drawState.uboTransforms.m4f32View         = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.uboTransforms.m4f32Projection   = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache      = _korl_vulkan_pipeline_default();
     surfaceContext->drawState.scissor                         = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.texture                         = surfaceContext->defaultTexture;
-    surfaceContext->drawStateLast.uboMaterial.diffuse         = KORL_MATH_V3F32_ONE;// @TODO: HACK; is there a better way to ensure that the material descriptor binding gets written?...
+    surfaceContext->drawState.uboMaterialProperties.color     = KORL_MATH_V4F32_ONE;// default the model color to white
+    surfaceContext->drawState.materialMaps.diffuse            = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->drawState.currentPipeline = KORL_U$_MAX;//KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
@@ -2002,19 +2001,16 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     }
     if(state->material)
     {
-        surfaceContext->drawState.texture                    = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->resourceHandleTexture);
-        surfaceContext->drawState.pushConstants.vertex.color = state->material->color;
-        surfaceContext->drawState.uboMaterial.ambient        = state->material->ambient;
-        surfaceContext->drawState.uboMaterial.diffuse        = state->material->diffuse;
-        surfaceContext->drawState.uboMaterial.specular       = state->material->specular;
-        surfaceContext->drawState.uboMaterial.shininess      = state->material->shininess;
-        if(state->material->resourceHandleTexture)
+        surfaceContext->drawState.uboMaterialProperties = state->material->properties;
+        if(state->material->maps.resourceHandleTextureDiffuse)
         {
-            if(!surfaceContext->drawState.texture)
-                surfaceContext->drawState.texture = surfaceContext->defaultTexture;
+            if(!(surfaceContext->drawState.materialMaps.diffuse = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureDiffuse)))
+                surfaceContext->drawState.materialMaps.diffuse = surfaceContext->defaultTexture;
         }
-        surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->material->resourceHandleShaderVertex);
-        surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->material->resourceHandleShaderFragment);
+        else 
+            surfaceContext->drawState.materialMaps.diffuse = 0;
+        surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderVertex);
+        surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderFragment);
     }
     if(state->storageBuffers)
         surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
@@ -2106,7 +2102,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     pipelineCache->instancePositionDimensions = vertexData->instancePositionDimensions;
     pipelineCache->instancePositionStride     = vertexData->instancePositionsStride;
     pipelineCache->instanceUintStride         = vertexData->instanceUintStride;
-    pipelineCache->useTexture                 = (0 != surfaceContext->drawState.texture);
     if(vertexData->vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
     {
         for(u32 d = 0; d < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; d++)
@@ -2176,7 +2171,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         korl_assert(shaderIndex < arrlenu(context->stbDaShaders));
         pipelineCache->shaderFragment = context->stbDaShaders[shaderIndex].shaderModule;
     }
-    else if(pipelineCache->useTexture)
+    else if(surfaceContext->drawState.materialMaps.diffuse)
         pipelineCache->shaderFragment = context->shaderFragmentColorTexture;
     else
         pipelineCache->shaderFragment = context->shaderFragmentColor;
@@ -2198,10 +2193,12 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet           , descriptorSetWrites         , _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_ZERO_STACK_ARRAY(_Korl_Vulkan_DescriptorSetIndex, descriptorSetWriteSetIndices, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     uint32_t descriptorWriteCount = 0;
-    KORL_ZERO_STACK_ARRAY(bool, descriptorSetIndicesChanged, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
+    KORL_ZERO_STACK_ARRAY(bool, descriptorSetIndicesChanged, _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT);
     KORL_MEMORY_POOL_DECLARE(VkDescriptorBufferInfo, descriptorBufferInfos, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_MEMORY_POOL_ZERO(descriptorBufferInfos);
-    // write the uniform transform buffer (view-projection transforms) //
+    KORL_MEMORY_POOL_DECLARE(VkDescriptorImageInfo, descriptorImageInfos, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
+    KORL_MEMORY_POOL_ZERO(descriptorImageInfos);
+    // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS //
     if(0 != korl_memory_compare(&surfaceContext->drawState.uboTransforms// only ever get new VP uniform staging memory if the VP state has changed!
                                ,&surfaceContext->drawStateLast.uboTransforms
                                ,sizeof(surfaceContext->drawState.uboTransforms)))
@@ -2227,7 +2224,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }
-    // write the uniform lights //
+    // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS //
     if(0 != korl_memory_compare(&surfaceContext->drawState.uboLights// only ever get new VP uniform staging memory if the VP state has changed!
                                ,&surfaceContext->drawStateLast.uboLights
                                ,sizeof(surfaceContext->drawState.uboLights)))
@@ -2258,63 +2255,66 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }
-    // write material UBO uniform if it has changed //
-    if(0 != korl_memory_compare(&surfaceContext->drawState.uboMaterial
-                               ,&surfaceContext->drawStateLast.uboMaterial
-                               ,sizeof(surfaceContext->drawState.uboMaterial)))
+    // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL //
+    if(   // write material UBO uniform if it has changed //
+          0 != korl_memory_compare(&surfaceContext->drawState.uboMaterialProperties
+                                  ,&surfaceContext->drawStateLast.uboMaterialProperties
+                                  ,sizeof(surfaceContext->drawState.uboMaterialProperties))
+          // conditionally write the texture sampler if we require it //
+       || (surfaceContext->drawState.materialMaps.diffuse && surfaceContext->drawState.materialMaps.diffuse != surfaceContext->drawStateLast.materialMaps.diffuse))
     {
-        /* stage the UBO */
-        _Korl_Vulkan_Uniform_Material*const stagingMemoryUboMaterial = 
-            _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUboMaterial), &bufferStaging, &byteOffsetStagingBuffer);
-        *stagingMemoryUboMaterial = surfaceContext->drawState.uboMaterial;
-        /* prepare a descriptor set write with the staged UBO */
-        VkDescriptorBufferInfo*const descriptorBufferInfo = KORL_MEMORY_POOL_ADD(descriptorBufferInfos);
-        descriptorBufferInfo->buffer = bufferStaging;
-        descriptorBufferInfo->range  = sizeof(*stagingMemoryUboMaterial);
-        descriptorBufferInfo->offset = byteOffsetStagingBuffer;
-        const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_MATERIAL 
-                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO;
-        descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
-        descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
-        descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
-        descriptorSetWrites[descriptorWriteCount].pBufferInfo     = descriptorBufferInfo;
-        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
-        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL;
-        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
-        descriptorWriteCount++;
+        {
+            /* stage the UBO */
+            Korl_Gfx_Material_Properties*const stagingMemoryUboMaterial = 
+                _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUboMaterial), &bufferStaging, &byteOffsetStagingBuffer);
+            *stagingMemoryUboMaterial = surfaceContext->drawState.uboMaterialProperties;
+            /* prepare a descriptor set write with the staged UBO */
+            VkDescriptorBufferInfo*const descriptorBufferInfo = KORL_MEMORY_POOL_ADD(descriptorBufferInfos);
+            descriptorBufferInfo->buffer = bufferStaging;
+            descriptorBufferInfo->range  = sizeof(*stagingMemoryUboMaterial);
+            descriptorBufferInfo->offset = byteOffsetStagingBuffer;
+            const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_MATERIAL 
+                                                                                + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO;
+            descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
+            descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
+            descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
+            descriptorSetWrites[descriptorWriteCount].pBufferInfo     = descriptorBufferInfo;
+            // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+            descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL;
+            descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
+            descriptorWriteCount++;
+        }
+        if(surfaceContext->drawState.materialMaps.diffuse)
+        {
+            _Korl_Vulkan_DeviceMemory_Alloctation*const textureAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, surfaceContext->drawState.materialMaps.diffuse);
+            korl_assert(!textureAllocation->freeQueued);
+            #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+            const _Korl_Vulkan_DeviceAssetHandle_Unpacked deviceAssetHandleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(surfaceContext->drawState.materialMaps.resourceHandleTextureDiffuse);
+            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, deviceAssetHandleUnpacked.databaseIndex);
+            #endif
+            korl_assert(textureAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
+            VkDescriptorImageInfo*const descriptorImageInfo = KORL_MEMORY_POOL_ADD(descriptorImageInfos);
+            descriptorImageInfo->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            descriptorImageInfo->imageView   = textureAllocation->subType.texture.imageView;
+            descriptorImageInfo->sampler     = textureAllocation->subType.texture.sampler;
+            korl_assert(descriptorWriteCount < korl_arraySize(descriptorSetWrites));
+            const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_MATERIAL 
+                                                                                + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE;
+            descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
+            descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
+            descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
+            descriptorSetWrites[descriptorWriteCount].pImageInfo      = descriptorImageInfo;
+            // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+            descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL;
+            descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
+            descriptorWriteCount++;
+        }
     }
-    // conditionally write the texture sampler if we require it //
-    KORL_ZERO_STACK(VkDescriptorImageInfo, descriptorImageInfo);
-    if(   surfaceContext->drawState.texture
-       && surfaceContext->drawState.texture != surfaceContext->drawStateLast.texture)// only compose a descriptor set write if the draw state has changed!
-    {
-        _Korl_Vulkan_DeviceMemory_Alloctation*const textureAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, surfaceContext->drawState.texture);
-        korl_assert(!textureAllocation->freeQueued);
-#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
-        const _Korl_Vulkan_DeviceAssetHandle_Unpacked deviceAssetHandleUnpacked = _korl_vulkan_deviceAssetHandle_unpack(surfaceContext->drawState.texture);
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, deviceAssetHandleUnpacked.databaseIndex);
-#endif
-        korl_assert(textureAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_TEXTURE);
-        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        descriptorImageInfo.imageView   = textureAllocation->subType.texture.imageView;
-        descriptorImageInfo.sampler     = textureAllocation->subType.texture.sampler;
-        korl_assert(descriptorWriteCount < korl_arraySize(descriptorSetWrites));
-        const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_MATERIAL 
-                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE;
-        descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
-        descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
-        descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
-        descriptorSetWrites[descriptorWriteCount].pImageInfo      = &descriptorImageInfo;
-        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
-        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL;
-        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
-        descriptorWriteCount++;
-    }
-    // conditionally write vertex storage buffers to the descriptor set //
+    // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE //
     if(   surfaceContext->drawState.vertexStorageBuffer
-       && surfaceContext->drawState.vertexStorageBuffer != surfaceContext->drawStateLast.vertexStorageBuffer)// only compose a descriptor set write if the draw state has changed!
+       && surfaceContext->drawState.vertexStorageBuffer != surfaceContext->drawStateLast.vertexStorageBuffer)
     {
         _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, surfaceContext->drawState.vertexStorageBuffer);
         korl_assert(!deviceMemoryAllocation->freeQueued);

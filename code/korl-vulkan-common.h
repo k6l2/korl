@@ -58,11 +58,11 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_Uniform_Material*/
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*Korl_Gfx_Material_Properties*/
     ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::texture*/};
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::diffuse*/};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -101,7 +101,6 @@ typedef struct _Korl_Vulkan_Pipeline
     u32                            colorsStride;          // 0 => absence of this attribute
     u32                            instancePositionStride;// 0 => absence of this attribute
     u32                            instanceUintStride;    // 0 => absence of this attribute
-    bool                           useTexture;
     Korl_Vulkan_DrawState_Features features;
     Korl_Vulkan_DrawState_Blend    blend;
     VkShaderModule                 shaderVertex;
@@ -199,25 +198,13 @@ typedef struct _Korl_Vulkan_Uniform_VpTransforms
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
 } _Korl_Vulkan_Uniform_VpTransforms;
 /* Ensure _Korl_Vulkan_Uniform_VpTransforms member alignment here: */
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32Projection) & 16) == 0);
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32View      ) & 16) == 0);
-typedef struct _Korl_Vulkan_Uniform_Material
-{
-
-    Korl_Math_V3f32 ambient;
-    f32             _padding_0;// need this to align vec3 to 16 bytes
-    Korl_Math_V3f32 diffuse;
-    f32             _padding_1;// need this to align vec3 to 16 bytes
-    Korl_Math_V3f32 specular;
-    f32             shininess;
-} _Korl_Vulkan_Uniform_Material;
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32Projection) % 16) == 0);
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32View      ) % 16) == 0);
 typedef struct _Korl_Vulkan_DrawPushConstants
 {
     struct
     {
         Korl_Math_M4f32 m4f32Model;
-        //@TODO: pull color out of PushConstants; make a separate "UnlitMaterial"?
-        Korl_Math_V4f32 color;// UNORM
     } vertex;
     struct
     {
@@ -248,8 +235,11 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     /** ----- descriptor state ----- */
     _Korl_Vulkan_Uniform_VpTransforms         uboTransforms;
     Korl_Vulkan_DrawState_Lights              uboLights;
-    _Korl_Vulkan_Uniform_Material             uboMaterial;
-    Korl_Vulkan_DeviceMemory_AllocationHandle texture;
+    Korl_Gfx_Material_Properties              uboMaterialProperties;
+    struct
+    {
+        Korl_Vulkan_DeviceMemory_AllocationHandle diffuse;
+    } materialMaps;
     Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
 } _Korl_Vulkan_SurfaceContextDrawState;
 /**

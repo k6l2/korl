@@ -803,7 +803,7 @@ korl_internal Korl_Vulkan_DrawState_Material korl_resource_scene3d_getMaterial(K
     if(!resource->subType.graphics.subType.scene3d.gltf)
         return material;
     //@TODO: obtain textures from GLTF material
-    material.color = KORL_MATH_V4F32_ONE;
+    material.properties.color = KORL_MATH_V4F32_ONE;
     return material;
 }
 korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d)

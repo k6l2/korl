@@ -81,6 +81,7 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
             case KORL_KEY_K     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_DOWN); break;}
             case KORL_KEY_J     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_LEFT); break;}
             case KORL_KEY_L     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_RIGHT); break;}
+            case KORL_KEY_F4    :{korl_command_invoke(KORL_RAW_CONST_UTF8("load"), memory->allocatorStack); break;}
             case KORL_KEY_ESCAPE:{memory->quit = true; break;}
             case KORL_KEY_GRAVE :{korl_logConsole_toggle(&memory->logConsole); break;}
             default: break;
@@ -109,7 +110,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
     Korl_Gfx_Light light = {.position = Korl_Math_V3f32{-1,1,1} * 100
-                           ,.color = {.ambient  = KORL_MATH_V3F32_ONE * 0.2f
+                           ,.color = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
                                      ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
                                      ,.specular = KORL_MATH_V3F32_ONE}};
     korl_gfx_light_use(&light);
@@ -160,13 +161,13 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
     scene3d._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true);
     scene3d.subType.scene3d.materialSlots[0].used = true;
-    scene3d.subType.scene3d.materialSlots[0].material.color     = KORL_MATH_V4F32_ONE; //{0, .7f, .1f, 1};
-    scene3d.subType.scene3d.materialSlots[0].material.ambient   = {0.f , .8f, .05f};
-    scene3d.subType.scene3d.materialSlots[0].material.diffuse   = {0.f , .8f, .05f};
-    scene3d.subType.scene3d.materialSlots[0].material.specular  = { .5f, .5f, .5f };
-    scene3d.subType.scene3d.materialSlots[0].material.shininess = 32.f;
-    scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    scene3d.subType.scene3d.materialSlots[0].material.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    scene3d.subType.scene3d.materialSlots[0].material.properties = {.ambient   = {0.f , .8f, .05f}
+                                                                   ,.diffuse   = {0.f , .8f, .05f}
+                                                                   ,.specular  = { .5f, .5f, .5f }
+                                                                   ,.shininess = 32.f
+                                                                   ,.color     = KORL_MATH_V4F32_ONE};
+    scene3d.subType.scene3d.materialSlots[0].material.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)};
     korl_gfx_draw(&scene3d);
     scene3d.subType.scene3d.materialSlots[0].used = false;
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;

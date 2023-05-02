@@ -23,7 +23,7 @@ layout(location = KORL_FRAGMENT_INPUT_VIEW_POSITION) out vec3 fragmentViewPositi
 void main() 
 {
     const mat3 normalMatrix = mat3(transpose(inverse(pushConstants.model)));
-    fragmentColor        = pushConstants.color;
+    fragmentColor        = vec4(1.0);
     fragmentUv           = attributeUv;
     fragmentViewNormal   = normalize(mat3(vpTransforms.view) * normalMatrix * attributeNormal);
     fragmentViewPosition = vec3(vpTransforms.view * pushConstants.model * vec4(attributePosition, 1.0));

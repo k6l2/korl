@@ -17,5 +17,5 @@ layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
 void main() 
 {
     gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(attributePosition, 1.0);
-    fragmentColor = pushConstants.color;
+    fragmentColor = vec4(1.0);
 }

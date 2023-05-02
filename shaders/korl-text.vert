@@ -32,6 +32,6 @@ void main()
     const GlyphVertex glyphVertex   = glyphVertices[glyphMeshVertexIndex];
     const vec2 modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
     gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
-    fragmentColor = pushConstants.color;
+    fragmentColor = vec4(1.0);
     fragmentUv    = glyphVertex.position2d_uv.zw;
 }

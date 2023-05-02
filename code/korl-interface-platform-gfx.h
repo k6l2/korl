@@ -113,16 +113,30 @@ typedef struct Korl_Gfx_Camera
 typedef enum Korl_Gfx_Drawable_Type
     {KORL_GFX_DRAWABLE_TYPE_SCENE3D
 } Korl_Gfx_Drawable_Type;
-typedef struct Korl_Gfx_Material
+typedef struct Korl_Gfx_Material_Properties
 {
     Korl_Math_V3f32      ambient;
+    f32                  _padding_0;
     Korl_Math_V3f32      diffuse;
+    f32                  _padding_1;
     Korl_Math_V3f32      specular;
     f32                  shininess;
-    Korl_Resource_Handle resourceHandleTexture;
     Korl_Math_V4f32      color;
+} Korl_Gfx_Material_Properties;
+typedef struct Korl_Gfx_Material_Maps
+{
+    Korl_Resource_Handle resourceHandleTextureDiffuse;
+} Korl_Gfx_Material_Maps;
+typedef struct Korl_Gfx_Material_Shaders
+{
     Korl_Resource_Handle resourceHandleShaderVertex;
     Korl_Resource_Handle resourceHandleShaderFragment;
+} Korl_Gfx_Material_Shaders;
+typedef struct Korl_Gfx_Material
+{
+    Korl_Gfx_Material_Properties properties;
+    Korl_Gfx_Material_Maps       maps;
+    Korl_Gfx_Material_Shaders    shaders;
 } Korl_Gfx_Material;
 typedef struct Korl_Gfx_Drawable_MaterialSlot
 {

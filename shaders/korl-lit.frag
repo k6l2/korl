@@ -35,6 +35,6 @@ void main()
     const float specularStrength                      = pow(max(dot(view_fragment_to_camera_normal, reflect_direction), 0.0), material.shininess);
     const vec3  lightSpecular                         = specularStrength * material.specular * light.colorSpecular;
     /**/
-    outColor = vec4(lightAmbient + lightDiffuse + lightSpecular, 1) * fragmentColor;
+    outColor = vec4(lightAmbient + lightDiffuse + lightSpecular, 1) * fragmentColor * material.color;
     // outColor = fragmentColor*texture(textureSampler, fragmentUv);
 }
