@@ -1,3 +1,4 @@
 .vscode
 build
 *.swp
+*.blend[0-9]

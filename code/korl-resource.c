@@ -11,6 +11,7 @@ typedef enum _Korl_Resource_Type
     {_KORL_RESOURCE_TYPE_INVALID // this value indicates the entire Resource Handle is not valid
     ,_KORL_RESOURCE_TYPE_FILE    // Resource is derived from a korl-assetCache file
     ,_KORL_RESOURCE_TYPE_RUNTIME // Resource is derived from data that is generated at runtime
+    //@TODO: add `_KORL_RESOURCE_TYPE_CHILD`, which is effectively the same as _KORL_RESOURCE_TYPE_RUNTIME, except the `_create*` & `_destroy` APIs cannot be used on them (their lifetime is fully managed by a parent Resource)
 } _Korl_Resource_Type;
 typedef enum _Korl_Resource_MultimediaType
     {_KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS// this resource maps to a vulkan device-local allocation, or similar type of data
@@ -28,6 +29,8 @@ typedef enum _Korl_Resource_Graphics_Type
     ,_KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SHADER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D
+    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MATERIAL`, which contains a full descriptor of korl-vulkan "DrawState"
+    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MODEL`, which is simply a DAG of meshes
 } _Korl_Resource_Graphics_Type;
 typedef struct _Korl_Resource
 {
@@ -68,6 +71,7 @@ typedef struct _Korl_Resource
             u$                resampledDataBytes;
         } audio;
     } subType;
+    //@TODO: just remove {data, dataBytes} from the base Resource (?); it seems like _most_ resources don't actually care about the decoded resource on CPU memory, since most Resources are Graphics, ergo they store all their transcoded data on the GPU; this is just a bad way to indicate whether or not a Resource is "loaded", and deprecated by the `_isLoaded` API anyways
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType _unless_ that multimedia type requires further processing to prepare it for the rendering process, such as is the case with audio, as we must resample all audio data to match the format of the audio renderer; examples: an image resource data will point to an RGBA bitmap, an audio resource will point to raw PCM waveform data, in some sample format defined by the `audio.format` member
     u$    dataBytes;
     bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
@@ -85,7 +89,7 @@ typedef struct _Korl_Resource_Context
     Korl_Memory_AllocatorHandle allocatorHandleRuntime;// all unique data that cannot be easily reobtained/reconstructed from a korl-memoryState is stored here, including this struct itself
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
     _Korl_Resource_Map*         stbHmResources;
-    Korl_Resource_Handle*       stbDsDirtyResourceHandles;
+    Korl_Resource_Handle*       stbDsDirtyResourceHandles;//@TODO: just delete this and use a flag to indicate if there is a non-zero # of "dirty" resources (this is needless complexity; premature optimization)
     u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
     Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
     Korl_Audio_Format           audioRendererFormat;// the currently configured audio renderer format, likely to be set by korl-sfx; when this is changed via `korl_resource_setAudioFormat`, all audio resources will be resampled to match this format, and that resampled audio data is what will be mixed into korl-audio; we do this to sacrifice memory for speed, as it should be much better performance to not have to worry about audio resampling algorithms at runtime
@@ -303,62 +307,100 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                 for(u32 m = 0; m < gltf->meshes.size; m++)
                 {
                     Korl_Codec_Gltf_Mesh*const mesh = meshes + m;
-                    korl_assert(mesh->primitives.size == 1);// KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple meshe primitives
-                    KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT);
-                    u$ vertexAttributeDescriptorCount = 0;
                     Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_getMeshPrimitives(gltf, mesh);
+                    korl_assert(mesh->primitives.size == 1);// KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple mesh primitives
                     for(u32 mp = 0; mp < mesh->primitives.size; mp++)
                     {
+                        /* creation of the mesh primitive's vertex buffer; chances are good that there is a lot more data in the GLB's 
+                            binary chunk, so we must figure out which vertex attributes we need for the vertex buffer, then use the 
+                            Accessor + BufferView for each vertex attribute we can determine the range of the binary chunk the data 
+                            occupies, as well as accumulate the total byte size of the entire vertex buffer */
+                        KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors          , KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT);// needs to be a separate, tightly-packed array since korl_vulkan_deviceAsset_createVertexBuffer does not accept a `stride`
+                        KORL_ZERO_STACK_ARRAY(u32                                  , vertexAttributeBufferViewByteOffsets, KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT);
+                        KORL_ZERO_STACK_ARRAY(u32                                  , vertexAttributeTotalBytes           , KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT);
+                        u$  vertexAttributeCount      = 0;
+                        u32 currentVertexBufferOffset = 0;
                         Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive = meshPrimitives + mp;
                         if(meshPrimitive->indices >= 0)
                         {
                             Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->indices;
                             Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
+                            korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
                             korl_assert(   accessor->componentType == KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U16 
                                         && sizeof(Korl_Vulkan_VertexIndex) == sizeof(u16));// for now, we _only_ support the same universal index size
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].offset          = bufferView->byteOffset;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].stride          = korl_codec_gltf_accessor_getStride(accessor);
-                            vertexAttributeDescriptorCount++;
+                            korl_assert(vertexAttributeCount < korl_arraySize(vertexAttributeDescriptors));
+                            Korl_Vulkan_VertexAttributeDescriptor*const vertexAttributeDescriptor = vertexAttributeDescriptors + vertexAttributeCount;
+                            vertexAttributeBufferViewByteOffsets[vertexAttributeCount] = bufferView->byteOffset;
+                            vertexAttributeDescriptor->vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX;
+                            vertexAttributeDescriptor->offset          = currentVertexBufferOffset;
+                            vertexAttributeDescriptor->stride          = korl_codec_gltf_accessor_getStride(accessor);
+                            currentVertexBufferOffset += bufferView->byteLength;
+                            vertexAttributeTotalBytes[vertexAttributeCount] = bufferView->byteLength;
+                            vertexAttributeCount++;
                         }
                         if(meshPrimitive->attributes.position >= 0)
                         {
                             Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->attributes.position;
                             Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
+                            korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
                             korl_assert(accessor->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3);// for now, we _only_ support 3D position data
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].offset          = bufferView->byteOffset;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].stride          = korl_codec_gltf_accessor_getStride(accessor);
-                            vertexAttributeDescriptorCount++;
+                            korl_assert(vertexAttributeCount < korl_arraySize(vertexAttributeDescriptors));
+                            Korl_Vulkan_VertexAttributeDescriptor*const vertexAttributeDescriptor = vertexAttributeDescriptors + vertexAttributeCount;
+                            vertexAttributeBufferViewByteOffsets[vertexAttributeCount] = bufferView->byteOffset;
+                            vertexAttributeDescriptor->vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_POSITION_3D;
+                            vertexAttributeDescriptor->offset          = currentVertexBufferOffset;
+                            vertexAttributeDescriptor->stride          = korl_codec_gltf_accessor_getStride(accessor);
+                            currentVertexBufferOffset += bufferView->byteLength;
+                            vertexAttributeTotalBytes[vertexAttributeCount] = bufferView->byteLength;
+                            vertexAttributeCount++;
                         }
                         if(meshPrimitive->attributes.normal >= 0)
                         {
                             Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->attributes.normal;
                             Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
+                            korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
                             korl_assert(accessor->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3);// for now, we _only_ support 3D normal data
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_NORMAL_3D;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].offset          = bufferView->byteOffset;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].stride          = korl_codec_gltf_accessor_getStride(accessor);
-                            vertexAttributeDescriptorCount++;
+                            korl_assert(vertexAttributeCount < korl_arraySize(vertexAttributeDescriptors));
+                            Korl_Vulkan_VertexAttributeDescriptor*const vertexAttributeDescriptor = vertexAttributeDescriptors + vertexAttributeCount;
+                            vertexAttributeBufferViewByteOffsets[vertexAttributeCount] = bufferView->byteOffset;
+                            vertexAttributeDescriptor->vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_NORMAL_3D;
+                            vertexAttributeDescriptor->offset          = currentVertexBufferOffset;
+                            vertexAttributeDescriptor->stride          = korl_codec_gltf_accessor_getStride(accessor);
+                            currentVertexBufferOffset += bufferView->byteLength;
+                            vertexAttributeTotalBytes[vertexAttributeCount] = bufferView->byteLength;
+                            vertexAttributeCount++;
                         }
                         if(meshPrimitive->attributes.texCoord0 >= 0)
                         {
                             Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->attributes.texCoord0;
                             Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
+                            korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
                             korl_assert(accessor->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC2);// for now, we _only_ support 2D texture coordinates
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_UV;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].offset          = bufferView->byteOffset;
-                            vertexAttributeDescriptors[vertexAttributeDescriptorCount].stride          = korl_codec_gltf_accessor_getStride(accessor);
-                            vertexAttributeDescriptorCount++;
+                            korl_assert(vertexAttributeCount < korl_arraySize(vertexAttributeDescriptors));
+                            Korl_Vulkan_VertexAttributeDescriptor*const vertexAttributeDescriptor = vertexAttributeDescriptors + vertexAttributeCount;
+                            vertexAttributeBufferViewByteOffsets[vertexAttributeCount] = bufferView->byteOffset;
+                            vertexAttributeDescriptor->vertexAttribute = KORL_VULKAN_VERTEX_ATTRIBUTE_UV;
+                            vertexAttributeDescriptor->offset          = currentVertexBufferOffset;
+                            vertexAttributeDescriptor->stride          = korl_codec_gltf_accessor_getStride(accessor);
+                            currentVertexBufferOffset += bufferView->byteLength;
+                            vertexAttributeTotalBytes[vertexAttributeCount] = bufferView->byteLength;
+                            vertexAttributeCount++;
+                        }
+                        KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoBuffer);
+                        createInfoBuffer.bytes                          = currentVertexBufferOffset;
+                        createInfoBuffer.vertexAttributeDescriptorCount = vertexAttributeCount;
+                        createInfoBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
+                        resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoBuffer, 0/*0 => generate new handle*/);
+                        /* fill the vertex buffer with our GLB binary chunk data from/to the appropriate offsets */
+                        currentVertexBufferOffset = 0;
+                        for(u$ va = 0; va < vertexAttributeCount; va++)
+                        {
+                            korl_vulkan_vertexBuffer_update(resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk, KORL_C_CAST(u8*, gltf) + gltf->bytes + vertexAttributeBufferViewByteOffsets[va], vertexAttributeTotalBytes[va], currentVertexBufferOffset);
+                            currentVertexBufferOffset += vertexAttributeTotalBytes[va];
                         }
                     }
-                    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoBuffer);
-                    createInfoBuffer.bytes                          = buffers[0].byteLength;
-                    createInfoBuffer.vertexAttributeDescriptorCount = vertexAttributeDescriptorCount;
-                    createInfoBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
-                    resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoBuffer, 0/*0 => generate new handle*/);
-                    korl_vulkan_vertexBuffer_update(resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk, KORL_C_CAST(u8*, gltf) + gltf->bytes, buffers[0].byteLength, 0);
                 }
+                //@TODO: decode textures from the GLB binary chunk & upload to graphics device
                 resource->subType.graphics.subType.scene3d.gltf = gltf;
                 break;}
             default:

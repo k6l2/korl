@@ -1,5 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-math.h"
+#include "korl-interface-platform-memory.h"
 typedef struct Korl_Codec_Gltf_Data
 {
     u32 byteOffset;
