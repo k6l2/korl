@@ -5,7 +5,8 @@
 typedef struct Korl_Codec_Gltf_Data
 {
     u32 byteOffset;
-    u32 size;
+    //@TODO: just rename this to "bytes"?
+    u32 size;// in bytes
 } Korl_Codec_Gltf_Data;
 typedef struct Korl_Codec_Gltf
 {
@@ -21,6 +22,10 @@ typedef struct Korl_Codec_Gltf
     Korl_Codec_Gltf_Data accessors;
     Korl_Codec_Gltf_Data bufferViews;
     Korl_Codec_Gltf_Data buffers;
+    Korl_Codec_Gltf_Data materials;
+    Korl_Codec_Gltf_Data textures;
+    Korl_Codec_Gltf_Data images;
+    Korl_Codec_Gltf_Data samplers;
 } Korl_Codec_Gltf;
 typedef struct Korl_Codec_Gltf_Scene
 {
@@ -29,8 +34,8 @@ typedef struct Korl_Codec_Gltf_Scene
 } Korl_Codec_Gltf_Scene;
 typedef struct Korl_Codec_Gltf_Node
 {
-    u32                  mesh;
     Korl_Codec_Gltf_Data rawUtf8Name;
+    i32                  mesh;
 } Korl_Codec_Gltf_Node;
 typedef struct Korl_Codec_Gltf_Mesh
 {
@@ -95,6 +100,54 @@ typedef struct Korl_Codec_Gltf_Buffer
 {
     u32 byteLength;
 } Korl_Codec_Gltf_Buffer;
+typedef struct Korl_Codec_Gltf_Material
+{
+    Korl_Codec_Gltf_Data rawUtf8Name;
+    struct
+    {
+        i32 specularColorTextureIndex;
+    } KHR_materials_specular;
+    struct
+    {
+        i32 baseColorTextureIndex;
+    } pbrMetallicRoughness;
+} Korl_Codec_Gltf_Material;
+typedef struct Korl_Codec_Gltf_Texture
+{
+    i32 sampler;
+    i32 source;// Image index
+} Korl_Codec_Gltf_Texture;
+typedef enum Korl_Codec_Gltf_MimeType
+    {KORL_CODEC_GLTF_MIME_TYPE_UNDEFINED
+    ,KORL_CODEC_GLTF_MIME_TYPE_IMAGE_JPEG
+    ,KORL_CODEC_GLTF_MIME_TYPE_IMAGE_PNG
+} Korl_Codec_Gltf_MimeType;
+typedef struct Korl_Codec_Gltf_Image
+{
+    Korl_Codec_Gltf_Data     rawUtf8Name;
+    i32                      bufferView;
+    Korl_Codec_Gltf_MimeType mimeType;
+} Korl_Codec_Gltf_Image;
+typedef enum Korl_Codec_Gltf_Sampler_MagFilter
+    /* glTF 2.0 spec 5.26.1 */
+    {KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_NEAREST = 9728
+    ,KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR  = 9729
+} Korl_Codec_Gltf_Sampler_MagFilter;
+typedef enum Korl_Codec_Gltf_Sampler_MinFilter
+    /* glTF 2.0 spec 5.26.2 */
+    {KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_NEAREST                = 9728
+    ,KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR                 = 9729
+    ,KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_NEAREST_MIPMAP_NEAREST = 9984
+    ,KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR_MIPMAP_NEAREST  = 9985
+    ,KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_NEAREST_MIPMAP_LINEAR  = 9986
+    ,KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR_MIPMAP_LINEAR   = 9987
+} Korl_Codec_Gltf_Sampler_MinFilter;
+typedef struct Korl_Codec_Gltf_Sampler
+{
+    Korl_Codec_Gltf_Sampler_MagFilter magFilter;
+    Korl_Codec_Gltf_Sampler_MinFilter minFilter;
+} Korl_Codec_Gltf_Sampler;
+//@TODO: create "DEFAULT" struct instances of all the above structs that have default glTF values according to the spec, then pass those default structs to the "newArray" API in the decoder
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_getMeshPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);

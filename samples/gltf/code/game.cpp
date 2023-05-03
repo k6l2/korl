@@ -166,6 +166,8 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
                                                                    ,.specular  = { .5f, .5f, .5f }
                                                                    ,.shininess = 32.f
                                                                    ,.color     = KORL_MATH_V4F32_ONE};
+    // @TODO: specify material maps
+    // scene3d.subType.scene3d.materialSlots[0].material.maps = {.resourceHandleTextureDiffuse = };
     scene3d.subType.scene3d.materialSlots[0].material.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
                                                                 ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)};
     korl_gfx_draw(&scene3d);
