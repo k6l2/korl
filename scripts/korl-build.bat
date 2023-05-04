@@ -49,22 +49,18 @@ goto :SET_PLATFORM_CODE_SKIP_FALSE
     set "_KORL_BUILD_SKIP_PLATFORM_CODE=FALSE"
     goto :SKIP_SET_PLATFORM_CODE_SKIP
 :SKIP_SET_PLATFORM_CODE_SKIP
-rem automatically call the script to build shaders for the first time if the 
-rem     directory doesn't exist, since there will always be a non-zero amount of 
-rem     compiled shaders, as KORL ships with built-in batching pipelines
+rem ----- automatically call the shader build script -----
 set "lockFileBuildShaders=lock-build-shaders"
 set "statusFileBuildShaders=status-build-shaders.txt"
 set "buildCommand=call korl-build-glsl.bat"
-if not exist "shaders" (
-    rem // create a lock file //
-    type NUL >> "%lockFileBuildShaders%"
-    rem // clear status file //
-    del %statusFileBuildShaders% > NUL 2> NUL
-    if "%buildOptionNoThreads%"=="TRUE" (
-        call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
-    ) else (
-        start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
-    )
+rem // create a lock file //
+type NUL >> "%lockFileBuildShaders%"
+rem // clear status file //
+del %statusFileBuildShaders% > NUL 2> NUL
+if "%buildOptionNoThreads%"=="TRUE" (
+    call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
+) else (
+    start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
 )
 rem Print out INCLUDE & LIB variables just for diagnostic purposes:
 if not "%buildOptionVerbose%"=="TRUE" (
@@ -282,6 +278,7 @@ if exist %lockFileGame%   goto :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 if exist %statusFileGame% goto :ON_FAILURE_EXE
 :SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 rem ------------------------ synchronize shaders build  ------------------------
+echo Waiting for shaders to build...
 :WAIT_FOR_BUILD_SHADERS
 if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
 if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
