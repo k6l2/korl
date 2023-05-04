@@ -23,13 +23,25 @@ typedef struct _Korl_Resource_Handle_Unpacked
     _Korl_Resource_MultimediaType multimediaType;
     u$                            uniqueId;
 } _Korl_Resource_Handle_Unpacked;
+/* @TODO: okay so, it seems like finalizing the decision between having TEXTURE resources vs having separate IMAGE + SAMPLER resources is an important decision;
+   let's assume we want to split IMAGE + SAMPLER; to do this we need to:
+   [ ] separate the bindings in GLSL
+   [ ] add separate descriptor bindings in korl-vulkan
+   [ ] set the default samplers to be LINEAR/LINEAR/REPEAT/REPEAT
+   [ ] add _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE_SAMPLER
+   [ ] test with some _KORL_RESOURCE_TYPE_RUNTIME instances of the above resources; get the metal+wood crate rendering in a lit scene
+   [ ] create & manage _KORL_RESOURCE_TYPE_CHILD instances of the above resources within _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D resources
+   vulkan GLSL manual (shows how to use separate texture+sampler in GLSL): https://github.com/KhronosGroup/GLSL/blob/master/extensions/khr/GL_KHR_vulkan_glsl.txt
+   an example: https://community.khronos.org/t/error-when-sampling-with-seperate-sampler-and-texture/7165
+*/
 typedef enum _Korl_Resource_Graphics_Type
     {_KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN
     ,_KORL_RESOURCE_GRAPHICS_TYPE_IMAGE
     ,_KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SHADER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D
-    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MATERIAL`, which contains a full descriptor of korl-vulkan "DrawState"
+    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MATERIAL`, which contains a full descriptor of korl-vulkan "DrawState"; actually, is this really necessary? a MATERIAL resource doesn't really make sense since since there is nothing to transcode: it's all just simple CPU data + resource handles; UNLESS you want to have something like Material Resource files... HMMMM
+    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_TEXTURE`, a combined image + sampler; _OR_ create a _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE & _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE_SAMPLER ?
     //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MODEL`, which is simply a DAG of meshes
 } _Korl_Resource_Graphics_Type;
 typedef struct _Korl_Resource

@@ -32,7 +32,8 @@ typedef enum _Korl_Vulkan_DescriptorSetBinding
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_COUNT// keep last in the `VERTEX_STORAGE` section
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO = 0
-    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_BASE
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_SPECULAR
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_COUNT// keep last in the `MATERIAL` section
 } _Korl_Vulkan_DescriptorSetBinding;
 #define _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL (  _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT\
@@ -59,10 +60,14 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
      ,.descriptorCount = 1
      ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*Korl_Gfx_Material_Properties*/
-    ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE
+    ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_BASE
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::diffuse*/};
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::base*/
+    ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_SPECULAR
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::specular*/};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -238,7 +243,8 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     Korl_Gfx_Material_Properties              uboMaterialProperties;
     struct
     {
-        Korl_Vulkan_DeviceMemory_AllocationHandle diffuse;
+        Korl_Vulkan_DeviceMemory_AllocationHandle base;
+        Korl_Vulkan_DeviceMemory_AllocationHandle specular;
     } materialMaps;
     Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
 } _Korl_Vulkan_SurfaceContextDrawState;

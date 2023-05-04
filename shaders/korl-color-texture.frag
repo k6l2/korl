@@ -8,12 +8,12 @@ layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
     Korl_Material material;
 };
 layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
-      ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_TEXTURE) 
-    uniform sampler2D textureSampler;
+      ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_BASE_TEXTURE) 
+    uniform sampler2D baseTexture;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) in vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_INPUT_UV)    in vec2 fragmentUv;
 layout(location = KORL_FRAGMENT_OUTPUT_COLOR) out vec4 outColor;
-void main() 
+void main()
 {
-    outColor = fragmentColor * material.color * texture(textureSampler, fragmentUv);
+    outColor = fragmentColor * material.color * texture(baseTexture, fragmentUv);
 }

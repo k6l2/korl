@@ -125,7 +125,9 @@ typedef struct Korl_Gfx_Material_Properties
 } Korl_Gfx_Material_Properties;
 typedef struct Korl_Gfx_Material_Maps
 {
-    Korl_Resource_Handle resourceHandleTextureDiffuse;
+    Korl_Resource_Handle resourceHandleTextureBase;
+    Korl_Resource_Handle resourceHandleTextureSpecular;
+    //@TODO: add resourceHandleTextureEmissive
 } Korl_Gfx_Material_Maps;
 typedef struct Korl_Gfx_Material_Shaders
 {
