@@ -64,6 +64,9 @@ typedef struct Korl_Codec_Gltf_Mesh_Primitive
     i32 indices;
     i32 material;
 } Korl_Codec_Gltf_Mesh_Primitive;
+korl_global_const Korl_Codec_Gltf_Mesh_Primitive KORL_CODEC_GLTF_MESH_PRIMITIVE_DEFAULT = {.mode = KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES
+                                                                                          ,.attributes = {.position = -1, .normal = -1, .texCoord0 = -1}
+                                                                                          ,.indices = -1, .material = -1};
 typedef enum Korl_Codec_Gltf_Accessor_ComponentType
     /* these values are derived from the glTF-2.0 spec 3.6.2.2 */
     {KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_I8  = 5120
@@ -112,11 +115,14 @@ typedef struct Korl_Codec_Gltf_Material
         i32 baseColorTextureIndex;
     } pbrMetallicRoughness;
 } Korl_Codec_Gltf_Material;
+korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.KHR_materials_specular = {.specularColorTextureIndex = -1}
+                                                                              ,.pbrMetallicRoughness   = {.baseColorTextureIndex     = -1}};
 typedef struct Korl_Codec_Gltf_Texture
 {
     i32 sampler;
     i32 source;// Image index
 } Korl_Codec_Gltf_Texture;
+korl_global_const Korl_Codec_Gltf_Texture KORL_CODEC_GLTF_TEXTURE_DEFAULT = {.sampler = -1, .source = -1};
 typedef enum Korl_Codec_Gltf_MimeType
     {KORL_CODEC_GLTF_MIME_TYPE_UNDEFINED
     ,KORL_CODEC_GLTF_MIME_TYPE_IMAGE_JPEG
@@ -147,6 +153,8 @@ typedef struct Korl_Codec_Gltf_Sampler
     Korl_Codec_Gltf_Sampler_MagFilter magFilter;
     Korl_Codec_Gltf_Sampler_MinFilter minFilter;
 } Korl_Codec_Gltf_Sampler;
+korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
+                                                                            ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
 //@TODO: create "DEFAULT" struct instances of all the above structs that have default glTF values according to the spec, then pass those default structs to the "newArray" API in the decoder
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);

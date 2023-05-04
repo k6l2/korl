@@ -123,8 +123,7 @@ korl_internal void* _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem
     korl_assert(false);// reaching this point means that the user is attempting to index into an array which they don't belong to, which should never happen
     return NULL;
 }
-//@TODO: require the user to pass a `const void*const defaultElement` so we can initialize default values for all array elements
-korl_internal void* _korl_codec_glb_decodeChunkJson_processPass_newArray(Korl_Codec_Gltf*const context, const jsmntok_t* jsonToken, u8** contextByteNext, Korl_Codec_Gltf_Data* data, u32 arrayStride)
+korl_internal void* _korl_codec_glb_decodeChunkJson_processPass_newArray(Korl_Codec_Gltf*const context, const jsmntok_t* jsonToken, u8** contextByteNext, Korl_Codec_Gltf_Data* data, u32 arrayStride, const void*const defaultElement)
 {
     void* result = NULL;
     if(context)
@@ -133,6 +132,9 @@ korl_internal void* _korl_codec_glb_decodeChunkJson_processPass_newArray(Korl_Co
         data->byteOffset = korl_checkCast_i$_to_u32(*contextByteNext - KORL_C_CAST(u8*, context));
         data->size       = korl_checkCast_i$_to_u32(jsonToken->size);
         result = KORL_C_CAST(u8*, context) + data->byteOffset;
+        if(defaultElement)
+            for(u32 i = 0; i < data->size; i++)
+                korl_memory_copy(KORL_C_CAST(u8*, result) + i * arrayStride, defaultElement, arrayStride/*ASSUMPTION: arrayStride == elementBytes*/);
     }
     *contextByteNext += jsonToken->size * arrayStride;
     return result;
@@ -199,7 +201,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_SCENES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_SCENES_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->scenes, sizeof(Korl_Codec_Gltf_Scene));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->scenes, sizeof(Korl_Codec_Gltf_Scene), NULL);
                     break;}
                 case KORL_GLTF_OBJECT_SCENES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -216,12 +218,13 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES_ARRAY;
                     Korl_Codec_Gltf_Scene*const currentScene = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SCENES_ARRAY, sizeof(*currentScene));
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentScene->nodes, sizeof(u32));
+                    const u32 DEFAULT_NODE_INDEX = KORL_U32_MAX;
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentScene->nodes, sizeof(u32), &DEFAULT_NODE_INDEX);
                     break;}
                 case KORL_GLTF_OBJECT_NODES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_NODES_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->nodes, sizeof(Korl_Codec_Gltf_Node));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->nodes, sizeof(Korl_Codec_Gltf_Node), NULL);
                     break;}
                 case KORL_GLTF_OBJECT_NODES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -237,7 +240,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_MESHES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_MESHES_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->meshes, sizeof(Korl_Codec_Gltf_Mesh));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->meshes, sizeof(Korl_Codec_Gltf_Mesh), NULL);
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -254,13 +257,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY;
                     Korl_Codec_Gltf_Mesh*const currentMesh = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY, sizeof(*currentMesh));
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentMesh->primitives, sizeof(Korl_Codec_Gltf_Mesh_Primitive));
-                    Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitiveArray = array;
-                    for(i32 i = 0; meshPrimitiveArray && i < jsonToken->size; i++)
-                        /* default all mesh primitive data to invalid indices */
-                        meshPrimitiveArray[i] = (Korl_Codec_Gltf_Mesh_Primitive){.mode = KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES
-                                                                                ,.attributes = {.position = -1, .normal = -1, .texCoord0 = -1}
-                                                                                ,.indices = -1, .material = -1};
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentMesh->primitives, sizeof(Korl_Codec_Gltf_Mesh_Primitive), &KORL_CODEC_GLTF_MESH_PRIMITIVE_DEFAULT);
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -291,7 +288,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_ACCESSORS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->accessors, sizeof(Korl_Codec_Gltf_Accessor));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->accessors, sizeof(Korl_Codec_Gltf_Accessor), NULL);
                     Korl_Codec_Gltf_Accessor*const accessorArray = array;
                     for(i32 i = 0; accessorArray && i < jsonToken->size; i++)
                         accessorArray[i] = (Korl_Codec_Gltf_Accessor){.aabb = KORL_MATH_AABB3F32_EMPTY};
@@ -326,7 +323,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_BUFFER_VIEWS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->bufferViews, sizeof(Korl_Codec_Gltf_BufferView));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->bufferViews, sizeof(Korl_Codec_Gltf_BufferView), NULL);
                     break;}
                 case KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -344,7 +341,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_BUFFERS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_BUFFERS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->buffers, sizeof(Korl_Codec_Gltf_Buffer));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->buffers, sizeof(Korl_Codec_Gltf_Buffer), NULL);
                     break;}
                 case KORL_GLTF_OBJECT_BUFFERS_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -358,7 +355,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_MATERIALS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->materials, sizeof(Korl_Codec_Gltf_Material));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->materials, sizeof(Korl_Codec_Gltf_Material), &KORL_CODEC_GLTF_MATERIAL_DEFAULT);
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -421,7 +418,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_TEXTURES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_TEXTURES_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->textures, sizeof(Korl_Codec_Gltf_Texture));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->textures, sizeof(Korl_Codec_Gltf_Texture), &KORL_CODEC_GLTF_TEXTURE_DEFAULT);
                     break;}
                 case KORL_GLTF_OBJECT_TEXTURES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -437,7 +434,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_IMAGES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_IMAGES_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->images, sizeof(Korl_Codec_Gltf_Image));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->images, sizeof(Korl_Codec_Gltf_Image), NULL);
                     break;}
                 case KORL_GLTF_OBJECT_IMAGES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -455,7 +452,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_SAMPLERS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_SAMPLERS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->samplers, sizeof(Korl_Codec_Gltf_Sampler));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->samplers, sizeof(Korl_Codec_Gltf_Sampler), &KORL_CODEC_GLTF_SAMPLER_DEFAULT);
                     break;}
                 case KORL_GLTF_OBJECT_SAMPLERS_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
