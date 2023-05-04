@@ -2174,11 +2174,14 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     model.translation = context->_model.position;
     model.rotation    = context->_model.rotation;
     model.scale       = context->_model.scale;
-    Korl_Vulkan_DrawState_Material material = korl_resource_scene3d_getMaterial(context->subType.scene3d.resourceHandle);
+    Korl_Vulkan_DrawState_Material material;
     /* if the user provided a material to use with this VertexData, then we just 
         override whatever Material was provided by the SCENE3D Resource */
     if(context->subType.scene3d.materialSlots->used)
         material = context->subType.scene3d.materialSlots[0].material;
+    else
+        material = korl_resource_scene3d_getMaterial(context->subType.scene3d.resourceHandle);
+    // @TODO: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to privide to a lit material without having to use a different shader/pipeline
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
     drawState.material = &material;

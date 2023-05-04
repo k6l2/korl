@@ -17,7 +17,7 @@ typedef enum _Korl_Vulkan_DescriptorSetIndex
     /* ideally, these descriptor sets indices are defined in the order of least- 
         to most-frequently-changed for performance reasons; see 
         "Pipeline Layout Compatibility" in the Vulkan spec for more details */
-    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS
+    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS//@TODO: rename this to just SCENE 
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE// used for things like glyph mesh lookup tables, maybe animation transforms, etc.; mostly stuff in vertex shader
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL// color maps, textures, etc.; mostly stuff used in fragment shader
@@ -25,7 +25,7 @@ typedef enum _Korl_Vulkan_DescriptorSetIndex
 } _Korl_Vulkan_DescriptorSetIndex;
 KORL_STATIC_ASSERT(_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT <= 4);// Vulkan Spec 42.1; maxBoundDescriptorSets minimum is 4; any higher than this is hardware-dependent
 typedef enum _Korl_Vulkan_DescriptorSetBinding
-    {_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION = 0
+    {_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION = 0//@TODO: rename this to SCENE_PROPERTIES_UBO
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT// keep last in the `SCENE_TRANSFORMS` section
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_COUNT// keep last in the `LIGHTS` section
@@ -34,6 +34,7 @@ typedef enum _Korl_Vulkan_DescriptorSetBinding
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_BASE
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_SPECULAR
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_EMISSIVE
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_COUNT// keep last in the `MATERIAL` section
 } _Korl_Vulkan_DescriptorSetBinding;
 #define _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL (  _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT\
@@ -67,7 +68,11 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
     ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_SPECULAR
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::specular*/};
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::specular*/
+    ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_EMISSIVE
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::emissive*/};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -201,6 +206,7 @@ typedef struct _Korl_Vulkan_Uniform_VpTransforms
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
+    //@TODO: rename this struct to something like `_SceneProperties`; add a `f32 seconds` property so we can do time-based animations in shaders
 } _Korl_Vulkan_Uniform_VpTransforms;
 /* Ensure _Korl_Vulkan_Uniform_VpTransforms member alignment here: */
 KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32Projection) % 16) == 0);
@@ -245,6 +251,7 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     {
         Korl_Vulkan_DeviceMemory_AllocationHandle base;
         Korl_Vulkan_DeviceMemory_AllocationHandle specular;
+        Korl_Vulkan_DeviceMemory_AllocationHandle emissive;
     } materialMaps;
     Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
 } _Korl_Vulkan_SurfaceContextDrawState;
