@@ -843,7 +843,7 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
 korl_internal Korl_Vulkan_DrawState_Material korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
+    Korl_Vulkan_DrawState_Material material = KORL_GFX_MATERIAL_DEFAULT;
     if(!handleResourceScene3d)
         return material;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
@@ -857,7 +857,6 @@ korl_internal Korl_Vulkan_DrawState_Material korl_resource_scene3d_getMaterial(K
     if(!resource->subType.graphics.subType.scene3d.gltf)
         return material;
     //@TODO: obtain textures from GLTF material
-    material.properties.color = KORL_MATH_V4F32_ONE;
     return material;
 }
 korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d)

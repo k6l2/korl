@@ -16,7 +16,7 @@ layout(location = KORL_VERTEX_INPUT_POSITION) in vec3 attributePosition;
 layout(location = KORL_VERTEX_INPUT_UV)       in vec2 attributeUv;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_INPUT_UV)    out vec2 fragmentUv;
-void main() 
+void main()
 {
     gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(attributePosition, 1.0);
     fragmentColor = vec4(1.0);

@@ -15,5 +15,5 @@ layout(location = KORL_FRAGMENT_INPUT_UV)    in vec2 fragmentUv;
 layout(location = KORL_FRAGMENT_OUTPUT_COLOR) out vec4 outColor;
 void main()
 {
-    outColor = fragmentColor * material.color * texture(baseTexture, fragmentUv);
+    outColor = fragmentColor * material.colorFactorBase * texture(baseTexture, fragmentUv);
 }

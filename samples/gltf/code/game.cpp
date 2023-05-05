@@ -109,7 +109,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
-    Korl_Gfx_Light light = {.position = Korl_Math_V3f32{-1,1,1} * 100
+    Korl_Gfx_Light light = {.position = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true) * (Korl_Math_V3f32{-1,1,1} * 100)
                            ,.color = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
                                      ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
                                      ,.specular = KORL_MATH_V3F32_ONE}};
@@ -159,18 +159,17 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
-    scene3d._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true);
-    scene3d.subType.scene3d.materialSlots[0].used = true;
-    scene3d.subType.scene3d.materialSlots[0].material.properties = {.ambient   = {0.f , .8f, .05f}
-                                                                   ,.diffuse   = {0.f , .8f, .05f}
-                                                                   ,.specular  = { .5f, .5f, .5f }
-                                                                   ,.shininess = 32.f
-                                                                   ,.color     = KORL_MATH_V4F32_ONE};
-    scene3d.subType.scene3d.materialSlots[0].material.maps = {.resourceHandleTextureBase     = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-base.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                             ,.resourceHandleTextureSpecular = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-specular.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                             ,.resourceHandleTextureEmissive = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-emissive.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)};
-    scene3d.subType.scene3d.materialSlots[0].material.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)};
+    //@TODO: we should be able to define materials in some kind of file (GLB, JSON, etc.)
+    scene3d.subType.scene3d.materialSlots[0] = {.material = {.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                           ,.factorColorEmissive = {0,1,0}
+                                                                           ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                           ,.shininess           = 32}
+                                                            ,.maps = {.resourceHandleTextureBase     = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-base.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                     ,.resourceHandleTextureSpecular = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-specular.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                     ,.resourceHandleTextureEmissive = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-emissive.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)}
+                                                            ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                        ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/crate.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}}
+                                               ,.used = true};
     korl_gfx_draw(&scene3d);
     scene3d.subType.scene3d.materialSlots[0].used = false;
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;

@@ -9,7 +9,7 @@ layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
 };
 layout(location = KORL_FRAGMENT_INPUT_COLOR)  in  vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_OUTPUT_COLOR) out vec4 outColor;
-void main() 
+void main()
 {
-    outColor = fragmentColor * material.color;
+    outColor = fragmentColor * material.colorFactorBase;
 }

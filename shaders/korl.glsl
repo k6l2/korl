@@ -20,7 +20,7 @@
 #define KORL_FRAGMENT_INPUT_VIEW_NORMAL   2
 #define KORL_FRAGMENT_INPUT_VIEW_POSITION 3
 #define KORL_FRAGMENT_OUTPUT_COLOR 0
-struct Korl_VpTransforms
+struct Korl_VpTransforms//@TODO: rename this to Korl_SceneProperties or something
 {
     mat4 projection;
     mat4 view;
@@ -29,18 +29,10 @@ struct Korl_Vertex_PushConstants
 {
     mat4 model;
 };
-struct Korl_Light
-{
-    vec3 viewPosition;// @TODO: HACK: see hack in korl-vulkan.c
-    vec3 colorAmbient;
-    vec3 colorDiffuse;
-    vec3 colorSpecular;
-};
 struct Korl_Material
 {
-    vec3  ambient;
-    vec3  diffuse;
-    vec3  specular;
+    vec4  colorFactorBase;
+    vec3  colorFactorEmissive;
+    vec4  colorFactorSpecular;
     float shininess;
-    vec4  color;
 };

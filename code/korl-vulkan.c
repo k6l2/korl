@@ -1202,7 +1202,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.uboTransforms.m4f32Projection   = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache      = _korl_vulkan_pipeline_default();
     surfaceContext->drawState.scissor                         = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties.color     = KORL_MATH_V4F32_ONE;// default the model color to white
+    surfaceContext->drawState.uboMaterialProperties           = KORL_GFX_MATERIAL_DEFAULT.properties;
     surfaceContext->drawState.materialMaps.base               = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular           = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive           = surfaceContext->defaultTexture;

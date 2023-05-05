@@ -115,14 +115,11 @@ typedef enum Korl_Gfx_Drawable_Type
 } Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Material_Properties
 {
-    Korl_Math_V3f32      ambient;//@TODO: delete
+    Korl_Math_V4f32      factorColorBase;
+    Korl_Math_V3f32      factorColorEmissive;
     f32                  _padding_0;
-    Korl_Math_V3f32      diffuse;//@TODO: delete
-    f32                  _padding_1;
-    Korl_Math_V3f32      specular;//@TODO: delete
+    Korl_Math_V4f32      factorColorSpecular;
     f32                  shininess;
-    Korl_Math_V4f32      color;//@TODO: rename to factorBaseColor
-    //@TODO: add vec3 factorEmissive
 } Korl_Gfx_Material_Properties;
 typedef struct Korl_Gfx_Material_Maps
 {
@@ -141,6 +138,10 @@ typedef struct Korl_Gfx_Material
     Korl_Gfx_Material_Maps       maps;
     Korl_Gfx_Material_Shaders    shaders;
 } Korl_Gfx_Material;
+korl_global_const Korl_Gfx_Material KORL_GFX_MATERIAL_DEFAULT = {.properties = {.factorColorBase     = {1,1,1,1}
+                                                                               ,.factorColorEmissive = {0,0,0}
+                                                                               ,.factorColorSpecular = {1,1,1,1}
+                                                                               ,.shininess           = 32}};
 typedef struct Korl_Gfx_Drawable_MaterialSlot
 {
     Korl_Gfx_Material material;

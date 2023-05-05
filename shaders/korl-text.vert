@@ -26,7 +26,7 @@ layout(location = KORL_VERTEX_INPUT_INSTANCE_POSITION) in vec2 instanceAttribute
 layout(location = KORL_VERTEX_INPUT_INSTANCE_UINT)     in uint instanceAttributeGlyphIndex;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_INPUT_UV)    out vec2 fragmentUv;
-void main() 
+void main()
 {
     const uint glyphMeshVertexIndex = 4*instanceAttributeGlyphIndex + gl_VertexIndex;
     const GlyphVertex glyphVertex   = glyphVertices[glyphMeshVertexIndex];

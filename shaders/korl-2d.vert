@@ -14,7 +14,7 @@ layout(push_constant, row_major) uniform Korl_UniformBufferObject_VertexPushCons
 };
 layout(location = KORL_VERTEX_INPUT_POSITION) in vec2 attributePosition;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
-void main() 
+void main()
 {
     gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(attributePosition, 0.0, 1.0);
     fragmentColor = vec4(1.0);

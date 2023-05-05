@@ -1033,9 +1033,8 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     vertexData.indices                 = triQuadIndices;
     vertexData.instancePositionsStride = 2*sizeof(f32);
     vertexData.instanceUintStride      = sizeof(u32);
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
+    Korl_Vulkan_DrawState_Material material = KORL_GFX_MATERIAL_DEFAULT;
     material.maps.resourceHandleTextureBase = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
-    material.properties.color               = KORL_MATH_V4F32_ONE;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
@@ -1065,7 +1064,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             break;
         if(model.translation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
         {
-            material.properties.color = line->color;
+            material.properties.factorColorBase = line->color;
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
             drawStateLine.material = &material;
             drawStateLine.model    = &model;
@@ -1511,12 +1510,12 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
         korl_math_v2f32_assignAddScalar     (&model.uvAabb.min, batch->uvAabbOffset);
         korl_math_v2f32_assignSubtractScalar(&model.uvAabb.max, batch->uvAabbOffset);
     }
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Material, material);
+    Korl_Vulkan_DrawState_Material material = KORL_GFX_MATERIAL_DEFAULT;
+    material.properties.factorColorBase = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                           ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                           ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                           ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
     material.maps.resourceHandleTextureBase = batch->_texture;
-    material.properties.color = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                 ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                 ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                 ,batch->modelColor.a / KORL_C_CAST(f32, KORL_U8_MAX)};
     material.shaders.resourceHandleShaderFragment = batch->resourceHandleShaderFragment;
     material.shaders.resourceHandleShaderVertex   = batch->resourceHandleShaderVertex;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
