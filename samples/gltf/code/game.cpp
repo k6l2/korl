@@ -161,7 +161,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
     //@TODO: we should be able to define materials in some kind of file (GLB, JSON, etc.)
     scene3d.subType.scene3d.materialSlots[0] = {.material = {.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
-                                                                           ,.factorColorEmissive = {0,1,0}
+                                                                           ,.factorColorEmissive = {0, 0.8f, 0.05f}
                                                                            ,.factorColorSpecular = KORL_MATH_V4F32_ONE
                                                                            ,.shininess           = 32}
                                                             ,.maps = {.resourceHandleTextureBase     = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-base.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
@@ -177,7 +177,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     scene3d._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
     korl_gfx_draw(&scene3d);
     /* debug */
-    Korl_Gfx_Batch* batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);
+    Korl_Gfx_Batch*const batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);
     korl_gfx_batchSetScale(batchAxis, KORL_MATH_V3F32_ONE * 100);
     korl_gfx_batch(batchAxis, KORL_GFX_BATCH_FLAGS_NONE);
     /**/

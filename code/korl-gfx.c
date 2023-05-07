@@ -112,6 +112,7 @@ typedef struct _Korl_Gfx_Context
     Korl_StringPool*            stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
     Korl_Gfx_Camera             currentCameraState;
+    f32                         seconds;// passed to the renderer as UBO data to allow shader animations
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {
@@ -719,7 +720,7 @@ korl_internal Korl_Math_M4f32 _korl_gfx_camera_projection(const Korl_Gfx_Camera*
             ? 1.f 
             :  KORL_C_CAST(f32, gfxContext->surfaceSize.x)
              / KORL_C_CAST(f32, gfxContext->surfaceSize.y);
-        return korl_math_m4f32_projectionFov(context->subCamera.perspective.fovHorizonDegrees
+        return korl_math_m4f32_projectionFov(context->subCamera.perspective.fovVerticalDegrees
                                             ,viewportWidthOverHeight
                                             ,context->subCamera.perspective.clipNear
                                             ,context->subCamera.perspective.clipFar);}
@@ -765,9 +766,10 @@ korl_internal void korl_gfx_initialize(void)
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_gfx_context->allocatorHandle), _korl_gfx_context->stbDaFontCaches, 16);
     *_korl_gfx_context->stringPool = korl_stringPool_create(_korl_gfx_context->allocatorHandle);
 }
-korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size)
+korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds)
 {
-    _korl_gfx_context->surfaceSize = size;
+    _korl_gfx_context->surfaceSize = surfaceSize;
+    _korl_gfx_context->seconds    += deltaSeconds;
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
@@ -1053,18 +1055,17 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     drawState.storageBuffers = &storageBuffers;
     korl_vulkan_setDrawState(&drawState);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
-    model.scale       = context->modelScale;
-    model.rotation    = context->modelRotate;
-    model.translation = context->modelTranslate;
-    model.translation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
+    Korl_Math_V3f32 modelTranslation = context->modelTranslate;
+    modelTranslation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     u$ currentVisibleGlyphOffset = 0;// used to determine the byte (transform required) offset into the Text object's text buffer resource
     for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < context->stbDaLines + arrlen(context->stbDaLines); line++)
     {
-        if(model.translation.y < visibleRegion.min.y - fontCache->fontAscent)
+        if(modelTranslation.y < visibleRegion.min.y - fontCache->fontAscent)
             break;
-        if(model.translation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
+        if(modelTranslation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
         {
             material.properties.factorColorBase = line->color;
+            model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->modelRotate, context->modelScale, modelTranslation);
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
             drawStateLine.material = &material;
             drawStateLine.model    = &model;
@@ -1075,7 +1076,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             vertexData.vertexBuffer.byteOffset             = currentVisibleGlyphOffset*sizeof(_Korl_Gfx_FontGlyphInstance);
             korl_vulkan_draw(&vertexData);
         }
-        model.translation.y       -= lineDeltaY;
+        modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
     }
 }
@@ -1189,14 +1190,14 @@ korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16Asse
 korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
-    result.position                                = position;
-    result.target                                  = target;
-    result.worldUpNormal                           = up;
-    result._viewportScissorPosition                = (Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                    = (Korl_Math_V2f32){1, 1};
-    result.subCamera.perspective.clipNear          = clipNear;
-    result.subCamera.perspective.clipFar           = clipFar;
-    result.subCamera.perspective.fovHorizonDegrees = fovHorizonDegrees;
+    result.position                                 = position;
+    result.target                                   = target;
+    result.worldUpNormal                            = up;
+    result._viewportScissorPosition                 = (Korl_Math_V2f32){0, 0};
+    result._viewportScissorSize                     = (Korl_Math_V2f32){1, 1};
+    result.subCamera.perspective.clipNear           = clipNear;
+    result.subCamera.perspective.clipFar            = clipFar;
+    result.subCamera.perspective.fovVerticalDegrees = fovVerticalDegrees;
     return result;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createCameraOrtho(korl_gfx_createCameraOrtho)
@@ -1262,37 +1263,47 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
         scissor.height = korl_math_round_f32_to_u32(camera._viewportScissorSize.y);
         break;}
     }
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_View, view);
-    view.positionEye    = camera.position;
-    view.positionTarget = camera.target;
-    view.worldUpNormal  = camera.worldUpNormal;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Projection, projection);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_SceneProperties, sceneProperties);
+    sceneProperties.view = korl_math_m4f32_lookAt(&camera.position, &camera.target, &camera.worldUpNormal);
     switch(camera.type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
-        projection.type                             = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV;
-        projection.subType.fov.horizontalFovDegrees = camera.subCamera.perspective.fovHorizonDegrees;
-        projection.subType.fov.clipNear             = camera.subCamera.perspective.clipNear;
-        projection.subType.fov.clipFar              = camera.subCamera.perspective.clipFar;
+        const f32 viewportWidthOverHeight = context->surfaceSize.y == 0 
+                                            ? 1.f 
+                                            : KORL_C_CAST(f32, context->surfaceSize.x) / KORL_C_CAST(f32, context->surfaceSize.y);
+        sceneProperties.projection = korl_math_m4f32_projectionFov(camera.subCamera.perspective.fovVerticalDegrees
+                                                                  ,viewportWidthOverHeight
+                                                                  ,camera.subCamera.perspective.clipNear
+                                                                  ,camera.subCamera.perspective.clipFar);
         break;}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
-        projection.type                              = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC;
-        projection.subType.orthographic.depth        = camera.subCamera.orthographic.clipDepth;
-        projection.subType.orthographic.originRatioX = camera.subCamera.orthographic.originAnchor.x;
-        projection.subType.orthographic.originRatioY = camera.subCamera.orthographic.originAnchor.y;
+        const f32 left   = 0.f - camera.subCamera.orthographic.originAnchor.x * KORL_C_CAST(f32, context->surfaceSize.x);
+        const f32 bottom = 0.f - camera.subCamera.orthographic.originAnchor.y * KORL_C_CAST(f32, context->surfaceSize.y);
+        const f32 right  = KORL_C_CAST(f32, context->surfaceSize.x) - camera.subCamera.orthographic.originAnchor.x * KORL_C_CAST(f32, context->surfaceSize.x);
+        const f32 top    = KORL_C_CAST(f32, context->surfaceSize.y) - camera.subCamera.orthographic.originAnchor.y * KORL_C_CAST(f32, context->surfaceSize.y);
+        const f32 far    = -camera.subCamera.orthographic.clipDepth;
+        const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+        sceneProperties.projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
         break;}
     case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-        projection.type                              = KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
-        projection.subType.orthographic.depth        = camera.subCamera.orthographic.clipDepth;
-        projection.subType.orthographic.originRatioX = camera.subCamera.orthographic.originAnchor.x;
-        projection.subType.orthographic.originRatioY = camera.subCamera.orthographic.originAnchor.y;
-        projection.subType.orthographic.fixedHeight  = camera.subCamera.orthographic.fixedHeight;
+        const f32 viewportWidthOverHeight = context->surfaceSize.y == 0 
+                                            ? 1.f 
+                                            : KORL_C_CAST(f32, context->surfaceSize.x) / KORL_C_CAST(f32, context->surfaceSize.y);
+        /* w / fixedHeight == windowAspectRatio */
+        const f32 width  = camera.subCamera.orthographic.fixedHeight * viewportWidthOverHeight;
+        const f32 left   = 0.f - camera.subCamera.orthographic.originAnchor.x * width;
+        const f32 bottom = 0.f - camera.subCamera.orthographic.originAnchor.y * camera.subCamera.orthographic.fixedHeight;
+        const f32 right  = width       - camera.subCamera.orthographic.originAnchor.x * width;
+        const f32 top    = camera.subCamera.orthographic.fixedHeight - camera.subCamera.orthographic.originAnchor.y * camera.subCamera.orthographic.fixedHeight;
+        const f32 far    = -camera.subCamera.orthographic.clipDepth;
+        const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+        sceneProperties.projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
         break;}
     }
+    sceneProperties.seconds = context->seconds;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.scissor    = &scissor;
-    drawState.view       = &view;
-    drawState.projection = &projection;
+    drawState.scissor         = &scissor;
+    drawState.sceneProperties = &sceneProperties;
     korl_vulkan_setDrawState(&drawState);
     context->currentCameraState = camera;
     korl_time_probeStop(useCamera);
@@ -1499,9 +1510,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     if(batch->_instancePositions) vertexData.instancePositionsStride = batch->_instancePositionDimensions*sizeof(*batch->_instancePositions);
     if(batch->_instanceU32s)      vertexData.instanceUintStride      = sizeof(*batch->_instanceU32s);
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
-    model.scale       = batch->_scale;
-    model.rotation    = batch->_rotation;
-    model.translation = batch->_position;
+    model.transform = korl_math_makeM4f32_rotateScaleTranslate(batch->_rotation, batch->_scale, batch->_position);
     if(batch->_vertexUvs)
     {
         model.uvAabb = KORL_MATH_AABB2F32_EMPTY;
@@ -1534,11 +1543,14 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
         storageBuffers.resourceHandleVertex = batch->_glyphMeshBufferVertices;
         /* we need to somehow position the text mesh in a way that satisfies the 
             text position anchor */
+        Korl_Math_V3f32 textPosition = batch->_position;
         // align position with the bottom-left corner of the batch AABB
-        korl_math_v2f32_assignSubtract(&model.translation.xy, batch->_textAabb.min);
+        korl_math_v2f32_assignSubtract(&textPosition.xy, batch->_textAabb.min);
         // offset position by the position anchor ratio, using the AABB size
-        korl_math_v2f32_assignSubtract(&model.translation.xy, korl_math_v2f32_multiply(korl_math_aabb2f32_size(batch->_textAabb)
-                                                                                      ,batch->_textPositionAnchor));
+        korl_math_v2f32_assignSubtract(&textPosition.xy, korl_math_v2f32_multiply(korl_math_aabb2f32_size(batch->_textAabb)
+                                                                                 ,batch->_textPositionAnchor));
+        //  //
+        model.transform = korl_math_makeM4f32_rotateScaleTranslate(batch->_rotation, batch->_scale, batch->_position);
         /* disable vertex colors for now, since this is super expensive for text anyway! */
         vertexData.colors       = NULL;
         vertexData.colorsStride = 0;
@@ -2170,9 +2182,7 @@ korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawab
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
-    model.translation = context->_model.position;
-    model.rotation    = context->_model.rotation;
-    model.scale       = context->_model.scale;
+    model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
     Korl_Vulkan_DrawState_Material material;
     /* if the user provided a material to use with this VertexData, then we just 
         override whatever Material was provided by the SCENE3D Resource */

@@ -4,9 +4,9 @@
 layout(set     = KORL_DESCRIPTOR_SET_SCENE_TRANSFORMS
       ,binding = KORL_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VP
       ,row_major) 
-    uniform Korl_UniformBufferObject_VpTransforms
+    uniform Korl_UniformBufferObject_SceneProperties
 {
-    Korl_VpTransforms vpTransforms;
+    Korl_SceneProperties sceneProperties;
 };
 layout(push_constant, row_major) uniform Korl_UniformBufferObject_VertexPushConstants
 {
@@ -16,6 +16,6 @@ layout(location = KORL_VERTEX_INPUT_POSITION) in vec2 attributePosition;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
 void main()
 {
-    gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(attributePosition, 0.0, 1.0);
+    gl_Position   = sceneProperties.projection * sceneProperties.view * pushConstants.model * vec4(attributePosition, 0.0, 1.0);
     fragmentColor = vec4(1.0);
 }

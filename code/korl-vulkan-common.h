@@ -17,7 +17,7 @@ typedef enum _Korl_Vulkan_DescriptorSetIndex
     /* ideally, these descriptor sets indices are defined in the order of least- 
         to most-frequently-changed for performance reasons; see 
         "Pipeline Layout Compatibility" in the Vulkan spec for more details */
-    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS//@TODO: rename this to just SCENE 
+    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE// used for things like glyph mesh lookup tables, maybe animation transforms, etc.; mostly stuff in vertex shader
     , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL// color maps, textures, etc.; mostly stuff used in fragment shader
@@ -25,7 +25,7 @@ typedef enum _Korl_Vulkan_DescriptorSetIndex
 } _Korl_Vulkan_DescriptorSetIndex;
 KORL_STATIC_ASSERT(_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT <= 4);// Vulkan Spec 42.1; maxBoundDescriptorSets minimum is 4; any higher than this is hardware-dependent
 typedef enum _Korl_Vulkan_DescriptorSetBinding
-    {_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION = 0//@TODO: rename this to SCENE_PROPERTIES_UBO
+    {_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_PROPERTIES_UBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT// keep last in the `SCENE_TRANSFORMS` section
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_COUNT// keep last in the `LIGHTS` section
@@ -42,10 +42,10 @@ typedef enum _Korl_Vulkan_DescriptorSetBinding
                                                + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_COUNT\
                                                + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_COUNT)
 korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_SCENE_TRANSFORMS[] = 
-    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION
+    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_PROPERTIES_UBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}/*_Korl_Vulkan_Uniform_VpTransforms*/};
+     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_Uniform_SceneProperties*/};
 korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_LIGHTS[] = 
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
@@ -201,16 +201,16 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
  * data alignment spec after this struct definition!  See Vulkan Specification 
  * `15.6.4. Offset and Stride Assignment` for details.
  */
-typedef struct _Korl_Vulkan_Uniform_VpTransforms
+typedef struct _Korl_Vulkan_Uniform_SceneProperties
 {
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
+    f32             seconds;
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
-    //@TODO: rename this struct to something like `_SceneProperties`; add a `f32 seconds` property so we can do time-based animations in shaders
-} _Korl_Vulkan_Uniform_VpTransforms;
-/* Ensure _Korl_Vulkan_Uniform_VpTransforms member alignment here: */
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32Projection) % 16) == 0);
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_VpTransforms, m4f32View      ) % 16) == 0);
+} _Korl_Vulkan_Uniform_SceneProperties;
+/* Ensure _Korl_Vulkan_Uniform_SceneProperties member alignment here: */
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_SceneProperties, m4f32Projection) % 16) == 0);
+KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_SceneProperties, m4f32View      ) % 16) == 0);
 typedef struct _Korl_Vulkan_DrawPushConstants
 {
     struct
@@ -244,7 +244,7 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     _Korl_Vulkan_DrawPushConstants pushConstants;
     VkRect2D                       scissor;
     /** ----- descriptor state ----- */
-    _Korl_Vulkan_Uniform_VpTransforms         uboTransforms;
+    _Korl_Vulkan_Uniform_SceneProperties      uboSceneProperties;
     Korl_Vulkan_DrawState_Lights              uboLights;
     Korl_Gfx_Material_Properties              uboMaterialProperties;
     struct

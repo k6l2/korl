@@ -98,15 +98,15 @@ typedef struct Korl_Gfx_Camera
     {
         struct
         {
-            f32 fovHorizonDegrees;
+            f32 fovVerticalDegrees;
             f32 clipNear;
             f32 clipFar;
         } perspective;
         struct
         {
             Korl_Math_V2f32 originAnchor;
-            f32 clipDepth;
-            f32 fixedHeight;
+            f32             clipDepth;
+            f32             fixedHeight;
         } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
@@ -243,7 +243,7 @@ typedef struct Korl_Gfx_Font_Metrics
     f32 lineGap;
 } Korl_Gfx_Font_Metrics;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics name(acu16 utf16AssetNameFont, f32 textPixelHeight)
-#define KORL_FUNCTION_korl_gfx_createCameraFov(name)                         Korl_Gfx_Camera       name(f32 fovHorizonDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target, Korl_Math_V3f32 up)
+#define KORL_FUNCTION_korl_gfx_createCameraFov(name)                         Korl_Gfx_Camera       name(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target, Korl_Math_V3f32 up)
 #define KORL_FUNCTION_korl_gfx_createCameraOrtho(name)                       Korl_Gfx_Camera       name(f32 clipDepth)
 #define KORL_FUNCTION_korl_gfx_createCameraOrthoFixedHeight(name)            Korl_Gfx_Camera       name(f32 fixedHeight, f32 clipDepth)
 #define KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(name)            void                  name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)

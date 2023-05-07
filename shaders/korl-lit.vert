@@ -4,9 +4,9 @@
 layout(set     = KORL_DESCRIPTOR_SET_SCENE_TRANSFORMS
       ,binding = KORL_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VP
       ,row_major) 
-    uniform Korl_UniformBufferObject_VpTransforms
+    uniform Korl_UniformBufferObject_SceneProperties
 {
-    Korl_VpTransforms vpTransforms;
+    Korl_SceneProperties sceneProperties;
 };
 layout(push_constant, row_major) uniform Korl_UniformBufferObject_VertexPushConstants
 {
@@ -24,7 +24,7 @@ void main()
     const mat3 normalMatrix = mat3(transpose(inverse(pushConstants.model)));
     fragmentColor        = vec4(1.0);
     fragmentUv           = attributeUv;
-    fragmentViewNormal   = normalize(mat3(vpTransforms.view) * normalMatrix * attributeNormal);
-    fragmentViewPosition = vec3(vpTransforms.view * pushConstants.model * vec4(attributePosition, 1.0));
-    gl_Position          = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(attributePosition, 1.0);
+    fragmentViewNormal   = normalize(mat3(sceneProperties.view) * normalMatrix * attributeNormal);
+    fragmentViewPosition = vec3(sceneProperties.view * pushConstants.model * vec4(attributePosition, 1.0));
+    gl_Position          = sceneProperties.projection * sceneProperties.view * pushConstants.model * vec4(attributePosition, 1.0);
 }

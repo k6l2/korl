@@ -32,7 +32,7 @@ layout(location = KORL_FRAGMENT_INPUT_COLOR)         in vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_INPUT_UV)            in vec2 fragmentUv;
 layout(location = KORL_FRAGMENT_INPUT_VIEW_NORMAL)   in vec3 fragmentViewNormal;
 layout(location = KORL_FRAGMENT_INPUT_VIEW_POSITION) in vec3 fragmentViewPosition;
-vec4 korl_glsl_fragment_computeLightColor(const in vec3 factorEmissive)
+vec4 korl_glsl_fragment_computeLightColor(const in vec2 uvEmissive, const in vec3 factorEmissive)
 {
     /* ambient */
     const vec3  lightAmbient = light.colorAmbient * texture(baseTexture, fragmentUv).rgb;
@@ -47,7 +47,7 @@ vec4 korl_glsl_fragment_computeLightColor(const in vec3 factorEmissive)
     const float specularStrength               = pow(max(dot(view_fragment_to_camera_normal, reflect_direction), 0.0), material.shininess);
     const vec3  lightSpecular                  = specularStrength * light.colorSpecular * texture(specularTexture, fragmentUv).rgb * material.colorFactorSpecular.rgb * vec3(material.colorFactorSpecular.a);
     /* emissive */
-    const vec3  lightEmissive = texture(emissiveTexture, fragmentUv).rgb * material.colorFactorEmissive * factorEmissive;
+    const vec3  lightEmissive = texture(emissiveTexture, uvEmissive).rgb * material.colorFactorEmissive * factorEmissive;
     /**/
     return vec4(lightAmbient + lightDiffuse + lightSpecular + lightEmissive, material.colorFactorBase.a);
 }

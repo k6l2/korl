@@ -1196,16 +1196,16 @@ korl_internal void _korl_vulkan_frameBegin(void)
     scissorDefault.extent = surfaceContext->swapChainImageExtent;
     korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
     korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
-    surfaceContext->drawState.pushConstants.vertex.m4f32Model = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){0,0,1,1};
-    surfaceContext->drawState.uboTransforms.m4f32View         = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.uboTransforms.m4f32Projection   = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pipelineConfigurationCache      = _korl_vulkan_pipeline_default();
-    surfaceContext->drawState.scissor                         = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties           = KORL_GFX_MATERIAL_DEFAULT.properties;
-    surfaceContext->drawState.materialMaps.base               = surfaceContext->defaultTexture;
-    surfaceContext->drawState.materialMaps.specular           = surfaceContext->defaultTexture;
-    surfaceContext->drawState.materialMaps.emissive           = surfaceContext->defaultTexture;
+    surfaceContext->drawState.pushConstants.vertex.m4f32Model    = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pushConstants.fragment.uvAabb      = (Korl_Math_V4f32){0,0,1,1};
+    surfaceContext->drawState.uboSceneProperties.m4f32View       = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
+    surfaceContext->drawState.pipelineConfigurationCache         = _korl_vulkan_pipeline_default();
+    surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
+    surfaceContext->drawState.uboMaterialProperties              = KORL_GFX_MATERIAL_DEFAULT.properties;
+    surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
+    surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
+    surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the pipeline produced from _korl_vulkan_pipeline_default to be used
     surfaceContext->drawState.currentPipeline = KORL_U$_MAX;//KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
@@ -1585,7 +1585,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         createInfoDescriptorSetLayout.bindingCount = korl_arraySize(_KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_SCENE_TRANSFORMS);
         createInfoDescriptorSetLayout.pBindings    = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_SCENE_TRANSFORMS;
         _KORL_VULKAN_CHECK(vkCreateDescriptorSetLayout(context->device, &createInfoDescriptorSetLayout, context->allocator
-                                                      ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS]));
+                                                      ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE]));
     }
     {/* LIGHTS descriptor set layout */
         KORL_ZERO_STACK(VkDescriptorSetLayoutCreateInfo, createInfoDescriptorSetLayout);
@@ -1948,52 +1948,15 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     }
     if(state->blend)
         pipelineCache->blend = *state->blend;
-    if(state->projection)
-        switch(state->projection->type)
-        {
-        case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV:{
-            const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 
-                ? 1.f 
-                :  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width)
-                 / KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
-            surfaceContext->drawState.uboTransforms.m4f32Projection = korl_math_m4f32_projectionFov(state->projection->subType.fov.horizontalFovDegrees
-                                                                                                   ,viewportWidthOverHeight
-                                                                                                   ,state->projection->subType.fov.clipNear
-                                                                                                   ,state->projection->subType.fov.clipFar);
-            break;}
-        case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC:{
-            const f32 left   = 0.f - state->projection->subType.orthographic.originRatioX*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width );
-            const f32 bottom = 0.f - state->projection->subType.orthographic.originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
-            const f32 right  = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width ) - state->projection->subType.orthographic.originRatioX*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width );
-            const f32 top    = KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height) - state->projection->subType.orthographic.originRatioY*KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
-            const f32 far    = -state->projection->subType.orthographic.depth;
-            const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->drawState.uboTransforms.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
-            break;}
-        case KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-            const f32 viewportWidthOverHeight = surfaceContext->swapChainImageExtent.height == 0 
-                ? 1.f 
-                :  KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.width) 
-                 / KORL_C_CAST(f32, surfaceContext->swapChainImageExtent.height);
-            /* w / fixedHeight == windowAspectRatio */
-            const f32 width  = state->projection->subType.orthographic.fixedHeight * viewportWidthOverHeight;
-            const f32 left   = 0.f - state->projection->subType.orthographic.originRatioX*width;
-            const f32 bottom = 0.f - state->projection->subType.orthographic.originRatioY*state->projection->subType.orthographic.fixedHeight;
-            const f32 right  = width       - state->projection->subType.orthographic.originRatioX*width;
-            const f32 top    = state->projection->subType.orthographic.fixedHeight - state->projection->subType.orthographic.originRatioY*state->projection->subType.orthographic.fixedHeight;
-            const f32 far    = -state->projection->subType.orthographic.depth;
-            const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-            surfaceContext->drawState.uboTransforms.m4f32Projection = korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);
-            break;}
-        default:{
-            korl_log(ERROR, "invalid projection type: %i", state->projection->type);
-            break;}
-        }
-    if(state->view)
-        surfaceContext->drawState.uboTransforms.m4f32View = korl_math_m4f32_lookAt(&state->view->positionEye, &state->view->positionTarget, &state->view->worldUpNormal);
+    if(state->sceneProperties)
+    {
+        surfaceContext->drawState.uboSceneProperties.m4f32Projection = state->sceneProperties->projection;
+        surfaceContext->drawState.uboSceneProperties.m4f32View       = state->sceneProperties->view;
+        surfaceContext->drawState.uboSceneProperties.seconds         = state->sceneProperties->seconds;
+    }
     if(state->model)
     {
-        surfaceContext->drawState.pushConstants.vertex.m4f32Model = korl_math_makeM4f32_rotateScaleTranslate(state->model->rotation, state->model->scale, state->model->translation);
+        surfaceContext->drawState.pushConstants.vertex.m4f32Model = state->model->transform;
         surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){.xy = state->model->uvAabb.min, .zw = state->model->uvAabb.max};
     }
     if(state->scissor)
@@ -2204,29 +2167,29 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     KORL_MEMORY_POOL_ZERO(descriptorBufferInfos);
     KORL_MEMORY_POOL_DECLARE(VkDescriptorImageInfo, descriptorImageInfos, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_MEMORY_POOL_ZERO(descriptorImageInfos);
-    // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS //
-    if(0 != korl_memory_compare(&surfaceContext->drawState.uboTransforms// only ever get new VP uniform staging memory if the VP state has changed!
-                               ,&surfaceContext->drawStateLast.uboTransforms
-                               ,sizeof(surfaceContext->drawState.uboTransforms)))
+    // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE //
+    if(0 != korl_memory_compare(&surfaceContext->drawState.uboSceneProperties// only ever get new VP uniform staging memory if the VP state has changed!
+                               ,&surfaceContext->drawStateLast.uboSceneProperties
+                               ,sizeof(surfaceContext->drawState.uboSceneProperties)))
     {
         /* stage the UBO transforms */
-        _Korl_Vulkan_Uniform_VpTransforms*const stagingMemoryUniformTransforms = 
+        _Korl_Vulkan_Uniform_SceneProperties*const stagingMemoryUniformTransforms = 
             _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformTransforms), &bufferStaging, &byteOffsetStagingBuffer);
-        *stagingMemoryUniformTransforms = surfaceContext->drawState.uboTransforms;
+        *stagingMemoryUniformTransforms = surfaceContext->drawState.uboSceneProperties;
         /* prepare a descriptor set write with the staged UBO */
         VkDescriptorBufferInfo*const descriptorBufferInfo = KORL_MEMORY_POOL_ADD(descriptorBufferInfos);
         descriptorBufferInfo->buffer = bufferStaging;
         descriptorBufferInfo->range  = sizeof(*stagingMemoryUniformTransforms);
         descriptorBufferInfo->offset = byteOffsetStagingBuffer;
         const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_SCENE_TRANSFORMS 
-                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VIEW_PROJECTION;
+                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_PROPERTIES_UBO;
         descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
         descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
         descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
         descriptorSetWrites[descriptorWriteCount].pBufferInfo     = descriptorBufferInfo;
         // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
-        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE_TRANSFORMS;
+        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE;
         descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
         descriptorWriteCount++;
     }
@@ -2241,7 +2204,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         *stagingMemoryUniformLights = surfaceContext->drawState.uboLights;
         {//@TODO: HACK: figure out a better way of doing this that doesn't involve breaking the symmetry of the C-side light UBO structs?
             Korl_Math_V4f32 lightPosition = {.xyz = surfaceContext->drawState.uboLights.position}; lightPosition.w = 1;
-            const Korl_Math_V4f32 lightViewPosition = korl_math_m4f32_multiplyV4f32(&surfaceContext->drawState.uboTransforms.m4f32View, &lightPosition);
+            const Korl_Math_V4f32 lightViewPosition = korl_math_m4f32_multiplyV4f32(&surfaceContext->drawState.uboSceneProperties.m4f32View, &lightPosition);
             stagingMemoryUniformLights->position = lightViewPosition.xyz;
         }
         /* prepare a descriptor set write with the staged UBO */

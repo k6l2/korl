@@ -20,10 +20,11 @@
 #define KORL_FRAGMENT_INPUT_VIEW_NORMAL   2
 #define KORL_FRAGMENT_INPUT_VIEW_POSITION 3
 #define KORL_FRAGMENT_OUTPUT_COLOR 0
-struct Korl_VpTransforms//@TODO: rename this to Korl_SceneProperties or something
+struct Korl_SceneProperties
 {
-    mat4 projection;
-    mat4 view;
+    mat4  projection;
+    mat4  view;
+    float seconds;
 };
 struct Korl_Vertex_PushConstants
 {

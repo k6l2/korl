@@ -945,10 +945,10 @@ korl_internal void korl_windows_window_loop(void)
         }
 #endif
         const Korl_Math_V2u32 swapchainSize = korl_vulkan_getSurfaceSize();
-        korl_gfx_updateSurfaceSize(swapchainSize);
+        korl_gfx_update(swapchainSize, 1.f / KORL_APP_TARGET_FRAME_HZ);
         korl_time_probeStart(game_update);
         if(    context->gameApi.korl_game_update
-           && !context->gameApi.korl_game_update(1.f/KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
+           && !context->gameApi.korl_game_update(1.f / KORL_APP_TARGET_FRAME_HZ, swapchainSize.x, swapchainSize.y, GetFocus() != NULL))
             break;
 #ifdef _KORL_WINDOWS_WINDOW_DEBUG_TEST_GFX_TEXT
         korl_gfx_text_draw(debugText, korl_math_aabb2f32_fromPoints(KORL_F32_MAX,KORL_F32_MAX, -KORL_F32_MAX,-KORL_F32_MAX));

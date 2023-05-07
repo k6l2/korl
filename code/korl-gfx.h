@@ -5,7 +5,7 @@
 //KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
 #if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)
 korl_internal void korl_gfx_initialize(void);
-korl_internal void korl_gfx_updateSurfaceSize(Korl_Math_V2u32 size);
+korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds);
 korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {

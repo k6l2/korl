@@ -87,43 +87,16 @@ typedef struct Korl_Vulkan_DrawState_Blend
     Korl_Vulkan_BlendFactor factorAlphaSource;
     Korl_Vulkan_BlendFactor factorAlphaTarget;
 } Korl_Vulkan_DrawState_Blend;
-typedef enum Korl_Vulkan_DrawState_ProjectionType
-    { KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_FOV
-    , KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC
-    , KORL_VULKAN_DRAW_STATE_PROJECTION_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT
-} Korl_Vulkan_DrawState_ProjectionType;
-typedef struct Korl_Vulkan_DrawState_Projection
+typedef struct Korl_Vulkan_DrawState_SceneProperties
 {
-    Korl_Vulkan_DrawState_ProjectionType type;
-    union
-    {
-        struct
-        {
-            f32 horizontalFovDegrees;
-            f32 clipNear;
-            f32 clipFar;
-        } fov;
-        struct
-        {
-            f32 fixedHeight;
-            f32 depth;
-            f32 originRatioX;
-            f32 originRatioY;
-        } orthographic;
-    } subType;
-} Korl_Vulkan_DrawState_Projection;
-typedef struct Korl_Vulkan_DrawState_View
-{
-    Korl_Math_V3f32 positionEye;
-    Korl_Math_V3f32 positionTarget;
-    Korl_Math_V3f32 worldUpNormal;
-} Korl_Vulkan_DrawState_View;
+    Korl_Math_M4f32 view;
+    Korl_Math_M4f32 projection;
+    f32             seconds;
+} Korl_Vulkan_DrawState_SceneProperties;
 typedef struct Korl_Vulkan_DrawState_Model
 {
-    Korl_Math_V3f32      translation;
-    Korl_Math_Quaternion rotation;
-    Korl_Math_V3f32      scale;
-    Korl_Math_Aabb2f32   uvAabb;
+    Korl_Math_M4f32    transform;
+    Korl_Math_Aabb2f32 uvAabb;
 } Korl_Vulkan_DrawState_Model;
 typedef struct Korl_Vulkan_DrawState_Scissor
 {
@@ -140,15 +113,14 @@ typedef struct Korl_Vulkan_DrawState_StorageBuffers
 typedef Korl_Gfx_Light Korl_Vulkan_DrawState_Lights;// @TODO: likely unnecessary abstraction
 typedef struct Korl_Vulkan_DrawState
 {
-    const Korl_Vulkan_DrawState_Features*       features;
-    const Korl_Vulkan_DrawState_Blend*          blend;
-    const Korl_Vulkan_DrawState_Projection*     projection;//KORL-ISSUE-000-000-103: vulkan: likely related to KORL-PERFORMANCE-000-000-041; refactor DrawState View & Projection to be M4f32; korl-vulkan shouldn't be concerned with how the user wants these transforms calculated
-    const Korl_Vulkan_DrawState_View*           view;      //KORL-ISSUE-000-000-103: vulkan: likely related to KORL-PERFORMANCE-000-000-041; refactor DrawState View & Projection to be M4f32; korl-vulkan shouldn't be concerned with how the user wants these transforms calculated
-    const Korl_Vulkan_DrawState_Model*          model;
-    const Korl_Vulkan_DrawState_Scissor*        scissor;
-    const Korl_Vulkan_DrawState_Material*       material;
-    const Korl_Vulkan_DrawState_StorageBuffers* storageBuffers;
-    const Korl_Vulkan_DrawState_Lights*         lights;
+    const Korl_Vulkan_DrawState_Features*        features;
+    const Korl_Vulkan_DrawState_Blend*           blend;
+    const Korl_Vulkan_DrawState_SceneProperties* sceneProperties;
+    const Korl_Vulkan_DrawState_Model*           model;
+    const Korl_Vulkan_DrawState_Scissor*         scissor;
+    const Korl_Vulkan_DrawState_Material*        material;
+    const Korl_Vulkan_DrawState_StorageBuffers*  storageBuffers;
+    const Korl_Vulkan_DrawState_Lights*          lights;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX

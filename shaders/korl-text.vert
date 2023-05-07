@@ -4,9 +4,9 @@
 layout(set     = KORL_DESCRIPTOR_SET_SCENE_TRANSFORMS
       ,binding = KORL_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_UBO_VP
       ,row_major) 
-    uniform Korl_UniformBufferObject_VpTransforms
+    uniform Korl_UniformBufferObject_SceneProperties
 {
-    Korl_VpTransforms vpTransforms;
+    Korl_SceneProperties sceneProperties;
 };
 layout(push_constant, row_major) uniform Korl_UniformBufferObject_VertexPushConstants
 {
@@ -31,7 +31,7 @@ void main()
     const uint glyphMeshVertexIndex = 4*instanceAttributeGlyphIndex + gl_VertexIndex;
     const GlyphVertex glyphVertex   = glyphVertices[glyphMeshVertexIndex];
     const vec2 modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
-    gl_Position   = vpTransforms.projection * vpTransforms.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
+    gl_Position   = sceneProperties.projection * sceneProperties.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
     fragmentColor = vec4(1.0);
     fragmentUv    = glyphVertex.position2d_uv.zw;
 }
