@@ -112,7 +112,9 @@ typedef struct _Korl_Gfx_Context
     Korl_StringPool*            stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
     Korl_Gfx_Camera             currentCameraState;
-    f32                         seconds;// passed to the renderer as UBO data to allow shader animations
+    f32                         seconds;// passed to the renderer as UBO data to allow shader animations; passed when a Camera is used
+    //@TODO: this pool size is a duplicate; we should somehow obtain this limit from korl-vulkan
+    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, 8);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {
@@ -2181,6 +2183,7 @@ korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawab
 }
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
+    Korl_Vulkan_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
     Korl_Vulkan_DrawState_Material material;
@@ -2194,6 +2197,14 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
     drawState.material = &material;
+    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
+    {
+        korl_memory_zero(&lighting, sizeof(lighting));
+        lighting.lightsCount = KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights);
+        lighting.lights      = _korl_gfx_context->pendingLights;
+        drawState.lighting = &lighting;
+        _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
+    }
     korl_vulkan_setDrawState(&drawState);
     Korl_Vulkan_DrawVertexData drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle);
     if(drawVertexData.vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
@@ -2202,12 +2213,11 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 }
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
 {
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Lights, lights);
-    lights.position = light->position;
-    lights.color    = light->color;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.lights = &lights;
-    korl_vulkan_setDrawState(&drawState);
+    for(u$ i = 0; i < lightsSize; i++)
+    {
+        Korl_Gfx_Light*const newLight = KORL_MEMORY_POOL_ADD(_korl_gfx_context->pendingLights);
+        *newLight = lights[i];
+    }
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

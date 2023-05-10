@@ -109,11 +109,20 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
-    Korl_Gfx_Light light = {.position = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true) * (Korl_Math_V3f32{-1,1,1} * 100)
-                           ,.color = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
-                                     ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
-                                     ,.specular = KORL_MATH_V3F32_ONE}};
-    korl_gfx_light_use(&light);
+    const Korl_Gfx_Light lights[2] = {
+        {.type     = KORL_GFX_LIGHT_TYPE_POINT
+            ,.position = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, 0, true) * (Korl_Math_V3f32{-1,1,1} * 100)
+            ,.color    = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
+                         ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
+                         ,.specular = KORL_MATH_V3F32_ONE}}
+        ,
+        {.type     = KORL_GFX_LIGHT_TYPE_POINT
+            ,.position = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true) * (Korl_Math_V3f32{-1,1,1} * 100)
+            ,.color    = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
+                         ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
+                         ,.specular = KORL_MATH_V3F32_ONE}}
+        };
+    korl_gfx_light_use(lights, korl_arraySize(lights));
     /* camera... */
     korl_shared_const Korl_Math_V3f32 DEFAULT_FORWARD = KORL_MATH_V3F32_MINUS_Y;// blender model space
     korl_shared_const Korl_Math_V3f32 DEFAULT_RIGHT   = KORL_MATH_V3F32_MINUS_X;// blender model space
@@ -171,11 +180,15 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
                                                                         ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/crate.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}}
                                                ,.used = true};
     korl_gfx_draw(&scene3d);
-    scene3d.subType.scene3d.materialSlots[0].used = false;
-    scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;
-    scene3d._model.position = light.position;
-    scene3d._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
-    korl_gfx_draw(&scene3d);
+    for(u$ i = 0; i < korl_arraySize(lights); i++)
+    {
+        const Korl_Gfx_Light*const light = lights + i;
+        scene3d.subType.scene3d.materialSlots[0].used = false;
+        scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;
+        scene3d._model.position = light->position;
+        scene3d._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
+        korl_gfx_draw(&scene3d);
+    }
     /* debug */
     Korl_Gfx_Batch*const batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);
     korl_gfx_batchSetScale(batchAxis, KORL_MATH_V3F32_ONE * 100);

@@ -27,7 +27,7 @@ KORL_STATIC_ASSERT(_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT <= 4);// Vulkan 
 typedef enum _Korl_Vulkan_DescriptorSetBinding
     {_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_PROPERTIES_UBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_TRANSFORMS_COUNT// keep last in the `SCENE_TRANSFORMS` section
-    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO = 0
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_SSBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_COUNT// keep last in the `LIGHTS` section
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_COUNT// keep last in the `VERTEX_STORAGE` section
@@ -47,10 +47,10 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
      ,.descriptorCount = 1
      ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_Uniform_SceneProperties*/};
 korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_LIGHTS[] = 
-    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO
-     ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+    {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_SSBO
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*Korl_Vulkan_DrawState_Lights*/};
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::lights, transcoded as _Korl_Vulkan_ShaderBuffer_Lights*/};
 korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_STORAGE[] = 
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
@@ -244,9 +244,9 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     _Korl_Vulkan_DrawPushConstants pushConstants;
     VkRect2D                       scissor;
     /** ----- descriptor state ----- */
-    _Korl_Vulkan_Uniform_SceneProperties      uboSceneProperties;
-    Korl_Vulkan_DrawState_Lights              uboLights;
-    Korl_Gfx_Material_Properties              uboMaterialProperties;
+    _Korl_Vulkan_Uniform_SceneProperties uboSceneProperties;
+    Korl_Gfx_Material_Properties         uboMaterialProperties;
+    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, lights, 8);// some arbitrary max # of lights
     struct
     {
         Korl_Vulkan_DeviceMemory_AllocationHandle base;

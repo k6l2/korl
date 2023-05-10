@@ -8,6 +8,7 @@ layout(set     = KORL_DESCRIPTOR_SET_SCENE_TRANSFORMS
 {
     Korl_SceneProperties sceneProperties;
 };
+layout(location = KORL_FRAGMENT_INPUT_COLOR) in vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_OUTPUT_COLOR) out vec4 outColor;
 void main()
 {

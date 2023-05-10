@@ -165,18 +165,40 @@ typedef struct Korl_Gfx_Drawable
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;
+typedef enum Korl_Gfx_Light_Type
+    {KORL_GFX_LIGHT_TYPE_POINT       = 1
+    ,KORL_GFX_LIGHT_TYPE_DIRECTIONAL = 2
+    ,KORL_GFX_LIGHT_TYPE_SPOT        = 3
+} Korl_Gfx_Light_Type;
 typedef struct Korl_Gfx_Light
 {
+    u32             type;// Korl_Gfx_Light_Type
+    u32             _padding_0[3];
     Korl_Math_V3f32 position;
-    f32             _padding_0;
+    f32             _padding_1;
+    Korl_Math_V3f32 direction;
+    f32             _padding_2;
     struct
     {
         Korl_Math_V3f32 ambient;
-        f32             _padding_1;
+        f32             _padding_0;
         Korl_Math_V3f32 diffuse;
-        f32             _padding_2;
+        f32             _padding_1;
         Korl_Math_V3f32 specular;
     } color;
+    struct
+    {
+        f32 constant;
+        f32 linear;
+        f32 quadratic;
+    } attenuation;
+    struct
+    {
+        f32 inner;
+        f32 outer;
+        f32 _padding_0[2];
+    } cutOffs;
+    f32 _padding_3[2];
 } Korl_Gfx_Light;
 enum
     {KORL_GFX_BATCH_FLAGS_NONE              = 0
@@ -300,4 +322,4 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                  name(u8 red, u8 green, u8 blue)
 #define KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(name)             void                  name(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d)
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context)
-#define KORL_FUNCTION_korl_gfx_light_use(name)                               void                  name(const Korl_Gfx_Light*const light)
+#define KORL_FUNCTION_korl_gfx_light_use(name)                               void                  name(const Korl_Gfx_Light*const lights, u$ lightsSize)

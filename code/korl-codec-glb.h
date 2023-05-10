@@ -5,8 +5,7 @@
 typedef struct Korl_Codec_Gltf_Data
 {
     u32 byteOffset;
-    //@TODO: just rename this to "bytes"?
-    u32 size;// in bytes
+    u32 size;// as in the array size; _not_ bytes
 } Korl_Codec_Gltf_Data;
 typedef struct Korl_Codec_Gltf
 {
@@ -155,7 +154,6 @@ typedef struct Korl_Codec_Gltf_Sampler
 } Korl_Codec_Gltf_Sampler;
 korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
                                                                             ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
-//@TODO: create "DEFAULT" struct instances of all the above structs that have default glTF values according to the spec, then pass those default structs to the "newArray" API in the decoder
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_getMeshPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);

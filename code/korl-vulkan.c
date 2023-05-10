@@ -887,10 +887,11 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
 #endif
         Korl_Vulkan_DeviceMemory_AllocationHandle newBufferAllocationHandle = _korl_vulkan_deviceMemory_allocateBuffer(&surfaceContext->deviceMemoryHostVisible
                                                                                                                       ,stagingBufferArenaBytes
-                                                                                                                      ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT 
+                                                                                                                      ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                                                                                                                        | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                                                                                                                        | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
                                                                                                                        | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                                                                                                                       | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                                                                                                                       ,VK_SHARING_MODE_EXCLUSIVE
                                                                                                                       ,0// 0 => generate new handle automatically
                                                                                                                       ,&validAllocation);
@@ -915,12 +916,12 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
 }
 korl_internal void* _korl_vulkan_getVertexStagingPool(const Korl_Vulkan_DrawVertexData* vertexData, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
 {
-    const VkDeviceSize bytesRequired = (vertexData->positions         ? vertexData->vertexCount*vertexData->positionDimensions*sizeof(*vertexData->positions)                   : 0)
-                                     + (vertexData->colors            ? vertexData->vertexCount*sizeof(*vertexData->colors)                                                     : 0)
-                                     + (vertexData->uvs               ? vertexData->vertexCount*sizeof(*vertexData->uvs)                                                        : 0)
-                                     + (vertexData->indices           ? vertexData->indexCount*sizeof(*vertexData->indices)                                                     : 0)
-                                     + (vertexData->instancePositions ? vertexData->instanceCount*vertexData->instancePositionDimensions*sizeof(*vertexData->instancePositions) : 0)
-                                     + (vertexData->instanceUint      ? vertexData->instanceCount*sizeof(*vertexData->instanceUint)                                             : 0);
+    const VkDeviceSize bytesRequired = (vertexData->positions         ? vertexData->vertexCount * vertexData->positionDimensions           * sizeof(*vertexData->positions)         : 0)
+                                     + (vertexData->colors            ? vertexData->vertexCount                                            * sizeof(*vertexData->colors)            : 0)
+                                     + (vertexData->uvs               ? vertexData->vertexCount                                            * sizeof(*vertexData->uvs)               : 0)
+                                     + (vertexData->indices           ? vertexData->indexCount                                             * sizeof(*vertexData->indices)           : 0)
+                                     + (vertexData->instancePositions ? vertexData->instanceCount * vertexData->instancePositionDimensions * sizeof(*vertexData->instancePositions) : 0)
+                                     + (vertexData->instanceUint      ? vertexData->instanceCount                                          * sizeof(*vertexData->instanceUint)      : 0);
     return _korl_vulkan_getStagingPool(bytesRequired, /*alignment*/0, out_bufferStaging, out_byteOffsetStagingBuffer);
 }
 korl_internal void* _korl_vulkan_getDescriptorStagingPool(VkDeviceSize descriptorBytes, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
@@ -1119,10 +1120,10 @@ korl_internal void _korl_vulkan_frameBegin(void)
                 shaderTrash++;
         }
     }
-#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
-    /* reset the debug pool of device asset indices */
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
-#endif
+    #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+        /* reset the debug pool of device asset indices */
+        mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
+    #endif
     if(!unableToAcquireSwapChainImage)
     {
         /* acquire the next image from the swap chain */
@@ -1983,10 +1984,10 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     }
     if(state->storageBuffers)
         surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
-    if(state->lights)
+    if(state->lighting)
     {
-        surfaceContext->drawState.uboLights.position = state->lights->position;
-        surfaceContext->drawState.uboLights.color    = state->lights->color;
+        KORL_MEMORY_POOL_RESIZE(surfaceContext->drawState.lights, state->lighting->lightsCount);
+        korl_memory_copy(surfaceContext->drawState.lights, state->lighting->lights, state->lighting->lightsCount * sizeof(*state->lighting->lights));
     }
     done:
     korl_time_probeStop(set_draw_state);
@@ -2194,26 +2195,37 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         descriptorWriteCount++;
     }
     // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS //
-    if(0 != korl_memory_compare(&surfaceContext->drawState.uboLights// only ever get new VP uniform staging memory if the VP state has changed!
-                               ,&surfaceContext->drawStateLast.uboLights
-                               ,sizeof(surfaceContext->drawState.uboLights)))
+    if(   KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights) != KORL_MEMORY_POOL_SIZE(surfaceContext->drawStateLast.lights)
+       || 0 != korl_memory_compare(&surfaceContext->drawState.lights
+                                  ,&surfaceContext->drawStateLast.lights
+                                  ,KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights) * sizeof(*surfaceContext->drawState.lights)))
     {
-        /* stage the UBO Lights */
-        Korl_Vulkan_DrawState_Lights*const stagingMemoryUniformLights = 
-            _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUniformLights), &bufferStaging, &byteOffsetStagingBuffer);
-        *stagingMemoryUniformLights = surfaceContext->drawState.uboLights;
-        {//@TODO: HACK: figure out a better way of doing this that doesn't involve breaking the symmetry of the C-side light UBO structs?
-            Korl_Math_V4f32 lightPosition = {.xyz = surfaceContext->drawState.uboLights.position}; lightPosition.w = 1;
-            const Korl_Math_V4f32 lightViewPosition = korl_math_m4f32_multiplyV4f32(&surfaceContext->drawState.uboSceneProperties.m4f32View, &lightPosition);
-            stagingMemoryUniformLights->position = lightViewPosition.xyz;
+        /* stage the Lighting SSBO */
+        typedef struct _Korl_Vulkan_ShaderBuffer_Lights
+        {
+            u32 lightsSize;
+            u32 _padding_0[3];
+            Korl_Gfx_Light lights[1];// array size == `lightsSize`
+        } _Korl_Vulkan_ShaderBuffer_Lights;
+        const VkDeviceSize bufferBytes = sizeof(_Korl_Vulkan_ShaderBuffer_Lights) - sizeof(Korl_Gfx_Light) + KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights) * sizeof(Korl_Gfx_Light);
+        _Korl_Vulkan_ShaderBuffer_Lights*const stagingMemoryBufferLights = 
+            _korl_vulkan_getDescriptorStagingPool(bufferBytes, &bufferStaging, &byteOffsetStagingBuffer);
+        stagingMemoryBufferLights->lightsSize = KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights);
+        korl_memory_copy(stagingMemoryBufferLights->lights, surfaceContext->drawState.lights, KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights) * sizeof(*surfaceContext->drawState.lights));
+        for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights); i++)
+        {
+            Korl_Gfx_Light*const light = surfaceContext->drawState.lights + i;
+            //@TODO: HACK: figure out a better way of doing this that doesn't involve breaking the symmetry of the C-side light UBO structs?
+            Korl_Math_V4f32 lightPosition = {.xyz = light->position}; lightPosition.w = 1;
+            stagingMemoryBufferLights->lights[i].position = korl_math_m4f32_multiplyV4f32(&surfaceContext->drawState.uboSceneProperties.m4f32View, &lightPosition).xyz;
         }
         /* prepare a descriptor set write with the staged UBO */
         VkDescriptorBufferInfo*const descriptorBufferInfo = KORL_MEMORY_POOL_ADD(descriptorBufferInfos);
         descriptorBufferInfo->buffer = bufferStaging;
-        descriptorBufferInfo->range  = sizeof(*stagingMemoryUniformLights);
+        descriptorBufferInfo->range  = bufferBytes;
         descriptorBufferInfo->offset = byteOffsetStagingBuffer;
         const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_LIGHTS 
-                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_UBO;
+                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_SSBO;
         descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
         descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;

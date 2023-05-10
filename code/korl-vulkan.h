@@ -76,7 +76,7 @@ typedef struct Korl_Vulkan_DrawVertexData
 typedef struct Korl_Vulkan_DrawState_Features
 {
     u32 enableBlend     : 1;
-    u32 enableDepthTest : 1;
+    u32 enableDepthTest : 1;//@TODO: separate depth test & depth write
 } Korl_Vulkan_DrawState_Features;
 typedef struct Korl_Vulkan_DrawState_Blend
 {
@@ -110,7 +110,11 @@ typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
 } Korl_Vulkan_DrawState_StorageBuffers;
-typedef Korl_Gfx_Light Korl_Vulkan_DrawState_Lights;// @TODO: likely unnecessary abstraction
+typedef struct Korl_Vulkan_DrawState_Lighting
+{
+    u32                   lightsCount;
+    const Korl_Gfx_Light* lights;
+} Korl_Vulkan_DrawState_Lighting;
 typedef struct Korl_Vulkan_DrawState
 {
     const Korl_Vulkan_DrawState_Features*        features;
@@ -120,7 +124,7 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_Scissor*         scissor;
     const Korl_Vulkan_DrawState_Material*        material;
     const Korl_Vulkan_DrawState_StorageBuffers*  storageBuffers;
-    const Korl_Vulkan_DrawState_Lights*          lights;
+    const Korl_Vulkan_DrawState_Lighting*        lighting;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexAttribute
     { KORL_VULKAN_VERTEX_ATTRIBUTE_INDEX
