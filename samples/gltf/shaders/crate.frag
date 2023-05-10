@@ -14,6 +14,6 @@ void main()
 {
     const vec3  maskSpecularMap = step(vec3(0.99), vec3(1.0) - texture(specularTexture, fragmentUv).rgb);
     const vec2  uvEmissive      = fragmentUv - vec2(0, sceneProperties.seconds * 0.5);// scroll the emissive map V-coordinate to simulate "digital rain"
-    const float emissiveWave    = abs(sin(2 * sceneProperties.seconds));
+    const float emissiveWave    = 0.1 * abs(sin(2 * sceneProperties.seconds));
     outColor = korl_glsl_fragment_computeLightColor(uvEmissive, emissiveWave * maskSpecularMap/*factorEmissive*/) * fragmentColor;
 }

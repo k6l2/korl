@@ -206,6 +206,7 @@ typedef struct _Korl_Vulkan_Uniform_SceneProperties
     Korl_Math_M4f32 m4f32Projection;
     Korl_Math_M4f32 m4f32View;
     f32             seconds;
+    f32             _padding_0[3];
     //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
 } _Korl_Vulkan_Uniform_SceneProperties;
 /* Ensure _Korl_Vulkan_Uniform_SceneProperties member alignment here: */

@@ -769,6 +769,10 @@ korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32(const Korl_Math_M4f3
     return result;
 }
 #pragma warning(pop)
+korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32Copy(const Korl_Math_M4f32*const m, Korl_Math_V4f32 v)
+{
+    return korl_math_m4f32_multiplyV4f32(m, &v);
+}
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(f32 verticalFovDegrees, f32 viewportWidthOverHeight, f32 clipNear, f32 clipFar)
 {
     KORL_MATH_ZERO_STACK(Korl_Math_M4f32, result);

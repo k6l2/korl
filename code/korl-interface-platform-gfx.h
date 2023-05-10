@@ -115,11 +115,12 @@ typedef enum Korl_Gfx_Drawable_Type
 } Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Material_Properties
 {
-    Korl_Math_V4f32      factorColorBase;
-    Korl_Math_V3f32      factorColorEmissive;
-    f32                  _padding_0;
-    Korl_Math_V4f32      factorColorSpecular;
-    f32                  shininess;
+    Korl_Math_V4f32 factorColorBase;
+    Korl_Math_V3f32 factorColorEmissive;
+    f32             _padding_0;
+    Korl_Math_V4f32 factorColorSpecular;
+    f32             shininess;
+    f32             _padding_1[3];
 } Korl_Gfx_Material_Properties;
 typedef struct Korl_Gfx_Material_Maps
 {
@@ -185,6 +186,7 @@ typedef struct Korl_Gfx_Light
         Korl_Math_V3f32 diffuse;
         f32             _padding_1;
         Korl_Math_V3f32 specular;
+        f32             _padding_2;
     } color;
     struct
     {
@@ -197,8 +199,8 @@ typedef struct Korl_Gfx_Light
         f32 inner;
         f32 outer;
         f32 _padding_0[2];
-    } cutOffs;
-    f32 _padding_3[2];
+    } cutOffCosines;
+    f32 _padding_3;
 } Korl_Gfx_Light;
 enum
     {KORL_GFX_BATCH_FLAGS_NONE              = 0

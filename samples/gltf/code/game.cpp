@@ -107,23 +107,8 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     memory->seconds += deltaSeconds;
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
-    /* lights... */
-    korl_gfx_setClearColor(1,1,1);
-    const Korl_Gfx_Light lights[2] = {
-        {.type     = KORL_GFX_LIGHT_TYPE_POINT
-            ,.position = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, 0, true) * (Korl_Math_V3f32{-1,1,1} * 100)
-            ,.color    = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
-                         ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
-                         ,.specular = KORL_MATH_V3F32_ONE}}
-        ,
-        {.type     = KORL_GFX_LIGHT_TYPE_POINT
-            ,.position = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true) * (Korl_Math_V3f32{-1,1,1} * 100)
-            ,.color    = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
-                         ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
-                         ,.specular = KORL_MATH_V3F32_ONE}}
-        };
-    korl_gfx_light_use(lights, korl_arraySize(lights));
     /* camera... */
+    // @TODO: pull out the 3D camera movement code into a utility module, as I am likely to re-use this stuff in multiple projects
     korl_shared_const Korl_Math_V3f32 DEFAULT_FORWARD = KORL_MATH_V3F32_MINUS_Y;// blender model space
     korl_shared_const Korl_Math_V3f32 DEFAULT_RIGHT   = KORL_MATH_V3F32_MINUS_X;// blender model space
     korl_shared_const Korl_Math_V3f32 DEFAULT_UP      = KORL_MATH_V3F32_Z;      // blender model space
@@ -164,6 +149,38 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     const Korl_Math_V3f32      cameraForward         = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_FORWARD;
     const Korl_Math_V3f32      cameraUp              = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_UP;
     korl_gfx_useCamera(korl_gfx_createCameraFov(90, 10, 1e16f, memory->camera.position, memory->camera.position + cameraForward, cameraUp));
+    /* lights... */
+    korl_gfx_setClearColor(1,1,1);
+    //@TODO: we should be able to define lights in some kind of file (JSON, etc.)
+    const Korl_Gfx_Light lights[] = {
+        {.type      = KORL_GFX_LIGHT_TYPE_DIRECTIONAL
+        ,.direction = {0.5f, 0.1f, -1}
+        ,.color     = {.ambient  = KORL_MATH_V3F32_ONE * 0.01f
+                      ,.diffuse  = KORL_MATH_V3F32_ONE * 0.2f
+                      ,.specular = KORL_MATH_V3F32_ONE * 0.5f}}
+        ,
+        {.type        = KORL_GFX_LIGHT_TYPE_POINT
+        ,.position    = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, memory->seconds, true) * (Korl_Math_V3f32{-1,1,1} * 100)
+        ,.color       = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
+                        ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
+                        ,.specular = KORL_MATH_V3F32_ONE}
+        ,.attenuation = {.constant  = 1
+                        ,.linear    = 0.00009f
+                        ,.quadratic = 0.00003f}}
+        ,
+        {.type          = KORL_GFX_LIGHT_TYPE_SPOT
+        ,.position      = memory->camera.position
+        ,.direction     = cameraForward
+        ,.color         = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
+                          ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
+                          ,.specular = KORL_MATH_V3F32_ONE}
+        ,.attenuation   = {.constant  = 1
+                          ,.linear    = 0.000045f
+                          ,.quadratic = 0.000015f}
+        ,.cutOffCosines = {.inner = korl_math_cosine(0.1f * KORL_PI32)
+                          ,.outer = korl_math_cosine(0.2f * KORL_PI32)}}
+        };
+    korl_gfx_light_use(lights, korl_arraySize(lights));
     /* action! */
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
@@ -179,10 +196,17 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
                                                             ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
                                                                         ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/crate.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}}
                                                ,.used = true};
-    korl_gfx_draw(&scene3d);
+    for(i32 y = -5; y < 5; y++)
+        for(i32 x = -5; x < 5; x++)
+        {
+            scene3d._model.position = {KORL_C_CAST(f32, x) * 150.f, KORL_C_CAST(f32, y) * 150.f, 0};
+            korl_gfx_draw(&scene3d);
+        }
     for(u$ i = 0; i < korl_arraySize(lights); i++)
     {
         const Korl_Gfx_Light*const light = lights + i;
+        if(light->type == KORL_GFX_LIGHT_TYPE_DIRECTIONAL)
+            continue;
         scene3d.subType.scene3d.materialSlots[0].used = false;
         scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;
         scene3d._model.position = light->position;

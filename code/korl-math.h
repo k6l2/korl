@@ -47,7 +47,7 @@ typedef union Korl_Math_V4f32
 {
     struct { f32 x, y, z, w; };
     struct { Korl_Math_V2f32 xy, zw; };
-    Korl_Math_V3f32 xyz;
+    struct { Korl_Math_V3f32 xyz; f32 _w; };
     f32 elements[4];
 } Korl_Math_V4f32;
 const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};
@@ -244,6 +244,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*co
 korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const m);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB);
 korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32(const Korl_Math_M4f32*const m, const Korl_Math_V4f32*const v);
+korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32Copy(const Korl_Math_M4f32*const m, Korl_Math_V4f32 v);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(f32 verticalFovDegrees, f32 viewportWidthOverHeight, f32 clipNear, f32 clipFar);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionOrthographic(f32 xMin, f32 xMax, f32 yMin, f32 yMax, f32 zMin, f32 zMax);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(const Korl_Math_V3f32*const positionEye, const Korl_Math_V3f32*const positionTarget, const Korl_Math_V3f32*const worldUpNormal);

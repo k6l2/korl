@@ -27,7 +27,7 @@ struct Korl_Light
     vec3                   viewDirection;// _not_ used in point lights
     Korl_Light_Color       color;
     Korl_Light_Attenuation attenuation;// used for point lights
-    Korl_Light_Cutoff      cutoffs;// used for spot lights
+    Korl_Light_Cutoff      cutoffCosines;// used for spot lights
 };
 layout(set     = KORL_DESCRIPTOR_SET_LIGHTS
       ,binding = KORL_DESCRIPTOR_SET_BINDING_LIGHTS_SSBO) 
@@ -56,14 +56,43 @@ layout(location = KORL_FRAGMENT_INPUT_VIEW_NORMAL)   in vec3 fragmentViewNormal;
 layout(location = KORL_FRAGMENT_INPUT_VIEW_POSITION) in vec3 fragmentViewPosition;
 vec3 _korl_glsl_fragment_computeLightColor(Korl_Light light, const in vec2 uvEmissive, const in vec3 factorEmissive)
 {
-    //@TODO: test with a single point light before splitting this implementation by light.type
+    const vec3 fragmentViewNormal_normal = normalize(fragmentViewNormal);// re-normalize this interpolated value
+    vec3  viewPosition_fragment_to_light_normal;
+    float attenuation;
+    float factorDiffuseSpecular;
+    switch(light.type)
+    {
+    case KORL_LIGHT_TYPE_SPOT:{
+        const vec3  viewPosition_fragment_to_light        = light.viewPosition - fragmentViewPosition;
+        const float viewPosition_fragment_to_light_length = length(viewPosition_fragment_to_light);
+        viewPosition_fragment_to_light_normal = viewPosition_fragment_to_light / viewPosition_fragment_to_light_length;
+        attenuation                           = 1 / (  light.attenuation.constant 
+                                                     + light.attenuation.linear * viewPosition_fragment_to_light_length 
+                                                     + light.attenuation.quadratic * pow(viewPosition_fragment_to_light_length, 2));
+        const float cosine_fragToLight_inverseLightDir = dot(viewPosition_fragment_to_light_normal, normalize(-light.viewDirection));
+        const float cosineCutoffDiff                   = light.cutoffCosines.inner - light.cutoffCosines.outer;
+        factorDiffuseSpecular                          = clamp((cosine_fragToLight_inverseLightDir - light.cutoffCosines.outer) / cosineCutoffDiff, 0, 1);
+        break;}
+    case KORL_LIGHT_TYPE_POINT:{
+        const vec3  viewPosition_fragment_to_light        = light.viewPosition - fragmentViewPosition;
+        const float viewPosition_fragment_to_light_length = length(viewPosition_fragment_to_light);
+        viewPosition_fragment_to_light_normal = viewPosition_fragment_to_light / viewPosition_fragment_to_light_length;
+        attenuation                           = 1 / (  light.attenuation.constant 
+                                                     + light.attenuation.linear * viewPosition_fragment_to_light_length 
+                                                     + light.attenuation.quadratic * pow(viewPosition_fragment_to_light_length, 2));
+        factorDiffuseSpecular                 = 1;
+        break;}
+    case KORL_LIGHT_TYPE_DIRECTIONAL:{
+        viewPosition_fragment_to_light_normal = normalize(-light.viewDirection);
+        attenuation                           = 1;
+        factorDiffuseSpecular                 = 1;
+        break;}
+    }
     /* ambient */
     const vec3  lightAmbient = light.color.ambient * texture(baseTexture, fragmentUv).rgb;
     /* diffuse */
-    const vec3  fragmentViewNormal_normal             = normalize(fragmentViewNormal);// re-normalize this interpolated value
-    const vec3  viewPosition_fragment_to_light_normal = normalize(light.viewPosition - fragmentViewPosition);
-    const float diffuseStrength                       = max(dot(fragmentViewNormal_normal, viewPosition_fragment_to_light_normal), 0.0);
-    const vec3  lightDiffuse                          = diffuseStrength * light.color.diffuse * texture(baseTexture, fragmentUv).rgb;
+    const float diffuseStrength = max(dot(fragmentViewNormal_normal, viewPosition_fragment_to_light_normal), 0.0);
+    const vec3  lightDiffuse    = diffuseStrength * light.color.diffuse * texture(baseTexture, fragmentUv).rgb;
     /* specular */
     const vec3  view_fragment_to_camera_normal = normalize(-fragmentViewPosition);
     const vec3  reflect_direction              = reflect(-viewPosition_fragment_to_light_normal, fragmentViewNormal_normal);
@@ -72,7 +101,7 @@ vec3 _korl_glsl_fragment_computeLightColor(Korl_Light light, const in vec2 uvEmi
     /* emissive */
     const vec3  lightEmissive = texture(emissiveTexture, uvEmissive).rgb * material.colorFactorEmissive * factorEmissive;
     /**/
-    return lightAmbient + lightDiffuse + lightSpecular + lightEmissive;
+    return attenuation * (lightAmbient + factorDiffuseSpecular * (lightDiffuse + lightSpecular)) + lightEmissive;
 }
 vec4 korl_glsl_fragment_computeLightColor(const in vec2 uvEmissive, const in vec3 factorEmissive)
 {
