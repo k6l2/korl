@@ -77,7 +77,7 @@ typedef struct Korl_Vulkan_DrawVertexData
 typedef struct Korl_Vulkan_DrawState_Features
 {
     u32 enableBlend     : 1;
-    u32 enableDepthTest : 1;//@TODO: separate depth test & depth write
+    u32 enableDepthTest : 1;//KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
 } Korl_Vulkan_DrawState_Features;
 typedef struct Korl_Vulkan_DrawState_Blend
 {

@@ -22,9 +22,8 @@ struct Korl_Light_Cutoff
 struct Korl_Light
 {
     uint                   type;// _must_ == `KORL_LIGHT_TYPE_*`
-    // @TODO: HACK: see hack in korl-vulkan.c; view-space transform destroys symmetry between the GLSL/C Light structs
-    vec3                   viewPosition;
-    vec3                   viewDirection;// _not_ used in point lights
+    vec3                   viewPosition;// NOTE: in KORL C code, the position & direction are in world-space, but for convenience we transform them into view-space for GLSL
+    vec3                   viewDirection;// _not_ used in point lights; see NOTE for `viewPosition`
     Korl_Light_Color       color;
     Korl_Light_Attenuation attenuation;// used for point lights
     Korl_Light_Cutoff      cutoffCosines;// used for spot lights
