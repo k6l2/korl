@@ -2215,7 +2215,6 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
         for(Korl_MemoryPool_Size i = 0; i < KORL_MEMORY_POOL_SIZE(surfaceContext->drawState.lights); i++)
         {
             Korl_Gfx_Light*const light = surfaceContext->drawState.lights + i;
-            //@TODO: HACK: figure out a better way of doing this that doesn't involve breaking the symmetry of the C-side light UBO structs?
             stagingMemoryBufferLights->lights[i].position  = korl_math_m4f32_multiplyV4f32Copy(&surfaceContext->drawState.uboSceneProperties.m4f32View, (Korl_Math_V4f32){.xyz = light->position, 1}).xyz;
             stagingMemoryBufferLights->lights[i].direction = korl_math_m4f32_multiplyV4f32Copy(&surfaceContext->drawState.uboSceneProperties.m4f32View, (Korl_Math_V4f32){.xyz = light->direction, 0}).xyz;
         }

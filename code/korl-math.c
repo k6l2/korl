@@ -456,6 +456,42 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, 
     v.elements[2] *= scalar;
     return v;
 }
+korl_internal void korl_math_v3f32_assignAdd(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB)
+{
+    vA->elements[0] += vB.elements[0];
+    vA->elements[1] += vB.elements[1];
+    vA->elements[2] += vB.elements[2];
+}
+korl_internal void korl_math_v3f32_assignAddScalar(Korl_Math_V3f32*const v, f32 scalar)
+{
+    v->elements[0] += scalar;
+    v->elements[1] += scalar;
+    v->elements[2] += scalar;
+}
+korl_internal void korl_math_v3f32_assignSubtract(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB)
+{
+    vA->elements[0] -= vB.elements[0];
+    vA->elements[1] -= vB.elements[1];
+    vA->elements[2] -= vB.elements[2];
+}
+korl_internal void korl_math_v3f32_assignSubtractScalar(Korl_Math_V3f32*const v, f32 scalar)
+{
+    v->elements[0] -= scalar;
+    v->elements[1] -= scalar;
+    v->elements[2] -= scalar;
+}
+korl_internal void korl_math_v3f32_assignMultiply(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB)
+{
+    vA->elements[0] *= vB.elements[0];
+    vA->elements[1] *= vB.elements[1];
+    vA->elements[2] *= vB.elements[2];
+}
+korl_internal void korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f32*const v, f32 scalar)
+{
+    v->elements[0] *= scalar;
+    v->elements[1] *= scalar;
+    v->elements[2] *= scalar;
+}
 #pragma warning(push)
 #pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
 korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_V4u8 to, f32 factor)

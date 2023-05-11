@@ -15,23 +15,7 @@ korl_internal void _game_getInterfacePlatformApi(KorlPlatformApi korlApi)
 #include "korl-stringPool.h"
 #include "korl-logConsole.h"
 #include "korl-gfx.h"
-enum InputFlags
-    {INPUT_FLAG_FORWARD
-    ,INPUT_FLAG_BACKWARD
-    ,INPUT_FLAG_LEFT
-    ,INPUT_FLAG_RIGHT
-    ,INPUT_FLAG_UP
-    ,INPUT_FLAG_DOWN
-    ,INPUT_FLAG_LOOK_UP
-    ,INPUT_FLAG_LOOK_DOWN
-    ,INPUT_FLAG_LOOK_LEFT
-    ,INPUT_FLAG_LOOK_RIGHT
-};
-typedef struct Camera
-{
-    Korl_Math_V3f32 position;
-    Korl_Math_V2f32 yawPitch;// x => yaw, y => pitch
-} Camera;
+#include "korl-camera-freeFly.h"
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
@@ -39,8 +23,7 @@ typedef struct Memory
     bool                        quit;
     Korl_StringPool             stringPool;// used by logConsole
     Korl_LogConsole             logConsole;
-    Camera                      camera;
-    u32                         inputFlags;
+    Korl_Camera_FreeFly         camera;
     f32                         seconds;
 } Memory;
 korl_global_variable Memory* memory;
@@ -66,40 +49,26 @@ KORL_EXPORT KORL_GAME_ON_RELOAD(korl_game_onReload)
 }
 KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 {
-    if(isDown)
+    switch(keyCode)
     {
-        if(!isRepeat)
-            switch(keyCode)
-            {
-            case KORL_KEY_E     :{memory->inputFlags |= (1 << INPUT_FLAG_FORWARD); break;}
-            case KORL_KEY_D     :{memory->inputFlags |= (1 << INPUT_FLAG_BACKWARD); break;}
-            case KORL_KEY_S     :{memory->inputFlags |= (1 << INPUT_FLAG_LEFT); break;}
-            case KORL_KEY_F     :{memory->inputFlags |= (1 << INPUT_FLAG_RIGHT); break;}
-            case KORL_KEY_A     :{memory->inputFlags |= (1 << INPUT_FLAG_DOWN); break;}
-            case KORL_KEY_SPACE :{memory->inputFlags |= (1 << INPUT_FLAG_UP); break;}
-            case KORL_KEY_I     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_UP); break;}
-            case KORL_KEY_K     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_DOWN); break;}
-            case KORL_KEY_J     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_LEFT); break;}
-            case KORL_KEY_L     :{memory->inputFlags |= (1 << INPUT_FLAG_LOOK_RIGHT); break;}
-            case KORL_KEY_F4    :{korl_command_invoke(KORL_RAW_CONST_UTF8("load"), memory->allocatorStack); break;}
-            case KORL_KEY_ESCAPE:{memory->quit = true; break;}
-            case KORL_KEY_GRAVE :{korl_logConsole_toggle(&memory->logConsole); break;}
-            default: break;
-            }
+    case KORL_KEY_E    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_FORWARD   , isDown); break;}
+    case KORL_KEY_D    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_BACKWARD  , isDown); break;}
+    case KORL_KEY_S    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_LEFT      , isDown); break;}
+    case KORL_KEY_F    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_RIGHT     , isDown); break;}
+    case KORL_KEY_A    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_DOWN      , isDown); break;}
+    case KORL_KEY_SPACE: {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_UP        , isDown); break;}
+    case KORL_KEY_I    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_LOOK_UP   , isDown); break;}
+    case KORL_KEY_K    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_LOOK_DOWN , isDown); break;}
+    case KORL_KEY_J    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_LOOK_LEFT , isDown); break;}
+    case KORL_KEY_L    : {korl_camera_freeFly_setInput(&memory->camera, KORL_CAMERA_FREEFLY_INPUT_FLAG_LOOK_RIGHT, isDown); break;}
+    default: break;
     }
-    else
+    if(isDown && !isRepeat)
         switch(keyCode)
         {
-        case KORL_KEY_E    :{memory->inputFlags &= ~(1 << INPUT_FLAG_FORWARD); break;}
-        case KORL_KEY_D    :{memory->inputFlags &= ~(1 << INPUT_FLAG_BACKWARD); break;}
-        case KORL_KEY_S    :{memory->inputFlags &= ~(1 << INPUT_FLAG_LEFT); break;}
-        case KORL_KEY_F    :{memory->inputFlags &= ~(1 << INPUT_FLAG_RIGHT); break;}
-        case KORL_KEY_A    :{memory->inputFlags &= ~(1 << INPUT_FLAG_DOWN); break;}
-        case KORL_KEY_SPACE:{memory->inputFlags &= ~(1 << INPUT_FLAG_UP); break;}
-        case KORL_KEY_I    :{memory->inputFlags &= ~(1 << INPUT_FLAG_LOOK_UP); break;}
-        case KORL_KEY_K    :{memory->inputFlags &= ~(1 << INPUT_FLAG_LOOK_DOWN); break;}
-        case KORL_KEY_J    :{memory->inputFlags &= ~(1 << INPUT_FLAG_LOOK_LEFT); break;}
-        case KORL_KEY_L    :{memory->inputFlags &= ~(1 << INPUT_FLAG_LOOK_RIGHT); break;}
+        // case KORL_KEY_F4    :{korl_command_invoke(KORL_RAW_CONST_UTF8("load"), memory->allocatorStack); break;}//@TODO: delete this line at some point; this is just for debug testing
+        case KORL_KEY_ESCAPE:{memory->quit = true; break;}
+        case KORL_KEY_GRAVE :{korl_logConsole_toggle(&memory->logConsole); break;}
         default: break;
         }
 }
@@ -108,47 +77,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     memory->seconds += deltaSeconds;
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
     /* camera... */
-    // @TODO: pull out the 3D camera movement code into a utility module, as I am likely to re-use this stuff in multiple projects
-    korl_shared_const Korl_Math_V3f32 DEFAULT_FORWARD = KORL_MATH_V3F32_MINUS_Y;// blender model space
-    korl_shared_const Korl_Math_V3f32 DEFAULT_RIGHT   = KORL_MATH_V3F32_MINUS_X;// blender model space
-    korl_shared_const Korl_Math_V3f32 DEFAULT_UP      = KORL_MATH_V3F32_Z;      // blender model space
-    {
-        Korl_Math_V2f32 cameraLook = KORL_MATH_V2F32_ZERO;
-        if(memory->inputFlags & (1 << INPUT_FLAG_LOOK_UP))    cameraLook.y += 1;
-        if(memory->inputFlags & (1 << INPUT_FLAG_LOOK_DOWN))  cameraLook.y -= 1;
-        if(memory->inputFlags & (1 << INPUT_FLAG_LOOK_LEFT))  cameraLook.x += 1;
-        if(memory->inputFlags & (1 << INPUT_FLAG_LOOK_RIGHT)) cameraLook.x -= 1;
-        const f32 cameraLookMagnitude = korl_math_v2f32_magnitude(&cameraLook);
-        if(!korl_math_isNearlyZero(cameraLookMagnitude))
-        {
-            korl_shared_const f32 CAMERA_LOOK_SPEED = 2;
-            cameraLook = korl_math_v2f32_normalKnownMagnitude(cameraLook, cameraLookMagnitude);
-            memory->camera.yawPitch += deltaSeconds * CAMERA_LOOK_SPEED * cameraLook;
-            KORL_MATH_ASSIGN_CLAMP(memory->camera.yawPitch.y, -KORL_PI32/2, KORL_PI32/2);
-        }
-        Korl_Math_V3f32 cameraMove = KORL_MATH_V3F32_ZERO;
-        if(memory->inputFlags & (1 << INPUT_FLAG_FORWARD))  cameraMove += DEFAULT_FORWARD;
-        if(memory->inputFlags & (1 << INPUT_FLAG_BACKWARD)) cameraMove -= DEFAULT_FORWARD;
-        if(memory->inputFlags & (1 << INPUT_FLAG_RIGHT))    cameraMove += DEFAULT_RIGHT;
-        if(memory->inputFlags & (1 << INPUT_FLAG_LEFT))     cameraMove -= DEFAULT_RIGHT;
-        if(memory->inputFlags & (1 << INPUT_FLAG_UP))       cameraMove += DEFAULT_UP;
-        if(memory->inputFlags & (1 << INPUT_FLAG_DOWN))     cameraMove -= DEFAULT_UP;
-        const f32 cameraMoveMagnitude = korl_math_v3f32_magnitude(&cameraMove);
-        if(!korl_math_isNearlyZero(cameraMoveMagnitude))
-        {
-            korl_shared_const f32 CAMERA_SPEED = 1000;
-            cameraMove = korl_math_v3f32_normalKnownMagnitude(cameraMove, cameraMoveMagnitude);
-            const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(DEFAULT_RIGHT, memory->camera.yawPitch.y, true);
-            const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.yawPitch.x, true);
-            const Korl_Math_V3f32      cameraForward         = quaternionCameraYaw * quaternionCameraPitch * cameraMove;
-            memory->camera.position += deltaSeconds * CAMERA_SPEED * cameraForward;
-        }
-    }
-    const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(DEFAULT_RIGHT, memory->camera.yawPitch.y, true);
-    const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(DEFAULT_UP   , memory->camera.yawPitch.x, true);
-    const Korl_Math_V3f32      cameraForward         = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_FORWARD;
-    const Korl_Math_V3f32      cameraUp              = quaternionCameraYaw * quaternionCameraPitch * DEFAULT_UP;
-    korl_gfx_useCamera(korl_gfx_createCameraFov(90, 10, 1e16f, memory->camera.position, memory->camera.position + cameraForward, cameraUp));
+    korl_camera_freeFly_step(&memory->camera, deltaSeconds);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
     //@TODO: we should be able to define lights in some kind of file (JSON, etc.)
@@ -165,18 +94,18 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
                         ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
                         ,.specular = KORL_MATH_V3F32_ONE}
         ,.attenuation = {.constant  = 1
-                        ,.linear    = 0.00009f
-                        ,.quadratic = 0.00003f}}
+                        ,.linear    = 9e-5f
+                        ,.quadratic = 3e-5f}}
         ,
         {.type          = KORL_GFX_LIGHT_TYPE_SPOT
         ,.position      = memory->camera.position
-        ,.direction     = cameraForward
+        ,.direction     = korl_camera_freeFly_forward(&memory->camera)
         ,.color         = {.ambient  = KORL_MATH_V3F32_ONE * 0.05f
                           ,.diffuse  = KORL_MATH_V3F32_ONE * 0.5f
                           ,.specular = KORL_MATH_V3F32_ONE}
         ,.attenuation   = {.constant  = 1
-                          ,.linear    = 0.000045f
-                          ,.quadratic = 0.000015f}
+                          ,.linear    = 4.5e-5f
+                          ,.quadratic = 1.5e-5f}
         ,.cutOffCosines = {.inner = korl_math_cosine(0.1f * KORL_PI32)
                           ,.outer = korl_math_cosine(0.2f * KORL_PI32)}}
         };
@@ -228,3 +157,4 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 #define STBDS_UNIT_TESTS // for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests
 #include "korl-stb-ds.c"
 #include "korl-gfx.c"
+#include "korl-camera-freeFly.c"
