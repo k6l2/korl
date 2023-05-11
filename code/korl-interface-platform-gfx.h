@@ -175,9 +175,9 @@ typedef struct Korl_Gfx_Light
 {
     u32             type;// Korl_Gfx_Light_Type
     u32             _padding_0[3];
-    Korl_Math_V3f32 position;
+    Korl_Math_V3f32 position; // in world-space; NOTE: this will get automatically transformed into view-space for GLSL
     f32             _padding_1;
-    Korl_Math_V3f32 direction;
+    Korl_Math_V3f32 direction;// in world-space; NOTE: this will get automatically transformed into view-space for GLSL
     f32             _padding_2;
     struct
     {
