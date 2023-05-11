@@ -36,6 +36,7 @@
 #include "korl-memory.h"
 #include "korl-assetCache.h"
 #include "korl-interface-platform-gfx.h"
+#define KORL_VULKAN_MAX_LIGHTS 8
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef u64 Korl_Vulkan_ShaderHandle;
 typedef enum Korl_Vulkan_DrawVertexData_VertexBufferType

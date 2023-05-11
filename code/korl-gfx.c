@@ -113,8 +113,7 @@ typedef struct _Korl_Gfx_Context
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
     Korl_Gfx_Camera             currentCameraState;
     f32                         seconds;// passed to the renderer as UBO data to allow shader animations; passed when a Camera is used
-    //@TODO: this pool size is a duplicate; we should somehow obtain this limit from korl-vulkan
-    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, 8);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
+    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, KORL_VULKAN_MAX_LIGHTS);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
 {

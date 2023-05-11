@@ -247,7 +247,7 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     /** ----- descriptor state ----- */
     _Korl_Vulkan_Uniform_SceneProperties uboSceneProperties;
     Korl_Gfx_Material_Properties         uboMaterialProperties;
-    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, lights, 8);// some arbitrary max # of lights
+    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, lights, KORL_VULKAN_MAX_LIGHTS);
     struct
     {
         Korl_Vulkan_DeviceMemory_AllocationHandle base;
