@@ -66,7 +66,6 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
     if(isDown && !isRepeat)
         switch(keyCode)
         {
-        // case KORL_KEY_F4    :{korl_command_invoke(KORL_RAW_CONST_UTF8("load"), memory->allocatorStack); break;}//@TODO: delete this line at some point; this is just for debug testing
         case KORL_KEY_ESCAPE:{memory->quit = true; break;}
         case KORL_KEY_GRAVE :{korl_logConsole_toggle(&memory->logConsole); break;}
         default: break;
@@ -80,7 +79,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     korl_camera_freeFly_step(&memory->camera, deltaSeconds);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
-    //@TODO: we should be able to define lights in some kind of file (JSON, etc.)
+    //KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)
     const Korl_Gfx_Light lights[] = {
         {.type      = KORL_GFX_LIGHT_TYPE_DIRECTIONAL
         ,.direction = {0.5f, 0.1f, -1}
@@ -114,7 +113,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
     scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
-    //@TODO: we should be able to define materials in some kind of file (GLB, JSON, etc.)
+    //KORL-FEATURE-000-000-060: gfx: add "Material" asset/resource; we should be able to define materials in some kind of file (GLB, JSON, etc.)
     scene3d.subType.scene3d.materialSlots[0] = {.material = {.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
                                                                            ,.factorColorEmissive = {0, 0.8f, 0.05f}
                                                                            ,.factorColorSpecular = KORL_MATH_V4F32_ONE

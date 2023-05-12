@@ -106,7 +106,7 @@ typedef struct Korl_Vulkan_DrawState_Scissor
     u32 width;
     u32 height;
 } Korl_Vulkan_DrawState_Scissor;
-typedef Korl_Gfx_Material Korl_Vulkan_DrawState_Material;// @TODO: likely unnecessary abstraction
+typedef Korl_Gfx_Material Korl_Vulkan_DrawState_Material;//KORL-ISSUE-000-000-160: vulkan: Korl_Vulkan_DrawState_Material; likely unnecessary abstraction
 typedef struct Korl_Vulkan_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;

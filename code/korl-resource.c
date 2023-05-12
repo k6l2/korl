@@ -11,7 +11,6 @@ typedef enum _Korl_Resource_Type
     {_KORL_RESOURCE_TYPE_INVALID // this value indicates the entire Resource Handle is not valid
     ,_KORL_RESOURCE_TYPE_FILE    // Resource is derived from a korl-assetCache file
     ,_KORL_RESOURCE_TYPE_RUNTIME // Resource is derived from data that is generated at runtime
-    //@TODO: add `_KORL_RESOURCE_TYPE_CHILD`, which is effectively the same as _KORL_RESOURCE_TYPE_RUNTIME, except the `_create*` & `_destroy` APIs cannot be used on them (their lifetime is fully managed by a parent Resource)
 } _Korl_Resource_Type;
 typedef enum _Korl_Resource_MultimediaType
     {_KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS// this resource maps to a vulkan device-local allocation, or similar type of data
@@ -23,26 +22,12 @@ typedef struct _Korl_Resource_Handle_Unpacked
     _Korl_Resource_MultimediaType multimediaType;
     u$                            uniqueId;
 } _Korl_Resource_Handle_Unpacked;
-/* @TODO: okay so, it seems like finalizing the decision between having TEXTURE resources vs having separate IMAGE + SAMPLER resources is an important decision;
-   let's assume we want to split IMAGE + SAMPLER; to do this we need to:
-   [ ] separate the bindings in GLSL
-   [ ] add separate descriptor bindings in korl-vulkan
-   [ ] set the default samplers to be LINEAR/LINEAR/REPEAT/REPEAT
-   [ ] add _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE_SAMPLER
-   [ ] test with some _KORL_RESOURCE_TYPE_RUNTIME instances of the above resources; get the metal+wood crate rendering in a lit scene
-   [ ] create & manage _KORL_RESOURCE_TYPE_CHILD instances of the above resources within _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D resources
-   vulkan GLSL manual (shows how to use separate texture+sampler in GLSL): https://github.com/KhronosGroup/GLSL/blob/master/extensions/khr/GL_KHR_vulkan_glsl.txt
-   an example: https://community.khronos.org/t/error-when-sampling-with-seperate-sampler-and-texture/7165
-*/
 typedef enum _Korl_Resource_Graphics_Type
     {_KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN
     ,_KORL_RESOURCE_GRAPHICS_TYPE_IMAGE
     ,_KORL_RESOURCE_GRAPHICS_TYPE_VERTEX_BUFFER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SHADER
     ,_KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D
-    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MATERIAL`, which contains a full descriptor of korl-vulkan "DrawState"; actually, is this really necessary? a MATERIAL resource doesn't really make sense since since there is nothing to transcode: it's all just simple CPU data + resource handles; UNLESS you want to have something like Material Resource files... HMMMM
-    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_TEXTURE`, a combined image + sampler; _OR_ create a _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE & _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE_SAMPLER ?
-    //@TODO: add `_KORL_RESOURCE_GRAPHICS_TYPE_MODEL`, which is simply a DAG of meshes
 } _Korl_Resource_Graphics_Type;
 typedef struct _Korl_Resource
 {
@@ -83,7 +68,6 @@ typedef struct _Korl_Resource
             u$                resampledDataBytes;
         } audio;
     } subType;
-    //@TODO: just remove {data, dataBytes} from the base Resource (?); it seems like _most_ resources don't actually care about the decoded resource on CPU memory, since most Resources are Graphics, ergo they store all their transcoded data on the GPU; this is just a bad way to indicate whether or not a Resource is "loaded", and deprecated by the `_isLoaded` API anyways
     void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType _unless_ that multimedia type requires further processing to prepare it for the rendering process, such as is the case with audio, as we must resample all audio data to match the format of the audio renderer; examples: an image resource data will point to an RGBA bitmap, an audio resource will point to raw PCM waveform data, in some sample format defined by the `audio.format` member
     u$    dataBytes;
     bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
@@ -101,7 +85,7 @@ typedef struct _Korl_Resource_Context
     Korl_Memory_AllocatorHandle allocatorHandleRuntime;// all unique data that cannot be easily reobtained/reconstructed from a korl-memoryState is stored here, including this struct itself
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
     _Korl_Resource_Map*         stbHmResources;
-    Korl_Resource_Handle*       stbDsDirtyResourceHandles;//@TODO: just delete this and use a flag to indicate if there is a non-zero # of "dirty" resources (this is needless complexity; premature optimization)
+    Korl_Resource_Handle*       stbDsDirtyResourceHandles;
     u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
     Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
     Korl_Audio_Format           audioRendererFormat;// the currently configured audio renderer format, likely to be set by korl-sfx; when this is changed via `korl_resource_setAudioFormat`, all audio resources will be resampled to match this format, and that resampled audio data is what will be mixed into korl-audio; we do this to sacrifice memory for speed, as it should be much better performance to not have to worry about audio resampling algorithms at runtime
@@ -412,7 +396,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                         }
                     }
                 }
-                //@TODO: decode textures from the GLB binary chunk & upload to graphics device
+                //KORL-ISSUE-000-000-158: resource: decode textures from the GLB binary chunk & upload to graphics device
                 resource->subType.graphics.subType.scene3d.gltf = gltf;
                 break;}
             default:
@@ -856,7 +840,7 @@ korl_internal Korl_Vulkan_DrawState_Material korl_resource_scene3d_getMaterial(K
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     if(!resource->subType.graphics.subType.scene3d.gltf)
         return material;
-    //@TODO: obtain textures from GLTF material
+    //KORL-ISSUE-000-000-159: resource: obtain textures from GLTF material
     return material;
 }
 korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d)

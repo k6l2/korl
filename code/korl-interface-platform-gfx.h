@@ -9,7 +9,6 @@ typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
 //KORL-ISSUE-000-000-096: interface-platform, gfx: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
 typedef u16            Korl_Vulkan_VertexIndex;
 typedef Korl_Math_V4u8 Korl_Vulkan_Color4u8;
-typedef u64            Korl_Gfx_DeviceMemoryAllocationHandle;
 korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_TRANSPARENT = {  0,   0,   0,   0};
 korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_RED         = {255,   0,   0, 255};
 korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_GREEN       = {  0, 255,   0, 255};
@@ -111,6 +110,7 @@ typedef struct Korl_Gfx_Camera
     } subCamera;
 } Korl_Gfx_Camera;
 typedef enum Korl_Gfx_Drawable_Type
+    // KORL-ISSUE-000-000-157: gfx: it doesn't make much sense to draw a "SCENE3D"; Drawable types should really be more primitive, such as "MODEL", "TEXT", "MESH"
     {KORL_GFX_DRAWABLE_TYPE_SCENE3D
 } Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Material_Properties
@@ -161,8 +161,8 @@ typedef struct Korl_Gfx_Drawable
     {
         struct
         {
-            Korl_Resource_Handle resourceHandle;
-            Korl_Gfx_Drawable_MaterialSlot materialSlots[1];//@TODO: the Drawable's materials need to be mapped to a specific MeshPrimitive in the SCENE3D Resource
+            Korl_Resource_Handle           resourceHandle;
+            Korl_Gfx_Drawable_MaterialSlot materialSlots[1];
         } scene3d;
     } subType;
 } Korl_Gfx_Drawable;

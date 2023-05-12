@@ -27,7 +27,6 @@ korl_global_const Korl_Vulkan_VertexIndex _KORL_GFX_TRI_QUAD_INDICES[] =
     { 0, 1, 3
     , 1, 2, 3 };
 korl_global_const u8 _KORL_GFX_POSITION_DIMENSIONS = 3;// for now, we will always store 3D position data
-KORL_STATIC_ASSERT(sizeof(Korl_Vulkan_DeviceMemory_AllocationHandle) == sizeof(Korl_Gfx_DeviceMemoryAllocationHandle));
 typedef struct _Korl_Gfx_FontGlyphBakedCharacterBoundingBox
 {
     u16 x0,y0,x1,y1; // coordinates of bbox in bitmap
@@ -2192,7 +2191,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         material = context->subType.scene3d.materialSlots[0].material;
     else
         material = korl_resource_scene3d_getMaterial(context->subType.scene3d.resourceHandle);
-    // @TODO: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to privide to a lit material without having to use a different shader/pipeline
+    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
     drawState.material = &material;
