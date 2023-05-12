@@ -165,6 +165,7 @@
 [ ] KORL-FEATURE-000-000-058: file/command: add a command to "open" the OS-specific directories obtained in korl_file_initialize; https://stackoverflow.com/a/354922/4526664
 [ ] KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)
 [ ] KORL-FEATURE-000-000-060: gfx: add "Material" asset/resource; we should be able to define materials in some kind of file (GLB, JSON, etc.)
+[ ] KORL-FEATURE-000-000-061: file: add ability for the user to enumerate over files in a directory; use case: a game where each "map" is a file, and we want to load all of them, or at least process their metadata (such as file name)
 [x] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAG_LAZY is specified
 [x] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
 [x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose
