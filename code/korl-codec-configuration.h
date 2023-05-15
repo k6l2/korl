@@ -54,7 +54,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-memory.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 typedef struct Korl_Codec_Configuration
 {
     Korl_Memory_AllocatorHandle           allocator;

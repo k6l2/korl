@@ -1,6 +1,6 @@
 #include "korl-codec-audio.h"
 #include "korl-string.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-interface-platform.h"
 #include "korl-stb-vorbis.h"
 #include <stdlib.h>

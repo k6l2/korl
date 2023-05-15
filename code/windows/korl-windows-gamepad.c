@@ -5,7 +5,7 @@
 #include "korl-windows-gamepad.h"
 #include "korl-log.h"
 #include "korl-memory.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-stb-ds.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER

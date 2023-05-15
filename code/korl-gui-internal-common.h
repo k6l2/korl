@@ -1,10 +1,10 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-gui-common.h"
-#include "korl-math.h"
+#include "utility/korl-utility-math.h"
 #include "korl-memory.h"
 #include "korl-vulkan.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-gfx.h"
 /** the edges of the window must have their own individual AABBs to allow mouse 
  * interactions with them (window is hovered, resize windows), and this value 

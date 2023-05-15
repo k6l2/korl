@@ -8,7 +8,7 @@
 #include "korl-memory.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-interface-platform.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-string.h"
 #include <Functiondiscoverykeys_devpkey.h>// for PKEY_Device_FriendlyName
 #define _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS 1'000'000 // 10'000'000 => 1 second

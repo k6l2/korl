@@ -1,10 +1,12 @@
-#include "korl-stringPool.h"
-#include "korl-checkCast.h"
+#include "utility/korl-stringPool.h"
+#include "utility/korl-checkCast.h"
+#include "utility/korl-utility-string.h"
 #include "korl-stb-ds.h"
 #include "korl-string.h"
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform.h"
 #include "korl-algorithm.h"
+//@TODO: add korl_string_toupper; remove this header to make a pure "utility" code module
 #include <ctype.h>// for toupper
 typedef struct _Korl_StringPool_Allocation
 {
@@ -1203,6 +1205,7 @@ korl_internal void korl_stringPool_toUpper(Korl_StringPool_String string)
     if(flagsProcessed & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
         u8* utf8 = KORL_C_CAST(u8*, context->characterPool + str->poolByteOffsetUtf8);
+        // @TODO: use UTF8 iterator
         for(u32 i = 0; i < str->rawSizeUtf8; i++)
             utf8[i] = korl_checkCast_i$_to_u8(toupper(utf8[i]));
         flagsProcessed &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF8;
@@ -1210,6 +1213,7 @@ korl_internal void korl_stringPool_toUpper(Korl_StringPool_String string)
     if(flagsProcessed & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
         u16* utf16 = KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16);
+        // @TODO: use UTF16 iterator
         for(u32 i = 0; i < str->rawSizeUtf16; i++)
             utf16[i] = towupper(utf16[i]);
         flagsProcessed &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF16;

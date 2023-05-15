@@ -1,4 +1,5 @@
 #include "korl-logConsole.h"
+#include "utility/korl-utility-string.h"
 korl_internal Korl_LogConsole korl_logConsole_create(Korl_StringPool* stringPool)
 {
     KORL_ZERO_STACK(Korl_LogConsole, logConsole);

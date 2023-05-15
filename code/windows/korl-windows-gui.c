@@ -2,7 +2,7 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-windows-utilities.h"
 #include "korl-gui-internal-common.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-vulkan.h"
 #include "korl-stb-ds.h"
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, Korl_KeyboardCode* virtualKeyMap, u$ virtualKeyMapSize)

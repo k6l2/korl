@@ -1,7 +1,8 @@
 #include "korl-commandLine.h"
 #include "korl-log.h"
 #include "korl-memory.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
+#include "utility/korl-utility-string.h"
 korl_internal void korl_commandLine_parse(const Korl_CommandLine_ArgumentDescriptor* descriptors, u$ descriptorCount)
 {
     /* initialize argument data */

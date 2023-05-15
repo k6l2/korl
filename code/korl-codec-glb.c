@@ -4,7 +4,7 @@
 #include "korl-string.h"
 #include "korl-interface-platform.h"
 #include "korl-stb-ds.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-memory.h"
 typedef struct _Korl_Codec_Glb_Chunk
 {

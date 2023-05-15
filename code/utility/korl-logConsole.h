@@ -1,5 +1,5 @@
 #pragma once
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-interface-platform.h"
 typedef struct Korl_LogConsole
 {

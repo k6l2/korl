@@ -1,6 +1,6 @@
 #include "korl-codec-configuration.h"
 #include "korl-stb-ds.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-log.h"
 #include "korl-string.h"
 typedef struct _Korl_Codec_Configuration_Map

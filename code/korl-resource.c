@@ -1,7 +1,7 @@
 #include "korl-resource.h"
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-audio.h"
 #include "korl-codec-audio.h"
 #include "korl-codec-glb.h"

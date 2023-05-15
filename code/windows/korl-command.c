@@ -2,7 +2,7 @@
 #include "korl-memory.h"
 #include "korl-string.h"
 #include "korl-stb-ds.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-windows-globalDefines.h"
 typedef struct _Korl_Command_Module
 {

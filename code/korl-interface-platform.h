@@ -15,6 +15,7 @@
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform-bluetooth.h"
 #include "korl-interface-platform-sfx.h"
+#include "korl-interface-platform-math.h"
 /* korl-log interface *********************************************************/
 typedef enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT
@@ -49,6 +50,7 @@ typedef enum Korl_Clipboard_DataFormat
 #define KORL_FUNCTION__korl_stb_ds_reallocate(name) void* name(void* context, void* allocation, u$ bytes, const wchar_t*const file, int line)
 #define KORL_FUNCTION__korl_stb_ds_free(name)       void  name(void* context, void* allocation)
 /* korl-string interface ******************************************************/
+#define KORL_FUNCTION_korl_string_utf8_to_f32(name)             f32      name(acu8 utf8, u8** out_utf8F32End, bool* out_resultIsValid)
 #define KORL_FUNCTION_korl_string_formatVaListUtf8(name)        char*    name(Korl_Memory_AllocatorHandle allocatorHandle, const char* format, va_list vaList)
 #define KORL_FUNCTION_korl_string_formatVaListUtf16(name)       wchar_t* name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, va_list vaList)
 #define KORL_FUNCTION_korl_string_formatBufferVaListUtf16(name) i$       name(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, va_list vaList)

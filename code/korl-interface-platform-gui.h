@@ -1,7 +1,7 @@
 #pragma once
 #include "korl-gui-common.h"
 #include "korl-globalDefines.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 //KORL-FEATURE-000-000-045: gui: add some kind of "style stack" API, and deprecate korl_gui_setFontAsset since it seems too inflexible
 #define KORL_FUNCTION_korl_gui_setFontAsset(name)              void name(const wchar_t* fontAssetName)
 /** Start batching a new GUI window.  The user _must_ call \c korl_gui_windowEnd 

@@ -1,6 +1,6 @@
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-math.h"
+#include "utility/korl-utility-math.h"
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform-resource.h"
 /** \return \c true if the codepoint should be drawn, \c false otherwise */

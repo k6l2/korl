@@ -1,5 +1,4 @@
 #include "korl-gfx.h"
-#ifdef KORL_PLATFORM
 #include "korl-log.h"
 #include "korl-assetCache.h"
 #include "korl-memory.h"
@@ -9,9 +8,9 @@
 #include "korl-stb-truetype.h"
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-resource.h"
-#include "korl-string.h"
+#include "utility/korl-utility-string.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
@@ -2167,18 +2166,6 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_ba
     mcarrpush(KORL_STB_DS_MC_CAST(stbDaMemoryContext), (*pStbDaDefragmentPointers)
              ,(KORL_STRUCT_INITIALIZE(Korl_Heap_DefragmentPointer){pContext, 0, parent, _korl_gfx_batch_collectDefragmentPointers_onAllocationMoved, NULL}));
 }
-korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawable_scene3d_initialize)
-{
-    korl_memory_zero(context, sizeof(*context));
-    context->type            = KORL_GFX_DRAWABLE_TYPE_SCENE3D;
-    context->_model.rotation = KORL_MATH_QUATERNION_IDENTITY;
-    context->_model.scale    = KORL_MATH_V3F32_ONE;
-    context->subType.scene3d.resourceHandle = resourceHandleScene3d;
-    #if 0
-    context->subType.scene3d.resourceHandleShaderVertex   = ;
-    context->subType.scene3d.resourceHandleShaderFragment = ;
-    #endif
-}
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
     Korl_Vulkan_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
@@ -2256,4 +2243,3 @@ korl_internal void korl_gfx_memoryStateRead(const u8* memoryState)
     }
 }
 #undef _LOCAL_STRING_POOL_POINTER
-#endif

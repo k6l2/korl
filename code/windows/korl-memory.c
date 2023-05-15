@@ -1,7 +1,7 @@
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include "korl-windows-globalDefines.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-log.h"
 #include "korl-stb-ds.h"
 #include "korl-heap.h"

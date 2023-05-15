@@ -1,6 +1,6 @@
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-math.h"
+#include "utility/korl-utility-math.h"
 typedef enum Korl_Camera_FreeFly_InputFlags
     {KORL_CAMERA_FREEFLY_INPUT_FLAG_FORWARD
     ,KORL_CAMERA_FREEFLY_INPUT_FLAG_BACKWARD

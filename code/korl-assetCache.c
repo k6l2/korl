@@ -1,11 +1,11 @@
 #include "korl-assetCache.h"
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
-#include "korl-stringPool.h"
+#include "utility/korl-stringPool.h"
 #include "korl-file.h"
 #include "korl-time.h"
 #include "korl-stb-ds.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #ifdef _LOCAL_STRING_POOL_POINTER
     #undef _LOCAL_STRING_POOL_POINTER
 #endif

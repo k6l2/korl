@@ -13,7 +13,7 @@
 #include "korl-stb-ds.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 // DEFINE_GUID(_KORL_BLUETOOTH_SERVICE_CLASS_GUID, 0xb62c4e8d, 0x62cc, 0x404b, 0xbb, 0xbf, 0xbf, 0x3e, 0x3b, 0xbb, 0x13, 0x74);// {B62C4E8D-62CC-404b-BBBF-BF3E3BBB1374}
 typedef struct _Korl_Bluetooth_Socket
 {

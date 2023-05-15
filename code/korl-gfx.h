@@ -1,6 +1,6 @@
 #pragma once
 #include "korl-globalDefines.h"
-#include "korl-math.h"
+#include "utility/korl-utility-math.h"
 #include "korl-interface-platform-gfx.h"
 #include "korl-memory.h"
 korl_internal void korl_gfx_initialize(void);

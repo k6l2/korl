@@ -5,8 +5,8 @@
 #include "korl-globalDefines.h"
 #include "korl-vulkan.h"
 #include "korl-vulkan-memory.h"
-#include "korl-math.h"
-#include "korl-stringPool.h"
+#include "utility/korl-utility-math.h"
+#include "utility/korl-stringPool.h"
 #include "korl-memoryPool.h"
 #include "korl-interface-platform-gfx.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0

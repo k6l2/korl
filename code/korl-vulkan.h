@@ -31,8 +31,8 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include <vulkan/vulkan.h>
-#include "korl-math.h"
-#include "korl-checkCast.h"
+#include "utility/korl-utility-math.h"
+#include "utility/korl-checkCast.h"
 #include "korl-memory.h"
 #include "korl-assetCache.h"
 #include "korl-interface-platform-gfx.h"

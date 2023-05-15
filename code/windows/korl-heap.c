@@ -4,7 +4,7 @@
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include "korl-stb-ds.h"
-#include "korl-checkCast.h"
+#include "utility/korl-checkCast.h"
 #include "korl-algorithm.h"
 #define _KORL_HEAP_BYTE_PATTERN_SENTINEL  0x5A
 #define _KORL_HEAP_BYTE_PATTERN_FREE      0xA5

@@ -1,9 +1,11 @@
 #include <stdlib.h>// needed for __FILEW__, etc...
 #include "korl-interface-game.h"// includes "korl-interface-platform.h"
-#include "korl-string.h"
-#include "korl-stringPool.h"
-#include "korl-logConsole.h"
-#include "korl-camera-freeFly.h"
+#include "utility/korl-stringPool.h"
+#include "utility/korl-logConsole.h"
+#include "utility/korl-camera-freeFly.h"
+#include "utility/korl-utility-gfx.h"
+#include "utility/korl-utility-string.h"
+#include "utility/korl-utility-stb-ds.h"
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
@@ -136,11 +138,12 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     /**/
     return !memory->quit;
 }
-#include "korl-math.c"
-#include "korl-checkCast.c"
-#include "korl-string.c"
-#include "korl-stringPool.c"
-#include "korl-logConsole.c"
 #define STBDS_UNIT_TESTS // for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests
-#include "korl-stb-ds.c"
-#include "korl-camera-freeFly.c"
+#include "utility/korl-utility-stb-ds.c"
+#include "utility/korl-stringPool.c"
+#include "utility/korl-checkCast.c"
+#include "utility/korl-utility-math.c"
+#include "utility/korl-logConsole.c"
+#include "utility/korl-camera-freeFly.c"
+#include "utility/korl-utility-gfx.c"
+#include "utility/korl-utility-string.c"

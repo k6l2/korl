@@ -2,8 +2,9 @@
 #include "korl-memory.h"
 #include "korl-memoryPool.h"
 #include "korl-windows-globalDefines.h"
-#include "korl-math.h"
-#include "korl-checkCast.h"
+#include "utility/korl-utility-math.h"
+#include "utility/korl-checkCast.h"
+#include "utility/korl-utility-string.h"
 #include "korl-file.h"
 #include "korl-stb-ds.h"/// KORL-ISSUE-000-000-091: log: WARNING: the stb-ds module is initialized _after_ the log module; this is okay for now as far as I can tell since the stb-ds code can still function without the module being loaded, as all it does right now is just run unit tests, but this obviously not clean
 #include <stdio.h>// for freopen_s
@@ -267,17 +268,17 @@ korl_internal void korl_log_initialize(void)
         did, and the resulting error will likely be easy to catch, so I'm just 
         going to leave this commented out for now */
     //korl_assert(_korl_log_context.buffer);
-#if KORL_DEBUG
-    /* test the rawLog file mapped allocation */
-    const wchar_t testString0[] = L"Persistent Log Buffer Region";
-    const wchar_t testString1[] = L"Ring Log Buffer Region";
-    korl_string_copyUtf16(testString0, (au16){korl_arraySize(testString0), _korl_log_context.rawLog});
-    korl_string_copyUtf16(testString1, (au16){korl_arraySize(testString0), KORL_C_CAST(u16*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + _korl_log_context.rawLogChunkBytes)});
-    korl_assert(0 == korl_string_compareUtf16(testString0, _korl_log_context.rawLog));
-    korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
-    korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
-    korl_memory_zero(_korl_log_context.rawLog, 2*_korl_log_context.rawLogChunkBytes);
-#endif
+    #if KORL_DEBUG
+        /* test the rawLog file mapped allocation */
+        const wchar_t testString0[] = L"Persistent Log Buffer Region";
+        const wchar_t testString1[] = L"Ring Log Buffer Region";
+        korl_string_copyUtf16(testString0, (au16){korl_arraySize(testString0), _korl_log_context.rawLog});
+        korl_string_copyUtf16(testString1, (au16){korl_arraySize(testString0), KORL_C_CAST(u16*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + _korl_log_context.rawLogChunkBytes)});
+        korl_assert(0 == korl_string_compareUtf16(testString0, _korl_log_context.rawLog));
+        korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
+        korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
+        korl_memory_zero(_korl_log_context.rawLog, 2*_korl_log_context.rawLogChunkBytes);
+    #endif
 }
 korl_internal void korl_log_configure(bool useLogOutputDebugger, bool useLogOutputConsole, bool useLogFileBig, bool useLogFileAsync, bool disableMetaTags)
 {

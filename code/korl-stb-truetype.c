@@ -1,6 +1,6 @@
 #include "korl-stb-truetype.h"
 #include "korl-memory.h"
-#include "korl-math.h"
+#include "utility/korl-utility-math.h"
 typedef struct _Korl_Stb_TrueType_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;

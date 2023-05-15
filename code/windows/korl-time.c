@@ -7,8 +7,8 @@
 #include "korl-log.h"
 #include "korl-interface-platform-time.h"
 #include "korl-stb-ds.h"
-#include "korl-checkCast.h"
-#include "korl-stringPool.h"
+#include "utility/korl-checkCast.h"
+#include "utility/korl-stringPool.h"
 #define _KORL_TIME_DESIRED_OS_TIMER_GRANULARITY_MS 1
 typedef struct _Korl_Time_Probe
 {

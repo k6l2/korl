@@ -1,6 +1,6 @@
 #include "korl-gui.h"
 #include "korl-memory.h"
-#include "korl-math.h"
+#include "utility/korl-utility-math.h"
 #include "korl-gfx.h"
 #include "korl-gui-internal-common.h"
 #include "korl-time.h"
