@@ -2,8 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-math.h"
 #include "korl-interface-platform-gfx.h"
-//KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
-#if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)
+#include "korl-memory.h"
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds);
 korl_internal void korl_gfx_flushGlyphPages(void);
@@ -30,80 +29,7 @@ korl_internal void               korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, a
 korl_internal void               korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount);
 korl_internal void               korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
 korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context);
-korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics);
-// korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text);
 korl_internal Korl_Math_V2f32    korl_gfx_font_textGraphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex);
-korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov);
-korl_internal KORL_FUNCTION_korl_gfx_createCameraOrtho(korl_gfx_createCameraOrtho);
-korl_internal KORL_FUNCTION_korl_gfx_createCameraOrthoFixedHeight(korl_gfx_createCameraOrthoFixedHeight);
-korl_internal KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(korl_gfx_cameraFov_rotateAroundTarget);
-korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera);
-korl_internal KORL_FUNCTION_korl_gfx_camera_getCurrent(korl_gfx_camera_getCurrent);
-/** Note that scissor coordinates use swap chain coordinates, where the origin 
- * is the upper-left corner of the swap chain, & {+X,+Y} points to the 
- * bottom-right.  */
-//KORL-ISSUE-000-000-004
-korl_internal KORL_FUNCTION_korl_gfx_cameraSetScissor(korl_gfx_cameraSetScissor);
-/** 
- * Note that scissor coordinates use swap chain coordinates, where the origin is 
- * the upper-left corner of the swap chain, & {+X,+Y} points to the bottom-right.  */
-korl_internal KORL_FUNCTION_korl_gfx_cameraSetScissorPercent(korl_gfx_cameraSetScissorPercent);
-/** Translate the camera such that the orthographic camera's origin is located 
- * at the position in the swapchain's coordinate space relative to the 
- * bottom-left corner.
- * Negative size ratio values are valid.
- * This function does NOT flip the coordinate space or anything like that!
- * Examples:
- * - by default (without calling this function) the origin will be 
- *   \c {0.5f,0.5f}, which is the center of the screen
- * - if you want the origin to be in the bottom-left corner of the window, pass 
- *   \c {0.f,0.f} as size ratio coordinates */
-korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoSetOriginAnchor(korl_gfx_cameraOrthoSetOriginAnchor);
-korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetSize);
-korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_windowToWorld);
-korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldToWindow);
-korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch);
-//KORL-ISSUE-000-000-005
-korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(korl_gfx_createBatchRectangleTextured);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_createBatchRectangleColored);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircle);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatchCircleSector);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTriangles);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBatchQuadsTextured);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_createBatchQuadsTexturedColored);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines);
-korl_internal KORL_FUNCTION_korl_gfx_createBatchAxisLines(korl_gfx_createBatchAxisLines);
-/** 
- * \param assetNameFont If this value is \c NULL , a default internal font asset 
- * will be used.
- */
-korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetBlendState(korl_gfx_batchSetBlendState);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition(korl_gfx_batchSetPosition);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition2d(korl_gfx_batchSetPosition2d);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition2dV2f32(korl_gfx_batchSetPosition2dV2f32);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetScale(korl_gfx_batchSetScale);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetQuaternion(korl_gfx_batchSetQuaternion);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetRotation(korl_gfx_batchSetRotation);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetVertexColor(korl_gfx_batchSetVertexColor);
-korl_internal KORL_FUNCTION_korl_gfx_batchAddLine(korl_gfx_batchAddLine);
-korl_internal KORL_FUNCTION_korl_gfx_batchSetLine(korl_gfx_batchSetLine);
-korl_internal KORL_FUNCTION_korl_gfx_batchTextGetAabb(korl_gfx_batchTextGetAabb);
-korl_internal KORL_FUNCTION_korl_gfx_batchTextSetPositionAnchor(korl_gfx_batchTextSetPositionAnchor);
-korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetSize(korl_gfx_batchRectangleSetSize);
-korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectangleSetColor);
-korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTexturedColored_set(korl_gfx_batch_quadsTexturedColored_set);
-korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_raw(korl_gfx_batch_rectangle_setUv_raw);
-korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel_to_normal(korl_gfx_batch_rectangle_setUv_pixel_to_normal);
-korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSetColor);
-korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(korl_gfx_batch_quadsTextured_raw);
-korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(korl_gfx_batch_quadsTextured_pixel_to_normal);
-korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor);
-korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_batch_collectDefragmentPointers);
-korl_internal KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(korl_gfx_drawable_scene3d_initialize);
-korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw);
-korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_gfx_memoryStateRead(const u8* memoryState);
-#endif

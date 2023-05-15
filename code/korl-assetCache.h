@@ -25,7 +25,6 @@
  * resources used by the asset manager will be freed automatically when the 
  * program ends! */
 korl_internal void korl_assetCache_initialize(void);
-korl_internal KORL_FUNCTION_korl_assetCache_get(korl_assetCache_get);
 /** Iterate over all assets in the cache which are in the LOADED state, and 
  * check their corresponding file modification timestamp on disk.  If the last 
  * time modified is newer than when it was when we loaded the file, we must: 

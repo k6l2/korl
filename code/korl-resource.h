@@ -68,7 +68,6 @@
 #include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
 typedef struct Korl_Audio_Format Korl_Audio_Format;
 korl_internal void                                           korl_resource_initialize(void);
-korl_internal KORL_FUNCTION_korl_resource_fromFile          (korl_resource_fromFile);
 korl_internal Korl_Resource_Handle                           korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
 korl_internal Korl_Resource_Handle                           korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
 korl_internal void                                           korl_resource_destroy(Korl_Resource_Handle handle);
@@ -80,7 +79,6 @@ korl_internal void                                           korl_resource_flush
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat);
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
-korl_internal KORL_FUNCTION_korl_resource_texture_getSize   (korl_resource_texture_getSize);
 korl_internal Korl_Vulkan_ShaderHandle                       korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader);
 korl_internal Korl_Vulkan_DrawState_Material                 korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d);
 korl_internal Korl_Vulkan_DrawVertexData                     korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d);

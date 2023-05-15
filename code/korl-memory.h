@@ -17,15 +17,7 @@ korl_internal u$   korl_memory_pageBytes(void);
 korl_internal u$   korl_memory_virtualAlignBytes(void);
 korl_internal bool korl_memory_isLittleEndian(void);
 korl_internal void* korl_memory_set(void* target, u8 value, u$ bytes);
-korl_internal KORL_FUNCTION_korl_memory_zero(korl_memory_zero);
-korl_internal KORL_FUNCTION_korl_memory_copy(korl_memory_copy);
-korl_internal KORL_FUNCTION_korl_memory_move(korl_memory_move);
-korl_internal KORL_FUNCTION_korl_memory_compare(korl_memory_compare);
-korl_internal KORL_FUNCTION_korl_memory_arrayU8Compare(korl_memory_arrayU8Compare);
-korl_internal KORL_FUNCTION_korl_memory_arrayU16Compare(korl_memory_arrayU16Compare);
-korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash);
 korl_internal bool korl_memory_isNull(const void* p, size_t bytes);
-korl_internal KORL_FUNCTION_korl_memory_allocator_create      (korl_memory_allocator_create);
 korl_internal void korl_memory_allocator_destroy(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle handle
                                                  ,u$ heapDescriptorCount, const void* heapDescriptors
@@ -33,21 +25,12 @@ korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle ha
                                                  ,u32 heapDescriptorOffset_virtualAddressStart
                                                  ,u32 heapDescriptorOffset_virtualBytes
                                                  ,u32 heapDescriptorOffset_committedBytes);
-korl_internal KORL_FUNCTION_korl_memory_allocator_allocate    (korl_memory_allocator_allocate);
-korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate  (korl_memory_allocator_reallocate);
-korl_internal KORL_FUNCTION_korl_memory_allocator_free        (korl_memory_allocator_free);
-korl_internal KORL_FUNCTION_korl_memory_allocator_empty       (korl_memory_allocator_empty);
-korl_internal KORL_FUNCTION_korl_memory_allocator_isFragmented(korl_memory_allocator_isFragmented);
-korl_internal KORL_FUNCTION_korl_memory_allocator_defragment  (korl_memory_allocator_defragment);
 korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle handle);
 korl_internal void korl_memory_allocator_emptyStackAllocators(void);
 /** \return the address of the allocated memory report */
 korl_internal void* korl_memory_reportGenerate(void);
 /** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */
 korl_internal void korl_memory_reportLog(void* reportAddress);
-korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateAllocators(korl_memory_allocator_enumerateAllocators);
-korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateAllocations(korl_memory_allocator_enumerateAllocations);
-korl_internal KORL_FUNCTION_korl_memory_allocator_enumerateHeaps(korl_memory_allocator_enumerateHeaps);
 /** \param out_allocatorIndex if the return value is \c true , then the memory 
  * at this address is populated with the internal index of the found allocator.
  * \return \c true if the allocator with the given \c name exists */

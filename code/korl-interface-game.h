@@ -2,47 +2,24 @@
  * # Code Samples
  * 
  *   ## Example of implementation of the game interface (minimum code):
- *   
- *     ```
- *     #include "korl-interface-game.h"
- *     KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
- *     {
- *         return NULL;// replace this with whatever global memory state the game module needs
- *     }
- *     KORL_EXPORT KORL_GAME_ON_RELOAD(korl_game_onReload)
- *     {
- *     }
- *     KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
- *     {
- *         return true;// true => continue running the application
- *     }
- *     ```
- *   
- *   ## Example code of declaration of KORL platform API & obtaining function pointers:
- *   
+ *     
  *     For more details, as well as a complete list of all KORL platform APIs, see 
  *     `korl-interface-platform-api.h`.
  *     
  *     ```
- *     #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
- *         #include "korl-interface-platform-api.h"
- * KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
- *         #define KORL_DEFINED_INTERFACE_PLATFORM_API// prevent certain KORL modules which define symbols that are required by the game module, but whose codes are confined to the platform layer, from re-defining them since we just declared the API
- *     #undef _KORL_PLATFORM_API_MACRO_OPERATION
- *     korl_internal void _game_getInterfacePlatformApi(KorlPlatformApi korlApi)
- *     {
- *         #define _KORL_PLATFORM_API_MACRO_OPERATION(x) (x) = korlApi.x;
- *         #include "korl-interface-platform-api.h"
- *         #undef _KORL_PLATFORM_API_MACRO_OPERATION
- *     }
+ *     #include "korl-interface-game.h"
  *     KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
  *     {
- *         _game_getInterfacePlatformApi(korlApi);
+ *         korl_platform_getApi(korlApi);
  *         return NULL;// replace this with whatever global memory state the game module needs
  *     }
  *     KORL_EXPORT KORL_GAME_ON_RELOAD(korl_game_onReload)
  *     {
- *         _game_getInterfacePlatformApi(korlApi);
+ *         korl_platform_getApi(korlApi);
+ *     }
+ *     KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
+ *     {
+ *         return true;// true => continue running the application
  *     }
  *     ```
  */

@@ -15,10 +15,5 @@
 #include "korl-interface-platform-resource.h"
 korl_internal void korl_sfx_initialize(void);
 korl_internal void korl_sfx_mix(void);
-korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource);
-korl_internal KORL_FUNCTION_korl_sfx_setVolume(korl_sfx_setVolume);
-korl_internal KORL_FUNCTION_korl_sfx_category_set(korl_sfx_category_set);
-korl_internal KORL_FUNCTION_korl_sfx_setListener(korl_sfx_setListener);
-korl_internal KORL_FUNCTION_korl_sfx_tape_stop(korl_sfx_tape_stop);
 korl_internal u32  korl_sfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_sfx_memoryStateRead(const u8* memoryState);

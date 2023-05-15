@@ -60,7 +60,6 @@
 [ ] KORL-ISSUE-000-000-113: windows-window: (minor) korl_clipboard_* API is being placed inside the korl-windows-window module due to the fact that we require a HWND to use these API on Windows; not sure if there is a better way to organize this...
 [ ] KORL-ISSUE-000-000-117: gui: don't we only want to do this logic if the activated window has changed?  not doing so is going to likely cause really annoying behavior such as the last window's leaf widget candidate always getting activated even when the window was already active :|
 [ ] KORL-ISSUE-000-000-119: codec-configuration: rewrite UTF-8 decoder to use Utf8 iterators from korl-string
-[ ] KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
 [ ] KORL-ISSUE-000-000-123: logConsole: fix box character rendering
 [ ] KORL-ISSUE-000-000-124: logConsole: fix emoji rendering
 [ ] KORL-ISSUE-000-000-125: sfx: long-term goal: support more surround-sound configurations; for now, it's more than fine to just support 2-channel stereo
@@ -224,6 +223,7 @@
 [x] KORL-ISSUE-000-000-115: platform-api: remove all these string functions from platform API; move them all to korl-string (except maybe platform-specific implementations, like C string formatting)
 [x] KORL-ISSUE-000-000-116: gui: this does _not_ actually place the text position at the baseline!  This places the local origin at the bottom-left of the shrink-wrapped AABB; this causes the position of text to get jacked up when a glyph below the baseline is drawn (such as 'g' or 'j')
 [x] KORL-ISSUE-000-000-118: gui: figure out why the console text disappears after the "attempted batch is empty" warning is spammed enough
+[x] KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
 [x] KORL-ISSUE-000-000-121: command/memory-state: loading a memory state that contains registered command(s) that no longer exist will cause assert to fire
 [x] KORL-ISSUE-000-000-122: logConsole: fix '\t' character rendering
 [x] KORL-ISSUE-000-000-126: sfx: after loading a memory state, looping Tapes are invalidated & causes bugs (such as Tape leaks; causes infinite looping overlapping incorrect Tapes to play forever)

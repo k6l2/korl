@@ -19,7 +19,3 @@ korl_internal void korl_log_clearAsyncIo(void);
  * application GUI itself.  In addition, real-time file io is slow & complex, so 
  * we should do our best to not rely on it for real-time interactive programs. */
 korl_internal void korl_log_shutDown(void);
-/** \note DO NOT CALL THIS!  Use \c korl_log instead!  *************************
- * This symbol is only exposed for the compiler! */
-korl_internal KORL_FUNCTION__korl_log_variadic(_korl_log_variadic);
-korl_internal KORL_FUNCTION_korl_log_getBuffer(korl_log_getBuffer);

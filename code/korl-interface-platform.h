@@ -62,12 +62,33 @@ typedef KORL_ALGORITHM_COMPARE_CONTEXT(fnSig_korl_algorithm_compare_context);
 // #define KORL_FUNCTION_korl_algorithm_boundingVolumeHierarchy_create(name) void* name(Korl_Memory_AllocatorHandle allocator, void* array, u$ arraySize, u$ arrayStride)
 /* FUNCTION TYPEDEFS **********************************************************/
 #define _KORL_PLATFORM_API_MACRO_OPERATION(x) typedef KORL_FUNCTION_##x (fnSig_##x);
-#include "korl-interface-platform-api.h"
+    #include "korl-interface-platform-api.h"
 #undef _KORL_PLATFORM_API_MACRO_OPERATION
 /* KORL API struct Definition *************************************************/
 typedef struct KorlPlatformApi
 {
     #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
-    #include "korl-interface-platform-api.h"
+        #include "korl-interface-platform-api.h"
     #undef _KORL_PLATFORM_API_MACRO_OPERATION
 } KorlPlatformApi;
+/* KORL API function declarations *********************************************/
+#ifdef KORL_PLATFORM
+    /* in the platform's code module, we need to do standard forward-declaration of all KORL functions, 
+        which is fine since the function definitions will be defined in the same translation unit */
+    #define _KORL_PLATFORM_API_MACRO_OPERATION(x) korl_internal KORL_FUNCTION_##x(x);
+        #include "korl-interface-platform-api.h"
+    #undef _KORL_PLATFORM_API_MACRO_OPERATION
+#else
+    /* in the client code modules, we need to: 
+        - declare all KORL functions as function pointers in the code module
+        - declare & define (generate) a function which, when given a KorlPlatformApi, will populate all these function pointers with the correct address */
+    #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
+        #include "korl-interface-platform-api.h"
+    #undef _KORL_PLATFORM_API_MACRO_OPERATION
+    korl_internal void korl_platform_getApi(KorlPlatformApi korlApi)
+    {
+        #define _KORL_PLATFORM_API_MACRO_OPERATION(x) (x) = korlApi.x;
+            #include "korl-interface-platform-api.h"
+        #undef _KORL_PLATFORM_API_MACRO_OPERATION
+    }
+#endif

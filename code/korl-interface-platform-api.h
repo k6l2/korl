@@ -27,7 +27,8 @@
  *      macro with the API postfix composed in step (1)!
  *      Use the following example as a standard for nomenclature:
  *          #define KORL_FUNCTION_korl_newApi(name) void name(void)
- *   3) Declare & define the function symbol itself in whatever KORL module it 
+ *   3) NOTE: no longer need to declare the function symbol, as `korl-interface-platform.h` handles this automatically
+ *      Declare & define the function symbol itself in whatever KORL module it 
  *      belongs to.  Make sure to match the function's symbol name to the _same_ 
  *      string as the function signature's macro name postfix!
  *      Examples:
@@ -44,32 +45,7 @@
  *   1) Delete the API entry from this file.
  *   2) Remove the reference to the API's function signature macro from `korl-interface-platform.h`
  *   3) Delete the actual function declaration & definition.
- * 
- * # Code samples
- * 
- *   ## Declaration of all KORL platform APIs
- *   
- *     ```
- *     #define _KORL_PLATFORM_API_MACRO_OPERATION(x) fnSig_##x *x;
- *         #include "korl-interface-platform-api.h"
- * KORL-ISSUE-000-000-120: interface-platform: remove KORL_DEFINED_INTERFACE_PLATFORM_API; this it just messy imo; if there is clear separation of code that should only exist in the platform layer, then we should probably just physically separate it out into separate source file(s)
- *         #define KORL_DEFINED_INTERFACE_PLATFORM_API// prevent certain KORL modules which define symbols that are required by the game module, but whose codes are confined to the platform layer, from re-defining them since we just declared the API
- *     #undef _KORL_PLATFORM_API_MACRO_OPERATION
- *     ```
- *   
- *   ## Function to get the KORL platform API from the platform layer
- *   
- *     This sample assumes you declared the KORL platform API exactly like the above 
- *     sample.
- *     
- *     ```
- *     korl_internal void _getInterfacePlatformApi(KorlPlatformApi korlApi)
- *     {
- *         #define _KORL_PLATFORM_API_MACRO_OPERATION(x) (x) = korlApi.x;
- *         #include "korl-interface-platform-api.h"
- *         #undef _KORL_PLATFORM_API_MACRO_OPERATION
- *     }
- *     ```
+ *      NOTE: no longer need to remove declaration, as `korl-interface-platform.h` handles this automatically
  */
 #ifndef _KORL_PLATFORM_API_MACRO_OPERATION
 #   define _KORL_PLATFORM_API_MACRO_OPERATION(x)
@@ -151,6 +127,7 @@ _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_batch_quadsTextured_raw)
 _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_batch_quadsTextured_pixel_to_normal)
 _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_setClearColor)
 _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_batch_collectDefragmentPointers)
+//@TODO: this should _not_ be a KORL platform API; this code should just be in the game module, as it doesn't interact with anything in the platform layer
 _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_drawable_scene3d_initialize)
 _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_draw)
 _KORL_PLATFORM_API_MACRO_OPERATION(korl_gfx_light_use)

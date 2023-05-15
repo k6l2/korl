@@ -48,8 +48,6 @@ typedef u32 Korl_Time_ProbeHandle;
 #define korl_time_probeVariableU32(variableU32) korl_time_probeDataU32(L""#variableU32, variableU32)
 korl_internal void korl_time_initialize(void);
 korl_internal void korl_time_shutDown(void);
-korl_internal KORL_FUNCTION_korl_timeStamp(korl_timeStamp);
-korl_internal KORL_FUNCTION_korl_time_secondsSinceTimeStamp(korl_time_secondsSinceTimeStamp);
 korl_internal Korl_Time_Counts korl_time_countsFromHz(u16 hz);
 korl_internal Korl_Time_Counts korl_time_timeStampCountDifference(PlatformTimeStamp ptsA, PlatformTimeStamp ptsB);
 korl_internal void korl_time_sleep(Korl_Time_Counts counts);

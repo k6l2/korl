@@ -40,7 +40,3 @@ korl_internal void                korl_algorithm_bvh_build(Korl_Algorithm_Bvh* c
  * the same allocator as \c context->createInfo.allocator , and whose elements 
  * should all be intersecting \c *boundingVolume */
 korl_internal void*               korl_algorithm_bvh_query(Korl_Algorithm_Bvh* context, const void* boundingVolume, u$* o_resultArraySize, fnSig_korl_algorithm_bvh_volumeIntersects* volumeIntersects);
-#if !defined(KORL_DEFINED_INTERFACE_PLATFORM_API)// these API defined in the platform layer because they contain platform-specific code
-    korl_internal KORL_FUNCTION_korl_algorithm_sort_quick(korl_algorithm_sort_quick);
-    korl_internal KORL_FUNCTION_korl_algorithm_sort_quick_context(korl_algorithm_sort_quick_context);
-#endif

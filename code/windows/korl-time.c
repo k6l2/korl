@@ -1,3 +1,6 @@
+#ifndef KORL_PLATFORM
+    #define KORL_PLATFORM// for code-completion feature in editors
+#endif
 #include "korl-time.h"
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"

@@ -273,8 +273,25 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(name)            void                  name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)
 #define KORL_FUNCTION_korl_gfx_useCamera(name)                               void                  name(Korl_Gfx_Camera camera)
 #define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)                       Korl_Gfx_Camera       name(void)
+/** Note that scissor coordinates use swap chain coordinates, where the origin 
+ * is the upper-left corner of the swap chain, & {+X,+Y} points to the 
+ * bottom-right.  */
+//KORL-ISSUE-000-000-004
 #define KORL_FUNCTION_korl_gfx_cameraSetScissor(name)                        void                  name(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
+/** 
+ * Note that scissor coordinates use swap chain coordinates, where the origin is 
+ * the upper-left corner of the swap chain, & {+X,+Y} points to the bottom-right.  */
 #define KORL_FUNCTION_korl_gfx_cameraSetScissorPercent(name)                 void                  name(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
+/** Translate the camera such that the orthographic camera's origin is located 
+ * at the position in the swapchain's coordinate space relative to the 
+ * bottom-left corner.
+ * Negative size ratio values are valid.
+ * This function does NOT flip the coordinate space or anything like that!
+ * Examples:
+ * - by default (without calling this function) the origin will be 
+ *   \c {0.5f,0.5f}, which is the center of the screen
+ * - if you want the origin to be in the bottom-left corner of the window, pass 
+ *   \c {0.f,0.f} as size ratio coordinates */
 #define KORL_FUNCTION_korl_gfx_cameraOrthoSetOriginAnchor(name)              void                  name(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
 #define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)                      Korl_Math_V2f32       name(const Korl_Gfx_Camera*const context)
 /** \return \c {{NaN,NaN,NaN},{NaN,NaN,NaN}} if the coordinate transform fails */
@@ -284,6 +301,7 @@ typedef struct Korl_Gfx_Font_Metrics
  * the screen!*/
 #define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)                    Korl_Math_V2f32       name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_FUNCTION_korl_gfx_batch(name)                                   void                  name(Korl_Gfx_Batch*const batch, Korl_Gfx_Batch_Flags flags)
+//KORL-ISSUE-000-000-005
 #define KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(name)            Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, Korl_Math_V2f32 size, Korl_Resource_Handle resourceHandleTexture)
 /**
  * \param localOriginNormal relative to the rectangle's lower-left corner
@@ -295,6 +313,10 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(name)                Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 quadCount, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(name)         Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 quadCount, Korl_Resource_Handle resourceHandleTexture)
 #define KORL_FUNCTION_korl_gfx_createBatchLines(name)                        Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, u32 lineCount)
+/** 
+ * \param assetNameFont If this value is \c NULL , a default internal font asset 
+ * will be used.
+ */
 #define KORL_FUNCTION_korl_gfx_createBatchText(name)                         Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* assetNameFont, const wchar_t* text, f32 textPixelHeight, Korl_Vulkan_Color4u8 color, f32 outlinePixelSize, Korl_Vulkan_Color4u8 colorOutline)
 #define KORL_FUNCTION_korl_gfx_createBatchAxisLines(name)                    Korl_Gfx_Batch*       name(Korl_Memory_AllocatorHandle allocatorHandle)
 #define KORL_FUNCTION_korl_gfx_batchSetBlendState(name)                      void                  name(Korl_Gfx_Batch*const context, Korl_Gfx_Blend blend)
