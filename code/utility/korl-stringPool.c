@@ -6,8 +6,6 @@
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform.h"
 #include "korl-algorithm.h"
-//@TODO: add korl_string_toupper; remove this header to make a pure "utility" code module
-#include <ctype.h>// for toupper
 typedef struct _Korl_StringPool_Allocation
 {
     u32 poolByteOffset;
@@ -1205,17 +1203,31 @@ korl_internal void korl_stringPool_toUpper(Korl_StringPool_String string)
     if(flagsProcessed & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
     {
         u8* utf8 = KORL_C_CAST(u8*, context->characterPool + str->poolByteOffsetUtf8);
-        // @TODO: use UTF8 iterator
-        for(u32 i = 0; i < str->rawSizeUtf8; i++)
-            utf8[i] = korl_checkCast_i$_to_u8(toupper(utf8[i]));
+        for(Korl_String_CodepointIteratorUtf8 u8Iterator = korl_string_codepointIteratorUtf8_initialize(context->characterPool + str->poolByteOffsetUtf8, str->rawSizeUtf8)
+           ;!korl_string_codepointIteratorUtf8_done(&u8Iterator)
+           ; korl_string_codepointIteratorUtf8_next(&u8Iterator))
+        {
+            // performance note: we _could_ potentially just write to the iterator's current raw buffer address, but that could pre-emptively lead to catastrophic failure; using an extra UTF buffer here & doing a copy will allow us to at least safely check this before anything _actually_ goes wrong
+            u8 utf8Buffer[4];
+            const u8 utf8Units = korl_string_codepoint_to_utf8(korl_string_unicode_toUpper(u8Iterator._codepoint), utf8Buffer);
+            korl_assert(utf8Units == u8Iterator._codepointBytes);
+            korl_memory_copy(KORL_C_CAST(u8*, /*we've done due diligence above to make sure this is now a safe write operation*/u8Iterator._currentRawUtf8), utf8Buffer, utf8Units);
+        }
         flagsProcessed &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF8;
     }
     if(flagsProcessed & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
     {
         u16* utf16 = KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16);
-        // @TODO: use UTF16 iterator
-        for(u32 i = 0; i < str->rawSizeUtf16; i++)
-            utf16[i] = towupper(utf16[i]);
+        for(Korl_String_CodepointIteratorUtf16 u16Iterator = korl_string_codepointIteratorUtf16_initialize(KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16), str->rawSizeUtf16)
+           ;!korl_string_codepointIteratorUtf16_done(&u16Iterator)
+           ; korl_string_codepointIteratorUtf16_next(&u16Iterator))
+        {
+            // performance note: we _could_ potentially just write to the iterator's current raw buffer address, but that could pre-emptively lead to catastrophic failure; using an extra UTF buffer here & doing a copy will allow us to at least safely check this before anything _actually_ goes wrong
+            u16 utf16Buffer[2];
+            const u8 utf16Units = korl_string_codepoint_to_utf16(korl_string_unicode_toUpper(u16Iterator._codepoint), utf16Buffer);
+            korl_assert(utf16Units == u16Iterator._codepointSize);
+            korl_memory_copy(KORL_C_CAST(u16*, /*we've done due diligence above to make sure this is now a safe write operation*/u16Iterator._currentRawUtf16), utf16Buffer, utf16Units);
+        }
         flagsProcessed &= ~_KORL_STRINGPOOL_STRING_FLAG_UTF16;
     }
     if(flagsProcessed != _KORL_STRINGPOOL_STRING_FLAGS_NONE)

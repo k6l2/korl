@@ -2,6 +2,7 @@
 #include "utility/korl-checkCast.h"
 #include "korl-interface-platform-memory.h"
 #include <stdlib.h>// for strtof
+#include <ctype.h>// for toupper
 korl_internal KORL_FUNCTION_korl_string_utf8_to_f32(korl_string_utf8_to_f32)
 {
     char* endPointer = NULL;
@@ -45,4 +46,8 @@ korl_internal KORL_FUNCTION_korl_string_formatBufferVaListUtf16(korl_string_form
     const int charactersWritten = vswprintf_s(buffer, bufferBytes/sizeof(*buffer), format, vaList);// excludes null terminator
     korl_assert(charactersWritten == bufferSize);
     return charactersWritten + 1/*for null terminator*/;
+}
+korl_internal KORL_FUNCTION_korl_string_unicode_toUpper(korl_string_unicode_toUpper)
+{
+    return towupper(korl_checkCast_u$_to_u16(codePoint));
 }
