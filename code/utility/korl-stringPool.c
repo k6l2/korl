@@ -1,6 +1,7 @@
 #include "utility/korl-stringPool.h"
 #include "utility/korl-checkCast.h"
 #include "utility/korl-utility-string.h"
+#include "utility/korl-utility-memory.h"
 #include "korl-stb-ds.h"
 #include "korl-string.h"
 #include "korl-interface-platform-memory.h"
@@ -643,12 +644,12 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compare(Korl_StringP
     int resultCompare = -1;
     if(   (strA->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8)
        && (strB->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF8))
-        resultCompare = korl_memory_arrayU8Compare(context->characterPool + strA->poolByteOffsetUtf8, strA->rawSizeUtf8, 
-                                                   context->characterPool + strB->poolByteOffsetUtf8, strB->rawSizeUtf8);
+        resultCompare = korl_memory_compare_acu8(KORL_STRUCT_INITIALIZE(acu8){.size = strA->rawSizeUtf8, .data = context->characterPool + strA->poolByteOffsetUtf8}
+                                                ,KORL_STRUCT_INITIALIZE(acu8){.size = strB->rawSizeUtf8, .data = context->characterPool + strB->poolByteOffsetUtf8});
     else if(   (strA->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16)
             && (strB->flags & _KORL_STRINGPOOL_STRING_FLAG_UTF16))
-        resultCompare = korl_memory_arrayU16Compare(KORL_C_CAST(u16*, context->characterPool + strA->poolByteOffsetUtf16), strA->rawSizeUtf16, 
-                                                    KORL_C_CAST(u16*, context->characterPool + strB->poolByteOffsetUtf16), strB->rawSizeUtf16);
+        resultCompare = korl_memory_compare_acu16(KORL_STRUCT_INITIALIZE(acu16){.size = strA->rawSizeUtf16, .data = KORL_C_CAST(u16*, context->characterPool + strA->poolByteOffsetUtf16)}
+                                                 ,KORL_STRUCT_INITIALIZE(acu16){.size = strB->rawSizeUtf16, .data = KORL_C_CAST(u16*, context->characterPool + strB->poolByteOffsetUtf16)});
     else
         korl_log(ERROR, "not all encodings implemented");
     if(resultCompare == 0)
@@ -1251,10 +1252,8 @@ korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool_String* string, const
     if(searchStringSize > str->rawSizeUtf8)
         return str->rawSizeUtf8;// the search string can't even fit inside this string
     for(u32 i = characterOffsetStart; i <= str->rawSizeUtf8 - searchStringSize; i++)
-        if(0 == korl_memory_arrayU8Compare(context->characterPool + str->poolByteOffsetUtf8 + i*sizeof(u8), 
-                                           searchStringSize, 
-                                           KORL_C_CAST(const u8*, cStringUtf8), 
-                                           searchStringSize))
+        if(0 == korl_memory_compare_acu8(KORL_STRUCT_INITIALIZE(acu8){.size = searchStringSize, .data = context->characterPool + str->poolByteOffsetUtf8 + i*sizeof(u8)}
+                                        ,KORL_STRUCT_INITIALIZE(acu8){.size = searchStringSize, .data = KORL_C_CAST(const u8*, cStringUtf8)}))
             return i;
     return str->rawSizeUtf8;
 }
@@ -1276,10 +1275,8 @@ korl_internal u32 korl_stringPool_findUtf16(Korl_StringPool_String* string, cons
     if(searchStringSize > str->rawSizeUtf16)
         return str->rawSizeUtf16;// the search string can't even fit inside this string
     for(u32 i = characterOffsetStart; i <= str->rawSizeUtf16 - searchStringSize; i++)
-        if(0 == korl_memory_arrayU16Compare(KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16 + i*sizeof(u16)), 
-                                            searchStringSize, 
-                                            cStringUtf16, 
-                                            searchStringSize))
+        if(0 == korl_memory_compare_acu16(KORL_STRUCT_INITIALIZE(acu16){.size = searchStringSize, .data = KORL_C_CAST(u16*, context->characterPool + str->poolByteOffsetUtf16 + i*sizeof(u16))}
+                                         ,KORL_STRUCT_INITIALIZE(acu16){.size = searchStringSize, .data = cStringUtf16}))
             return i;
     return str->rawSizeUtf16;
 }

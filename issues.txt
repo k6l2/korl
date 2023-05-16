@@ -9,7 +9,6 @@
 [ ] KORL-ISSUE-000-000-021: polymorphic-tagged-union; We essentially need "virtual constructor/destructor" logic for this data type, since this logic is specific to the device object type (we need to use different Vulkan API for these tasks).It's worth noting that I have found this to be a common enough design pattern that at one point I created a simple C++ parser which automatically generated dispatch routines for virtual functions (kcpp?), which theoretically might make development of these constructs easier.  Although, I am not yet _entirely_ convinced that this is the case just yet.  Generated v-tables are not a panacea, and still don't properly solve issues associated with function pointer tables, such as hot code reloading, so such a feature might need a bit more effort to make it easy-to-use like C++ virtuals, but also not complete shit under the hood that we can't fix (like C++ virtuals).
 [ ] KORL-ISSUE-000-000-023: add support for memory allocators to defragment pages.  This will probably require some kind of specialized API that calls back to the user of the allocator so that they can decide what to do with each allocation, since this behavior would be implementation-specific.  For example, if the allocator user is storing objects that have pointers (god help us) or something, they will need to manually re-assign them to the new de-fragmented values.
 [ ] KORL-ISSUE-000-000-024: Vulkan; robustness: cross-check this list of extension names with the extensionProperties queried above to check if they are all provided by the platform
-[@TODO] KORL-ISSUE-000-000-029: pull out platform-agnostic code from platform-specific code module
 [ ] KORL-ISSUE-000-000-030: redundant: technically we don't need this, since we can just call QueryVirtualMemoryInformation
 [ ] KORL-ISSUE-000-000-031: copypasta: same code that runs in the `done` label (not sure if there is a good way to take this out though)
 [ ] KORL-ISSUE-000-000-034: investigate: WM_PAINT, ValidateRect(hWnd, NULL); ???  I'm not actually sure if this is necessary, so maybe this is very low priority.
@@ -181,6 +180,7 @@
 [x] KORL-ISSUE-000-000-026: consistency: rename to Korl_Vulkan_Color3u8
 [x] KORL-ISSUE-000-000-027: Vulkan; feature: add shader/pipeline resource API
 [x] KORL-ISSUE-000-000-028: In the case that we're deploying this application (not running in a debugger) maybe do one or more of the following things: (1) offer a choice to continue execution (2) offer a choice to write a memory dump to disk
+[x] KORL-ISSUE-000-000-029: pull out platform-agnostic code from platform-specific code module
 [x] KORL-ISSUE-000-000-032: safety: ensure that the thread calling this function is the main thread to ensure that the function pointers of the Korl_Memory_Allocator will always be valid, since the main program module (should) never be reloaded
 [x] KORL-ISSUE-000-000-033: do we actually need `strsafe.h`?  This API seems to suck ass compared to the stuff it supposedly "replaced", such as \c _vscwprintf & \c vswprintf_s
 [x] KORL-ISSUE-000-000-035: hack: delete this scaffolding once we have application/KORL separation at the project level

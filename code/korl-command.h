@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-interface-platform.h"
 #include "korl-memory.h"
+#include "utility/korl-utility-memory.h"
 korl_internal void korl_command_initialize(acu8 utf8PlatformModuleName);
 //@TODO: remove platform-specific HMODULE datatype
 korl_internal void korl_command_registerModule(HMODULE moduleHandle, acu8 utf8ModuleName);

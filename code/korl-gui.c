@@ -7,6 +7,7 @@
 #include "korl-string.h"
 #include "korl-stb-ds.h"
 #include "korl-algorithm.h"
+#include "utility/korl-utility-string.h"
 typedef struct _Korl_Gui_UsedWidget
 {
     _Korl_Gui_Widget* widget;
@@ -179,12 +180,12 @@ korl_internal _Korl_Gui_Widget* _korl_gui_getWidget(u64 identifierHash, u$ widge
     for(const i16* parentIndex = context->stbDaWidgetParentStack; parentIndex < stbDaWidgetParentStackEnd; parentIndex++)
     {
         identifierHashComponents[1] = context->stbDaWidgets[*parentIndex].identifierHash;
-        identifierHashComponents[0] = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
-                                                                                          ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+        identifierHashComponents[0] = korl_string_hashAcu16(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                         ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
     }
     identifierHashComponents[1] = context->loopIndex;
-    const u64 identifierHashPrime = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
-                                                                                        ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+    const u64 identifierHashPrime = korl_string_hashAcu16(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                       ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
     /* check to see if this widget's identifier set is already registered */
     u$ widgetIndex = KORL_U64_MAX;
     const _Korl_Gui_Widget*const stbDaWidgetsEnd = context->stbDaWidgets + arrlen(context->stbDaWidgets);
@@ -1111,12 +1112,12 @@ korl_internal KORL_FUNCTION_korl_gui_windowBegin(korl_gui_windowBegin)
     /* assemble the window identifier hash; composed of the string hash of the 
         titleBarText, as well as the context loop index */
     u64 identifierHashComponents[2];
-    identifierHashComponents[0] = korl_memory_acu16_hash(KORL_RAW_CONST_UTF16(titleBarText));
+    identifierHashComponents[0] = korl_string_hashAcu16(KORL_RAW_CONST_UTF16(titleBarText));
     identifierHashComponents[1] = context->loopIndex;
     const u64 identifierHash = titleBarText == _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT 
         ? _KORL_GUI_ORPHAN_WIDGET_WINDOW_ID_HASH
-        : korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
-                                                              ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+        : korl_string_hashAcu16(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                             ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
     // sanity checks //
     korl_assert(identifierHash);
     if(titleBarText != _KORL_GUI_ORPHAN_WIDGET_WINDOW_TITLE_BAR_TEXT)
@@ -2215,8 +2216,8 @@ korl_internal KORL_FUNCTION_korl_gui_widgetInputText(korl_gui_widgetInputText)
     u64 identifierHashComponents[2];
     identifierHashComponents[0] = string.handle;
     identifierHashComponents[1] = korl_checkCast_cvoidp_to_u64(string.pool);
-    identifierHashComponents[0] = korl_memory_acu16_hash(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
-                                                                                      ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
+    identifierHashComponents[0] = korl_string_hashAcu16(KORL_STRUCT_INITIALIZE(acu16){.data = KORL_C_CAST(u16*, &(identifierHashComponents[0]))
+                                                                                     ,.size = sizeof(identifierHashComponents) / sizeof(u16)});
     /* invoke the widget */
     _Korl_Gui_Widget*const widget = _korl_gui_getWidget(identifierHashComponents[0], KORL_GUI_WIDGET_TYPE_INPUT_TEXT, &newAllocation);
     context->currentUserWidgetIndex = korl_checkCast_u$_to_i16(widget - context->stbDaWidgets);

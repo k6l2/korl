@@ -1,5 +1,4 @@
 #include "utility/korl-checkCast.h"
-#include <stdlib.h>// needed for __FILEW__, etc...
 #include "korl-crash.h"
 #pragma warning(push)
 #pragma warning(disable:4755)/* in optimized builds, it is possible for the compiler to find conditions in which one of the paths of these checks will never be executed, and that is fine by me (for now) */

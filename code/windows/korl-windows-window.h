@@ -2,6 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
 #include "korl-file.h"
+#include "utility/korl-utility-memory.h"
 korl_internal void korl_windows_window_initialize(void);
 korl_internal void korl_windows_window_create(u32 sizeX, u32 sizeY);
 korl_internal void korl_windows_window_loop(void);

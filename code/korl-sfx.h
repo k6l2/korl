@@ -13,6 +13,7 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-sfx.h"
 #include "korl-interface-platform-resource.h"
+#include "utility/korl-utility-memory.h"
 korl_internal void korl_sfx_initialize(void);
 korl_internal void korl_sfx_mix(void);
 korl_internal u32  korl_sfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);

@@ -1,4 +1,3 @@
-#include <stdlib.h>// needed for __FILEW__, etc...
 #include "korl-interface-game.h"// includes "korl-interface-platform.h"
 #include "utility/korl-stringPool.h"
 #include "utility/korl-logConsole.h"
@@ -147,3 +146,4 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 #include "utility/korl-camera-freeFly.c"
 #include "utility/korl-utility-gfx.c"
 #include "utility/korl-utility-string.c"
+#include "utility/korl-utility-memory.c"

@@ -5,6 +5,7 @@
 #include "korl-log.h"
 #include "korl-stb-ds.h"
 #include "korl-heap.h"
+#include "utility/korl-utility-string.h"
 #if KORL_DEBUG
     // #define _KORL_MEMORY_DEBUG_HEAP_UNIT_TESTS
 #endif
@@ -74,53 +75,6 @@ typedef struct _Korl_Memory_ReportMeta
     KORL_MEMORY_POOL_DECLARE(_Korl_Memory_ReportMeta_Allocator, allocatorMeta, _KORL_MEMORY_MAX_ALLOCATORS);
 } _Korl_Memory_ReportMeta;
 korl_global_variable _Korl_Memory_Context _korl_memory_context;
-korl_internal bool _korl_memory_isBigEndian(void)
-{
-    korl_shared_const i32 I = 1;
-    return KORL_C_CAST(const u8*const, &I)[0] == 0;
-}
-korl_internal u$ _korl_memory_packCommon(const u8* data, u$ dataBytes, u8** bufferCursor, const u8*const bufferEnd)
-{
-    if(*bufferCursor + dataBytes > bufferEnd)
-        return 0;
-    if(_korl_memory_isBigEndian())
-        korl_assert(!"big-endian not supported");
-    else
-        korl_memory_copy(*bufferCursor, data, dataBytes);
-    *bufferCursor += dataBytes;
-    return dataBytes;
-}
-korl_internal u$ _korl_memory_unpackCommon(void* unpackedData, u$ unpackedDataBytes, const u8** bufferCursor, const u8*const bufferEnd)
-{
-    if(*bufferCursor + unpackedDataBytes > bufferEnd)
-        return 0;
-    if(_korl_memory_isBigEndian())
-        korl_assert(!"big-endian not supported");
-    else
-        korl_memory_copy(unpackedData, *bufferCursor, unpackedDataBytes);
-    *bufferCursor += unpackedDataBytes;
-    return unpackedDataBytes;
-}
-#define _KORL_MEMORY_U$_BITS               ((sizeof (u$)) * 8)
-#define _KORL_MEMORY_ROTATE_LEFT(val, n)   (((val) << (n)) | ((val) >> (_KORL_MEMORY_U$_BITS - (n))))
-#define _KORL_MEMORY_ROTATE_RIGHT(val, n)  (((val) >> (n)) | ((val) << (_KORL_MEMORY_U$_BITS - (n))))
-/** This is a modified version of `stbds_hash_string` from `stb_ds.h` */
-korl_internal u$ _korl_memory_hashString(const wchar_t* rawWideString)
-{
-    korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x3141592631415926;
-    u$ hash = _KORL_MEMORY_STRING_HASH_SEED;
-    while (*rawWideString)
-        hash = _KORL_MEMORY_ROTATE_LEFT(hash, 9) + *rawWideString++;
-    // Thomas Wang 64-to-32 bit mix function, hopefully also works in 32 bits
-    hash ^= _KORL_MEMORY_STRING_HASH_SEED;
-    hash = (~hash) + (hash << 18);
-    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,31);
-    hash = hash * 21;
-    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,11);
-    hash += (hash << 6);
-    hash ^= _KORL_MEMORY_ROTATE_RIGHT(hash,22);
-    return hash + _KORL_MEMORY_STRING_HASH_SEED;
-}
 korl_internal void korl_memory_initialize(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
@@ -131,7 +85,7 @@ korl_internal void korl_memory_initialize(void)
     context->mainThreadId                     = GetCurrentThreadId();
     context->allocatorHandle                  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_GENERAL, L"korl-memory"            , KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     context->allocatorHandlePersistentStrings = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , L"korl-memory-fileStrings", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
-    context->stringHashKorlMemory             = _korl_memory_hashString(__FILEW__);// _must_ be run before making any dynamic allocations in the korl-memory module
+    context->stringHashKorlMemory             = korl_string_hashRawWide(__FILEW__, 10'000);// _must_ be run before making any dynamic allocations in the korl-memory module
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, 1024);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle)                 , context->stbDaFileNameStrings      , 128);
     korl_assert(sizeof(wchar_t) == sizeof(*context->stbDaFileNameCharacterPool));// we are storing __FILEW__ characters in the Windows platform
@@ -209,68 +163,12 @@ korl_internal u$ korl_memory_virtualAlignBytes(void)
 {
     return _korl_memory_context.systemInfo.dwPageSize;
 }
-korl_internal bool korl_memory_isLittleEndian(void)
-{
-    return !_korl_memory_isBigEndian();
-}
-//KORL-ISSUE-000-000-029: pull out platform-agnostic code
 korl_internal KORL_FUNCTION_korl_memory_compare(korl_memory_compare)
 {
-    const u8* aBytes = KORL_C_CAST(const u8*, a);
-    const u8* bBytes = KORL_C_CAST(const u8*, b);
-    for(size_t i = 0; i < bytes; ++i)
-    {
-        if(aBytes[i] < bBytes[i])
-            return -1;
-        else if(aBytes[i] > bBytes[i])
-            return 1;
-    }
-    return 0;
-}
-korl_internal KORL_FUNCTION_korl_memory_arrayU8Compare(korl_memory_arrayU8Compare)
-{
-    if(sizeA < sizeB)
-        return -1;
-    else if(sizeA > sizeB)
-        return 1;
-    else
-        for(u$ i = 0; i < sizeA; i++)
-            if(dataA[i] < dataB[i])
-                return -1;
-            else if(dataA[i] > dataB[i])
-                return 1;
-    return 0;
-}
-korl_internal KORL_FUNCTION_korl_memory_arrayU16Compare(korl_memory_arrayU16Compare)
-{
-    if(sizeA < sizeB)
-        return -1;
-    else if(sizeA > sizeB)
-        return 1;
-    else
-        for(u$ i = 0; i < sizeA; i++)
-            if(dataA[i] < dataB[i])
-                return -1;
-            else if(dataA[i] > dataB[i])
-                return 1;
-    return 0;
-}
-/** this is mostly copy-pasta from \c _korl_memory_hashString */
-korl_internal KORL_FUNCTION_korl_memory_acu16_hash(korl_memory_acu16_hash)
-{
-    korl_shared_const u$ _KORL_MEMORY_STRING_HASH_SEED = 0x3141592631415926;
-    u$ hash = _KORL_MEMORY_STRING_HASH_SEED;
-    for(u$ i = 0; i < arrayCU16.size; i++)
-        hash = _KORL_MEMORY_ROTATE_LEFT(hash, 9) + arrayCU16.data[i];
-    // Thomas Wang 64-to-32 bit mix function, hopefully also works in 32 bits
-    hash ^= _KORL_MEMORY_STRING_HASH_SEED;
-    hash = (~hash) + (hash << 18);
-    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,31);
-    hash = hash * 21;
-    hash ^= hash ^ _KORL_MEMORY_ROTATE_RIGHT(hash,11);
-    hash += (hash << 6);
-    hash ^= _KORL_MEMORY_ROTATE_RIGHT(hash,22);
-    return hash + _KORL_MEMORY_STRING_HASH_SEED;
+    const SIZE_T bytesMatched = RtlCompareMemory(a, b, bytes);
+    return bytesMatched >= bytes ? 0 
+           : KORL_C_CAST(const u8*, a)[bytesMatched] < KORL_C_CAST(const u8*, b)[bytesMatched] 
+             ? -1 : 1;
 }
 #if 0// still not quite sure if this is needed for anything really...
 korl_internal KORL_FUNCTION_korl_memory_fill(korl_memory_fill)
@@ -294,15 +192,6 @@ korl_internal KORL_FUNCTION_korl_memory_copy(korl_memory_copy)
 korl_internal KORL_FUNCTION_korl_memory_move(korl_memory_move)
 {
     MoveMemory(destination, source, bytes);
-}
-//KORL-ISSUE-000-000-029: pull out platform-agnostic code
-korl_internal bool korl_memory_isNull(const void* p, size_t bytes)
-{
-    const void*const pEnd = KORL_C_CAST(const u8*, p) + bytes;
-    for(; p != pEnd; p = KORL_C_CAST(const u8*, p) + 1)
-        if(*KORL_C_CAST(const u8*, p))
-            return false;
-    return true;
 }
 korl_internal _Korl_Memory_Allocator* _korl_memory_allocator_matchHandle(Korl_Memory_AllocatorHandle handle)
 {
@@ -451,7 +340,7 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(GetCurrentThreadId() == context->mainThreadId);//KORL-ISSUE-000-000-082: memory: _korl_memory_getPersistentString is not thread-safe
     /* if the raw string already exists in our persistent storage, let's use it */
-    const u$ rawWideStringHash = _korl_memory_hashString(rawWideString);
+    const u$ rawWideStringHash = korl_string_hashRawWide(rawWideString, 10'000);
     if(rawWideStringHash == context->stringHashKorlMemory)
         return context->stbDaFileNameCharacterPool;// to prevent stack overflows when making allocations within the korl-memory module itself, we will guarantee that the first string is _always_ this module's file handle
     for(u$ i = 0; i < arrlenu(context->stbDaFileNameStrings); i++)
@@ -975,149 +864,4 @@ korl_internal void korl_memory_fileMapAllocation_destroy(void* allocation, u$ by
     for(u16 r = 0; r < regionCount; r++)
         if(!UnmapViewOfFile(KORL_C_CAST(u8*, allocation) + r*bytesPerRegion))
             korl_logLastError("UnmapViewOfFile failed");
-}
-korl_internal u$ korl_memory_packStringI8(const i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, data), dataSize*sizeof(*data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packStringU16(const u16* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, data), dataSize*sizeof(*data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packU$ (u$  data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packU64(u64 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packU32(u32 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packU16(u16 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packU8(u8 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packI64(i64 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packI32(i32 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packI16(i16 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packI8(i8 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packF64(f64 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_packF32(f32 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_packCommon(KORL_C_CAST(u8*, &data), sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackStringI8(i8* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(data, dataSize*sizeof(*data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackStringU16(u16* data, u$ dataSize, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(data, dataSize*sizeof(*data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackU$(u$ data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackU64(u64 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackU32(u32 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackU16(u16 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackU8 (u8  data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackI64(i64 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackI32(i32 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackI16(i16 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackI8 (i8  data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackF64(f64 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal u$ korl_memory_unpackF32(f32 data, u8** bufferCursor, const u8*const bufferEnd)
-{
-    return _korl_memory_unpackCommon(&data, sizeof(data), bufferCursor, bufferEnd);
-}
-korl_internal Korl_Memory_ByteBuffer* korl_memory_byteBuffer_create(Korl_Memory_AllocatorHandle allocator, u$ capacity, bool fastAndDirty)
-{
-    korl_assert(capacity);
-    Korl_Memory_ByteBuffer* result = fastAndDirty 
-                                     ? korl_dirtyAllocate(allocator, sizeof(*result) - sizeof(result->data) + capacity)
-                                     : korl_allocate     (allocator, sizeof(*result) - sizeof(result->data) + capacity);
-    *result = (Korl_Memory_ByteBuffer){.allocator = allocator, .capacity = capacity, .fastAndDirty = fastAndDirty};
-    return result;
-}
-korl_internal void korl_memory_byteBuffer_destroy(Korl_Memory_ByteBuffer** pContext)
-{
-    if(*pContext)// we can't obtain the ByteBuffer's allocator without a ByteBuffer lol
-        if((*pContext)->fastAndDirty)
-            korl_dirtyFree((*pContext)->allocator, *pContext);
-        else
-            korl_free((*pContext)->allocator, *pContext);
-    *pContext = NULL;
-}
-korl_internal void korl_memory_byteBuffer_append(Korl_Memory_ByteBuffer** pContext, acu8 data)
-{
-    if((*pContext)->size + data.size > (*pContext)->capacity)
-    {
-        (*pContext)->capacity = KORL_MATH_MAX(2 * (*pContext)->capacity, (*pContext)->size + data.size);
-        if((*pContext)->fastAndDirty)
-            *pContext = korl_dirtyReallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
-        else
-            *pContext = korl_reallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
-    }
-    korl_memory_copy((*pContext)->data + (*pContext)->size, data.data, data.size);
-    (*pContext)->size += data.size;
-}
-korl_internal void korl_memory_byteBuffer_trim(Korl_Memory_ByteBuffer** pContext)
-{
-    if((*pContext)->size == (*pContext)->capacity)
-        return;
-    (*pContext)->capacity = (*pContext)->size;
-    if((*pContext)->fastAndDirty)
-        *pContext = korl_dirtyReallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
-    else
-        *pContext = korl_reallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity);
 }

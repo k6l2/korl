@@ -9,15 +9,6 @@
  *    in \c b, \c 1 if the first byte that differs has a higher value in \c a 
  *    than in \c b, and \c 0 if the two memory blocks are equal */
 #define KORL_FUNCTION_korl_memory_compare(name) int  name(const void* a, const void* b, size_t bytes)
-/**
- * \return \c 0 if the length & contents of the arrays are equal
- */
-#define KORL_FUNCTION_korl_memory_arrayU8Compare(name) int name(const u8* dataA, u$ sizeA, const u8* dataB, u$ sizeB)
-/**
- * \return \c 0 if the length & contents of the arrays are equal
- */
-#define KORL_FUNCTION_korl_memory_arrayU16Compare(name) int name(const u16* dataA, u$ sizeA, const u16* dataB, u$ sizeB)
-#define KORL_FUNCTION_korl_memory_acu16_hash(name) u$ name(acu16 arrayCU16)
 typedef u16 Korl_Memory_AllocatorHandle;
 typedef enum Korl_Memory_AllocatorType
     { KORL_MEMORY_ALLOCATOR_TYPE_CRT    // just call into CRT APIs to perform memory allocation; useful for debugging allocator crashes

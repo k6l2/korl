@@ -5,6 +5,8 @@
 #include "korl-audio.h"
 #include "korl-codec-audio.h"
 #include "korl-codec-glb.h"
+#include "korl-interface-platform.h"
+#include "utility/korl-utility-string.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
@@ -155,7 +157,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i]);
             if(fileName.size < extensionSize)
                 continue;
-            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, IMAGE_EXTENSIONS[i], extensionSize))
+            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, IMAGE_EXTENSIONS[i]}))
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
                 graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
@@ -170,7 +172,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             const u$ extensionSize = korl_string_sizeUtf16(SHADER_EXTENSIONS[i]);
             if(fileName.size < extensionSize)
                 continue;
-            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, SHADER_EXTENSIONS[i], extensionSize))
+            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, SHADER_EXTENSIONS[i]}))
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
                 graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SHADER;
@@ -185,7 +187,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             const u$ extensionSize = korl_string_sizeUtf16(SCENE3D_EXTENSIONS[i]);
             if(fileName.size < extensionSize)
                 continue;
-            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, SCENE3D_EXTENSIONS[i], extensionSize))
+            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, SCENE3D_EXTENSIONS[i]}))
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
                 graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D;
@@ -200,7 +202,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
             const u$ extensionSize = korl_string_sizeUtf16(AUDIO_EXTENSIONS[i]);
             if(fileName.size < extensionSize)
                 continue;
-            if(0 == korl_memory_arrayU16Compare(fileName.data + fileName.size - extensionSize, extensionSize, AUDIO_EXTENSIONS[i], extensionSize))
+            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, AUDIO_EXTENSIONS[i]}))
             {
                 unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO;
                 goto multimediaTypeFound;
@@ -211,7 +213,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
     multimediaTypeFound:
         /* hash the file name, generate our resource handle */
         unpackedHandle.type     = _KORL_RESOURCE_TYPE_FILE;
-        unpackedHandle.uniqueId = korl_memory_acu16_hash(fileName);
+        unpackedHandle.uniqueId = korl_string_hashAcu16(fileName);
         if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
         {
             korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);

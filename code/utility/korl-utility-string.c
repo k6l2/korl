@@ -1,5 +1,7 @@
 #include "utility/korl-utility-string.h"
-#include <stdlib.h>// needed for __FILEW__, etc...
+#include "utility/korl-checkCast.h"
+#include "utility/korl-utility-memory.h"
+#include "korl-interface-platform.h"
 korl_internal bool _korl_string_isBigEndian(void)
 {
     korl_shared_const i32 I = 1;
@@ -335,16 +337,7 @@ korl_internal int korl_string_compareUtf8(const char* a, const char* b)
 }
 korl_internal int korl_string_compareAcu8(acu8 a, acu8 b)
 {
-    if(a.size < b.size)
-        return -1;
-    if(a.size > b.size)
-        return  1;
-    for(u$ i = 0; i < a.size; i++)
-        if(a.data[i] < b.data[i])
-            return -1;
-        else if(a.data[i] > b.data[i])
-            return  1;
-    return 0;
+    return korl_memory_compare_acu8(a, b);// @TODO: uhhhh... woops!
 }
 korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b)
 {
@@ -382,4 +375,28 @@ korl_internal u$  korl_string_sizeUtf16(const wchar_t* s)
     const wchar_t* sBegin = s;
     for(; *s; ++s) {}
     return korl_checkCast_i$_to_u$(s - sBegin);
+}
+#define _KORL_STRING_U$_BITS                  ((sizeof (u$)) * 8)
+#define _KORL_STRING_U$_ROTATE_LEFT(x, bits)  (((x) << (bits)) | ((x) >> (_KORL_STRING_U$_BITS - (bits))))
+#define _KORL_STRING_U$_ROTATE_RIGHT(x, bits) (((x) >> (bits)) | ((x) << (_KORL_STRING_U$_BITS - (bits))))
+#define _KORL_STRING_HASH_SEED                0x600A407C0C8DA663/*random 64-bit prime*/
+korl_internal u$ korl_string_hashAcu16(acu16 arrayCU16)
+{
+    /* note: this hash function is most likely terrible, and that is because I have no idea what I'm doing! 🙃 */
+    u$ hash = _KORL_STRING_HASH_SEED;
+    for(u$ i = 0; i < arrayCU16.size; i++)
+        hash = _KORL_STRING_U$_ROTATE_LEFT(hash, 9) + arrayCU16.data[i];
+    hash ^= _KORL_STRING_HASH_SEED;
+    return hash + _KORL_STRING_HASH_SEED;
+}
+korl_internal u$ korl_string_hashRawWide(const wchar_t* s, u$ arraySizeLimit)
+{
+    /* note: this hash function is most likely terrible, and that is because I have no idea what I'm doing! 🙃 */
+    u$ hash = _KORL_STRING_HASH_SEED;
+    u$ i    = 0;
+    for(; i < arraySizeLimit && *s; i++)
+        hash = _KORL_STRING_U$_ROTATE_LEFT(hash, 9) + *s++;
+    korl_assert(i < arraySizeLimit);
+    hash ^= _KORL_STRING_HASH_SEED;
+    return hash + _KORL_STRING_HASH_SEED;
 }

@@ -20,6 +20,7 @@
         #define alignas(byteCount) __declspec(align(byteCount))
     #endif
 #endif// defined(_MSC_VER)
+#include <stdlib.h>// needed for __FILEW__, etc...
 /** disambiguations of the \c static key word to improve project 
  * searchability */
 #define korl_internal        static

@@ -66,6 +66,7 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-resource.h"
 #include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
+#include "utility/korl-utility-memory.h"
 typedef struct Korl_Audio_Format Korl_Audio_Format;
 korl_internal void                                           korl_resource_initialize(void);
 korl_internal Korl_Resource_Handle                           korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);

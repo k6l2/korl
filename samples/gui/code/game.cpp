@@ -1,4 +1,3 @@
-#include <stdlib.h>// needed for __FILEW__, etc...
 #include "korl-interface-game.h"
 #include "utility/korl-utility-stb-ds.h"
 #include "utility/korl-utility-string.h"
